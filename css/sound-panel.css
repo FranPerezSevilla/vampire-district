@@ -1,0 +1,163 @@
+.vd-help-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 22px 14px;
+  border-bottom: 1px solid rgba(215, 200, 255, .12);
+}
+
+.vd-help-tab {
+  border: 1px solid rgba(215, 200, 255, .20);
+  background: rgba(10, 8, 18, .72);
+  color: #d7c8ff;
+  padding: 9px 13px;
+  border-radius: 12px;
+  font: 700 12px/1.1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.vd-help-tab.active,
+.vd-help-tab:hover,
+.vd-help-tab:focus-visible {
+  border-color: rgba(120, 199, 163, .72);
+  color: #d7ffec;
+  background: rgba(120, 199, 163, .12);
+  outline: none;
+}
+
+.vd-help-body.hidden,
+.vd-sound-panel.hidden {
+  display: none;
+}
+
+.vd-sound-panel {
+  padding: 18px 22px 22px;
+  max-height: min(66vh, 680px);
+  overflow: auto;
+}
+
+.vd-sound-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.vd-sound-title {
+  margin: 2px 0 0;
+  color: #f1e6ff;
+  font: 800 20px/1.15 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.vd-sound-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  color: #d7c8ff;
+  font: 700 12px/1.1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.vd-sound-toggle input {
+  accent-color: #78c7a3;
+}
+
+.vd-sound-muted,
+.vd-sound-meta {
+  margin: 0 0 14px;
+  color: rgba(241, 230, 255, .72);
+  font: 500 13px/1.45 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.vd-sound-meta {
+  color: #78c7a3;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.vd-sound-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.vd-sound-slider {
+  display: grid;
+  grid-template-columns: 80px 1fr 46px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(215, 200, 255, .14);
+  background: rgba(4, 4, 10, .48);
+  border-radius: 14px;
+  color: #f1e6ff;
+  font: 700 12px/1.1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.vd-sound-slider input {
+  width: 100%;
+  accent-color: #c81aff;
+}
+
+.vd-sound-value {
+  color: #78c7a3;
+  text-align: right;
+}
+
+.vd-sound-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.vd-sound-test {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 60px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(215, 200, 255, .14);
+  background: rgba(14, 12, 26, .82);
+  color: #f1e6ff;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .12s ease, border-color .12s ease, background .12s ease;
+}
+
+.vd-sound-test span {
+  font: 800 13px/1.15 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.vd-sound-test small {
+  color: rgba(215, 200, 255, .66);
+  font: 700 11px/1.15 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.vd-sound-test:hover:not(:disabled),
+.vd-sound-test:focus-visible:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(200, 26, 255, .75);
+  background: rgba(200, 26, 255, .13);
+  outline: none;
+}
+
+.vd-sound-test:disabled {
+  cursor: not-allowed;
+  opacity: .48;
+}
+
+@media (max-width: 720px) {
+  .vd-sound-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .vd-sound-head {
+    flex-direction: column;
+  }
+}
