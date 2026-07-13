@@ -1,0 +1,79 @@
+name: Remove legacy canvas help
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/remove-legacy-help.yml
+
+permissions:
+  contents: write
+
+jobs:
+  remove-legacy-help:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Disable legacy canvas help
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('js/game.js')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = {
+              '      state.showHelp = true;\n': '      state.showHelp = false;\n',
+              '      drawHelpOverlay();\n': '      // Legacy canvas help removed. DOM help is handled by js/help-overlay.js.\n',
+              '      if (consumePressed("h")) {\n        state.showHelp = !state.showHelp;\n        state.helpPulse = 0.35;\n      }\n': '      if (consumePressed("h")) {\n        state.showHelp = false;\n        state.helpPulse = 0;\n      }\n',
+          }
+
+          changed = False
+          for old, new in replacements.items():
+              if old in text:
+                  text = text.replace(old, new, 1)
+                  changed = True
+
+          # Make the old draw function inert even if a stray call survives.
+          marker = '    function drawHelpOverlay() {'
+          idx = text.find(marker)
+          if idx != -1:
+              brace_start = text.find('{', idx)
+              depth = 0
+              end = None
+              for i in range(brace_start, len(text)):
+                  ch = text[i]
+                  if ch == '{':
+                      depth += 1
+                  elif ch == '}':
+                      depth -= 1
+                      if depth == 0:
+                          end = i + 1
+                          break
+              if end:
+                  stub = '    function drawHelpOverlay() {\n      // Removed: help now lives in js/help-overlay.js as a DOM modal.\n    }'
+                  text = text[:idx] + stub + text[end:]
+                  changed = True
+
+          if changed:
+              path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Validate JavaScript
+        run: node --check js/game.js
+
+      - name: Commit changes
+        run: |
+          if git diff --quiet; then
+            echo "No legacy help changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add js/game.js
+          git commit -m "Remove legacy canvas help overlay"
+          git push
