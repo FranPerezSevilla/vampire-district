@@ -99,7 +99,8 @@
 
     const file = opts.path || pickFile(name);
     if (!file) {
-      console.warn(`[VD audio] No asset mapped for event: ${name}`);
+      // Intentionally silent: many prototype events are currently unmapped after review.
+      if (opts.force) console.warn(`[VD audio] No approved asset mapped for event: ${name}`);
       return true;
     }
 
