@@ -1,0 +1,367 @@
+name: Patch help overlay
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/patch-help-overlay.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-help-overlay:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Patch help overlay and pause behaviour
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          function writeFile(filePath, content) {
+            fs.mkdirSync(path.dirname(filePath), { recursive: true });
+            fs.writeFileSync(filePath, content.replace(/\n/g, '\n'), 'utf8');
+          }
+
+          let index = fs.readFileSync('index.html', 'utf8');
+
+          if (!index.includes('css/help.css')) {
+            if (index.includes('<link rel="stylesheet" href="css/feedback.css" />')) {
+              index = index.replace(
+                '<link rel="stylesheet" href="css/feedback.css" />',
+                '<link rel="stylesheet" href="css/feedback.css" />\n  <link rel="stylesheet" href="css/help.css" />'
+              );
+            } else if (index.includes('</head>')) {
+              index = index.replace('</head>', '  <link rel="stylesheet" href="css/help.css" />\n</head>');
+            }
+          }
+
+          if (!index.includes('js/help-overlay.js')) {
+            if (index.includes('<script src="js/feedback.js" defer></script>')) {
+              index = index.replace(
+                '<script src="js/feedback.js" defer></script>',
+                '<script src="js/feedback.js" defer></script>\n  <script src="js/help-overlay.js" defer></script>'
+              );
+            } else if (index.includes('</body>')) {
+              index = index.replace('</body>', '  <script src="js/help-overlay.js" defer></script>\n</body>');
+            }
+          }
+
+          fs.writeFileSync('index.html', index, 'utf8');
+
+          const helpCss = `
+          .vd-help-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 8500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: clamp(18px, 4vw, 56px);
+            background: rgba(4, 5, 12, 0.46);
+            backdrop-filter: blur(2px);
+            color: #f4efff;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+          }
+
+          .vd-help-overlay.hidden {
+            display: none;
+          }
+
+          .vd-help-panel {
+            width: min(1040px, 94vw);
+            max-height: min(760px, 84vh);
+            overflow: auto;
+            border: 1px solid rgba(174, 151, 255, 0.34);
+            background:
+              linear-gradient(180deg, rgba(20, 18, 36, 0.97), rgba(9, 9, 18, 0.97)),
+              rgba(10, 10, 18, 0.98);
+            box-shadow: 0 24px 90px rgba(0, 0, 0, 0.64), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+          }
+
+          .vd-help-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 20px 22px 14px;
+            border-bottom: 1px solid rgba(174, 151, 255, 0.20);
+          }
+
+          .vd-help-eyebrow {
+            margin: 0 0 6px;
+            color: #a75cff;
+            font-size: 11px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            font-weight: 800;
+          }
+
+          .vd-help-title {
+            margin: 0;
+            color: #fff8d6;
+            font-size: clamp(20px, 2.4vw, 30px);
+            line-height: 1.05;
+            letter-spacing: 0.02em;
+          }
+
+          .vd-help-close {
+            appearance: none;
+            border: 1px solid rgba(255, 242, 168, 0.28);
+            background: rgba(255, 242, 168, 0.08);
+            color: #fff2a8;
+            padding: 9px 12px;
+            font: inherit;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+          }
+
+          .vd-help-close:hover,
+          .vd-help-close:focus-visible {
+            background: rgba(255, 242, 168, 0.16);
+            outline: 1px solid rgba(255, 242, 168, 0.50);
+          }
+
+          .vd-help-body {
+            padding: 18px 22px 22px;
+          }
+
+          .vd-help-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+          }
+
+          .vd-help-card {
+            border: 1px solid rgba(174, 151, 255, 0.18);
+            background: rgba(255, 255, 255, 0.035);
+            padding: 14px;
+          }
+
+          .vd-help-card.wide {
+            grid-column: 1 / -1;
+          }
+
+          .vd-help-card h3 {
+            margin: 0 0 9px;
+            color: #78c7a3;
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+          }
+
+          .vd-help-card p,
+          .vd-help-list {
+            margin: 0;
+            color: #e9e0ff;
+            font-size: 13px;
+            line-height: 1.58;
+          }
+
+          .vd-help-list {
+            padding-left: 18px;
+          }
+
+          .vd-help-list li + li {
+            margin-top: 5px;
+          }
+
+          .vd-help-kbd {
+            display: inline-block;
+            min-width: 1.65em;
+            padding: 1px 6px 2px;
+            border: 1px solid rgba(255, 242, 168, 0.25);
+            background: rgba(255, 242, 168, 0.10);
+            color: #fff2a8;
+            text-align: center;
+            font-weight: 900;
+          }
+
+          .vd-help-plan {
+            color: #fff2a8;
+          }
+
+          .vd-help-muted {
+            color: #a9a0c6;
+          }
+
+          @media (max-width: 760px) {
+            .vd-help-grid {
+              grid-template-columns: 1fr;
+            }
+            .vd-help-panel {
+              width: 96vw;
+              max-height: 88vh;
+            }
+          }
+          `.trim() + '\n';
+
+          const helpJs = `
+          (() => {
+            "use strict";
+
+            let overlay;
+            let closeButton;
+            let wasOpen = false;
+
+            function make(tag, attrs = {}, children = []) {
+              const node = document.createElement(tag);
+              for (const [key, value] of Object.entries(attrs)) {
+                if (key === "class") node.className = value;
+                else if (key === "text") node.textContent = value;
+                else if (key === "html") node.innerHTML = value;
+                else node.setAttribute(key, value);
+              }
+              for (const child of children) node.appendChild(child);
+              return node;
+            }
+
+            function closeHelp() {
+              window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+              window.dispatchEvent(new KeyboardEvent("keyup", { key: "Escape", bubbles: true }));
+            }
+
+            function createHelpOverlay() {
+              overlay = make("div", { id: "vdHelpOverlay", class: "vd-help-overlay hidden", "aria-hidden": "true" }, [
+                make("section", { class: "vd-help-panel", role: "dialog", "aria-modal": "true", "aria-labelledby": "vdHelpTitle" }, [
+                  make("header", { class: "vd-help-head" }, [
+                    make("div", {}, [
+                      make("p", { class: "vd-help-eyebrow", text: "Quick read" }),
+                      make("h2", { id: "vdHelpTitle", class: "vd-help-title", text: "How to survive the district" })
+                    ]),
+                    make("button", { class: "vd-help-close", type: "button", text: "Close · H / Esc", "aria-label": "Close help" })
+                  ]),
+                  make("div", { class: "vd-help-body" }, [
+                    make("div", { class: "vd-help-grid" }, [
+                      make("article", { class: "vd-help-card" }, [
+                        make("h3", { text: "Read the street" }),
+                        make("ul", { class: "vd-help-list" }, [
+                          make("li", { html: "<b>V + line</b> means direct vision inside a cone." }),
+                          make("li", { html: "<b>Blue</b> marks police/cameras. <b>Orange</b> marks hunters." }),
+                          make("li", { html: "<b>Yellow circles</b> are streetlights. Break lamps to create shadow." })
+                        ])
+                      ]),
+                      make("article", { class: "vd-help-card" }, [
+                        make("h3", { text: "Heat & evidence" }),
+                        make("ul", { class: "vd-help-list" }, [
+                          make("li", { html: "<b>!</b> witnesses run to report. Intercept them with <span class='vd-help-kbd'>E</span>." }),
+                          make("li", { html: "<b>?</b> noise attracts investigation." }),
+                          make("li", { html: "<b>B</b> blood trails can be followed as physical evidence." })
+                        ])
+                      ]),
+                      make("article", { class: "vd-help-card" }, [
+                        make("h3", { text: "Powers" }),
+                        make("ul", { class: "vd-help-list" }, [
+                          make("li", { html: "<span class='vd-help-kbd'>Q</span> / <span class='vd-help-kbd'>Space</span> Shadow Dash: always usable, raises hunger." }),
+                          make("li", { html: "<span class='vd-help-kbd'>R</span> Whisper: lure a target, raises hunger." }),
+                          make("li", { html: "<span class='vd-help-kbd'>F</span> Blood Sense: reveals people, trails, hunters and routes." })
+                        ])
+                      ]),
+                      make("article", { class: "vd-help-card" }, [
+                        make("h3", { text: "Controls" }),
+                        make("ul", { class: "vd-help-list" }, [
+                          make("li", { html: "<span class='vd-help-kbd'>WASD</span> / arrows move." }),
+                          make("li", { html: "<span class='vd-help-kbd'>Shift</span> sprint." }),
+                          make("li", { html: "<span class='vd-help-kbd'>E</span> interact, feed, drag, hide or intercept." })
+                        ])
+                      ]),
+                      make("article", { class: "vd-help-card wide" }, [
+                        make("h3", { text: "Base plan" }),
+                        make("p", { class: "vd-help-plan", text: "F finds journalist → R lures → E eliminates in shadow → hide body → return to safehouse." }),
+                        make("p", { class: "vd-help-muted", text: "While this help panel is open, the game is paused." })
+                      ])
+                    ])
+                  ])
+                ])
+              ]);
+
+              document.body.appendChild(overlay);
+              closeButton = overlay.querySelector(".vd-help-close");
+              closeButton.addEventListener("click", closeHelp);
+            }
+
+            function sync() {
+              const open = Boolean(window.VD_HELP_OPEN);
+              if (overlay) {
+                overlay.classList.toggle("hidden", !open);
+                overlay.setAttribute("aria-hidden", open ? "false" : "true");
+              }
+              if (open && !wasOpen) {
+                setTimeout(() => closeButton && closeButton.focus(), 0);
+              }
+              wasOpen = open;
+              requestAnimationFrame(sync);
+            }
+
+            function blockGameplayKeysWhileHelpIsOpen(event) {
+              if (!window.VD_HELP_OPEN) return;
+              const key = event.key.toLowerCase();
+              if (key === "h" || key === "escape") return;
+              event.preventDefault();
+              event.stopImmediatePropagation();
+            }
+
+            function init() {
+              createHelpOverlay();
+              window.addEventListener("keydown", blockGameplayKeysWhileHelpIsOpen, true);
+              sync();
+            }
+
+            if (document.readyState === "loading") {
+              document.addEventListener("DOMContentLoaded", init);
+            } else {
+              init();
+            }
+          })();
+          `.trim() + '\n';
+
+          writeFile('css/help.css', helpCss);
+          writeFile('js/help-overlay.js', helpJs);
+
+          let game = fs.readFileSync('js/game.js', 'utf8');
+
+          const oldUpdateStart = `      if (!state.gameStarted) {\n        if (consumePressed("enter") || consumePressed("e") || consumePressed(" ")) startGame();\n        return;\n      }\n      const simDt = state.cinematic ? dt * BALANCE.cinematicSlowdown : dt;`;
+          const newUpdateStart = `      if (!state.gameStarted) {\n        if (consumePressed("enter") || consumePressed("e") || consumePressed(" ")) startGame();\n        return;\n      }\n\n      if (state.showHelp) {\n        window.VD_HELP_OPEN = true;\n        if (consumePressed("h") || consumePressed("escape")) {\n          state.showHelp = false;\n          state.helpPulse = 0.35;\n          window.VD_HELP_OPEN = false;\n        }\n        updateCamera();\n        return;\n      }\n      window.VD_HELP_OPEN = false;\n\n      const simDt = state.cinematic ? dt * BALANCE.cinematicSlowdown : dt;`;
+
+          if (!game.includes(newUpdateStart)) {
+            if (!game.includes(oldUpdateStart)) {
+              throw new Error('Could not patch update() help pause block: expected anchor not found.');
+            }
+            game = game.replace(oldUpdateStart, newUpdateStart);
+          }
+
+          const helpOverlayReplacement = `    function drawHelpOverlay() {\n      window.VD_HELP_OPEN = Boolean(state.showHelp);\n    }\n\n    function drawMissionSummaryOverlay()`;
+          if (!game.includes(helpOverlayReplacement)) {
+            const helpOverlayRegex = /    function drawHelpOverlay\(\) \{[\s\S]*?\n    function drawMissionSummaryOverlay\(\)/;
+            if (!helpOverlayRegex.test(game)) {
+              throw new Error('Could not patch drawHelpOverlay(): function range not found.');
+            }
+            game = game.replace(helpOverlayRegex, helpOverlayReplacement);
+          }
+
+          fs.writeFileSync('js/game.js', game, 'utf8');
+          NODE
+
+      - name: Validate JavaScript
+        run: |
+          node --check js/game.js
+          node --check js/help-overlay.js
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No changes to commit"
+          else
+            git add index.html css/help.css js/help-overlay.js js/game.js
+            git commit -m "Pause game and restyle help overlay"
+            git push
+          fi
