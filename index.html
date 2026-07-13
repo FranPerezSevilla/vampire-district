@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Night Blood District - HTML Prototype</title>
   <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/feedback.css" />
 </head>
 <body>
   <div class="wrap">
@@ -37,7 +38,7 @@
 
       <div id="messageLine" class="message-line">A clan courier wakes you: a journalist is preparing to expose your leader. Press E at the door to leave.</div>
       <div id="legendLine" class="legend-line">Legend: V sight · ? noise · B trail · ! witness · CAM camera · H help</div>
-      <div class="hint">WASD/Arrows move · Shift sprint · Q/Space Dash [+12 hunger] · R Whisper [+8 hunger] · F Blood Sense [+3 hunger] · E interact · H help</div>
+      <div class="hint">WASD/Arrows move · Shift sprint · Q/Space Dash [+12 hunger] · R Whisper [+8 hunger] · F Blood Sense [+3 hunger] · E interact · H help · P feedback</div>
     </div>
   </div>
 
@@ -50,10 +51,12 @@
         <div class="start-box"><b>If it goes wrong</b>Witnesses, police and hunters can turn a quiet clan order into a district-wide crisis.</div>
         <div class="start-box"><b>Your cost</b>Powers do not spend blood: they raise hunger. Too much hunger wakes the Beast and risks clan exposure.</div>
       </div>
-      <div class="start-controls">WASD/Arrows move · Shift sprint · E interact · Q/Space Dash · R Whisper · F Blood Sense · H help.</div>
+      <div class="start-controls">WASD/Arrows move · Shift sprint · E interact · Q/Space Dash · R Whisper · F Blood Sense · H help · P feedback.</div>
       <button id="startButton" class="start-button">Accept order · Enter</button>
     </div>
   </div>
   <script src="js/game.js" defer></script>
+  <script src="js/feedback-config.js" defer></script>
+  <script src="js/feedback.js" defer></script>
 </body>
 </html>
