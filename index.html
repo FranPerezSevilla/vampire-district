@@ -365,7 +365,7 @@
 
       <div id="messageLine" class="message-line">A clan courier wakes you: a journalist is preparing to expose your leader. Press E at the door to leave.</div>
       <div id="legendLine" class="legend-line">Legend: V sight · ? noise · B trail · ! witness · CAM camera · H help</div>
-      <div class="hint">W/↑ forward · S/↓ reverse · A/D steer · Shift sprint · Q/Space Dash [+12 hunger] · R Whisper [+8 hunger] · F Blood Sense [+3 hunger] · E interact · H help</div>
+      <div class="hint">WASD/Arrows move · Shift sprint · Q/Space Dash [+12 hunger] · R Whisper [+8 hunger] · F Blood Sense [+3 hunger] · E interact · H help</div>
     </div>
   </div>
 
@@ -378,7 +378,7 @@
         <div class="start-box"><b>If it goes wrong</b>Witnesses, police and hunters can turn a quiet clan order into a district-wide crisis.</div>
         <div class="start-box"><b>Your cost</b>Powers do not spend blood: they raise hunger. Too much hunger wakes the Beast and risks clan exposure.</div>
       </div>
-      <div class="start-controls">W/↑ forward · S/↓ reverse · A/D steer · E interact · Q/Space Dash · R Whisper · F Blood Sense · Shift sprint · H help.</div>
+      <div class="start-controls">WASD/Arrows move · Shift sprint · E interact · Q/Space Dash · R Whisper · F Blood Sense · H help.</div>
       <button id="startButton" class="start-button">Accept order · Enter</button>
     </div>
   </div>
@@ -389,9 +389,30 @@
 
     // =========================================================
     // Night Blood District
-    // Prototipo top-down en HTML + CSS + JavaScript vanilla.
-    // The whole game lives in this file to make iteration easy.
+    // Single-file top-down HTML + CSS + vanilla JS prototype.
+    //
+    // File layout:
+    // 01. DOM / CANVAS / GLOBAL CONFIG
+    // 02. BALANCE / FEATURES / FUTURE ASSET FLAGS
+    // 03. INPUT
+    // 04. GAME STATE
+    // 05. MAP DATA
+    // 06. NPC DATA
+    // 07. SMALL UTILS
+    // 08. AUDIO SCAFFOLDING
+    // 09. GAMEPLAY SYSTEMS
+    // 10. AI
+    // 11. RENDERING
+    // 12. UI
+    // 13. MAIN LOOP
+    //
+    // Intention: keep this as one portable index.html, but organized
+    // like a small project so it remains easy to edit with ChatGPT.
     // =========================================================
+
+    // ---------------------------------------------------------
+    // 01. DOM / CANVAS / GLOBAL CONFIG
+    // ---------------------------------------------------------
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -431,14 +452,288 @@
       [2]: "High rooftop"
     };
 
+    // ---------------------------------------------------------
+    // 02. BALANCE / FEATURES / FUTURE ASSET FLAGS
+    // ---------------------------------------------------------
+    // Keep numbers here whenever possible. If something feels wrong
+    // during playtesting, this is the first place to tweak.
+
     const BALANCE = {
+      // Player
       startHunger: 48,
+      playerBaseSpeed: 72,
+      playerSprintMultiplier: 1.55,
+      bodyDragMultiplier: 0.56,
+
+      // Powers: powers are always available if off cooldown, but they increase hunger.
       dashHunger: 12,
       whisperHunger: 8,
       senseHunger: 3,
+      dashBaseDistance: 72,
+      dashBaseCooldown: 3.0,
+
+      // Feeding
       targetFeedRelief: 60,
-      civilianFeedRelief: 40
+      civilianFeedRelief: 40,
+
+      // Threat pressure
+      exposurePerLevel: 25,
+      maxPolice: 4,
+      maxHunters: 2,
+      maxDynamicCivilians: 3,
+      maxTotalLivingCivilians: 15,
+      dynamicEventMinDelay: 24,
+      dynamicEventMaxDelay: 38,
+      hunterRouteBlockMinLevel: 3,
+      policeChaseSpeedMul: 0.72,
+      hunterChaseSpeedMul: 0.82,
+      enemyLostSightMul: 0.64,
+      policeInvestigationSpeedMul: 0.46,
+      hunterInvestigationSpeedMul: 0.52,
+
+      // Cinematic traversal
+      cinematicSlowdown: 0.045
     };
+
+    const FEATURES = {
+      useSprites: false,
+      proceduralAudio: true
+    };
+
+    const SPRITES = {
+      // Future-ready: keep these null while drawing characters by code.
+      vampire: null,
+      journalist: null,
+      civilian: null,
+      police: null,
+      hunter: null,
+      lamp: null,
+      camera: null
+    };
+
+    // ---------------------------------------------------------
+    // 03. PROCEDURAL AUDIO
+    // ---------------------------------------------------------
+    // One-file friendly: no .wav/.mp3 assets. Everything is generated via Web Audio.
+    // Browsers require a user gesture, so AudioBus.unlock() is called when the order starts.
+
+    const AudioBus = {
+      ctx: null,
+      master: null,
+      ambience: null,
+      lastPlayed: Object.create(null),
+      enabled: FEATURES.proceduralAudio,
+
+      unlock() {
+        if (!this.enabled) return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        if (!this.ctx) {
+          this.ctx = new AudioCtx();
+          this.master = this.ctx.createGain();
+          this.master.gain.value = 0.20;
+          this.master.connect(this.ctx.destination);
+          this.startAmbience();
+        }
+        if (this.ctx.state === "suspended") this.ctx.resume();
+      },
+
+      now() {
+        return this.ctx ? this.ctx.currentTime : 0;
+      },
+
+      canPlay(name, minGap = 0.04) {
+        const t = this.now();
+        if ((this.lastPlayed[name] || 0) + minGap > t) return false;
+        this.lastPlayed[name] = t;
+        return true;
+      },
+
+      makeGain(gain = 0.3, delay = 0, duration = 0.18, curve = "fast") {
+        const t = this.now() + delay;
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), t + 0.012);
+        const end = t + duration;
+        if (curve === "hold") g.gain.setValueAtTime(gain, Math.max(t + 0.014, end - 0.06));
+        g.gain.exponentialRampToValueAtTime(0.0001, end);
+        g.connect(this.master);
+        return { gain: g, start: t, end };
+      },
+
+      tone(freq = 220, gain = 0.15, duration = 0.15, type = "sine", opts = {}) {
+        if (!this.ctx) return;
+        const env = this.makeGain(gain, opts.delay || 0, duration, opts.curve || "fast");
+        const osc = this.ctx.createOscillator();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, env.start);
+        if (opts.to) osc.frequency.exponentialRampToValueAtTime(Math.max(20, opts.to), env.end);
+        if (opts.detune) osc.detune.setValueAtTime(opts.detune, env.start);
+        osc.connect(env.gain);
+        osc.start(env.start);
+        osc.stop(env.end + 0.02);
+      },
+
+      noise(gain = 0.18, duration = 0.16, opts = {}) {
+        if (!this.ctx) return;
+        const sr = this.ctx.sampleRate;
+        const length = Math.max(1, Math.floor(sr * duration));
+        const buffer = this.ctx.createBuffer(1, length, sr);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < length; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, opts.decay ?? 0.8);
+        }
+        const src = this.ctx.createBufferSource();
+        src.buffer = buffer;
+        let node = src;
+        if (opts.filter) {
+          const f = this.ctx.createBiquadFilter();
+          f.type = opts.filter.type || "bandpass";
+          f.frequency.value = opts.filter.freq || 900;
+          f.Q.value = opts.filter.q || 0.8;
+          node.connect(f);
+          node = f;
+        }
+        const env = this.makeGain(gain, opts.delay || 0, duration, opts.curve || "fast");
+        node.connect(env.gain);
+        src.start(env.start);
+        src.stop(env.end + 0.02);
+      },
+
+      startAmbience() {
+        if (!this.ctx || this.ambience) return;
+        const hum = this.ctx.createOscillator();
+        const humGain = this.ctx.createGain();
+        hum.type = "sine";
+        hum.frequency.value = 48;
+        humGain.gain.value = 0.018;
+        hum.connect(humGain);
+        humGain.connect(this.master);
+        hum.start();
+
+        const high = this.ctx.createOscillator();
+        const highGain = this.ctx.createGain();
+        high.type = "triangle";
+        high.frequency.value = 96;
+        highGain.gain.value = 0.006;
+        high.connect(highGain);
+        highGain.connect(this.master);
+        high.start();
+        this.ambience = { hum, humGain, high, highGain };
+      },
+
+      update(dt) {
+        if (!this.enabled || !this.ctx || !this.ambience) return;
+        const t = this.now();
+        const layer = player.layer;
+        const level = exposureLevel();
+        const hunger = player.hunger / 100;
+        let humFreq = 48;
+        let humGain = 0.018;
+        let highGain = 0.006;
+        if (layer === LAYER.SEWER) { humFreq = 38; humGain = 0.025; highGain = 0.002; }
+        else if (layer > LAYER.STREET) { humFreq = 62; humGain = 0.012; highGain = 0.010; }
+        if (player.inSafehouse) { humFreq = 42; humGain = 0.010; highGain = 0.001; }
+        humGain += level * 0.002 + hunger * 0.006;
+        this.ambience.hum.frequency.setTargetAtTime(humFreq + level * 2, t, 0.25);
+        this.ambience.humGain.gain.setTargetAtTime(humGain, t, 0.4);
+        this.ambience.highGain.gain.setTargetAtTime(highGain + (level >= 3 ? 0.008 : 0), t, 0.4);
+      },
+
+      play(name, intensity = 1) {
+        if (!this.enabled) return;
+        this.unlock();
+        if (!this.ctx || this.ctx.state !== "running") return;
+        intensity = Math.max(0.1, Math.min(2, intensity));
+        const shortGap = name.includes("step") ? 0.10 : name === "alert" ? 0.35 : 0.04;
+        if (!this.canPlay(name, shortGap)) return;
+
+        switch (name) {
+          case "footstep":
+            this.noise(0.045 * intensity, 0.045, { filter: { type: "lowpass", freq: 360, q: 0.7 }, decay: 1.4 });
+            this.tone(72, 0.025 * intensity, 0.035, "sine");
+            break;
+          case "sprintStep":
+            this.noise(0.075 * intensity, 0.055, { filter: { type: "lowpass", freq: 460, q: 0.8 }, decay: 1.2 });
+            this.tone(86, 0.032 * intensity, 0.038, "sine");
+            break;
+          case "drag":
+            this.noise(0.070 * intensity, 0.18, { filter: { type: "lowpass", freq: 260, q: 0.9 }, decay: 0.7 });
+            break;
+          case "dash":
+            this.noise(0.16 * intensity, 0.32, { filter: { type: "bandpass", freq: 900, q: 0.9 }, decay: 0.55 });
+            this.tone(90, 0.12 * intensity, 0.35, "sawtooth", { to: 34 });
+            this.tone(680, 0.05 * intensity, 0.16, "sine", { to: 220, delay: 0.02 });
+            break;
+          case "whisper":
+            this.noise(0.10 * intensity, 0.42, { filter: { type: "bandpass", freq: 1250, q: 1.6 }, decay: 0.35 });
+            this.tone(310, 0.055 * intensity, 0.38, "sine", { to: 180 });
+            break;
+          case "sense":
+            this.tone(520, 0.055 * intensity, 0.12, "sine");
+            this.tone(780, 0.045 * intensity, 0.13, "sine", { delay: 0.07 });
+            this.tone(1040, 0.035 * intensity, 0.16, "sine", { delay: 0.14 });
+            break;
+          case "feedStart":
+            this.tone(130, 0.08 * intensity, 0.18, "triangle", { to: 82 });
+            this.noise(0.05 * intensity, 0.20, { filter: { type: "lowpass", freq: 520, q: 0.6 } });
+            break;
+          case "feedFinish":
+            this.tone(74, 0.13 * intensity, 0.24, "sine", { to: 54 });
+            this.noise(0.055 * intensity, 0.18, { filter: { type: "lowpass", freq: 420, q: 0.8 } });
+            break;
+          case "brutalFeed":
+            this.tone(62, 0.16 * intensity, 0.32, "sawtooth", { to: 38 });
+            this.noise(0.14 * intensity, 0.24, { filter: { type: "bandpass", freq: 620, q: 0.8 } });
+            break;
+          case "glass":
+            this.noise(0.16 * intensity, 0.22, { filter: { type: "highpass", freq: 1500, q: 0.7 }, decay: 1.6 });
+            this.tone(1600, 0.045 * intensity, 0.08, "square", { to: 900 });
+            break;
+          case "rooftopJump":
+            this.noise(0.11 * intensity, 0.42, { filter: { type: "bandpass", freq: 650, q: 0.7 }, decay: 0.35 });
+            this.tone(140, 0.070 * intensity, 0.36, "triangle", { to: 260 });
+            break;
+          case "roofDrop":
+            this.noise(0.12 * intensity, 0.52, { filter: { type: "bandpass", freq: 520, q: 0.65 }, decay: 0.30 });
+            this.tone(170, 0.075 * intensity, 0.45, "triangle", { to: 55 });
+            break;
+          case "landingLight":
+            this.tone(92, 0.10 * intensity, 0.12, "sine", { to: 62 });
+            this.noise(0.06 * intensity, 0.10, { filter: { type: "lowpass", freq: 700, q: 0.7 } });
+            break;
+          case "landingHeavy":
+            this.tone(52, 0.20 * intensity, 0.28, "sine", { to: 32 });
+            this.noise(0.14 * intensity, 0.30, { filter: { type: "lowpass", freq: 520, q: 0.85 } });
+            break;
+          case "alert":
+            this.tone(430, 0.08 * intensity, 0.10, "square");
+            this.tone(310, 0.06 * intensity, 0.12, "square", { delay: 0.11 });
+            break;
+          case "police":
+            this.tone(380, 0.075 * intensity, 0.12, "square");
+            this.tone(500, 0.065 * intensity, 0.12, "square", { delay: 0.13 });
+            break;
+          case "hunterReveal":
+            this.tone(58, 0.16 * intensity, 0.55, "sawtooth", { to: 42 });
+            this.noise(0.08 * intensity, 0.45, { filter: { type: "bandpass", freq: 320, q: 1.4 } });
+            break;
+          case "bodyHide":
+            this.noise(0.07 * intensity, 0.20, { filter: { type: "lowpass", freq: 300, q: 0.8 } });
+            this.tone(82, 0.04 * intensity, 0.12, "sine");
+            break;
+          case "missionComplete":
+            this.tone(174, 0.08 * intensity, 0.45, "sine");
+            this.tone(261, 0.06 * intensity, 0.55, "sine", { delay: 0.08 });
+            this.tone(392, 0.045 * intensity, 0.62, "sine", { delay: 0.16 });
+            break;
+        }
+      }
+    };
+
+    // ---------------------------------------------------------
+    // 04. INPUT
+    // ---------------------------------------------------------
 
     const keys = Object.create(null);
     const pressed = Object.create(null);
@@ -481,6 +776,10 @@
 
     window.addEventListener("resize", resizeGameCanvas);
 
+    // ---------------------------------------------------------
+    // 04. GAME STATE
+    // ---------------------------------------------------------
+
     const player = {
       x: 135,
       y: 455,
@@ -488,7 +787,7 @@
       h: 12,
       layer: LAYER.STREET,
       inSafehouse: true,
-      speed: 72,
+      speed: BALANCE.playerBaseSpeed,
       hunger: BALANCE.startHunger,
       exposure: 0,
       dashCooldown: 0,
@@ -530,6 +829,7 @@
       footstepNoiseTimer: 0,
       dragNoiseTimer: 0,
       dragBloodTimer: 0,
+      stepSoundTimer: 0,
       lastNoiseMessageAt: 0,
       lastBloodMessageAt: 0,
       nextRouteBlockAt: 0,
@@ -563,9 +863,12 @@
     };
 
     // ---------------------------------------------------------
-    // Map: simple rectangles. On the street layer, buildings block movement.
-    // On rooftop layers, they work as walkable areas.
+    // 05. MAP DATA
     // ---------------------------------------------------------
+    // Simple data-first rectangles. The goal is to be able to move,
+    // delete, or add locations without touching rendering/AI code.
+    // On the street layer, buildings block movement.
+    // On rooftop layers, rooftop rectangles become walkable areas.
 
     const buildings = [
       { id: "safehouse", name: "SAFEHOUSE", x: 58, y: 422, w: 150, h: 108, color: "#20122f", trim: "#64417a", sign: "HOME" },
@@ -613,6 +916,16 @@
       { id: "lampChapel", x: 678, y: 382, radius: 70, broken: false, name: "closed chapel streetlight" },
       { id: "lampPolice", x: 742, y: 304, radius: 76, broken: false, name: "police streetlight" },
       { id: "lampHome", x: 214, y: 404, radius: 58, broken: false, name: "safehouse streetlight" }
+    ];
+
+    const bodyHideSpots = [
+      // Explicit disposal points away from the main street. They make body cleanup less fiddly.
+      { id: "alleyDumpster", name: "alley dumpster", layer: LAYER.STREET, x: 286, y: 306, r: 34, color: "#78c7a3" },
+      { id: "warehouseBins", name: "warehouse bins", layer: LAYER.STREET, x: 170, y: 386, r: 34, color: "#78c7a3" },
+      { id: "oldBlockBasement", name: "old block basement", layer: LAYER.STREET, x: 228, y: 272, r: 32, color: "#8e7fb8" },
+      { id: "clubRearDumpster", name: "club rear dumpsters", layer: LAYER.STREET, x: 468, y: 526, r: 36, color: "#78c7a3" },
+      { id: "chapelCrypt", name: "closed chapel crypt", layer: LAYER.STREET, x: 708, y: 528, r: 36, color: "#8e7fb8" },
+      { id: "shopServiceYard", name: "shop service yard", layer: LAYER.STREET, x: 800, y: 520, r: 34, color: "#78c7a3" }
     ];
 
     const localZones = [
@@ -746,6 +1059,7 @@
           addFxTrail(sx, sy, ex, ey, LAYER.ROOF_LOW, "jump", 0.42);
           addFxBurst(sx, sy, LAYER.ROOF_LOW, "land", 10, 0.22);
           startCinematic("jump", ex, ey, LAYER.ROOF_LOW, { startX: sx, startY: sy, endX: ex, endY: ey, startLayer: LAYER.ROOF_LOW, endLayer: LAYER.ROOF_LOW, movePlayer: true, duration: 0.92, zoom: 0.34, lift: 20, airScale: 0.98, anticipation: 0.24, anticipationBack: 9, anticipationSquash: 0.18, landAt: 0.88, freeze: 0.08, landingBurstSize: 20, landingShake: 0.16 });
+          AudioBus.play("rooftopJump");
           createNoise(487, 230, LAYER.ROOF_LOW, 76, 2.4, "drop", { exposure: false });
           addExposure(publicWitnesses(100) > 0 ? 5 : 0, "An impossible rooftop jump raises suspicion.");
           say("You spring high over the gap in a burst of slow-motion grace.", 3);
@@ -763,6 +1077,7 @@
           addFxTrail(sx, sy, ex, ey, LAYER.ROOF_LOW, "jump", 0.42);
           addFxBurst(sx, sy, LAYER.ROOF_LOW, "land", 10, 0.22);
           startCinematic("jump", ex, ey, LAYER.ROOF_LOW, { startX: sx, startY: sy, endX: ex, endY: ey, startLayer: LAYER.ROOF_LOW, endLayer: LAYER.ROOF_LOW, movePlayer: true, duration: 0.92, zoom: 0.34, lift: 20, airScale: 0.98, anticipation: 0.24, anticipationBack: 9, anticipationSquash: 0.18, landAt: 0.88, freeze: 0.08, landingBurstSize: 20, landingShake: 0.16 });
+          AudioBus.play("rooftopJump");
           createNoise(487, 230, LAYER.ROOF_LOW, 70, 2.2, "drop", { exposure: false });
           say("You spring back across the gap in slow motion.", 3);
         }
@@ -803,6 +1118,7 @@
           addFxTrail(sx, sy, ex, ey, LAYER.STREET, "drop", 0.44);
           addFxBurst(sx, sy, LAYER.ROOF_LOW, "drop", 12, 0.24);
           startCinematic("drop", ex, ey, LAYER.STREET, { startX: sx, startY: sy, endX: ex, endY: ey, startLayer: LAYER.ROOF_LOW, endLayer: LAYER.STREET, movePlayer: true, duration: 1.02, zoom: 0.42, lift: 31, airScale: 1.12, anticipation: 0.22, anticipationBack: 7, anticipationSquash: 0.15, landAt: 0.86, freeze: 0.10, landingBurstSize: 28, landingShake: 0.36, landingBurstStyle: "drop", dust: true });
+          AudioBus.play("roofDrop");
           createNoise(ex, ey, LAYER.STREET, 132, 4.1, "drop");
           say("You throw yourself off the rooftop and hammer down into the back alley, kicking up dust.", 3);
         }
@@ -810,7 +1126,7 @@
     ];
 
     // ---------------------------------------------------------
-    // NPCs
+    // 06. NPC DATA
     // ---------------------------------------------------------
 
     const npcs = [];
@@ -857,7 +1173,9 @@
         alertTimer: 0,
         dragged: false,
         hiddenBody: false,
-        bodyHiddenIn: ""
+        bodyHiddenIn: "",
+        eventNpc: Boolean(opts.eventNpc),
+        tempLife: opts.tempLife ?? 0
       };
       if (type === "target") data.speed = opts.speed ?? 7;
       if (data.behavior === "loiter") {
@@ -962,7 +1280,7 @@
     }
 
     function exposureLevel() {
-      return clamp(Math.floor(player.exposure / 25), 0, 5);
+      return clamp(Math.floor(player.exposure / BALANCE.exposurePerLevel), 0, 5);
     }
 
     function beastStage() {
@@ -1034,6 +1352,7 @@
       const after = exposureLevel();
       if (reason) {
         state.lastAlert = { text: reason, tag: alertTag(reason), timer: 5.0 };
+        AudioBus.play("alert", Math.min(1.6, 0.8 + finalAmount / 18));
         say(`ALERT (${alertTag(reason)}): ${reason}`, 3.5);
       }
       if (beast.level >= 2 && finalAmount > amount + 1 && state.messageTimer <= 3.4) {
@@ -1041,9 +1360,9 @@
       }
       if (after > before) {
         if (after === 1) say("Exposure 1: civilians start getting scared.", 3);
-        if (after === 2) say("Exposure 2: police start looking for you.", 3);
-        if (after === 3) say("Exposure 3: occult hunters arrive.", 3);
-        if (after >= 4) say("Critical exposure: break line of sight or hide now.", 3);
+        if (after === 2) { AudioBus.play("police", 1.0); say("Exposure 2: police start looking for you.", 3); }
+        if (after === 3) { AudioBus.play("hunterReveal", 0.85); say("Exposure 3: occult hunters arrive.", 3); }
+        if (after >= 4) { AudioBus.play("alert", 1.4); say("Critical exposure: break line of sight or hide now.", 3); }
       }
     }
 
@@ -1148,6 +1467,7 @@
     function callPoliceAttention(x, y, layer, reason, strength = 1) {
       if (layer !== LAYER.STREET) return;
       state.stats.policeResponses++;
+      AudioBus.play("police", Math.min(1.4, 0.8 + strength * 0.25));
       state.lastAlert = { text: reason, tag: "police", timer: 4.0 };
       addLocalHeat(8 + strength * 7, reason, x, y, layer);
 
@@ -1176,6 +1496,7 @@
       if (!cam || cam.broken) return;
       cam.broken = true;
       state.stats.camerasBroken++;
+      AudioBus.play("glass", 0.9);
       createNoise(cam.x, cam.y, LAYER.STREET, 145, 4.2, "glass", { policeOnly: true });
       const witnesses = visibleWitnessList(145).filter(w => w.type !== "hunter");
       callPoliceAttention(cam.x, cam.y, LAYER.STREET, `${cam.name} destroyed. Patrols move to investigate.`, witnesses.length > 0 ? 1.4 : 1.0);
@@ -1199,15 +1520,18 @@
     function updateDynamicEvents(dt) {
       if (state.missionDone && !state.freeRoam) return;
       if (state.time < state.nextDynamicEventAt) return;
-      state.nextDynamicEventAt = state.time + 12 + Math.random() * 10;
-      state.dynamicEventCount++;
-      state.stats.dynamicEvents++;
+      state.nextDynamicEventAt = state.time + BALANCE.dynamicEventMinDelay + Math.random() * (BALANCE.dynamicEventMaxDelay - BALANCE.dynamicEventMinDelay);
       const hot = hottestZone();
       const heat = hot?.heat || 0;
       const roll = Math.random();
+      const dynamicCivilians = npcs.filter(n => n.eventNpc && !n.dead && !n.hiddenBody && (n.type === "civilian" || n.type === "target")).length;
+      const livingCivilians = npcs.filter(n => !n.dead && !n.hiddenBody && (n.type === "civilian" || n.type === "target")).length;
+      const canSpawnCivilians = dynamicCivilians < BALANCE.maxDynamicCivilians && livingCivilians < BALANCE.maxTotalLivingCivilians;
 
-      if (roll < 0.28) {
-        const drunk = makeNpc("civilian", 472 + (Math.random() - 0.5) * 55, 390 + Math.random() * 22, { behavior: "wander", speed: 9 });
+      if (roll < 0.28 && canSpawnCivilians) {
+        state.dynamicEventCount++;
+        state.stats.dynamicEvents++;
+        const drunk = makeNpc("civilian", 472 + (Math.random() - 0.5) * 55, 390 + Math.random() * 22, { behavior: "wander", speed: 9, eventNpc: true, tempLife: 22 });
         drunk.waitTimer = 0.8;
         npcs.push(drunk);
         say("Event: a drunk leaves the club. Easy victim... or clumsy witness.", 3);
@@ -1215,6 +1539,8 @@
       }
 
       if (roll < 0.52) {
+        state.dynamicEventCount++;
+        state.stats.dynamicEvents++;
         const cops = npcs.filter(n => n.type === "police" && !n.dead && !n.hidden);
         if (cops.length) {
           const cop = cops[Math.floor(Math.random() * cops.length)];
@@ -1234,6 +1560,8 @@
       }
 
       if (roll < 0.72) {
+        state.dynamicEventCount++;
+        state.stats.dynamicEvents++;
         const lit = lightPosts.filter(l => !l.broken && !l.outageTimer);
         if (lit.length) {
           const lamp = lit[Math.floor(Math.random() * lit.length)];
@@ -1243,19 +1571,23 @@
         return;
       }
 
-      if (roll < 0.88) {
-        const people = 2 + Math.floor(Math.random() * 2);
+      if (roll < 0.88 && canSpawnCivilians) {
+        state.dynamicEventCount++;
+        state.stats.dynamicEvents++;
+        const people = Math.min(2, BALANCE.maxDynamicCivilians - dynamicCivilians, BALANCE.maxTotalLivingCivilians - livingCivilians);
         for (let i = 0; i < people; i++) {
-          const c = makeNpc("civilian", 244, 350 + i * 14, { behavior: "wander", speed: 12 });
+          const c = makeNpc("civilian", 244, 350 + i * 14, { behavior: "wander", speed: 12, eventNpc: true, tempLife: 16 });
           c.vx = 18; c.vy = 0; c.aiTimer = 2.5;
           npcs.push(c);
         }
-        say("Event: a small group crosses the main street. More eyes for a few seconds.", 3);
+        if (people > 0) say("Event: a small group crosses the main street. More eyes for a few seconds.", 3);
         return;
       }
 
       const hidden = npcs.find(n => n.type === "hunter" && !n.dead && n.hidden && !n.revealed);
       if (hidden && heat > 42) {
+        state.dynamicEventCount++;
+        state.stats.dynamicEvents++;
         hidden.x = (hot?.zone.x || 520) + (hot?.zone.w || 80) / 2;
         hidden.y = (hot?.zone.y || 330) + (hot?.zone.h || 80) / 2;
         say(`Event: something takes position near ${hot.zone.name}. Blood Sense can reveal it.`, 3);
@@ -1490,6 +1822,7 @@
 
       if (!c.landed && progress >= c.landAt) {
         c.landed = true;
+        AudioBus.play(c.kind === "drop" ? "landingHeavy" : "landingLight", c.kind === "drop" ? 1.25 : 0.9);
         addFxBurst(c.landingX, c.landingY, c.layer, c.landingBurstStyle, c.landingBurstSize, c.kind === "drop" ? 0.46 : 0.34);
         if (c.dust) {
           addFogCloud(c.landingX - 8, c.landingY + 2, c.layer, 14, 0.55, 0.28, "dust");
@@ -2209,12 +2542,12 @@
       if (player.inSafehouse) return { name: "the safehouse", clean: true };
       if (player.layer === LAYER.SEWER) return { name: "the sewers", clean: true };
       if (player.layer > LAYER.STREET) return { name: "the rooftop", clean: true };
+      const explicitSpot = bodyHideSpots.find(s => s.layer === player.layer && Math.hypot(s.x - player.x, s.y - player.y) < s.r);
+      if (explicitSpot) return { name: explicitSpot.name, clean: true };
       const shadow = getShadowZoneAt(player.x, player.y);
       if (shadow) return { name: shadow.name, clean: true };
       const sewer = interactables.find(i => i.id === "sewerIn");
       if (sewer && Math.hypot(sewer.x - player.x, sewer.y - player.y) < 34) return { name: "the sewer entrance", clean: true };
-      const clubBack = { x: 386, y: 512, w: 176, h: 30 };
-      if (pointInRect(player.x, player.y, clubBack)) return { name: "the rear dumpsters", clean: true };
       return null;
     }
 
@@ -2229,7 +2562,7 @@
         alarmCivilianWitnesses(witnesses, "you dragging a body", 16);
         addExposure(8 + witnesses.length * 5, `You drag a body in sight of ${witnesses.length} witness(es).`);
       } else {
-        say("You grab the body. Move slowly and look for shadow, sewers or safehouse.", 3);
+        say("You grab the body. Move slowly to a marked hide spot, shadow, sewer or safehouse.", 3);
       }
     }
 
@@ -2307,6 +2640,7 @@
       if (!light || light.broken) return;
       light.broken = true;
       state.stats.lightsBroken++;
+      AudioBus.play("glass", 1.0);
       createNoise(light.x, light.y, LAYER.STREET, 155, 4.6, "glass", { policeOnly: true });
       const witnesses = visibleWitnessList(145).filter(w => w.type !== "hunter");
       callPoliceAttention(light.x, light.y, LAYER.STREET, `${light.name} broken. The area darkens, but police may investigate vandalism.`, witnesses.length > 0 ? 1.25 : 0.85);
@@ -2325,6 +2659,7 @@
       victim.vy = 0;
       victim.waitTimer = duration;
 
+      AudioBus.play("feedStart", beast.level >= 3 ? 1.25 : 1.0);
       state.feeding = {
         victim,
         time: 0,
@@ -2429,6 +2764,7 @@
       const hungerDrop = victim.type === "target" ? BALANCE.targetFeedRelief : BALANCE.civilianFeedRelief;
       player.hunger = Math.max(0, player.hunger - hungerDrop);
       state.beastUrge = 0;
+      AudioBus.play(violentFeed ? "brutalFeed" : "feedFinish", violentFeed ? 1.25 : 0.95);
 
       const stainCount = violentFeed ? (6 + Math.floor(Math.random() * 4)) : witnesses > 0 ? 3 : startedHidden ? 1 : 2;
       scatterBloodStains(victim.x, victim.y, victim.layer, stainCount, {
@@ -2499,6 +2835,7 @@
       }
       const whisperHunger = powerHungerFor("whisper");
       const hungerWarning = addPowerHunger(whisperHunger, "Whisper");
+      AudioBus.play("whisper", 1.0);
 
       // The whisper is a subtle power, not a free button: if someone sees you
       // using it, the Masquerade cracks even if you are near shadow.
@@ -2564,7 +2901,7 @@
       const ux = dx / len;
       const uy = dy / len;
       const beast = beastStage();
-      const distance = 72 * beast.dashMul;
+      const distance = BALANCE.dashBaseDistance * beast.dashMul;
       const steps = 12;
       const sx = player.x;
       const sy = player.y;
@@ -2578,7 +2915,7 @@
       }
       player.x = tx;
       player.y = ty;
-      player.dashCooldown = 3.0 * beast.dashCooldownMul;
+      player.dashCooldown = BALANCE.dashBaseCooldown * beast.dashCooldownMul;
       player.dashFlash = beast.level >= 2 ? 0.25 : 0.18;
       if (beast.level >= 2) player.beastFlash = 0.28;
       player.lastDir = { x: ux, y: uy };
@@ -2589,6 +2926,7 @@
       addFogCloud((sx + player.x) / 2, (sy + player.y) / 2, player.layer, 22, 1.8, 0.68);
       addFogCloud(player.x, player.y, player.layer, beast.level >= 2 ? 30 : 24, 2.2, 0.72);
       addShake(beast.level >= 2 ? 0.16 : 0.10);
+      AudioBus.play("dash");
       createNoise(player.x, player.y, player.layer, beast.level >= 2 ? 148 : 112, beast.level >= 2 ? 5.0 : 3.7, "dash", { supernatural: true });
       exposeToCameras(beast.level >= 2 ? 8 : 5, "Shadow Dash is recorded", player.x, player.y, player.layer);
 
@@ -2615,6 +2953,7 @@
       player.bloodSenseTimer = 4.8;
       player.senseCooldown = 9.0;
       state.usedBloodSense = true;
+      AudioBus.play("sense", 1.0);
       player.beastFlash = Math.max(player.beastFlash, 0.16);
       // No es un ataque, pero si abusas con hunger alta deja una firma sobrenatural leve.
       if (beastStage().level >= 2 && !isHiddenPlace()) {
@@ -2624,34 +2963,14 @@
     }
 
     function inputDirection() {
-      // GTA-style/tank-style movement:
-      // W/Up moves forward in the current facing direction.
-      // S/Down reverses slowly.
-      // A/D or Left/Right steer the facing direction.
-      let forward = 0;
-      if (keys["w"] || keys["arrowup"]) forward += 1;
-      if (keys["s"] || keys["arrowdown"]) forward -= 0.55;
-      return {
-        x: (player.lastDir.x || 1) * forward,
-        y: (player.lastDir.y || 0) * forward,
-        forward
-      };
-    }
-
-    function steerInput() {
-      let turn = 0;
-      if (keys["a"] || keys["arrowleft"]) turn -= 1;
-      if (keys["d"] || keys["arrowright"]) turn += 1;
-      return turn;
-    }
-
-    function rotateVector(v, angle) {
-      const c = Math.cos(angle);
-      const s = Math.sin(angle);
-      return {
-        x: v.x * c - v.y * s,
-        y: v.x * s + v.y * c
-      };
+      // Classic top-down movement: WASD/arrows move directly on screen.
+      let x = 0;
+      let y = 0;
+      if (keys["a"] || keys["arrowleft"]) x -= 1;
+      if (keys["d"] || keys["arrowright"]) x += 1;
+      if (keys["w"] || keys["arrowup"]) y -= 1;
+      if (keys["s"] || keys["arrowdown"]) y += 1;
+      return { x, y };
     }
 
     function playerRunSpeed() {
@@ -2659,18 +2978,18 @@
     }
 
     function enemyRunSpeed(n, seesPlayer = true) {
-      // They patrol slowly, but during pursuit they run at vampire-level speed.
-      // Police: casi igual que el sprint del jugador. Hunter: un poco por encima.
-      const typeMul = n.type === "hunter" ? 1.04 : 0.99;
-      const alertMul = exposureLevel() >= 4 ? 1.04 : 1;
-      const lostMul = seesPlayer ? 1 : 0.78;
+      // Pursuit should pressure you, not turn into bullet hell.
+      // Police are slower than vampire sprint; hunters are dangerous but not glued to you.
+      const typeMul = n.type === "hunter" ? BALANCE.hunterChaseSpeedMul : BALANCE.policeChaseSpeedMul;
+      const alertMul = exposureLevel() >= 4 ? 1.05 : 1;
+      const lostMul = seesPlayer ? 1 : BALANCE.enemyLostSightMul;
       return playerRunSpeed() * typeMul * alertMul * lostMul;
     }
 
     function enemyJogSpeed(n) {
-      // Para investigar noises/trails no van a tope, pero ya no parecen paseando.
+      // Investigation is purposeful, but not a chase.
       if (n.type !== "police" && n.type !== "hunter") return n.speed;
-      return playerRunSpeed() * (n.type === "hunter" ? 0.72 : 0.66);
+      return playerRunSpeed() * (n.type === "hunter" ? BALANCE.hunterInvestigationSpeedMul : BALANCE.policeInvestigationSpeedMul);
     }
 
 
@@ -2678,6 +2997,8 @@
       if (state.gameStarted) return;
       state.gameStarted = true;
       state.showHelp = true;
+      AudioBus.unlock();
+      AudioBus.play("sense", 0.75);
       if (ui.startOverlay) ui.startOverlay.classList.add("hidden");
       say("Clan order: leave the safehouse, locate the journalist, lure them away, eliminate them, then return unseen.", 5.5);
     }
@@ -2706,7 +3027,7 @@
         if (consumePressed("enter") || consumePressed("e") || consumePressed(" ")) startGame();
         return;
       }
-      const simDt = state.cinematic ? dt * 0.045 : dt;
+      const simDt = state.cinematic ? dt * BALANCE.cinematicSlowdown : dt;
       state.time += dt;
       if (state.messageTimer > 0) state.messageTimer -= dt;
       if (state.lastAlert && state.lastAlert.timer > 0) state.lastAlert.timer = Math.max(0, state.lastAlert.timer - dt);
@@ -2735,7 +3056,7 @@
       if (!state.cinematic) {
         if (state.feeding) {
           const dir = inputDirection();
-          const triesToMove = Math.hypot(dir.x, dir.y) > 0 || steerInput() !== 0 || keys["shift"] || pressed["q"] || pressed[" "];
+          const triesToMove = Math.hypot(dir.x, dir.y) > 0 || keys["shift"] || pressed["q"] || pressed[" "];
           if (triesToMove) {
             cancelFeeding("You pull away before finishing the feed.");
             // Consume dash input if pressed so it does not fire right after canceling.
@@ -2758,6 +3079,7 @@
       updateHungerAndExposure(simDt);
       updateBeastPressure(simDt);
       updateNoises(simDt);
+      AudioBus.update(simDt);
       updateEffects(dt);
       updateCinematic(dt);
       coolLocalHeat(simDt);
@@ -2775,37 +3097,39 @@
     }
 
     function updatePlayerMovement(dt) {
+      const dir = inputDirection();
+      const len = Math.hypot(dir.x, dir.y);
       const oldX = player.x;
       const oldY = player.y;
 
-      const turn = steerInput();
-      if (turn !== 0) {
-        const turnSpeed = keys["shift"] ? 3.9 : 3.25;
-        const nd = rotateVector(player.lastDir, turn * turnSpeed * dt);
-        const nlen = Math.hypot(nd.x, nd.y) || 1;
-        player.lastDir = { x: nd.x / nlen, y: nd.y / nlen };
+      if (len > 0) {
+        dir.x /= len;
+        dir.y /= len;
+        player.lastDir = { x: dir.x, y: dir.y };
       }
 
-      const control = inputDirection();
-      const forward = control.forward || 0;
-      const movingIntent = Math.abs(forward) > 0.01;
-      const sprinting = keys["shift"] && forward > 0;
-      const sprint = sprinting ? 1.55 : 1;
-      const dragMul = state.draggingBody ? 0.56 : 1;
+      const sprinting = keys["shift"] && len > 0;
+      const sprint = sprinting ? BALANCE.playerSprintMultiplier : 1;
+      const dragMul = state.draggingBody ? BALANCE.bodyDragMultiplier : 1;
       const beastMul = state.draggingBody ? 1 : beastStage().moveMul;
-      const reverseMul = forward < 0 ? 0.72 : 1;
-      const speed = player.speed * sprint * dragMul * beastMul * reverseMul;
-      const moveX = (player.lastDir.x || 1) * speed * forward * dt;
-      const moveY = (player.lastDir.y || 0) * speed * forward * dt;
+      const speed = player.speed * sprint * dragMul * beastMul;
 
-      if (movingIntent) {
-        const nx = player.x + moveX;
-        if (canStandAt(nx, player.y)) player.x = nx;
-        const ny = player.y + moveY;
-        if (canStandAt(player.x, ny)) player.y = ny;
-      }
+      const nx = player.x + dir.x * speed * dt;
+      if (canStandAt(nx, player.y)) player.x = nx;
+      const ny = player.y + dir.y * speed * dt;
+      if (canStandAt(player.x, ny)) player.y = ny;
 
       const moved = Math.hypot(player.x - oldX, player.y - oldY) > 0.05;
+      state.stepSoundTimer = Math.max(0, state.stepSoundTimer - dt);
+      if (moved && !player.inSafehouse && state.stepSoundTimer <= 0) {
+        if (state.draggingBody) {
+          AudioBus.play("drag", 0.75);
+          state.stepSoundTimer = 0.55;
+        } else {
+          AudioBus.play(sprinting ? "sprintStep" : "footstep", player.layer > LAYER.STREET ? 0.65 : 1.0);
+          state.stepSoundTimer = sprinting ? 0.20 : 0.34;
+        }
+      }
       state.footstepNoiseTimer = Math.max(0, state.footstepNoiseTimer - dt);
       if (moved && sprinting && !player.inSafehouse && player.layer === LAYER.STREET && state.footstepNoiseTimer <= 0) {
         const radius = state.draggingBody ? 76 : 62;
@@ -2945,12 +3269,20 @@
         state.orderReportOpen = true;
         state.orderReportAccepted = false;
         state.freeRoam = false;
+        AudioBus.play("missionComplete", 1.1);
         say("ORDER COMPLETE: the leak is contained. Accept the clan report to resume free roam.", 8);
       }
     }
 
+    // ---------------------------------------------------------
+    // 10. AI
+    // ---------------------------------------------------------
+
     function updateNPCs(dt) {
       for (const n of npcs) {
+        if (n.eventNpc && n.tempLife > 0 && !n.dead && !n.alarmed && n.fleeTimer <= 0 && n.luredTimer <= 0) {
+          n.tempLife -= dt;
+        }
         if (n.dead) continue;
 
         const level = exposureLevel();
@@ -2962,6 +3294,17 @@
           updateCivilian(n, dt);
         } else {
           updateEnemy(n, dt);
+        }
+      }
+      cleanupExpiredEventNPCs();
+    }
+
+    function cleanupExpiredEventNPCs() {
+      for (let i = npcs.length - 1; i >= 0; i--) {
+        const n = npcs[i];
+        if (!n.eventNpc || n.dead || n.hiddenBody) continue;
+        if (n.tempLife <= 0 && !n.alarmed && n.fleeTimer <= 0 && n.luredTimer <= 0 && !n.investigatingNoise && !n.investigatingBlood) {
+          npcs.splice(i, 1);
         }
       }
     }
@@ -2979,6 +3322,7 @@
         n.hidden = false;
         n.revealed = true;
         state.stats.huntersRevealed++;
+        AudioBus.play("hunterReveal", 0.95);
         n.active = true;
         n.chaseTimer = 2.2;
         if (nearbyBlood) setBloodInvestigation(n, nearbyBlood, 6.0);
@@ -3196,7 +3540,7 @@
 
     function updateHunterRouteBlocking(dt) {
       const level = exposureLevel();
-      if (level < 3 || player.inSafehouse || player.layer !== LAYER.STREET) return;
+      if (level < BALANCE.hunterRouteBlockMinLevel || player.inSafehouse || player.layer !== LAYER.STREET) return;
       if (state.time < state.nextRouteBlockAt) return;
       state.nextRouteBlockAt = state.time + (level >= 4 ? 6.0 : 8.0);
 
@@ -3277,7 +3621,7 @@
       // Keep pursuit tense but readable. The prototype should not become a bullet hell.
       const hot = hottestZone();
       const heatBonus = hot && hot.heat > 70 ? 1 : 0;
-      const desiredPolice = Math.min(4, level + heatBonus);
+      const desiredPolice = Math.min(BALANCE.maxPolice, level + heatBonus);
       while (npcs.filter(n => n.type === "police" && !n.dead).length < desiredPolice) {
         const spawn = Math.random() < 0.6 ? { x: 790, y: 218 } : edgeSpawn();
         const cop = makeNpc("police", spawn.x, spawn.y);
@@ -3286,7 +3630,7 @@
       }
 
       if (level >= 3) {
-        const desiredHunters = Math.min(2, Math.max(1, level - 3));
+        const desiredHunters = Math.min(BALANCE.maxHunters, Math.max(1, level - 3));
         while (npcs.filter(n => n.type === "hunter" && !n.dead && !n.hidden).length < desiredHunters) {
           const spawn = edgeSpawn();
           const hunter = makeNpc("hunter", spawn.x, spawn.y);
@@ -3311,7 +3655,7 @@
     }
 
     // ---------------------------------------------------------
-    // Render
+    // 11. RENDERING
     // ---------------------------------------------------------
 
     function render() {
@@ -3341,7 +3685,6 @@
       drawNPCs();
       drawPlayer();
       drawFogClouds();
-      drawPlayerIntentVector();
       drawFeedingProgress();
       drawReadabilityMarkers();
 
@@ -3360,8 +3703,8 @@
     }
 
     function drawStreetAndBuildings() {
-      // Base nocturna.
-      ctx.fillStyle = "#0d0e17";
+      // Base nocturna, a bit brighter so shadow pockets read more clearly.
+      ctx.fillStyle = "#1a1d2b";
       ctx.fillRect(0, 0, WORLD_W, WORLD_H);
 
       // Streets principales.
@@ -3371,9 +3714,9 @@
       drawRoad(0, 538, WORLD_W, 52);
 
       // Dark alley.
-      ctx.fillStyle = "#090912";
+      ctx.fillStyle = "#141624";
       ctx.fillRect(254, 286, 405, 46);
-      ctx.fillStyle = "#1d1d2a";
+      ctx.fillStyle = "#2b2e40";
       for (let x = 260; x < 650; x += 24) ctx.fillRect(x, 306, 10, 2);
 
       drawShadowZones();
@@ -3398,11 +3741,18 @@
     function drawShadowZones() {
       for (const z of hiddenZones) {
         const active = pointInRect(player.x, player.y, z);
-        ctx.fillStyle = active ? "rgba(31, 11, 47, .62)" : "rgba(3, 3, 10, .48)";
+        ctx.fillStyle = active ? "rgba(24, 10, 42, .60)" : "rgba(13, 10, 24, .34)";
         ctx.fillRect(z.x, z.y, z.w, z.h);
-        ctx.fillStyle = active ? "rgba(215,200,255,.20)" : "rgba(215,200,255,.08)";
-        ctx.fillRect(z.x, z.y, z.w, 1);
-        ctx.fillRect(z.x, z.y + z.h - 1, z.w, 1);
+        ctx.fillStyle = active ? "rgba(215,200,255,.30)" : "rgba(215,200,255,.16)";
+        ctx.fillRect(z.x, z.y, z.w, 2);
+        ctx.fillRect(z.x, z.y + z.h - 2, z.w, 2);
+        ctx.fillRect(z.x, z.y, 2, z.h);
+        ctx.fillRect(z.x + z.w - 2, z.y, 2, z.h);
+        if (active || Math.hypot(player.x - (z.x + z.w / 2), player.y - (z.y + z.h / 2)) < 88) {
+          ctx.font = "8px monospace";
+          ctx.fillStyle = active ? "rgba(245,236,255,.72)" : "rgba(215,200,255,.40)";
+          ctx.fillText("SHADOW", Math.floor(z.x + 6), Math.floor(z.y + 11));
+        }
       }
     }
 
@@ -3451,18 +3801,18 @@
         } else {
           ctx.beginPath();
           ctx.arc(l.x, l.y, l.radius, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(255, 220, 116, .052)";
+          ctx.fillStyle = "rgba(255, 220, 116, .090)";
           ctx.fill();
 
           ctx.beginPath();
           ctx.arc(l.x, l.y, l.radius, 0, Math.PI * 2);
-          ctx.strokeStyle = "rgba(255, 220, 116, .13)";
+          ctx.strokeStyle = "rgba(255, 220, 116, .22)";
           ctx.lineWidth = 1;
           ctx.stroke();
 
           ctx.beginPath();
           ctx.arc(l.x, l.y, 22, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(255, 220, 116, .18)";
+          ctx.fillStyle = "rgba(255, 220, 116, .24)";
           ctx.fill();
 
           ctx.fillStyle = "#e5d079";
@@ -3544,11 +3894,11 @@
     }
 
     function drawRoad(x, y, w, h) {
-      ctx.fillStyle = "#151622";
+      ctx.fillStyle = "#25293b";
       ctx.fillRect(x, y, w, h);
-      ctx.fillStyle = "#202235";
+      ctx.fillStyle = "#34384d";
       for (let i = x; i < x + w; i += 32) ctx.fillRect(i, y + Math.floor(h / 2), 16, 2);
-      ctx.fillStyle = "#0b0b12";
+      ctx.fillStyle = "#171924";
       ctx.fillRect(x, y, w, 3);
       ctx.fillRect(x, y + h - 3, w, 3);
     }
@@ -3656,17 +4006,46 @@
       }
     }
 
+    function drawBodyHideSpots() {
+      if (player.layer !== LAYER.STREET || player.inSafehouse) return;
+      const shouldEmphasize = Boolean(state.draggingBody) || npcs.some(n => n.dead && !n.hiddenBody && n.layer === player.layer);
+      for (const s of bodyHideSpots) {
+        if (s.layer !== player.layer) continue;
+        const near = Math.hypot(player.x - s.x, player.y - s.y) < s.r;
+        const alpha = shouldEmphasize || near ? 0.30 : 0.11;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.strokeStyle = near ? "rgba(120,199,163,.72)" : `rgba(120,199,163,${alpha})`;
+        ctx.lineWidth = near ? 2 : 1;
+        ctx.stroke();
+        ctx.fillStyle = near ? "rgba(120,199,163,.20)" : `rgba(120,199,163,${alpha * 0.28})`;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r * 0.65, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = s.color;
+        ctx.fillRect(Math.floor(s.x - 5), Math.floor(s.y - 3), 10, 6);
+        ctx.fillStyle = "rgba(0,0,0,.55)";
+        ctx.fillRect(Math.floor(s.x - 3), Math.floor(s.y - 1), 6, 2);
+        if (near || shouldEmphasize) {
+          ctx.font = "8px monospace";
+          ctx.fillStyle = near ? "#d7ffec" : "rgba(215,255,236,.50)";
+          ctx.fillText("HIDE", Math.floor(s.x + 8), Math.floor(s.y - 8));
+        }
+      }
+    }
+
     function drawInteractables() {
+      drawBodyHideSpots();
       for (const it of interactables) {
         if (it.layer !== player.layer) continue;
         const near = Math.hypot(it.x - player.x, it.y - player.y) < it.r;
         ctx.fillStyle = near ? "#fff2a8" : "#8e7fb8";
         ctx.fillRect(it.x - 4, it.y - 4, 8, 8);
-        ctx.fillStyle = near ? "rgba(255,242,168,.22)" : "rgba(142,127,184,.12)";
-        ctx.fillRect(it.x - it.r, it.y - it.r, it.r * 2, 1);
-        ctx.fillRect(it.x - it.r, it.y + it.r, it.r * 2, 1);
-        ctx.fillRect(it.x - it.r, it.y - it.r, 1, it.r * 2);
-        ctx.fillRect(it.x + it.r, it.y - it.r, 1, it.r * 2);
+        ctx.beginPath();
+        ctx.arc(it.x, it.y, it.r, 0, Math.PI * 2);
+        ctx.strokeStyle = near ? "rgba(255,242,168,.25)" : "rgba(142,127,184,.13)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
 
       // Explicit fire-escape drawing.
@@ -4228,34 +4607,6 @@
       );
     }
 
-    function drawPlayerIntentVector() {
-      if (player.inSafehouse) return;
-      const dx = player.lastDir.x || 1;
-      const dy = player.lastDir.y || 0;
-      const len = Math.hypot(dx, dy) || 1;
-      const ux = dx / len;
-      const uy = dy / len;
-      const sx = player.x + ux * 7;
-      const sy = player.y + uy * 7;
-      const ex = player.x + ux * 21;
-      const ey = player.y + uy * 21;
-      const px = -uy;
-      const py = ux;
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = "rgba(0,0,0,.72)";
-      ctx.beginPath();
-      ctx.moveTo(Math.floor(sx) + 0.5, Math.floor(sy) + 0.5);
-      ctx.lineTo(Math.floor(ex) + 0.5, Math.floor(ey) + 0.5);
-      ctx.stroke();
-      ctx.strokeStyle = "rgba(215,200,255,.95)";
-      ctx.beginPath();
-      ctx.moveTo(Math.floor(sx) + 0.5, Math.floor(sy) + 0.5);
-      ctx.lineTo(Math.floor(ex) + 0.5, Math.floor(ey) + 0.5);
-      ctx.stroke();
-      ctx.fillStyle = "#d7c8ff";
-      ctx.fillRect(Math.floor(ex - ux * 2 + px * 2), Math.floor(ey - uy * 2 + py * 2), 2, 2);
-      ctx.fillRect(Math.floor(ex - ux * 2 - px * 2), Math.floor(ey - uy * 2 - py * 2), 2, 2);
-    }
 
     function drawFeedingProgress() {
       const f = state.feeding;
@@ -4410,7 +4761,7 @@
         "Circular yellow halos = streetlights · E near a lamp breaks it into shadow",
         "Q/R/F are always usable, but raise hunger · feeding lowers it",
         "Base plan: F finds journalist → R lures → E eliminates in shadow → hide body → safehouse",
-        "Controls: W/↑ forward · S/↓ reverse · A/D steer · Press H to hide/show this help"
+        "Controls: WASD/Arrows move · Shift sprint · Press H to hide/show this help"
       ];
       const w = Math.min(560, VIEW_W - 28);
       const h = 118;
@@ -4479,6 +4830,10 @@
       return parts.join(" · ");
     }
 
+    // ---------------------------------------------------------
+    // 12. UI
+    // ---------------------------------------------------------
+
     function updateDomUI() {
       const layerName = player.inSafehouse ? "Interior/Safehouse" : LAYER_NAME[player.layer];
       const detection = currentDetectionState();
@@ -4523,11 +4878,11 @@
         if (targetNear) return shadow ? "E: eliminate the journalist in shadow · clean route" : "Too exposed. Lead the journalist into shadow before eliminating them.";
         return "Lead the journalist into the club side shadow. Walk slowly; they will follow.";
       }
-      if (state.mission === 6 && targetBodyVisible() && !state.draggingBody) return "Body visible: press E to drag it, then hide it in shadow/sewer/safehouse.";
+      if (state.mission === 6 && targetBodyVisible() && !state.draggingBody) return "Body visible: press E to drag it, then hide it in a marked spot, shadow, sewer or safehouse.";
       if (state.mission === 7) return "Return to the safehouse. Use rooftops or sewers if the street is hot.";
       if (state.draggingBody) {
         const spot = currentBodyHideSpot();
-        return spot ? `E: hide body in ${spot.name}` : "E: drop body · look for shadow, sewers, rooftop or safehouse to hide it";
+        return spot ? `E: hide body in ${spot.name}` : "E: drop body · look for marked hide spots, shadow, sewers, rooftop or safehouse";
       }
       if (beastStage().level >= 3 && state.beastUrge > 0.55) {
         return "FRENZY: stay away from civilians, enter shadow/safehouse or press E to drain before losing control";
