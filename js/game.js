@@ -255,6 +255,12 @@
       },
 
       play(name, intensity = 1) {
+        // Kenney/repo asset audio replaces the procedural hardcoded event sounds.
+        // When the asset runtime is loaded, do not fall back to procedural tones/noise.
+        if (window.VD_ASSET_AUDIO) {
+          window.VD_ASSET_AUDIO.play(name, intensity);
+          return;
+        }
         if (!this.enabled) return;
         this.unlock();
         if (!this.ctx || this.ctx.state !== "running") return;
