@@ -1,0 +1,82 @@
+name: Refactor static prototype
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - index.html
+      - .github/workflows/refactor-static.yml
+
+permissions:
+  contents: write
+
+jobs:
+  split-monolith:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Split index.html into static assets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          index_path = Path('index.html')
+          html = index_path.read_text(encoding='utf-8')
+
+          already_refactored = (
+              '<link rel="stylesheet" href="css/styles.css"' in html
+              and '<script src="js/game.js" defer></script>' in html
+          )
+          if already_refactored:
+              print('index.html is already refactored. Nothing to do.')
+              raise SystemExit(0)
+
+          style_match = re.search(r'<style>\s*(.*?)\s*</style>', html, re.S)
+          script_match = re.search(r'<script>\s*(.*?)\s*</script>\s*</body>', html, re.S)
+
+          if not style_match:
+              raise SystemExit('No inline <style> block found in index.html')
+          if not script_match:
+              raise SystemExit('No inline <script> block found before </body> in index.html')
+
+          css = style_match.group(1).strip() + '\n'
+          js = script_match.group(1).strip() + '\n'
+
+          new_html = html[:style_match.start()] + '<link rel="stylesheet" href="css/styles.css" />' + html[style_match.end():]
+          new_html = re.sub(
+              r'\s*<script>\s*.*?\s*</script>\s*</body>',
+              '\n  <script src="js/game.js" defer></script>\n</body>',
+              new_html,
+              flags=re.S,
+          )
+
+          Path('css').mkdir(exist_ok=True)
+          Path('js').mkdir(exist_ok=True)
+          index_path.write_text(new_html, encoding='utf-8')
+          Path('css/styles.css').write_text(css, encoding='utf-8')
+          Path('js/game.js').write_text(js, encoding='utf-8')
+
+          print('Created css/styles.css and js/game.js')
+          print('Updated index.html to use external assets')
+          PY
+
+      - name: Validate JavaScript
+        run: node --check js/game.js
+
+      - name: Commit refactor
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html css/styles.css js/game.js
+          git commit -m "Refactor prototype into static assets"
+          git push
