@@ -5,6 +5,8 @@
   let closeButton;
   let isOpen = false;
   let autoOpenedAfterStart = false;
+  let legacyHelpClosedAfterStart = false;
+  let allowLegacyHelpSync = false;
 
   function make(tag, attrs = {}, children = []) {
     const node = document.createElement(tag);
@@ -28,6 +30,17 @@
     return !startOverlay || startOverlay.classList.contains("hidden");
   }
 
+  function closeLegacyCanvasHelpOnce() {
+    // The original canvas help is switched on by startGame(). We close it once,
+    // then all player-facing help is handled by this DOM overlay.
+    if (legacyHelpClosedAfterStart || !gameHasStarted()) return;
+    legacyHelpClosedAfterStart = true;
+    allowLegacyHelpSync = true;
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "h", bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent("keyup", { key: "h", bubbles: true }));
+    allowLegacyHelpSync = false;
+  }
+
   function openHelp(reason = "manual") {
     if (!overlay || isOpen || !gameHasStarted()) return;
     isOpen = true;
@@ -35,23 +48,16 @@
     overlay.classList.remove("hidden");
     overlay.setAttribute("aria-hidden", "false");
     setPaused(true);
+    if (reason === "start") setTimeout(closeLegacyCanvasHelpOnce, 0);
     setTimeout(() => closeButton && closeButton.focus(), 0);
   }
 
-  function hideHelpOnly() {
+  function closeHelp() {
     if (!overlay) return;
     isOpen = false;
     overlay.classList.add("hidden");
     overlay.setAttribute("aria-hidden", "true");
     setPaused(false);
-  }
-
-  function toggleGameHelpAndClose() {
-    // The legacy canvas help is still controlled by the game with H.
-    // Send H once so the hidden canvas overlay is closed in sync with this DOM panel.
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "h", bubbles: true }));
-    window.dispatchEvent(new KeyboardEvent("keyup", { key: "h", bubbles: true }));
-    requestAnimationFrame(hideHelpOnly);
   }
 
   function createHelpOverlay() {
@@ -110,7 +116,7 @@
 
     document.body.appendChild(overlay);
     closeButton = overlay.querySelector(".vd-help-close");
-    closeButton.addEventListener("click", toggleGameHelpAndClose);
+    closeButton.addEventListener("click", closeHelp);
   }
 
   function bindStartAutoOpen() {
@@ -132,24 +138,21 @@
     window.addEventListener("keydown", (event) => {
       const key = event.key.toLowerCase();
 
-      if (!isOpen && key === "h" && gameHasStarted()) {
-        // Let the game receive H too, so its legacy help state stays in sync.
-        setTimeout(() => openHelp("hotkey"), 0);
+      if (allowLegacyHelpSync && key === "h") return;
+
+      if (key === "h" && gameHasStarted()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        isOpen ? closeHelp() : openHelp("hotkey");
         return;
       }
 
       if (!isOpen) return;
 
-      if (key === "h") {
-        // Let the game receive H, then hide the DOM panel.
-        requestAnimationFrame(hideHelpOnly);
-        return;
-      }
-
       if (key === "escape") {
         event.preventDefault();
         event.stopImmediatePropagation();
-        toggleGameHelpAndClose();
+        closeHelp();
         return;
       }
 
