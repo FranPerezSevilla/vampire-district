@@ -1,0 +1,47 @@
+name: Build audio assets manifest
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "**/*.ogg"
+      - "**/*.wav"
+      - "**/*.mp3"
+      - "**/*.m4a"
+      - "**/*.aac"
+      - "**/*.webm"
+      - "tools/build-audio-manifest.mjs"
+      - "tools/patch-game-audio.mjs"
+      - ".github/workflows/audio-assets.yml"
+      - "js/audio-manifest.js"
+      - "js/game.js"
+
+permissions:
+  contents: write
+
+jobs:
+  audio-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate audio manifest
+        run: node tools/build-audio-manifest.mjs
+
+      - name: Patch game audio bridge
+        run: node tools/patch-game-audio.mjs
+
+      - name: Commit generated audio files
+        run: |
+          if git diff --quiet -- js/audio-manifest.js js/game.js; then
+            echo "No generated audio changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js/audio-manifest.js js/game.js
+          git commit -m "Build audio manifest and route game sounds to assets"
+          git push
