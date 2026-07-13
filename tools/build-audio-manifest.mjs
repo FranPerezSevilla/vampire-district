@@ -27,41 +27,28 @@ const EVENTS = [
   "missionComplete"
 ];
 
-const RULES = {
-  footstep: ["footstep", "foot_step", "step", "walk", "shoe", "move"],
-  sprintStep: ["sprint", "run", "running", "footstep", "step", "walk"],
-  drag: ["drag", "cloth", "rustle", "slide", "scrape"],
-  dash: ["whoosh", "woosh", "swoosh", "swish", "zap", "laser", "magic", "spell", "power"],
-  whisper: ["whisper", "magic", "spell", "select", "soft", "tone"],
-  sense: ["sense", "magic", "spell", "power", "confirm", "confirmation", "positive", "tone", "select"],
-  feedStart: ["bite", "hit", "impact", "negative", "hurt", "squelch", "slime"],
-  feedFinish: ["positive", "success", "complete", "confirm", "confirmation", "power", "magic"],
-  brutalFeed: ["impact", "hit", "heavy", "explosion", "negative", "hurt", "crunch"],
-  glass: ["glass", "shatter", "break", "breaking", "crack"],
-  rooftopJump: ["jump", "whoosh", "woosh", "swoosh", "swish"],
-  roofDrop: ["drop", "fall", "land", "landing", "impact", "hit"],
-  landingLight: ["land", "landing", "tap", "step", "footstep", "hit"],
-  landingHeavy: ["heavy", "land", "landing", "impact", "hit", "thud"],
-  alert: ["alert", "alarm", "error", "negative", "warning", "beep"],
-  police: ["police", "siren", "alarm", "alert", "warning", "beep"],
-  hunterReveal: ["dark", "ominous", "reveal", "impact", "hit", "negative", "power"],
-  bodyHide: ["hide", "body", "drag", "drop", "cloth", "impact", "hit"],
-  missionComplete: ["mission", "complete", "success", "win", "victory", "positive", "jingle", "confirm"]
-};
-
-const FALLBACK_ORDER = {
-  sprintStep: ["footstep"],
-  feedStart: ["brutalFeed", "landingHeavy"],
-  feedFinish: ["missionComplete", "sense"],
-  brutalFeed: ["landingHeavy", "feedStart"],
-  rooftopJump: ["dash"],
-  roofDrop: ["landingHeavy"],
-  landingLight: ["footstep"],
-  landingHeavy: ["brutalFeed"],
-  police: ["alert"],
-  hunterReveal: ["brutalFeed", "dash"],
-  bodyHide: ["drag", "landingHeavy"],
-  missionComplete: ["sense", "alert"]
+// Manual allowlist after playtest review.
+// The automatic keyword mapper produced bad matches for powers, feeding, alerts and traversal.
+// Keep only the Kenney footsteps that currently fit the prototype; leave every other event silent
+// until it gets a deliberate hand-picked asset.
+const APPROVED_RULES = {
+  footstep: [
+    "kenney_impact-sounds/Audio/footstep_concrete_000.ogg",
+    "kenney_impact-sounds/Audio/footstep_concrete_001.ogg",
+    "kenney_impact-sounds/Audio/footstep_concrete_002.ogg",
+    "kenney_impact-sounds/Audio/footstep_concrete_003.ogg",
+    "kenney_impact-sounds/Audio/footstep_concrete_004.ogg",
+    "kenney_rpg-audio/Audio/footstep00.ogg",
+    "kenney_rpg-audio/Audio/footstep01.ogg",
+    "kenney_rpg-audio/Audio/footstep02.ogg"
+  ],
+  sprintStep: [
+    "kenney_impact-sounds/Audio/footstep_concrete_000.ogg",
+    "kenney_impact-sounds/Audio/footstep_concrete_001.ogg",
+    "kenney_impact-sounds/Audio/footstep_concrete_002.ogg",
+    "kenney_impact-sounds/Audio/footstep_concrete_003.ogg",
+    "kenney_impact-sounds/Audio/footstep_concrete_004.ogg"
+  ]
 };
 
 function walk(dir, out = []) {
@@ -79,47 +66,16 @@ function toRepoPath(abs) {
   return path.relative(ROOT, abs).split(path.sep).join("/");
 }
 
-function normalizeForMatch(file) {
-  return file
-    .toLowerCase()
-    .replace(/%20/g, " ")
-    .replace(/[_\-.]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function score(file, keywords) {
-  const text = normalizeForMatch(file);
-  let total = 0;
-  for (const keyword of keywords) {
-    const k = keyword.toLowerCase().replace(/[_\-.]+/g, " ");
-    if (text.includes(k)) total += k.length >= 6 ? 3 : 2;
-  }
-  if (text.includes("kenney")) total += 1;
-  return total;
-}
-
-function bestMatches(files, eventName) {
-  const keywords = RULES[eventName] || [];
-  const ranked = files
-    .map((file) => ({ file, score: score(file, keywords) }))
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score || a.file.localeCompare(b.file));
-
-  return ranked.slice(0, eventName.includes("step") ? 8 : 5).map((item) => item.file);
+function findApproved(all, approvedSuffixes) {
+  return approvedSuffixes
+    .map((suffix) => all.find((file) => file.endsWith(suffix)))
+    .filter(Boolean);
 }
 
 const all = walk(ROOT).map(toRepoPath).sort((a, b) => a.localeCompare(b));
-const events = Object.fromEntries(EVENTS.map((name) => [name, bestMatches(all, name)]));
-
-for (const [eventName, fallbacks] of Object.entries(FALLBACK_ORDER)) {
-  if (events[eventName]?.length) continue;
-  for (const fallback of fallbacks) {
-    if (events[fallback]?.length) {
-      events[eventName] = events[fallback].slice(0, 4);
-      break;
-    }
-  }
+const events = Object.fromEntries(EVENTS.map((name) => [name, []]));
+for (const [eventName, suffixes] of Object.entries(APPROVED_RULES)) {
+  events[eventName] = findApproved(all, suffixes);
 }
 
 const used = new Set(Object.values(events).flat());
@@ -127,7 +83,8 @@ const unmapped = all.filter((file) => !used.has(file));
 
 const manifest = {
   generatedAt: new Date().toISOString(),
-  source: "repo-audio-assets",
+  source: "repo-audio-assets-approved-only",
+  note: "Only footstep and sprintStep are currently approved. Other events are intentionally silent until hand-picked.",
   all,
   events,
   unmapped
