@@ -2610,7 +2610,7 @@
     function startGame() {
       if (state.gameStarted) return;
       state.gameStarted = true;
-      state.showHelp = true;
+      state.showHelp = false;
       AudioBus.unlock();
       AudioBus.play("sense", 0.75);
       if (ui.startOverlay) ui.startOverlay.classList.add("hidden");
@@ -2663,8 +2663,8 @@
       if (player.beastFlash > 0) player.beastFlash = Math.max(0, player.beastFlash - dt);
       if (state.helpPulse > 0) state.helpPulse = Math.max(0, state.helpPulse - dt);
       if (consumePressed("h")) {
-        state.showHelp = !state.showHelp;
-        state.helpPulse = 0.35;
+        state.showHelp = false;
+        state.helpPulse = 0;
       }
 
       if (!state.cinematic) {
@@ -3312,7 +3312,7 @@
         ctx.fillRect(0, VIEW_H - (10 + arc * 22), VIEW_W, 10 + arc * 22);
       }
       drawBeastOverlay();
-      drawHelpOverlay();
+      // Legacy canvas help removed. DOM help is handled by js/help-overlay.js.
       drawMissionSummaryOverlay();
     }
 
@@ -4366,31 +4366,7 @@
     }
 
     function drawHelpOverlay() {
-      if (!state.showHelp || state.missionDone) return;
-      const lines = [
-        "QUICK READ",
-        "V with line = direct vision inside cone · Blue = police/camera · Orange = hunter",
-        "! WITNESS = runs to report; intercept with E",
-        "? noise = investigates sound · B trail = follows physical trail",
-        "Circular yellow halos = streetlights · E near a lamp breaks it into shadow",
-        "Q/R/F are always usable, but raise hunger · feeding lowers it",
-        "Base plan: F finds journalist → R lures → E eliminates in shadow → hide body → safehouse",
-        "Controls: WASD/Arrows move · Shift sprint · Press H to hide/show this help"
-      ];
-      const w = Math.min(560, VIEW_W - 28);
-      const h = 118;
-      const x = Math.floor(VIEW_W / 2 - w / 2);
-      const y = Math.floor(VIEW_H - h - 12);
-      ctx.fillStyle = "rgba(5,5,10,.90)";
-      ctx.fillRect(x, y, w, h);
-      ctx.fillStyle = "rgba(215,200,255,.26)";
-      ctx.fillRect(x, y, w, 2);
-      ctx.fillRect(x, y + h - 2, w, 2);
-      ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
-      for (let i = 0; i < lines.length; i++) {
-        ctx.fillStyle = i === 0 ? "#d7c8ff" : i === 5 ? "#78c7a3" : "#f1e6ff";
-        ctx.fillText(lines[i], x + 10, y + 17 + i * 13);
-      }
+      // Removed: help now lives in js/help-overlay.js as a DOM modal.
     }
 
     function currentDetectionState() {
