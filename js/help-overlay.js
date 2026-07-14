@@ -76,8 +76,8 @@
               make("h3", { text: "Read the street" }),
               make("ul", { class: "vd-help-list" }, [
                 make("li", { html: "<b>V + line</b> means direct vision inside a cone." }),
-                make("li", { html: "<b>Blue</b> marks police/cameras. <b>Orange</b> marks hunters." }),
-                make("li", { html: "<b>Yellow circles</b> are streetlights. Break lamps to create shadow." })
+                make("li", { html: "<b>Blue</b> marks police. <b>Orange</b> marks hunters." }),
+                make("li", { html: "<b>Yellow circles</b> are streetlights. Break lamps to create shadow, but it raises district heat." })
               ])
             ]),
             make("article", { class: "vd-help-card" }, [
@@ -93,7 +93,7 @@
               make("ul", { class: "vd-help-list" }, [
                 make("li", { html: "<span class='vd-help-kbd'>Q</span> / <span class='vd-help-kbd'>Space</span> Shadow Dash: always usable, raises hunger." }),
                 make("li", { html: "<span class='vd-help-kbd'>R</span> Whisper: lure a target, raises hunger." }),
-                make("li", { html: "<span class='vd-help-kbd'>F</span> Blood Sense: reveals people, trails, hunters and routes." })
+                make("li", { html: "<span class='vd-help-kbd'>F</span> Blood Sense: reveals people, trails, hunters and escape routes." })
               ])
             ]),
             make("article", { class: "vd-help-card" }, [
@@ -106,7 +106,7 @@
             ]),
             make("article", { class: "vd-help-card wide" }, [
               make("h3", { text: "Base plan" }),
-              make("p", { class: "vd-help-plan", text: "F finds journalist → R lures → E eliminates in shadow → hide body → return to safehouse." }),
+              make("p", { class: "vd-help-plan", text: "F finds journalist → R lures → E eliminates → hide body for a cleaner report, or run home dirty." }),
               make("p", { class: "vd-help-muted", text: "While this help panel is open, the game is paused and gameplay keys are blocked." })
             ])
           ])
