@@ -98,7 +98,7 @@
       maxTotalLivingCivilians: 15,
       dynamicEventMinDelay: 24,
       dynamicEventMaxDelay: 38,
-      hunterRouteBlockMinLevel: 3,
+      hunterRouteBlockMinLevel: 4,
       policeChaseSpeedMul: 0.72,
       hunterChaseSpeedMul: 0.82,
       enemyLostSightMul: 0.64,
@@ -561,9 +561,7 @@
     ];
 
     const cameras = [
-      // Fixed cameras: non-human witnesses. They do not chase, but create evidence.
-      { id: "camPolice", name: "police camera", x: 700, y: 250, dirX: 0.2, dirY: 1, range: 165, fov: 0.54, broken: false, flagCooldown: 0 },
-      { id: "camMain", name: "traffic camera", x: 308, y: 318, dirX: 1, dirY: 0.2, range: 135, fov: 0.62, broken: false, flagCooldown: 0 }
+      // Fixed surveillance cameras removed: the city reacts through witnesses, police heat and wanted level.
     ];
 
     const interactables = [
@@ -820,18 +818,7 @@
     // The journalist starts beside the club side shadow: visible enough to find, isolated enough to eliminate.
     npcs.push(makeNpc("target", 450, 370, { behavior: "loiter", dirX: -1, dirY: 0, waitTimer: 999 }));
 
-    // Police: visibles desde el principio y patrullando, pero solo persiguen con exposure alta.
-    npcs.push(makeNpc("police", 746, 220, {
-      active: false,
-      behavior: "patrol",
-      patrol: [{ x: 724, y: 218 }, { x: 846, y: 218 }, { x: 846, y: 318 }, { x: 716, y: 318 }]
-    }));
-    npcs.push(makeNpc("police", 810, 220, {
-      active: false,
-      behavior: "patrol",
-      patrol: [{ x: 850, y: 240 }, { x: 850, y: 344 }, { x: 704, y: 344 }, { x: 704, y: 240 }],
-      patrolIndex: 1
-    }));
+    // Police are not visible from the start anymore. They spawn only when exposure reaches wanted levels.
 
     // Hunters hidden: no se dibujan ni patrullan hasta que se revelan.
     npcs.push(makeNpc("hunter", 300, 336, { active: false, hidden: true, behavior: "ambush", dirX: 1, dirY: 0 }));
@@ -889,8 +876,7 @@
     function alertTag(reason) {
       if (!reason) return "risk";
       const r = reason.toLowerCase();
-      if (r.includes("camera") || r.includes("record")) return "camera";
-      if (r.includes("witness") || r.includes("sees") || r.includes("seen")) return "witness";
+            if (r.includes("witness") || r.includes("sees") || r.includes("seen")) return "witness";
       if (r.includes("noise") || r.includes("heard")) return "noise";
       if (r.includes("body")) return "body";
       if (r.includes("blood") || r.includes("trail")) return "trail";
@@ -979,15 +965,16 @@
         say(`${reason || "Risky action"} The Beast makes it harder to hide.`, 3.5);
       }
       if (after > before) {
-        if (after === 1) say("Exposure 1: civilians start getting scared.", 3);
-        if (after === 2) { AudioBus.play("police", 1.0); say("Exposure 2: police start looking for you.", 3); }
-        if (after === 3) { AudioBus.play("hunterReveal", 0.85); say("Exposure 3: occult hunters arrive.", 3); }
-        if (after >= 4) { AudioBus.play("alert", 1.4); say("Critical exposure: break line of sight or hide now.", 3); }
+        if (after === 1) say("Exposure 1: civilians get nervous. You are not wanted yet.", 3);
+        if (after === 2) { AudioBus.play("police", 1.0); say("Exposure 2: police are dispatched. The chase can start.", 3); }
+        if (after === 3) { AudioBus.play("police", 1.15); say("Exposure 3: police pressure rises. Escape routes matter.", 3); }
+        if (after === 4) { AudioBus.play("hunterReveal", 0.85); say("Exposure 4: the situation is too strange. Hunters start paying attention.", 3); }
+        if (after >= 5) { AudioBus.play("alert", 1.4); say("Blood hunt level: the district is no longer treating this as normal crime.", 3); }
       }
     }
 
     // ---------------------------------------------------------
-    // Local heat / cameras / reactive city
+    // Local heat / wanted level / reactive city
     // ---------------------------------------------------------
 
     function currentLocalZoneAt(x = player.x, y = player.y, layer = player.layer) {
@@ -1063,25 +1050,12 @@
     }
 
     function exposeToCameras(baseGain, reason, x = player.x, y = player.y, layer = player.layer) {
-      const watchers = camerasWatchingPoint(x, y, layer).filter(c => c.flagCooldown <= 0);
-      if (!watchers.length) return 0;
-      for (const c of watchers) c.flagCooldown = 2.6;
-      state.stats.cameraFlags += watchers.length;
-      addLocalHeat(8 + baseGain, "cameras record activity", x, y, layer);
-      addExposure(baseGain + watchers.length * 4, `${reason} A camera records it.`);
-      return watchers.length;
+      // Surveillance cameras were removed. Exposure now comes from witnesses, violence, heat and wanted level.
+      return 0;
     }
 
     function nearestBreakableCamera() {
-      if (player.inSafehouse || player.layer !== LAYER.STREET) return null;
-      let best = null;
-      let bestD = Infinity;
-      for (const cam of cameras) {
-        if (cam.broken) continue;
-        const d = Math.hypot(cam.x - player.x, cam.y - player.y);
-        if (d < 24 && d < bestD) { best = cam; bestD = d; }
-      }
-      return best;
+      return null;
     }
 
     function callPoliceAttention(x, y, layer, reason, strength = 1) {
@@ -1123,18 +1097,7 @@
     }
 
     function updateCameras(dt) {
-      for (const cam of cameras) {
-        if (cam.flagCooldown > 0) cam.flagCooldown = Math.max(0, cam.flagCooldown - dt);
-        if (cam.broken || player.inSafehouse || player.layer !== LAYER.STREET) continue;
-        if (!canCameraSeePoint(cam, player.x, player.y, player.layer)) continue;
-        const suspicious = state.feeding || state.draggingBody || player.dashFlash > 0 || beastStage().level >= 3;
-        if (suspicious && cam.flagCooldown <= 0) {
-          cam.flagCooldown = 2.2;
-          state.stats.cameraFlags++;
-          addLocalHeat(6, "fixed surveillance", cam.x, cam.y, LAYER.STREET);
-          addExposure(state.draggingBody ? 5 : state.feeding ? 7 : 4, `${cam.name} records something impossible.`);
-        }
-      }
+      // Removed: the wanted system now comes from witnesses, police dispatch and hunter escalation.
     }
 
     function updateDynamicEvents(dt) {
@@ -2137,11 +2100,6 @@
         return;
       }
 
-      const cam = nearestBreakableCamera();
-      if (cam) {
-        breakCamera(cam);
-        return;
-      }
 
       const lamp = nearestBreakableLight();
       if (lamp) {
@@ -2254,9 +2212,15 @@
       light.broken = true;
       state.stats.lightsBroken++;
       AudioBus.play("glass", 1.0);
-      createNoise(light.x, light.y, LAYER.STREET, 155, 4.6, "glass", { policeOnly: true });
+
       const witnesses = visibleWitnessList(145).filter(w => w.type !== "hunter");
-      callPoliceAttention(light.x, light.y, LAYER.STREET, `${light.name} broken. The area darkens, but police may investigate vandalism.`, witnesses.length > 0 ? 1.25 : 0.85);
+      addLocalHeat(witnesses.length > 0 ? 10 : 6, "streetlight vandalism", light.x, light.y, LAYER.STREET);
+      if (witnesses.length > 0) {
+        addExposure(4, `${light.name} broken in front of witnesses. Police may care, but this is still just vandalism.`);
+      } else {
+        addExposure(2, `${light.name} broken. Minor vandalism raises the district heat.`);
+      }
+      say("The lamp goes out. You create a useful shadow, but the street gets a little hotter.", 3);
     }
 
     function startFeeding(victim) {
@@ -2541,7 +2505,7 @@
       if (beastStage().level >= 2 && !isHiddenPlace()) {
         createNoise(player.x, player.y, player.layer, 46, 1.4, "whisper", { supernatural: true, exposure: false, life: 0.5 });
       }
-      say(`Blood Sense [+${senseHunger} hunger]: the journalist, isolated civilians, trails, hunters and routes glow for a few seconds.${hungerWarning}`, hungerWarning ? 3.8 : 3.2);
+      say(`Blood Sense [+${senseHunger} hunger]: the journalist, isolated civilians, trails, hunters and escape routes glow for a few seconds.${hungerWarning}`, hungerWarning ? 3.8 : 3.2);
     }
 
     function inputDirection() {
@@ -2869,7 +2833,7 @@
 
         const level = exposureLevel();
         if (n.type === "police" && level >= 2) n.active = true;
-        if (n.type === "hunter" && level >= 3 && !n.hidden) n.active = true;
+        if (n.type === "hunter" && level >= 4 && !n.hidden) n.active = true;
         if (n.type === "hunter" && n.hidden) maybeRevealHunter(n, level);
 
         if (n.type === "civilian" || n.type === "target") {
@@ -2893,13 +2857,14 @@
 
     function maybeRevealHunter(n, level) {
       if (!n.hidden || n.revealed || player.inSafehouse || player.layer !== LAYER.STREET) return;
+      if (level < 4) return;
       const d = Math.hypot(n.x - player.x, n.y - player.y);
-      const triggeredByExposure = level >= 3 && d < 190;
-      const triggeredByMessyHunt = state.targetFed && player.exposure >= 30 && d < 140;
+      const triggeredByExposure = level >= 4 && d < 190;
+      const triggeredByMessyHunt = state.targetFed && player.exposure >= 80 && d < 150;
       const triggeredByDash = player.dashFlash > 0 && d < 120;
       const triggeredByBeast = beastStage().level >= 3 && d < 155 && publicWitnesses(110) > 0;
       const nearbyBlood = state.bloodStains.find(s => !s.cleaned && s.layer === LAYER.STREET && Math.hypot(s.x - n.x, s.y - n.y) < (s.brutal ? 230 : 145));
-      const triggeredByBlood = Boolean(nearbyBlood && (nearbyBlood.brutal || nearbyBlood.age < 35));
+      const triggeredByBlood = Boolean(nearbyBlood && (nearbyBlood.brutal || nearbyBlood.discovered || nearbyBlood.age < 18));
       if (triggeredByExposure || triggeredByMessyHunt || triggeredByDash || triggeredByBeast || triggeredByBlood) {
         n.hidden = false;
         n.revealed = true;
@@ -3211,7 +3176,7 @@
         npcs.push(cop);
       }
 
-      if (level >= 3) {
+      if (level >= 4) {
         const desiredHunters = Math.min(BALANCE.maxHunters, Math.max(1, level - 3));
         while (npcs.filter(n => n.type === "hunter" && !n.dead && !n.hidden).length < desiredHunters) {
           const spawn = edgeSpawn();
@@ -3262,7 +3227,6 @@
       drawNoisePulses();
       drawTraversalEffects();
       drawVisionCones();
-      drawCameras();
       drawBloodSenseOverlay();
       drawNPCs();
       drawPlayer();
@@ -3450,29 +3414,7 @@
     }
 
     function drawCameras() {
-      if (player.layer !== LAYER.STREET || player.inSafehouse) return;
-      for (const cam of cameras) {
-        const dirLen = Math.hypot(cam.dirX, cam.dirY) || 1;
-        const dx = cam.dirX / dirLen;
-        const dy = cam.dirY / dirLen;
-        const angle = Math.atan2(dy, dx);
-        if (!cam.broken) {
-          ctx.beginPath();
-          ctx.moveTo(cam.x, cam.y);
-          ctx.arc(cam.x, cam.y, cam.range, angle - cam.fov, angle + cam.fov);
-          ctx.closePath();
-          ctx.fillStyle = cam.flagCooldown > 0 ? "rgba(255,59,80,.13)" : "rgba(77,163,255,.055)";
-          ctx.fill();
-        }
-        ctx.fillStyle = cam.broken ? "#35101b" : cam.flagCooldown > 0 ? "#ff3b50" : "#4da3ff";
-        ctx.fillRect(Math.floor(cam.x - 4), Math.floor(cam.y - 4), 8, 8);
-        ctx.fillStyle = cam.broken ? "#ff3b50" : "#d7eaff";
-        ctx.fillRect(Math.floor(cam.x + dx * 4 - 2), Math.floor(cam.y + dy * 4 - 2), 4, 4);
-        if (cam.broken) {
-          ctx.fillStyle = "#ff3b50";
-          ctx.fillRect(Math.floor(cam.x - 6), Math.floor(cam.y + 6), 12, 1);
-        }
-      }
+      // Removed: no fixed surveillance cameras in the prototype.
     }
 
     function drawRoad(x, y, w, h) {
