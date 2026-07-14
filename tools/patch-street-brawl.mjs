@@ -1,5 +1,6 @@
 import fs from "node:fs";
 
+// Trigger patch workflow: minimal street brawl rules.
 const file = "js/game.js";
 let code = fs.readFileSync(file, "utf8");
 let changed = false;
