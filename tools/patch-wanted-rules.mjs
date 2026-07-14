@@ -2,21 +2,23 @@ import fs from "node:fs";
 
 const file = "js/game.js";
 let code = fs.readFileSync(file, "utf8");
+let patched = 0;
 
-function replaceOnce(label, pattern, replacement) {
+function replaceMaybe(label, pattern, replacement) {
   const next = code.replace(pattern, replacement);
-  if (next === code) throw new Error(`Patch failed: ${label}`);
+  if (next === code) {
+    console.warn(`Skipped: ${label}`);
+    return false;
+  }
   code = next;
+  patched++;
   console.log(`Patched: ${label}`);
+  return true;
 }
 
-replaceOnce(
-  "hunter route blocking starts later",
-  /hunterRouteBlockMinLevel: 3,/,
-  "hunterRouteBlockMinLevel: 4,"
-);
+replaceMaybe("hunter route blocking starts later", /hunterRouteBlockMinLevel: 3,/, "hunterRouteBlockMinLevel: 4,");
 
-replaceOnce(
+replaceMaybe(
   "remove fixed surveillance cameras from map data",
   /const cameras = \[[\s\S]*?\n    \];/,
   `const cameras = [
@@ -24,7 +26,7 @@ replaceOnce(
     ];`
 );
 
-replaceOnce(
+replaceMaybe(
   "remove initial visible police patrols",
   /\n    \/\/ Police: visibles desde el principio[\s\S]*?\n    \}\)\);\n\n    \/\/ Hunters hidden:/,
   `
@@ -33,7 +35,7 @@ replaceOnce(
     // Hunters hidden:`
 );
 
-replaceOnce(
+replaceMaybe(
   "wanted level copy",
   /if \(after === 1\) say\("Exposure 1: civilians start getting scared\."[\s\S]*?if \(after >= 4\) \{ AudioBus\.play\("alert", 1\.4\); say\("Critical exposure: break line of sight or hide now\."[\s\S]*?\}/,
   `if (after === 1) say("Exposure 1: civilians get nervous. You are not wanted yet.", 3);
@@ -43,13 +45,9 @@ replaceOnce(
         if (after >= 5) { AudioBus.play("alert", 1.4); say("Blood hunt level: the district is no longer treating this as normal crime.", 3); }`
 );
 
-replaceOnce(
-  "reactive city section label",
-  /\/\/ Local heat \/ cameras \/ reactive city/,
-  "// Local heat / wanted level / reactive city"
-);
+replaceMaybe("reactive city section label", /\/\/ Local heat \/ cameras \/ reactive city/, "// Local heat / wanted level / reactive city");
 
-replaceOnce(
+replaceMaybe(
   "cameras disabled function",
   /function exposeToCameras\(baseGain, reason, x = player\.x, y = player\.y, layer = player\.layer\) \{[\s\S]*?\n    \}/,
   `function exposeToCameras(baseGain, reason, x = player.x, y = player.y, layer = player.layer) {
@@ -58,7 +56,7 @@ replaceOnce(
     }`
 );
 
-replaceOnce(
+replaceMaybe(
   "nearest breakable camera disabled",
   /function nearestBreakableCamera\(\) \{[\s\S]*?\n    \}/,
   `function nearestBreakableCamera() {
@@ -66,13 +64,13 @@ replaceOnce(
     }`
 );
 
-replaceOnce(
+replaceMaybe(
   "remove camera branch from action",
   /\n      const cam = nearestBreakableCamera\(\);\n      if \(cam\) \{\n        breakCamera\(cam\);\n        return;\n      \}\n/,
   "\n"
 );
 
-replaceOnce(
+replaceMaybe(
   "lamp breaking as minor vandalism",
   /function breakLight\(light\) \{[\s\S]*?\n    \}\n\n    function startFeeding/,
   `function breakLight(light) {
@@ -84,9 +82,9 @@ replaceOnce(
       const witnesses = visibleWitnessList(145).filter(w => w.type !== "hunter");
       addLocalHeat(witnesses.length > 0 ? 10 : 6, "streetlight vandalism", light.x, light.y, LAYER.STREET);
       if (witnesses.length > 0) {
-        addExposure(4, \`${light.name} broken in front of witnesses. Police may care, but this is still just vandalism.\`);
+        addExposure(4, \`\${light.name} broken in front of witnesses. Police may care, but this is still just vandalism.\`);
       } else {
-        addExposure(2, \`${light.name} broken. Minor vandalism raises the district heat.\`);
+        addExposure(2, \`\${light.name} broken. Minor vandalism raises the district heat.\`);
       }
       say("The lamp goes out. You create a useful shadow, but the street gets a little hotter.", 3);
     }
@@ -94,13 +92,13 @@ replaceOnce(
     function startFeeding`
 );
 
-replaceOnce(
+replaceMaybe(
   "update hunters only at high wanted level",
   /if \(n\.type === "hunter" && level >= 3 && !n\.hidden\) n\.active = true;/,
   `if (n.type === "hunter" && level >= 4 && !n.hidden) n.active = true;`
 );
 
-replaceOnce(
+replaceMaybe(
   "hidden hunters need high exposure",
   /function maybeRevealHunter\(n, level\) \{\n      if \(!n\.hidden \|\| n\.revealed \|\| player\.inSafehouse \|\| player\.layer !== LAYER\.STREET\) return;\n      const d = Math\.hypot\(n\.x - player\.x, n\.y - player\.y\);\n      const triggeredByExposure = level >= 3 && d < 190;\n      const triggeredByMessyHunt = state\.targetFed && player\.exposure >= 30 && d < 140;\n      const triggeredByDash = player\.dashFlash > 0 && d < 120;\n      const triggeredByBeast = beastStage\(\)\.level >= 3 && d < 155 && publicWitnesses\(110\) > 0;\n      const nearbyBlood = state\.bloodStains\.find\(s => !s\.cleaned && s\.layer === LAYER\.STREET && Math\.hypot\(s\.x - n\.x, s\.y - n\.y\) < \(s\.brutal \? 230 : 145\)\);\n      const triggeredByBlood = Boolean\(nearbyBlood && \(nearbyBlood\.brutal \|\| nearbyBlood\.age < 35\)\);/,
   `function maybeRevealHunter(n, level) {
@@ -112,33 +110,19 @@ replaceOnce(
       const triggeredByDash = player.dashFlash > 0 && d < 120;
       const triggeredByBeast = beastStage().level >= 3 && d < 155 && publicWitnesses(110) > 0;
       const nearbyBlood = state.bloodStains.find(s => !s.cleaned && s.layer === LAYER.STREET && Math.hypot(s.x - n.x, s.y - n.y) < (s.brutal ? 230 : 145));
-      const triggeredByBlood = Boolean(nearbyBlood && (stainIsSeriousForHunters(nearbyBlood)));`
+      const triggeredByBlood = Boolean(nearbyBlood && (nearbyBlood.brutal || nearbyBlood.discovered || nearbyBlood.age < 18));`
 );
 
-replaceOnce(
-  "add hunter blood seriousness helper",
-  /function maybeRevealHunter\(n, level\) \{/,
-  `function stainIsSeriousForHunters(stain) {
-      return Boolean(stain && (stain.brutal || stain.discovered || stain.age < 18));
-    }
-
-    function maybeRevealHunter(n, level) {`
-);
-
-replaceOnce(
+replaceMaybe(
   "spawn hunters only at critical exposure",
   /if \(level >= 3\) \{\n        const desiredHunters = Math\.min\(BALANCE\.maxHunters, Math\.max\(1, level - 3\)\);/,
   `if (level >= 4) {
         const desiredHunters = Math.min(BALANCE.maxHunters, Math.max(1, level - 3));`
 );
 
-replaceOnce(
-  "remove camera draw call",
-  /\n      drawCameras\(\);/,
-  ""
-);
+replaceMaybe("remove camera draw call", /\n      drawCameras\(\);/, "");
 
-replaceOnce(
+replaceMaybe(
   "draw cameras disabled",
   /function drawCameras\(\) \{[\s\S]*?\n    \}\n\n    function drawRoad/,
   `function drawCameras() {
@@ -148,7 +132,7 @@ replaceOnce(
     function drawRoad`
 );
 
-replaceOnce(
+replaceMaybe(
   "camera update disabled",
   /function updateCameras\(dt\) \{[\s\S]*?\n    \}\n\n    function updateDynamicEvents/,
   `function updateCameras(dt) {
@@ -158,17 +142,17 @@ replaceOnce(
     function updateDynamicEvents`
 );
 
-replaceOnce(
-  "camera terminology in report alert tags",
-  /if \(r\.includes\("camera"\) \|\| r\.includes\("record"\)\) return "camera";\n/,
-  ""
-);
+replaceMaybe("camera terminology in alert tags", /if \(r\.includes\("camera"\) \|\| r\.includes\("record"\)\) return "camera";\n/, "");
 
-replaceOnce(
+replaceMaybe(
   "blood sense copy removes cameras",
   /say\(`Blood Sense \[\+\$\{senseHunger\} hunger\]: the journalist, isolated civilians, trails, hunters and routes glow for a few seconds\.\$\{hungerWarning\}`, hungerWarning \? 3\.8 : 3\.2\);/,
   `say(\`Blood Sense [+\${senseHunger} hunger]: the journalist, isolated civilians, trails, hunters and escape routes glow for a few seconds.\${hungerWarning}\`, hungerWarning ? 3.8 : 3.2);`
 );
 
-fs.writeFileSync(file, code);
-console.log("Wanted/camera rules patched.");
+if (patched === 0) {
+  console.log("No changes needed; rules were already patched.");
+} else {
+  fs.writeFileSync(file, code);
+  console.log(`Wanted/camera rules patched: ${patched} change(s).`);
+}
