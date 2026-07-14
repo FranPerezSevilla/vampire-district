@@ -28,6 +28,9 @@ export class NpcSystem {
       vy: Math.sin(angle) * (def.speed || 0),
       dead: false,
       fed: false,
+      hiddenBody: false,
+      dragged: false,
+      corpseDiscovered: false,
       alarmed: false,
       intercepted: false,
       hasReported: false,
@@ -101,6 +104,7 @@ export class NpcSystem {
   }
 
   isVisible(npc) {
+    if (npc.hiddenBody) return false;
     if (npc.inactive && npc.type !== NPC_TYPES.RAT && !npc.intercepted) return false;
     return npc.layer === this.scene.currentLayer;
   }
@@ -128,6 +132,8 @@ export class NpcSystem {
     if (!npc || npc.dead) return;
     npc.dead = true;
     npc.fed = true;
+    npc.hiddenBody = false;
+    npc.dragged = false;
     npc.alarmed = false;
     npc.vx = 0;
     npc.vy = 0;
