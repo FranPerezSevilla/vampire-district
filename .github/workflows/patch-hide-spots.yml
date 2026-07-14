@@ -1,0 +1,34 @@
+name: Patch hide spot visibility
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - tools/patch-hide-spots.mjs
+      - .github/workflows/patch-hide-spots.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-hide-spots:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Patch hide spot visibility
+        run: node tools/patch-hide-spots.mjs
+
+      - name: Validate game script
+        run: node --check js/game.js
+
+      - name: Commit patched game script
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Show hide spots only when carrying or finding a body
+          file_pattern: js/game.js
