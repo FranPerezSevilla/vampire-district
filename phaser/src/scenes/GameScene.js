@@ -12,6 +12,7 @@ import {
   sewerTunnels,
   shadowZones
 } from "../data/district.js";
+import { EvidenceSystem } from "../systems/EvidenceSystem.js";
 import { ExposureSystem } from "../systems/ExposureSystem.js";
 import { FeedingSystem } from "../systems/FeedingSystem.js";
 import { InteractionSystem } from "../systems/InteractionSystem.js";
@@ -75,6 +76,7 @@ export class GameScene extends Phaser.Scene {
     this.feedingSystem = new FeedingSystem(this);
     this.exposureSystem = new ExposureSystem(this);
     this.witnessSystem = new WitnessSystem(this);
+    this.evidenceSystem = new EvidenceSystem(this);
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.redrawLayer(this.lastActionText);
@@ -118,6 +120,7 @@ export class GameScene extends Phaser.Scene {
         this.npcSystem.update(dt);
         this.witnessSystem.update(dt);
       }
+      this.evidenceSystem.update(dt);
       this.exposureSystem.cool(dt);
       this.missionSystem.update();
       this.nearestInteraction = this.findNearestInteraction(this.collectInteractions());
@@ -192,6 +195,8 @@ export class GameScene extends Phaser.Scene {
     options.push(...this.feedingSystem.collectInteractions());
 
     if (this.feedingSystem.isActive()) return options;
+
+    options.push(...this.evidenceSystem.collectInteractions());
 
     if (this.currentLayer === LAYERS.STREET) {
       for (const light of lights) {
@@ -360,6 +365,7 @@ export class GameScene extends Phaser.Scene {
     this.registry.set("hungerText", this.feedingSystem ? this.feedingSystem.summary() : "Hunger loading");
     this.registry.set("exposureText", this.exposureSystem ? this.exposureSystem.summary() : "Exposure loading");
     this.registry.set("witnessText", this.witnessSystem ? this.witnessSystem.summary() : "Witnesses loading");
+    this.registry.set("evidenceText", this.evidenceSystem ? this.evidenceSystem.summary() : "Evidence loading");
     this.registry.set("playerXY", `${Math.round(this.player.x)}, ${Math.round(this.player.y)}`);
     this.registry.set("interactionPrompt", this.interactionSystem.isOpen ? "" : this.nearestInteraction ? `E: ${this.nearestInteraction.label}` : "");
     this.registry.set("lastActionText", this.lastActionText);
@@ -391,10 +397,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   currentShadow() {
-    if (this.currentLayer !== LAYERS.STREET) return null;
-    const brokenLamp = lights.find(l => this.brokenLights.has(l.id) && Phaser.Math.Distance.Between(this.player.x, this.player.y, l.x, l.y) < l.radius * 0.72);
+    return this.currentShadowAt(this.player.x, this.player.y, this.currentLayer);
+  }
+
+  currentShadowAt(x, y, layer = this.currentLayer) {
+    if (layer !== LAYERS.STREET) return null;
+    const brokenLamp = lights.find(l => this.brokenLights.has(l.id) && Phaser.Math.Distance.Between(x, y, l.x, l.y) < l.radius * 0.72);
     if (brokenLamp) return { id: `broken-${brokenLamp.id}`, name: "broken light shadow" };
-    return shadowZones.find(z => this.pointInRect(this.player.x, this.player.y, z)) || null;
+    return shadowZones.find(z => this.pointInRect(x, y, z)) || null;
   }
 
   redrawLayer(statusText = "") {
@@ -569,6 +579,7 @@ export class GameScene extends Phaser.Scene {
       this.promptGraphics.fillStyle(0xfff2a8, 0.15).fillCircle(x, y, 15);
     }
     this.witnessSystem?.drawMarkers(this.promptGraphics);
+    this.evidenceSystem?.drawMarkers(this.promptGraphics);
     this.drawFeedingProgress();
   }
 
