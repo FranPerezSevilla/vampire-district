@@ -401,11 +401,11 @@
     // ---------------------------------------------------------
 
     const player = {
-      x: 135,
-      y: 455,
+      x: 150,
+      y: 146,
       w: 10,
       h: 12,
-      layer: LAYER.STREET,
+      layer: LAYER.ROOF_HIGH,
       inSafehouse: true,
       speed: BALANCE.playerBaseSpeed,
       hunger: BALANCE.startHunger,
@@ -421,7 +421,7 @@
 
     const state = {
       time: 0,
-      message: "A clan courier wakes you: a journalist is preparing to expose your leader. Press E at the door to leave.",
+      message: "You wake on the rooftop refuge. Press E at the terrace exit to enter the district.",
       messageTimer: 5,
       mission: 1,
       missionDone: false,
@@ -454,7 +454,10 @@
       lastBloodMessageAt: 0,
       nextRouteBlockAt: 0,
       nextDynamicEventAt: 11,
-      dynamicEventCount: 0,
+       nextRatSpawnAt: 8,
+       dynamicEventCount: 0,
+       lampBreakWindowUntil: 0,
+       lampBreakChainCount: 0,
       showHelp: true,
       helpPulse: 0,
       fxTrails: [],
@@ -491,73 +494,81 @@
     // On rooftop layers, rooftop rectangles become walkable areas.
 
     const buildings = [
-      { id: "safehouse", name: "SAFEHOUSE", x: 58, y: 422, w: 150, h: 108, color: "#20122f", trim: "#64417a", sign: "HOME" },
-      { id: "club", name: "CLUB", x: 380, y: 398, w: 184, h: 112, color: "#241126", trim: "#d11fb9", sign: "CLUB" },
-      { id: "chapel", name: "CLOSED CHAPEL", x: 620, y: 408, w: 164, h: 108, color: "#1b1824", trim: "#8b6f9e", sign: "CHAPEL" },
-      { id: "police", name: "POLICE STATION", x: 700, y: 82, w: 172, h: 120, color: "#14223a", trim: "#4da3ff", sign: "POLICE" },
-      { id: "tenementA", name: "BLOCK A", x: 316, y: 160, w: 150, h: 120, color: "#181a2a", trim: "#777d99", sign: "ROOF" },
-      { id: "tenementB", name: "BLOCK B", x: 504, y: 150, w: 132, h: 128, color: "#171827", trim: "#7f849a", sign: "ROOF" },
-      { id: "tower", name: "TOWER", x: 660, y: 150, w: 138, h: 132, color: "#151522", trim: "#b6aecf", sign: "HIGH" },
-      { id: "oldBlock", name: "OLD BLOCK", x: 104, y: 88, w: 124, h: 172, color: "#18151f", trim: "#5b5167", sign: "FLATS" },
-      { id: "warehouse", name: "WAREHOUSE", x: 92, y: 294, w: 130, h: 78, color: "#171716", trim: "#6e5b37", sign: "WARE" },
-      { id: "shops", name: "SHOPS", x: 805, y: 352, w: 98, h: 150, color: "#181322", trim: "#8a5ca8", sign: "SHOPS" }
+      { id: "refugeTower", name: "ROOFTOP REFUGE", x: 86, y: 86, w: 150, h: 128, color: "#20122f", trim: "#d7c8ff", sign: "REFUGE" },
+      { id: "club", name: "CLUB", x: 590, y: 374, w: 170, h: 112, color: "#241126", trim: "#d11fb9", sign: "CLUB" },
+      { id: "church", name: "CHURCH", x: 708, y: 438, w: 156, h: 112, color: "#1b1824", trim: "#8b6f9e", sign: "CHURCH" },
+      { id: "police", name: "POLICE STATION", x: 690, y: 88, w: 174, h: 122, color: "#14223a", trim: "#4da3ff", sign: "POLICE" },
+      { id: "marketBlock", name: "MARKET BLOCK", x: 280, y: 92, w: 130, h: 150, color: "#181a2a", trim: "#777d99", sign: "MARKET" },
+      { id: "tenementNorth", name: "TENEMENT", x: 528, y: 92, w: 122, h: 148, color: "#171827", trim: "#7f849a", sign: "FLATS" },
+      { id: "warehouse", name: "WAREHOUSE", x: 106, y: 410, w: 154, h: 98, color: "#171716", trim: "#6e5b37", sign: "WARE" },
+      { id: "shops", name: "SHOPS", x: 294, y: 414, w: 140, h: 110, color: "#181322", trim: "#8a5ca8", sign: "SHOPS" },
+      { id: "oldBlock", name: "OLD BLOCK", x: 532, y: 504, w: 130, h: 86, color: "#18151f", trim: "#5b5167", sign: "OLD" }
     ];
 
     const roofAreas = {
       [LAYER.ROOF_LOW]: [
-        { id: "roofA", x: 326, y: 170, w: 130, h: 100, color: "#2d3045" },
-        { id: "roofB", x: 514, y: 160, w: 112, h: 108, color: "#303246" }
+        { id: "refugeLowerRoof", x: 92, y: 176, w: 148, h: 62, color: "#2d3045" },
+        { id: "marketRoof", x: 286, y: 98, w: 118, h: 138, color: "#303246" },
+        { id: "clubRoof", x: 596, y: 380, w: 158, h: 98, color: "#30263e" }
       ],
       [LAYER.ROOF_HIGH]: [
-        { id: "roofHigh", x: 670, y: 160, w: 118, h: 112, color: "#3a3a52" }
+        { id: "refugeHighRoof", x: 96, y: 92, w: 140, h: 112, color: "#3a3a52" }
       ]
     };
 
     const sewerTunnels = [
-      { x: 120, y: 406, w: 115, h: 64 },
-      { x: 184, y: 306, w: 540, h: 72 },
-      { x: 590, y: 264, w: 84, h: 150 },
-      { x: 320, y: 350, w: 80, h: 108 }
+      // Sewer level mirrors the two big avenues and the main alley network above.
+      { x: 426, y: 42, w: 92, h: 560 },
+      { x: 72, y: 292, w: 820, h: 92 },
+      { x: 116, y: 426, w: 680, h: 76 },
+      { x: 156, y: 150, w: 84, h: 285 },
+      { x: 704, y: 156, w: 84, h: 315 },
+      { x: 302, y: 190, w: 330, h: 62 }
     ];
 
     const hiddenZones = [
-      // Gameplay shadow zones. They are not walls: they reduce vision and risk.
-      { name: "dark alley", x: 254, y: 286, w: 405, h: 46, strength: 0.72 },
-      { name: "club side shadow", x: 430, y: 356, w: 116, h: 34, strength: 0.55 },
-      { name: "warehouse shadow", x: 80, y: 372, w: 160, h: 36, strength: 0.62 },
-      { name: "club rear", x: 386, y: 512, w: 176, h: 30, strength: 0.68 },
-      { name: "unlit passage", x: 304, y: 392, w: 70, h: 130, strength: 0.52 }
+      // The district is dark by default. Active lights carve danger zones out of this darkness.
+      { name: "district darkness", x: 0, y: 0, w: WORLD_W, h: WORLD_H, strength: 0.50 },
+      { name: "north alley", x: 246, y: 244, w: 474, h: 44, strength: 0.72 },
+      { name: "south service alley", x: 88, y: 502, w: 790, h: 44, strength: 0.74 },
+      { name: "warehouse alley", x: 96, y: 382, w: 196, h: 44, strength: 0.68 },
+      { name: "church rear", x: 690, y: 550, w: 188, h: 34, strength: 0.68 },
+      { name: "club rear", x: 584, y: 486, w: 190, h: 34, strength: 0.64 }
     ];
 
     const lightPosts = [
-      // Simple streetlights: they light areas, make streets riskier, and can be broken to create shadow.
-      { id: "lampClub", x: 458, y: 360, radius: 72, broken: false, name: "club streetlight" },
-      { id: "lampMainA", x: 302, y: 360, radius: 64, broken: false, name: "avenue streetlight" },
-      { id: "lampChapel", x: 678, y: 382, radius: 70, broken: false, name: "closed chapel streetlight" },
-      { id: "lampPolice", x: 742, y: 304, radius: 76, broken: false, name: "police streetlight" },
-      { id: "lampHome", x: 214, y: 404, radius: 58, broken: false, name: "safehouse streetlight" }
+      // Lights define the dangerous visible parts of the district.
+      { id: "lampCrossA", x: 472, y: 324, radius: 78, broken: false, name: "crossroad streetlight" },
+      { id: "lampCrossB", x: 504, y: 324, radius: 78, broken: false, name: "east crossroad streetlight" },
+      { id: "lampPolice", x: 740, y: 240, radius: 78, broken: false, name: "police avenue streetlight" },
+      { id: "lampClub", x: 638, y: 362, radius: 70, broken: false, name: "club streetlight" },
+      { id: "lampChurch", x: 716, y: 420, radius: 72, broken: false, name: "church streetlight" },
+      { id: "lampWarehouse", x: 222, y: 380, radius: 64, broken: false, name: "warehouse streetlight" },
+      { id: "lampNorth", x: 432, y: 168, radius: 66, broken: false, name: "north avenue streetlight" }
     ];
 
     const bodyHideSpots = [
-      // Explicit disposal points away from the main street. They make body cleanup less fiddly.
-      { id: "alleyDumpster", name: "alley dumpster", layer: LAYER.STREET, x: 286, y: 306, r: 34, color: "#78c7a3" },
-      { id: "warehouseBins", name: "warehouse bins", layer: LAYER.STREET, x: 170, y: 386, r: 34, color: "#78c7a3" },
-      { id: "oldBlockBasement", name: "old block basement", layer: LAYER.STREET, x: 228, y: 272, r: 32, color: "#8e7fb8" },
-      { id: "clubRearDumpster", name: "club rear dumpsters", layer: LAYER.STREET, x: 468, y: 526, r: 36, color: "#78c7a3" },
-      { id: "chapelCrypt", name: "closed chapel crypt", layer: LAYER.STREET, x: 708, y: 528, r: 36, color: "#8e7fb8" },
-      { id: "shopServiceYard", name: "shop service yard", layer: LAYER.STREET, x: 800, y: 520, r: 34, color: "#78c7a3" }
+      // Bodies are hidden in dumpsters placed in alleys, not generic abstract spots.
+      { id: "dumpsterNorthAlley", name: "north alley dumpster", layer: LAYER.STREET, x: 318, y: 262, r: 34, color: "#78c7a3" },
+      { id: "dumpsterWarehouse", name: "warehouse dumpster", layer: LAYER.STREET, x: 176, y: 392, r: 34, color: "#78c7a3" },
+      { id: "dumpsterClubRear", name: "club rear dumpster", layer: LAYER.STREET, x: 676, y: 502, r: 36, color: "#78c7a3" },
+      { id: "dumpsterChurchRear", name: "church rear dumpster", layer: LAYER.STREET, x: 782, y: 558, r: 36, color: "#78c7a3" },
+      { id: "dumpsterSouthService", name: "south service dumpster", layer: LAYER.STREET, x: 380, y: 528, r: 34, color: "#78c7a3" }
     ];
 
     const localZones = [
       // Local heat: the city remembers where you caused trouble.
-      { id: "club", name: "Club", x: 360, y: 340, w: 230, h: 205, color: "#d11fb9" },
-      { id: "main", name: "Main street", x: 228, y: 300, w: 500, h: 115, color: "#ffb02e" },
-      { id: "chapel", name: "Closed chapel", x: 600, y: 368, w: 210, h: 170, color: "#8b6f9e" },
-      { id: "police", name: "Police station", x: 680, y: 72, w: 220, h: 280, color: "#4da3ff" },
-      { id: "alley", name: "Alley", x: 250, y: 280, w: 420, h: 62, color: "#a75cff" },
-      { id: "safe", name: "Safehouse", x: 40, y: 390, w: 220, h: 160, color: "#78c7a3" },
-      { id: "roofs", name: "Rooftops", x: 300, y: 135, w: 520, h: 165, color: "#d7c8ff", layer: "roof" },
-      { id: "sewer", name: "Sewers", x: 110, y: 250, w: 640, h: 230, color: "#78c7a3", layer: "sewer" }
+      { id: "cross", name: "Central crossroad", x: 392, y: 244, w: 170, h: 170, color: "#ffb02e" },
+      { id: "northAvenue", name: "North avenue", x: 400, y: 38, w: 150, h: 250, color: "#ffb02e" },
+      { id: "eastAvenue", name: "East avenue", x: 520, y: 292, w: 374, h: 116, color: "#ffb02e" },
+      { id: "westAvenue", name: "West avenue", x: 64, y: 292, w: 360, h: 116, color: "#ffb02e" },
+      { id: "club", name: "Club", x: 574, y: 350, w: 208, h: 168, color: "#d11fb9" },
+      { id: "church", name: "Church", x: 680, y: 420, w: 210, h: 176, color: "#8b6f9e" },
+      { id: "police", name: "Police station", x: 670, y: 70, w: 220, h: 204, color: "#4da3ff" },
+      { id: "alleys", name: "Alleys", x: 80, y: 232, w: 820, h: 330, color: "#a75cff" },
+      { id: "refuge", name: "Rooftop refuge", x: 80, y: 80, w: 180, h: 170, color: "#78c7a3" },
+      { id: "roofs", name: "Rooftops", x: 80, y: 80, w: 720, h: 430, color: "#d7c8ff", layer: "roof" },
+      { id: "sewer", name: "Sewers", x: 70, y: 40, w: 830, h: 560, color: "#78c7a3", layer: "sewer" }
     ];
 
     const cameras = [
@@ -567,28 +578,22 @@
     const interactables = [
       {
         id: "safehouseDoor",
-        label: "Safehouse",
-        layer: LAYER.STREET,
-        x: 136, y: 416, r: 50,
-        prompt: () => player.inSafehouse ? "E: leave safehouse" : "E: enter safehouse",
+        label: "Rooftop refuge",
+        layer: LAYER.ROOF_HIGH,
+        x: 150, y: 146, r: 34,
+        prompt: () => player.inSafehouse ? "E: leave rooftop refuge" : "Rooftop refuge: safe zone",
         action: () => {
-          player.inSafehouse = !player.inSafehouse;
-          player.layer = LAYER.STREET;
-          if (player.inSafehouse) {
-            player.x = 135; player.y = 455;
-            cleanBloodAround(player.x, player.y, LAYER.STREET, 95, "You enter the safehouse and clean any nearby trail.");
-            say("Safehouse: enemies do not enter. Exposure drops quickly.", 4);
-          } else {
-            player.x = 136; player.y = 405;
-            say("You step into the street. The club is east, by the pink lights.", 4);
-          }
+          player.inSafehouse = false;
+          player.layer = LAYER.ROOF_HIGH;
+          player.x = 170; player.y = 148;
+          say("You step out onto the high rooftop. Below: two bright avenues, dark alleys, police north-east and church south-east.", 5);
         }
       },
       {
         id: "clubDoor",
         label: "Nightclub",
         layer: LAYER.STREET,
-        x: 472, y: 390, r: 28,
+        x: 642, y: 404, r: 30,
         prompt: () => "Nightclub: the journalist is meeting a source outside",
         action: () => say("Too many eyes inside. The journalist is outside, waiting near the pink lights.", 3)
       },
@@ -596,15 +601,15 @@
         id: "policeStation",
         label: "Police station",
         layer: LAYER.STREET,
-        x: 785, y: 210, r: 28,
-        prompt: () => "Police station: drawing attention here is a bad idea",
-        action: () => addExposure(18, "You got too close to the police station. They identified you.")
+        x: 780, y: 170, r: 32,
+        prompt: () => "Police station: patrols deploy from here when exposure rises",
+        action: () => addExposure(16, "You loiter outside the police station. Patrols mark you.")
       },
       {
         id: "sewerIn",
         label: "Sewer access",
         layer: LAYER.STREET,
-        x: 612, y: 348, r: 24,
+        x: 472, y: 326, r: 26,
         prompt: () => "E: go down to the sewers",
         action: () => {
           cleanBloodAround(player.x, player.y, LAYER.STREET, 64, "The filthy sewer runoff dilutes part of the trail.");
@@ -618,7 +623,7 @@
         id: "sewerOutMain",
         label: "Sewer exit",
         layer: LAYER.SEWER,
-        x: 612, y: 348, r: 26,
+        x: 472, y: 326, r: 26,
         prompt: () => "E: climb up to the street",
         action: () => {
           player.layer = LAYER.STREET;
@@ -628,9 +633,9 @@
       },
       {
         id: "sewerOutHome",
-        label: "Tunnel to safehouse",
+        label: "Tunnel to rooftop refuge",
         layer: LAYER.SEWER,
-        x: 162, y: 432, r: 26,
+        x: 176, y: 180, r: 26,
         prompt: () => "E: climb into the safehouse",
         action: () => {
           cleanBloodAround(player.x, player.y, LAYER.SEWER, 120, "The sewer water washes away nearby stains.");
@@ -645,24 +650,24 @@
         id: "fireEscape",
         label: "Fire escape",
         layer: LAYER.STREET,
-        x: 348, y: 292, r: 28,
+        x: 176, y: 244, r: 28,
         prompt: () => "E: climb the fire escape",
         action: () => {
           player.layer = LAYER.ROOF_LOW;
-          player.x = 350; player.y = 258;
-          say("You climb to a low rooftop. The street fades below.", 4);
+          player.x = 166; player.y = 206;
+          say("You climb toward the rooftop refuge. The crossroad glows below.", 4);
         }
       },
       {
         id: "fireEscapeDown",
         label: "Climb down",
         layer: LAYER.ROOF_LOW,
-        x: 350, y: 258, r: 24,
+        x: 166, y: 206, r: 24,
         prompt: () => "E: climb down to the street",
         action: () => {
           player.layer = LAYER.STREET;
-          player.x = 348; player.y = 292;
-          say("You climb down into the alley.", 3);
+          player.x = 176; player.y = 244;
+          say("You climb down into the west alley.", 3);
         }
       },
       {
@@ -803,38 +808,46 @@
       return data;
     }
 
+
+    function makeRat(x, y) {
+      const rat = makeNpc("rat", x, y, { layer: LAYER.SEWER, behavior: "wander", speed: 20, eventNpc: true, tempLife: 28 });
+      rat.w = 6;
+      rat.h = 5;
+      return rat;
+    }
+
     // Civiles alrededor del distrito. Mezclamos peatones y gente apostada junto a paredes.
     [
-      // Fewer people around the club so the first hunt is possible.
-      [275, 405], [330, 355], [610, 365], [745, 352],
-      [255, 120], [620, 120], [840, 260], [180, 395], [255, 530], [825, 535]
+      // Pedestrians mostly use the two avenues. Alleys stay useful but not empty.
+      [430, 132], [520, 170], [360, 326], [586, 326], [670, 326], [246, 326],
+      [642, 406], [720, 456], [206, 524], [420, 526], [810, 326]
     ].forEach(([x, y]) => npcs.push(makeNpc("civilian", x, y, { behavior: "wander" })));
 
     // Awkward witnesses: they do not rush you, but watch from walls and corners.
-    npcs.push(makeNpc("civilian", 346, 340, { behavior: "loiter", dirX: -1, dirY: 0, waitTimer: 999 }));
-    npcs.push(makeNpc("civilian", 432, 520, { behavior: "loiter", dirX: 0, dirY: -1, waitTimer: 999 }));
-    npcs.push(makeNpc("civilian", 694, 392, { behavior: "loiter", dirX: 0, dirY: 1, waitTimer: 999 }));
+    npcs.push(makeNpc("civilian", 324, 262, { behavior: "loiter", dirX: 1, dirY: 0, waitTimer: 999 }));
+    npcs.push(makeNpc("civilian", 674, 502, { behavior: "loiter", dirX: -1, dirY: 0, waitTimer: 999 }));
+    npcs.push(makeNpc("civilian", 784, 558, { behavior: "loiter", dirX: -1, dirY: -1, waitTimer: 999 }));
 
     // The journalist starts beside the club side shadow: visible enough to find, isolated enough to eliminate.
-    npcs.push(makeNpc("target", 450, 370, { behavior: "loiter", dirX: -1, dirY: 0, waitTimer: 999 }));
+    npcs.push(makeNpc("target", 638, 370, { behavior: "loiter", dirX: -1, dirY: 0, waitTimer: 999 }));
 
     // Police are not visible from the start anymore. They spawn only when exposure reaches wanted levels.
 
     // Hunters hidden: no se dibujan ni patrullan hasta que se revelan.
-    npcs.push(makeNpc("hunter", 300, 336, { active: false, hidden: true, behavior: "ambush", dirX: 1, dirY: 0 }));
-    npcs.push(makeNpc("hunter", 566, 526, { active: false, hidden: true, behavior: "ambush", dirX: -1, dirY: 0 }));
+    npcs.push(makeNpc("hunter", 742, 474, { active: false, hidden: true, behavior: "ambush", dirX: -1, dirY: 0 }));
+    npcs.push(makeNpc("hunter", 810, 532, { active: false, hidden: true, behavior: "ambush", dirX: -1, dirY: -1 }));
 
     const reportPoints = [
-      { id: "policeDoor", name: "the police station", x: 785, y: 210, severityBonus: 10 },
-      { id: "mainStreet", name: "the lit main street", x: 846, y: 352, severityBonus: 5 },
-      { id: "clubCrowd", name: "the club queue", x: 472, y: 390, severityBonus: 4 }
+      { id: "policeDoor", name: "the police station", x: 780, y: 170, severityBonus: 10 },
+      { id: "centralCross", name: "the central crossroad", x: 488, y: 326, severityBonus: 6 },
+      { id: "clubCrowd", name: "the club queue", x: 642, y: 404, severityBonus: 4 }
     ];
 
     const hunterBlockPoints = [
-      { id: "blockFireEscape", name: "the fire escape", x: 350, y: 296, layer: LAYER.STREET },
-      { id: "blockSewer", name: "the sewer entrance", x: 612, y: 350, layer: LAYER.STREET },
-      { id: "blockSafehouse", name: "the safehouse street", x: 212, y: 406, layer: LAYER.STREET },
-      { id: "blockAlley", name: "the alley exit", x: 565, y: 318, layer: LAYER.STREET }
+      { id: "blockFireEscape", name: "the refuge fire escape", x: 176, y: 244, layer: LAYER.STREET },
+      { id: "blockSewerCross", name: "the crossroad manhole", x: 472, y: 326, layer: LAYER.STREET },
+      { id: "blockClubAlley", name: "the club rear alley", x: 676, y: 502, layer: LAYER.STREET },
+      { id: "blockChurch", name: "the church gate", x: 742, y: 474, layer: LAYER.STREET }
     ];
 
     // ---------------------------------------------------------
@@ -887,6 +900,11 @@
 
     function exposureLevel() {
       return clamp(Math.floor(player.exposure / BALANCE.exposurePerLevel), 0, 5);
+    }
+
+    function forceExposureLevel(level, reason = "") {
+      const target = clamp(level, 0, 5) * BALANCE.exposurePerLevel;
+      if (player.exposure < target) addExposure(target - player.exposure, reason);
     }
 
     function beastStage() {
@@ -1100,7 +1118,20 @@
       // Removed: the wanted system now comes from witnesses, police dispatch and hunter escalation.
     }
 
+    function updateRatSpawns(dt) {
+      if (player.layer !== LAYER.SEWER || state.time < state.nextRatSpawnAt) return;
+      state.nextRatSpawnAt = state.time + 10 + Math.random() * 14;
+      const livingRats = npcs.filter(n => n.type === "rat" && !n.dead && n.layer === LAYER.SEWER).length;
+      if (livingRats >= 3) return;
+      const tunnel = sewerTunnels[Math.floor(Math.random() * sewerTunnels.length)];
+      const x = tunnel.x + 12 + Math.random() * Math.max(6, tunnel.w - 24);
+      const y = tunnel.y + 12 + Math.random() * Math.max(6, tunnel.h - 24);
+      npcs.push(makeRat(x, y));
+      say("Something small scratches through the sewer dark. A rat: poor blood, but blood.", 2.6);
+    }
+
     function updateDynamicEvents(dt) {
+      updateRatSpawns(dt);
       if (state.missionDone && !state.freeRoam) return;
       if (state.time < state.nextDynamicEventAt) return;
       state.nextDynamicEventAt = state.time + BALANCE.dynamicEventMinDelay + Math.random() * (BALANCE.dynamicEventMaxDelay - BALANCE.dynamicEventMinDelay);
@@ -1856,11 +1887,12 @@
     }
 
     function nearestFeedable() {
+      // Rats in the sewers are small emergency feeding targets.
       let best = null;
       let bestD = Infinity;
       for (const n of npcs) {
         if (n.dead || n.stunned) continue;
-        if (n.type !== "civilian" && n.type !== "target") continue;
+        if (n.type !== "civilian" && n.type !== "target" && n.type !== "rat") continue;
         if (n.layer !== player.layer) continue;
         const d = Math.hypot(n.x - player.x, n.y - player.y);
         if (d < 21 && d < bestD) { best = n; bestD = d; }
@@ -2066,12 +2098,51 @@
     // Input / interacciones
     // ---------------------------------------------------------
 
+    function nearestHostilePedestrian() {
+      let best = null;
+      let bestD = Infinity;
+      for (const n of npcs) {
+        if (!n.hostileTimer || n.dead || n.stunned || n.layer !== player.layer) continue;
+        const d = Math.hypot(n.x - player.x, n.y - player.y);
+        if (d < 24 && d < bestD) { best = n; bestD = d; }
+      }
+      return best;
+    }
+
+    function shoveHostilePedestrian(n) {
+      if (!n) return false;
+      n.hostileTimer = 0;
+      n.stunned = true;
+      n.waitTimer = 1.6;
+      const dx = n.x - player.x;
+      const dy = n.y - player.y;
+      const len = Math.hypot(dx, dy) || 1;
+      n.x += (dx / len) * 26;
+      n.y += (dy / len) * 26;
+      addExposure(2, "A street scuffle draws eyes.");
+      say("You shove the pedestrian back. Enough to move, not enough to stay quiet.", 2.4);
+      return true;
+    }
+
+    function angerPedestrianNear(x, y) {
+      const candidates = npcs.filter(n => n.type === "civilian" && !n.dead && !n.stunned && n.layer === LAYER.STREET && Math.hypot(n.x - x, n.y - y) < 118);
+      if (!candidates.length || Math.random() > 0.45) return;
+      const n = candidates.sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
+      n.hostileTimer = 7.0;
+      n.suspiciousTimer = 4.0;
+      n.fleeTimer = 0;
+      say("A pedestrian snaps: 'Hey! What are you doing?' They come at you.", 2.8);
+    }
+
+
     function consumePressed(key) {
       if (pressed[key]) { pressed[key] = false; return true; }
       return false;
     }
 
     function handleAction() {
+      const hostile = nearestHostilePedestrian();
+      if (hostile && shoveHostilePedestrian(hostile)) return;
       if (state.feeding) {
         cancelFeeding("You cancel feeding.");
         return;
@@ -2213,14 +2284,20 @@
       state.stats.lightsBroken++;
       AudioBus.play("glass", 1.0);
 
+      if (state.time <= state.lampBreakWindowUntil) state.lampBreakChainCount++;
+      else state.lampBreakChainCount = 1;
+      state.lampBreakWindowUntil = state.time + 12;
+
       const witnesses = visibleWitnessList(145).filter(w => w.type !== "hunter");
-      addLocalHeat(witnesses.length > 0 ? 10 : 6, "streetlight vandalism", light.x, light.y, LAYER.STREET);
-      if (witnesses.length > 0) {
-        addExposure(4, `${light.name} broken in front of witnesses. Police may care, but this is still just vandalism.`);
-      } else {
-        addExposure(2, `${light.name} broken. Minor vandalism raises the district heat.`);
+      addLocalHeat(witnesses.length > 0 ? 12 : 8, "streetlight vandalism", light.x, light.y, LAYER.STREET);
+      addExposure(witnesses.length > 0 ? 5 : 3, `${light.name} broken. The avenue gets darker, but the district notices.`);
+      forceExposureLevel(1, "Alert level 1: breaking streetlights makes the district watch you.");
+      if (state.lampBreakChainCount >= 3) {
+        forceExposureLevel(2, "Alert level 2: repeated vandalism brings police pressure.");
+        callPoliceAttention(light.x, light.y, LAYER.STREET, "multiple streetlights broken in quick succession", 1.2);
       }
-      say("The lamp goes out. You create a useful shadow, but the street gets a little hotter.", 3);
+      angerPedestrianNear(light.x, light.y);
+      say("The lamp goes out. Useful shadow, higher alert.", 3);
     }
 
     function startFeeding(victim) {
@@ -2338,7 +2415,7 @@
       victim.corpseDiscovered = witnesses > 0;
       state.feedCount++;
       state.stats.feeds++;
-      const hungerDrop = victim.type === "target" ? BALANCE.targetFeedRelief : BALANCE.civilianFeedRelief;
+      const hungerDrop = victim.type === "target" ? BALANCE.targetFeedRelief : victim.type === "rat" ? 12 : BALANCE.civilianFeedRelief;
       player.hunger = Math.max(0, player.hunger - hungerDrop);
       state.beastUrge = 0;
       AudioBus.play(violentFeed ? "brutalFeed" : "feedFinish", violentFeed ? 1.25 : 0.95);
@@ -2505,7 +2582,7 @@
       if (beastStage().level >= 2 && !isHiddenPlace()) {
         createNoise(player.x, player.y, player.layer, 46, 1.4, "whisper", { supernatural: true, exposure: false, life: 0.5 });
       }
-      say(`Blood Sense [+${senseHunger} hunger]: the journalist, isolated civilians, trails, hunters and escape routes glow for a few seconds.${hungerWarning}`, hungerWarning ? 3.8 : 3.2);
+      say(`Blood Sense [+${senseHunger} hunger]: journalist, victims, rats, trails, hunters and escape routes glow for a few seconds.${hungerWarning}`, hungerWarning ? 3.8 : 3.2);
     }
 
     function inputDirection() {
@@ -2546,7 +2623,7 @@
       AudioBus.unlock();
       AudioBus.play("sense", 0.75);
       if (ui.startOverlay) ui.startOverlay.classList.add("hidden");
-      say("Clan order: leave the safehouse, locate the journalist, lure them away, eliminate them, then return unseen.", 5.5);
+      say("Clan order: leave the rooftop refuge, locate the journalist below, eliminate them your way, then get back above the street.", 5.5);
     }
 
     if (ui.startButton) ui.startButton.addEventListener("click", startGame);
@@ -2775,10 +2852,10 @@
 
       if (state.mission === 1 && !player.inSafehouse) {
         state.mission = 2;
-        say("Step 1: reach the pink-lit nightclub. The journalist is meeting a source nearby.", 4);
+        say("Step 1: descend from the rooftop and reach the pink-lit nightclub by the east avenue.", 4);
       }
 
-      if (state.mission === 2 && club && Math.hypot(player.x - club.x, player.y - club.y) < 105 && player.layer === LAYER.STREET) {
+      if (state.mission === 2 && club && Math.hypot(player.x - club.x, player.y - club.y) < 115 && player.layer === LAYER.STREET) {
         state.mission = 3;
         markTutorial("sense", "Soft tutorial: press F for Blood Sense. It marks the journalist, routes and dangerous evidence.", 4.5);
       }
@@ -2884,6 +2961,26 @@
         if (n.waitTimer > 0) {
           n.waitTimer -= dt;
           if (n.waitTimer <= 0) n.stunned = false;
+        }
+        return;
+      }
+      if (n.hostileTimer > 0) {
+        n.hostileTimer -= dt;
+        n.shoveCooldown = Math.max(0, (n.shoveCooldown || 0) - dt);
+        const ax = player.x - n.x;
+        const ay = player.y - n.y;
+        const len = Math.hypot(ax, ay) || 1;
+        moveEntity(n, (ax / len) * n.speed * 2.05, (ay / len) * n.speed * 2.05, dt);
+        if (len < 16 && n.shoveCooldown <= 0) {
+          n.shoveCooldown = 1.6;
+          const bx = player.x - n.x;
+          const by = player.y - n.y;
+          const blen = Math.hypot(bx, by) || 1;
+          const px = player.x + (bx / blen) * 18;
+          const py = player.y + (by / blen) * 18;
+          if (canStandAt(px, py)) { player.x = px; player.y = py; }
+          addExposure(2, "A pedestrian shoves you in the street.");
+          say("A pedestrian shoves you back. This street is awake now.", 1.8);
         }
         return;
       }
@@ -3170,7 +3267,7 @@
       const heatBonus = hot && hot.heat > 70 ? 1 : 0;
       const desiredPolice = Math.min(BALANCE.maxPolice, level + heatBonus);
       while (npcs.filter(n => n.type === "police" && !n.dead).length < desiredPolice) {
-        const spawn = Math.random() < 0.6 ? { x: 790, y: 218 } : edgeSpawn();
+        const spawn = { x: 780 + (Math.random() - 0.5) * 36, y: 178 + (Math.random() - 0.5) * 28 };
         const cop = makeNpc("police", spawn.x, spawn.y);
         cop.active = true;
         npcs.push(cop);
@@ -3179,7 +3276,7 @@
       if (level >= 4) {
         const desiredHunters = Math.min(BALANCE.maxHunters, Math.max(1, level - 3));
         while (npcs.filter(n => n.type === "hunter" && !n.dead && !n.hidden).length < desiredHunters) {
-          const spawn = edgeSpawn();
+          const spawn = { x: 742 + (Math.random() - 0.5) * 58, y: 474 + (Math.random() - 0.5) * 48 };
           const hunter = makeNpc("hunter", spawn.x, spawn.y);
           hunter.active = true;
           npcs.push(hunter);
@@ -3253,17 +3350,14 @@
       ctx.fillStyle = "#1a1d2b";
       ctx.fillRect(0, 0, WORLD_W, WORLD_H);
 
-      // Streets principales.
-      drawRoad(0, 322, WORLD_W, 70);
-      drawRoad(236, 0, 68, WORLD_H);
-      drawRoad(646, 0, 70, WORLD_H);
-      drawRoad(0, 538, WORLD_W, 52);
+      // Two main avenues crossing, plus service alleys.
+      drawRoad(0, 292, WORLD_W, 92);
+      drawRoad(426, 0, 92, WORLD_H);
+      drawRoad(90, 502, 790, 44);
+      drawRoad(246, 244, 474, 44);
+      drawRoad(96, 382, 198, 44);
 
-      // Dark alley.
-      ctx.fillStyle = "#141624";
-      ctx.fillRect(254, 286, 405, 46);
-      ctx.fillStyle = "#2b2e40";
-      for (let x = 260; x < 650; x += 24) ctx.fillRect(x, 306, 10, 2);
+      // Alleys are already drawn as roads and dark zones.
 
       drawShadowZones();
       drawLightSystem();
@@ -4004,6 +4098,7 @@
         if (n.hidden && !n.revealed) continue;
 
         let c = "#c8b58a";
+        if (n.type === "rat") c = "#9c8f7a";
         if (n.type === "target") c = "#ff4bd8";
         if (n.type === "police") c = "#4da3ff";
         if (n.type === "hunter") c = "#ff9d35";
@@ -4439,7 +4534,7 @@
     }
 
     function missionText() {
-      if (state.mission === 1) return "1/7 Leave the safehouse and take control of your district.";
+      if (state.mission === 1) return "1/7 Leave the rooftop refuge and descend into your district.";
       if (state.mission === 2) return "2/7 Reach the pink-lit nightclub where the journalist is meeting a source.";
       if (state.mission === 3) return "3/7 Press F to use Blood Sense and identify the journalist.";
       if (state.mission === 4) return "4/7 Press R near the journalist to whisper, preferably from shadow.";
