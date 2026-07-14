@@ -6,7 +6,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   create() {
-    this.panel = this.add.rectangle(14, 14, 610, 124, 0x05060b, 0.78).setOrigin(0, 0).setScrollFactor(0);
+    this.panel = this.add.rectangle(14, 14, 640, 140, 0x05060b, 0.78).setOrigin(0, 0).setScrollFactor(0);
     this.panel.setStrokeStyle(1, 0x2d3045, 1);
 
     this.title = this.add.text(26, 24, "Night Blood District · Phaser", {
@@ -33,19 +33,25 @@ export class UIScene extends Phaser.Scene {
       color: "#d7c8ff"
     }).setScrollFactor(0);
 
-    this.prompt = this.add.text(26, 97, "", {
+    this.npcs = this.add.text(26, 97, "NPCs: loading", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#c8b58a"
+    }).setScrollFactor(0);
+
+    this.prompt = this.add.text(26, 114, "", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#fff2a8"
     }).setScrollFactor(0);
 
-    this.lastAction = this.add.text(26, 112, "", {
+    this.lastAction = this.add.text(26, 129, "", {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#9d93b8"
     }).setScrollFactor(0);
 
-    this.phase = this.add.text(14, 606, "PHASE 4: mission skeleton + interaction modal + traversal/light rules", {
+    this.phase = this.add.text(14, 606, "PHASE 5: NPC basics + mission skeleton + interaction modal", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffb02e",
@@ -90,6 +96,7 @@ export class UIScene extends Phaser.Scene {
     const mission = this.registry.get("missionText") || "Objective unavailable";
     const status = this.registry.get("statusText") || "No status";
     const visibility = this.registry.get("visibilityText") || "Visibility unknown";
+    const npcText = this.registry.get("npcText") || "NPCs unavailable";
     const xy = this.registry.get("playerXY") || "0, 0";
     const menu = this.registry.get("interactionMenu");
     const prompt = menu
@@ -101,6 +108,7 @@ export class UIScene extends Phaser.Scene {
     this.objective.setText(`Objective: ${mission}`);
     this.status.setText(`${status} · ${xy}`);
     this.visibility.setText(`Visibility: ${visibility}`);
+    this.npcs.setText(`NPCs: ${npcText}`);
     this.prompt.setText(prompt);
     this.lastAction.setText(lastAction);
     this.renderInteractionMenu(menu);
