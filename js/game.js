@@ -3628,11 +3628,16 @@
 
     function drawBodyHideSpots() {
       if (player.layer !== LAYER.STREET || player.inSafehouse) return;
-      const shouldEmphasize = Boolean(state.draggingBody) || npcs.some(n => n.dead && !n.hiddenBody && n.layer === player.layer);
+
+      // Hide spots should only appear when the player actually has evidence to hide.
+      // Otherwise they read as generic interactables and add noise to exploration.
+      const hasBodyToHide = Boolean(state.draggingBody) || npcs.some(n => n.dead && !n.hiddenBody && n.layer === player.layer);
+      if (!hasBodyToHide) return;
+
       for (const s of bodyHideSpots) {
         if (s.layer !== player.layer) continue;
         const near = Math.hypot(player.x - s.x, player.y - s.y) < s.r;
-        const alpha = shouldEmphasize || near ? 0.30 : 0.11;
+        const alpha = near ? 0.30 : 0.11;
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
         ctx.strokeStyle = near ? "rgba(120,199,163,.72)" : `rgba(120,199,163,${alpha})`;
@@ -3646,9 +3651,9 @@
         ctx.fillRect(Math.floor(s.x - 5), Math.floor(s.y - 3), 10, 6);
         ctx.fillStyle = "rgba(0,0,0,.55)";
         ctx.fillRect(Math.floor(s.x - 3), Math.floor(s.y - 1), 6, 2);
-        if (near || shouldEmphasize) {
+        if (near) {
           ctx.font = "8px monospace";
-          ctx.fillStyle = near ? "#d7ffec" : "rgba(215,255,236,.50)";
+          ctx.fillStyle = "#d7ffec";
           ctx.fillText("HIDE", Math.floor(s.x + 8), Math.floor(s.y - 8));
         }
       }
