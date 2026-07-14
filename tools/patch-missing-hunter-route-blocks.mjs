@@ -7,7 +7,9 @@ if (!content.includes('this.drawHunterRouteBlocks();')) {
   throw new Error('Expected redrawLayer to call drawHunterRouteBlocks, but call was not found.');
 }
 
-if (!content.includes('drawHunterRouteBlocks()')) {
+const hasMethod = content.includes('\n  drawHunterRouteBlocks() {');
+
+if (!hasMethod) {
   const method = `
   drawHunterRouteBlocks() {
     const blocks = this.hunterSystem?.routeBlocks || [];
@@ -28,7 +30,7 @@ if (!content.includes('drawHunterRouteBlocks()')) {
   fs.writeFileSync(file, content);
   console.log('Inserted drawHunterRouteBlocks method.');
 } else {
-  console.log('drawHunterRouteBlocks already exists.');
+  console.log('drawHunterRouteBlocks method already exists.');
 }
 
 console.log('Hunter route blocks patch checked at', new Date().toISOString());
