@@ -37,6 +37,7 @@ export class NpcSystem {
       reportTarget: null,
       reportSeverity: 0,
       witnessReason: "",
+      luredTimer: 0,
       wait: def.behavior === "loiter" || def.behavior === "guard" || def.behavior === "hidden" ? 999 : 0.4 + Math.random() * 1.2,
       aiTimer: 0.6 + Math.random() * 1.8,
       container
@@ -70,7 +71,15 @@ export class NpcSystem {
   }
 
   updateNpc(npc, dt) {
-    if (npc.dead || npc.inactive || npc.alarmed || npc.intercepted || npc.behavior === "guard" || npc.behavior === "hidden") return;
+    if (npc.dead || npc.inactive || npc.intercepted || npc.behavior === "guard" || npc.behavior === "hidden") return;
+
+    if (npc.luredTimer > 0 && !npc.alarmed) {
+      npc.luredTimer = Math.max(0, npc.luredTimer - dt);
+      this.moveToward(npc, this.scene.player.x, this.scene.player.y, dt, 1.18);
+      return;
+    }
+
+    if (npc.alarmed) return;
     if (npc.behavior === "loiter") return;
 
     npc.aiTimer -= dt;
@@ -93,6 +102,17 @@ export class NpcSystem {
     else npc.vx *= -0.45;
     if (this.canNpcStandAt(npc, npc.x, ny)) npc.y = ny;
     else npc.vy *= -0.45;
+  }
+
+  moveToward(npc, x, y, dt, speedMul = 1) {
+    const dx = x - npc.x;
+    const dy = y - npc.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const speed = (npc.speed || 10) * speedMul;
+    const nx = npc.x + (dx / len) * speed * dt;
+    const ny = npc.y + (dy / len) * speed * dt;
+    if (this.canNpcStandAt(npc, nx, npc.y)) npc.x = nx;
+    if (this.canNpcStandAt(npc, npc.x, ny)) npc.y = ny;
   }
 
   canNpcStandAt(npc, x, y) {
@@ -135,6 +155,7 @@ export class NpcSystem {
     npc.hiddenBody = false;
     npc.dragged = false;
     npc.alarmed = false;
+    npc.luredTimer = 0;
     npc.vx = 0;
     npc.vy = 0;
     npc.container.removeAll(true);
@@ -161,9 +182,11 @@ export class NpcSystem {
     const visible = this.npcs.filter(n => this.isVisible(n)).length;
     const bodies = this.npcs.filter(n => n.dead && this.isVisible(n)).length;
     const alarmed = this.npcs.filter(n => n.alarmed && this.isVisible(n)).length;
+    const lured = this.npcs.filter(n => n.luredTimer > 0 && this.isVisible(n)).length;
     const rats = this.npcs.filter(n => n.type === NPC_TYPES.RAT && !n.dead && this.isVisible(n)).length;
     const targetVisible = this.npcs.some(n => n.type === NPC_TYPES.TARGET && !n.dead && this.isVisible(n));
     if (alarmed) return `${visible} NPC/body marker(s) · ${alarmed} witness(es) fleeing`;
+    if (lured) return `${visible} NPC/body marker(s) · ${lured} lured`;
     if (bodies) return `${visible} NPC/body marker(s) · ${bodies} corpse(s)`;
     if (rats) return `${visible} NPC(s) visible · ${rats} rat(s)`;
     if (targetVisible) return `${visible} NPC(s) visible · journalist present`;
