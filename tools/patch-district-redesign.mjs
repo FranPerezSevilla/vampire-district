@@ -1,3 +1,4 @@
+// District redesign patch v2
 import fs from "node:fs";
 
 const file = "js/game.js";
@@ -568,14 +569,6 @@ replace(
 // ---------------------------------------------------------
 // Lamp breaking = alert level 1 minimum, repeated = level 2; nearby civilians may fight.
 // ---------------------------------------------------------
-insertAfter(
-  "force exposure level helper",
-  `function addExposure(amount, reason) {`,
-  `
-      // addExposure handles ordinary increments; forceExposureLevel is used for wanted-style thresholds.
-`
-);
-
 insertAfter(
   "force exposure level function",
   `    }
