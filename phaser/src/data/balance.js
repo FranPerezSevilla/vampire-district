@@ -27,7 +27,16 @@ export const HUNGER = Object.freeze({
   ratRelief: 12,
   targetFeedSeconds: 2.4,
   civilianFeedSeconds: 2.2,
-  ratFeedSeconds: 1.0
+  ratFeedSeconds: 1.0,
+  dashCost: 12,
+  whisperCost: 8,
+  senseCost: 3,
+  dashCooldown: 3.0,
+  whisperCooldown: 4.8,
+  senseCooldown: 4.0,
+  dashDistance: 76,
+  whisperSeconds: 6.0,
+  senseSeconds: 5.0
 });
 
 export const COLORS = Object.freeze({
