@@ -1,0 +1,35 @@
+name: Patch missing hunter route blocks
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - tools/patch-missing-hunter-route-blocks.mjs
+      - .github/workflows/patch-missing-hunter-route-blocks.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply patch
+        run: node tools/patch-missing-hunter-route-blocks.mjs
+      - name: Validate module imports
+        run: node --check phaser/src/scenes/GameScene.js && node --check phaser/src/systems/HunterSystem.js
+      - name: Commit changes
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add phaser/src/scenes/GameScene.js
+          git commit -m "Fix missing hunter route blocks renderer"
+          git push
