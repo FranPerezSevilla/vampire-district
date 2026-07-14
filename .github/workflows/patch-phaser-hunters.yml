@@ -1,0 +1,29 @@
+name: Patch Phaser Hunters
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - tools/patch-phaser-hunters.mjs
+      - .github/workflows/patch-phaser-hunters.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply hunters patch
+        run: node tools/patch-phaser-hunters.mjs
+      - name: Validate Phaser modules
+        run: node --check phaser/src/systems/HunterSystem.js && node --check phaser/src/scenes/GameScene.js && node --check phaser/src/scenes/UIScene.js
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Apply Phaser hunters system
+          file_pattern: phaser/src/systems/HunterSystem.js phaser/src/scenes/GameScene.js phaser/src/scenes/UIScene.js index.html phaser/index.html
