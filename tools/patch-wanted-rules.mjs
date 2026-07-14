@@ -84,9 +84,9 @@ replaceOnce(
       const witnesses = visibleWitnessList(145).filter(w => w.type !== "hunter");
       addLocalHeat(witnesses.length > 0 ? 10 : 6, "streetlight vandalism", light.x, light.y, LAYER.STREET);
       if (witnesses.length > 0) {
-        addExposure(4, `${light.name} broken in front of witnesses. Police may care, but this is still just vandalism.`);
+        addExposure(4, \`${light.name} broken in front of witnesses. Police may care, but this is still just vandalism.\`);
       } else {
-        addExposure(2, `${light.name} broken. Minor vandalism raises the district heat.`);
+        addExposure(2, \`${light.name} broken. Minor vandalism raises the district heat.\`);
       }
       say("The lamp goes out. You create a useful shadow, but the street gets a little hotter.", 3);
     }
