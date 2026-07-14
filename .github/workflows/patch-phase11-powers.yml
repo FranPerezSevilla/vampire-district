@@ -1,0 +1,29 @@
+name: Patch Phaser phase 11 powers
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/patch-phase11-powers.mjs'
+      - '.github/workflows/patch-phase11-powers.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply powers patch
+        run: node tools/patch-phase11-powers.mjs
+      - name: Validate module syntax
+        run: node --check phaser/src/scenes/GameScene.js && node --check phaser/src/systems/PowersSystem.js && node --check phaser/src/scenes/UIScene.js
+      - name: Commit generated changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Apply Phaser phase 11 powers
+          file_pattern: 'phaser/src/**/*.js index.html phaser/index.html'
