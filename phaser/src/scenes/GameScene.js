@@ -14,6 +14,7 @@ import {
 } from "../data/district.js";
 import { InteractionSystem } from "../systems/InteractionSystem.js";
 import { MissionSystem } from "../systems/MissionSystem.js";
+import { NpcSystem } from "../systems/NpcSystem.js";
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -67,6 +68,7 @@ export class GameScene extends Phaser.Scene {
 
     this.interactionSystem = new InteractionSystem(this);
     this.missionSystem = new MissionSystem(this);
+    this.npcSystem = new NpcSystem(this);
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.redrawLayer(this.lastActionText);
@@ -79,6 +81,7 @@ export class GameScene extends Phaser.Scene {
     if (this.interactionSystem.isOpen) {
       this.interactionSystem.updateInput(this.keys);
       this.nearestInteraction = null;
+      this.npcSystem.refreshVisibility();
       this.updateCameraForLayer();
       this.drawPromptMarker();
       this.publishState();
@@ -101,6 +104,7 @@ export class GameScene extends Phaser.Scene {
 
     if (!this.interactionSystem.isOpen) {
       this.updatePlayerMovement(dt);
+      this.npcSystem.update(dt);
       this.missionSystem.update();
       this.nearestInteraction = this.findNearestInteraction(this.collectInteractions());
     }
@@ -122,6 +126,7 @@ export class GameScene extends Phaser.Scene {
     this.player.setPosition(position.x, position.y);
     this.lastActionText = status || "Layer changed.";
     this.redrawLayer(this.lastActionText);
+    this.npcSystem?.refreshVisibility();
   }
 
   updatePlayerMovement(dt) {
@@ -327,6 +332,7 @@ export class GameScene extends Phaser.Scene {
     this.registry.set("statusText", `${layerName} · ${zone}`);
     this.registry.set("visibilityText", this.visibilityText());
     this.registry.set("missionText", this.missionSystem.objectiveText());
+    this.registry.set("npcText", this.npcSystem ? this.npcSystem.summary() : "NPCs loading");
     this.registry.set("playerXY", `${Math.round(this.player.x)}, ${Math.round(this.player.y)}`);
     this.registry.set("interactionPrompt", this.interactionSystem.isOpen ? "" : this.nearestInteraction ? `E: ${this.nearestInteraction.label}` : "");
     this.registry.set("lastActionText", this.lastActionText);
@@ -380,6 +386,7 @@ export class GameScene extends Phaser.Scene {
 
     this.drawRouteMarkers();
     this.drawMissionMarker();
+    this.npcSystem?.refreshVisibility();
     if (statusText) this.registry.set("lastActionText", statusText);
   }
 
