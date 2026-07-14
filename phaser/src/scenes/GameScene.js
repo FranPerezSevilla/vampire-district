@@ -12,6 +12,7 @@ import {
   sewerTunnels,
   shadowZones
 } from "../data/district.js";
+import { InteractionSystem } from "../systems/InteractionSystem.js";
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -49,28 +50,58 @@ export class GameScene extends Phaser.Scene {
       d: Phaser.Input.Keyboard.KeyCodes.D,
       shift: Phaser.Input.Keyboard.KeyCodes.SHIFT,
       interact: Phaser.Input.Keyboard.KeyCodes.E,
+      enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
+      escape: Phaser.Input.Keyboard.KeyCodes.ESC,
+      space: Phaser.Input.Keyboard.KeyCodes.SPACE,
       street: Phaser.Input.Keyboard.KeyCodes.ONE,
       roofLow: Phaser.Input.Keyboard.KeyCodes.TWO,
       roofHigh: Phaser.Input.Keyboard.KeyCodes.THREE,
-      sewer: Phaser.Input.Keyboard.KeyCodes.FOUR
+      sewer: Phaser.Input.Keyboard.KeyCodes.FOUR,
+      five: Phaser.Input.Keyboard.KeyCodes.FIVE,
+      six: Phaser.Input.Keyboard.KeyCodes.SIX,
+      seven: Phaser.Input.Keyboard.KeyCodes.SEVEN,
+      eight: Phaser.Input.Keyboard.KeyCodes.EIGHT,
+      nine: Phaser.Input.Keyboard.KeyCodes.NINE
     });
+
+    this.interactionSystem = new InteractionSystem(this);
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.redrawLayer(this.lastActionText);
+    this.publishState();
   }
 
   update(_time, deltaMs) {
     const dt = Math.min(deltaMs / 1000, 0.05);
-    this.handleLayerDebugKeys();
 
-    this.nearestInteraction = this.findNearestInteraction();
-    if (Phaser.Input.Keyboard.JustDown(this.keys.interact) && this.nearestInteraction) {
-      this.runInteraction(this.nearestInteraction);
-      this.nearestInteraction = this.findNearestInteraction();
+    if (this.interactionSystem.isOpen) {
+      this.interactionSystem.updateInput(this.keys);
+      this.nearestInteraction = null;
+      this.updateCameraForLayer();
+      this.drawPromptMarker();
+      this.publishState();
+      return;
     }
 
-    this.updatePlayerMovement(dt);
-    this.nearestInteraction = this.findNearestInteraction();
+    this.handleLayerDebugKeys();
+
+    const availableActions = this.collectInteractions();
+    this.nearestInteraction = this.findNearestInteraction(availableActions);
+
+    if (Phaser.Input.Keyboard.JustDown(this.keys.interact)) {
+      const handled = this.interactionSystem.handleAction(availableActions);
+      if (handled) {
+        this.nearestInteraction = this.interactionSystem.isOpen
+          ? null
+          : this.findNearestInteraction(this.collectInteractions());
+      }
+    }
+
+    if (!this.interactionSystem.isOpen) {
+      this.updatePlayerMovement(dt);
+      this.nearestInteraction = this.findNearestInteraction(this.collectInteractions());
+    }
+
     this.updateCameraForLayer();
     this.drawPromptMarker();
     this.publishState();
@@ -121,10 +152,9 @@ export class GameScene extends Phaser.Scene {
     return !buildings.some(b => this.rectsOverlap({ x: x - 5, y: y - 7, w: 10, h: 14 }, b));
   }
 
-  findNearestInteraction() {
-    const options = this.collectInteractions();
-    options.sort((a, b) => a.distance - b.distance);
-    return options[0] || null;
+  findNearestInteraction(options = this.collectInteractions()) {
+    const sorted = this.interactionSystem.sortOptions(options);
+    return sorted[0] || null;
   }
 
   collectInteractions() {
@@ -137,13 +167,15 @@ export class GameScene extends Phaser.Scene {
         const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, light.x, light.y);
         if (d <= 32) {
           options.push({
+            id: `break_${light.id}`,
             type: "breakLight",
-            label: `E: break ${light.name}`,
+            label: `Break ${light.name}`,
+            detail: "creates shadow · raises suspicion later",
+            priority: 80,
             distance: d,
             x: light.x,
             y: light.y,
-            light,
-            status: `${light.name} broken. The light dies and the street becomes safer for you.`
+            run: () => this.breakLight(light)
           });
         }
       }
@@ -154,14 +186,15 @@ export class GameScene extends Phaser.Scene {
         const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, escape.street.x, escape.street.y);
         if (d <= radius) {
           options.push({
+            id: `${escape.id}_up`,
             type: "fireEscapeUp",
-            label: `E: climb ${escape.name}`,
+            label: `Climb ${escape.name}`,
+            detail: "street → rooftop",
+            priority: 40,
             distance: d,
             x: escape.street.x,
             y: escape.street.y,
-            targetLayer: escape.roof.layer,
-            target: { x: escape.roof.x, y: escape.roof.y },
-            status: `You climb the ${escape.name} to the roof.`
+            run: () => this.switchLayer(escape.roof.layer, { x: escape.roof.x, y: escape.roof.y }, `You climb the ${escape.name} to the roof.`)
           });
         }
       }
@@ -170,14 +203,15 @@ export class GameScene extends Phaser.Scene {
         const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, escape.roof.x, escape.roof.y);
         if (d <= radius) {
           options.push({
+            id: `${escape.id}_down`,
             type: "fireEscapeDown",
-            label: `E: descend ${escape.name}`,
+            label: `Descend ${escape.name}`,
+            detail: "rooftop → street",
+            priority: 40,
             distance: d,
             x: escape.roof.x,
             y: escape.roof.y,
-            targetLayer: LAYERS.STREET,
-            target: { x: escape.street.x, y: escape.street.y },
-            status: `You climb down the ${escape.name} to street level.`
+            run: () => this.switchLayer(LAYERS.STREET, { x: escape.street.x, y: escape.street.y }, `You climb down the ${escape.name} to street level.`)
           });
         }
       }
@@ -188,14 +222,15 @@ export class GameScene extends Phaser.Scene {
         const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, access.street.x, access.street.y);
         if (d <= radius) {
           options.push({
+            id: `${access.id}_down`,
             type: "sewerDown",
-            label: `E: enter ${access.name}`,
+            label: `Enter ${access.name}`,
+            detail: "street → sewers",
+            priority: 35,
             distance: d,
             x: access.street.x,
             y: access.street.y,
-            targetLayer: LAYERS.SEWER,
-            target: { x: access.sewer.x, y: access.sewer.y },
-            status: `You descend through the ${access.name}.`
+            run: () => this.switchLayer(LAYERS.SEWER, { x: access.sewer.x, y: access.sewer.y }, `You descend through the ${access.name}.`)
           });
         }
       }
@@ -207,14 +242,15 @@ export class GameScene extends Phaser.Scene {
           const target = access.roof ? access.roof : access.street;
           if (target) {
             options.push({
+              id: `${access.id}_up`,
               type: access.roof ? "privateShaft" : "sewerUp",
-              label: access.roof ? "E: climb private shaft to refuge" : `E: exit ${access.name}`,
+              label: access.roof ? "Climb private shaft to refuge" : `Exit ${access.name}`,
+              detail: access.roof ? "sewers → rooftop refuge" : "sewers → street",
+              priority: access.roof ? 55 : 35,
               distance: d,
               x: access.sewer.x,
               y: access.sewer.y,
-              targetLayer,
-              target: { x: target.x, y: target.y },
-              status: access.roof ? "You climb the private shaft onto your rooftop refuge." : `You climb out through the ${access.name}.`
+              run: () => this.switchLayer(targetLayer, { x: target.x, y: target.y }, access.roof ? "You climb the private shaft onto your rooftop refuge." : `You climb out through the ${access.name}.`)
             });
           }
         }
@@ -226,14 +262,15 @@ export class GameScene extends Phaser.Scene {
         const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, route.ax, route.ay);
         if (d <= radius) {
           options.push({
+            id: `${route.id}_a_to_b`,
             type: "roofJump",
-            label: `E: ${route.aToB}`,
+            label: route.aToB,
+            detail: "rooftop jump",
+            priority: 45,
             distance: d,
             x: route.ax,
             y: route.ay,
-            targetLayer: route.bLayer,
-            target: { x: route.bx, y: route.by },
-            status: `You leap across: ${route.aToB}.`
+            run: () => this.switchLayer(route.bLayer, { x: route.bx, y: route.by }, `You leap across: ${route.aToB}.`)
           });
         }
       }
@@ -242,29 +279,21 @@ export class GameScene extends Phaser.Scene {
         const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, route.bx, route.by);
         if (d <= radius) {
           options.push({
+            id: `${route.id}_b_to_a`,
             type: "roofJump",
-            label: `E: ${route.bToA}`,
+            label: route.bToA,
+            detail: "rooftop jump",
+            priority: 45,
             distance: d,
             x: route.bx,
             y: route.by,
-            targetLayer: route.aLayer,
-            target: { x: route.ax, y: route.ay },
-            status: `You leap across: ${route.bToA}.`
+            run: () => this.switchLayer(route.aLayer, { x: route.ax, y: route.ay }, `You leap across: ${route.bToA}.`)
           });
         }
       }
     }
 
     return options;
-  }
-
-  runInteraction(interaction) {
-    if (!interaction) return;
-    if (interaction.type === "breakLight") {
-      this.breakLight(interaction.light);
-      return;
-    }
-    this.switchLayer(interaction.targetLayer, interaction.target, interaction.status);
   }
 
   breakLight(light) {
@@ -293,8 +322,9 @@ export class GameScene extends Phaser.Scene {
     this.registry.set("statusText", `${layerName} · ${zone}`);
     this.registry.set("visibilityText", this.visibilityText());
     this.registry.set("playerXY", `${Math.round(this.player.x)}, ${Math.round(this.player.y)}`);
-    this.registry.set("interactionPrompt", this.nearestInteraction ? this.nearestInteraction.label : "");
+    this.registry.set("interactionPrompt", this.interactionSystem.isOpen ? "" : this.nearestInteraction ? `E: ${this.nearestInteraction.label}` : "");
     this.registry.set("lastActionText", this.lastActionText);
+    this.registry.set("interactionMenu", this.interactionSystem.snapshot());
   }
 
   describeCurrentZone() {
@@ -324,7 +354,7 @@ export class GameScene extends Phaser.Scene {
   currentShadow() {
     if (this.currentLayer !== LAYERS.STREET) return null;
     const brokenLamp = lights.find(l => this.brokenLights.has(l.id) && Phaser.Math.Distance.Between(this.player.x, this.player.y, l.x, l.y) < l.radius * 0.72);
-    if (brokenLamp) return { id: `broken-${brokenLamp.id}`, name: `broken light shadow` };
+    if (brokenLamp) return { id: `broken-${brokenLamp.id}`, name: "broken light shadow" };
     return shadowZones.find(z => this.pointInRect(this.player.x, this.player.y, z)) || null;
   }
 
