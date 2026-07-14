@@ -30,13 +30,13 @@
 
     for (const item of items) {
       if (!isHunterNpc(item)) {
-        accepted.push(item);
+        accepted[accepted.length] = item;
         continue;
       }
 
       if (!uniqueHunter) {
         uniqueHunter = item;
-        accepted.push(item);
+        accepted[accepted.length] = item;
         continue;
       }
 
