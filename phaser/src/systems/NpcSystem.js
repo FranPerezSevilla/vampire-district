@@ -28,6 +28,12 @@ export class NpcSystem {
       vy: Math.sin(angle) * (def.speed || 0),
       dead: false,
       fed: false,
+      alarmed: false,
+      intercepted: false,
+      hasReported: false,
+      reportTarget: null,
+      reportSeverity: 0,
+      witnessReason: "",
       wait: def.behavior === "loiter" || def.behavior === "guard" || def.behavior === "hidden" ? 999 : 0.4 + Math.random() * 1.2,
       aiTimer: 0.6 + Math.random() * 1.8,
       container
@@ -61,7 +67,7 @@ export class NpcSystem {
   }
 
   updateNpc(npc, dt) {
-    if (npc.dead || npc.inactive || npc.behavior === "guard" || npc.behavior === "hidden") return;
+    if (npc.dead || npc.inactive || npc.alarmed || npc.intercepted || npc.behavior === "guard" || npc.behavior === "hidden") return;
     if (npc.behavior === "loiter") return;
 
     npc.aiTimer -= dt;
@@ -95,7 +101,7 @@ export class NpcSystem {
   }
 
   isVisible(npc) {
-    if (npc.inactive && npc.type !== NPC_TYPES.RAT) return false;
+    if (npc.inactive && npc.type !== NPC_TYPES.RAT && !npc.intercepted) return false;
     return npc.layer === this.scene.currentLayer;
   }
 
@@ -107,7 +113,7 @@ export class NpcSystem {
     let best = null;
     let bestD = Infinity;
     for (const npc of this.npcs) {
-      if (npc.layer !== layer || npc.inactive || npc.dead) continue;
+      if (npc.layer !== layer || npc.inactive || npc.dead || npc.intercepted) continue;
       if (![NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET, NPC_TYPES.RAT].includes(npc.type)) continue;
       const d = Phaser.Math.Distance.Between(x, y, npc.x, npc.y);
       if (d < radius && d < bestD) {
@@ -122,6 +128,7 @@ export class NpcSystem {
     if (!npc || npc.dead) return;
     npc.dead = true;
     npc.fed = true;
+    npc.alarmed = false;
     npc.vx = 0;
     npc.vy = 0;
     npc.container.removeAll(true);
@@ -140,11 +147,17 @@ export class NpcSystem {
     npc.container.add([body, head, label]);
   }
 
+  visibleBodies(layer = this.scene.currentLayer) {
+    return this.npcs.filter(n => n.dead && !n.hiddenBody && n.layer === layer);
+  }
+
   summary() {
     const visible = this.npcs.filter(n => this.isVisible(n)).length;
     const bodies = this.npcs.filter(n => n.dead && this.isVisible(n)).length;
+    const alarmed = this.npcs.filter(n => n.alarmed && this.isVisible(n)).length;
     const rats = this.npcs.filter(n => n.type === NPC_TYPES.RAT && !n.dead && this.isVisible(n)).length;
     const targetVisible = this.npcs.some(n => n.type === NPC_TYPES.TARGET && !n.dead && this.isVisible(n));
+    if (alarmed) return `${visible} NPC/body marker(s) · ${alarmed} witness(es) fleeing`;
     if (bodies) return `${visible} NPC/body marker(s) · ${bodies} corpse(s)`;
     if (rats) return `${visible} NPC(s) visible · ${rats} rat(s)`;
     if (targetVisible) return `${visible} NPC(s) visible · journalist present`;
