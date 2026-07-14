@@ -2239,15 +2239,8 @@
       state.dragWitnessTimer = Math.max(0, state.dragWitnessTimer - dt);
       state.dragNoiseTimer = Math.max(0, state.dragNoiseTimer - dt);
       state.dragBloodTimer = Math.max(0, state.dragBloodTimer - dt);
-      if (!player.inSafehouse && player.layer === LAYER.STREET && state.dragNoiseTimer <= 0) {
-        createNoise(body.x, body.y, body.layer, 52, 1.35, "drag", { exposure: false, life: 0.55 });
-        state.dragNoiseTimer = 0.95;
-      }
-      if (!player.inSafehouse && state.dragBloodTimer <= 0) {
-        const messy = body.beastKilled || body.corpseDiscovered;
-        createBloodStain(body.x, body.y, body.layer, { kind: "drag", size: messy ? 5 : 3, spread: 10, brutal: messy, message: false });
-        state.dragBloodTimer = messy ? 0.72 : 1.15;
-      }
+      // Dragging a body is visually risky if someone sees it, but it should not emit automatic noise
+      // or create blood trails. Evidence comes from the corpse being visible, not from a passive trail.
       const witnesses = visibleWitnessList(145, body).filter(w => w !== body);
       if (witnesses.length > 0 && !isHiddenPlace() && state.dragWitnessTimer <= 0) {
         state.dragWitnessTimer = 2.4;
@@ -2456,14 +2449,8 @@
       const whisperHunger = powerHungerFor("whisper");
       const hungerWarning = addPowerHunger(whisperHunger, "Whisper");
       AudioBus.play("whisper", 1.0);
-
-      // The whisper is a subtle power, not a free button: if someone sees you
-      // using it, the Masquerade cracks even if you are near shadow.
-      const witnessList = visibleWitnessList(150, target).filter(n => n !== target);
-      const witnesses = witnessList.length;
-      const shadow = getShadowZoneAt(player.x, player.y);
-      const authorityWitnesses = witnessList.filter(n => n.type === "police" || n.type === "hunter").length;
-
+      // Whisper is intentionally subtle: it should lure the target without making bystanders suspicious.
+      // Its cost is hunger and positioning, not automatic witness suspicion.
       target.luredTimer = target.type === "target" ? 7.5 : 4.5;
       state.usedWhisper = true;
       if (target.type === "target") state.targetLured = true;
@@ -2471,38 +2458,13 @@
       target.stunned = false;
       target.waitTimer = 0;
       target.aiTimer = 0.2;
-      target.suspiciousTimer = 1.5;
+      target.suspiciousTimer = 0;
       player.lureCooldown = 5.5 * beastStage().whisperCooldownMul;
-      if (beastStage().level >= 2) {
-        createNoise(player.x, player.y, player.layer, 58, 2.6, "whisper", { supernatural: true, exposure: false, life: 0.65 });
-      }
-      exposeToCameras(3, "A camera catches the supernatural whisper", player.x, player.y, player.layer);
 
-      if (witnesses > 0) {
-        if (shadow && authorityWitnesses === 0) {
-          for (const n of witnessList) n.suspiciousTimer = Math.max(n.suspiciousTimer || 0, 1.6);
-          say(`Shadow muffles the whisper. ${witnesses} civilian eye(s) hesitate, but no one reports it yet.${hungerWarning}`, hungerWarning ? 3.4 : 2.8);
-        } else {
-          for (const n of witnessList) {
-            if (n.type === "civilian" || n.type === "target") alarmWitness(n, "a supernatural whisper", shadow ? 7 : 10);
-            if (n.type === "police" || n.type === "hunter") {
-              n.active = true;
-              n.alertTimer = Math.max(n.alertTimer || 0, 3.5);
-              n.lastSeen = { x: player.x, y: player.y };
-            }
-          }
-          const baseGain = 3 + witnesses * 2 + authorityWitnesses * 4;
-          const gain = shadow ? Math.ceil(baseGain * 0.35) : baseGain;
-          addExposure(gain, shadow
-            ? `Authority notices your whisper from the shadows: +${gain} exposure.`
-            : `Whisper seen by ${witnesses} witness(es): exposure rises.`);
-        }
-      } else {
-        const baseMessage = target.type === "target"
-          ? `You whisper to the target [+${whisperHunger} hunger]. They will follow you for a few seconds.`
-          : `You whisper to a civilian [+${whisperHunger} hunger]. They approach, confused.`;
-        say(`${baseMessage}${hungerWarning}`, hungerWarning ? 3.4 : 2.6);
-      }
+      const baseMessage = target.type === "target"
+        ? `You whisper to the target [+${whisperHunger} hunger]. They will follow you for a few seconds.`
+        : `You whisper to a civilian [+${whisperHunger} hunger]. They approach, confused.`;
+      say(`${baseMessage}${hungerWarning}`, hungerWarning ? 3.4 : 2.6);
     }
 
     function shadowDash() {
