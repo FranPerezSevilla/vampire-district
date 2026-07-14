@@ -20,6 +20,7 @@ import { InteractionSystem } from "../systems/InteractionSystem.js";
 import { MissionSystem } from "../systems/MissionSystem.js";
 import { NpcSystem } from "../systems/NpcSystem.js";
 import { PoliceSystem } from "../systems/PoliceSystem.js";
+import { PowersSystem } from "../systems/PowersSystem.js";
 import { WitnessSystem } from "../systems/WitnessSystem.js";
 
 export class GameScene extends Phaser.Scene {
@@ -58,6 +59,9 @@ export class GameScene extends Phaser.Scene {
       d: Phaser.Input.Keyboard.KeyCodes.D,
       shift: Phaser.Input.Keyboard.KeyCodes.SHIFT,
       interact: Phaser.Input.Keyboard.KeyCodes.E,
+      dash: Phaser.Input.Keyboard.KeyCodes.Q,
+      whisper: Phaser.Input.Keyboard.KeyCodes.R,
+      sense: Phaser.Input.Keyboard.KeyCodes.F,
       enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
       escape: Phaser.Input.Keyboard.KeyCodes.ESC,
       space: Phaser.Input.Keyboard.KeyCodes.SPACE,
@@ -81,6 +85,7 @@ export class GameScene extends Phaser.Scene {
     this.evidenceSystem = new EvidenceSystem(this);
     this.policeSystem = new PoliceSystem(this);
     this.hunterSystem = new HunterSystem(this);
+    this.powersSystem = new PowersSystem(this);
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.redrawLayer(this.lastActionText);
@@ -101,6 +106,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.handleLayerDebugKeys();
+    this.powersSystem.update(dt, this.keys);
 
     const availableActions = this.collectInteractions();
     this.nearestInteraction = this.findNearestInteraction(availableActions);
@@ -369,6 +375,7 @@ export class GameScene extends Phaser.Scene {
     this.registry.set("missionText", this.missionSystem.objectiveText());
     this.registry.set("npcText", this.npcSystem ? this.npcSystem.summary() : "NPCs loading");
     this.registry.set("hungerText", this.feedingSystem ? this.feedingSystem.summary() : "Hunger loading");
+    this.registry.set("powersText", this.powersSystem ? this.powersSystem.summary() : "Powers loading");
     this.registry.set("exposureText", this.exposureSystem ? this.exposureSystem.summary() : "Exposure loading");
     this.registry.set("witnessText", this.witnessSystem ? this.witnessSystem.summary() : "Witnesses loading");
     this.registry.set("evidenceText", this.evidenceSystem ? this.evidenceSystem.summary() : "Evidence loading");

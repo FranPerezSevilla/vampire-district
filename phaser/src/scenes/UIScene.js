@@ -6,7 +6,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   create() {
-    this.panel = this.add.rectangle(14, 14, 710, 244, 0x05060b, 0.78).setOrigin(0, 0).setScrollFactor(0);
+    this.panel = this.add.rectangle(14, 14, 720, 262, 0x05060b, 0.78).setOrigin(0, 0).setScrollFactor(0);
     this.panel.setStrokeStyle(1, 0x2d3045, 1);
 
     this.title = this.add.text(26, 24, "Night Blood District · Phaser", {
@@ -75,19 +75,25 @@ export class UIScene extends Phaser.Scene {
       color: "#ff3b50"
     }).setScrollFactor(0);
 
-    this.prompt = this.add.text(26, 216, "", {
+    this.powers = this.add.text(26, 216, "Powers: loading", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#a75cff"
+    }).setScrollFactor(0);
+
+    this.prompt = this.add.text(26, 233, "", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#fff2a8"
     }).setScrollFactor(0);
 
-    this.lastAction = this.add.text(26, 231, "", {
+    this.lastAction = this.add.text(26, 248, "", {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#9d93b8"
     }).setScrollFactor(0);
 
-    this.phase = this.add.text(14, 606, "PHASE 10: hunters + route blocking", {
+    this.phase = this.add.text(14, 606, "PHASE 11: powers + Blood Sense polish", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffb02e",
@@ -139,11 +145,12 @@ export class UIScene extends Phaser.Scene {
     const evidenceText = this.registry.get("evidenceText") || "Evidence unavailable";
     const npcText = this.registry.get("npcText") || "NPCs unavailable";
     const hungerText = this.registry.get("hungerText") || "Hunger unavailable";
+    const powersText = this.registry.get("powersText") || "Powers unavailable";
     const xy = this.registry.get("playerXY") || "0, 0";
     const menu = this.registry.get("interactionMenu");
     const prompt = menu
       ? "Interaction menu open"
-      : this.registry.get("interactionPrompt") || "E near routes/lamps/objectives/feed/body/witnesses · movement cancels feeding";
+      : this.registry.get("interactionPrompt") || "Q/Space Dash · R Whisper · F Blood Sense · E interact/feed/body/routes";
     const lastAction = this.registry.get("lastActionText") || "";
 
     this.title.setText(`Night Blood District · ${build}`);
@@ -157,6 +164,7 @@ export class UIScene extends Phaser.Scene {
     this.evidence.setText(evidenceText);
     this.npcs.setText(`NPCs: ${npcText}`);
     this.hunger.setText(hungerText);
+    this.powers.setText(`Powers: ${powersText}`);
     this.prompt.setText(prompt);
     this.lastAction.setText(lastAction);
     this.renderInteractionMenu(menu);
