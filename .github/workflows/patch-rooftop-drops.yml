@@ -1,0 +1,32 @@
+name: Patch rooftop drops
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - tools/patch-rooftop-drops.mjs
+      - .github/workflows/patch-rooftop-drops.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Apply rooftop drops patch
+        run: node tools/patch-rooftop-drops.mjs
+
+      - name: Validate game script
+        run: node --check js/game.js
+
+      - name: Commit patched game script
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Apply rooftop drops and high-roof zoom
+          file_pattern: js/game.js
