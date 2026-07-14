@@ -6,7 +6,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   create() {
-    this.panel = this.add.rectangle(14, 14, 540, 104, 0x05060b, 0.78).setOrigin(0, 0).setScrollFactor(0);
+    this.panel = this.add.rectangle(14, 14, 610, 124, 0x05060b, 0.78).setOrigin(0, 0).setScrollFactor(0);
     this.panel.setStrokeStyle(1, 0x2d3045, 1);
 
     this.title = this.add.text(26, 24, "Night Blood District · Phaser", {
@@ -15,31 +15,37 @@ export class UIScene extends Phaser.Scene {
       color: "#f1e6ff"
     }).setScrollFactor(0);
 
-    this.status = this.add.text(26, 44, "Booting...", {
+    this.objective = this.add.text(26, 44, "Objective: booting...", {
       fontFamily: "monospace",
       fontSize: "11px",
+      color: "#ffb02e"
+    }).setScrollFactor(0);
+
+    this.status = this.add.text(26, 63, "Booting...", {
+      fontFamily: "monospace",
+      fontSize: "10px",
       color: "#78c7a3"
     }).setScrollFactor(0);
 
-    this.visibility = this.add.text(26, 62, "Visibility: unknown", {
+    this.visibility = this.add.text(26, 80, "Visibility: unknown", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#d7c8ff"
     }).setScrollFactor(0);
 
-    this.prompt = this.add.text(26, 79, "", {
+    this.prompt = this.add.text(26, 97, "", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#fff2a8"
     }).setScrollFactor(0);
 
-    this.lastAction = this.add.text(26, 94, "", {
+    this.lastAction = this.add.text(26, 112, "", {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#9d93b8"
     }).setScrollFactor(0);
 
-    this.phase = this.add.text(14, 606, "PHASE 3: interaction modal + traversal + light/shadow rules", {
+    this.phase = this.add.text(14, 606, "PHASE 4: mission skeleton + interaction modal + traversal/light rules", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffb02e",
@@ -81,16 +87,18 @@ export class UIScene extends Phaser.Scene {
 
   update() {
     const build = this.registry.get("buildName") || "Phaser migration";
+    const mission = this.registry.get("missionText") || "Objective unavailable";
     const status = this.registry.get("statusText") || "No status";
     const visibility = this.registry.get("visibilityText") || "Visibility unknown";
     const xy = this.registry.get("playerXY") || "0, 0";
     const menu = this.registry.get("interactionMenu");
     const prompt = menu
       ? "Interaction menu open"
-      : this.registry.get("interactionPrompt") || "E near routes/lamps · WASD/arrows move · Shift sprint · 1/2/3/4 debug layers";
+      : this.registry.get("interactionPrompt") || "E near routes/lamps/objectives · WASD/arrows move · Shift sprint · 1/2/3/4 debug layers";
     const lastAction = this.registry.get("lastActionText") || "";
 
     this.title.setText(`Night Blood District · ${build}`);
+    this.objective.setText(`Objective: ${mission}`);
     this.status.setText(`${status} · ${xy}`);
     this.visibility.setText(`Visibility: ${visibility}`);
     this.prompt.setText(prompt);
