@@ -762,6 +762,7 @@
         action: () => {
           const sx = player.x, sy = player.y;
           const ex = targetX, ey = targetY;
+          player.inSafehouse = false;
           addFxTrail(sx, sy, ex, ey, LAYER.STREET, "drop", 0.44);
           addFxBurst(sx, sy, layer, "drop", 12, 0.24);
           startCinematic("drop", ex, ey, LAYER.STREET, {
@@ -1825,8 +1826,11 @@
 
       if (layer === LAYER.STREET) {
         if (inSafehouse) {
+          // Older builds had a street-level safehouse interior. The redesign moved the refuge to a high roof,
+          // so after rooftop drops the player can briefly be on STREET with inSafehouse still true.
+          // In that case, do not crash or trap movement: fall back to normal street collision.
           const home = buildings.find(b => b.id === "safehouse");
-          return rectsOverlap(r, { x: home.x + 12, y: home.y + 12, w: home.w - 24, h: home.h - 24 });
+          if (home) return rectsOverlap(r, { x: home.x + 12, y: home.y + 12, w: home.w - 24, h: home.h - 24 });
         }
         return !buildings.some(b => rectsOverlap(r, b));
       }
@@ -1836,7 +1840,8 @@
       }
 
       if (layer === LAYER.ROOF_LOW || layer === LAYER.ROOF_HIGH) {
-        return roofAreas[layer].some(a => rectsOverlap(r, a));
+        const areas = roofAreas[layer] || [];
+        return areas.some(a => rectsOverlap(r, a));
       }
 
       return true;
