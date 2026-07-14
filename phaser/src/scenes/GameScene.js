@@ -581,6 +581,16 @@ export class GameScene extends Phaser.Scene {
     this.addMapLabel(marker.label || "OBJ", marker.x + 12, marker.y - 14, 0xffb02e);
   }
 
+  drawHunterRouteBlocks() {
+    const blocks = this.hunterSystem?.routeBlocks || [];
+    for (const block of blocks) {
+      if (block.layer !== this.currentLayer) continue;
+      this.routeGraphics.lineStyle(2, 0xff9d35, 0.92).strokeCircle(block.x, block.y, 22);
+      this.routeGraphics.fillStyle(0xff9d35, 0.14).fillCircle(block.x, block.y, 22);
+      this.addMapLabel("HUNTER BLOCK", block.x + 14, block.y - 18, 0xff9d35);
+    }
+  }
+
   drawRouteMarker(x, y, label, color) {
     this.routeGraphics.lineStyle(1, color, 0.70).strokeCircle(x, y, 11);
     this.routeGraphics.fillStyle(color, 0.18).fillCircle(x, y, 11);
