@@ -6,7 +6,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   create() {
-    this.panel = this.add.rectangle(14, 14, 640, 140, 0x05060b, 0.78).setOrigin(0, 0).setScrollFactor(0);
+    this.panel = this.add.rectangle(14, 14, 650, 158, 0x05060b, 0.78).setOrigin(0, 0).setScrollFactor(0);
     this.panel.setStrokeStyle(1, 0x2d3045, 1);
 
     this.title = this.add.text(26, 24, "Night Blood District · Phaser", {
@@ -39,19 +39,25 @@ export class UIScene extends Phaser.Scene {
       color: "#c8b58a"
     }).setScrollFactor(0);
 
-    this.prompt = this.add.text(26, 114, "", {
+    this.hunger = this.add.text(26, 114, "Hunger: loading", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ff3b50"
+    }).setScrollFactor(0);
+
+    this.prompt = this.add.text(26, 131, "", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#fff2a8"
     }).setScrollFactor(0);
 
-    this.lastAction = this.add.text(26, 129, "", {
+    this.lastAction = this.add.text(26, 146, "", {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#9d93b8"
     }).setScrollFactor(0);
 
-    this.phase = this.add.text(14, 606, "PHASE 5: NPC basics + mission skeleton + interaction modal", {
+    this.phase = this.add.text(14, 606, "PHASE 6: feeding + hunger + corpses", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffb02e",
@@ -97,11 +103,12 @@ export class UIScene extends Phaser.Scene {
     const status = this.registry.get("statusText") || "No status";
     const visibility = this.registry.get("visibilityText") || "Visibility unknown";
     const npcText = this.registry.get("npcText") || "NPCs unavailable";
+    const hungerText = this.registry.get("hungerText") || "Hunger unavailable";
     const xy = this.registry.get("playerXY") || "0, 0";
     const menu = this.registry.get("interactionMenu");
     const prompt = menu
       ? "Interaction menu open"
-      : this.registry.get("interactionPrompt") || "E near routes/lamps/objectives · WASD/arrows move · Shift sprint · 1/2/3/4 debug layers";
+      : this.registry.get("interactionPrompt") || "E near routes/lamps/objectives/feed targets · movement cancels feeding";
     const lastAction = this.registry.get("lastActionText") || "";
 
     this.title.setText(`Night Blood District · ${build}`);
@@ -109,6 +116,7 @@ export class UIScene extends Phaser.Scene {
     this.status.setText(`${status} · ${xy}`);
     this.visibility.setText(`Visibility: ${visibility}`);
     this.npcs.setText(`NPCs: ${npcText}`);
+    this.hunger.setText(hungerText);
     this.prompt.setText(prompt);
     this.lastAction.setText(lastAction);
     this.renderInteractionMenu(menu);
