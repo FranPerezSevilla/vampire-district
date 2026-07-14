@@ -22,7 +22,7 @@ export class MissionSystem {
     }
 
     if (this.step === 1 && this.isNear(OBJECTIVE_POINTS.club)) {
-      this.setStep(2, "Locate the journalist outside the nightclub. Use the placeholder interaction for now.", "You reach the nightclub district. The journalist is nearby.");
+      this.setStep(2, "Locate the journalist outside the nightclub. Feed on them for now; later phases add lure, witnesses and evidence.", "You reach the nightclub district. The journalist is nearby.");
     }
 
     if (this.step === 3 && this.isNear(OBJECTIVE_POINTS.refuge)) {
@@ -43,13 +43,13 @@ export class MissionSystem {
 
   collectInteractions() {
     const actions = [];
-    if (this.step === 2 && this.isNear(OBJECTIVE_POINTS.journalist)) {
+    if (this.step === 2 && this.isNear(OBJECTIVE_POINTS.journalist) && !this.scene.feedingSystem?.stats.targetFed) {
       actions.push({
         id: "mission_placeholder_journalist",
         type: "mission",
-        label: "Resolve journalist placeholder",
-        detail: "mission placeholder · feeding later",
-        priority: 100,
+        label: "Question journalist placeholder",
+        detail: "fallback mission action · feeding preferred",
+        priority: 15,
         distance: this.distanceTo(OBJECTIVE_POINTS.journalist),
         x: OBJECTIVE_POINTS.journalist.x,
         y: OBJECTIVE_POINTS.journalist.y,
@@ -59,16 +59,16 @@ export class MissionSystem {
     return actions;
   }
 
-  resolveJournalistPlaceholder() {
+  resolveJournalistPlaceholder(actionText = "Placeholder resolved. Later this becomes lure/feed/evidence. Return to the rooftop refuge.") {
     if (this.step !== 2) return;
-    this.setStep(3, "Journalist placeholder resolved. Return to the rooftop refuge to report.", "Placeholder resolved: later this becomes lure/feed/evidence. Return to the rooftop refuge.");
+    this.setStep(3, "Journalist handled. Return to the rooftop refuge to report.", actionText);
   }
 
   objectiveText() {
     if (this.completed) return "COMPLETE · Phaser mission skeleton validated.";
     if (this.step === 0) return "1/4 Leave the rooftop refuge and descend into the district.";
     if (this.step === 1) return "2/4 Reach the nightclub by street, roof routes, or sewers.";
-    if (this.step === 2) return "3/4 Interact with the journalist placeholder outside the nightclub.";
+    if (this.step === 2) return "3/4 Feed on the journalist placeholder outside the nightclub.";
     if (this.step === 3) return "4/4 Return to the rooftop refuge and report.";
     return this.lastMissionText;
   }
