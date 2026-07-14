@@ -69,11 +69,30 @@ export const lights = [
 ];
 
 export const rooftopRoutes = [
-  { id: "jumpRefugeMarket", ax: 236, ay: 146, bx: 286, by: 168, aLayer: LAYERS.ROOF_HIGH, bLayer: LAYERS.ROOF_LOW },
-  { id: "jumpRefugeLowMarket", ax: 240, ay: 206, bx: 286, by: 208, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW },
-  { id: "jumpMarketTenement", ax: 404, ay: 168, bx: 528, by: 168, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW },
-  { id: "jumpTenementPolice", ax: 650, ay: 166, bx: 696, by: 154, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW },
-  { id: "jumpShopsWarehouse", ax: 300, ay: 468, bx: 254, by: 456, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW },
-  { id: "jumpShopsOldBlock", ax: 428, ay: 468, bx: 538, by: 548, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW },
-  { id: "jumpClubChurch", ax: 754, ay: 430, bx: 714, by: 490, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW }
+  { id: "jumpRefugeMarket", ax: 236, ay: 146, bx: 286, by: 168, aLayer: LAYERS.ROOF_HIGH, bLayer: LAYERS.ROOF_LOW, aToB: "jump to market roof", bToA: "jump to high refuge" },
+  { id: "jumpRefugeLowMarket", ax: 240, ay: 206, bx: 286, by: 208, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW, aToB: "jump to market roof", bToA: "jump to lower refuge" },
+  { id: "jumpMarketTenement", ax: 404, ay: 168, bx: 528, by: 168, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW, aToB: "jump to tenement", bToA: "jump to market" },
+  { id: "jumpTenementPolice", ax: 650, ay: 166, bx: 696, by: 154, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW, aToB: "jump to police roof", bToA: "jump to tenement" },
+  { id: "jumpShopsWarehouse", ax: 300, ay: 468, bx: 254, by: 456, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW, aToB: "jump to warehouse", bToA: "jump to shops" },
+  { id: "jumpShopsOldBlock", ax: 428, ay: 468, bx: 538, by: 548, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW, aToB: "jump to old block", bToA: "jump to shops" },
+  { id: "jumpClubChurch", ax: 754, ay: 430, bx: 714, by: 490, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW, aToB: "jump to church", bToA: "jump to club" }
+];
+
+export const fireEscapes = [
+  { id: "refugeFireEscape", name: "refuge fire escape", street: { x: 176, y: 244 }, roof: { layer: LAYERS.ROOF_LOW, x: 166, y: 206 } },
+  { id: "marketFireEscape", name: "market fire escape", street: { x: 268, y: 168 }, roof: { layer: LAYERS.ROOF_LOW, x: 345, y: 168 } },
+  { id: "tenementFireEscape", name: "tenement fire escape", street: { x: 650, y: 168 }, roof: { layer: LAYERS.ROOF_LOW, x: 590, y: 168 } },
+  { id: "policeFireEscape", name: "police fire escape", street: { x: 672, y: 170 }, roof: { layer: LAYERS.ROOF_LOW, x: 775, y: 150 } },
+  { id: "warehouseFireEscape", name: "warehouse fire escape", street: { x: 92, y: 402 }, roof: { layer: LAYERS.ROOF_LOW, x: 180, y: 456 } },
+  { id: "shopsFireEscape", name: "shops fire escape", street: { x: 438, y: 470 }, roof: { layer: LAYERS.ROOF_LOW, x: 360, y: 468 } },
+  { id: "oldBlockFireEscape", name: "old block fire escape", street: { x: 520, y: 540 }, roof: { layer: LAYERS.ROOF_LOW, x: 596, y: 540 } },
+  { id: "clubFireEscape", name: "club fire escape", street: { x: 578, y: 430 }, roof: { layer: LAYERS.ROOF_LOW, x: 675, y: 430 } },
+  { id: "churchFireEscape", name: "church fire escape", street: { x: 690, y: 500 }, roof: { layer: LAYERS.ROOF_LOW, x: 780, y: 495 } }
+];
+
+export const sewerAccesses = [
+  { id: "crossManhole", name: "crossroad manhole", street: { x: 472, y: 326 }, sewer: { x: 472, y: 326 } },
+  { id: "westManhole", name: "west alley manhole", street: { x: 176, y: 350 }, sewer: { x: 176, y: 350 } },
+  { id: "churchManhole", name: "church rear manhole", street: { x: 742, y: 500 }, sewer: { x: 742, y: 500 } },
+  { id: "refugePrivateShaft", name: "private shaft to refuge", street: null, sewer: { x: 176, y: 180 }, roof: { layer: LAYERS.ROOF_HIGH, x: 150, y: 146 } }
 ];
