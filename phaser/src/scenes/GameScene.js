@@ -13,6 +13,7 @@ import {
   shadowZones
 } from "../data/district.js";
 import { InteractionSystem } from "../systems/InteractionSystem.js";
+import { MissionSystem } from "../systems/MissionSystem.js";
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -65,6 +66,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.interactionSystem = new InteractionSystem(this);
+    this.missionSystem = new MissionSystem(this);
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.redrawLayer(this.lastActionText);
@@ -99,6 +101,7 @@ export class GameScene extends Phaser.Scene {
 
     if (!this.interactionSystem.isOpen) {
       this.updatePlayerMovement(dt);
+      this.missionSystem.update();
       this.nearestInteraction = this.findNearestInteraction(this.collectInteractions());
     }
 
@@ -160,6 +163,8 @@ export class GameScene extends Phaser.Scene {
   collectInteractions() {
     const options = [];
     const radius = 26;
+
+    options.push(...this.missionSystem.collectInteractions());
 
     if (this.currentLayer === LAYERS.STREET) {
       for (const light of lights) {
@@ -321,6 +326,7 @@ export class GameScene extends Phaser.Scene {
     this.registry.set("currentLayer", this.currentLayer);
     this.registry.set("statusText", `${layerName} · ${zone}`);
     this.registry.set("visibilityText", this.visibilityText());
+    this.registry.set("missionText", this.missionSystem.objectiveText());
     this.registry.set("playerXY", `${Math.round(this.player.x)}, ${Math.round(this.player.y)}`);
     this.registry.set("interactionPrompt", this.interactionSystem.isOpen ? "" : this.nearestInteraction ? `E: ${this.nearestInteraction.label}` : "");
     this.registry.set("lastActionText", this.lastActionText);
@@ -373,6 +379,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.drawRouteMarkers();
+    this.drawMissionMarker();
     if (statusText) this.registry.set("lastActionText", statusText);
   }
 
@@ -504,6 +511,14 @@ export class GameScene extends Phaser.Scene {
         if (route.bLayer === this.currentLayer) this.drawRouteMarker(route.bx, route.by, "JUMP", 0xd7c8ff);
       }
     }
+  }
+
+  drawMissionMarker() {
+    const marker = this.missionSystem.marker();
+    if (!marker || marker.layer !== this.currentLayer) return;
+    this.routeGraphics.lineStyle(2, 0xffb02e, 0.90).strokeCircle(marker.x, marker.y, marker.radius || 22);
+    this.routeGraphics.fillStyle(0xffb02e, 0.13).fillCircle(marker.x, marker.y, marker.radius || 22);
+    this.addMapLabel(marker.label || "OBJ", marker.x + 12, marker.y - 14, 0xffb02e);
   }
 
   drawRouteMarker(x, y, label, color) {
