@@ -20,6 +20,16 @@ export const CAMERA = Object.freeze({
   sewerZoom: 1.35
 });
 
+export const HUNGER = Object.freeze({
+  start: 48,
+  targetRelief: 60,
+  civilianRelief: 40,
+  ratRelief: 12,
+  targetFeedSeconds: 2.4,
+  civilianFeedSeconds: 2.2,
+  ratFeedSeconds: 1.0
+});
+
 export const COLORS = Object.freeze({
   void: 0x05060b,
   streetBase: 0x1a1d2b,
