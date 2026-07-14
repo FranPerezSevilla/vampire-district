@@ -6,7 +6,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   create() {
-    this.panel = this.add.rectangle(14, 14, 520, 92, 0x05060b, 0.78).setOrigin(0, 0).setScrollFactor(0);
+    this.panel = this.add.rectangle(14, 14, 540, 104, 0x05060b, 0.78).setOrigin(0, 0).setScrollFactor(0);
     this.panel.setStrokeStyle(1, 0x2d3045, 1);
 
     this.title = this.add.text(26, 24, "Night Blood District · Phaser", {
@@ -33,13 +33,50 @@ export class UIScene extends Phaser.Scene {
       color: "#fff2a8"
     }).setScrollFactor(0);
 
-    this.phase = this.add.text(14, 606, "PHASE 2: traversal + light/shadow rules", {
+    this.lastAction = this.add.text(26, 94, "", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#9d93b8"
+    }).setScrollFactor(0);
+
+    this.phase = this.add.text(14, 606, "PHASE 3: interaction modal + traversal + light/shadow rules", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffb02e",
       backgroundColor: "rgba(0,0,0,.55)",
       padding: { x: 8, y: 5 }
     }).setScrollFactor(0);
+
+    this.menuBackdrop = this.add.rectangle(480, 320, 960, 640, 0x000000, 0.52).setScrollFactor(0).setDepth(100).setVisible(false);
+    this.menuPanel = this.add.rectangle(480, 320, 450, 240, 0x08080e, 0.96).setScrollFactor(0).setDepth(101).setVisible(false);
+    this.menuPanel.setStrokeStyle(1, 0xd7c8ff, 0.75);
+    this.menuTitle = this.add.text(280, 224, "Choose interaction", {
+      fontFamily: "monospace",
+      fontSize: "14px",
+      color: "#f1e6ff"
+    }).setScrollFactor(0).setDepth(102).setVisible(false);
+    this.menuHint = this.add.text(280, 244, "W/S or arrows · E/Enter confirm · Esc cancel · 1-9 quick select", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#9d93b8"
+    }).setScrollFactor(0).setDepth(102).setVisible(false);
+
+    this.menuRows = [];
+    for (let i = 0; i < 9; i++) {
+      const y = 270 + i * 18;
+      const bg = this.add.rectangle(480, y - 4, 410, 16, 0x78c7a3, 0.0).setScrollFactor(0).setDepth(102).setVisible(false);
+      const label = this.add.text(286, y - 10, "", {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#f1e6ff"
+      }).setScrollFactor(0).setDepth(103).setVisible(false);
+      const detail = this.add.text(560, y - 10, "", {
+        fontFamily: "monospace",
+        fontSize: "9px",
+        color: "#9d93b8"
+      }).setScrollFactor(0).setDepth(103).setVisible(false);
+      this.menuRows.push({ bg, label, detail });
+    }
   }
 
   update() {
@@ -47,11 +84,43 @@ export class UIScene extends Phaser.Scene {
     const status = this.registry.get("statusText") || "No status";
     const visibility = this.registry.get("visibilityText") || "Visibility unknown";
     const xy = this.registry.get("playerXY") || "0, 0";
-    const prompt = this.registry.get("interactionPrompt") || "E near routes/lamps · WASD/arrows move · Shift sprint · 1/2/3/4 debug layers";
+    const menu = this.registry.get("interactionMenu");
+    const prompt = menu
+      ? "Interaction menu open"
+      : this.registry.get("interactionPrompt") || "E near routes/lamps · WASD/arrows move · Shift sprint · 1/2/3/4 debug layers";
+    const lastAction = this.registry.get("lastActionText") || "";
 
     this.title.setText(`Night Blood District · ${build}`);
     this.status.setText(`${status} · ${xy}`);
     this.visibility.setText(`Visibility: ${visibility}`);
     this.prompt.setText(prompt);
+    this.lastAction.setText(lastAction);
+    this.renderInteractionMenu(menu);
+  }
+
+  renderInteractionMenu(menu) {
+    const open = Boolean(menu && menu.options && menu.options.length);
+    this.menuBackdrop.setVisible(open);
+    this.menuPanel.setVisible(open);
+    this.menuTitle.setVisible(open);
+    this.menuHint.setVisible(open);
+
+    for (const row of this.menuRows) {
+      row.bg.setVisible(false);
+      row.label.setVisible(false);
+      row.detail.setVisible(false);
+    }
+
+    if (!open) return;
+
+    const options = menu.options.slice(0, this.menuRows.length);
+    for (let i = 0; i < options.length; i++) {
+      const option = options[i];
+      const row = this.menuRows[i];
+      const selected = i === menu.index;
+      row.bg.setVisible(true).setFillStyle(0x78c7a3, selected ? 0.20 : 0.04);
+      row.label.setVisible(true).setText(`${i + 1}. ${option.label}`).setColor(selected ? "#78c7a3" : "#f1e6ff");
+      row.detail.setVisible(true).setText(option.detail || option.type || "action").setColor(selected ? "#d7ffec" : "#9d93b8");
+    }
   }
 }
