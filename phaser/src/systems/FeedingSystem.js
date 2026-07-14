@@ -50,7 +50,9 @@ export class FeedingSystem {
     this.active = {
       npc,
       time: 0,
-      duration: this.durationFor(npc)
+      duration: this.durationFor(npc),
+      seenNotified: false,
+      maxWitnesses: 0
     };
     npc.vx = 0;
     npc.vy = 0;
@@ -79,6 +81,7 @@ export class FeedingSystem {
     const npc = feed.npc;
     this.active = null;
 
+    const witnessResult = this.scene.witnessSystem?.onFeedingCompleted(npc) || { witnesses: 0 };
     const relief = this.reliefFor(npc);
     this.hunger = Math.max(0, this.hunger - relief);
     this.stats.feeds++;
@@ -89,10 +92,12 @@ export class FeedingSystem {
     this.scene.npcSystem.markFed(npc);
 
     if (npc.type === NPC_TYPES.TARGET) {
-      this.scene.missionSystem.resolveJournalistPlaceholder("Journalist fed. Later phases will add witnesses and evidence cleanup.");
+      this.scene.missionSystem.resolveJournalistPlaceholder("Journalist fed. Return to the rooftop refuge to report.");
     }
 
-    this.scene.lastActionText = `${this.feedLabel(npc)} complete. Hunger -${relief}. A body remains.`;
+    const publicNote = witnessResult.witnesses ? ` Public witnesses: ${witnessResult.witnesses}.` : "";
+    this.scene.lastActionText = `${this.feedLabel(npc)} complete. Hunger -${relief}. A body remains.${publicNote}`;
+    this.scene.redrawLayer(this.scene.lastActionText);
   }
 
   reliefFor(npc) {
