@@ -14,6 +14,7 @@ export class ExposureSystem {
     const before = this.level();
     this.value = Math.max(0, Math.min(100, this.value + amount));
     this.lastReason = reason;
+    this.scene.policeSystem?.addHeat(this.scene.player.x, this.scene.player.y, amount * 0.55, reason);
     const after = this.level();
     this.scene.lastActionText = after > before
       ? `${reason} Exposure level ${after}.`
