@@ -105,3 +105,11 @@ export const sewerAccesses = [
   { id: "churchManhole", name: "church rear manhole", street: { x: 742, y: 500 }, sewer: { x: 742, y: 500 } },
   { id: "refugePrivateShaft", name: "private shaft to refuge", street: null, sewer: { x: 176, y: 180 }, roof: { layer: LAYERS.ROOF_HIGH, x: 150, y: 146 } }
 ];
+
+export const bodyHideSpots = [
+  { id: "dumpsterNorthAlley", name: "north alley dumpster", layer: LAYERS.STREET, x: 318, y: 262, radius: 34 },
+  { id: "dumpsterWarehouse", name: "warehouse dumpster", layer: LAYERS.STREET, x: 176, y: 392, radius: 34 },
+  { id: "dumpsterClubRear", name: "club rear dumpster", layer: LAYERS.STREET, x: 676, y: 502, radius: 36 },
+  { id: "dumpsterChurchRear", name: "church rear dumpster", layer: LAYERS.STREET, x: 782, y: 558, radius: 36 },
+  { id: "dumpsterSouthService", name: "south service dumpster", layer: LAYERS.STREET, x: 380, y: 528, radius: 34 }
+];
