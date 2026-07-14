@@ -68,6 +68,15 @@ export const lights = [
   { id: "lampNorth", x: 432, y: 168, radius: 66, name: "north avenue streetlight" }
 ];
 
+export const shadowZones = [
+  { id: "districtDarkness", name: "district darkness", x: 0, y: 0, w: 960, h: 640, strength: 0.45 },
+  { id: "northAlleyShadow", name: "north alley shadow", x: 246, y: 244, w: 474, h: 44, strength: 0.74 },
+  { id: "southServiceShadow", name: "south service shadow", x: 90, y: 502, w: 790, h: 44, strength: 0.78 },
+  { id: "warehouseAlleyShadow", name: "warehouse alley shadow", x: 96, y: 382, w: 198, h: 44, strength: 0.70 },
+  { id: "clubRearShadow", name: "club rear shadow", x: 584, y: 486, w: 190, h: 34, strength: 0.66 },
+  { id: "churchRearShadow", name: "church rear shadow", x: 690, y: 550, w: 188, h: 34, strength: 0.68 }
+];
+
 export const rooftopRoutes = [
   { id: "jumpRefugeMarket", ax: 236, ay: 146, bx: 286, by: 168, aLayer: LAYERS.ROOF_HIGH, bLayer: LAYERS.ROOF_LOW, aToB: "jump to market roof", bToA: "jump to high refuge" },
   { id: "jumpRefugeLowMarket", ax: 240, ay: 206, bx: 286, by: 208, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW, aToB: "jump to market roof", bToA: "jump to lower refuge" },
