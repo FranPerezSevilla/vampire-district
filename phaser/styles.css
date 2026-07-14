@@ -1,0 +1,106 @@
+:root {
+  color-scheme: dark;
+  --bg: #080912;
+  --panel: #121421;
+  --panel-2: #191c2d;
+  --text: #f1e6ff;
+  --muted: #9d93b8;
+  --accent: #78c7a3;
+  --danger: #ff3b50;
+}
+
+* { box-sizing: border-box; }
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: radial-gradient(circle at 50% 10%, #16182a 0, var(--bg) 55%, #04050a 100%);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.shell {
+  width: min(1180px, calc(100vw - 28px));
+  margin: 0 auto;
+  padding: 18px 0 24px;
+}
+
+.topbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(22px, 4vw, 38px);
+  letter-spacing: -0.04em;
+}
+
+.legacy-link {
+  color: var(--text);
+  text-decoration: none;
+  border: 1px solid rgba(241,230,255,.20);
+  background: rgba(255,255,255,.04);
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.legacy-link:hover {
+  border-color: rgba(120,199,163,.55);
+  color: var(--accent);
+}
+
+.game-frame {
+  border: 1px solid rgba(241,230,255,.16);
+  background: #05060b;
+  border-radius: 14px;
+  overflow: hidden;
+  min-height: 520px;
+  box-shadow: 0 22px 80px rgba(0,0,0,.42);
+}
+
+#game-root {
+  width: 100%;
+  min-height: 520px;
+  display: grid;
+  place-items: center;
+}
+
+#game-root canvas {
+  display: block;
+  width: 100% !important;
+  height: auto !important;
+  image-rendering: pixelated;
+}
+
+.notes {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.notes b { color: var(--accent); }
+
+@media (max-width: 720px) {
+  .topbar { align-items: flex-start; flex-direction: column; }
+  .game-frame, #game-root { min-height: 360px; }
+}
