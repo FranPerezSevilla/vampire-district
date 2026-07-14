@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Night Blood District - Phaser Migration</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Phaser migration build</p>
+        <h1>Night Blood District</h1>
+      </div>
+      <a class="legacy-link" href="../">Legacy prototype</a>
+    </header>
+
+    <section class="game-frame" aria-label="Playable Phaser migration prototype">
+      <div id="game-root"></div>
+    </section>
+
+    <section class="notes" aria-label="Build notes">
+      <b>Phase 0:</b> architecture, district data, layer rendering, player movement and camera only.
+      <span>WASD / arrows move · Shift sprint · 1 street · 2 low roofs · 3 high refuge roof · 4 sewers</span>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
