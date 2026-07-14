@@ -1,12 +1,14 @@
 import { CAMERA, COLORS, PLAYER, WORLD } from "../data/balance.js";
 import {
   buildings,
+  fireEscapes,
   LAYER_NAMES,
   LAYERS,
   lights,
   roads,
   roofAreas,
   rooftopRoutes,
+  sewerAccesses,
   sewerTunnels
 } from "../data/district.js";
 
@@ -15,15 +17,18 @@ export class GameScene extends Phaser.Scene {
     super("GameScene");
     this.currentLayer = LAYERS.ROOF_HIGH;
     this.playerSpeed = PLAYER.baseSpeed;
-    this.mapLabels = [];
+    this.nearestInteraction = null;
+    this.lastActionText = "Initial rooftop refuge.";
   }
 
   create() {
     this.cameras.main.setBounds(0, 0, WORLD.width, WORLD.height);
     this.physics.world.setBounds(0, 0, WORLD.width, WORLD.height);
 
+    this.mapLabels = [];
     this.map = this.add.graphics();
     this.routeGraphics = this.add.graphics();
+    this.promptGraphics = this.add.graphics().setDepth(40);
 
     this.player = this.add.container(PLAYER.startX, PLAYER.startY);
     this.playerBody = this.add.rectangle(0, 2, 10, 14, COLORS.playerBody).setStrokeStyle(1, COLORS.player);
@@ -41,6 +46,7 @@ export class GameScene extends Phaser.Scene {
       s: Phaser.Input.Keyboard.KeyCodes.S,
       d: Phaser.Input.Keyboard.KeyCodes.D,
       shift: Phaser.Input.Keyboard.KeyCodes.SHIFT,
+      interact: Phaser.Input.Keyboard.KeyCodes.E,
       street: Phaser.Input.Keyboard.KeyCodes.ONE,
       roofLow: Phaser.Input.Keyboard.KeyCodes.TWO,
       roofHigh: Phaser.Input.Keyboard.KeyCodes.THREE,
@@ -48,14 +54,23 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
-    this.redrawLayer("Initial rooftop refuge.");
+    this.redrawLayer(this.lastActionText);
   }
 
   update(_time, deltaMs) {
     const dt = Math.min(deltaMs / 1000, 0.05);
     this.handleLayerDebugKeys();
+
+    this.nearestInteraction = this.findNearestInteraction();
+    if (Phaser.Input.Keyboard.JustDown(this.keys.interact) && this.nearestInteraction) {
+      this.runInteraction(this.nearestInteraction);
+      this.nearestInteraction = this.findNearestInteraction();
+    }
+
     this.updatePlayerMovement(dt);
+    this.nearestInteraction = this.findNearestInteraction();
     this.updateCameraForLayer();
+    this.drawPromptMarker();
     this.publishState();
   }
 
@@ -69,7 +84,8 @@ export class GameScene extends Phaser.Scene {
   switchLayer(layer, position, status) {
     this.currentLayer = layer;
     this.player.setPosition(position.x, position.y);
-    this.redrawLayer(status);
+    this.lastActionText = status || "Layer changed.";
+    this.redrawLayer(this.lastActionText);
   }
 
   updatePlayerMovement(dt) {
@@ -103,6 +119,130 @@ export class GameScene extends Phaser.Scene {
     return !buildings.some(b => this.rectsOverlap({ x: x - 5, y: y - 7, w: 10, h: 14 }, b));
   }
 
+  findNearestInteraction() {
+    const options = this.collectInteractions();
+    options.sort((a, b) => a.distance - b.distance);
+    return options[0] || null;
+  }
+
+  collectInteractions() {
+    const options = [];
+    const radius = 26;
+
+    for (const escape of fireEscapes) {
+      if (this.currentLayer === LAYERS.STREET) {
+        const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, escape.street.x, escape.street.y);
+        if (d <= radius) {
+          options.push({
+            type: "fireEscapeUp",
+            label: `E: climb ${escape.name}`,
+            distance: d,
+            x: escape.street.x,
+            y: escape.street.y,
+            targetLayer: escape.roof.layer,
+            target: { x: escape.roof.x, y: escape.roof.y },
+            status: `You climb the ${escape.name} to the roof.`
+          });
+        }
+      }
+
+      if (this.currentLayer === escape.roof.layer) {
+        const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, escape.roof.x, escape.roof.y);
+        if (d <= radius) {
+          options.push({
+            type: "fireEscapeDown",
+            label: `E: descend ${escape.name}`,
+            distance: d,
+            x: escape.roof.x,
+            y: escape.roof.y,
+            targetLayer: LAYERS.STREET,
+            target: { x: escape.street.x, y: escape.street.y },
+            status: `You climb down the ${escape.name} to street level.`
+          });
+        }
+      }
+    }
+
+    for (const access of sewerAccesses) {
+      if (this.currentLayer === LAYERS.STREET && access.street) {
+        const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, access.street.x, access.street.y);
+        if (d <= radius) {
+          options.push({
+            type: "sewerDown",
+            label: `E: enter ${access.name}`,
+            distance: d,
+            x: access.street.x,
+            y: access.street.y,
+            targetLayer: LAYERS.SEWER,
+            target: { x: access.sewer.x, y: access.sewer.y },
+            status: `You descend through the ${access.name}.`
+          });
+        }
+      }
+
+      if (this.currentLayer === LAYERS.SEWER) {
+        const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, access.sewer.x, access.sewer.y);
+        if (d <= radius) {
+          const targetLayer = access.roof ? access.roof.layer : LAYERS.STREET;
+          const target = access.roof ? access.roof : access.street;
+          if (target) {
+            options.push({
+              type: access.roof ? "privateShaft" : "sewerUp",
+              label: access.roof ? "E: climb private shaft to refuge" : `E: exit ${access.name}`,
+              distance: d,
+              x: access.sewer.x,
+              y: access.sewer.y,
+              targetLayer,
+              target: { x: target.x, y: target.y },
+              status: access.roof ? "You climb the private shaft onto your rooftop refuge." : `You climb out through the ${access.name}.`
+            });
+          }
+        }
+      }
+    }
+
+    for (const route of rooftopRoutes) {
+      if (this.currentLayer === route.aLayer) {
+        const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, route.ax, route.ay);
+        if (d <= radius) {
+          options.push({
+            type: "roofJump",
+            label: `E: ${route.aToB}`,
+            distance: d,
+            x: route.ax,
+            y: route.ay,
+            targetLayer: route.bLayer,
+            target: { x: route.bx, y: route.by },
+            status: `You leap across: ${route.aToB}.`
+          });
+        }
+      }
+
+      if (this.currentLayer === route.bLayer) {
+        const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, route.bx, route.by);
+        if (d <= radius) {
+          options.push({
+            type: "roofJump",
+            label: `E: ${route.bToA}`,
+            distance: d,
+            x: route.bx,
+            y: route.by,
+            targetLayer: route.aLayer,
+            target: { x: route.ax, y: route.ay },
+            status: `You leap across: ${route.bToA}.`
+          });
+        }
+      }
+    }
+
+    return options;
+  }
+
+  runInteraction(interaction) {
+    if (!interaction) return;
+    this.switchLayer(interaction.targetLayer, interaction.target, interaction.status);
+  }
+
   updateCameraForLayer() {
     const camera = this.cameras.main;
     const targetZoom = this.currentLayer === LAYERS.ROOF_HIGH
@@ -121,6 +261,8 @@ export class GameScene extends Phaser.Scene {
     this.registry.set("currentLayer", this.currentLayer);
     this.registry.set("statusText", `${layerName} · ${zone}`);
     this.registry.set("playerXY", `${Math.round(this.player.x)}, ${Math.round(this.player.y)}`);
+    this.registry.set("interactionPrompt", this.nearestInteraction ? this.nearestInteraction.label : "");
+    this.registry.set("lastActionText", this.lastActionText);
   }
 
   describeCurrentZone() {
@@ -132,9 +274,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   redrawLayer(statusText = "") {
-    this.clearMapLabels();
     this.map.clear();
     this.routeGraphics.clear();
+    this.promptGraphics.clear();
+    this.clearMapLabels();
 
     if (this.currentLayer === LAYERS.SEWER) this.drawSewers();
     else this.drawDistrictStreet();
@@ -144,7 +287,8 @@ export class GameScene extends Phaser.Scene {
       this.drawRooftopRouteNetwork();
     }
 
-    if (statusText) this.registry.set("statusText", `${LAYER_NAMES[this.currentLayer]} · ${statusText}`);
+    this.drawRouteMarkers();
+    if (statusText) this.registry.set("lastActionText", statusText);
   }
 
   drawDistrictStreet() {
@@ -153,6 +297,7 @@ export class GameScene extends Phaser.Scene {
     for (const road of roads) this.drawRoad(road);
     this.drawDarkAlleys();
     this.drawLights();
+    this.drawSewerManholes();
     for (const building of buildings) this.drawBuilding(building);
 
     if (this.currentLayer > LAYERS.STREET) {
@@ -184,6 +329,14 @@ export class GameScene extends Phaser.Scene {
       this.map.lineStyle(1, 0xffdc74, 0.23).strokeCircle(light.x, light.y, light.radius);
       this.map.fillStyle(0xffe16b, 1).fillRect(light.x - 2, light.y - 14, 4, 16);
       this.map.fillStyle(0xfff2a8, 1).fillRect(light.x - 5, light.y - 18, 10, 3);
+    }
+  }
+
+  drawSewerManholes() {
+    for (const access of sewerAccesses) {
+      if (!access.street) continue;
+      this.map.fillStyle(0x0b2a22, 1).fillCircle(access.street.x, access.street.y, 8);
+      this.map.lineStyle(1, 0x78c7a3, 0.65).strokeCircle(access.street.x, access.street.y, 8);
     }
   }
 
@@ -221,6 +374,42 @@ export class GameScene extends Phaser.Scene {
       this.routeGraphics.strokePath();
       this.routeGraphics.fillStyle(COLORS.accent, 0.75).fillCircle(route.ax, route.ay, 4).fillCircle(route.bx, route.by, 4);
     }
+  }
+
+  drawRouteMarkers() {
+    this.routeGraphics.lineStyle(1, 0x78c7a3, 0.55);
+    this.routeGraphics.fillStyle(0x78c7a3, 0.90);
+
+    for (const escape of fireEscapes) {
+      if (this.currentLayer === LAYERS.STREET) this.drawRouteMarker(escape.street.x, escape.street.y, "FIRE", 0x78c7a3);
+      if (this.currentLayer === escape.roof.layer) this.drawRouteMarker(escape.roof.x, escape.roof.y, "DOWN", 0x78c7a3);
+    }
+
+    for (const access of sewerAccesses) {
+      if (this.currentLayer === LAYERS.STREET && access.street) this.drawRouteMarker(access.street.x, access.street.y, "SEWER", 0x78c7a3);
+      if (this.currentLayer === LAYERS.SEWER) this.drawRouteMarker(access.sewer.x, access.sewer.y, access.roof ? "SHAFT" : "EXIT", 0x78c7a3);
+    }
+
+    if (this.currentLayer > LAYERS.STREET) {
+      for (const route of rooftopRoutes) {
+        if (route.aLayer === this.currentLayer) this.drawRouteMarker(route.ax, route.ay, "JUMP", 0xd7c8ff);
+        if (route.bLayer === this.currentLayer) this.drawRouteMarker(route.bx, route.by, "JUMP", 0xd7c8ff);
+      }
+    }
+  }
+
+  drawRouteMarker(x, y, label, color) {
+    this.routeGraphics.lineStyle(1, color, 0.70).strokeCircle(x, y, 11);
+    this.routeGraphics.fillStyle(color, 0.18).fillCircle(x, y, 11);
+    this.addMapLabel(label, x + 10, y - 8, color);
+  }
+
+  drawPromptMarker() {
+    this.promptGraphics.clear();
+    if (!this.nearestInteraction) return;
+    const { x, y } = this.nearestInteraction;
+    this.promptGraphics.lineStyle(2, 0xfff2a8, 0.95).strokeCircle(x, y, 15);
+    this.promptGraphics.fillStyle(0xfff2a8, 0.15).fillCircle(x, y, 15);
   }
 
   drawSewers() {
