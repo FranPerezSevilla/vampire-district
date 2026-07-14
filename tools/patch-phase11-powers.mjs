@@ -121,3 +121,4 @@ patchGameScene();
 patchUIScene();
 patchPages();
 console.log('Applied Phaser phase 11 powers patch.');
+// trigger: phase11-powers-1
