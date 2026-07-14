@@ -1,0 +1,32 @@
+name: Patch interaction menu crash
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - tools/patch-interaction-menu-crash.mjs
+      - .github/workflows/patch-interaction-menu-crash.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Apply interaction menu crash fix
+        run: node tools/patch-interaction-menu-crash.mjs
+
+      - name: Validate game script
+        run: node --check js/game.js
+
+      - name: Commit patched game script
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Fix interaction menu render crash
+          file_pattern: js/game.js
