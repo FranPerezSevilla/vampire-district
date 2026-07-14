@@ -1,0 +1,32 @@
+name: Patch rooftop jumps refuge menu
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - tools/patch-rooftop-jumps-refuge-menu.mjs
+      - .github/workflows/patch-rooftop-jumps-refuge-menu.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Apply rooftop jumps/refuge/menu patch
+        run: node tools/patch-rooftop-jumps-refuge-menu.mjs
+
+      - name: Validate game script
+        run: node --check js/game.js
+
+      - name: Commit patched game script
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Apply rooftop jumps refuge and interaction menu
+          file_pattern: js/game.js
