@@ -1,0 +1,32 @@
+name: Patch movement guard
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - tools/patch-canstand-guard.mjs
+      - .github/workflows/patch-canstand-guard.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Apply movement guard patch
+        run: node tools/patch-canstand-guard.mjs
+
+      - name: Validate game script
+        run: node --check js/game.js
+
+      - name: Commit patched game script
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Guard movement collision after rooftop drops
+          file_pattern: js/game.js
