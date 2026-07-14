@@ -1,0 +1,32 @@
+name: Patch refuge unfreeze
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - tools/patch-refuge-unfreeze.mjs
+      - .github/workflows/patch-refuge-unfreeze.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Apply refuge unfreeze patch
+        run: node tools/patch-refuge-unfreeze.mjs
+
+      - name: Validate game script
+        run: node --check js/game.js
+
+      - name: Commit patched game script
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Fix rooftop refuge interaction freeze
+          file_pattern: js/game.js
