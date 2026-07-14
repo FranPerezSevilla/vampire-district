@@ -1,4 +1,4 @@
-import { buildings, LAYERS, roofAreas } from "../data/district.js";
+import { LAYERS } from "../data/district.js";
 
 const OBJECTIVE_POINTS = Object.freeze({
   club: { x: 642, y: 404, layer: LAYERS.STREET, radius: 96 },
@@ -18,15 +18,11 @@ export class MissionSystem {
     if (this.completed) return;
 
     if (this.step === 0 && this.scene.currentLayer === LAYERS.STREET) {
-      this.step = 1;
-      this.lastMissionText = "Reach the pink-lit nightclub. The journalist is meeting a source nearby.";
-      this.scene.lastActionText = "Objective updated: reach the nightclub.";
+      this.setStep(1, "Reach the pink-lit nightclub. The journalist is meeting a source nearby.", "Objective updated: reach the nightclub.");
     }
 
     if (this.step === 1 && this.isNear(OBJECTIVE_POINTS.club)) {
-      this.step = 2;
-      this.lastMissionText = "Locate the journalist outside the nightclub. Use the placeholder interaction for now.";
-      this.scene.lastActionText = "You reach the nightclub district. The journalist is nearby.";
+      this.setStep(2, "Locate the journalist outside the nightclub. Use the placeholder interaction for now.", "You reach the nightclub district. The journalist is nearby.");
     }
 
     if (this.step === 3 && this.isNear(OBJECTIVE_POINTS.refuge)) {
@@ -34,7 +30,15 @@ export class MissionSystem {
       this.completed = true;
       this.lastMissionText = "Report complete. Phaser mission skeleton works end-to-end.";
       this.scene.lastActionText = "ORDER COMPLETE: the route from refuge to target and back is validated.";
+      this.scene.redrawLayer(this.scene.lastActionText);
     }
+  }
+
+  setStep(step, missionText, actionText) {
+    this.step = step;
+    this.lastMissionText = missionText;
+    this.scene.lastActionText = actionText;
+    this.scene.redrawLayer(actionText);
   }
 
   collectInteractions() {
@@ -57,9 +61,7 @@ export class MissionSystem {
 
   resolveJournalistPlaceholder() {
     if (this.step !== 2) return;
-    this.step = 3;
-    this.lastMissionText = "Journalist placeholder resolved. Return to the rooftop refuge to report.";
-    this.scene.lastActionText = "Placeholder resolved: later this becomes lure/feed/evidence. Return to the rooftop refuge.";
+    this.setStep(3, "Journalist placeholder resolved. Return to the rooftop refuge to report.", "Placeholder resolved: later this becomes lure/feed/evidence. Return to the rooftop refuge.");
   }
 
   objectiveText() {
