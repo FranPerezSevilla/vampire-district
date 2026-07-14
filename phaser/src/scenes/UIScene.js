@@ -6,7 +6,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   create() {
-    this.panel = this.add.rectangle(14, 14, 670, 190, 0x05060b, 0.78).setOrigin(0, 0).setScrollFactor(0);
+    this.panel = this.add.rectangle(14, 14, 690, 208, 0x05060b, 0.78).setOrigin(0, 0).setScrollFactor(0);
     this.panel.setStrokeStyle(1, 0x2d3045, 1);
 
     this.title = this.add.text(26, 24, "Night Blood District · Phaser", {
@@ -45,31 +45,37 @@ export class UIScene extends Phaser.Scene {
       color: "#ff3b50"
     }).setScrollFactor(0);
 
-    this.npcs = this.add.text(26, 131, "NPCs: loading", {
+    this.evidence = this.add.text(26, 131, "Evidence: loading", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#78c7a3"
+    }).setScrollFactor(0);
+
+    this.npcs = this.add.text(26, 148, "NPCs: loading", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#c8b58a"
     }).setScrollFactor(0);
 
-    this.hunger = this.add.text(26, 148, "Hunger: loading", {
+    this.hunger = this.add.text(26, 165, "Hunger: loading", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ff3b50"
     }).setScrollFactor(0);
 
-    this.prompt = this.add.text(26, 165, "", {
+    this.prompt = this.add.text(26, 182, "", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#fff2a8"
     }).setScrollFactor(0);
 
-    this.lastAction = this.add.text(26, 180, "", {
+    this.lastAction = this.add.text(26, 197, "", {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#9d93b8"
     }).setScrollFactor(0);
 
-    this.phase = this.add.text(14, 606, "PHASE 7: witness + exposure", {
+    this.phase = this.add.text(14, 606, "PHASE 8: evidence bodies dumpsters blood", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffb02e",
@@ -116,13 +122,14 @@ export class UIScene extends Phaser.Scene {
     const visibility = this.registry.get("visibilityText") || "Visibility unknown";
     const exposureText = this.registry.get("exposureText") || "Exposure unavailable";
     const witnessText = this.registry.get("witnessText") || "Witnesses unavailable";
+    const evidenceText = this.registry.get("evidenceText") || "Evidence unavailable";
     const npcText = this.registry.get("npcText") || "NPCs unavailable";
     const hungerText = this.registry.get("hungerText") || "Hunger unavailable";
     const xy = this.registry.get("playerXY") || "0, 0";
     const menu = this.registry.get("interactionMenu");
     const prompt = menu
       ? "Interaction menu open"
-      : this.registry.get("interactionPrompt") || "E near routes/lamps/objectives/feed targets/witnesses · movement cancels feeding";
+      : this.registry.get("interactionPrompt") || "E near routes/lamps/objectives/feed/body/witnesses · movement cancels feeding";
     const lastAction = this.registry.get("lastActionText") || "";
 
     this.title.setText(`Night Blood District · ${build}`);
@@ -131,6 +138,7 @@ export class UIScene extends Phaser.Scene {
     this.visibility.setText(`Visibility: ${visibility}`);
     this.exposure.setText(exposureText);
     this.witness.setText(witnessText);
+    this.evidence.setText(evidenceText);
     this.npcs.setText(`NPCs: ${npcText}`);
     this.hunger.setText(hungerText);
     this.prompt.setText(prompt);
