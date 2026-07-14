@@ -6,7 +6,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   create() {
-    this.panel = this.add.rectangle(14, 14, 690, 208, 0x05060b, 0.78).setOrigin(0, 0).setScrollFactor(0);
+    this.panel = this.add.rectangle(14, 14, 700, 226, 0x05060b, 0.78).setOrigin(0, 0).setScrollFactor(0);
     this.panel.setStrokeStyle(1, 0x2d3045, 1);
 
     this.title = this.add.text(26, 24, "Night Blood District · Phaser", {
@@ -39,43 +39,49 @@ export class UIScene extends Phaser.Scene {
       color: "#ffb02e"
     }).setScrollFactor(0);
 
-    this.witness = this.add.text(26, 114, "Witnesses: loading", {
+    this.police = this.add.text(26, 114, "Police: loading", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#4da3ff"
+    }).setScrollFactor(0);
+
+    this.witness = this.add.text(26, 131, "Witnesses: loading", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ff3b50"
     }).setScrollFactor(0);
 
-    this.evidence = this.add.text(26, 131, "Evidence: loading", {
+    this.evidence = this.add.text(26, 148, "Evidence: loading", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#78c7a3"
     }).setScrollFactor(0);
 
-    this.npcs = this.add.text(26, 148, "NPCs: loading", {
+    this.npcs = this.add.text(26, 165, "NPCs: loading", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#c8b58a"
     }).setScrollFactor(0);
 
-    this.hunger = this.add.text(26, 165, "Hunger: loading", {
+    this.hunger = this.add.text(26, 182, "Hunger: loading", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ff3b50"
     }).setScrollFactor(0);
 
-    this.prompt = this.add.text(26, 182, "", {
+    this.prompt = this.add.text(26, 199, "", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#fff2a8"
     }).setScrollFactor(0);
 
-    this.lastAction = this.add.text(26, 197, "", {
+    this.lastAction = this.add.text(26, 214, "", {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#9d93b8"
     }).setScrollFactor(0);
 
-    this.phase = this.add.text(14, 606, "PHASE 8: evidence bodies dumpsters blood", {
+    this.phase = this.add.text(14, 606, "PHASE 9: police + local heat", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffb02e",
@@ -121,6 +127,7 @@ export class UIScene extends Phaser.Scene {
     const status = this.registry.get("statusText") || "No status";
     const visibility = this.registry.get("visibilityText") || "Visibility unknown";
     const exposureText = this.registry.get("exposureText") || "Exposure unavailable";
+    const policeText = this.registry.get("policeText") || "Police unavailable";
     const witnessText = this.registry.get("witnessText") || "Witnesses unavailable";
     const evidenceText = this.registry.get("evidenceText") || "Evidence unavailable";
     const npcText = this.registry.get("npcText") || "NPCs unavailable";
@@ -137,6 +144,7 @@ export class UIScene extends Phaser.Scene {
     this.status.setText(`${status} · ${xy}`);
     this.visibility.setText(`Visibility: ${visibility}`);
     this.exposure.setText(exposureText);
+    this.police.setText(policeText);
     this.witness.setText(witnessText);
     this.evidence.setText(evidenceText);
     this.npcs.setText(`NPCs: ${npcText}`);
