@@ -1,0 +1,32 @@
+name: Patch wanted rules
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - tools/patch-wanted-rules.mjs
+      - .github/workflows/patch-wanted-rules.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Apply wanted/camera rule patch
+        run: node tools/patch-wanted-rules.mjs
+
+      - name: Validate game script
+        run: node --check js/game.js
+
+      - name: Commit patched game script
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Apply wanted level and camera removal tweaks
+          file_pattern: js/game.js
