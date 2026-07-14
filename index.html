@@ -3,72 +3,30 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Night Blood District - HTML Prototype</title>
-  <link rel="stylesheet" href="css/styles.css" />
-  <link rel="stylesheet" href="css/feedback.css" />
-  <link rel="stylesheet" href="css/help.css" />
-  <link rel="stylesheet" href="css/sound-panel.css" />
-  <link rel="stylesheet" href="css/playtest-polish.css" />
+  <title>Night Blood District - Phaser</title>
+  <link rel="stylesheet" href="phaser/styles.css" />
 </head>
 <body>
-  <div class="wrap">
-    <div class="frame">
-      <div class="hud" aria-label="Prototype status">
-        <section class="hud-card bars" aria-label="Status bars">
-          <span>Hunger</span>
-          <span class="bar"><i id="hungerFill"></i></span>
-          <span class="mini-stat" id="hungerValue">0%</span>
-          <span>Expo</span>
-          <span class="bar"><i id="exposureFill"></i></span>
-          <span class="mini-stat" id="exposureValue">Lv 0</span>
-          <span class="mini-stat" id="dashState">Dash ready</span>
-        </section>
-
-        <section class="hud-card mission-card" aria-label="Mission objective">
-          <div class="eyebrow">OBJECTIVE</div>
-          <div id="missionText">Your district is under threat: intercept the journalist near the nightclub before the clan cover-up leaks.</div>
-        </section>
-
-        <section class="hud-card status-card" aria-label="Layer and stealth">
-          <span id="layerText">Interior/Safehouse</span>
-          <span id="visibilityText">hidden</span>
-        </section>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Phaser migration build</p>
+        <h1>Night Blood District</h1>
       </div>
+      <a class="legacy-link" href="legacy/">Legacy prototype</a>
+    </header>
 
-      <div class="game-screen">
-        <canvas id="game" width="480" height="270" aria-label="Playable top-down vampire prototype"></canvas>
-      </div>
+    <section class="game-frame" aria-label="Playable Phaser migration prototype">
+      <div id="game-root"></div>
+    </section>
 
-      <div id="messageLine" class="message-line">A clan courier wakes you: a journalist is preparing to expose your leader. Press E at the door to leave.</div>
-      <div id="legendLine" class="legend-line">Legend: V sight · ? noise · B trail · ! witness · H help</div>
-      <div class="hint">WASD/Arrows move · Shift sprint · Q/Space Dash [+12 hunger] · R Whisper [+8 hunger] · F Blood Sense [+3 hunger] · E interact · H help · P feedback</div>
-    </div>
-  </div>
+    <section class="notes" aria-label="Build notes">
+      <b>Phase 1:</b> Phaser traversal validation build. The old canvas prototype is preserved under <a href="legacy/">/legacy/</a>.
+      <span>WASD / arrows move · Shift sprint · E interact with routes · 1/2/3/4 debug layers</span>
+    </section>
+  </main>
 
-  <div id="startOverlay" class="start-overlay">
-    <div class="start-panel" role="dialog" aria-label="Start screen">
-      <h1>Night Blood District</h1>
-      <p class="tagline">A journalist is about to expose your clan. Your order is simple: find him, lure him, drain him, hide the evidence.</p>
-      <div class="start-grid">
-        <div class="start-box"><b>The order</b>Find the journalist near the nightclub. Isolate the target before the story leaks.</div>
-        <div class="start-box"><b>The risk</b>Witnesses report, police respond, and one hidden hunter may notice serious supernatural mistakes.</div>
-        <div class="start-box"><b>The cost</b>Powers are always available, but every use raises hunger and wakes the Beast.</div>
-      </div>
-      <div class="start-controls">WASD/Arrows move · Shift sprint · E interact · Q/Space Dash · R Whisper · F Blood Sense · H help · P feedback.</div>
-      <p class="start-note">Prototype build · audio WIP · best played with keyboard</p>
-      <button id="startButton" class="start-button">Accept order · Enter</button>
-    </div>
-  </div>
-  <script src="js/pause-bridge.js" defer></script>
-  <script src="js/audio-manifest.js" defer></script>
-  <script src="js/asset-audio.js" defer></script>
-  <script src="js/prototype-threat-limits.js" defer></script>
-  <script src="js/game.js" defer></script>
-  <script src="js/feedback-config.js" defer></script>
-  <script src="js/feedback.js" defer></script>
-  <script src="js/feedback-pause.js" defer></script>
-  <script src="js/help-overlay.js" defer></script>
-  <script src="js/sound-menu.js" defer></script>
-  <script src="js/playtest-polish.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+  <script type="module" src="phaser/src/main.js"></script>
 </body>
 </html>
