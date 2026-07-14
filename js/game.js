@@ -2191,9 +2191,9 @@
       if (!body) return;
       body.dragged = false;
       state.draggingBody = null;
-      createNoise(body.x, body.y, body.layer, 58, 1.9, "drag", { exposure: false, life: 0.65 });
-      createBloodStain(body.x, body.y, body.layer, { kind: "drop", size: body.beastKilled ? 6 : 4, spread: 8, brutal: body.beastKilled });
-      say("You drop the body. If it remains visible, someone can find it and follow the blood.", 2.4);
+      // Dropping a body should not create automatic noise or blood evidence.
+      // The risk is the visible corpse itself.
+      say("You drop the body. If it remains visible, someone can find it.", 2.4);
     }
 
     function hideDraggedBody() {
