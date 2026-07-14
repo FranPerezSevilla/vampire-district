@@ -15,6 +15,7 @@ export class GameScene extends Phaser.Scene {
     super("GameScene");
     this.currentLayer = LAYERS.ROOF_HIGH;
     this.playerSpeed = PLAYER.baseSpeed;
+    this.mapLabels = [];
   }
 
   create() {
@@ -131,6 +132,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   redrawLayer(statusText = "") {
+    this.clearMapLabels();
     this.map.clear();
     this.routeGraphics.clear();
 
@@ -236,7 +238,12 @@ export class GameScene extends Phaser.Scene {
       fontSize: "8px",
       color: `#${color.toString(16).padStart(6, "0")}`
     }).setDepth(20);
-    this.time.delayedCall(0, () => label.destroy());
+    this.mapLabels.push(label);
+  }
+
+  clearMapLabels() {
+    for (const label of this.mapLabels) label.destroy();
+    this.mapLabels.length = 0;
   }
 
   pointInRect(x, y, r) {
