@@ -6,7 +6,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   create() {
-    this.panel = this.add.rectangle(14, 14, 700, 226, 0x05060b, 0.78).setOrigin(0, 0).setScrollFactor(0);
+    this.panel = this.add.rectangle(14, 14, 710, 244, 0x05060b, 0.78).setOrigin(0, 0).setScrollFactor(0);
     this.panel.setStrokeStyle(1, 0x2d3045, 1);
 
     this.title = this.add.text(26, 24, "Night Blood District · Phaser", {
@@ -51,31 +51,37 @@ export class UIScene extends Phaser.Scene {
       color: "#ff3b50"
     }).setScrollFactor(0);
 
-    this.evidence = this.add.text(26, 148, "Evidence: loading", {
+    this.hunter = this.add.text(26, 148, "Hunters: dormant", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ff9d35"
+    }).setScrollFactor(0);
+
+    this.evidence = this.add.text(26, 165, "Evidence: loading", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#78c7a3"
     }).setScrollFactor(0);
 
-    this.npcs = this.add.text(26, 165, "NPCs: loading", {
+    this.npcs = this.add.text(26, 182, "NPCs: loading", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#c8b58a"
     }).setScrollFactor(0);
 
-    this.hunger = this.add.text(26, 182, "Hunger: loading", {
+    this.hunger = this.add.text(26, 199, "Hunger: loading", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ff3b50"
     }).setScrollFactor(0);
 
-    this.prompt = this.add.text(26, 199, "", {
+    this.prompt = this.add.text(26, 216, "", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#fff2a8"
     }).setScrollFactor(0);
 
-    this.lastAction = this.add.text(26, 214, "", {
+    this.lastAction = this.add.text(26, 231, "", {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#9d93b8"
