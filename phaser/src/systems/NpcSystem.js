@@ -119,4 +119,13 @@ export class NpcSystem {
     }
     return best;
   }
+
+  summary() {
+    const visible = this.npcs.filter(n => this.isVisible(n)).length;
+    const rats = this.npcs.filter(n => n.type === NPC_TYPES.RAT && this.isVisible(n)).length;
+    const targetVisible = this.npcs.some(n => n.type === NPC_TYPES.TARGET && this.isVisible(n));
+    if (rats) return `${visible} NPC(s) visible · ${rats} rat(s)`;
+    if (targetVisible) return `${visible} NPC(s) visible · journalist present`;
+    return `${visible} NPC(s) visible`;
+  }
 }
