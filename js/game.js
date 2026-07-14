@@ -2363,9 +2363,14 @@
 
     function openInteractionMenu(actions) {
       if (!actions || actions.length <= 1) return false;
-      state.interactionMenu = { actions, index: 0 };
+      const options = actions.map(a => ({
+        label: a.label || "Interact",
+        detail: a.detail || "",
+        run: a.run
+      }));
+      state.interactionMenu = { options, actions: options, index: 0 };
       window.VD_GAME_PAUSED = true;
-      say("Choose an action.", 1.2);
+      say("Choose an action. W/S or arrows select, E/Enter confirms, Esc cancels.", 2.0);
       return true;
     }
 
@@ -2377,20 +2382,34 @@
     function updateInteractionMenu() {
       const menu = state.interactionMenu;
       if (!menu) return;
-      if (consumePressed("escape")) {
+      const options = menu.options || menu.actions || [];
+      if (!options.length) {
         closeInteractionMenu();
         return;
       }
+      if (consumePressed("escape") || consumePressed("backspace")) {
+        closeInteractionMenu();
+        say("Interaction cancelled.", 1.2);
+        return;
+      }
       if (consumePressed("arrowup") || consumePressed("w")) {
-        menu.index = (menu.index + menu.actions.length - 1) % menu.actions.length;
+        menu.index = (menu.index + options.length - 1) % options.length;
         return;
       }
       if (consumePressed("arrowdown") || consumePressed("s")) {
-        menu.index = (menu.index + 1) % menu.actions.length;
+        menu.index = (menu.index + 1) % options.length;
         return;
       }
+      for (let i = 0; i < options.length; i++) {
+        if (consumePressed(String(i + 1))) {
+          const selected = options[i];
+          closeInteractionMenu();
+          if (selected && typeof selected.run === "function") selected.run();
+          return;
+        }
+      }
       if (consumePressed("enter") || consumePressed("e") || consumePressed(" ")) {
-        const selected = menu.actions[menu.index];
+        const selected = options[menu.index];
         closeInteractionMenu();
         if (selected && typeof selected.run === "function") selected.run();
       }
@@ -2416,6 +2435,7 @@
       const lamp = nearestBreakableLight();
       if (lamp) actions.push({ label: "Break " + lamp.name, run: () => breakLight(lamp) });
       for (const it of nearbyInteractables()) {
+        if (it.id === "safehouseDoor") continue;
         if (typeof it.action === "function") actions.push({ label: actionLabelFromInteractable(it), run: () => it.action() });
       }
       return actions;
@@ -2473,6 +2493,7 @@
       if (lamp) options.push(interactionOption("Break streetlight", () => breakLight(lamp), lamp.name));
 
       for (const it of nearbyInteractables()) {
+        if (it.id === "safehouseDoor") continue;
         if (typeof it.action !== "function") continue;
         const prompt = typeof it.prompt === "function" ? it.prompt() : it.prompt;
         options.push(interactionOption(actionLabelFromPrompt(prompt || it.label), () => it.action(), it.label || "route"));
@@ -3008,6 +3029,7 @@
     }
 
     function update(dt) {
+      if (player.inSafehouse && player.layer > LAYER.STREET) player.inSafehouse = false;
       if (!state.gameStarted) {
         if (consumePressed("enter") || consumePressed("e") || consumePressed(" ")) startGame();
         return;
@@ -4784,10 +4806,12 @@
 
     function drawInteractionMenuOverlay() {
       const menu = state.interactionMenu;
-      if (!menu || !menu.options.length) return;
+      if (!menu) return;
+      const options = menu.options || menu.actions || [];
+      if (!options.length) return;
       const w = Math.min(420, VIEW_W - 24);
       const rowH = 18;
-      const h = 54 + menu.options.length * rowH;
+      const h = 54 + options.length * rowH;
       const x = Math.floor(VIEW_W / 2 - w / 2);
       const y = Math.floor(VIEW_H / 2 - h / 2);
       ctx.fillStyle = "rgba(0,0,0,.55)";
@@ -4802,8 +4826,8 @@
       ctx.font = "8px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
       ctx.fillStyle = "#9d93b8";
       ctx.fillText("↑/↓ or W/S · Enter/E confirm · Esc cancel", x + 12, y + 36);
-      for (let i = 0; i < menu.options.length; i++) {
-        const option = menu.options[i];
+      for (let i = 0; i < options.length; i++) {
+        const option = options[i];
         const yy = y + 54 + i * rowH;
         const active = i === menu.index;
         if (active) {
@@ -4971,6 +4995,7 @@
       if (player.bloodSenseTimer > 0) return "Blood Sense active: pink=journalist, white=isolated, red=trail/body, green=route, orange=hunter/block";
       if (player.senseCooldown <= 0 && !player.inSafehouse) return `F: Blood Sense [+${BALANCE.senseHunger} hunger] to read the journalist, trails, hunters and routes`;
       const it = nearbyInteractable();
+      if (it && it.id === "safehouseDoor") return "Rooftop refuge: safe terrace. Use ladders, fire escapes or jumps to leave.";
       if (it) return typeof it.prompt === "function" ? it.prompt() : it.prompt;
       return "";
     }
