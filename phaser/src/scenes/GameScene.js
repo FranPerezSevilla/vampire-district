@@ -12,10 +12,12 @@ import {
   sewerTunnels,
   shadowZones
 } from "../data/district.js";
+import { ExposureSystem } from "../systems/ExposureSystem.js";
 import { FeedingSystem } from "../systems/FeedingSystem.js";
 import { InteractionSystem } from "../systems/InteractionSystem.js";
 import { MissionSystem } from "../systems/MissionSystem.js";
 import { NpcSystem } from "../systems/NpcSystem.js";
+import { WitnessSystem } from "../systems/WitnessSystem.js";
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -71,6 +73,8 @@ export class GameScene extends Phaser.Scene {
     this.missionSystem = new MissionSystem(this);
     this.npcSystem = new NpcSystem(this);
     this.feedingSystem = new FeedingSystem(this);
+    this.exposureSystem = new ExposureSystem(this);
+    this.witnessSystem = new WitnessSystem(this);
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.redrawLayer(this.lastActionText);
@@ -106,12 +110,15 @@ export class GameScene extends Phaser.Scene {
 
     if (!this.interactionSystem.isOpen) {
       if (this.feedingSystem.isActive()) {
+        this.witnessSystem.update(dt);
         this.feedingSystem.update(dt, this.playerHasMovementIntent());
         this.npcSystem.update(0);
       } else {
         this.updatePlayerMovement(dt);
         this.npcSystem.update(dt);
+        this.witnessSystem.update(dt);
       }
+      this.exposureSystem.cool(dt);
       this.missionSystem.update();
       this.nearestInteraction = this.findNearestInteraction(this.collectInteractions());
     }
@@ -180,8 +187,11 @@ export class GameScene extends Phaser.Scene {
     const options = [];
     const radius = 26;
 
+    options.push(...this.witnessSystem.collectInteractions());
     options.push(...this.missionSystem.collectInteractions());
     options.push(...this.feedingSystem.collectInteractions());
+
+    if (this.feedingSystem.isActive()) return options;
 
     if (this.currentLayer === LAYERS.STREET) {
       for (const light of lights) {
@@ -192,7 +202,7 @@ export class GameScene extends Phaser.Scene {
             id: `break_${light.id}`,
             type: "breakLight",
             label: `Break ${light.name}`,
-            detail: "creates shadow · raises suspicion later",
+            detail: "creates shadow · raises suspicion",
             priority: 80,
             distance: d,
             x: light.x,
@@ -321,6 +331,8 @@ export class GameScene extends Phaser.Scene {
   breakLight(light) {
     if (!light || this.brokenLights.has(light.id)) return;
     this.brokenLights.add(light.id);
+    this.exposureSystem.add(8, `${light.name} broken. The avenue notices.`);
+    this.exposureSystem.forceLevel(1, "Vandalism makes civilians nervous.");
     this.lastActionText = `${light.name} broken. You create a useful patch of darkness.`;
     this.redrawLayer(this.lastActionText);
   }
@@ -346,6 +358,8 @@ export class GameScene extends Phaser.Scene {
     this.registry.set("missionText", this.missionSystem.objectiveText());
     this.registry.set("npcText", this.npcSystem ? this.npcSystem.summary() : "NPCs loading");
     this.registry.set("hungerText", this.feedingSystem ? this.feedingSystem.summary() : "Hunger loading");
+    this.registry.set("exposureText", this.exposureSystem ? this.exposureSystem.summary() : "Exposure loading");
+    this.registry.set("witnessText", this.witnessSystem ? this.witnessSystem.summary() : "Witnesses loading");
     this.registry.set("playerXY", `${Math.round(this.player.x)}, ${Math.round(this.player.y)}`);
     this.registry.set("interactionPrompt", this.interactionSystem.isOpen ? "" : this.nearestInteraction ? `E: ${this.nearestInteraction.label}` : "");
     this.registry.set("lastActionText", this.lastActionText);
@@ -554,6 +568,7 @@ export class GameScene extends Phaser.Scene {
       this.promptGraphics.lineStyle(2, 0xfff2a8, 0.95).strokeCircle(x, y, 15);
       this.promptGraphics.fillStyle(0xfff2a8, 0.15).fillCircle(x, y, 15);
     }
+    this.witnessSystem?.drawMarkers(this.promptGraphics);
     this.drawFeedingProgress();
   }
 
