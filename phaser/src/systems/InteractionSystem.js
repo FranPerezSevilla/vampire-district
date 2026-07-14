@@ -1,0 +1,127 @@
+export class InteractionSystem {
+  constructor(scene) {
+    this.scene = scene;
+    this.menu = null;
+  }
+
+  get isOpen() {
+    return Boolean(this.menu);
+  }
+
+  sortOptions(options) {
+    return [...options].sort((a, b) => {
+      const priority = (b.priority || 0) - (a.priority || 0);
+      if (priority !== 0) return priority;
+      return (a.distance || 0) - (b.distance || 0);
+    });
+  }
+
+  handleAction(options) {
+    const sorted = this.sortOptions(options || []);
+    if (sorted.length === 0) return false;
+
+    if (sorted.length === 1) {
+      this.runOption(sorted[0]);
+      return true;
+    }
+
+    this.open(sorted);
+    return true;
+  }
+
+  open(options) {
+    this.menu = {
+      options,
+      index: 0
+    };
+    this.scene.lastActionText = "Choose interaction.";
+    this.publish();
+  }
+
+  close(status = "Interaction cancelled.") {
+    this.menu = null;
+    this.scene.lastActionText = status;
+    this.publish();
+  }
+
+  runOption(option) {
+    if (!option || typeof option.run !== "function") return;
+    this.menu = null;
+    this.publish();
+    option.run();
+  }
+
+  runSelected() {
+    if (!this.menu) return;
+    const option = this.menu.options[this.menu.index];
+    this.runOption(option);
+  }
+
+  updateInput(keys) {
+    if (!this.menu) return false;
+
+    if (this.justDown(keys.escape)) {
+      this.close();
+      return true;
+    }
+
+    if (this.justDown(keys.up) || this.justDown(keys.w)) {
+      this.menu.index = (this.menu.index - 1 + this.menu.options.length) % this.menu.options.length;
+      this.publish();
+      return true;
+    }
+
+    if (this.justDown(keys.down) || this.justDown(keys.s)) {
+      this.menu.index = (this.menu.index + 1) % this.menu.options.length;
+      this.publish();
+      return true;
+    }
+
+    const digitKeys = [
+      keys.street,
+      keys.roofLow,
+      keys.roofHigh,
+      keys.sewer,
+      keys.five,
+      keys.six,
+      keys.seven,
+      keys.eight,
+      keys.nine
+    ];
+
+    for (let i = 0; i < digitKeys.length; i++) {
+      if (this.justDown(digitKeys[i]) && i < this.menu.options.length) {
+        this.runOption(this.menu.options[i]);
+        return true;
+      }
+    }
+
+    if (this.justDown(keys.interact) || this.justDown(keys.enter) || this.justDown(keys.space)) {
+      this.runSelected();
+      return true;
+    }
+
+    return true;
+  }
+
+  snapshot() {
+    if (!this.menu) return null;
+    return {
+      index: this.menu.index,
+      options: this.menu.options.map(option => ({
+        id: option.id,
+        label: option.label,
+        detail: option.detail || "",
+        type: option.type || "action"
+      }))
+    };
+  }
+
+  publish() {
+    this.scene.registry.set("interactionMenu", this.snapshot());
+  }
+
+  justDown(key) {
+    return Boolean(key && Phaser.Input.Keyboard.JustDown(key));
+  }
+}
