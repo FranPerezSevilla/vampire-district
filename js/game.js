@@ -2436,7 +2436,7 @@
     }
 
     function actionLabelFromPrompt(prompt) {
-      return String(prompt || "Interact").replace(/^E:s*/i, "");
+      return String(prompt || "Interact").replace(/^E:\s*/i, "");
     }
 
     function buildInteractionOptions() {
@@ -3020,13 +3020,6 @@
         if (consumePressed("enter") || consumePressed("e") || consumePressed(" ")) {
           acceptOrderReport();
         }
-        updateEffects(dt);
-        updateCinematic(dt);
-        updateCamera();
-        return;
-      }
-      if (state.interactionMenu) {
-        updateInteractionMenu();
         updateEffects(dt);
         updateCinematic(dt);
         updateCamera();
@@ -3717,7 +3710,6 @@
         ctx.fillRect(0, VIEW_H - (10 + arc * 22), VIEW_W, 10 + arc * 22);
       }
       drawBeastOverlay();
-      drawInteractionMenu();
       // Legacy canvas help removed. DOM help is handled by js/help-overlay.js.
       drawMissionSummaryOverlay();
       drawInteractionMenuOverlay();
