@@ -1,116 +1,109 @@
 import { COLORS } from "../data/balance.js";
 
+const FONT = "monospace";
+const GAME_SCENE = "GameScene";
+
 export class UIScene extends Phaser.Scene {
   constructor() {
     super("UIScene");
+    this.introOpen = true;
+    this.helpOpen = false;
   }
 
   create() {
-    this.panel = this.add.rectangle(14, 14, 720, 262, 0x05060b, 0.78).setOrigin(0, 0).setScrollFactor(0);
-    this.panel.setStrokeStyle(1, 0x2d3045, 1);
+    this.keys = this.input.keyboard.addKeys({
+      help: Phaser.Input.Keyboard.KeyCodes.H,
+      escape: Phaser.Input.Keyboard.KeyCodes.ESC,
+      enter: Phaser.Input.Keyboard.KeyCodes.ENTER
+    });
 
-    this.title = this.add.text(26, 24, "Night Blood District · Phaser", {
-      fontFamily: "monospace",
-      fontSize: "13px",
-      color: "#f1e6ff"
-    }).setScrollFactor(0);
-
-    this.objective = this.add.text(26, 44, "Objective: booting...", {
-      fontFamily: "monospace",
-      fontSize: "11px",
-      color: "#ffb02e"
-    }).setScrollFactor(0);
-
-    this.status = this.add.text(26, 63, "Booting...", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#78c7a3"
-    }).setScrollFactor(0);
-
-    this.visibility = this.add.text(26, 80, "Visibility: unknown", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#d7c8ff"
-    }).setScrollFactor(0);
-
-    this.exposure = this.add.text(26, 97, "Exposure: loading", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#ffb02e"
-    }).setScrollFactor(0);
-
-    this.police = this.add.text(26, 114, "Police: loading", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#4da3ff"
-    }).setScrollFactor(0);
-
-    this.witness = this.add.text(26, 131, "Witnesses: loading", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#ff3b50"
-    }).setScrollFactor(0);
-
-    this.hunter = this.add.text(26, 148, "Hunters: dormant", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#ff9d35"
-    }).setScrollFactor(0);
-
-    this.evidence = this.add.text(26, 165, "Evidence: loading", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#78c7a3"
-    }).setScrollFactor(0);
-
-    this.npcs = this.add.text(26, 182, "NPCs: loading", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#c8b58a"
-    }).setScrollFactor(0);
-
-    this.hunger = this.add.text(26, 199, "Hunger: loading", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#ff3b50"
-    }).setScrollFactor(0);
-
-    this.powers = this.add.text(26, 216, "Powers: loading", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#a75cff"
-    }).setScrollFactor(0);
-
-    this.prompt = this.add.text(26, 233, "", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#fff2a8"
-    }).setScrollFactor(0);
-
-    this.lastAction = this.add.text(26, 248, "", {
-      fontFamily: "monospace",
-      fontSize: "9px",
-      color: "#9d93b8"
-    }).setScrollFactor(0);
+    this.createTopMenu();
+    this.createFooter();
+    this.createInteractionMenu();
+    this.createIntroOverlay();
+    this.createHelpOverlay();
 
     this.phase = this.add.text(14, 606, "PHASE 11: powers + Blood Sense polish", {
-      fontFamily: "monospace",
+      fontFamily: FONT,
       fontSize: "10px",
       color: "#ffb02e",
       backgroundColor: "rgba(0,0,0,.55)",
       padding: { x: 8, y: 5 }
-    }).setScrollFactor(0);
+    }).setScrollFactor(0).setDepth(20);
 
+    this.updateUiPause();
+    this.renderOverlays();
+  }
+
+  createTopMenu() {
+    this.topPanel = this.add.rectangle(0, 0, 960, 78, 0x05060b, 0.86).setOrigin(0, 0).setScrollFactor(0).setDepth(10);
+    this.topPanel.setStrokeStyle(1, 0x2d3045, 1);
+
+    this.title = this.add.text(16, 10, "Night Blood District", {
+      fontFamily: FONT,
+      fontSize: "14px",
+      color: "#f1e6ff"
+    }).setScrollFactor(0).setDepth(11);
+
+    this.objective = this.add.text(178, 11, "Objective: booting...", {
+      fontFamily: FONT,
+      fontSize: "11px",
+      color: "#ffb02e",
+      wordWrap: { width: 520 }
+    }).setScrollFactor(0).setDepth(11);
+
+    this.helpButton = this.add.rectangle(884, 19, 104, 24, 0x15121d, 0.96).setScrollFactor(0).setDepth(12).setInteractive({ useHandCursor: true });
+    this.helpButton.setStrokeStyle(1, 0x78c7a3, 0.8);
+    this.helpButtonLabel = this.add.text(838, 12, "HELP · H", {
+      fontFamily: FONT,
+      fontSize: "11px",
+      color: "#78c7a3"
+    }).setScrollFactor(0).setDepth(13);
+    this.helpButton.on("pointerdown", () => this.toggleHelp());
+
+    this.statRowA = this.add.text(16, 35, "", {
+      fontFamily: FONT,
+      fontSize: "10px",
+      color: "#d7c8ff"
+    }).setScrollFactor(0).setDepth(11);
+
+    this.statRowB = this.add.text(16, 54, "", {
+      fontFamily: FONT,
+      fontSize: "10px",
+      color: "#9d93b8"
+    }).setScrollFactor(0).setDepth(11);
+  }
+
+  createFooter() {
+    this.prompt = this.add.text(16, 570, "", {
+      fontFamily: FONT,
+      fontSize: "10px",
+      color: "#fff2a8",
+      backgroundColor: "rgba(0,0,0,.50)",
+      padding: { x: 8, y: 4 }
+    }).setScrollFactor(0).setDepth(15);
+
+    this.lastAction = this.add.text(16, 590, "", {
+      fontFamily: FONT,
+      fontSize: "9px",
+      color: "#9d93b8",
+      backgroundColor: "rgba(0,0,0,.45)",
+      padding: { x: 8, y: 4 },
+      wordWrap: { width: 720 }
+    }).setScrollFactor(0).setDepth(15);
+  }
+
+  createInteractionMenu() {
     this.menuBackdrop = this.add.rectangle(480, 320, 960, 640, 0x000000, 0.52).setScrollFactor(0).setDepth(100).setVisible(false);
     this.menuPanel = this.add.rectangle(480, 320, 450, 240, 0x08080e, 0.96).setScrollFactor(0).setDepth(101).setVisible(false);
     this.menuPanel.setStrokeStyle(1, 0xd7c8ff, 0.75);
     this.menuTitle = this.add.text(280, 224, "Choose interaction", {
-      fontFamily: "monospace",
+      fontFamily: FONT,
       fontSize: "14px",
       color: "#f1e6ff"
     }).setScrollFactor(0).setDepth(102).setVisible(false);
     this.menuHint = this.add.text(280, 244, "W/S or arrows · E/Enter confirm · Esc cancel · 1-9 quick select", {
-      fontFamily: "monospace",
+      fontFamily: FONT,
       fontSize: "9px",
       color: "#9d93b8"
     }).setScrollFactor(0).setDepth(102).setVisible(false);
@@ -120,12 +113,12 @@ export class UIScene extends Phaser.Scene {
       const y = 270 + i * 18;
       const bg = this.add.rectangle(480, y - 4, 410, 16, 0x78c7a3, 0.0).setScrollFactor(0).setDepth(102).setVisible(false);
       const label = this.add.text(286, y - 10, "", {
-        fontFamily: "monospace",
+        fontFamily: FONT,
         fontSize: "10px",
         color: "#f1e6ff"
       }).setScrollFactor(0).setDepth(103).setVisible(false);
       const detail = this.add.text(560, y - 10, "", {
-        fontFamily: "monospace",
+        fontFamily: FONT,
         fontSize: "9px",
         color: "#9d93b8"
       }).setScrollFactor(0).setDepth(103).setVisible(false);
@@ -133,8 +126,93 @@ export class UIScene extends Phaser.Scene {
     }
   }
 
+  createIntroOverlay() {
+    this.introItems = [];
+    const add = item => {
+      this.introItems.push(item);
+      return item;
+    };
+
+    add(this.add.rectangle(480, 320, 960, 640, 0x000000, 0.72).setScrollFactor(0).setDepth(220));
+    const panel = add(this.add.rectangle(480, 315, 620, 350, 0x08080e, 0.97).setScrollFactor(0).setDepth(221));
+    panel.setStrokeStyle(1, COLORS.magic, 0.95);
+
+    add(this.add.text(236, 166, "Night Blood District", {
+      fontFamily: FONT,
+      fontSize: "26px",
+      color: "#f1e6ff"
+    }).setScrollFactor(0).setDepth(222));
+
+    add(this.add.text(236, 205,
+      "A journalist is about to expose your clan.\nYour order is simple: find him near the nightclub, isolate him, feed, and clean the scene before the district understands what happened.", {
+        fontFamily: FONT,
+        fontSize: "13px",
+        color: "#d7c8ff",
+        lineSpacing: 7,
+        wordWrap: { width: 500 }
+      }).setScrollFactor(0).setDepth(222));
+
+    add(this.add.text(236, 292,
+      "Core loop: traverse roofs/sewers · use shadows · manage hunger · avoid witnesses · hide bodies.\nPowers: Q/Space Dash · R Whisper · F Blood Sense · H Help", {
+        fontFamily: FONT,
+        fontSize: "11px",
+        color: "#78c7a3",
+        lineSpacing: 6,
+        wordWrap: { width: 500 }
+      }).setScrollFactor(0).setDepth(222));
+
+    const startButton = add(this.add.rectangle(480, 421, 210, 38, 0x15121d, 1).setScrollFactor(0).setDepth(222).setInteractive({ useHandCursor: true }));
+    startButton.setStrokeStyle(1, 0xffb02e, 1);
+    add(this.add.text(414, 410, "Start run · Enter", {
+      fontFamily: FONT,
+      fontSize: "13px",
+      color: "#ffb02e"
+    }).setScrollFactor(0).setDepth(223));
+    startButton.on("pointerdown", () => this.closeIntro());
+  }
+
+  createHelpOverlay() {
+    this.helpItems = [];
+    const add = item => {
+      this.helpItems.push(item);
+      return item;
+    };
+
+    add(this.add.rectangle(480, 320, 960, 640, 0x000000, 0.62).setScrollFactor(0).setDepth(240));
+    const panel = add(this.add.rectangle(480, 318, 650, 385, 0x08080e, 0.98).setScrollFactor(0).setDepth(241));
+    panel.setStrokeStyle(1, 0x78c7a3, 0.9);
+
+    add(this.add.text(198, 142, "Help / Controls", {
+      fontFamily: FONT,
+      fontSize: "20px",
+      color: "#f1e6ff"
+    }).setScrollFactor(0).setDepth(242));
+
+    add(this.add.text(198, 182,
+      "Movement: WASD / arrows · Shift sprint\nInteract: E near routes, targets, bodies, witnesses, lamps\nPowers: Q/Space Shadow Dash · R Whisper · F Blood Sense\nStealth: rooftops, sewers and deep shadows hide you\nExposure: public feeding, witnesses and impossible movement bring police\nHunters: appear later, follow blood, and may block escape routes\nEvidence: drag bodies to dumpsters, sewers, roofs or shadows\n\nPress H or Esc to close this help.", {
+        fontFamily: FONT,
+        fontSize: "12px",
+        color: "#d7c8ff",
+        lineSpacing: 7,
+        wordWrap: { width: 560 }
+      }).setScrollFactor(0).setDepth(242));
+
+    const closeButton = add(this.add.rectangle(480, 485, 190, 34, 0x15121d, 1).setScrollFactor(0).setDepth(242).setInteractive({ useHandCursor: true }));
+    closeButton.setStrokeStyle(1, 0x78c7a3, 1);
+    add(this.add.text(424, 475, "Close help · H", {
+      fontFamily: FONT,
+      fontSize: "12px",
+      color: "#78c7a3"
+    }).setScrollFactor(0).setDepth(243));
+    closeButton.on("pointerdown", () => this.toggleHelp(false));
+  }
+
   update() {
-    const build = this.registry.get("buildName") || "Phaser migration";
+    if (Phaser.Input.Keyboard.JustDown(this.keys.help) && !this.introOpen) this.toggleHelp();
+    if (Phaser.Input.Keyboard.JustDown(this.keys.escape) && this.helpOpen) this.toggleHelp(false);
+    if (Phaser.Input.Keyboard.JustDown(this.keys.enter) && this.introOpen) this.closeIntro();
+
+    const build = this.registry.get("buildName") || "Phaser";
     const mission = this.registry.get("missionText") || "Objective unavailable";
     const status = this.registry.get("statusText") || "No status";
     const visibility = this.registry.get("visibilityText") || "Visibility unknown";
@@ -143,35 +221,51 @@ export class UIScene extends Phaser.Scene {
     const witnessText = this.registry.get("witnessText") || "Witnesses unavailable";
     const hunterText = this.registry.get("hunterText") || "Hunters dormant";
     const evidenceText = this.registry.get("evidenceText") || "Evidence unavailable";
-    const npcText = this.registry.get("npcText") || "NPCs unavailable";
     const hungerText = this.registry.get("hungerText") || "Hunger unavailable";
     const powersText = this.registry.get("powersText") || "Powers unavailable";
-    const xy = this.registry.get("playerXY") || "0, 0";
     const menu = this.registry.get("interactionMenu");
     const prompt = menu
       ? "Interaction menu open"
-      : this.registry.get("interactionPrompt") || "Q/Space Dash · R Whisper · F Blood Sense · E interact/feed/body/routes";
+      : this.registry.get("interactionPrompt") || "Q/Space Dash · R Whisper · F Blood Sense · E interact · H Help";
     const lastAction = this.registry.get("lastActionText") || "";
 
     this.title.setText(`Night Blood District · ${build}`);
     this.objective.setText(`Objective: ${mission}`);
-    this.status.setText(`${status} · ${xy}`);
-    this.visibility.setText(`Visibility: ${visibility}`);
-    this.exposure.setText(exposureText);
-    this.police.setText(policeText);
-    this.witness.setText(witnessText);
-    this.hunter.setText(hunterText);
-    this.evidence.setText(evidenceText);
-    this.npcs.setText(`NPCs: ${npcText}`);
-    this.hunger.setText(hungerText);
-    this.powers.setText(`Powers: ${powersText}`);
+    this.statRowA.setText(`${hungerText}   |   ${exposureText}   |   ${visibility}`);
+    this.statRowB.setText(`${policeText}   |   ${hunterText}   |   ${witnessText}   |   ${evidenceText}   |   ${powersText}`);
     this.prompt.setText(prompt);
-    this.lastAction.setText(lastAction);
+    this.lastAction.setText(`${status}${lastAction ? " · " + lastAction : ""}`);
+
     this.renderInteractionMenu(menu);
+    this.renderOverlays();
+    this.updateUiPause();
+  }
+
+  closeIntro() {
+    this.introOpen = false;
+    this.renderOverlays();
+    this.updateUiPause();
+  }
+
+  toggleHelp(force) {
+    this.helpOpen = typeof force === "boolean" ? force : !this.helpOpen;
+    this.renderOverlays();
+    this.updateUiPause();
+  }
+
+  renderOverlays() {
+    for (const item of this.introItems) item.setVisible(this.introOpen);
+    for (const item of this.helpItems) item.setVisible(this.helpOpen && !this.introOpen);
+  }
+
+  updateUiPause() {
+    const shouldPause = this.introOpen || this.helpOpen;
+    if (shouldPause && !this.scene.isPaused(GAME_SCENE)) this.scene.pause(GAME_SCENE);
+    if (!shouldPause && this.scene.isPaused(GAME_SCENE)) this.scene.resume(GAME_SCENE);
   }
 
   renderInteractionMenu(menu) {
-    const open = Boolean(menu && menu.options && menu.options.length);
+    const open = Boolean(menu && menu.options && menu.options.length) && !this.introOpen && !this.helpOpen;
     this.menuBackdrop.setVisible(open);
     this.menuPanel.setVisible(open);
     this.menuTitle.setVisible(open);
