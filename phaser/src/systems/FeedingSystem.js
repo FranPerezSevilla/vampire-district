@@ -90,6 +90,7 @@ export class FeedingSystem {
     if (npc.type === NPC_TYPES.RAT) this.stats.ratFeeds++;
 
     this.scene.npcSystem.markFed(npc);
+    this.scene.evidenceSystem?.onFeedCompleted(npc);
 
     if (npc.type === NPC_TYPES.TARGET) {
       this.scene.missionSystem.resolveJournalistPlaceholder("Journalist fed. Return to the rooftop refuge to report.");
