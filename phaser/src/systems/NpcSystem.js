@@ -17,12 +17,30 @@ export class NpcSystem {
   createNpc(def) {
     const palette = PALETTE[def.type] || PALETTE[NPC_TYPES.CIVILIAN];
     const container = this.scene.add.container(def.x, def.y).setDepth(42);
-    const shadow = this.scene.add.rectangle(0, 8, def.type === NPC_TYPES.RAT ? 7 : 10, 2, 0x000000, 0.32);
-    const body = this.scene.add.rectangle(0, 2, def.type === NPC_TYPES.RAT ? 6 : 9, def.type === NPC_TYPES.RAT ? 5 : 11, palette.body, 1);
-    const head = this.scene.add.rectangle(0, def.type === NPC_TYPES.RAT ? -2 : -6, def.type === NPC_TYPES.RAT ? 3 : 6, def.type === NPC_TYPES.RAT ? 3 : 6, palette.head, 1);
+    this.paintLivingNpc(container, def.type, palette);
+
+    const angle = Math.random() * Math.PI * 2;
+    return {
+      ...def,
+      x: def.x,
+      y: def.y,
+      vx: Math.cos(angle) * (def.speed || 0),
+      vy: Math.sin(angle) * (def.speed || 0),
+      dead: false,
+      fed: false,
+      wait: def.behavior === "loiter" || def.behavior === "guard" || def.behavior === "hidden" ? 999 : 0.4 + Math.random() * 1.2,
+      aiTimer: 0.6 + Math.random() * 1.8,
+      container
+    };
+  }
+
+  paintLivingNpc(container, type, palette) {
+    const shadow = this.scene.add.rectangle(0, 8, type === NPC_TYPES.RAT ? 7 : 10, 2, 0x000000, 0.32);
+    const body = this.scene.add.rectangle(0, 2, type === NPC_TYPES.RAT ? 6 : 9, type === NPC_TYPES.RAT ? 5 : 11, palette.body, 1);
+    const head = this.scene.add.rectangle(0, type === NPC_TYPES.RAT ? -2 : -6, type === NPC_TYPES.RAT ? 3 : 6, type === NPC_TYPES.RAT ? 3 : 6, palette.head, 1);
     container.add([shadow, body, head]);
 
-    if (def.type === NPC_TYPES.TARGET || def.type === NPC_TYPES.POLICE || def.type === NPC_TYPES.HUNTER || def.type === NPC_TYPES.RAT) {
+    if (type === NPC_TYPES.TARGET || type === NPC_TYPES.POLICE || type === NPC_TYPES.HUNTER || type === NPC_TYPES.RAT) {
       const label = this.scene.add.text(8, -14, palette.label, {
         fontFamily: "monospace",
         fontSize: "8px",
@@ -32,18 +50,6 @@ export class NpcSystem {
       });
       container.add(label);
     }
-
-    const angle = Math.random() * Math.PI * 2;
-    return {
-      ...def,
-      x: def.x,
-      y: def.y,
-      vx: Math.cos(angle) * (def.speed || 0),
-      vy: Math.sin(angle) * (def.speed || 0),
-      wait: def.behavior === "loiter" || def.behavior === "guard" || def.behavior === "hidden" ? 999 : 0.4 + Math.random() * 1.2,
-      aiTimer: 0.6 + Math.random() * 1.8,
-      container
-    };
   }
 
   update(dt) {
@@ -55,7 +61,7 @@ export class NpcSystem {
   }
 
   updateNpc(npc, dt) {
-    if (npc.inactive || npc.behavior === "guard" || npc.behavior === "hidden") return;
+    if (npc.dead || npc.inactive || npc.behavior === "guard" || npc.behavior === "hidden") return;
     if (npc.behavior === "loiter") return;
 
     npc.aiTimer -= dt;
@@ -97,19 +103,11 @@ export class NpcSystem {
     for (const npc of this.npcs) npc.container.setVisible(this.isVisible(npc));
   }
 
-  drawDebugMarkers(graphics) {
-    for (const npc of this.npcs) {
-      if (!this.isVisible(npc)) continue;
-      const color = (PALETTE[npc.type] || PALETTE[NPC_TYPES.CIVILIAN]).body;
-      graphics.lineStyle(1, color, 0.30).strokeCircle(npc.x, npc.y, npc.type === NPC_TYPES.RAT ? 12 : 17);
-    }
-  }
-
   nearestFeedable(x, y, layer, radius = 24) {
     let best = null;
     let bestD = Infinity;
     for (const npc of this.npcs) {
-      if (npc.layer !== layer || npc.inactive) continue;
+      if (npc.layer !== layer || npc.inactive || npc.dead) continue;
       if (![NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET, NPC_TYPES.RAT].includes(npc.type)) continue;
       const d = Phaser.Math.Distance.Between(x, y, npc.x, npc.y);
       if (d < radius && d < bestD) {
@@ -120,10 +118,34 @@ export class NpcSystem {
     return best;
   }
 
+  markFed(npc) {
+    if (!npc || npc.dead) return;
+    npc.dead = true;
+    npc.fed = true;
+    npc.vx = 0;
+    npc.vy = 0;
+    npc.container.removeAll(true);
+
+    const corpseColor = npc.type === NPC_TYPES.RAT ? 0x4d4239 : 0x4b0e1a;
+    const labelText = npc.type === NPC_TYPES.RAT ? "RAT" : npc.type === NPC_TYPES.TARGET ? "JOURNO BODY" : "BODY";
+    const body = this.scene.add.rectangle(0, 2, npc.type === NPC_TYPES.RAT ? 8 : 14, npc.type === NPC_TYPES.RAT ? 4 : 7, corpseColor, 1);
+    const head = this.scene.add.rectangle(npc.type === NPC_TYPES.RAT ? 4 : 6, 1, npc.type === NPC_TYPES.RAT ? 3 : 4, npc.type === NPC_TYPES.RAT ? 3 : 4, 0x12060a, 1);
+    const label = this.scene.add.text(8, -12, labelText, {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: npc.type === NPC_TYPES.TARGET ? "#ff4bd8" : "#ff3b50",
+      backgroundColor: "rgba(0,0,0,.45)",
+      padding: { x: 2, y: 1 }
+    });
+    npc.container.add([body, head, label]);
+  }
+
   summary() {
     const visible = this.npcs.filter(n => this.isVisible(n)).length;
-    const rats = this.npcs.filter(n => n.type === NPC_TYPES.RAT && this.isVisible(n)).length;
-    const targetVisible = this.npcs.some(n => n.type === NPC_TYPES.TARGET && this.isVisible(n));
+    const bodies = this.npcs.filter(n => n.dead && this.isVisible(n)).length;
+    const rats = this.npcs.filter(n => n.type === NPC_TYPES.RAT && !n.dead && this.isVisible(n)).length;
+    const targetVisible = this.npcs.some(n => n.type === NPC_TYPES.TARGET && !n.dead && this.isVisible(n));
+    if (bodies) return `${visible} NPC/body marker(s) · ${bodies} corpse(s)`;
     if (rats) return `${visible} NPC(s) visible · ${rats} rat(s)`;
     if (targetVisible) return `${visible} NPC(s) visible · journalist present`;
     return `${visible} NPC(s) visible`;
