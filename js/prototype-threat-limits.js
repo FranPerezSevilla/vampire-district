@@ -3,16 +3,17 @@
 
   // Prototype scope guard: keep exactly one hunter in the district.
   //
-  // game.js currently creates two hidden hunters and may try to create a
-  // visible hunter when exposure reaches level 3. This small guard keeps the
-  // first hunter as the unique encounter, discards the second hidden hunter,
-  // and converts the later spawn request into the reveal of the existing one.
+  // game.js currently creates two hidden hunters and may later request a
+  // visible hunter when exposure reaches level 3. This keeps the first hunter
+  // as the unique encounter, discards the second hidden hunter, and converts
+  // a later spawn request into the reveal of the existing one.
   //
-  // This lets us simplify the prototype without rewriting the hunter AI. When
-  // threat configuration is extracted from game.js, this file can disappear.
+  // This is intentionally isolated from game.js so the prototype can be
+  // simplified without rewriting its large gameplay file.
 
   const originalPush = Array.prototype.push;
   let uniqueHunter = null;
+  let restored = false;
 
   function isHunterNpc(value) {
     return Boolean(
@@ -25,7 +26,13 @@
     );
   }
 
-  Array.prototype.push = function (...items) {
+  function restoreOriginalPush() {
+    if (restored) return;
+    restored = true;
+    if (Array.prototype.push === guardedPush) Array.prototype.push = originalPush;
+  }
+
+  function guardedPush(...items) {
     const accepted = [];
 
     for (const item of items) {
@@ -54,6 +61,19 @@
       }
     }
 
-    return originalPush.apply(this, accepted);
-  };
+    const result = originalPush.apply(this, accepted);
+    if (uniqueHunter && uniqueHunter.revealed && !uniqueHunter.hidden) restoreOriginalPush();
+    return result;
+  }
+
+  Array.prototype.push = guardedPush;
+
+  // The hunter can also be revealed directly by noise or blood without a new
+  // spawn attempt. Stop guarding arrays as soon as that happens.
+  const restoreWatcher = window.setInterval(() => {
+    if (uniqueHunter && uniqueHunter.revealed && !uniqueHunter.hidden) {
+      window.clearInterval(restoreWatcher);
+      restoreOriginalPush();
+    }
+  }, 250);
 })();
