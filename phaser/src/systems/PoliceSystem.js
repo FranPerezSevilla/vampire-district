@@ -18,6 +18,7 @@ export class PoliceSystem {
     this.scene = scene;
     this.localHeat = Object.create(null);
     this.spawned = 0;
+    this.spawnedThisTick = 0;
   }
 
   update(dt) {
@@ -48,12 +49,13 @@ export class PoliceSystem {
     if (level < 2) return;
     const desired = Math.min(4, Math.max(1, level));
     const activePolice = this.police().length;
+    this.spawnedThisTick = 0;
     while (activePolice + this.spawnedThisTick < desired) this.spawnPolice();
     this.spawnedThisTick = 0;
   }
 
   spawnPolice() {
-    this.spawnedThisTick = (this.spawnedThisTick || 0) + 1;
+    this.spawnedThisTick++;
     this.spawned++;
     const offset = (Math.random() - 0.5) * 34;
     const cop = this.scene.npcSystem.createNpc({
