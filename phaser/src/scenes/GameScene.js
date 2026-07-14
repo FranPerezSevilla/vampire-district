@@ -18,6 +18,7 @@ import { FeedingSystem } from "../systems/FeedingSystem.js";
 import { InteractionSystem } from "../systems/InteractionSystem.js";
 import { MissionSystem } from "../systems/MissionSystem.js";
 import { NpcSystem } from "../systems/NpcSystem.js";
+import { PoliceSystem } from "../systems/PoliceSystem.js";
 import { WitnessSystem } from "../systems/WitnessSystem.js";
 
 export class GameScene extends Phaser.Scene {
@@ -77,6 +78,7 @@ export class GameScene extends Phaser.Scene {
     this.exposureSystem = new ExposureSystem(this);
     this.witnessSystem = new WitnessSystem(this);
     this.evidenceSystem = new EvidenceSystem(this);
+    this.policeSystem = new PoliceSystem(this);
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.redrawLayer(this.lastActionText);
@@ -122,6 +124,7 @@ export class GameScene extends Phaser.Scene {
       }
       this.evidenceSystem.update(dt);
       this.exposureSystem.cool(dt);
+      this.policeSystem.update(dt);
       this.missionSystem.update();
       this.nearestInteraction = this.findNearestInteraction(this.collectInteractions());
     }
@@ -366,6 +369,7 @@ export class GameScene extends Phaser.Scene {
     this.registry.set("exposureText", this.exposureSystem ? this.exposureSystem.summary() : "Exposure loading");
     this.registry.set("witnessText", this.witnessSystem ? this.witnessSystem.summary() : "Witnesses loading");
     this.registry.set("evidenceText", this.evidenceSystem ? this.evidenceSystem.summary() : "Evidence loading");
+    this.registry.set("policeText", this.policeSystem ? this.policeSystem.summary() : "Police loading");
     this.registry.set("playerXY", `${Math.round(this.player.x)}, ${Math.round(this.player.y)}`);
     this.registry.set("interactionPrompt", this.interactionSystem.isOpen ? "" : this.nearestInteraction ? `E: ${this.nearestInteraction.label}` : "");
     this.registry.set("lastActionText", this.lastActionText);
