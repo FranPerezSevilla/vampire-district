@@ -12,6 +12,7 @@ import {
   sewerTunnels,
   shadowZones
 } from "../data/district.js";
+import { FeedingSystem } from "../systems/FeedingSystem.js";
 import { InteractionSystem } from "../systems/InteractionSystem.js";
 import { MissionSystem } from "../systems/MissionSystem.js";
 import { NpcSystem } from "../systems/NpcSystem.js";
@@ -69,6 +70,7 @@ export class GameScene extends Phaser.Scene {
     this.interactionSystem = new InteractionSystem(this);
     this.missionSystem = new MissionSystem(this);
     this.npcSystem = new NpcSystem(this);
+    this.feedingSystem = new FeedingSystem(this);
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.redrawLayer(this.lastActionText);
@@ -103,8 +105,13 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (!this.interactionSystem.isOpen) {
-      this.updatePlayerMovement(dt);
-      this.npcSystem.update(dt);
+      if (this.feedingSystem.isActive()) {
+        this.feedingSystem.update(dt, this.playerHasMovementIntent());
+        this.npcSystem.update(0);
+      } else {
+        this.updatePlayerMovement(dt);
+        this.npcSystem.update(dt);
+      }
       this.missionSystem.update();
       this.nearestInteraction = this.findNearestInteraction(this.collectInteractions());
     }
@@ -127,6 +134,10 @@ export class GameScene extends Phaser.Scene {
     this.lastActionText = status || "Layer changed.";
     this.redrawLayer(this.lastActionText);
     this.npcSystem?.refreshVisibility();
+  }
+
+  playerHasMovementIntent() {
+    return this.keys.left.isDown || this.keys.a.isDown || this.keys.right.isDown || this.keys.d.isDown || this.keys.up.isDown || this.keys.w.isDown || this.keys.down.isDown || this.keys.s.isDown;
   }
 
   updatePlayerMovement(dt) {
@@ -170,6 +181,7 @@ export class GameScene extends Phaser.Scene {
     const radius = 26;
 
     options.push(...this.missionSystem.collectInteractions());
+    options.push(...this.feedingSystem.collectInteractions());
 
     if (this.currentLayer === LAYERS.STREET) {
       for (const light of lights) {
@@ -333,6 +345,7 @@ export class GameScene extends Phaser.Scene {
     this.registry.set("visibilityText", this.visibilityText());
     this.registry.set("missionText", this.missionSystem.objectiveText());
     this.registry.set("npcText", this.npcSystem ? this.npcSystem.summary() : "NPCs loading");
+    this.registry.set("hungerText", this.feedingSystem ? this.feedingSystem.summary() : "Hunger loading");
     this.registry.set("playerXY", `${Math.round(this.player.x)}, ${Math.round(this.player.y)}`);
     this.registry.set("interactionPrompt", this.interactionSystem.isOpen ? "" : this.nearestInteraction ? `E: ${this.nearestInteraction.label}` : "");
     this.registry.set("lastActionText", this.lastActionText);
@@ -536,10 +549,25 @@ export class GameScene extends Phaser.Scene {
 
   drawPromptMarker() {
     this.promptGraphics.clear();
-    if (!this.nearestInteraction) return;
-    const { x, y } = this.nearestInteraction;
-    this.promptGraphics.lineStyle(2, 0xfff2a8, 0.95).strokeCircle(x, y, 15);
-    this.promptGraphics.fillStyle(0xfff2a8, 0.15).fillCircle(x, y, 15);
+    if (this.nearestInteraction) {
+      const { x, y } = this.nearestInteraction;
+      this.promptGraphics.lineStyle(2, 0xfff2a8, 0.95).strokeCircle(x, y, 15);
+      this.promptGraphics.fillStyle(0xfff2a8, 0.15).fillCircle(x, y, 15);
+    }
+    this.drawFeedingProgress();
+  }
+
+  drawFeedingProgress() {
+    const progress = this.feedingSystem?.progress();
+    if (!progress) return;
+    const x = progress.x;
+    const y = progress.y - 26;
+    const w = 46;
+    const h = 6;
+    this.promptGraphics.fillStyle(0x000000, 0.68).fillRect(x - w / 2 - 1, y - 1, w + 2, h + 2);
+    this.promptGraphics.fillStyle(0x35101b, 1).fillRect(x - w / 2, y, w, h);
+    this.promptGraphics.fillStyle(0xff3b50, 1).fillRect(x - w / 2, y, w * progress.pct, h);
+    this.promptGraphics.lineStyle(1, 0xffd1da, 0.85).strokeRect(x - w / 2, y, w, h);
   }
 
   drawSewers() {
