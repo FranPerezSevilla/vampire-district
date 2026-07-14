@@ -9,7 +9,8 @@ import {
   roofAreas,
   rooftopRoutes,
   sewerAccesses,
-  sewerTunnels
+  sewerTunnels,
+  shadowZones
 } from "../data/district.js";
 
 export class GameScene extends Phaser.Scene {
@@ -19,6 +20,7 @@ export class GameScene extends Phaser.Scene {
     this.playerSpeed = PLAYER.baseSpeed;
     this.nearestInteraction = null;
     this.lastActionText = "Initial rooftop refuge.";
+    this.brokenLights = new Set();
   }
 
   create() {
@@ -128,6 +130,24 @@ export class GameScene extends Phaser.Scene {
   collectInteractions() {
     const options = [];
     const radius = 26;
+
+    if (this.currentLayer === LAYERS.STREET) {
+      for (const light of lights) {
+        if (this.brokenLights.has(light.id)) continue;
+        const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, light.x, light.y);
+        if (d <= 32) {
+          options.push({
+            type: "breakLight",
+            label: `E: break ${light.name}`,
+            distance: d,
+            x: light.x,
+            y: light.y,
+            light,
+            status: `${light.name} broken. The light dies and the street becomes safer for you.`
+          });
+        }
+      }
+    }
 
     for (const escape of fireEscapes) {
       if (this.currentLayer === LAYERS.STREET) {
@@ -240,7 +260,18 @@ export class GameScene extends Phaser.Scene {
 
   runInteraction(interaction) {
     if (!interaction) return;
+    if (interaction.type === "breakLight") {
+      this.breakLight(interaction.light);
+      return;
+    }
     this.switchLayer(interaction.targetLayer, interaction.target, interaction.status);
+  }
+
+  breakLight(light) {
+    if (!light || this.brokenLights.has(light.id)) return;
+    this.brokenLights.add(light.id);
+    this.lastActionText = `${light.name} broken. You create a useful patch of darkness.`;
+    this.redrawLayer(this.lastActionText);
   }
 
   updateCameraForLayer() {
@@ -260,17 +291,41 @@ export class GameScene extends Phaser.Scene {
     const zone = this.describeCurrentZone();
     this.registry.set("currentLayer", this.currentLayer);
     this.registry.set("statusText", `${layerName} · ${zone}`);
+    this.registry.set("visibilityText", this.visibilityText());
     this.registry.set("playerXY", `${Math.round(this.player.x)}, ${Math.round(this.player.y)}`);
     this.registry.set("interactionPrompt", this.nearestInteraction ? this.nearestInteraction.label : "");
     this.registry.set("lastActionText", this.lastActionText);
   }
 
   describeCurrentZone() {
-    if (this.currentLayer === LAYERS.SEWER) return "connected sewer network";
+    if (this.currentLayer === LAYERS.SEWER) return "hidden in connected sewer network";
     if (this.currentLayer === LAYERS.ROOF_HIGH) return "safe rooftop refuge";
     if (this.currentLayer === LAYERS.ROOF_LOW) return "roof route network";
-    const inLight = lights.find(l => Phaser.Math.Distance.Between(this.player.x, this.player.y, l.x, l.y) < l.radius);
-    return inLight ? `under ${inLight.name}` : "dark street";
+    const light = this.currentLight();
+    if (light) return `under ${light.name}`;
+    const shadow = this.currentShadow();
+    return shadow ? `in ${shadow.name}` : "dark street";
+  }
+
+  visibilityText() {
+    if (this.currentLayer === LAYERS.SEWER) return "Hidden · sewers";
+    if (this.currentLayer > LAYERS.STREET) return "Hidden · rooftop";
+    const light = this.currentLight();
+    if (light) return `Exposed · ${light.name}`;
+    const shadow = this.currentShadow();
+    return shadow ? `Hidden · ${shadow.name}` : "Hidden · street darkness";
+  }
+
+  currentLight() {
+    if (this.currentLayer !== LAYERS.STREET) return null;
+    return lights.find(l => !this.brokenLights.has(l.id) && Phaser.Math.Distance.Between(this.player.x, this.player.y, l.x, l.y) < l.radius) || null;
+  }
+
+  currentShadow() {
+    if (this.currentLayer !== LAYERS.STREET) return null;
+    const brokenLamp = lights.find(l => this.brokenLights.has(l.id) && Phaser.Math.Distance.Between(this.player.x, this.player.y, l.x, l.y) < l.radius * 0.72);
+    if (brokenLamp) return { id: `broken-${brokenLamp.id}`, name: `broken light shadow` };
+    return shadowZones.find(z => this.pointInRect(this.player.x, this.player.y, z)) || null;
   }
 
   redrawLayer(statusText = "") {
@@ -295,7 +350,7 @@ export class GameScene extends Phaser.Scene {
     this.map.fillStyle(COLORS.streetBase, 1).fillRect(0, 0, WORLD.width, WORLD.height);
 
     for (const road of roads) this.drawRoad(road);
-    this.drawDarkAlleys();
+    this.drawShadowZones();
     this.drawLights();
     this.drawSewerManholes();
     for (const building of buildings) this.drawBuilding(building);
@@ -317,14 +372,31 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  drawDarkAlleys() {
-    this.map.fillStyle(0x0d0a18, 0.46).fillRect(246, 244, 474, 44);
-    this.map.fillStyle(0x0d0a18, 0.50).fillRect(90, 502, 790, 44);
-    this.map.fillStyle(0x180a2a, 0.42).fillRect(96, 382, 198, 44);
+  drawShadowZones() {
+    for (const zone of shadowZones) {
+      const alpha = zone.id === "districtDarkness" ? 0.20 : 0.44 + zone.strength * 0.18;
+      this.map.fillStyle(0x0d0a18, alpha).fillRect(zone.x, zone.y, zone.w, zone.h);
+      if (zone.id !== "districtDarkness") {
+        this.map.lineStyle(1, 0xd7c8ff, 0.14).strokeRect(zone.x, zone.y, zone.w, zone.h);
+      }
+    }
+
+    for (const light of lights) {
+      if (!this.brokenLights.has(light.id)) continue;
+      const radius = light.radius * 0.72;
+      this.map.fillStyle(0x05030a, 0.50).fillCircle(light.x, light.y, radius);
+      this.map.lineStyle(1, 0xa75cff, 0.22).strokeCircle(light.x, light.y, radius);
+    }
   }
 
   drawLights() {
     for (const light of lights) {
+      if (this.brokenLights.has(light.id)) {
+        this.map.fillStyle(0x5d2535, 1).fillRect(light.x - 3, light.y - 2, 6, 2);
+        this.map.fillStyle(0x302734, 1).fillRect(light.x - 2, light.y - 14, 4, 16);
+        this.map.fillStyle(0xff3b50, 1).fillRect(light.x - 5, light.y - 18, 10, 2);
+        continue;
+      }
       this.map.fillStyle(0xffdc74, 0.09).fillCircle(light.x, light.y, light.radius);
       this.map.lineStyle(1, 0xffdc74, 0.23).strokeCircle(light.x, light.y, light.radius);
       this.map.fillStyle(0xffe16b, 1).fillRect(light.x - 2, light.y - 14, 4, 16);
@@ -388,6 +460,12 @@ export class GameScene extends Phaser.Scene {
     for (const access of sewerAccesses) {
       if (this.currentLayer === LAYERS.STREET && access.street) this.drawRouteMarker(access.street.x, access.street.y, "SEWER", 0x78c7a3);
       if (this.currentLayer === LAYERS.SEWER) this.drawRouteMarker(access.sewer.x, access.sewer.y, access.roof ? "SHAFT" : "EXIT", 0x78c7a3);
+    }
+
+    if (this.currentLayer === LAYERS.STREET) {
+      for (const light of lights) {
+        if (!this.brokenLights.has(light.id)) this.drawRouteMarker(light.x, light.y, "LAMP", 0xffe16b);
+      }
     }
 
     if (this.currentLayer > LAYERS.STREET) {
