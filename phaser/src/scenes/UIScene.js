@@ -81,7 +81,7 @@ export class UIScene extends Phaser.Scene {
       color: "#9d93b8"
     }).setScrollFactor(0);
 
-    this.phase = this.add.text(14, 606, "PHASE 9: police + local heat", {
+    this.phase = this.add.text(14, 606, "PHASE 10: hunters + route blocking", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffb02e",
@@ -129,6 +129,7 @@ export class UIScene extends Phaser.Scene {
     const exposureText = this.registry.get("exposureText") || "Exposure unavailable";
     const policeText = this.registry.get("policeText") || "Police unavailable";
     const witnessText = this.registry.get("witnessText") || "Witnesses unavailable";
+    const hunterText = this.registry.get("hunterText") || "Hunters dormant";
     const evidenceText = this.registry.get("evidenceText") || "Evidence unavailable";
     const npcText = this.registry.get("npcText") || "NPCs unavailable";
     const hungerText = this.registry.get("hungerText") || "Hunger unavailable";
@@ -146,6 +147,7 @@ export class UIScene extends Phaser.Scene {
     this.exposure.setText(exposureText);
     this.police.setText(policeText);
     this.witness.setText(witnessText);
+    this.hunter.setText(hunterText);
     this.evidence.setText(evidenceText);
     this.npcs.setText(`NPCs: ${npcText}`);
     this.hunger.setText(hungerText);

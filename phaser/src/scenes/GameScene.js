@@ -15,6 +15,7 @@ import {
 import { EvidenceSystem } from "../systems/EvidenceSystem.js";
 import { ExposureSystem } from "../systems/ExposureSystem.js";
 import { FeedingSystem } from "../systems/FeedingSystem.js";
+import { HunterSystem } from "../systems/HunterSystem.js";
 import { InteractionSystem } from "../systems/InteractionSystem.js";
 import { MissionSystem } from "../systems/MissionSystem.js";
 import { NpcSystem } from "../systems/NpcSystem.js";
@@ -79,6 +80,7 @@ export class GameScene extends Phaser.Scene {
     this.witnessSystem = new WitnessSystem(this);
     this.evidenceSystem = new EvidenceSystem(this);
     this.policeSystem = new PoliceSystem(this);
+    this.hunterSystem = new HunterSystem(this);
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.redrawLayer(this.lastActionText);
@@ -125,6 +127,7 @@ export class GameScene extends Phaser.Scene {
       this.evidenceSystem.update(dt);
       this.exposureSystem.cool(dt);
       this.policeSystem.update(dt);
+      this.hunterSystem.update(dt);
       this.missionSystem.update();
       this.nearestInteraction = this.findNearestInteraction(this.collectInteractions());
     }
@@ -370,6 +373,7 @@ export class GameScene extends Phaser.Scene {
     this.registry.set("witnessText", this.witnessSystem ? this.witnessSystem.summary() : "Witnesses loading");
     this.registry.set("evidenceText", this.evidenceSystem ? this.evidenceSystem.summary() : "Evidence loading");
     this.registry.set("policeText", this.policeSystem ? this.policeSystem.summary() : "Police loading");
+    this.registry.set("hunterText", this.hunterSystem ? this.hunterSystem.summary() : "Hunters dormant");
     this.registry.set("playerXY", `${Math.round(this.player.x)}, ${Math.round(this.player.y)}`);
     this.registry.set("interactionPrompt", this.interactionSystem.isOpen ? "" : this.nearestInteraction ? `E: ${this.nearestInteraction.label}` : "");
     this.registry.set("lastActionText", this.lastActionText);
@@ -427,6 +431,7 @@ export class GameScene extends Phaser.Scene {
 
     this.drawRouteMarkers();
     this.drawMissionMarker();
+    this.drawHunterRouteBlocks();
     this.npcSystem?.refreshVisibility();
     if (statusText) this.registry.set("lastActionText", statusText);
   }
