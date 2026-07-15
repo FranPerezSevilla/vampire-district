@@ -440,13 +440,14 @@ export class GameScene extends Phaser.Scene {
 
   updateCameraForLayer() {
     const camera = this.cameras.main;
-    const targetZoom = this.currentLayer === LAYERS.ROOF_HIGH
+    const baseZoom = this.currentLayer === LAYERS.ROOF_HIGH
       ? CAMERA.roofHighZoom
       : this.currentLayer === LAYERS.ROOF_LOW
         ? CAMERA.roofLowZoom
         : this.currentLayer === LAYERS.SEWER
           ? CAMERA.sewerZoom
           : CAMERA.streetZoom;
+    const targetZoom = baseZoom * (WORLD.renderScale || 1);
     camera.setZoom(Phaser.Math.Linear(camera.zoom, targetZoom, 0.08));
   }
 
