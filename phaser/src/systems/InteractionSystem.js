@@ -1,3 +1,4 @@
+import { resolveAction } from "./ActionSystem.js";
 import { RawAudio } from "./RawAudioSystem.js";
 
 export class InteractionSystem {
@@ -56,6 +57,11 @@ export class InteractionSystem {
     this.menu = null;
     this.publish();
     RawAudio.play(this.soundForOption(option));
+    resolveAction(this.scene, option.type, {
+      x: option.x,
+      y: option.y,
+      layer: this.scene.currentLayer
+    });
     option.run();
   }
 
