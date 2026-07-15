@@ -72,16 +72,20 @@ export class PowersSystem {
     this.cooldowns.whisper = HUNGER.whisperCooldown;
     npc.luredTimer = HUNGER.whisperSeconds + (npc.type === NPC_TYPES.TARGET ? 1.2 : 0);
     npc.lureFlash = 1.1;
-    npc.lureStopDistance = npc.type === NPC_TYPES.TARGET ? 30 : 24;
+    npc.lureStopDistance = npc.type === NPC_TYPES.TARGET ? 16 : 20;
     npc.alarmed = false;
     npc.vx = 0;
     npc.vy = 0;
+    npc.navPoint = null;
+    npc.navTargetKey = "";
     this.addHunger(HUNGER.whisperCost, npc.type === NPC_TYPES.TARGET ? "You whisper into the journalist's blood" : "You whisper into a civilian's nerves");
 
-    const noticed = this.scene.witnessSystem?.onSuspiciousPower("a predatory whisper", 6, 110) || 0;
+    // Root fix: the target of the whisper must not also count as a witness to that same whisper.
+    // Previously the journalist could immediately alarm himself because onSuspiciousPower scanned all witnesses seeing the player.
+    const noticed = this.scene.witnessSystem?.onSuspiciousPower("a predatory whisper", 6, 110, { exclude: [npc] }) || 0;
     this.scene.lastActionText = npc.type === NPC_TYPES.TARGET
-      ? `WHISPER LOCK: the journalist is compelled to follow you, not flee.${noticed ? ` ${noticed} witness(es) looked up.` : ""}`
-      : `WHISPER LOCK: a civilian follows you.${noticed ? ` ${noticed} witness(es) noticed.` : ""}`;
+      ? `WHISPER LOCK: the journalist is compelled to follow you.${noticed ? ` ${noticed} other witness(es) looked up.` : ""}`
+      : `WHISPER LOCK: a civilian follows you.${noticed ? ` ${noticed} other witness(es) noticed.` : ""}`;
   }
 
   useDash() {
