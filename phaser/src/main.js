@@ -2,6 +2,7 @@ import { BootScene } from "./scenes/BootScene.js";
 import { GameScene } from "./scenes/GameScene.js";
 import { UIScene } from "./scenes/UIScene.js";
 import { WORLD } from "./data/balance.js";
+import { LAYERS } from "./data/district.js";
 
 const deviceResolution = Math.min(window.devicePixelRatio || 1, 2);
 const renderScale = WORLD.renderScale || 1;
@@ -32,7 +33,30 @@ function patchReadableCanvasText() {
   factory.__nbdReadableTextPatch = true;
 }
 
+function suppressStreetBuildingLabelsOnRoofs() {
+  const originalDrawBuilding = GameScene.prototype.drawBuilding;
+  if (!originalDrawBuilding || originalDrawBuilding.__nbdRoofLabelPatch) return;
+
+  function patchedDrawBuilding(building) {
+    if (this.currentLayer === LAYERS.STREET) {
+      return originalDrawBuilding.call(this, building);
+    }
+
+    const originalAddMapLabel = this.addMapLabel;
+    this.addMapLabel = () => {};
+    try {
+      return originalDrawBuilding.call(this, building);
+    } finally {
+      this.addMapLabel = originalAddMapLabel;
+    }
+  }
+
+  patchedDrawBuilding.__nbdRoofLabelPatch = true;
+  GameScene.prototype.drawBuilding = patchedDrawBuilding;
+}
+
 patchReadableCanvasText();
+suppressStreetBuildingLabelsOnRoofs();
 
 const config = {
   type: Phaser.AUTO,
