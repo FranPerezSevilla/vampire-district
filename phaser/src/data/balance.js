@@ -1,7 +1,8 @@
 export const WORLD = Object.freeze({
   width: 960,
   height: 640,
-  tile: 16
+  tile: 16,
+  renderScale: 1.35
 });
 
 export const PLAYER = Object.freeze({
