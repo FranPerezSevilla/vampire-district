@@ -1,5 +1,6 @@
 import { HUNGER } from "../data/balance.js";
 import { NPC_TYPES } from "../data/npcs.js";
+import { resolveAction } from "./ActionSystem.js";
 import { RawAudio } from "./RawAudioSystem.js";
 
 const ATTACK_RADIUS = 26;
@@ -104,9 +105,17 @@ export class FeedingSystem {
     this.scene.policeSystem?.addHeat(x, y, amount, reason);
   }
 
+  actionExclude(npc) {
+    return npc?.type === NPC_TYPES.POLICE ? [] : [npc].filter(Boolean);
+  }
+
   stun(npc) {
     if (!npc || npc.dead || npc.inactive) return;
     RawAudio.play("stun");
+    resolveAction(this.scene, "stun", {
+      target: npc,
+      exclude: this.actionExclude(npc)
+    });
     this.scene.npcSystem.markStunned(npc, STUN_SECONDS);
     this.stats.stuns++;
     this.addNoise(npc.x, npc.y, npc.type === NPC_TYPES.POLICE ? 12 : 6, `${this.targetName(npc)} stunned; a scuffle makes noise`);
@@ -117,6 +126,10 @@ export class FeedingSystem {
   kill(npc) {
     if (!npc || npc.dead || npc.inactive) return;
     RawAudio.play("kill");
+    resolveAction(this.scene, "kill", {
+      target: npc,
+      exclude: this.actionExclude(npc)
+    });
     const seen = this.scene.witnessSystem?.onMundaneViolence(npc, `${this.targetName(npc)} killed`, this.killSeverity(npc)) || 0;
     this.scene.npcSystem.markKilled(npc);
     this.scene.evidenceSystem?.onKillCompleted(npc);
@@ -134,6 +147,10 @@ export class FeedingSystem {
   startDrain(npc) {
     if (!npc || npc.dead || this.active) return;
     RawAudio.play("drainStart");
+    resolveAction(this.scene, "drain", {
+      target: npc,
+      exclude: this.actionExclude(npc)
+    });
     this.active = {
       kind: "drain",
       npc,
