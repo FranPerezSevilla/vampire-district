@@ -1,6 +1,10 @@
 import { COLORS } from "../data/balance.js";
+import { NPC_TYPES } from "../data/npcs.js";
 import { resolveAction } from "./ActionSystem.js";
 import { RawAudio } from "./RawAudioSystem.js";
+
+const POLICE_JUMP_START = Object.freeze({ x: 650, y: 166 });
+const POLICE_JUMP_END = Object.freeze({ x: 696, y: 154 });
 
 export class TransitionSystem {
   constructor(scene) {
@@ -19,6 +23,17 @@ export class TransitionSystem {
   }
 
   roofJump({ from, to, toLayer, status }) {
+    if (this.policeRoofJumpBlocked(from, to)) {
+      RawAudio.play("cancel");
+      const thug = this.rooftopThug();
+      if (thug) {
+        this.scene.addMapLabel("No te pienso dejar pasar", thug.x - 18, thug.y - 28, 0xffd483);
+        this.graphics.lineStyle(2, 0xff3b50, 0.85).strokeCircle(thug.x, thug.y, 22);
+      }
+      this.scene.lastActionText = "The rooftop thug blocks the jump to the police station. Neutralize him to open the route.";
+      return;
+    }
+
     if (!this.begin("Rooftop jump: committing to the gap.")) return;
     RawAudio.play("routeRoof");
     this.drawArc(from, to, COLORS.accent, "JUMP ARC");
@@ -31,7 +46,7 @@ export class TransitionSystem {
       landingColor: COLORS.accent,
       landingLabel: "LAND",
       onComplete: () => {
-        this.scene.missionSystem?.onRooftopJump?.({ from, to, toLayer });
+        this.scene.missionSystem?.onRooftopJump?.();
         this.complete(toLayer, to, status);
       }
     });
@@ -74,6 +89,18 @@ export class TransitionSystem {
       status,
       goingUp
     });
+  }
+
+  policeRoofJumpBlocked(from, to) {
+    const isForwardPoliceJump = Phaser.Math.Distance.Between(from.x, from.y, POLICE_JUMP_START.x, POLICE_JUMP_START.y) < 16
+      && Phaser.Math.Distance.Between(to.x, to.y, POLICE_JUMP_END.x, POLICE_JUMP_END.y) < 16;
+    if (!isForwardPoliceJump) return false;
+    const thug = this.rooftopThug();
+    return Boolean(thug && !thug.dead && !thug.hiddenBody && thug.stunnedTimer <= 0);
+  }
+
+  rooftopThug() {
+    return this.scene.npcSystem?.npcs?.find(npc => npc.id === "rooftop_thug" && npc.type === NPC_TYPES.THUG) || null;
   }
 
   drawArc(from, to, color, label) {
