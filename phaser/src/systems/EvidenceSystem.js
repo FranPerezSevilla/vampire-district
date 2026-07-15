@@ -1,10 +1,12 @@
 import { bodyHideSpots, LAYERS, shadowZones } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
+import { RawAudio } from "./RawAudioSystem.js";
 
 export class EvidenceSystem {
   constructor(scene) {
     this.scene = scene;
     this.draggingBody = null;
+    this.dragNoiseTimer = 0;
     this.bloodStains = [];
     this.nextBloodId = 1;
     this.discoveryTimer = 0;
@@ -52,7 +54,7 @@ export class EvidenceSystem {
       id: `drag_${body.id}`,
       type: "evidence",
       label: body.type === NPC_TYPES.TARGET ? "Drag journalist body" : "Drag body",
-      detail: "slow cleanup route",
+      detail: "slow and noisy cleanup route",
       priority: 110,
       distance: Phaser.Math.Distance.Between(this.scene.player.x, this.scene.player.y, body.x, body.y),
       x: body.x,
@@ -62,7 +64,7 @@ export class EvidenceSystem {
   }
 
   update(dt) {
-    if (this.draggingBody) this.updateDraggedBody();
+    if (this.draggingBody) this.updateDraggedBody(dt);
     this.updateBlood(dt);
     this.discoveryTimer -= dt;
     if (this.discoveryTimer <= 0) {
@@ -126,14 +128,16 @@ export class EvidenceSystem {
 
   grabBody(body) {
     if (!body || body.hiddenBody) return;
+    RawAudio.play("bodyDrag");
     this.draggingBody = body;
+    this.dragNoiseTimer = 0.35;
     body.dragged = true;
     body.vx = 0;
     body.vy = 0;
-    this.scene.lastActionText = "You grab the body. Move it to a dumpster, sewer, rooftop, refuge, or deep shadow.";
+    this.scene.lastActionText = "You grab the body. Dragging scrapes loudly; move it to a dumpster, sewer, rooftop, refuge, or deep shadow.";
   }
 
-  updateDraggedBody() {
+  updateDraggedBody(dt) {
     const body = this.draggingBody;
     if (!body) return;
     body.layer = this.scene.currentLayer;
@@ -141,22 +145,35 @@ export class EvidenceSystem {
     body.y = this.scene.player.y + 10;
     body.container.setPosition(body.x, body.y);
     body.container.setVisible(true);
+
+    this.dragNoiseTimer -= dt;
+    if (this.dragNoiseTimer <= 0) {
+      this.dragNoiseTimer = this.scene.currentLayer === LAYERS.STREET ? 0.85 : 1.25;
+      RawAudio.play("bodyDrag", { cooldown: 0.45 });
+      if (this.scene.currentLayer === LAYERS.STREET) {
+        this.scene.policeSystem?.addHeat(body.x, body.y, body.type === NPC_TYPES.POLICE || body.type === NPC_TYPES.HUNTER ? 5 : 3, "body dragging noise");
+      }
+    }
   }
 
   dropBody() {
     if (!this.draggingBody) return;
+    RawAudio.play("bodyDrop");
     this.draggingBody.dragged = false;
     this.draggingBody = null;
+    this.dragNoiseTimer = 0;
     this.scene.lastActionText = "Body dropped. If it remains visible, someone can discover it.";
   }
 
   hideDraggedBody(spot) {
     const body = this.draggingBody;
     if (!body || !spot) return;
+    RawAudio.play("bodyHide");
     body.dragged = false;
     body.hiddenBody = true;
     body.container.setVisible(false);
     this.draggingBody = null;
+    this.dragNoiseTimer = 0;
     this.stats.bodiesHidden++;
     this.cleanBloodAround(body.x, body.y, body.layer, spot.cleanRadius || 78);
     this.scene.lastActionText = `Body hidden in ${spot.name}. Evidence pressure drops.`;
