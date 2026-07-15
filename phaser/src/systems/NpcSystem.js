@@ -2,7 +2,7 @@ import { npcDefinitions, NPC_TYPES } from "../data/npcs.js";
 
 const PALETTE = Object.freeze({
   [NPC_TYPES.CIVILIAN]: { body: 0xc8b58a, head: 0xd5b48b, label: "CIV" },
-  [NPC_TYPES.TARGET]: { body: 0xff4bd8, head: 0xffd6fa, label: "TARGET" },
+  [NPC_TYPES.TARGET]: { body: 0xff4bd8, head: 0xffd6fa, label: "JOURNO" },
   [NPC_TYPES.POLICE]: { body: 0x4da3ff, head: 0xd9ecff, label: "POLICE" },
   [NPC_TYPES.HUNTER]: { body: 0xff9d35, head: 0xffd483, label: "HUNTER" },
   [NPC_TYPES.RAT]: { body: 0x9c8f7a, head: 0xc0b49e, label: "RAT" }
@@ -20,12 +20,15 @@ export class NpcSystem {
     this.paintLivingNpc(container, def.type, palette);
 
     const angle = Math.random() * Math.PI * 2;
+    const dirLen = Math.hypot(def.dirX || 0, def.dirY || 0) || 1;
     return {
       ...def,
       x: def.x,
       y: def.y,
       vx: Math.cos(angle) * (def.speed || 0),
       vy: Math.sin(angle) * (def.speed || 0),
+      dirX: def.dirX != null ? def.dirX / dirLen : Math.cos(angle),
+      dirY: def.dirY != null ? def.dirY / dirLen : Math.sin(angle),
       dead: false,
       fed: false,
       hiddenBody: false,
@@ -75,12 +78,30 @@ export class NpcSystem {
 
     if (npc.luredTimer > 0 && !npc.alarmed) {
       npc.luredTimer = Math.max(0, npc.luredTimer - dt);
-      this.moveToward(npc, this.scene.player.x, this.scene.player.y, dt, 1.18);
+      this.moveToward(npc, this.scene.player.x, this.scene.player.y, dt, npc.type === NPC_TYPES.TARGET ? 1.55 : 1.28);
       return;
     }
 
     if (npc.alarmed) return;
-    if (npc.behavior === "loiter") return;
+
+    if (npc.behavior === "loiter") {
+      npc.aiTimer -= dt;
+      if (npc.aiTimer <= 0) {
+        npc.aiTimer = 1.4 + Math.random() * 2.8;
+        if (Math.random() < 0.35) {
+          const dirs = [
+            { x: 1, y: 0 },
+            { x: -1, y: 0 },
+            { x: 0, y: 1 },
+            { x: 0, y: -1 }
+          ];
+          const dir = dirs[Math.floor(Math.random() * dirs.length)];
+          npc.dirX = dir.x;
+          npc.dirY = dir.y;
+        }
+      }
+      return;
+    }
 
     npc.aiTimer -= dt;
     if (npc.aiTimer <= 0) {
@@ -94,6 +115,7 @@ export class NpcSystem {
       const speed = npc.speed || 10;
       npc.vx = Math.cos(angle) * speed;
       npc.vy = Math.sin(angle) * speed;
+      this.setFacingFromVelocity(npc);
     }
 
     const nx = npc.x + npc.vx * dt;
@@ -102,12 +124,23 @@ export class NpcSystem {
     else npc.vx *= -0.45;
     if (this.canNpcStandAt(npc, npc.x, ny)) npc.y = ny;
     else npc.vy *= -0.45;
+    this.setFacingFromVelocity(npc);
+  }
+
+  setFacingFromVelocity(npc) {
+    const len = Math.hypot(npc.vx || 0, npc.vy || 0);
+    if (len > 0.5) {
+      npc.dirX = npc.vx / len;
+      npc.dirY = npc.vy / len;
+    }
   }
 
   moveToward(npc, x, y, dt, speedMul = 1) {
     const dx = x - npc.x;
     const dy = y - npc.y;
     const len = Math.hypot(dx, dy) || 1;
+    npc.dirX = dx / len;
+    npc.dirY = dy / len;
     const speed = (npc.speed || 10) * speedMul;
     const nx = npc.x + (dx / len) * speed * dt;
     const ny = npc.y + (dy / len) * speed * dt;
@@ -183,11 +216,13 @@ export class NpcSystem {
     const bodies = this.npcs.filter(n => n.dead && this.isVisible(n)).length;
     const alarmed = this.npcs.filter(n => n.alarmed && this.isVisible(n)).length;
     const lured = this.npcs.filter(n => n.luredTimer > 0 && this.isVisible(n)).length;
+    const police = this.npcs.filter(n => n.type === NPC_TYPES.POLICE && !n.dead && this.isVisible(n)).length;
     const rats = this.npcs.filter(n => n.type === NPC_TYPES.RAT && !n.dead && this.isVisible(n)).length;
     const targetVisible = this.npcs.some(n => n.type === NPC_TYPES.TARGET && !n.dead && this.isVisible(n));
     if (alarmed) return `${visible} NPC/body marker(s) · ${alarmed} witness(es) fleeing`;
     if (lured) return `${visible} NPC/body marker(s) · ${lured} lured`;
     if (bodies) return `${visible} NPC/body marker(s) · ${bodies} corpse(s)`;
+    if (police) return `${visible} NPC(s) visible · ${police} police patrol(s)`;
     if (rats) return `${visible} NPC(s) visible · ${rats} rat(s)`;
     if (targetVisible) return `${visible} NPC(s) visible · journalist present`;
     return `${visible} NPC(s) visible`;
