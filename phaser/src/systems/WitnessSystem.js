@@ -1,5 +1,6 @@
 import { NPC_TYPES } from "../data/npcs.js";
 import { LAYERS } from "../data/district.js";
+import { RawAudio } from "./RawAudioSystem.js";
 
 const REPORT_POINTS = Object.freeze([
   { id: "police", name: "police station", x: 780, y: 170, severityBonus: 10 },
@@ -46,6 +47,7 @@ export class WitnessSystem {
     if (!witnesses.length || feed.seenNotified) return;
 
     feed.seenNotified = true;
+    RawAudio.play("witnessWtf");
     for (const witness of witnesses) {
       this.alarmWitness(witness, "a vampire drain", 28, {
         masqueradeRisk: true,
@@ -64,6 +66,7 @@ export class WitnessSystem {
     const witnesses = this.witnessesSeeing(victim, this.scene.currentShadow() ? 105 : 155);
     if (!witnesses.length) return { witnesses: 0 };
 
+    RawAudio.play("witnessWtf");
     for (const witness of witnesses) {
       this.alarmWitness(witness, "a completed vampire drain", 30, {
         masqueradeRisk: true,
@@ -71,7 +74,7 @@ export class WitnessSystem {
         source: victim
       });
     }
-    this.scene.lastActionText = `MASQUERADE RISK: witnesses saw the drained body. Stop them before they report.`;
+    this.scene.lastActionText = "MASQUERADE RISK: witnesses saw the drained body. Stop them before they report.";
     return { witnesses: witnesses.length };
   }
 
@@ -80,6 +83,7 @@ export class WitnessSystem {
     if (this.scene.currentLayer !== LAYERS.STREET) return 0;
     const witnesses = this.witnessesSeeing(victim, this.scene.currentShadow() ? 76 : 120);
     if (!witnesses.length) return 0;
+    RawAudio.play("witnessWtf");
     for (const witness of witnesses) {
       this.alarmWitness(witness, label, severity, {
         masqueradeRisk: false,
@@ -148,6 +152,7 @@ export class WitnessSystem {
       witness.reportTarget = target;
 
       if (witness.reactionTimer > 0) {
+        const wasReacting = witness.reactionTimer;
         witness.reactionTimer = Math.max(0, witness.reactionTimer - dt);
         const source = witness.witnessSource || this.scene.player;
         const dx = (source.x ?? this.scene.player.x) - witness.x;
@@ -158,6 +163,7 @@ export class WitnessSystem {
         witness.vx = 0;
         witness.vy = 0;
         witness.container.setPosition(witness.x, witness.y);
+        if (wasReacting > 0 && witness.reactionTimer <= 0) RawAudio.play("witnessRun");
         continue;
       }
 
@@ -185,17 +191,20 @@ export class WitnessSystem {
 
     if (witness.masqueradeRisk) {
       this.masqueradeReports++;
+      RawAudio.play("masqueradeFail");
       this.scene.exposureSystem.forceLevel(5, `A witness reaches ${targetName} and reports a vampire drain.`);
       this.scene.missionSystem.failMasquerade(`Masquerade broken: a witness reported ${witness.witnessReason || "a vampire drain"}.`);
       return;
     }
 
+    RawAudio.play("witnessReport");
     const severity = Math.max(12, witness.reportSeverity || 14) + (witness.reportTarget?.severityBonus || 0);
     this.scene.exposureSystem.add(Math.ceil(severity * 0.75), `A witness reaches ${targetName} and reports ${witness.witnessReason || "you"}.`);
   }
 
   interceptWitness(witness) {
     if (!witness || witness.dead || witness.intercepted) return;
+    RawAudio.play("stun");
     witness.alarmed = false;
     witness.intercepted = true;
     witness.inactive = true;
