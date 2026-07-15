@@ -2,13 +2,20 @@ import { LAYERS } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 
 const POLICE_STATION = Object.freeze({ x: 780, y: 178 });
+const PATROL_POINTS = Object.freeze([
+  { x: 740, y: 248 },
+  { x: 604, y: 326 },
+  { x: 488, y: 326 },
+  { x: 472, y: 242 },
+  { x: 780, y: 178 }
+]);
 const LOCAL_ZONES = Object.freeze([
   { id: "cross", name: "Central crossroad", x: 392, y: 244, w: 170, h: 170 },
   { id: "north", name: "North avenue", x: 400, y: 38, w: 150, h: 250 },
   { id: "east", name: "East avenue", x: 520, y: 292, w: 374, h: 116 },
   { id: "west", name: "West avenue", x: 64, y: 292, w: 360, h: 116 },
   { id: "club", name: "Club", x: 574, y: 350, w: 208, h: 168 },
-  { id: "church", name: "Church", x: 680, y: 420, w: 210, h: 176 },
+  { id: "church", name: "Church", x: 786, y: 404, w: 150, h: 176 },
   { id: "police", name: "Police station", x: 670, y: 70, w: 220, h: 204 },
   { id: "alleys", name: "Alleys", x: 80, y: 232, w: 820, h: 330 }
 ]);
@@ -47,7 +54,7 @@ export class PoliceSystem {
   spawnForExposure() {
     const level = this.scene.exposureSystem.level();
     if (level < 2) return;
-    const desired = Math.min(4, Math.max(1, level));
+    const desired = Math.min(4, Math.max(2, level));
     const activePolice = this.police().length;
     this.spawnedThisTick = 0;
     while (activePolice + this.spawnedThisTick < desired) this.spawnPolice();
@@ -65,10 +72,13 @@ export class PoliceSystem {
       y: POLICE_STATION.y + (Math.random() - 0.5) * 28,
       layer: LAYERS.STREET,
       behavior: "police",
-      speed: 34
+      speed: 28,
+      dirX: -1,
+      dirY: 0
     });
     cop.active = true;
     cop.investigateTarget = this.hottestPoint();
+    cop.patrolIndex = Math.floor(Math.random() * PATROL_POINTS.length);
     this.scene.npcSystem.npcs.push(cop);
     this.scene.lastActionText = "Police leave the station and enter the district.";
   }
@@ -77,23 +87,40 @@ export class PoliceSystem {
     for (const cop of this.police()) {
       if (cop.dead || cop.hiddenBody) continue;
       let target = null;
-      if (this.scene.currentLayer === LAYERS.STREET && this.scene.exposureSystem.level() >= 2) {
+      const heat = this.hottestPoint();
+      const level = this.scene.exposureSystem.level();
+
+      if (this.scene.currentLayer === LAYERS.STREET && level >= 2) {
         const d = Phaser.Math.Distance.Between(cop.x, cop.y, this.scene.player.x, this.scene.player.y);
-        if (d < 240 && !this.scene.currentShadow()) target = { x: this.scene.player.x, y: this.scene.player.y, kind: "player" };
+        if (d < 210 && !this.scene.currentShadow()) target = { x: this.scene.player.x, y: this.scene.player.y, kind: "player" };
       }
-      if (!target) target = cop.investigateTarget || this.hottestPoint();
+      if (!target && heat?.kind === "heat") target = heat;
+      if (!target) target = this.nextPatrolPoint(cop);
       if (!target) continue;
-      this.moveNpcToward(cop, target.x, target.y, dt, target.kind === "player" ? 1.24 : 0.72);
+
+      const speedMul = target.kind === "player" ? 1.04 : target.kind === "heat" ? 0.78 : 0.55;
+      this.moveNpcToward(cop, target.x, target.y, dt, speedMul);
       if (target.kind === "player" && Phaser.Math.Distance.Between(cop.x, cop.y, this.scene.player.x, this.scene.player.y) < 18) {
-        this.scene.exposureSystem.add(4, "Police cut you off in the street.");
+        this.scene.exposureSystem.add(3, "Police cut you off in the street.");
       }
     }
+  }
+
+  nextPatrolPoint(cop) {
+    if (cop.patrolIndex == null) cop.patrolIndex = Math.floor(Math.random() * PATROL_POINTS.length);
+    const point = PATROL_POINTS[cop.patrolIndex % PATROL_POINTS.length];
+    if (Phaser.Math.Distance.Between(cop.x, cop.y, point.x, point.y) < 18) {
+      cop.patrolIndex = (cop.patrolIndex + 1) % PATROL_POINTS.length;
+    }
+    return { ...PATROL_POINTS[cop.patrolIndex % PATROL_POINTS.length], kind: "patrol" };
   }
 
   moveNpcToward(npc, x, y, dt, speedMul = 1) {
     const dx = x - npc.x;
     const dy = y - npc.y;
     const len = Math.hypot(dx, dy) || 1;
+    npc.dirX = dx / len;
+    npc.dirY = dy / len;
     const speed = (npc.speed || 30) * speedMul;
     npc.x += (dx / len) * speed * dt;
     npc.y += (dy / len) * speed * dt;
@@ -119,7 +146,7 @@ export class PoliceSystem {
         heat = value;
       }
     }
-    if (!best || heat < 15) return { x: POLICE_STATION.x, y: POLICE_STATION.y, kind: "patrol" };
+    if (!best || heat < 15) return { x: POLICE_STATION.x, y: POLICE_STATION.y, kind: "quiet" };
     return { x: best.x + best.w / 2, y: best.y + best.h / 2, kind: "heat" };
   }
 
