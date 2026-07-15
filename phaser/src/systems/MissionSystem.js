@@ -133,15 +133,35 @@ export class MissionSystem {
     this.setStep(3, "Journalist handled. Return to the rooftop refuge to report before the veil collapses.", actionText);
   }
 
-  failMasquerade(reason = "The veil is broken.") {
+  failRun(reason, {
+    title = "MISSION FAILED",
+    missionText = "FAILED · The run is over.",
+    audio = "masqueradeFail"
+  } = {}) {
     if (this.completed || this.failed) return;
     this.failed = true;
     this.failureReason = reason;
-    this.lastMissionText = "FAILED · The veil is broken. The clan cannot contain the story now.";
-    this.scene.lastActionText = `MISSION FAILED: ${reason}`;
-    RawAudio.play("masqueradeFail");
-    this.publishResult("failed", "MISSION FAILED", reason);
+    this.lastMissionText = missionText;
+    this.scene.lastActionText = `${title}: ${reason}`;
+    RawAudio.play(audio);
+    this.publishResult("failed", title, reason);
     this.scene.redrawLayer(this.scene.lastActionText);
+  }
+
+  failMasquerade(reason = "The veil is broken.") {
+    this.failRun(reason, {
+      title: "MISSION FAILED",
+      missionText: "FAILED · The veil is broken. The clan cannot contain the story now.",
+      audio: "masqueradeFail"
+    });
+  }
+
+  failArrest(reason = "Police surround and detain you.") {
+    this.failRun(reason, {
+      title: "DETAINED",
+      missionText: "FAILED · You have been detained by the police.",
+      audio: "police"
+    });
   }
 
   publishResult(status, title, subtitle) {
@@ -170,7 +190,7 @@ export class MissionSystem {
   }
 
   activeTaskText() {
-    if (this.failed) return `FAILED · ${this.failureReason || "The veil is broken."}`;
+    if (this.failed) return `FAILED · ${this.failureReason || "The run is over."}`;
     if (this.completed) return "COMPLETE · Report accepted by the clan.";
     if (this.step === 0) return `Active Task: vampire rooftop route to police roof · jumps ${Math.min(this.rooftopJumps, REQUIRED_ROOFTOP_JUMPS)}/${REQUIRED_ROOFTOP_JUMPS} · neutralize the blocker and collect the informant tip.`;
     if (this.step === 1) return "Active Task: reach the nightclub district. The journalist is now revealed.";
@@ -180,7 +200,7 @@ export class MissionSystem {
   }
 
   objectiveText() {
-    if (this.failed) return `FAILED · ${this.failureReason || "The veil is broken."}`;
+    if (this.failed) return `FAILED · ${this.failureReason || "The run is over."}`;
     if (this.completed) return "COMPLETE · Report to the clan validated.";
     if (this.step === 0) return "1/4 Vampire route: jump across roofs, beat the blocker, and reach the police roof tip.";
     if (this.step === 1) return "2/4 Tip acquired: reach the nightclub by street, roof routes, or sewers.";
