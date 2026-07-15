@@ -1,4 +1,5 @@
 import { LAYERS } from "../data/district.js";
+import { RawAudio } from "./RawAudioSystem.js";
 
 const OBJECTIVE_POINTS = Object.freeze({
   club: { x: 642, y: 404, layer: LAYERS.STREET, radius: 96 },
@@ -32,6 +33,7 @@ export class MissionSystem {
       this.completed = true;
       this.lastMissionText = "Report complete. The district remains containable.";
       this.scene.lastActionText = "ORDER COMPLETE: the journalist is handled and the Masquerade still stands.";
+      RawAudio.play("missionComplete");
       this.scene.redrawLayer(this.scene.lastActionText);
     }
   }
@@ -40,6 +42,7 @@ export class MissionSystem {
     this.step = step;
     this.lastMissionText = missionText;
     this.scene.lastActionText = actionText;
+    RawAudio.play("confirm");
     this.scene.redrawLayer(actionText);
   }
 
@@ -57,6 +60,7 @@ export class MissionSystem {
         x: OBJECTIVE_POINTS.journalist.x,
         y: OBJECTIVE_POINTS.journalist.y,
         run: () => {
+          RawAudio.play("menu");
           this.scene.lastActionText = "The journalist is close. Use E near them to choose Stun, Kill or Drain.";
         }
       });
@@ -75,6 +79,7 @@ export class MissionSystem {
     this.failureReason = reason;
     this.lastMissionText = "FAILED · The Masquerade is broken. The clan cannot contain the story now.";
     this.scene.lastActionText = `MISSION FAILED: ${reason}`;
+    RawAudio.play("masqueradeFail");
     this.scene.redrawLayer(this.scene.lastActionText);
   }
 
