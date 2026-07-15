@@ -10,6 +10,7 @@ export class FeedingSystem {
     this.scene = scene;
     this.hunger = HUNGER.start;
     this.active = null;
+    this.passiveTick = 0;
     this.stats = {
       feeds: 0,
       targetFed: false,
@@ -49,7 +50,7 @@ export class FeedingSystem {
         id: `stun_${npc.id}`,
         type: "stun",
         label: `Stun ${this.targetName(npc)}`,
-        detail: "non-lethal · temporary control",
+        detail: "non-lethal · temporary control · small noise",
         priority: 118,
         distance: d,
         x: npc.x,
@@ -63,7 +64,7 @@ export class FeedingSystem {
         id: `kill_${npc.id}`,
         type: "kill",
         label: `Kill ${this.targetName(npc)}`,
-        detail: "lethal · leaves body · no hunger relief",
+        detail: "lethal · noisy · leaves body · no hunger relief",
         priority: npc.type === NPC_TYPES.TARGET ? 122 : 106,
         distance: d,
         x: npc.x,
@@ -87,13 +88,30 @@ export class FeedingSystem {
     return options;
   }
 
+  addPassiveHunger(dt) {
+    if (!dt || this.scene.missionSystem?.failed) return;
+    const before = this.hunger;
+    this.hunger = Math.min(100, this.hunger + HUNGER.passivePerSecond * dt);
+    this.passiveTick += dt;
+    if (Math.floor(before / 25) !== Math.floor(this.hunger / 25) && this.passiveTick > 3) {
+      this.passiveTick = 0;
+      this.scene.lastActionText = `Hunger rises with time: ${Math.round(this.hunger)}%. Feeding becomes more tempting.`;
+    }
+  }
+
+  addNoise(x, y, amount, reason) {
+    if (this.scene.currentLayer !== undefined && this.scene.currentLayer !== 0) return;
+    this.scene.policeSystem?.addHeat(x, y, amount, reason);
+  }
+
   stun(npc) {
     if (!npc || npc.dead || npc.inactive) return;
     RawAudio.play("stun");
     this.scene.npcSystem.markStunned(npc, STUN_SECONDS);
     this.stats.stuns++;
+    this.addNoise(npc.x, npc.y, npc.type === NPC_TYPES.POLICE ? 12 : 6, `${this.targetName(npc)} stunned; a scuffle makes noise`);
     const seen = this.scene.witnessSystem?.onMundaneViolence(npc, `${this.targetName(npc)} stunned`, 5) || 0;
-    this.scene.lastActionText = `STUN: ${this.targetName(npc)} is down for ${Math.round(STUN_SECONDS)}s.${seen ? ` ${seen} witness(es) saw the scuffle.` : ""}`;
+    this.scene.lastActionText = `STUN: ${this.targetName(npc)} is down for ${Math.round(STUN_SECONDS)}s. Noise spreads nearby.${seen ? ` ${seen} witness(es) saw the scuffle.` : ""}`;
   }
 
   kill(npc) {
@@ -104,16 +122,18 @@ export class FeedingSystem {
     this.scene.evidenceSystem?.onKillCompleted(npc);
     this.stats.kills++;
     this.trackNeutralized(npc);
+    this.addNoise(npc.x, npc.y, this.killNoise(npc), `${this.targetName(npc)} killed; impact and struggle heard`);
     if (npc.type === NPC_TYPES.TARGET) {
       this.stats.targetHandled = true;
       this.scene.missionSystem.resolveJournalistPlaceholder("Journalist eliminated without draining. Return to the rooftop refuge to report.");
     }
-    this.scene.lastActionText = `KILL: ${this.targetName(npc)} eliminated. No hunger relief. A body remains.${seen ? ` ${seen} witness(es) may report ordinary violence.` : ""}`;
+    this.scene.lastActionText = `KILL: ${this.targetName(npc)} eliminated. Killing is noisy and leaves a body.${seen ? ` ${seen} witness(es) may report ordinary violence.` : ""}`;
     this.scene.redrawLayer(this.scene.lastActionText);
   }
 
   startDrain(npc) {
     if (!npc || npc.dead || this.active) return;
+    RawAudio.play("drainStart");
     this.active = {
       kind: "drain",
       npc,
@@ -125,7 +145,6 @@ export class FeedingSystem {
     npc.vx = 0;
     npc.vy = 0;
     npc.luredTimer = 0;
-    RawAudio.play("drainStart");
     this.scene.lastActionText = `DRAIN started: ${this.targetName(npc)}. Moving will cancel it. If someone sees, they freeze first, then run to report.`;
   }
 
@@ -141,8 +160,8 @@ export class FeedingSystem {
   }
 
   cancel(message = "Drain cancelled.") {
+    if (this.active) RawAudio.play("drainCancel");
     this.active = null;
-    RawAudio.play("drainCancel");
     this.scene.lastActionText = message;
   }
 
@@ -187,6 +206,13 @@ export class FeedingSystem {
     if (npc.type === NPC_TYPES.HUNTER) return 22;
     if (npc.type === NPC_TYPES.TARGET) return 14;
     return 10;
+  }
+
+  killNoise(npc) {
+    if (npc.type === NPC_TYPES.POLICE) return 22;
+    if (npc.type === NPC_TYPES.HUNTER) return 26;
+    if (npc.type === NPC_TYPES.TARGET) return 16;
+    return 12;
   }
 
   reliefFor(npc) {
