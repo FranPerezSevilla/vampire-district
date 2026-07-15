@@ -30,6 +30,7 @@ export class PowersSystem {
     }
 
     this.drawSenseOverlay();
+    this.drawLureLines();
   }
 
   rememberMoveDirection(keys) {
@@ -63,17 +64,22 @@ export class PowersSystem {
     if (this.cooldowns.whisper > 0) return;
     const npc = this.nearestLurable();
     if (!npc) {
-      this.scene.lastActionText = "Whisper failed: no living mind close enough.";
-      this.cooldowns.whisper = 0.4;
+      this.scene.lastActionText = "Whisper failed: no living mind close enough. Move nearer or use Blood Sense.";
+      this.cooldowns.whisper = 0.35;
       return;
     }
 
     this.cooldowns.whisper = HUNGER.whisperCooldown;
-    npc.luredTimer = HUNGER.whisperSeconds;
+    npc.luredTimer = HUNGER.whisperSeconds + (npc.type === NPC_TYPES.TARGET ? 1.2 : 0);
     npc.alarmed = false;
     npc.vx = 0;
     npc.vy = 0;
     this.addHunger(HUNGER.whisperCost, npc.type === NPC_TYPES.TARGET ? "You whisper into the journalist's blood" : "You whisper into a civilian's nerves");
+
+    const noticed = this.scene.witnessSystem?.onSuspiciousPower("a predatory whisper", 6, 110) || 0;
+    this.scene.lastActionText = npc.type === NPC_TYPES.TARGET
+      ? `Whisper takes: the journalist follows you.${noticed ? ` ${noticed} witness(es) looked up.` : ""}`
+      : `Whisper takes: a civilian follows you.${noticed ? ` ${noticed} witness(es) noticed.` : ""}`;
   }
 
   useDash() {
@@ -101,22 +107,27 @@ export class PowersSystem {
 
     this.scene.player.setPosition(nextX, nextY);
     this.addHunger(HUNGER.dashCost, "Shadow Dash tears you across the dark");
+    const noticed = this.scene.witnessSystem?.onSuspiciousPower("an impossible displacement", 9, 145) || 0;
     if (this.scene.currentLayer === LAYERS.STREET && this.scene.currentLight()) {
       this.scene.exposureSystem.add(4, "A dash under a streetlight looks impossible.");
     }
+    if (noticed) this.scene.lastActionText = `Shadow Dash seen by ${noticed} witness(es). Break line of sight.`;
   }
 
-  nearestLurable(radius = 104) {
+  nearestLurable(radius = 164) {
     let best = null;
-    let bestD = Infinity;
+    let bestScore = Infinity;
     for (const npc of this.scene.npcSystem.npcs) {
       if (npc.dead || npc.hiddenBody || npc.inactive || npc.intercepted) continue;
       if (![NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)) continue;
       if (npc.layer !== this.scene.currentLayer) continue;
       const d = Phaser.Math.Distance.Between(this.scene.player.x, this.scene.player.y, npc.x, npc.y);
-      if (d <= radius && d < bestD) {
+      const effectiveRadius = npc.type === NPC_TYPES.TARGET ? radius + 42 : radius;
+      if (d > effectiveRadius) continue;
+      const score = d - (npc.type === NPC_TYPES.TARGET ? 58 : 0);
+      if (score < bestScore) {
         best = npc;
-        bestD = d;
+        bestScore = score;
       }
     }
     return best;
@@ -134,7 +145,7 @@ export class PowersSystem {
       if (npc.dead) {
         this.mark(npc.x, npc.y, 0xff3b50, 12, "body");
       } else if (npc.type === NPC_TYPES.TARGET) {
-        this.mark(npc.x, npc.y, 0xff4bd8, 15, "target");
+        this.mark(npc.x, npc.y, 0xff4bd8, 15, "JOURNO");
       } else if (npc.type === NPC_TYPES.RAT) {
         this.mark(npc.x, npc.y, 0x9c8f7a, 10, "rat");
       } else if (npc.type === NPC_TYPES.HUNTER && !npc.inactive) {
@@ -162,10 +173,25 @@ export class PowersSystem {
     }
   }
 
+  drawLureLines() {
+    for (const npc of this.scene.npcSystem.npcs) {
+      if (npc.layer !== this.scene.currentLayer || npc.dead || npc.hiddenBody || npc.luredTimer <= 0) continue;
+      this.graphics.lineStyle(2, 0xff4bd8, 0.42);
+      this.graphics.beginPath();
+      this.graphics.moveTo(npc.x, npc.y);
+      this.graphics.lineTo(this.scene.player.x, this.scene.player.y);
+      this.graphics.strokePath();
+      this.graphics.fillStyle(0xff4bd8, 0.18).fillCircle(npc.x, npc.y, 18);
+    }
+  }
+
   mark(x, y, color, radius, label) {
     this.graphics.lineStyle(2, color, 0.86).strokeCircle(x, y, radius);
     this.graphics.fillStyle(color, 0.12).fillCircle(x, y, radius);
     this.graphics.fillStyle(color, 0.80).fillRect(x - 1, y - radius - 6, 2, 5);
+    if (label) {
+      this.scene.addMapLabel(label, x + radius * 0.65, y - radius, color);
+    }
   }
 
   summary() {
