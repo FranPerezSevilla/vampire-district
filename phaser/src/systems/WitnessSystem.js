@@ -55,7 +55,7 @@ export class WitnessSystem {
         source: feed.npc
       });
     }
-    this.scene.lastActionText = `MASQUERADE RISK: ${witnesses.length} witness(es) saw the drain. They freeze, then run to report.`;
+    this.scene.lastActionText = `VEIL RISK: ${witnesses.length} witness(es) saw the drain. They freeze, then run to report.`;
   }
 
   onDrainCompleted(victim, alreadyNotified = false) {
@@ -74,7 +74,7 @@ export class WitnessSystem {
         source: victim
       });
     }
-    this.scene.lastActionText = "MASQUERADE RISK: witnesses saw the drained body. Stop them before they report.";
+    this.scene.lastActionText = "VEIL RISK: witnesses saw the drained body. Stop them before they report.";
     return { witnesses: witnesses.length };
   }
 
@@ -193,7 +193,7 @@ export class WitnessSystem {
       this.masqueradeReports++;
       RawAudio.play("masqueradeFail");
       this.scene.exposureSystem.forceLevel(5, `A witness reaches ${targetName} and reports a vampire drain.`);
-      this.scene.missionSystem.failMasquerade(`Masquerade broken: a witness reported ${witness.witnessReason || "a vampire drain"}.`);
+      this.scene.missionSystem.failMasquerade(`The veil is broken: a witness reported ${witness.witnessReason || "a vampire drain"}.`);
       return;
     }
 
@@ -213,8 +213,8 @@ export class WitnessSystem {
     witness.vy = 0;
     witness.container.setAlpha(0.38);
     this.intercepts++;
-    this.scene.exposureSystem.add(witness.masqueradeRisk ? 2 : 3, witness.masqueradeRisk ? "You silence a masquerade witness before the report." : "You silence a fleeing witness, but the scuffle draws a little attention.");
-    this.scene.lastActionText = witness.masqueradeRisk ? "Masquerade witness intercepted before they could report." : "Witness intercepted before they could report.";
+    this.scene.exposureSystem.add(witness.masqueradeRisk ? 2 : 3, witness.masqueradeRisk ? "You silence a veil witness before the report." : "You silence a fleeing witness, but the scuffle draws a little attention.");
+    this.scene.lastActionText = witness.masqueradeRisk ? "Veil witness intercepted before they could report." : "Witness intercepted before they could report.";
   }
 
   nearestAlarmedWitness(radius = 24) {
@@ -244,7 +244,7 @@ export class WitnessSystem {
       const color = witness.masqueradeRisk ? 0xff3b50 : 0xffb02e;
       graphics.lineStyle(2, color, 0.95).strokeCircle(witness.x, witness.y, shocked ? 20 : 18);
       graphics.fillStyle(color, shocked ? 0.22 : 0.14).fillCircle(witness.x, witness.y, shocked ? 20 : 18);
-      this.scene.addMapLabel(shocked ? "WTF" : witness.masqueradeRisk ? "! MASQ" : "! WITNESS", witness.x + 12, witness.y - 18, color);
+      this.scene.addMapLabel(shocked ? "WTF" : witness.masqueradeRisk ? "! VEIL" : "! WITNESS", witness.x + 12, witness.y - 18, color);
       if (!shocked && witness.reportTarget) {
         graphics.lineStyle(1, color, 0.32);
         graphics.beginPath();
@@ -291,6 +291,6 @@ export class WitnessSystem {
   summary() {
     const fleeing = this.alarmedWitnesses().length;
     const risk = this.alarmedWitnesses().filter(w => w.masqueradeRisk).length;
-    return `Witnesses fleeing ${fleeing} · masquerade risk ${risk} · reports ${this.reports} · intercepted ${this.intercepts}`;
+    return `Witnesses fleeing ${fleeing} · veil risk ${risk} · reports ${this.reports} · intercepted ${this.intercepts}`;
   }
 }
