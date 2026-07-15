@@ -23,9 +23,10 @@ export const npcDefinitions = [
   // Mission target: now placed close enough to the club-side shadow for a clean route.
   { id: "journalist", type: NPC_TYPES.TARGET, x: 588, y: 360, layer: LAYERS.STREET, behavior: "loiter", speed: 5, dirX: -1, dirY: 0 },
 
-  // Visible police patrols from the start. More police still spawn only when exposure escalates.
-  { id: "police_patrol_1", type: NPC_TYPES.POLICE, x: 740, y: 248, layer: LAYERS.STREET, behavior: "police", speed: 22, dirX: -1, dirY: 0 },
-  { id: "police_patrol_2", type: NPC_TYPES.POLICE, x: 506, y: 326, layer: LAYERS.STREET, behavior: "police", speed: 20, dirX: 1, dirY: 0 },
+  // Visible police patrols from the start. They now cover separate beats instead of stacking.
+  { id: "police_patrol_1", type: NPC_TYPES.POLICE, x: 744, y: 236, layer: LAYERS.STREET, behavior: "police", speed: 22, dirX: -1, dirY: 0, patrolRoute: "northEast", patrolIndex: 0, patrolOffsetIndex: 0 },
+  { id: "police_patrol_2", type: NPC_TYPES.POLICE, x: 348, y: 326, layer: LAYERS.STREET, behavior: "police", speed: 21, dirX: 1, dirY: 0, patrolRoute: "westCross", patrolIndex: 1, patrolOffsetIndex: 1 },
+  { id: "police_patrol_3", type: NPC_TYPES.POLICE, x: 672, y: 502, layer: LAYERS.STREET, behavior: "police", speed: 20, dirX: -1, dirY: 0, patrolRoute: "southClub", patrolIndex: 0, patrolOffsetIndex: 2 },
   { id: "police_anchor", type: NPC_TYPES.POLICE, x: 780, y: 178, layer: LAYERS.STREET, behavior: "guard", speed: 0, inactive: true },
 
   // Hunters stay hidden unless supernatural/evidence pressure escalates.
