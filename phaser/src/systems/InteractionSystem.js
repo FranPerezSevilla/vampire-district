@@ -76,7 +76,7 @@ export class InteractionSystem {
 
   actionIdForOption(option) {
     if (!option) return null;
-    if (["breakLight", "roofDrop", "roofJump", "stun", "kill", "drain"].includes(option.type)) return option.type;
+    if (["breakLight", "roofDrop", "roofJump"].includes(option.type)) return option.type;
     if (option.type === "fireEscapeUp" || option.type === "fireEscapeDown") return "fireEscape";
     if (option.type === "evidence") {
       if (option.id === "hide_dragged_body") return "bodyHide";
