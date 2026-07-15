@@ -21,7 +21,35 @@ import { MissionSystem } from "../systems/MissionSystem.js";
 import { NpcSystem } from "../systems/NpcSystem.js";
 import { PoliceSystem } from "../systems/PoliceSystem.js";
 import { PowersSystem } from "../systems/PowersSystem.js";
+import { TransitionSystem } from "../systems/TransitionSystem.js";
 import { WitnessSystem } from "../systems/WitnessSystem.js";
+
+const ROOF_DROPS = Object.freeze([
+  {
+    id: "drop_market_north_alley",
+    label: "drop to north alley",
+    roof: { x: 286, y: 208, layer: LAYERS.ROOF_LOW },
+    street: { x: 268, y: 244 }
+  },
+  {
+    id: "drop_warehouse_alley",
+    label: "drop to warehouse alley",
+    roof: { x: 180, y: 416, layer: LAYERS.ROOF_LOW },
+    street: { x: 176, y: 392 }
+  },
+  {
+    id: "drop_club_rear",
+    label: "drop to club rear shadow",
+    roof: { x: 736, y: 478, layer: LAYERS.ROOF_LOW },
+    street: { x: 750, y: 502 }
+  },
+  {
+    id: "drop_old_block_service",
+    label: "drop to south service alley",
+    roof: { x: 538, y: 540, layer: LAYERS.ROOF_LOW },
+    street: { x: 520, y: 540 }
+  }
+]);
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -86,6 +114,7 @@ export class GameScene extends Phaser.Scene {
     this.policeSystem = new PoliceSystem(this);
     this.hunterSystem = new HunterSystem(this);
     this.powersSystem = new PowersSystem(this);
+    this.transitionSystem = new TransitionSystem(this);
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.redrawLayer(this.lastActionText);
@@ -94,6 +123,14 @@ export class GameScene extends Phaser.Scene {
 
   update(_time, deltaMs) {
     const dt = Math.min(deltaMs / 1000, 0.05);
+
+    if (this.transitionSystem?.active) {
+      this.nearestInteraction = null;
+      this.updateCameraForLayer();
+      this.drawPromptMarker();
+      this.publishState();
+      return;
+    }
 
     if (this.interactionSystem.isOpen) {
       this.interactionSystem.updateInput(this.keys);
@@ -153,6 +190,7 @@ export class GameScene extends Phaser.Scene {
   switchLayer(layer, position, status) {
     this.currentLayer = layer;
     this.player.setPosition(position.x, position.y);
+    this.player.setScale(1);
     this.lastActionText = status || "Layer changed.";
     this.redrawLayer(this.lastActionText);
     this.npcSystem?.refreshVisibility();
@@ -238,12 +276,18 @@ export class GameScene extends Phaser.Scene {
             id: `${escape.id}_up`,
             type: "fireEscapeUp",
             label: `Climb ${escape.name}`,
-            detail: "street → rooftop",
+            detail: "street → rooftop · animated climb",
             priority: 40,
             distance: d,
             x: escape.street.x,
             y: escape.street.y,
-            run: () => this.switchLayer(escape.roof.layer, { x: escape.roof.x, y: escape.roof.y }, `You climb the ${escape.name} to the roof.`)
+            run: () => this.transitionSystem.fireEscape({
+              from: escape.street,
+              to: escape.roof,
+              toLayer: escape.roof.layer,
+              direction: "up",
+              status: `You climb the ${escape.name} to the roof.`
+            })
           });
         }
       }
@@ -255,12 +299,18 @@ export class GameScene extends Phaser.Scene {
             id: `${escape.id}_down`,
             type: "fireEscapeDown",
             label: `Descend ${escape.name}`,
-            detail: "rooftop → street",
+            detail: "rooftop → street · animated descent",
             priority: 40,
             distance: d,
             x: escape.roof.x,
             y: escape.roof.y,
-            run: () => this.switchLayer(LAYERS.STREET, { x: escape.street.x, y: escape.street.y }, `You climb down the ${escape.name} to street level.`)
+            run: () => this.transitionSystem.fireEscape({
+              from: escape.roof,
+              to: escape.street,
+              toLayer: LAYERS.STREET,
+              direction: "down",
+              status: `You climb down the ${escape.name} to street level.`
+            })
           });
         }
       }
@@ -314,12 +364,17 @@ export class GameScene extends Phaser.Scene {
             id: `${route.id}_a_to_b`,
             type: "roofJump",
             label: route.aToB,
-            detail: "rooftop jump",
+            detail: "animated rooftop jump",
             priority: 45,
             distance: d,
             x: route.ax,
             y: route.ay,
-            run: () => this.switchLayer(route.bLayer, { x: route.bx, y: route.by }, `You leap across: ${route.aToB}.`)
+            run: () => this.transitionSystem.roofJump({
+              from: { x: route.ax, y: route.ay },
+              to: { x: route.bx, y: route.by },
+              toLayer: route.bLayer,
+              status: `You leap across: ${route.aToB}.`
+            })
           });
         }
       }
@@ -331,12 +386,41 @@ export class GameScene extends Phaser.Scene {
             id: `${route.id}_b_to_a`,
             type: "roofJump",
             label: route.bToA,
-            detail: "rooftop jump",
+            detail: "animated rooftop jump",
             priority: 45,
             distance: d,
             x: route.bx,
             y: route.by,
-            run: () => this.switchLayer(route.aLayer, { x: route.ax, y: route.ay }, `You leap across: ${route.bToA}.`)
+            run: () => this.transitionSystem.roofJump({
+              from: { x: route.bx, y: route.by },
+              to: { x: route.ax, y: route.ay },
+              toLayer: route.aLayer,
+              status: `You leap across: ${route.bToA}.`
+            })
+          });
+        }
+      }
+    }
+
+    if (this.currentLayer === LAYERS.ROOF_LOW) {
+      for (const drop of ROOF_DROPS) {
+        const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, drop.roof.x, drop.roof.y);
+        if (d <= radius) {
+          options.push({
+            id: drop.id,
+            type: "roofDrop",
+            label: drop.label,
+            detail: "fast roof → street drop · noisy landing",
+            priority: 42,
+            distance: d,
+            x: drop.roof.x,
+            y: drop.roof.y,
+            run: () => this.transitionSystem.roofDrop({
+              from: drop.roof,
+              to: drop.street,
+              toLayer: LAYERS.STREET,
+              status: `You drop from the roof: ${drop.label}.`
+            })
           });
         }
       }
@@ -543,6 +627,16 @@ export class GameScene extends Phaser.Scene {
       this.routeGraphics.strokePath();
       this.routeGraphics.fillStyle(COLORS.accent, 0.75).fillCircle(route.ax, route.ay, 4).fillCircle(route.bx, route.by, 4);
     }
+
+    if (this.currentLayer === LAYERS.ROOF_LOW) {
+      this.routeGraphics.lineStyle(1, 0xffb02e, 0.40);
+      for (const drop of ROOF_DROPS) {
+        this.routeGraphics.beginPath();
+        this.routeGraphics.moveTo(drop.roof.x, drop.roof.y);
+        this.routeGraphics.lineTo(drop.street.x, drop.street.y);
+        this.routeGraphics.strokePath();
+      }
+    }
   }
 
   drawRouteMarkers() {
@@ -570,6 +664,10 @@ export class GameScene extends Phaser.Scene {
         if (route.aLayer === this.currentLayer) this.drawRouteMarker(route.ax, route.ay, "JUMP", 0xd7c8ff);
         if (route.bLayer === this.currentLayer) this.drawRouteMarker(route.bx, route.by, "JUMP", 0xd7c8ff);
       }
+    }
+
+    if (this.currentLayer === LAYERS.ROOF_LOW) {
+      for (const drop of ROOF_DROPS) this.drawRouteMarker(drop.roof.x, drop.roof.y, "DROP", 0xffb02e);
     }
   }
 
@@ -604,6 +702,7 @@ export class GameScene extends Phaser.Scene {
       this.promptGraphics.lineStyle(2, 0xfff2a8, 0.95).strokeCircle(x, y, 15);
       this.promptGraphics.fillStyle(0xfff2a8, 0.15).fillCircle(x, y, 15);
     }
+    this.npcSystem?.drawMarkers?.(this.promptGraphics);
     this.witnessSystem?.drawMarkers(this.promptGraphics);
     this.evidenceSystem?.drawMarkers(this.promptGraphics);
     this.drawFeedingProgress();
