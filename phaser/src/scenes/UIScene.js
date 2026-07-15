@@ -14,6 +14,9 @@ export class UIScene extends Phaser.Scene {
     this.introOpen = true;
     this.pauseOpen = false;
     this.pauseTab = "controls";
+    this.resultOpen = false;
+    this.resultType = null;
+    this.resultDismissed = false;
   }
 
   create() {
@@ -29,8 +32,9 @@ export class UIScene extends Phaser.Scene {
     this.createInteractionMenu();
     this.createIntroOverlay();
     this.createPauseOverlay();
+    this.createResultOverlay();
 
-    this.phase = this.add.text(90, 612, "PHASE 12: side power rail + clean play space", {
+    this.phase = this.add.text(90, 612, "PHASE 13: mission result panel + stats", {
       fontFamily: FONT,
       fontSize: "10px",
       color: "#ffb02e",
@@ -264,14 +268,42 @@ export class UIScene extends Phaser.Scene {
     closeButton.on("pointerdown", () => this.togglePause(false));
   }
 
-  update() {
-    if (Phaser.Input.Keyboard.JustDown(this.keys.enter) && this.introOpen) this.closeIntro();
-    if (Phaser.Input.Keyboard.JustDown(this.keys.help)) this.togglePause();
-    if (Phaser.Input.Keyboard.JustDown(this.keys.escape)) {
-      if (this.pauseOpen) this.togglePause(false);
-      else if (this.introOpen) this.closeIntro();
-    }
+  createResultOverlay() {
+    this.resultItems = [];
+    const add = item => {
+      this.resultItems.push(item);
+      return item;
+    };
 
+    add(this.add.rectangle(480, 320, 960, 640, 0x000000, 0.72).setScrollFactor(0).setDepth(300));
+    this.resultPanel = add(this.add.rectangle(480, 318, 650, 400, 0x08080e, 0.98).setScrollFactor(0).setDepth(301));
+    this.resultPanel.setStrokeStyle(1, 0x78c7a3, 0.95);
+    this.resultTitle = add(this.add.text(190, 134, "Mission Result", {
+      fontFamily: FONT,
+      fontSize: "22px",
+      color: "#f1e6ff"
+    }).setScrollFactor(0).setDepth(302));
+    this.resultSubtitle = add(this.add.text(190, 166, "", {
+      fontFamily: FONT,
+      fontSize: "12px",
+      color: "#9d93b8",
+      wordWrap: { width: 580 }
+    }).setScrollFactor(0).setDepth(302));
+    this.resultStats = add(this.add.text(190, 214, "", {
+      fontFamily: FONT,
+      fontSize: "12px",
+      color: "#d7c8ff",
+      lineSpacing: 7,
+      wordWrap: { width: 580 }
+    }).setScrollFactor(0).setDepth(302));
+    this.resultHint = add(this.add.text(190, 492, "", {
+      fontFamily: FONT,
+      fontSize: "11px",
+      color: "#78c7a3"
+    }).setScrollFactor(0).setDepth(302));
+  }
+
+  update() {
     const mission = this.registry.get("missionText") || "Objective unavailable";
     const visibility = this.registry.get("visibilityText") || "Visibility unknown";
     const exposureText = this.registry.get("exposureText") || "Exposure unavailable";
@@ -289,15 +321,56 @@ export class UIScene extends Phaser.Scene {
       : this.registry.get("interactionPrompt") || "Q/Space Dash · R Whisper · F Blood Sense · E interact/feed/body/routes";
     const lastAction = this.registry.get("lastActionText") || "";
 
+    const data = { mission, visibility, exposureText, policeText, witnessText, hunterText, evidenceText, npcText, hungerText, powersText, xy, lastAction };
+    this.updateMissionResult(mission);
+
+    if (Phaser.Input.Keyboard.JustDown(this.keys.enter) && this.introOpen) this.closeIntro();
+    if (this.resultOpen && Phaser.Input.Keyboard.JustDown(this.keys.enter) && this.resultType === "success") this.closeResult();
+    if (!this.resultOpen && Phaser.Input.Keyboard.JustDown(this.keys.help)) this.togglePause();
+    if (Phaser.Input.Keyboard.JustDown(this.keys.escape)) {
+      if (this.resultOpen && this.resultType === "success") this.closeResult();
+      else if (!this.resultOpen && this.pauseOpen) this.togglePause(false);
+      else if (!this.resultOpen && this.introOpen) this.closeIntro();
+    }
+
     this.hungerBadge.setText(this.compactHunger(hungerText));
     this.exposureBadge.setText(this.compactExposure(exposureText));
     this.objective.setText(`Objective: ${mission}`);
-    this.prompt.setText(prompt);
+    this.prompt.setText(this.resultOpen ? "Mission result panel open" : prompt);
     this.lastAction.setText(lastAction);
 
     this.renderPowerOrbs(powersText);
-    this.renderInteractionMenu(menu);
-    this.renderPauseContent({ mission, visibility, exposureText, policeText, witnessText, hunterText, evidenceText, npcText, hungerText, powersText, xy, lastAction });
+    this.renderInteractionMenu(this.resultOpen ? null : menu);
+    this.renderPauseContent(data);
+    this.renderResultContent(data);
+    this.renderOverlays();
+  }
+
+  updateMissionResult(missionText) {
+    const text = String(missionText || "");
+    if (text.startsWith("FAILED")) {
+      if (!this.resultOpen || this.resultType !== "failure") this.openResult("failure");
+      return;
+    }
+    if (text.startsWith("COMPLETE") && !this.resultDismissed) {
+      if (!this.resultOpen || this.resultType !== "success") this.openResult("success");
+    }
+  }
+
+  openResult(type) {
+    this.resultOpen = true;
+    this.resultType = type;
+    if (type === "failure") this.resultDismissed = false;
+    this.pauseOpen = false;
+    this.updateUiPause();
+  }
+
+  closeResult() {
+    if (this.resultType === "failure") return;
+    this.resultOpen = false;
+    this.resultType = null;
+    this.resultDismissed = true;
+    this.updateUiPause();
     this.renderOverlays();
   }
 
@@ -365,32 +438,48 @@ export class UIScene extends Phaser.Scene {
         "Interact: E near routes, targets, bodies, witnesses, lamps\n" +
         "Powers: left rail shows cooldowns · Q/Space Shadow Dash · R Whisper · F Blood Sense\n" +
         "Stealth: rooftops, sewers and deep shadows hide you\n" +
-        "Exposure: public feeding, witnesses and impossible movement bring police\n" +
-        "Hunters: appear later, follow blood, and may block escape routes\n" +
+        "Felonies: police seeing violence, body handling, roof drops or vandalism raises exposure\n" +
+        "Masquerade: public drains can fail the mission if reported\n" +
         "Evidence: drag bodies to dumpsters, sewers, roofs or shadows\n\n" +
         "Use the Stats tab for debug/state info. Press H or Esc to close."
       );
     } else {
-      this.pauseContent.setText(
-        `Objective: ${data.mission}\n` +
-        `Visibility: ${data.visibility}\n` +
-        `${data.hungerText}\n` +
-        `${data.exposureText}\n` +
-        `${data.powersText}\n` +
-        `${data.policeText}\n` +
-        `${data.hunterText}\n` +
-        `${data.witnessText}\n` +
-        `${data.evidenceText}\n` +
-        `NPCs: ${data.npcText}\n` +
-        `Position: ${data.xy}\n` +
-        `Last: ${data.lastAction || "--"}`
-      );
+      this.pauseContent.setText(this.statsText(data));
     }
 
     this.controlsTab.setFillStyle(this.pauseTab === "controls" ? 0x1b332d : 0x15121d, 1);
     this.statsTab.setFillStyle(this.pauseTab === "stats" ? 0x1b332d : 0x15121d, 1);
     this.controlsTabText.setColor(this.pauseTab === "controls" ? "#78c7a3" : "#9d93b8");
     this.statsTabText.setColor(this.pauseTab === "stats" ? "#78c7a3" : "#9d93b8");
+  }
+
+  statsText(data) {
+    return `Objective: ${data.mission}\n` +
+      `Visibility: ${data.visibility}\n` +
+      `${data.hungerText}\n` +
+      `${data.exposureText}\n` +
+      `${data.powersText}\n` +
+      `${data.policeText}\n` +
+      `${data.hunterText}\n` +
+      `${data.witnessText}\n` +
+      `${data.evidenceText}\n` +
+      `NPCs: ${data.npcText}\n` +
+      `Position: ${data.xy}\n` +
+      `Last: ${data.lastAction || "--"}`;
+  }
+
+  renderResultContent(data) {
+    if (!this.resultStats) return;
+    const success = this.resultType === "success";
+    const failure = this.resultType === "failure";
+    this.resultPanel.setStrokeStyle(1, success ? 0x78c7a3 : 0xff3b50, 0.95);
+    this.resultTitle.setText(success ? "MISSION COMPLETE" : failure ? "MISSION FAILED" : "Mission Result");
+    this.resultTitle.setColor(success ? "#78c7a3" : failure ? "#ff3b50" : "#f1e6ff");
+    this.resultSubtitle.setText(success
+      ? "The journalist is handled and the clan can still contain the district."
+      : "The Masquerade is broken. The run is over and control is locked.");
+    this.resultStats.setText(this.statsText(data));
+    this.resultHint.setText(success ? "Enter / Esc: continue free roam" : "Run interrupted · reload page to restart prototype");
   }
 
   renderInteractionMenu(menu) {
@@ -422,6 +511,7 @@ export class UIScene extends Phaser.Scene {
   renderOverlays() {
     for (const item of this.introItems || []) item.setVisible(this.introOpen);
     for (const item of this.pauseItems || []) item.setVisible(this.pauseOpen);
+    for (const item of this.resultItems || []) item.setVisible(this.resultOpen);
   }
 
   closeIntro() {
@@ -431,6 +521,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   togglePause(force) {
+    if (this.resultOpen) return;
     if (this.introOpen && force !== false) return;
     this.pauseOpen = typeof force === "boolean" ? force : !this.pauseOpen;
     this.updateUiPause();
@@ -443,7 +534,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   updateUiPause() {
-    const paused = this.introOpen || this.pauseOpen;
+    const paused = this.introOpen || this.pauseOpen || this.resultOpen;
     this.registry.set("uiPaused", paused);
     if (paused) this.scene.pause("GameScene");
     else this.scene.resume("GameScene");
