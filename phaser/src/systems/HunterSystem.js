@@ -2,19 +2,19 @@ import { PLAYER } from "../data/balance.js";
 import { LAYERS } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 
-const CHURCH_ANCHOR = Object.freeze({ x: 742, y: 474 });
+const CHURCH_ANCHOR = Object.freeze({ x: 842, y: 474 });
 
 const ROUTE_BLOCK_POINTS = Object.freeze([
-  { id: "church_gate", name: "church gate", x: 742, y: 474, layer: LAYERS.STREET },
+  { id: "church_gate", name: "church gate", x: 842, y: 474, layer: LAYERS.STREET },
   { id: "club_alley", name: "club rear alley", x: 676, y: 502, layer: LAYERS.STREET },
   { id: "cross_manhole", name: "crossroad manhole", x: 472, y: 326, layer: LAYERS.STREET },
   { id: "refuge_escape", name: "refuge fire escape", x: 176, y: 244, layer: LAYERS.STREET }
 ]);
 
-const HUNTER_CHASE_SPEED = PLAYER.baseSpeed * PLAYER.sprintMultiplier * 1.02;
-const HUNTER_TRACK_SPEED = PLAYER.baseSpeed * 0.68;
-const HUNTER_BLOCK_SPEED = PLAYER.baseSpeed * 0.82;
-const HUNTER_PATROL_SPEED = PLAYER.baseSpeed * 0.40;
+const HUNTER_CHASE_SPEED = PLAYER.baseSpeed * 1.08;
+const HUNTER_TRACK_SPEED = PLAYER.baseSpeed * 0.58;
+const HUNTER_BLOCK_SPEED = PLAYER.baseSpeed * 0.62;
+const HUNTER_PATROL_SPEED = PLAYER.baseSpeed * 0.34;
 
 export class HunterSystem {
   constructor(scene) {
@@ -123,7 +123,7 @@ export class HunterSystem {
   }
 
   moveNpcToward(npc, x, y, dt, speed) {
-    this.scene.npcSystem.moveTowardAtSpeed(npc, x, y, dt, speed);
+    this.scene.npcSystem.moveTowardAtSpeed(npc, x, y, dt, speed, { smart: true });
     npc.container.setPosition(npc.x, npc.y);
   }
 
