@@ -51,8 +51,8 @@ export class FeedingSystem {
         id: `stun_${npc.id}`,
         type: "stun",
         label: `Stun ${this.targetName(npc)}`,
-        detail: "non-lethal · temporary control · small noise",
-        priority: 118,
+        detail: npc.type === NPC_TYPES.THUG ? "opens police roof jump temporarily" : "non-lethal · temporary control · small noise",
+        priority: npc.type === NPC_TYPES.THUG ? 132 : 118,
         distance: d,
         x: npc.x,
         y: npc.y,
@@ -65,8 +65,8 @@ export class FeedingSystem {
         id: `kill_${npc.id}`,
         type: "kill",
         label: `Kill ${this.targetName(npc)}`,
-        detail: "lethal · noisy · leaves body · no hunger relief",
-        priority: npc.type === NPC_TYPES.TARGET ? 122 : 106,
+        detail: npc.type === NPC_TYPES.THUG ? "opens police roof jump · lethal" : "lethal · noisy · leaves body · no hunger relief",
+        priority: npc.type === NPC_TYPES.THUG ? 128 : npc.type === NPC_TYPES.TARGET ? 122 : 106,
         distance: d,
         x: npc.x,
         y: npc.y,
@@ -78,7 +78,7 @@ export class FeedingSystem {
       id: `drain_${npc.id}`,
       type: "drain",
       label: npc.type === NPC_TYPES.RAT ? "Drain rat" : `Drain ${this.targetName(npc)}`,
-      detail: `hunger -${this.reliefFor(npc)} · masquerade risk if seen`,
+      detail: `hunger -${this.reliefFor(npc)} · veil risk if seen`,
       priority: npc.type === NPC_TYPES.TARGET ? 126 : 104,
       distance: d,
       x: npc.x,
@@ -120,7 +120,8 @@ export class FeedingSystem {
     this.stats.stuns++;
     this.addNoise(npc.x, npc.y, npc.type === NPC_TYPES.POLICE ? 12 : 6, `${this.targetName(npc)} stunned; a scuffle makes noise`);
     const seen = this.scene.witnessSystem?.onMundaneViolence(npc, `${this.targetName(npc)} stunned`, 5) || 0;
-    this.scene.lastActionText = `STUN: ${this.targetName(npc)} is down for ${Math.round(STUN_SECONDS)}s. Noise spreads nearby.${seen ? ` ${seen} witness(es) saw the scuffle.` : ""}`;
+    const unlock = npc.type === NPC_TYPES.THUG ? " The police roof jump is open while he is down." : "";
+    this.scene.lastActionText = `STUN: ${this.targetName(npc)} is down for ${Math.round(STUN_SECONDS)}s.${unlock} Noise spreads nearby.${seen ? ` ${seen} witness(es) saw the scuffle.` : ""}`;
   }
 
   kill(npc) {
@@ -140,7 +141,8 @@ export class FeedingSystem {
       this.stats.targetHandled = true;
       this.scene.missionSystem.resolveJournalistPlaceholder("Journalist eliminated without draining. Return to the rooftop refuge to report.");
     }
-    this.scene.lastActionText = `KILL: ${this.targetName(npc)} eliminated. Killing is noisy and leaves a body.${seen ? ` ${seen} witness(es) may report ordinary violence.` : ""}`;
+    const unlock = npc.type === NPC_TYPES.THUG ? " The police roof jump is now open." : "";
+    this.scene.lastActionText = `KILL: ${this.targetName(npc)} eliminated.${unlock} Killing is noisy and leaves a body.${seen ? ` ${seen} witness(es) may report ordinary violence.` : ""}`;
     this.scene.redrawLayer(this.scene.lastActionText);
   }
 
@@ -208,8 +210,9 @@ export class FeedingSystem {
       this.scene.missionSystem.resolveJournalistPlaceholder("Journalist drained. Return to the rooftop refuge to report before the district reacts.");
     }
 
-    const publicNote = witnessResult.witnesses ? ` Masquerade witness(es): ${witnessResult.witnesses}.` : "";
-    this.scene.lastActionText = `DRAIN complete: ${this.targetName(npc)}. Hunger -${relief}. A body remains.${publicNote}`;
+    const publicNote = witnessResult.witnesses ? ` Veil witness(es): ${witnessResult.witnesses}.` : "";
+    const unlock = npc.type === NPC_TYPES.THUG ? " The police roof jump is now open." : "";
+    this.scene.lastActionText = `DRAIN complete: ${this.targetName(npc)}. Hunger -${relief}.${unlock} A body remains.${publicNote}`;
     this.scene.redrawLayer(this.scene.lastActionText);
   }
 
@@ -221,6 +224,7 @@ export class FeedingSystem {
   killSeverity(npc) {
     if (npc.type === NPC_TYPES.POLICE) return 18;
     if (npc.type === NPC_TYPES.HUNTER) return 22;
+    if (npc.type === NPC_TYPES.THUG) return 13;
     if (npc.type === NPC_TYPES.TARGET) return 14;
     return 10;
   }
@@ -228,6 +232,7 @@ export class FeedingSystem {
   killNoise(npc) {
     if (npc.type === NPC_TYPES.POLICE) return 22;
     if (npc.type === NPC_TYPES.HUNTER) return 26;
+    if (npc.type === NPC_TYPES.THUG) return 14;
     if (npc.type === NPC_TYPES.TARGET) return 16;
     return 12;
   }
@@ -238,6 +243,7 @@ export class FeedingSystem {
     if (npc.type === NPC_TYPES.RAT) return HUNGER.ratRelief;
     if (npc.type === NPC_TYPES.POLICE) return 34;
     if (npc.type === NPC_TYPES.HUNTER) return 28;
+    if (npc.type === NPC_TYPES.THUG) return 32;
     return HUNGER.civilianRelief;
   }
 
@@ -247,6 +253,7 @@ export class FeedingSystem {
     if (npc.type === NPC_TYPES.RAT) return HUNGER.ratFeedSeconds;
     if (npc.type === NPC_TYPES.POLICE) return 2.7;
     if (npc.type === NPC_TYPES.HUNTER) return 3.0;
+    if (npc.type === NPC_TYPES.THUG) return 2.4;
     return HUNGER.civilianFeedSeconds;
   }
 
@@ -255,6 +262,7 @@ export class FeedingSystem {
     if (npc.type === NPC_TYPES.TARGET) return "journalist";
     if (npc.type === NPC_TYPES.POLICE) return "police officer";
     if (npc.type === NPC_TYPES.HUNTER) return "hunter";
+    if (npc.type === NPC_TYPES.THUG) return "rooftop thug";
     if (npc.type === NPC_TYPES.RAT) return "rat";
     return "civilian";
   }
