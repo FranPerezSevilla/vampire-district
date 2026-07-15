@@ -1,6 +1,7 @@
 import { PLAYER } from "../data/balance.js";
 import { LAYERS } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
+import { RawAudio } from "./RawAudioSystem.js";
 
 const POLICE_STATION = Object.freeze({ x: 780, y: 178 });
 const PATROL_POINTS = Object.freeze([
@@ -45,6 +46,7 @@ export class PoliceSystem {
     const before = this.localHeat[zone.id] || 0;
     this.localHeat[zone.id] = Math.min(100, before + amount);
     if (before < 45 && this.localHeat[zone.id] >= 45) {
+      RawAudio.play("police");
       this.scene.lastActionText = `${zone.name} heats up: ${reason}.`;
     }
   }
@@ -85,6 +87,7 @@ export class PoliceSystem {
     cop.investigateTarget = this.hottestPoint();
     cop.patrolIndex = Math.floor(Math.random() * PATROL_POINTS.length);
     this.scene.npcSystem.npcs.push(cop);
+    RawAudio.play("police");
     this.scene.lastActionText = "Police leave the station and enter the district.";
   }
 
@@ -106,6 +109,7 @@ export class PoliceSystem {
       const speed = target.kind === "player" ? CHASE_SPEED : target.kind === "heat" ? INVESTIGATE_SPEED : PATROL_SPEED;
       this.moveNpcToward(cop, target.x, target.y, dt, speed);
       if (target.kind === "player" && Phaser.Math.Distance.Between(cop.x, cop.y, this.scene.player.x, this.scene.player.y) < 18) {
+        RawAudio.play("police");
         this.scene.exposureSystem.add(3, "Police cut you off in the street.");
       }
     }
