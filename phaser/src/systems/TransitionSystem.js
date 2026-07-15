@@ -30,7 +30,10 @@ export class TransitionSystem {
       peakScale: 1.34,
       landingColor: COLORS.accent,
       landingLabel: "LAND",
-      onComplete: () => this.complete(toLayer, to, status)
+      onComplete: () => {
+        this.scene.missionSystem?.onRooftopJump?.({ from, to, toLayer });
+        this.complete(toLayer, to, status);
+      }
     });
   }
 
