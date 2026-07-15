@@ -141,7 +141,7 @@ export class EvidenceSystem {
     body.dragged = true;
     body.vx = 0;
     body.vy = 0;
-    this.scene.lastActionText = "You grab the body. Dragging scrapes loudly; move it to a dumpster, sewer, rooftop, refuge, or deep shadow.";
+    this.scene.lastActionText = "You grab the body. Carrying a body is a felony if police see it; civilians may report it.";
   }
 
   updateDraggedBody(dt) {
@@ -158,13 +158,15 @@ export class EvidenceSystem {
       this.dragNoiseTimer = this.scene.currentLayer === LAYERS.STREET ? 0.85 : 1.25;
       RawAudio.play("bodyDrag", { cooldown: 0.45 });
       if (this.scene.currentLayer === LAYERS.STREET) {
-        resolveAction(this.scene, "bodyDrag", {
+        resolveAction(this.scene, "bodyCarry", {
           target: body,
           x: body.x,
           y: body.y,
-          layer: body.layer
+          layer: body.layer,
+          cooldownKey: `bodyCarry:${body.id}`,
+          cooldown: 2.0
         });
-        this.scene.policeSystem?.addHeat(body.x, body.y, body.type === NPC_TYPES.POLICE || body.type === NPC_TYPES.HUNTER ? 5 : 3, "body dragging noise");
+        this.scene.policeSystem?.addHeat(body.x, body.y, body.type === NPC_TYPES.POLICE || body.type === NPC_TYPES.HUNTER ? 5 : 3, "body carrying noise");
       }
     }
   }
