@@ -1,5 +1,6 @@
 import { bodyHideSpots, LAYERS, shadowZones } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
+import { resolveAction } from "./ActionSystem.js";
 import { RawAudio } from "./RawAudioSystem.js";
 
 export class EvidenceSystem {
@@ -129,6 +130,12 @@ export class EvidenceSystem {
   grabBody(body) {
     if (!body || body.hiddenBody) return;
     RawAudio.play("bodyDrag");
+    resolveAction(this.scene, "bodyDrag", {
+      target: body,
+      x: body.x,
+      y: body.y,
+      layer: body.layer
+    });
     this.draggingBody = body;
     this.dragNoiseTimer = 0.35;
     body.dragged = true;
@@ -151,6 +158,12 @@ export class EvidenceSystem {
       this.dragNoiseTimer = this.scene.currentLayer === LAYERS.STREET ? 0.85 : 1.25;
       RawAudio.play("bodyDrag", { cooldown: 0.45 });
       if (this.scene.currentLayer === LAYERS.STREET) {
+        resolveAction(this.scene, "bodyDrag", {
+          target: body,
+          x: body.x,
+          y: body.y,
+          layer: body.layer
+        });
         this.scene.policeSystem?.addHeat(body.x, body.y, body.type === NPC_TYPES.POLICE || body.type === NPC_TYPES.HUNTER ? 5 : 3, "body dragging noise");
       }
     }
@@ -159,6 +172,12 @@ export class EvidenceSystem {
   dropBody() {
     if (!this.draggingBody) return;
     RawAudio.play("bodyDrop");
+    resolveAction(this.scene, "bodyDrop", {
+      target: this.draggingBody,
+      x: this.draggingBody.x,
+      y: this.draggingBody.y,
+      layer: this.draggingBody.layer
+    });
     this.draggingBody.dragged = false;
     this.draggingBody = null;
     this.dragNoiseTimer = 0;
@@ -169,6 +188,12 @@ export class EvidenceSystem {
     const body = this.draggingBody;
     if (!body || !spot) return;
     RawAudio.play("bodyHide");
+    resolveAction(this.scene, "bodyHide", {
+      target: body,
+      x: body.x,
+      y: body.y,
+      layer: body.layer
+    });
     body.dragged = false;
     body.hiddenBody = true;
     body.container.setVisible(false);
