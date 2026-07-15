@@ -1,13 +1,60 @@
 import { BootScene } from "./scenes/BootScene.js";
 import { GameScene } from "./scenes/GameScene.js";
 import { UIScene } from "./scenes/UIScene.js";
-import { WORLD } from "./data/balance.js";
+import { CAMERA, WORLD } from "./data/balance.js";
 import { LAYERS } from "./data/district.js";
 
-const deviceResolution = Math.min(window.devicePixelRatio || 1, 2);
-const renderScale = WORLD.renderScale || 1;
+const RESOLUTION_STORAGE_KEY = "nbd-resolution-preset";
+const RESOLUTION_PRESETS = Object.freeze({
+  compact: Object.freeze({ displayWidth: 960, renderScale: 1.5 }),
+  large: Object.freeze({ displayWidth: 1280, renderScale: 2 }),
+  qhd: Object.freeze({ displayWidth: 1440, renderScale: 2.25 }),
+  ultra: Object.freeze({ displayWidth: 1920, renderScale: 3 })
+});
 
-const TINY_MAP_LABELS_TO_HIDE = new Set(["LAMP", "JUMP", "DOWN", "DROP", "FIRE", "SEWER"]);
+function savedResolutionKey() {
+  try {
+    const saved = window.localStorage.getItem(RESOLUTION_STORAGE_KEY);
+    return RESOLUTION_PRESETS[saved] ? saved : "qhd";
+  } catch {
+    return "qhd";
+  }
+}
+
+const resolutionKey = savedResolutionKey();
+const resolutionPreset = RESOLUTION_PRESETS[resolutionKey];
+const renderScale = resolutionPreset.renderScale;
+const deviceResolution = Math.min(Math.max(window.devicePixelRatio || 1, 1), 1.25);
+
+window.NBD_RESOLUTION_PRESET = { key: resolutionKey, ...resolutionPreset };
+document.documentElement.style.setProperty("--game-width", `${resolutionPreset.displayWidth}px`);
+document.documentElement.style.setProperty("--game-height", `${Math.round(resolutionPreset.displayWidth * 2 / 3)}px`);
+
+const TINY_MAP_LABELS_TO_HIDE = new Set([
+  "LAMP",
+  "JUMP",
+  "JUMP ARC",
+  "LAND",
+  "DOWN",
+  "DROP",
+  "FIRE",
+  "SEWER"
+]);
+
+function bindResolutionSelector() {
+  const select = document.getElementById("resolution-select");
+  if (!select) return;
+  select.value = resolutionKey;
+  select.addEventListener("change", () => {
+    const nextKey = RESOLUTION_PRESETS[select.value] ? select.value : "qhd";
+    try {
+      window.localStorage.setItem(RESOLUTION_STORAGE_KEY, nextKey);
+    } catch {
+      // The selected value still applies after a normal reload when storage is available.
+    }
+    window.location.reload();
+  });
+}
 
 function patchReadableCanvasText() {
   const factory = Phaser.GameObjects?.GameObjectFactory?.prototype;
@@ -55,8 +102,28 @@ function suppressStreetBuildingLabelsOnRoofs() {
   GameScene.prototype.drawBuilding = patchedDrawBuilding;
 }
 
+function useSelectedRenderScaleForCamera() {
+  function updateCameraForSelectedResolution() {
+    const camera = this.cameras.main;
+    const baseZoom = this.currentLayer === LAYERS.ROOF_HIGH
+      ? CAMERA.roofHighZoom
+      : this.currentLayer === LAYERS.ROOF_LOW
+        ? CAMERA.roofLowZoom
+        : this.currentLayer === LAYERS.SEWER
+          ? CAMERA.sewerZoom
+          : CAMERA.streetZoom;
+    const targetZoom = baseZoom * renderScale;
+    camera.setZoom(Phaser.Math.Linear(camera.zoom, targetZoom, 0.08));
+  }
+
+  updateCameraForSelectedResolution.__nbdResolutionPatch = true;
+  GameScene.prototype.updateCameraForLayer = updateCameraForSelectedResolution;
+}
+
+bindResolutionSelector();
 patchReadableCanvasText();
 suppressStreetBuildingLabelsOnRoofs();
+useSelectedRenderScaleForCamera();
 
 const config = {
   type: Phaser.AUTO,
