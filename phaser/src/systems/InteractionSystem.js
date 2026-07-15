@@ -57,14 +57,33 @@ export class InteractionSystem {
     this.menu = null;
     this.publish();
     RawAudio.play(this.soundForOption(option));
-    if (option.type === "breakLight") {
-      resolveAction(this.scene, option.type, {
-        x: option.x,
-        y: option.y,
-        layer: this.scene.currentLayer
-      });
-    }
+    this.classifyOption(option);
     option.run();
+  }
+
+  classifyOption(option) {
+    const actionId = this.actionIdForOption(option);
+    if (!actionId) return;
+    resolveAction(this.scene, actionId, {
+      x: option.x,
+      y: option.y,
+      layer: this.scene.currentLayer,
+      target: option.target || option.subject || null,
+      cooldownKey: option.id ? `interaction:${option.id}` : undefined,
+      cooldown: 0.8
+    });
+  }
+
+  actionIdForOption(option) {
+    if (!option) return null;
+    if (["breakLight", "roofDrop", "roofJump", "stun", "kill", "drain"].includes(option.type)) return option.type;
+    if (option.type === "fireEscapeUp" || option.type === "fireEscapeDown") return "fireEscape";
+    if (option.type === "evidence") {
+      if (option.id === "hide_dragged_body") return "bodyHide";
+      if (option.id === "drop_dragged_body") return "bodyDrop";
+      if (String(option.id || "").startsWith("drag_")) return "bodyDrag";
+    }
+    return null;
   }
 
   soundForOption(option) {
