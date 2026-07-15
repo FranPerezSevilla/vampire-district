@@ -6,6 +6,7 @@ const PALETTE = Object.freeze({
   [NPC_TYPES.TARGET]: { body: 0xff4bd8, head: 0xffd6fa, label: "JOURNO" },
   [NPC_TYPES.POLICE]: { body: 0x4da3ff, head: 0xd9ecff, label: "POLICE" },
   [NPC_TYPES.HUNTER]: { body: 0xff9d35, head: 0xffd483, label: "HUNTER" },
+  [NPC_TYPES.THUG]: { body: 0xb36b42, head: 0xf0b58a, label: "THUG" },
   [NPC_TYPES.RAT]: { body: 0x9c8f7a, head: 0xc0b49e, label: "RAT" }
 });
 
@@ -79,7 +80,7 @@ export class NpcSystem {
     const head = this.scene.add.rectangle(0, type === NPC_TYPES.RAT ? -2 : -6, type === NPC_TYPES.RAT ? 3 : 6, type === NPC_TYPES.RAT ? 3 : 6, palette.head, 1);
     container.add([shadow, body, head]);
 
-    if (type === NPC_TYPES.TARGET || type === NPC_TYPES.POLICE || type === NPC_TYPES.HUNTER || type === NPC_TYPES.RAT) {
+    if (type === NPC_TYPES.TARGET || type === NPC_TYPES.POLICE || type === NPC_TYPES.HUNTER || type === NPC_TYPES.THUG || type === NPC_TYPES.RAT) {
       const label = this.scene.add.text(8, -14, palette.label, {
         fontFamily: "monospace",
         fontSize: "8px",
@@ -290,7 +291,7 @@ export class NpcSystem {
   }
 
   attackableTypes() {
-    return [NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET, NPC_TYPES.POLICE, NPC_TYPES.HUNTER, NPC_TYPES.RAT];
+    return [NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET, NPC_TYPES.POLICE, NPC_TYPES.HUNTER, NPC_TYPES.THUG, NPC_TYPES.RAT];
   }
 
   nearestAttackable(x, y, layer, radius = 26) {
@@ -366,6 +367,7 @@ export class NpcSystem {
     if (npc.type === NPC_TYPES.TARGET) return `${prefix} JOURNO`;
     if (npc.type === NPC_TYPES.POLICE) return `${prefix} COP`;
     if (npc.type === NPC_TYPES.HUNTER) return `${prefix} HUNTER`;
+    if (npc.type === NPC_TYPES.THUG) return `${prefix} THUG`;
     if (npc.type === NPC_TYPES.RAT) return "RAT";
     return `${prefix} BODY`;
   }
@@ -377,6 +379,11 @@ export class NpcSystem {
   drawMarkers(graphics) {
     for (const npc of this.npcs) {
       if (!this.isVisible(npc) || npc.dead) continue;
+      if (npc.type === NPC_TYPES.THUG && npc.stunnedTimer <= 0) {
+        graphics.lineStyle(2, 0xb36b42, 0.9).strokeCircle(npc.x, npc.y, 18);
+        graphics.fillStyle(0xb36b42, 0.12).fillCircle(npc.x, npc.y, 18);
+        this.scene.addMapLabel("No te pienso dejar pasar", npc.x - 18, npc.y - 28, 0xffd483);
+      }
       if (npc.stunnedTimer > 0) {
         graphics.lineStyle(2, 0xfff2a8, 0.9).strokeCircle(npc.x, npc.y, 16);
         graphics.fillStyle(0xfff2a8, 0.13).fillCircle(npc.x, npc.y, 16);
@@ -396,8 +403,10 @@ export class NpcSystem {
     const lured = this.npcs.filter(n => n.luredTimer > 0 && this.isVisible(n)).length;
     const police = this.npcs.filter(n => n.type === NPC_TYPES.POLICE && !n.dead && this.isVisible(n)).length;
     const rats = this.npcs.filter(n => n.type === NPC_TYPES.RAT && !n.dead && this.isVisible(n)).length;
+    const thugBlocking = this.npcs.some(n => n.type === NPC_TYPES.THUG && !n.dead && n.stunnedTimer <= 0 && this.isVisible(n));
     const targetVisible = this.npcs.some(n => n.type === NPC_TYPES.TARGET && !n.dead && this.isVisible(n));
     if (alarmed) return `${visible} NPC/body marker(s) · ${alarmed} witness(es) fleeing`;
+    if (thugBlocking) return `${visible} NPC(s) visible · rooftop thug blocks police roof jump`;
     if (stunned) return `${visible} NPC/body marker(s) · ${stunned} stunned`;
     if (lured) return `${visible} NPC/body marker(s) · ${lured} lured`;
     if (bodies) return `${visible} NPC/body marker(s) · ${bodies} corpse(s)`;
