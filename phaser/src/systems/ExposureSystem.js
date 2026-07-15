@@ -16,7 +16,15 @@ export class ExposureSystem {
     const before = this.level();
     this.value = Math.max(0, Math.min(MAX_EXPOSURE, this.value + amount));
     this.lastReason = reason;
-    this.scene.policeSystem?.addHeat(this.scene.player.x, this.scene.player.y, amount * 0.55, reason);
+
+    const text = String(reason).toLowerCase();
+    const noiseBoost = text.includes("broken") || text.includes("streetlight") || text.includes("lamp")
+      ? 14
+      : text.includes("noise") || text.includes("heard")
+        ? 8
+        : 0;
+    this.scene.policeSystem?.addHeat(this.scene.player.x, this.scene.player.y, amount * 0.55 + noiseBoost, noiseBoost ? `${reason} Noise carries through the district.` : reason);
+
     const after = this.level();
     this.scene.lastActionText = after > before
       ? `${reason} Exposure level ${after}.`
