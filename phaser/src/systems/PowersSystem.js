@@ -72,20 +72,16 @@ export class PowersSystem {
     this.cooldowns.whisper = HUNGER.whisperCooldown;
     npc.luredTimer = HUNGER.whisperSeconds + (npc.type === NPC_TYPES.TARGET ? 1.2 : 0);
     npc.lureFlash = 1.1;
-    npc.lureStopDistance = npc.type === NPC_TYPES.TARGET ? 16 : 20;
+    npc.lureStopDistance = npc.type === NPC_TYPES.TARGET ? 30 : 24;
     npc.alarmed = false;
+    npc.reactionTimer = 0;
     npc.vx = 0;
     npc.vy = 0;
-    npc.navPoint = null;
-    npc.navTargetKey = "";
     this.addHunger(HUNGER.whisperCost, npc.type === NPC_TYPES.TARGET ? "You whisper into the journalist's blood" : "You whisper into a civilian's nerves");
 
-    // Root fix: the target of the whisper must not also count as a witness to that same whisper.
-    // Previously the journalist could immediately alarm himself because onSuspiciousPower scanned all witnesses seeing the player.
-    const noticed = this.scene.witnessSystem?.onSuspiciousPower("a predatory whisper", 6, 110, { exclude: [npc] }) || 0;
     this.scene.lastActionText = npc.type === NPC_TYPES.TARGET
-      ? `WHISPER LOCK: the journalist is compelled to follow you.${noticed ? ` ${noticed} other witness(es) looked up.` : ""}`
-      : `WHISPER LOCK: a civilian follows you.${noticed ? ` ${noticed} other witness(es) noticed.` : ""}`;
+      ? "WHISPER LOCK: the journalist is compelled to follow you. No masquerade panic from the power itself."
+      : "WHISPER LOCK: a civilian follows you. No masquerade panic from the power itself.";
   }
 
   useDash() {
@@ -113,18 +109,16 @@ export class PowersSystem {
 
     this.scene.player.setPosition(nextX, nextY);
     this.addHunger(HUNGER.dashCost, "Shadow Dash tears you across the dark");
-    const noticed = this.scene.witnessSystem?.onSuspiciousPower("an impossible displacement", 9, 145) || 0;
     if (this.scene.currentLayer === LAYERS.STREET && this.scene.currentLight()) {
-      this.scene.exposureSystem.add(4, "A dash under a streetlight looks impossible.");
+      this.scene.lastActionText = "Shadow Dash: smoke and impossible movement, but no masquerade breach unless you drain in public.";
     }
-    if (noticed) this.scene.lastActionText = `Shadow Dash seen by ${noticed} witness(es). Break line of sight.`;
   }
 
   nearestLurable(radius = 164) {
     let best = null;
     let bestScore = Infinity;
     for (const npc of this.scene.npcSystem.npcs) {
-      if (npc.dead || npc.hiddenBody || npc.inactive || npc.intercepted) continue;
+      if (npc.dead || npc.hiddenBody || npc.inactive || npc.intercepted || npc.stunnedTimer > 0) continue;
       if (![NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)) continue;
       if (npc.layer !== this.scene.currentLayer) continue;
       if (!this.scene.npcSystem.canNpcStandAt(npc, npc.x, npc.y)) continue;
@@ -150,7 +144,7 @@ export class PowersSystem {
     for (const npc of this.scene.npcSystem.npcs) {
       if (npc.layer !== this.scene.currentLayer || npc.hiddenBody) continue;
       if (npc.dead) {
-        this.mark(npc.x, npc.y, 0xff3b50, 12, "body");
+        this.mark(npc.x, npc.y, 0xff3b50, 12, npc.deathKind === "killed" ? "killed" : "drained");
       } else if (npc.type === NPC_TYPES.TARGET) {
         this.mark(npc.x, npc.y, 0xff4bd8, 15, "JOURNO");
       } else if (npc.type === NPC_TYPES.RAT) {
