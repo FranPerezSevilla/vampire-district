@@ -211,11 +211,11 @@ export class UIScene extends Phaser.Scene {
 
     if (this.resultOpen) {
       const failure = this.resultType === "failure";
-      const title = failure ? "MISSION FAILED" : "MISSION COMPLETE";
+      const title = failure ? (data.result?.title || "MISSION FAILED") : "MISSION COMPLETE";
       const intro = failure
-        ? "The veil is broken. The run is over and control is locked."
+        ? (data.result?.subtitle || "The run is over and control is locked.")
         : "The journalist is handled and the vampire clan can still contain the district.";
-      this.setModal(title, `<p>${intro}</p><pre>${this.escapeHtml(this.statsText(data))}</pre>`, failure ? "Reload page to restart" : "Continue free roam · Enter/Esc");
+      this.setModal(title, `<p>${this.escapeHtml(intro)}</p><pre>${this.escapeHtml(this.statsText(data))}</pre>`, failure ? "Reload page to restart" : "Continue free roam · Enter/Esc");
       return;
     }
 
