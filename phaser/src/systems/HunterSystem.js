@@ -11,10 +11,10 @@ const ROUTE_BLOCK_POINTS = Object.freeze([
   { id: "refuge_escape", name: "refuge fire escape", x: 176, y: 244, layer: LAYERS.STREET }
 ]);
 
-const HUNTER_CHASE_SPEED = PLAYER.baseSpeed * 1.08;
-const HUNTER_TRACK_SPEED = PLAYER.baseSpeed * 0.58;
-const HUNTER_BLOCK_SPEED = PLAYER.baseSpeed * 0.62;
-const HUNTER_PATROL_SPEED = PLAYER.baseSpeed * 0.34;
+const HUNTER_CHASE_SPEED = PLAYER.baseSpeed * 0.86;
+const HUNTER_TRACK_SPEED = PLAYER.baseSpeed * 0.48;
+const HUNTER_BLOCK_SPEED = PLAYER.baseSpeed * 0.54;
+const HUNTER_PATROL_SPEED = PLAYER.baseSpeed * 0.30;
 
 export class HunterSystem {
   constructor(scene) {
@@ -34,14 +34,12 @@ export class HunterSystem {
   maybeReveal() {
     if (this.revealed) return;
     const level = this.scene.exposureSystem.level();
-    const bloodTrigger = this.scene.evidenceSystem?.bloodStains?.some(stain => stain.layer === LAYERS.STREET && !stain.cleaned) || false;
-    const bodyTrigger = this.scene.evidenceSystem?.bodies?.some(body => !body.hidden && body.layer === LAYERS.STREET) || false;
-    if (level < 4 && !bloodTrigger && !bodyTrigger) return;
+    if (level < 4) return;
 
     this.revealed = true;
     this.spawnHunter();
-    this.scene.lastActionText = bloodTrigger
-      ? "A hunter steps out from the church quarter, following the smell of blood."
+    this.scene.lastActionText = this.scene.missionSystem?.failed
+      ? "The Masquerade is broken. A hunter enters the district."
       : "Exposure is too high. A hunter notices the pattern behind the crimes.";
   }
 
@@ -68,7 +66,7 @@ export class HunterSystem {
 
     if (!this.revealed || this.nextBlockAt > 0) return;
     if (this.scene.exposureSystem.level() < 4) return;
-    this.nextBlockAt = 7.5;
+    this.nextBlockAt = 8.5;
 
     const candidates = ROUTE_BLOCK_POINTS
       .filter(point => !this.routeBlocks.some(block => block.id === point.id))
@@ -83,12 +81,13 @@ export class HunterSystem {
 
   updateHunters(dt) {
     for (const hunter of this.hunters()) {
+      if (hunter.stunnedTimer > 0) continue;
       let target = null;
       const blood = this.nearestBlood(hunter);
       if (blood) target = { x: blood.x, y: blood.y, kind: "blood" };
       if (!target && this.scene.currentLayer === LAYERS.STREET && !this.scene.currentShadow()) {
         const d = Phaser.Math.Distance.Between(hunter.x, hunter.y, this.scene.player.x, this.scene.player.y);
-        if (d < 260 || this.scene.exposureSystem.level() >= 4) target = { x: this.scene.player.x, y: this.scene.player.y, kind: "player" };
+        if (d < 240 || this.scene.exposureSystem.level() >= 4) target = { x: this.scene.player.x, y: this.scene.player.y, kind: "player" };
       }
       if (!target && this.routeBlocks.length) {
         const block = this.routeBlocks[0];
@@ -117,13 +116,13 @@ export class HunterSystem {
     for (const stain of stains) {
       if (stain.cleaned || stain.layer !== hunter.layer) continue;
       const d = Phaser.Math.Distance.Between(hunter.x, hunter.y, stain.x, stain.y);
-      if (d < 220 && d < bestD) { best = stain; bestD = d; }
+      if (d < 180 && d < bestD) { best = stain; bestD = d; }
     }
     return best;
   }
 
   moveNpcToward(npc, x, y, dt, speed) {
-    this.scene.npcSystem.moveTowardAtSpeed(npc, x, y, dt, speed, { smart: true });
+    this.scene.npcSystem.moveTowardAtSpeed(npc, x, y, dt, speed);
     npc.container.setPosition(npc.x, npc.y);
   }
 
