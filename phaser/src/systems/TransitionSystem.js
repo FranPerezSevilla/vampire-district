@@ -36,7 +36,7 @@ export class TransitionSystem {
 
     if (!this.begin("Rooftop jump: committing to the gap.")) return;
     RawAudio.play("routeRoof");
-    this.drawArc(from, to, COLORS.accent, "JUMP ARC");
+    this.drawArc(from, to, COLORS.accent);
     this.animateParabola({
       from,
       to,
@@ -44,7 +44,6 @@ export class TransitionSystem {
       height: 40,
       peakScale: 1.34,
       landingColor: COLORS.accent,
-      landingLabel: "LAND",
       onComplete: () => {
         this.scene.missionSystem?.onRooftopJump?.();
         this.complete(toLayer, to, status);
@@ -103,7 +102,7 @@ export class TransitionSystem {
     return this.scene.npcSystem?.npcs?.find(npc => npc.id === "rooftop_thug" && npc.type === NPC_TYPES.THUG) || null;
   }
 
-  drawArc(from, to, color, label) {
+  drawArc(from, to, color) {
     const midX = (from.x + to.x) / 2;
     const midY = (from.y + to.y) / 2 - 24;
     this.graphics.lineStyle(2, color, 0.65);
@@ -118,7 +117,6 @@ export class TransitionSystem {
       this.graphics.lineTo(x, y);
     }
     this.graphics.strokePath();
-    this.scene.addMapLabel(label, midX + 8, midY - 8, color);
   }
 
   drawDropLine(from, to) {
@@ -216,7 +214,7 @@ export class TransitionSystem {
     const dust = this.scene.add.graphics().setDepth(46);
     dust.lineStyle(2, color, 0.75).strokeCircle(x, y, 14);
     dust.fillStyle(color, 0.10).fillCircle(x, y, 20);
-    this.scene.addMapLabel(label, x + 12, y - 16, color);
+    if (label) this.scene.addMapLabel(label, x + 12, y - 16, color);
     this.scene.tweens.add({
       targets: dust,
       alpha: 0,
