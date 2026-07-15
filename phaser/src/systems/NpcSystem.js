@@ -41,6 +41,8 @@ export class NpcSystem {
       reportSeverity: 0,
       witnessReason: "",
       luredTimer: 0,
+      lureFlash: 0,
+      lureStopDistance: 24,
       wait: def.behavior === "loiter" || def.behavior === "guard" || def.behavior === "hidden" ? 999 : 0.4 + Math.random() * 1.2,
       aiTimer: 0.6 + Math.random() * 1.8,
       container
@@ -67,6 +69,7 @@ export class NpcSystem {
 
   update(dt) {
     for (const npc of this.npcs) {
+      if (npc.lureFlash > 0) npc.lureFlash = Math.max(0, npc.lureFlash - dt);
       this.updateNpc(npc, dt);
       npc.container.setPosition(npc.x, npc.y);
       npc.container.setVisible(this.isVisible(npc));
@@ -78,7 +81,7 @@ export class NpcSystem {
 
     if (npc.luredTimer > 0 && !npc.alarmed) {
       npc.luredTimer = Math.max(0, npc.luredTimer - dt);
-      this.moveToward(npc, this.scene.player.x, this.scene.player.y, dt, npc.type === NPC_TYPES.TARGET ? 1.55 : 1.28);
+      this.followPlayerUnderWhisper(npc, dt);
       return;
     }
 
@@ -127,6 +130,25 @@ export class NpcSystem {
     this.setFacingFromVelocity(npc);
   }
 
+  followPlayerUnderWhisper(npc, dt) {
+    const d = Phaser.Math.Distance.Between(npc.x, npc.y, this.scene.player.x, this.scene.player.y);
+    const stopDistance = npc.lureStopDistance || (npc.type === NPC_TYPES.TARGET ? 30 : 24);
+    const dx = this.scene.player.x - npc.x;
+    const dy = this.scene.player.y - npc.y;
+    const len = Math.hypot(dx, dy) || 1;
+    npc.dirX = dx / len;
+    npc.dirY = dy / len;
+
+    if (d <= stopDistance) {
+      npc.vx = 0;
+      npc.vy = 0;
+      return;
+    }
+
+    const followSpeed = npc.type === NPC_TYPES.TARGET ? 42 : 34;
+    this.moveTowardAtSpeed(npc, this.scene.player.x, this.scene.player.y, dt, followSpeed);
+  }
+
   setFacingFromVelocity(npc) {
     const len = Math.hypot(npc.vx || 0, npc.vy || 0);
     if (len > 0.5) {
@@ -136,16 +158,35 @@ export class NpcSystem {
   }
 
   moveToward(npc, x, y, dt, speedMul = 1) {
+    const speed = (npc.speed || 10) * speedMul;
+    this.moveTowardAtSpeed(npc, x, y, dt, speed);
+  }
+
+  moveTowardAtSpeed(npc, x, y, dt, speed) {
     const dx = x - npc.x;
     const dy = y - npc.y;
     const len = Math.hypot(dx, dy) || 1;
     npc.dirX = dx / len;
     npc.dirY = dy / len;
-    const speed = (npc.speed || 10) * speedMul;
-    const nx = npc.x + (dx / len) * speed * dt;
-    const ny = npc.y + (dy / len) * speed * dt;
-    if (this.canNpcStandAt(npc, nx, npc.y)) npc.x = nx;
-    if (this.canNpcStandAt(npc, npc.x, ny)) npc.y = ny;
+    npc.vx = (dx / len) * speed;
+    npc.vy = (dy / len) * speed;
+
+    const nx = npc.x + npc.vx * dt;
+    const ny = npc.y + npc.vy * dt;
+    let moved = false;
+    if (this.canNpcStandAt(npc, nx, npc.y)) {
+      npc.x = nx;
+      moved = true;
+    }
+    if (this.canNpcStandAt(npc, npc.x, ny)) {
+      npc.y = ny;
+      moved = true;
+    }
+
+    if (!moved) {
+      npc.vx = 0;
+      npc.vy = 0;
+    }
   }
 
   canNpcStandAt(npc, x, y) {
