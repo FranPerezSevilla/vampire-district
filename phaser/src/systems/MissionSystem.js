@@ -2,7 +2,7 @@ import { LAYERS } from "../data/district.js";
 
 const OBJECTIVE_POINTS = Object.freeze({
   club: { x: 642, y: 404, layer: LAYERS.STREET, radius: 96 },
-  journalist: { x: 638, y: 370, layer: LAYERS.STREET, radius: 30 },
+  journalist: { x: 588, y: 360, layer: LAYERS.STREET, radius: 34 },
   refuge: { x: 150, y: 146, layer: LAYERS.ROOF_HIGH, radius: 58 }
 });
 
@@ -22,7 +22,7 @@ export class MissionSystem {
     }
 
     if (this.step === 1 && this.isNear(OBJECTIVE_POINTS.club)) {
-      this.setStep(2, "Locate the journalist outside the nightclub. Feed on them for now; later phases add lure, witnesses and evidence.", "You reach the nightclub district. The journalist is nearby.");
+      this.setStep(2, "Locate the journalist outside the nightclub. Use Whisper to pull them into shadow, then feed.", "You reach the nightclub district. The journalist is nearby.");
     }
 
     if (this.step === 3 && this.isNear(OBJECTIVE_POINTS.refuge)) {
@@ -68,7 +68,7 @@ export class MissionSystem {
     if (this.completed) return "COMPLETE · Phaser mission skeleton validated.";
     if (this.step === 0) return "1/4 Leave the rooftop refuge and descend into the district.";
     if (this.step === 1) return "2/4 Reach the nightclub by street, roof routes, or sewers.";
-    if (this.step === 2) return "3/4 Feed on the journalist placeholder outside the nightclub.";
+    if (this.step === 2) return "3/4 Whisper the journalist away from the club, then feed.";
     if (this.step === 3) return "4/4 Return to the rooftop refuge and report.";
     return this.lastMissionText;
   }
