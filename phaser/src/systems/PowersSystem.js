@@ -1,6 +1,7 @@
 import { HUNGER } from "../data/balance.js";
 import { LAYERS, lights } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
+import { resolveAction } from "./ActionSystem.js";
 import { RawAudio } from "./RawAudioSystem.js";
 
 export class PowersSystem {
@@ -64,6 +65,11 @@ export class PowersSystem {
     this.senseTimer = HUNGER.senseSeconds;
     RawAudio.play("sense");
     this.addHunger(HUNGER.senseCost, "Blood Sense opens the district's veins");
+    resolveAction(this.scene, "bloodSense", {
+      x: this.scene.player.x,
+      y: this.scene.player.y,
+      layer: this.scene.currentLayer
+    });
   }
 
   useWhisper() {
@@ -89,6 +95,13 @@ export class PowersSystem {
     npc.vy = 0;
     RawAudio.play("whisper");
     this.addHunger(HUNGER.whisperCost, npc.type === NPC_TYPES.TARGET ? "You whisper into the journalist's blood" : "You whisper into a civilian's nerves");
+    resolveAction(this.scene, "whisper", {
+      x: npc.x,
+      y: npc.y,
+      layer: npc.layer,
+      target: npc,
+      exclude: [npc]
+    });
 
     this.scene.lastActionText = npc.type === NPC_TYPES.TARGET
       ? `WHISPER LOCK: the journalist follows you. Hunger +${HUNGER.whisperCost}.`
@@ -128,6 +141,11 @@ export class PowersSystem {
     if (this.scene.currentLayer === LAYERS.STREET && this.scene.currentLight()) {
       this.scene.lastActionText = "Shadow Dash: smoke and impossible movement, but no masquerade breach unless you drain in public.";
     }
+    resolveAction(this.scene, "shadowDash", {
+      x: nextX,
+      y: nextY,
+      layer: this.scene.currentLayer
+    });
   }
 
   nearestLurable(radius = 164) {
