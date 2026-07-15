@@ -66,9 +66,10 @@ export class WitnessSystem {
     return { witnesses: witnesses.length };
   }
 
-  onSuspiciousPower(label, severity = 7, radius = 130) {
+  onSuspiciousPower(label, severity = 7, radius = 130, options = {}) {
     if (this.scene.currentLayer !== LAYERS.STREET) return 0;
-    const witnesses = this.witnessesSeeing(this.scene.player, this.scene.currentShadow() ? radius * 0.55 : radius)
+    const excluded = new Set(options.exclude || []);
+    const witnesses = this.witnessesSeeing(this.scene.player, this.scene.currentShadow() ? radius * 0.55 : radius, { exclude: excluded })
       .filter(witness => witness.type === NPC_TYPES.CIVILIAN || witness.type === NPC_TYPES.TARGET);
     if (!witnesses.length) return 0;
     for (const witness of witnesses) this.alarmWitness(witness, label, severity);
@@ -76,8 +77,10 @@ export class WitnessSystem {
     return witnesses.length;
   }
 
-  witnessesSeeing(subject, radius = 140) {
+  witnessesSeeing(subject, radius = 140, options = {}) {
+    const excluded = options.exclude || new Set();
     return this.scene.npcSystem.npcs.filter(npc => {
+      if (excluded.has(npc)) return false;
       if (npc === subject || npc.dead || npc.inactive || npc.intercepted) return false;
       if (![NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)) return false;
       if (npc.layer !== this.scene.currentLayer) return false;
@@ -128,8 +131,7 @@ export class WitnessSystem {
       const speed = Math.max(36, (witness.speed || 14) * 3.0);
       witness.dirX = dx / len;
       witness.dirY = dy / len;
-      witness.x += (dx / len) * speed * dt;
-      witness.y += (dy / len) * speed * dt;
+      this.scene.npcSystem.moveTowardAtSpeed(witness, target.x, target.y, dt, speed, { smart: true });
       witness.container.setPosition(witness.x, witness.y);
 
       if (len < 14) this.reportWitness(witness);
