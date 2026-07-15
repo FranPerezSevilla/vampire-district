@@ -67,6 +67,7 @@ export class InteractionSystem {
       case "sewerDown":
       case "sewerUp":
       case "privateShaft": return "routeSewer";
+      case "roofDrop":
       case "roofJump": return "routeRoof";
       case "witness": return "stun";
       case "evidence": return option.id === "hide_dragged_body" ? "bodyHide" : option.id === "drop_dragged_body" ? "bodyDrop" : "bodyDrag";
