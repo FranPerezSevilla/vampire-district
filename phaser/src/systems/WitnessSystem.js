@@ -39,32 +39,41 @@ export class WitnessSystem {
     const feed = this.scene.feedingSystem?.active;
     if (!feed || !feed.npc || feed.npc.type === NPC_TYPES.RAT) return;
     if (this.scene.currentLayer !== LAYERS.STREET) return;
-    if (this.scene.currentShadow()) return;
 
-    const witnesses = this.witnessesSeeing(feed.npc, 145);
+    const witnesses = this.witnessesSeeing(feed.npc, this.scene.currentShadow() ? 92 : 145);
     feed.maxWitnesses = Math.max(feed.maxWitnesses || 0, witnesses.length);
     if (!witnesses.length || feed.seenNotified) return;
 
     feed.seenNotified = true;
-    for (const witness of witnesses) this.alarmWitness(witness, "public feeding", 24);
-    this.scene.exposureSystem.add(14 + witnesses.length * 7, `Witnesses see you feeding in public (${witnesses.length}).`);
-    this.scene.exposureSystem.forceLevel(2, "Public feeding forces police-level exposure.");
-    if (witnesses.length >= 2 || this.scene.feedingSystem.hunger >= 75) {
-      this.scene.exposureSystem.forceLevel(3, "Multiple witnesses make the feeding impossible to contain.");
+    for (const witness of witnesses) this.alarmWitness(witness, "public feeding", 18);
+    this.scene.exposureSystem.add(10 + witnesses.length * 5, `Witnesses see you feeding (${witnesses.length}).`);
+    this.scene.exposureSystem.forceLevel(1, "Feeding seen: the district becomes alert.");
+    if (!this.scene.currentShadow() && witnesses.length >= 2) {
+      this.scene.exposureSystem.forceLevel(2, "Multiple witnesses push it to police attention.");
     }
   }
 
   onFeedingCompleted(victim) {
     if (!victim || victim.type === NPC_TYPES.RAT) return { witnesses: 0 };
-    if (this.scene.currentLayer !== LAYERS.STREET || this.scene.currentShadow()) return { witnesses: 0 };
-    const witnesses = this.witnessesSeeing(victim, 155);
+    if (this.scene.currentLayer !== LAYERS.STREET) return { witnesses: 0 };
+    const witnesses = this.witnessesSeeing(victim, this.scene.currentShadow() ? 100 : 155);
     if (!witnesses.length) return { witnesses: 0 };
 
-    for (const witness of witnesses) this.alarmWitness(witness, "a freshly drained body", 24);
-    this.scene.exposureSystem.add(18 + witnesses.length * 8, `The feeding ends in public view (${witnesses.length} witness(es)).`);
-    this.scene.exposureSystem.forceLevel(2, "A public drain cannot stay local gossip.");
-    if (witnesses.length >= 2) this.scene.exposureSystem.forceLevel(3, "Too many witnesses report the same impossible story.");
+    for (const witness of witnesses) this.alarmWitness(witness, "a freshly drained body", 18);
+    this.scene.exposureSystem.add(12 + witnesses.length * 6, `The feeding ends in view (${witnesses.length} witness(es)).`);
+    if (!this.scene.currentShadow()) this.scene.exposureSystem.forceLevel(1, "A visible drain cannot stay quiet.");
+    if (!this.scene.currentShadow() && witnesses.length >= 2) this.scene.exposureSystem.forceLevel(2, "Too many witnesses report the same impossible story.");
     return { witnesses: witnesses.length };
+  }
+
+  onSuspiciousPower(label, severity = 7, radius = 130) {
+    if (this.scene.currentLayer !== LAYERS.STREET) return 0;
+    const witnesses = this.witnessesSeeing(this.scene.player, this.scene.currentShadow() ? radius * 0.55 : radius)
+      .filter(witness => witness.type === NPC_TYPES.CIVILIAN || witness.type === NPC_TYPES.TARGET);
+    if (!witnesses.length) return 0;
+    for (const witness of witnesses) this.alarmWitness(witness, label, severity);
+    this.scene.exposureSystem.add(Math.ceil(severity * 0.55) + witnesses.length * 2, `Witnesses notice ${label}.`);
+    return witnesses.length;
   }
 
   witnessesSeeing(subject, radius = 140) {
@@ -72,10 +81,25 @@ export class WitnessSystem {
       if (npc === subject || npc.dead || npc.inactive || npc.intercepted) return false;
       if (![NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)) return false;
       if (npc.layer !== this.scene.currentLayer) return false;
-      const dPlayer = Phaser.Math.Distance.Between(npc.x, npc.y, this.scene.player.x, this.scene.player.y);
-      const dSubject = subject ? Phaser.Math.Distance.Between(npc.x, npc.y, subject.x, subject.y) : dPlayer;
-      return Math.min(dPlayer, dSubject) <= radius;
+      return this.canWitnessSee(npc, subject, radius) || this.canWitnessSee(npc, this.scene.player, radius);
     });
+  }
+
+  canWitnessSee(witness, subject, radius = 140) {
+    if (!subject || subject.layer && subject.layer !== witness.layer) return false;
+    const sx = subject.x ?? this.scene.player.x;
+    const sy = subject.y ?? this.scene.player.y;
+    const d = Phaser.Math.Distance.Between(witness.x, witness.y, sx, sy);
+    let effectiveRadius = radius;
+    if (this.scene.currentShadowAt(sx, sy, this.scene.currentLayer)) effectiveRadius *= 0.62;
+    if (d > effectiveRadius) return false;
+    if (d < 38) return true;
+
+    const dx = sx - witness.x;
+    const dy = sy - witness.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const dot = (dx / len) * (witness.dirX || 0) + (dy / len) * (witness.dirY || 1);
+    return dot >= 0.18;
   }
 
   alarmWitness(witness, reason, severity = 14) {
@@ -101,7 +125,9 @@ export class WitnessSystem {
       const dx = target.x - witness.x;
       const dy = target.y - witness.y;
       const len = Math.hypot(dx, dy) || 1;
-      const speed = Math.max(42, (witness.speed || 14) * 3.6);
+      const speed = Math.max(36, (witness.speed || 14) * 3.0);
+      witness.dirX = dx / len;
+      witness.dirY = dy / len;
       witness.x += (dx / len) * speed * dt;
       witness.y += (dy / len) * speed * dt;
       witness.container.setPosition(witness.x, witness.y);
@@ -152,6 +178,8 @@ export class WitnessSystem {
   }
 
   drawMarkers(graphics) {
+    this.drawVisionCones(graphics);
+
     for (const witness of this.alarmedWitnesses()) {
       if (witness.layer !== this.scene.currentLayer) continue;
       graphics.lineStyle(2, 0xff3b50, 0.95).strokeCircle(witness.x, witness.y, 18);
@@ -164,6 +192,39 @@ export class WitnessSystem {
         graphics.lineTo(witness.reportTarget.x, witness.reportTarget.y);
         graphics.strokePath();
       }
+    }
+  }
+
+  drawVisionCones(graphics) {
+    if (this.scene.currentLayer !== LAYERS.STREET) return;
+    for (const witness of this.scene.npcSystem.npcs) {
+      if (witness.dead || witness.inactive || witness.intercepted || witness.layer !== this.scene.currentLayer) continue;
+      if (![NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET, NPC_TYPES.POLICE].includes(witness.type)) continue;
+      const isPolice = witness.type === NPC_TYPES.POLICE;
+      const range = isPolice ? 132 : 105;
+      const color = isPolice ? 0x4da3ff : witness.type === NPC_TYPES.TARGET ? 0xff4bd8 : 0xffe16b;
+      const alpha = isPolice ? 0.10 : 0.075;
+      const angle = Math.atan2(witness.dirY || 1, witness.dirX || 0);
+      const half = isPolice ? 0.62 : 0.72;
+
+      graphics.fillStyle(color, alpha);
+      graphics.beginPath();
+      graphics.moveTo(witness.x, witness.y);
+      const steps = 12;
+      for (let i = 0; i <= steps; i++) {
+        const a = angle - half + (half * 2 * i) / steps;
+        graphics.lineTo(witness.x + Math.cos(a) * range, witness.y + Math.sin(a) * range);
+      }
+      graphics.closePath();
+      graphics.fillPath();
+
+      graphics.lineStyle(1, color, isPolice ? 0.25 : 0.18);
+      graphics.beginPath();
+      graphics.moveTo(witness.x, witness.y);
+      graphics.lineTo(witness.x + Math.cos(angle - half) * range, witness.y + Math.sin(angle - half) * range);
+      graphics.moveTo(witness.x, witness.y);
+      graphics.lineTo(witness.x + Math.cos(angle + half) * range, witness.y + Math.sin(angle + half) * range);
+      graphics.strokePath();
     }
   }
 
