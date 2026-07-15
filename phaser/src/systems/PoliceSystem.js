@@ -1,3 +1,4 @@
+import { PLAYER } from "../data/balance.js";
 import { LAYERS } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 
@@ -19,6 +20,10 @@ const LOCAL_ZONES = Object.freeze([
   { id: "police", name: "Police station", x: 670, y: 70, w: 220, h: 204 },
   { id: "alleys", name: "Alleys", x: 80, y: 232, w: 820, h: 330 }
 ]);
+
+const CHASE_SPEED = PLAYER.baseSpeed * PLAYER.sprintMultiplier * 0.96;
+const INVESTIGATE_SPEED = PLAYER.baseSpeed * 0.58;
+const PATROL_SPEED = PLAYER.baseSpeed * 0.30;
 
 export class PoliceSystem {
   constructor(scene) {
@@ -98,8 +103,8 @@ export class PoliceSystem {
       if (!target) target = this.nextPatrolPoint(cop);
       if (!target) continue;
 
-      const speedMul = target.kind === "player" ? 1.04 : target.kind === "heat" ? 0.78 : 0.55;
-      this.moveNpcToward(cop, target.x, target.y, dt, speedMul);
+      const speed = target.kind === "player" ? CHASE_SPEED : target.kind === "heat" ? INVESTIGATE_SPEED : PATROL_SPEED;
+      this.moveNpcToward(cop, target.x, target.y, dt, speed);
       if (target.kind === "player" && Phaser.Math.Distance.Between(cop.x, cop.y, this.scene.player.x, this.scene.player.y) < 18) {
         this.scene.exposureSystem.add(3, "Police cut you off in the street.");
       }
@@ -115,15 +120,8 @@ export class PoliceSystem {
     return { ...PATROL_POINTS[cop.patrolIndex % PATROL_POINTS.length], kind: "patrol" };
   }
 
-  moveNpcToward(npc, x, y, dt, speedMul = 1) {
-    const dx = x - npc.x;
-    const dy = y - npc.y;
-    const len = Math.hypot(dx, dy) || 1;
-    npc.dirX = dx / len;
-    npc.dirY = dy / len;
-    const speed = (npc.speed || 30) * speedMul;
-    npc.x += (dx / len) * speed * dt;
-    npc.y += (dy / len) * speed * dt;
+  moveNpcToward(npc, x, y, dt, speed) {
+    this.scene.npcSystem.moveTowardAtSpeed(npc, x, y, dt, speed);
     npc.container.setPosition(npc.x, npc.y);
   }
 
