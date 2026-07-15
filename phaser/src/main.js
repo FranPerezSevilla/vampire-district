@@ -4,12 +4,13 @@ import { UIScene } from "./scenes/UIScene.js";
 import { WORLD } from "./data/balance.js";
 
 const deviceResolution = Math.min(window.devicePixelRatio || 1, 2);
+const renderScale = WORLD.renderScale || 1;
 
 const config = {
   type: Phaser.AUTO,
   parent: "game-root",
-  width: WORLD.width,
-  height: WORLD.height,
+  width: Math.round(WORLD.width * renderScale),
+  height: Math.round(WORLD.height * renderScale),
   resolution: deviceResolution,
   backgroundColor: "#05060b",
   pixelArt: false,
