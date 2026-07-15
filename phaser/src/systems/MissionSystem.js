@@ -20,7 +20,7 @@ export class MissionSystem {
     this.rooftopJumps = 0;
     this.tipCollected = false;
     this.resultPublished = false;
-    this.lastMissionText = "Cross the rooftops to reach the police station roof and collect a tip.";
+    this.lastMissionText = "You are a vampire sent to keep the clan's veil intact. Cross the rooftops, reach the police station roof, and force a tip about the journalist.";
   }
 
   update() {
@@ -28,16 +28,16 @@ export class MissionSystem {
     if (this.completed || this.failed) return;
 
     if (this.step === 1 && this.isNear(OBJECTIVE_POINTS.club)) {
-      this.setStep(2, "Locate and neutralize the journalist outside the nightclub. Stun, kill or drain are possible, but public draining risks the Masquerade.", "You reach the nightclub district. The journalist is nearby.");
+      this.setStep(2, "Locate and neutralize the journalist outside the nightclub. Stun, kill or drain are possible, but public draining risks breaking the veil.", "You reach the nightclub district. The journalist is nearby.");
     }
 
     if (this.step === 3 && this.isNear(OBJECTIVE_POINTS.refuge)) {
       this.step = 4;
       this.completed = true;
-      this.lastMissionText = "Report complete. The district remains containable.";
-      this.scene.lastActionText = "ORDER COMPLETE: the journalist is handled and the Masquerade still stands.";
+      this.lastMissionText = "Report complete. The veil still holds.";
+      this.scene.lastActionText = "ORDER COMPLETE: the journalist is handled and the clan's veil still holds.";
       RawAudio.play("missionComplete");
-      this.publishResult("complete", "MISSION COMPLETE", "The clan keeps the story contained.");
+      this.publishResult("complete", "MISSION COMPLETE", "The vampire clan keeps the story contained.");
       this.scene.redrawLayer(this.scene.lastActionText);
     }
   }
@@ -58,7 +58,7 @@ export class MissionSystem {
     if (this.rooftopJumps < REQUIRED_ROOFTOP_JUMPS) {
       this.scene.lastActionText = `Rooftop route committed: ${this.rooftopJumps}/${REQUIRED_ROOFTOP_JUMPS} jumps before the informant trusts you.`;
     } else {
-      this.scene.lastActionText = "Rooftop route validated. Reach the police station roof and collect the tip.";
+      this.scene.lastActionText = "Rooftop route validated. Neutralize the roof thug if needed, then reach the police station roof.";
     }
   }
 
@@ -121,7 +121,7 @@ export class MissionSystem {
         y: OBJECTIVE_POINTS.journalist.y,
         run: () => {
           RawAudio.play("menu");
-          this.scene.lastActionText = "The journalist is close. Use E near them to choose Stun, Kill or Drain.";
+          this.scene.lastActionText = "The journalist is close. As a vampire, decide: stun, kill, or drain. Public draining may tear the veil.";
         }
       });
     }
@@ -130,14 +130,14 @@ export class MissionSystem {
 
   resolveJournalistPlaceholder(actionText = "Journalist handled. Return to the rooftop refuge to report.") {
     if (this.failed || this.step !== 2) return;
-    this.setStep(3, "Journalist handled. Return to the rooftop refuge to report.", actionText);
+    this.setStep(3, "Journalist handled. Return to the rooftop refuge to report before the veil collapses.", actionText);
   }
 
-  failMasquerade(reason = "Masquerade broken.") {
+  failMasquerade(reason = "The veil is broken.") {
     if (this.completed || this.failed) return;
     this.failed = true;
     this.failureReason = reason;
-    this.lastMissionText = "FAILED · The Masquerade is broken. The clan cannot contain the story now.";
+    this.lastMissionText = "FAILED · The veil is broken. The clan cannot contain the story now.";
     this.scene.lastActionText = `MISSION FAILED: ${reason}`;
     RawAudio.play("masqueradeFail");
     this.publishResult("failed", "MISSION FAILED", reason);
@@ -170,21 +170,21 @@ export class MissionSystem {
   }
 
   activeTaskText() {
-    if (this.failed) return `FAILED · ${this.failureReason || "Masquerade broken."}`;
+    if (this.failed) return `FAILED · ${this.failureReason || "The veil is broken."}`;
     if (this.completed) return "COMPLETE · Report accepted by the clan.";
-    if (this.step === 0) return `Active Task: rooftop route to police roof · jumps ${Math.min(this.rooftopJumps, REQUIRED_ROOFTOP_JUMPS)}/${REQUIRED_ROOFTOP_JUMPS} · collect the informant tip.`;
+    if (this.step === 0) return `Active Task: vampire rooftop route to police roof · jumps ${Math.min(this.rooftopJumps, REQUIRED_ROOFTOP_JUMPS)}/${REQUIRED_ROOFTOP_JUMPS} · neutralize the blocker and collect the informant tip.`;
     if (this.step === 1) return "Active Task: reach the nightclub district. The journalist is now revealed.";
-    if (this.step === 2) return "Active Task: isolate and neutralize the journalist. Avoid public drain.";
+    if (this.step === 2) return "Active Task: isolate and neutralize the journalist. Avoid public draining; it can tear the veil.";
     if (this.step === 3) return "Active Task: return to the rooftop refuge and report.";
     return this.lastMissionText;
   }
 
   objectiveText() {
-    if (this.failed) return `FAILED · ${this.failureReason || "Masquerade broken."}`;
+    if (this.failed) return `FAILED · ${this.failureReason || "The veil is broken."}`;
     if (this.completed) return "COMPLETE · Report to the clan validated.";
-    if (this.step === 0) return "1/4 Get the rooftop tip: jump across roofs to the police station roof.";
+    if (this.step === 0) return "1/4 Vampire route: jump across roofs, beat the blocker, and reach the police roof tip.";
     if (this.step === 1) return "2/4 Tip acquired: reach the nightclub by street, roof routes, or sewers.";
-    if (this.step === 2) return "3/4 Neutralize the journalist: stun, kill or drain. Public drain can break the Masquerade.";
+    if (this.step === 2) return "3/4 Neutralize the journalist: stun, kill or drain. Public drain can break the veil.";
     if (this.step === 3) return "4/4 Return to the rooftop refuge and report.";
     return this.lastMissionText;
   }
