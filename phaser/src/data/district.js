@@ -91,7 +91,6 @@ export const fireEscapes = [
   { id: "refugeFireEscape", name: "refuge fire escape", street: { x: 176, y: 244 }, roof: { layer: LAYERS.ROOF_LOW, x: 166, y: 206 } },
   { id: "marketFireEscape", name: "market fire escape", street: { x: 268, y: 168 }, roof: { layer: LAYERS.ROOF_LOW, x: 345, y: 168 } },
   { id: "tenementFireEscape", name: "tenement fire escape", street: { x: 650, y: 168 }, roof: { layer: LAYERS.ROOF_LOW, x: 590, y: 168 } },
-  { id: "policeFireEscape", name: "police fire escape", street: { x: 672, y: 170 }, roof: { layer: LAYERS.ROOF_LOW, x: 775, y: 150 } },
   { id: "warehouseFireEscape", name: "warehouse fire escape", street: { x: 92, y: 402 }, roof: { layer: LAYERS.ROOF_LOW, x: 180, y: 456 } },
   { id: "shopsFireEscape", name: "shops fire escape", street: { x: 438, y: 470 }, roof: { layer: LAYERS.ROOF_LOW, x: 360, y: 468 } },
   { id: "oldBlockFireEscape", name: "old block fire escape", street: { x: 520, y: 540 }, roof: { layer: LAYERS.ROOF_LOW, x: 596, y: 540 } },
