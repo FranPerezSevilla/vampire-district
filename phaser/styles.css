@@ -24,7 +24,7 @@ body {
 }
 
 .shell {
-  width: min(1180px, calc(100vw - 28px));
+  width: min(960px, calc(100vw - 28px));
   margin: 0 auto;
   padding: 14px 0 18px;
 }
@@ -38,12 +38,7 @@ body {
 }
 
 .eyebrow {
-  margin: 0 0 4px;
-  color: var(--accent);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  opacity: .78;
+  display: none;
 }
 
 h1 {
@@ -69,6 +64,8 @@ h1 {
 }
 
 .game-frame {
+  width: 960px;
+  max-width: 100%;
   border: 1px solid rgba(241,230,255,.16);
   background: #05060b;
   border-radius: 14px;
@@ -78,21 +75,33 @@ h1 {
 }
 
 #game-root {
-  width: 100%;
+  width: 960px;
+  max-width: 100%;
   min-height: 520px;
   display: grid;
   place-items: center;
+  background: #05060b;
 }
 
 #game-root canvas {
   display: block;
-  width: 100% !important;
+  width: 960px !important;
+  max-width: 100% !important;
   height: auto !important;
   image-rendering: auto;
 }
 
 .notes {
   display: none;
+}
+
+@media (max-width: 980px) {
+  .shell,
+  .game-frame,
+  #game-root,
+  #game-root canvas {
+    width: calc(100vw - 28px) !important;
+  }
 }
 
 @media (max-width: 720px) {
