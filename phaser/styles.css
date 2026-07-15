@@ -17,13 +17,16 @@ body {
   min-height: 100%;
   background: radial-gradient(circle at 50% 10%, #16182a 0, var(--bg) 55%, #04050a 100%);
   color: var(--text);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .shell {
   width: min(1180px, calc(100vw - 28px));
   margin: 0 auto;
-  padding: 18px 0 24px;
+  padding: 14px 0 18px;
 }
 
 .topbar {
@@ -31,21 +34,23 @@ body {
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .eyebrow {
   margin: 0 0 4px;
   color: var(--accent);
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  opacity: .78;
 }
 
 h1 {
   margin: 0;
-  font-size: clamp(22px, 4vw, 38px);
-  letter-spacing: -0.04em;
+  font-size: clamp(22px, 3vw, 34px);
+  letter-spacing: -0.03em;
+  font-weight: 750;
 }
 
 .legacy-link {
@@ -83,22 +88,12 @@ h1 {
   display: block;
   width: 100% !important;
   height: auto !important;
-  image-rendering: pixelated;
+  image-rendering: auto;
 }
 
 .notes {
-  margin-top: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 16px;
-  justify-content: space-between;
-  align-items: center;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.45;
+  display: none;
 }
-
-.notes b { color: var(--accent); }
 
 @media (max-width: 720px) {
   .topbar { align-items: flex-start; flex-direction: column; }
