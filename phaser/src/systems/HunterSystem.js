@@ -1,3 +1,4 @@
+import { PLAYER } from "../data/balance.js";
 import { LAYERS } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 
@@ -9,6 +10,11 @@ const ROUTE_BLOCK_POINTS = Object.freeze([
   { id: "cross_manhole", name: "crossroad manhole", x: 472, y: 326, layer: LAYERS.STREET },
   { id: "refuge_escape", name: "refuge fire escape", x: 176, y: 244, layer: LAYERS.STREET }
 ]);
+
+const HUNTER_CHASE_SPEED = PLAYER.baseSpeed * PLAYER.sprintMultiplier * 1.02;
+const HUNTER_TRACK_SPEED = PLAYER.baseSpeed * 0.68;
+const HUNTER_BLOCK_SPEED = PLAYER.baseSpeed * 0.82;
+const HUNTER_PATROL_SPEED = PLAYER.baseSpeed * 0.40;
 
 export class HunterSystem {
   constructor(scene) {
@@ -88,9 +94,16 @@ export class HunterSystem {
         const block = this.routeBlocks[0];
         target = { x: block.x, y: block.y, kind: "block" };
       }
-      if (!target) target = CHURCH_ANCHOR;
+      if (!target) target = { ...CHURCH_ANCHOR, kind: "anchor" };
 
-      this.moveNpcToward(hunter, target.x, target.y, dt, target.kind === "player" ? 1.12 : 0.82);
+      const speed = target.kind === "player"
+        ? HUNTER_CHASE_SPEED
+        : target.kind === "blood"
+          ? HUNTER_TRACK_SPEED
+          : target.kind === "block"
+            ? HUNTER_BLOCK_SPEED
+            : HUNTER_PATROL_SPEED;
+      this.moveNpcToward(hunter, target.x, target.y, dt, speed);
       if (target.kind === "player" && Phaser.Math.Distance.Between(hunter.x, hunter.y, this.scene.player.x, this.scene.player.y) < 18) {
         this.scene.exposureSystem.add(7, "A hunter almost pins you down.");
       }
@@ -109,13 +122,8 @@ export class HunterSystem {
     return best;
   }
 
-  moveNpcToward(npc, x, y, dt, speedMul = 1) {
-    const dx = x - npc.x;
-    const dy = y - npc.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const speed = (npc.speed || 42) * speedMul;
-    npc.x += (dx / len) * speed * dt;
-    npc.y += (dy / len) * speed * dt;
+  moveNpcToward(npc, x, y, dt, speed) {
+    this.scene.npcSystem.moveTowardAtSpeed(npc, x, y, dt, speed);
     npc.container.setPosition(npc.x, npc.y);
   }
 
