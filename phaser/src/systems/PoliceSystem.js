@@ -9,7 +9,9 @@ const PATROL_POINTS = Object.freeze([
   { x: 604, y: 326 },
   { x: 488, y: 326 },
   { x: 472, y: 242 },
-  { x: 780, y: 178 }
+  { x: 780, y: 178 },
+  { x: 676, y: 502 },
+  { x: 250, y: 326 }
 ]);
 const LOCAL_ZONES = Object.freeze([
   { id: "cross", name: "Central crossroad", x: 392, y: 244, w: 170, h: 170 },
@@ -24,7 +26,7 @@ const LOCAL_ZONES = Object.freeze([
 
 const CHASE_SPEED = PLAYER.baseSpeed * 0.74;
 const INVESTIGATE_SPEED = PLAYER.baseSpeed * 0.42;
-const PATROL_SPEED = PLAYER.baseSpeed * 0.24;
+const PATROL_SPEED = PLAYER.baseSpeed * 0.34;
 
 export class PoliceSystem {
   constructor(scene) {
@@ -45,9 +47,17 @@ export class PoliceSystem {
     const zone = this.zoneAt(x, y);
     const before = this.localHeat[zone.id] || 0;
     this.localHeat[zone.id] = Math.min(100, before + amount);
+    if (before < 25 && this.localHeat[zone.id] >= 25) this.redirectNearbyPatrols(zone);
     if (before < 45 && this.localHeat[zone.id] >= 45) {
       RawAudio.play("police");
       this.scene.lastActionText = `${zone.name} heats up: ${reason}.`;
+    }
+  }
+
+  redirectNearbyPatrols(zone) {
+    for (const cop of this.police()) {
+      if (cop.dead || cop.hiddenBody || cop.stunnedTimer > 0) continue;
+      cop.investigateTarget = { x: zone.x + zone.w / 2, y: zone.y + zone.h / 2, kind: "heat" };
     }
   }
 
@@ -103,13 +113,14 @@ export class PoliceSystem {
         if (d < 210 && !this.scene.currentShadow()) target = { x: this.scene.player.x, y: this.scene.player.y, kind: "player" };
       }
       if (!target && heat?.kind === "heat") target = heat;
+      if (!target && cop.investigateTarget?.kind === "heat") target = cop.investigateTarget;
       if (!target) target = this.nextPatrolPoint(cop);
       if (!target) continue;
 
       const speed = target.kind === "player" ? CHASE_SPEED : target.kind === "heat" ? INVESTIGATE_SPEED : PATROL_SPEED;
       this.moveNpcToward(cop, target.x, target.y, dt, speed);
+      if (target.kind === "heat" && Phaser.Math.Distance.Between(cop.x, cop.y, target.x, target.y) < 22) cop.investigateTarget = null;
       if (target.kind === "player" && Phaser.Math.Distance.Between(cop.x, cop.y, this.scene.player.x, this.scene.player.y) < 18) {
-        RawAudio.play("police");
         this.scene.exposureSystem.add(3, "Police cut you off in the street.");
       }
     }
