@@ -5,6 +5,71 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Night Blood District - Phaser</title>
   <link rel="stylesheet" href="phaser/styles.css" />
+  <style>
+    :root {
+      --game-width: 1440px;
+      --game-height: 960px;
+    }
+
+    .shell {
+      width: min(var(--game-width), calc(100vw - 28px));
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .resolution-control {
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px 6px 11px;
+      border: 1px solid rgba(241, 230, 255, .20);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .04);
+      color: #9d93b8;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .resolution-control select {
+      min-height: 26px;
+      border: 0;
+      border-radius: 6px;
+      padding: 3px 7px;
+      color: #f1e6ff;
+      background: #191c2d;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .game-frame,
+    #game-root {
+      width: var(--game-width);
+      max-width: 100%;
+      min-height: 0;
+      aspect-ratio: 3 / 2;
+    }
+
+    #game-root canvas {
+      width: var(--game-width) !important;
+      max-width: 100% !important;
+      height: auto !important;
+    }
+
+    @media (max-width: 720px) {
+      .topbar-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+  </style>
 </head>
 <body>
   <main class="shell">
@@ -13,7 +78,18 @@
         <p class="eyebrow">Phaser migration build</p>
         <h1>Night Blood District</h1>
       </div>
-      <a class="legacy-link" href="legacy/">Legacy prototype</a>
+      <div class="topbar-actions">
+        <label class="resolution-control" for="resolution-select">
+          Game resolution
+          <select id="resolution-select" aria-label="Game rendering resolution">
+            <option value="compact">960 × 640</option>
+            <option value="large">1280 × 853</option>
+            <option value="qhd" selected>1440 × 960</option>
+            <option value="ultra">1920 × 1280 · Ultra</option>
+          </select>
+        </label>
+        <a class="legacy-link" href="legacy/">Legacy prototype</a>
+      </div>
     </header>
 
     <section class="game-frame" aria-label="Playable Phaser migration prototype">
