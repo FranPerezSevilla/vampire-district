@@ -1,3 +1,5 @@
+import { RawAudio } from "./RawAudioSystem.js";
+
 export class InteractionSystem {
   constructor(scene) {
     this.scene = scene;
@@ -18,7 +20,10 @@ export class InteractionSystem {
 
   handleAction(options) {
     const sorted = this.sortOptions(options || []);
-    if (sorted.length === 0) return false;
+    if (sorted.length === 0) {
+      RawAudio.play("cancel");
+      return false;
+    }
 
     if (sorted.length === 1) {
       this.runOption(sorted[0]);
@@ -34,12 +39,14 @@ export class InteractionSystem {
       options,
       index: 0
     };
+    RawAudio.play("menu");
     this.scene.lastActionText = "Choose interaction.";
     this.publish();
   }
 
   close(status = "Interaction cancelled.") {
     this.menu = null;
+    RawAudio.play("cancel");
     this.scene.lastActionText = status;
     this.publish();
   }
@@ -48,7 +55,23 @@ export class InteractionSystem {
     if (!option || typeof option.run !== "function") return;
     this.menu = null;
     this.publish();
+    RawAudio.play(this.soundForOption(option));
     option.run();
+  }
+
+  soundForOption(option) {
+    switch (option.type) {
+      case "breakLight": return "breakLight";
+      case "fireEscapeUp":
+      case "fireEscapeDown": return "routeClimb";
+      case "sewerDown":
+      case "sewerUp":
+      case "privateShaft": return "routeSewer";
+      case "roofJump": return "routeRoof";
+      case "witness": return "stun";
+      case "evidence": return option.id === "hide_dragged_body" ? "bodyHide" : option.id === "drop_dragged_body" ? "bodyDrop" : "bodyDrag";
+      default: return "confirm";
+    }
   }
 
   runSelected() {
@@ -67,12 +90,14 @@ export class InteractionSystem {
 
     if (this.justDown(keys.up) || this.justDown(keys.w)) {
       this.menu.index = (this.menu.index - 1 + this.menu.options.length) % this.menu.options.length;
+      RawAudio.play("menu");
       this.publish();
       return true;
     }
 
     if (this.justDown(keys.down) || this.justDown(keys.s)) {
       this.menu.index = (this.menu.index + 1) % this.menu.options.length;
+      RawAudio.play("menu");
       this.publish();
       return true;
     }
