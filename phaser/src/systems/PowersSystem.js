@@ -71,6 +71,8 @@ export class PowersSystem {
 
     this.cooldowns.whisper = HUNGER.whisperCooldown;
     npc.luredTimer = HUNGER.whisperSeconds + (npc.type === NPC_TYPES.TARGET ? 1.2 : 0);
+    npc.lureFlash = 1.1;
+    npc.lureStopDistance = npc.type === NPC_TYPES.TARGET ? 30 : 24;
     npc.alarmed = false;
     npc.vx = 0;
     npc.vy = 0;
@@ -78,8 +80,8 @@ export class PowersSystem {
 
     const noticed = this.scene.witnessSystem?.onSuspiciousPower("a predatory whisper", 6, 110) || 0;
     this.scene.lastActionText = npc.type === NPC_TYPES.TARGET
-      ? `Whisper takes: the journalist follows you.${noticed ? ` ${noticed} witness(es) looked up.` : ""}`
-      : `Whisper takes: a civilian follows you.${noticed ? ` ${noticed} witness(es) noticed.` : ""}`;
+      ? `WHISPER LOCK: the journalist is compelled to follow you, not flee.${noticed ? ` ${noticed} witness(es) looked up.` : ""}`
+      : `WHISPER LOCK: a civilian follows you.${noticed ? ` ${noticed} witness(es) noticed.` : ""}`;
   }
 
   useDash() {
@@ -121,6 +123,7 @@ export class PowersSystem {
       if (npc.dead || npc.hiddenBody || npc.inactive || npc.intercepted) continue;
       if (![NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)) continue;
       if (npc.layer !== this.scene.currentLayer) continue;
+      if (!this.scene.npcSystem.canNpcStandAt(npc, npc.x, npc.y)) continue;
       const d = Phaser.Math.Distance.Between(this.scene.player.x, this.scene.player.y, npc.x, npc.y);
       const effectiveRadius = npc.type === NPC_TYPES.TARGET ? radius + 42 : radius;
       if (d > effectiveRadius) continue;
@@ -176,12 +179,14 @@ export class PowersSystem {
   drawLureLines() {
     for (const npc of this.scene.npcSystem.npcs) {
       if (npc.layer !== this.scene.currentLayer || npc.dead || npc.hiddenBody || npc.luredTimer <= 0) continue;
-      this.graphics.lineStyle(2, 0xff4bd8, 0.42);
+      const pulse = 0.28 + Math.sin(this.scene.time.now / 70) * 0.10;
+      this.graphics.lineStyle(2, 0xff4bd8, 0.42 + pulse);
       this.graphics.beginPath();
       this.graphics.moveTo(npc.x, npc.y);
       this.graphics.lineTo(this.scene.player.x, this.scene.player.y);
       this.graphics.strokePath();
-      this.graphics.fillStyle(0xff4bd8, 0.18).fillCircle(npc.x, npc.y, 18);
+      this.graphics.fillStyle(0xff4bd8, 0.18 + pulse * 0.35).fillCircle(npc.x, npc.y, 18 + pulse * 8);
+      this.graphics.lineStyle(2, 0xffd6fa, 0.70).strokeCircle(npc.x, npc.y, 12);
     }
   }
 
