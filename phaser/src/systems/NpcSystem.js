@@ -1,4 +1,5 @@
 import { npcDefinitions, NPC_TYPES } from "../data/npcs.js";
+import { LAYERS } from "../data/district.js";
 
 const PALETTE = Object.freeze({
   [NPC_TYPES.CIVILIAN]: { body: 0xc8b58a, head: 0xd5b48b, label: "CIV" },
@@ -7,6 +8,25 @@ const PALETTE = Object.freeze({
   [NPC_TYPES.HUNTER]: { body: 0xff9d35, head: 0xffd483, label: "HUNTER" },
   [NPC_TYPES.RAT]: { body: 0x9c8f7a, head: 0xc0b49e, label: "RAT" }
 });
+
+const NAV_POINTS = Object.freeze([
+  { id: "police_gate", x: 780, y: 178 },
+  { id: "police_avenue", x: 740, y: 248 },
+  { id: "north_cross", x: 472, y: 244 },
+  { id: "cross", x: 488, y: 326 },
+  { id: "east_avenue", x: 604, y: 326 },
+  { id: "club_front", x: 720, y: 326 },
+  { id: "club_side", x: 588, y: 360 },
+  { id: "club_rear", x: 676, y: 502 },
+  { id: "church_front", x: 842, y: 404 },
+  { id: "church_rear", x: 842, y: 500 },
+  { id: "west_avenue", x: 360, y: 326 },
+  { id: "warehouse_alley", x: 176, y: 404 },
+  { id: "west_manhole", x: 176, y: 350 },
+  { id: "south_service", x: 380, y: 528 },
+  { id: "old_block", x: 596, y: 540 },
+  { id: "refuge_escape", x: 176, y: 244 }
+]);
 
 export class NpcSystem {
   constructor(scene) {
@@ -42,7 +62,10 @@ export class NpcSystem {
       witnessReason: "",
       luredTimer: 0,
       lureFlash: 0,
-      lureStopDistance: 24,
+      lureStopDistance: 18,
+      navPoint: null,
+      navTargetKey: "",
+      navRepathTimer: 0,
       wait: def.behavior === "loiter" || def.behavior === "guard" || def.behavior === "hidden" ? 999 : 0.4 + Math.random() * 1.2,
       aiTimer: 0.6 + Math.random() * 1.8,
       container
@@ -70,6 +93,7 @@ export class NpcSystem {
   update(dt) {
     for (const npc of this.npcs) {
       if (npc.lureFlash > 0) npc.lureFlash = Math.max(0, npc.lureFlash - dt);
+      npc.navRepathTimer = Math.max(0, (npc.navRepathTimer || 0) - dt);
       this.updateNpc(npc, dt);
       npc.container.setPosition(npc.x, npc.y);
       npc.container.setVisible(this.isVisible(npc));
@@ -123,16 +147,19 @@ export class NpcSystem {
 
     const nx = npc.x + npc.vx * dt;
     const ny = npc.y + npc.vy * dt;
-    if (this.canNpcStandAt(npc, nx, npc.y)) npc.x = nx;
-    else npc.vx *= -0.45;
-    if (this.canNpcStandAt(npc, npc.x, ny)) npc.y = ny;
-    else npc.vy *= -0.45;
+    if (this.canNpcStandAt(npc, nx, ny)) {
+      npc.x = nx;
+      npc.y = ny;
+    } else {
+      npc.vx *= -0.35;
+      npc.vy *= -0.35;
+    }
     this.setFacingFromVelocity(npc);
   }
 
   followPlayerUnderWhisper(npc, dt) {
     const d = Phaser.Math.Distance.Between(npc.x, npc.y, this.scene.player.x, this.scene.player.y);
-    const stopDistance = npc.lureStopDistance || (npc.type === NPC_TYPES.TARGET ? 30 : 24);
+    const stopDistance = npc.lureStopDistance || 18;
     const dx = this.scene.player.x - npc.x;
     const dy = this.scene.player.y - npc.y;
     const len = Math.hypot(dx, dy) || 1;
@@ -145,8 +172,8 @@ export class NpcSystem {
       return;
     }
 
-    const followSpeed = npc.type === NPC_TYPES.TARGET ? 42 : 34;
-    this.moveTowardAtSpeed(npc, this.scene.player.x, this.scene.player.y, dt, followSpeed);
+    const followSpeed = npc.type === NPC_TYPES.TARGET ? 38 : 32;
+    this.moveTowardAtSpeed(npc, this.scene.player.x, this.scene.player.y, dt, followSpeed, { smart: true });
   }
 
   setFacingFromVelocity(npc) {
@@ -157,12 +184,20 @@ export class NpcSystem {
     }
   }
 
-  moveToward(npc, x, y, dt, speedMul = 1) {
+  moveToward(npc, x, y, dt, speedMul = 1, options = {}) {
     const speed = (npc.speed || 10) * speedMul;
-    this.moveTowardAtSpeed(npc, x, y, dt, speed);
+    this.moveTowardAtSpeed(npc, x, y, dt, speed, options);
   }
 
-  moveTowardAtSpeed(npc, x, y, dt, speed) {
+  moveTowardAtSpeed(npc, x, y, dt, speed, options = {}) {
+    if (options.smart && npc.layer === LAYERS.STREET) {
+      this.smartMoveTowardAtSpeed(npc, x, y, dt, speed);
+      return;
+    }
+    this.directMoveTowardAtSpeed(npc, x, y, dt, speed);
+  }
+
+  directMoveTowardAtSpeed(npc, x, y, dt, speed) {
     const dx = x - npc.x;
     const dy = y - npc.y;
     const len = Math.hypot(dx, dy) || 1;
@@ -173,20 +208,81 @@ export class NpcSystem {
 
     const nx = npc.x + npc.vx * dt;
     const ny = npc.y + npc.vy * dt;
-    let moved = false;
-    if (this.canNpcStandAt(npc, nx, npc.y)) {
+    if (this.canNpcStandAt(npc, nx, ny)) {
       npc.x = nx;
-      moved = true;
-    }
-    if (this.canNpcStandAt(npc, npc.x, ny)) {
       npc.y = ny;
-      moved = true;
-    }
-
-    if (!moved) {
+    } else {
       npc.vx = 0;
       npc.vy = 0;
     }
+  }
+
+  smartMoveTowardAtSpeed(npc, x, y, dt, speed) {
+    const targetKey = `${Math.round(x / 16)}:${Math.round(y / 16)}`;
+    const closeToTarget = Phaser.Math.Distance.Between(npc.x, npc.y, x, y) < 18;
+    if (closeToTarget) {
+      npc.navPoint = null;
+      this.directMoveTowardAtSpeed(npc, x, y, dt, speed);
+      return;
+    }
+
+    if (this.hasClearPath(npc, npc.x, npc.y, x, y)) {
+      npc.navPoint = null;
+      this.directMoveTowardAtSpeed(npc, x, y, dt, speed);
+      return;
+    }
+
+    const needsRoute = !npc.navPoint || npc.navTargetKey !== targetKey || npc.navRepathTimer <= 0 || Phaser.Math.Distance.Between(npc.x, npc.y, npc.navPoint.x, npc.navPoint.y) < 14;
+    if (needsRoute) {
+      npc.navPoint = this.chooseNavPoint(npc, x, y);
+      npc.navTargetKey = targetKey;
+      npc.navRepathTimer = 0.55;
+    }
+
+    if (npc.navPoint) {
+      this.directMoveTowardAtSpeed(npc, npc.navPoint.x, npc.navPoint.y, dt, speed);
+      if (Phaser.Math.Distance.Between(npc.x, npc.y, npc.navPoint.x, npc.navPoint.y) < 14) {
+        npc.navPoint = null;
+        npc.navRepathTimer = 0;
+      }
+    } else {
+      npc.vx = 0;
+      npc.vy = 0;
+    }
+  }
+
+  chooseNavPoint(npc, tx, ty) {
+    let best = null;
+    let bestScore = Infinity;
+    for (const point of NAV_POINTS) {
+      if (!this.canNpcStandAt(npc, point.x, point.y)) continue;
+      const fromClear = this.hasClearPath(npc, npc.x, npc.y, point.x, point.y);
+      const toClear = this.hasClearPath(npc, point.x, point.y, tx, ty);
+      if (!fromClear && !toClear) continue;
+      const score =
+        Phaser.Math.Distance.Between(npc.x, npc.y, point.x, point.y) +
+        Phaser.Math.Distance.Between(point.x, point.y, tx, ty) +
+        (fromClear ? 0 : 120) +
+        (toClear ? 0 : 60) +
+        Math.random() * 12;
+      if (score < bestScore) {
+        best = point;
+        bestScore = score;
+      }
+    }
+    return best;
+  }
+
+  hasClearPath(npc, ax, ay, bx, by) {
+    const dist = Phaser.Math.Distance.Between(ax, ay, bx, by);
+    const steps = Math.max(1, Math.ceil(dist / 14));
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const x = ax + (bx - ax) * t;
+      const y = ay + (by - ay) * t;
+      if (!this.canNpcStandAt(npc, x, y)) return false;
+    }
+    return true;
   }
 
   canNpcStandAt(npc, x, y) {
