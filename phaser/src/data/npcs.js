@@ -5,6 +5,7 @@ export const NPC_TYPES = Object.freeze({
   TARGET: "target",
   POLICE: "police",
   HUNTER: "hunter",
+  THUG: "thug",
   RAT: "rat"
 });
 
@@ -20,8 +21,11 @@ export const npcDefinitions = [
   { id: "civ_south_1", type: NPC_TYPES.CIVILIAN, x: 206, y: 524, layer: LAYERS.STREET, behavior: "wander", speed: 9 },
   { id: "civ_south_2", type: NPC_TYPES.CIVILIAN, x: 420, y: 526, layer: LAYERS.STREET, behavior: "wander", speed: 9 },
 
-  // Mission target: now placed close enough to the club-side shadow for a clean route.
+  // Mission target: hidden until the rooftop tip is collected.
   { id: "journalist", type: NPC_TYPES.TARGET, x: 588, y: 360, layer: LAYERS.STREET, behavior: "loiter", speed: 5, dirX: -1, dirY: 0 },
+
+  // Rooftop blocker: must be neutralized before the police roof jump opens.
+  { id: "rooftop_thug", type: NPC_TYPES.THUG, x: 646, y: 162, layer: LAYERS.ROOF_LOW, behavior: "guard", speed: 0, dirX: 1, dirY: 0 },
 
   // Visible police patrols from the start. They now cover separate beats instead of stacking.
   { id: "police_patrol_1", type: NPC_TYPES.POLICE, x: 744, y: 236, layer: LAYERS.STREET, behavior: "police", speed: 22, dirX: -1, dirY: 0, patrolRoute: "northEast", patrolIndex: 0, patrolOffsetIndex: 0 },
