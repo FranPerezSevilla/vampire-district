@@ -73,10 +73,16 @@ export class EvidenceSystem {
 
   onFeedCompleted(npc) {
     if (!npc || npc.type === NPC_TYPES.RAT) return;
-    const count = npc.type === NPC_TYPES.TARGET ? 4 : 3;
+    const count = npc.type === NPC_TYPES.TARGET ? 4 : npc.type === NPC_TYPES.POLICE || npc.type === NPC_TYPES.HUNTER ? 4 : 3;
     for (let i = 0; i < count; i++) {
-      this.createBloodStain(npc.x, npc.y, npc.layer, npc.type === NPC_TYPES.TARGET ? "target-feed" : "feed");
+      this.createBloodStain(npc.x, npc.y, npc.layer, npc.type === NPC_TYPES.TARGET ? "target-drain" : "drain");
     }
+  }
+
+  onKillCompleted(npc) {
+    if (!npc || npc.type === NPC_TYPES.RAT) return;
+    const count = npc.type === NPC_TYPES.POLICE || npc.type === NPC_TYPES.HUNTER ? 2 : 1;
+    for (let i = 0; i < count; i++) this.createBloodStain(npc.x, npc.y, npc.layer, "kill");
   }
 
   createBloodStain(x, y, layer, kind = "blood") {
@@ -198,14 +204,14 @@ export class EvidenceSystem {
       const hidden = this.shadowAt(body.x, body.y, body.layer);
       const range = hidden ? 58 : 120;
       const watcher = this.scene.npcSystem.npcs.find(npc => {
-        if (npc.dead || npc.inactive || npc.intercepted || npc.layer !== body.layer) return false;
+        if (npc.dead || npc.inactive || npc.intercepted || npc.stunnedTimer > 0 || npc.layer !== body.layer) return false;
         if (![NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)) return false;
         return Phaser.Math.Distance.Between(npc.x, npc.y, body.x, body.y) <= range;
       });
       if (watcher) {
         body.corpseDiscovered = true;
         this.stats.bodiesDiscovered++;
-        this.scene.witnessSystem.alarmWitness(watcher, "an abandoned body", 20);
+        this.scene.witnessSystem.alarmWitness(watcher, "an abandoned body", 16, { reactionSeconds: 1.2 });
         this.scene.exposureSystem.add(5, "A civilian discovers a body and runs to report it.");
       }
     }
@@ -225,7 +231,8 @@ export class EvidenceSystem {
 
     for (const stain of this.bloodStains) {
       if (stain.layer !== this.scene.currentLayer) continue;
-      graphics.fillStyle(stain.kind === "target-feed" ? 0xff2f62 : 0xb31934, 0.65);
+      const drain = stain.kind === "target-drain" || stain.kind === "drain";
+      graphics.fillStyle(stain.kind === "target-drain" ? 0xff2f62 : drain ? 0xb31934 : 0x8a2f3c, drain ? 0.65 : 0.45);
       graphics.fillRect(stain.x - 2, stain.y - 1, 4, 2);
       graphics.fillRect(stain.x - 1, stain.y - 2, 2, 4);
     }
