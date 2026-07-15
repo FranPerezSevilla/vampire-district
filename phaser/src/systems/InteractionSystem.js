@@ -57,11 +57,13 @@ export class InteractionSystem {
     this.menu = null;
     this.publish();
     RawAudio.play(this.soundForOption(option));
-    resolveAction(this.scene, option.type, {
-      x: option.x,
-      y: option.y,
-      layer: this.scene.currentLayer
-    });
+    if (option.type === "breakLight") {
+      resolveAction(this.scene, option.type, {
+        x: option.x,
+        y: option.y,
+        layer: this.scene.currentLayer
+      });
+    }
     option.run();
   }
 
