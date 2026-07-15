@@ -1,6 +1,7 @@
 import { PLAYER } from "../data/balance.js";
 import { LAYERS } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
+import { RawAudio } from "./RawAudioSystem.js";
 
 const CHURCH_ANCHOR = Object.freeze({ x: 842, y: 474 });
 
@@ -38,6 +39,7 @@ export class HunterSystem {
 
     this.revealed = true;
     this.spawnHunter();
+    RawAudio.play("hunter");
     this.scene.lastActionText = this.scene.missionSystem?.failed
       ? "The Masquerade is broken. A hunter enters the district."
       : "Exposure is too high. A hunter notices the pattern behind the crimes.";
@@ -76,6 +78,7 @@ export class HunterSystem {
     if (!candidates.length) return;
     const point = candidates[0].point;
     this.routeBlocks.push({ ...point, life: 8.5 });
+    RawAudio.play("hunter");
     this.scene.lastActionText = `A hunter tries to cut off ${point.name}.`;
   }
 
@@ -104,6 +107,7 @@ export class HunterSystem {
             : HUNTER_PATROL_SPEED;
       this.moveNpcToward(hunter, target.x, target.y, dt, speed);
       if (target.kind === "player" && Phaser.Math.Distance.Between(hunter.x, hunter.y, this.scene.player.x, this.scene.player.y) < 18) {
+        RawAudio.play("hunter");
         this.scene.exposureSystem.add(7, "A hunter almost pins you down.");
       }
     }
