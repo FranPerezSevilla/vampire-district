@@ -1,6 +1,7 @@
 import { HUNGER } from "../data/balance.js";
 import { LAYERS, lights } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
+import { RawAudio } from "./RawAudioSystem.js";
 
 export class PowersSystem {
   constructor(scene) {
@@ -54,16 +55,24 @@ export class PowersSystem {
   }
 
   useBloodSense() {
-    if (this.cooldowns.sense > 0) return;
+    if (this.cooldowns.sense > 0) {
+      RawAudio.play("cancel");
+      return;
+    }
     this.cooldowns.sense = HUNGER.senseCooldown;
     this.senseTimer = HUNGER.senseSeconds;
+    RawAudio.play("sense");
     this.addHunger(HUNGER.senseCost, "Blood Sense opens the district's veins");
   }
 
   useWhisper() {
-    if (this.cooldowns.whisper > 0) return;
+    if (this.cooldowns.whisper > 0) {
+      RawAudio.play("cancel");
+      return;
+    }
     const npc = this.nearestLurable();
     if (!npc) {
+      RawAudio.play("whisperFail");
       this.scene.lastActionText = "Whisper failed: no living mind close enough. Move nearer or use Blood Sense.";
       this.cooldowns.whisper = 0.35;
       return;
@@ -77,6 +86,7 @@ export class PowersSystem {
     npc.reactionTimer = 0;
     npc.vx = 0;
     npc.vy = 0;
+    RawAudio.play("whisper");
     this.addHunger(HUNGER.whisperCost, npc.type === NPC_TYPES.TARGET ? "You whisper into the journalist's blood" : "You whisper into a civilian's nerves");
 
     this.scene.lastActionText = npc.type === NPC_TYPES.TARGET
@@ -85,7 +95,10 @@ export class PowersSystem {
   }
 
   useDash() {
-    if (this.cooldowns.dash > 0) return;
+    if (this.cooldowns.dash > 0) {
+      RawAudio.play("dashFail");
+      return;
+    }
     this.cooldowns.dash = HUNGER.dashCooldown;
     const maxDistance = HUNGER.dashDistance;
     const step = 6;
@@ -103,11 +116,13 @@ export class PowersSystem {
     }
 
     if (moved <= 0) {
+      RawAudio.play("dashFail");
       this.scene.lastActionText = "Shadow Dash fails: no space to slip through.";
       return;
     }
 
     this.scene.player.setPosition(nextX, nextY);
+    RawAudio.play("dash");
     this.addHunger(HUNGER.dashCost, "Shadow Dash tears you across the dark");
     if (this.scene.currentLayer === LAYERS.STREET && this.scene.currentLight()) {
       this.scene.lastActionText = "Shadow Dash: smoke and impossible movement, but no masquerade breach unless you drain in public.";
