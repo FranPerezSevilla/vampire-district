@@ -71,7 +71,14 @@ export class TransitionSystem {
     this.graphics.lineStyle(2, color, 0.65);
     this.graphics.beginPath();
     this.graphics.moveTo(from.x, from.y);
-    this.graphics.quadraticCurveTo(midX, midY, to.x, to.y);
+    const steps = 18;
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const inv = 1 - t;
+      const x = inv * inv * from.x + 2 * inv * t * midX + t * t * to.x;
+      const y = inv * inv * from.y + 2 * inv * t * midY + t * t * to.y;
+      this.graphics.lineTo(x, y);
+    }
     this.graphics.strokePath();
     this.scene.addMapLabel(label, midX + 8, midY - 8, color);
   }
