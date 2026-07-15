@@ -1,5 +1,6 @@
-import { RawAudio } from "./RawAudioSystem.js";
 import { COLORS } from "../data/balance.js";
+import { resolveAction } from "./ActionSystem.js";
+import { RawAudio } from "./RawAudioSystem.js";
 
 export class TransitionSystem {
   constructor(scene) {
@@ -45,7 +46,14 @@ export class TransitionSystem {
       peakScale: 1.42,
       landingColor: 0xffb02e,
       landingLabel: "DROP",
-      onComplete: () => this.complete(toLayer, to, status),
+      onComplete: () => {
+        resolveAction(this.scene, "roofDrop", {
+          x: to.x,
+          y: to.y,
+          layer: toLayer
+        });
+        this.complete(toLayer, to, status);
+      },
       falling: true
     });
   }
