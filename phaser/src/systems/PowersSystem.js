@@ -17,6 +17,7 @@ export class PowersSystem {
   }
 
   update(dt, keys) {
+    this.scene.feedingSystem?.addPassiveHunger(dt);
     this.cooldowns.dash = Math.max(0, this.cooldowns.dash - dt);
     this.cooldowns.whisper = Math.max(0, this.cooldowns.whisper - dt);
     this.cooldowns.sense = Math.max(0, this.cooldowns.sense - dt);
@@ -90,8 +91,8 @@ export class PowersSystem {
     this.addHunger(HUNGER.whisperCost, npc.type === NPC_TYPES.TARGET ? "You whisper into the journalist's blood" : "You whisper into a civilian's nerves");
 
     this.scene.lastActionText = npc.type === NPC_TYPES.TARGET
-      ? "WHISPER LOCK: the journalist is compelled to follow you. No masquerade panic from the power itself."
-      : "WHISPER LOCK: a civilian follows you. No masquerade panic from the power itself.";
+      ? `WHISPER LOCK: the journalist follows you. Hunger +${HUNGER.whisperCost}.`
+      : `WHISPER LOCK: a civilian follows you. Hunger +${HUNGER.whisperCost}.`;
   }
 
   useDash() {
