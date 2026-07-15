@@ -1,3 +1,5 @@
+const MAX_EXPOSURE = 125;
+
 export class ExposureSystem {
   constructor(scene) {
     this.scene = scene;
@@ -12,7 +14,7 @@ export class ExposureSystem {
   add(amount, reason = "Exposure rises.") {
     if (!amount || amount <= 0) return;
     const before = this.level();
-    this.value = Math.max(0, Math.min(100, this.value + amount));
+    this.value = Math.max(0, Math.min(MAX_EXPOSURE, this.value + amount));
     this.lastReason = reason;
     this.scene.policeSystem?.addHeat(this.scene.player.x, this.scene.player.y, amount * 0.55, reason);
     const after = this.level();
@@ -33,6 +35,7 @@ export class ExposureSystem {
   }
 
   summary() {
-    return `Exposure Lv ${this.level()} · ${Math.round(this.value)}%`;
+    const pct = Math.round((this.value / MAX_EXPOSURE) * 100);
+    return `Exposure Lv ${this.level()} · ${pct}%`;
   }
 }
