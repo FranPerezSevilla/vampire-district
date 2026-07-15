@@ -3,9 +3,9 @@ import { COLORS } from "../data/balance.js";
 const FONT = "monospace";
 
 const POWER_CONFIG = Object.freeze({
-  dash: { key: "Q", label: "Dash", max: 3.0, color: 0xa75cff, x: 805, y: 570 },
-  whisper: { key: "R", label: "Whisper", max: 4.8, color: 0xff4bd8, x: 870, y: 570 },
-  sense: { key: "F", label: "Sense", max: 4.0, color: 0x78c7a3, x: 935, y: 570 }
+  dash: { key: "Q", label: "Dash", max: 3.0, color: 0xa75cff, x: 44, y: 158 },
+  whisper: { key: "R", label: "Whisper", max: 4.8, color: 0xff4bd8, x: 44, y: 246 },
+  sense: { key: "F", label: "Sense", max: 4.0, color: 0x78c7a3, x: 44, y: 334 }
 });
 
 export class UIScene extends Phaser.Scene {
@@ -30,7 +30,7 @@ export class UIScene extends Phaser.Scene {
     this.createIntroOverlay();
     this.createPauseOverlay();
 
-    this.phase = this.add.text(14, 606, "PHASE 11: powers + UI pass", {
+    this.phase = this.add.text(90, 612, "PHASE 12: side power rail + clean play space", {
       fontFamily: FONT,
       fontSize: "10px",
       color: "#ffb02e",
@@ -43,7 +43,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   createTopHud() {
-    this.topPanel = this.add.rectangle(0, 0, 960, 48, 0x05060b, 0.88).setOrigin(0, 0).setScrollFactor(0).setDepth(10);
+    this.topPanel = this.add.rectangle(0, 0, 960, 46, 0x05060b, 0.90).setOrigin(0, 0).setScrollFactor(0).setDepth(10);
     this.topPanel.setStrokeStyle(1, 0x2d3045, 1);
 
     this.title = this.add.text(16, 10, "Night Blood District", {
@@ -52,7 +52,7 @@ export class UIScene extends Phaser.Scene {
       color: "#f1e6ff"
     }).setScrollFactor(0).setDepth(11);
 
-    this.hungerBadge = this.add.text(350, 10, "Hunger --", {
+    this.hungerBadge = this.add.text(310, 10, "Hunger --", {
       fontFamily: FONT,
       fontSize: "12px",
       color: "#ff3b50",
@@ -60,7 +60,7 @@ export class UIScene extends Phaser.Scene {
       padding: { x: 8, y: 5 }
     }).setScrollFactor(0).setDepth(11);
 
-    this.exposureBadge = this.add.text(510, 10, "Exposure --", {
+    this.exposureBadge = this.add.text(474, 10, "Exposure --", {
       fontFamily: FONT,
       fontSize: "12px",
       color: "#ffb02e",
@@ -68,9 +68,9 @@ export class UIScene extends Phaser.Scene {
       padding: { x: 8, y: 5 }
     }).setScrollFactor(0).setDepth(11);
 
-    this.menuButton = this.add.rectangle(898, 24, 106, 28, 0x15121d, 0.96).setScrollFactor(0).setDepth(12).setInteractive({ useHandCursor: true });
+    this.menuButton = this.add.rectangle(898, 23, 106, 28, 0x15121d, 0.96).setScrollFactor(0).setDepth(12).setInteractive({ useHandCursor: true });
     this.menuButton.setStrokeStyle(1, 0x78c7a3, 0.85);
-    this.menuButtonLabel = this.add.text(854, 16, "MENU · H", {
+    this.menuButtonLabel = this.add.text(854, 15, "MENU · H", {
       fontFamily: FONT,
       fontSize: "11px",
       color: "#78c7a3"
@@ -81,6 +81,16 @@ export class UIScene extends Phaser.Scene {
   createPowerOrbs() {
     this.powerGraphics = this.add.graphics().setScrollFactor(0).setDepth(16);
     this.powerTexts = {};
+
+    this.powerRail = this.add.rectangle(44, 246, 74, 306, 0x05060b, 0.72).setScrollFactor(0).setDepth(14);
+    this.powerRail.setStrokeStyle(1, 0x2d3045, 0.75);
+    this.powerRailTitle = this.add.text(17, 100, "POWERS", {
+      fontFamily: FONT,
+      fontSize: "9px",
+      color: "#9d93b8",
+      letterSpacing: 1
+    }).setScrollFactor(0).setDepth(17);
+
     for (const [id, cfg] of Object.entries(POWER_CONFIG)) {
       this.powerTexts[id] = {
         key: this.add.text(cfg.x, cfg.y - 2, cfg.key, {
@@ -88,7 +98,7 @@ export class UIScene extends Phaser.Scene {
           fontSize: "13px",
           color: "#f1e6ff"
         }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(17),
-        label: this.add.text(cfg.x, cfg.y + 26, cfg.label, {
+        label: this.add.text(cfg.x, cfg.y + 27, cfg.label, {
           fontFamily: FONT,
           fontSize: "9px",
           color: "#d7c8ff"
@@ -98,31 +108,31 @@ export class UIScene extends Phaser.Scene {
   }
 
   createFooter() {
-    this.objective = this.add.text(16, 518, "Objective: booting...", {
+    this.objective = this.add.text(90, 520, "Objective: booting...", {
       fontFamily: FONT,
       fontSize: "11px",
       color: "#ffb02e",
       backgroundColor: "rgba(0,0,0,.55)",
       padding: { x: 8, y: 4 },
-      wordWrap: { width: 680 }
+      wordWrap: { width: 760 }
     }).setScrollFactor(0).setDepth(15);
 
-    this.prompt = this.add.text(16, 548, "", {
+    this.prompt = this.add.text(90, 550, "", {
       fontFamily: FONT,
       fontSize: "10px",
       color: "#fff2a8",
       backgroundColor: "rgba(0,0,0,.50)",
       padding: { x: 8, y: 4 },
-      wordWrap: { width: 720 }
+      wordWrap: { width: 760 }
     }).setScrollFactor(0).setDepth(15);
 
-    this.lastAction = this.add.text(16, 592, "", {
+    this.lastAction = this.add.text(90, 586, "", {
       fontFamily: FONT,
       fontSize: "9px",
       color: "#9d93b8",
       backgroundColor: "rgba(0,0,0,.45)",
       padding: { x: 8, y: 4 },
-      wordWrap: { width: 720 }
+      wordWrap: { width: 760 }
     }).setScrollFactor(0).setDepth(15);
   }
 
@@ -186,7 +196,7 @@ export class UIScene extends Phaser.Scene {
       }).setScrollFactor(0).setDepth(222));
 
     add(this.add.text(236, 292,
-      "Core loop: roofs/sewers · shadows · hunger · witnesses · evidence cleanup.\nPowers: Q/Space Dash · R Whisper · F Blood Sense · H Menu", {
+      "Core loop: roofs/sewers · shadows · hunger · witnesses · evidence cleanup.\nPowers are shown on the left rail: Q/Space Dash · R Whisper · F Blood Sense · H Menu", {
         fontFamily: FONT,
         fontSize: "11px",
         color: "#78c7a3",
@@ -304,11 +314,15 @@ export class UIScene extends Phaser.Scene {
   renderPowerOrbs(powersText) {
     this.powerGraphics.clear();
     const text = String(powersText || "");
+
+    this.powerGraphics.fillStyle(0x05060b, 0.72).fillRoundedRect(8, 92, 72, 308, 10);
+    this.powerGraphics.lineStyle(1, 0x2d3045, 0.75).strokeRoundedRect(8, 92, 72, 308, 10);
+
     for (const [id, cfg] of Object.entries(POWER_CONFIG)) {
       const remaining = this.cooldownFor(text, cfg.label);
       const ready = remaining <= 0;
       const pct = ready ? 1 : Phaser.Math.Clamp(1 - remaining / cfg.max, 0, 1);
-      this.drawPowerOrb(cfg.x, cfg.y, 21, cfg.color, pct, ready);
+      this.drawPowerOrb(cfg.x, cfg.y, 22, cfg.color, pct, ready);
       this.powerTexts[id].label.setText(ready ? cfg.label : remaining.toFixed(1));
       this.powerTexts[id].label.setColor(ready ? "#d7c8ff" : "#9d93b8");
     }
@@ -349,7 +363,7 @@ export class UIScene extends Phaser.Scene {
       this.pauseContent.setText(
         "Movement: WASD / arrows · Shift sprint\n" +
         "Interact: E near routes, targets, bodies, witnesses, lamps\n" +
-        "Powers: Q/Space Shadow Dash · R Whisper · F Blood Sense\n" +
+        "Powers: left rail shows cooldowns · Q/Space Shadow Dash · R Whisper · F Blood Sense\n" +
         "Stealth: rooftops, sewers and deep shadows hide you\n" +
         "Exposure: public feeding, witnesses and impossible movement bring police\n" +
         "Hunters: appear later, follow blood, and may block escape routes\n" +
