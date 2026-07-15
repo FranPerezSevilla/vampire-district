@@ -33,14 +33,20 @@ const FORMATION_OFFSETS = Object.freeze([
   { x: -18, y: 10 },
   { x: 18, y: -10 },
   { x: -12, y: -16 },
-  { x: 12, y: 16 }
+  { x: 12, y: 16 },
+  { x: -28, y: -4 },
+  { x: 28, y: 4 },
+  { x: 0, y: 24 }
 ]);
 const INVESTIGATION_OFFSETS = Object.freeze([
   { x: 0, y: 0 },
-  { x: -30, y: 18 },
-  { x: 30, y: -18 },
-  { x: -24, y: -24 },
-  { x: 24, y: 24 }
+  { x: -38, y: 20 },
+  { x: 38, y: -20 },
+  { x: -28, y: -30 },
+  { x: 28, y: 30 },
+  { x: -52, y: 0 },
+  { x: 52, y: 0 },
+  { x: 0, y: 46 }
 ]);
 const LOCAL_ZONES = Object.freeze([
   { id: "cross", name: "Central crossroad", x: 392, y: 244, w: 170, h: 170 },
@@ -53,12 +59,21 @@ const LOCAL_ZONES = Object.freeze([
   { id: "alleys", name: "Alleys", x: 80, y: 232, w: 820, h: 330 }
 ]);
 
-const CHASE_SPEED = PLAYER.baseSpeed * 0.84;
-const SHADOW_CHASE_SPEED = PLAYER.baseSpeed * 0.56;
-const INVESTIGATE_SPEED = PLAYER.baseSpeed * 0.52;
 const PATROL_SPEED = PLAYER.baseSpeed * 0.36;
-const PLAYER_SPOTTED_RADIUS = 178;
-const PLAYER_SUSPICIOUS_RADIUS = 136;
+const INVESTIGATE_SPEED = PLAYER.baseSpeed * 0.52;
+const HELICOPTER_LIGHT_RADIUS = 38;
+const HELICOPTER_LOCK_SECONDS = 0.72;
+
+const WANTED_CONFIG = Object.freeze({
+  0: { desired: 3, chaseSpeed: PLAYER.baseSpeed * 0.72, searchSpeed: INVESTIGATE_SPEED, sight: 150, shadowSight: 0, surroundRadius: 0 },
+  1: { desired: 4, chaseSpeed: PLAYER.baseSpeed * 0.90, searchSpeed: PLAYER.baseSpeed * 0.64, sight: 190, shadowSight: 58, surroundRadius: 43 },
+  2: { desired: 6, chaseSpeed: PLAYER.baseSpeed * 1.04, searchSpeed: PLAYER.baseSpeed * 0.80, sight: 238, shadowSight: 100, surroundRadius: 49 },
+  3: { desired: 8, chaseSpeed: PLAYER.baseSpeed * 1.14, searchSpeed: PLAYER.baseSpeed * 0.92, sight: 286, shadowSight: 142, surroundRadius: 55 }
+});
+
+function configForLevel(level) {
+  return WANTED_CONFIG[Math.min(3, Math.max(0, level))];
+}
 
 export class PoliceSystem {
   constructor(scene) {
@@ -66,24 +81,73 @@ export class PoliceSystem {
     this.localHeat = Object.create(null);
     this.spawned = 0;
     this.spawnedThisTick = 0;
+    this.previousLevel = 0;
+    this.lastKnownPlayer = null;
+    this.arrestTriggered = false;
+    this.helicopter = {
+      active: false,
+      x: scene.player?.x || 480,
+      y: (scene.player?.y || 320) - 110,
+      spotX: scene.player?.x || 480,
+      spotY: scene.player?.y || 320,
+      phase: 0,
+      lock: 0
+    };
+    this.helicopterGraphics = scene.add.graphics().setDepth(39);
   }
 
   update(dt) {
+    if (this.arrestTriggered) return;
+
     this.ensurePatrolState();
     this.coolHeat(dt);
-    this.spawnForExposure();
-    this.updatePolice(dt);
+
+    const level = this.scene.exposureSystem.level();
+    this.handleWantedLevelChange(level);
+    this.spawnForExposure(level);
+    this.updatePolice(dt, level);
+    this.updateHelicopter(dt, level);
+    this.checkSurrounded(level);
+    this.previousLevel = level;
   }
 
   ensurePatrolState() {
     let index = 0;
     for (const cop of this.police()) {
+      cop.behavior = "guard";
       if (!cop.patrolRoute || !PATROL_ROUTES[cop.patrolRoute]) cop.patrolRoute = ROUTE_KEYS[index % ROUTE_KEYS.length];
       if (cop.patrolIndex == null) cop.patrolIndex = index % PATROL_ROUTES[cop.patrolRoute].length;
       if (cop.patrolOffsetIndex == null) cop.patrolOffsetIndex = index % FORMATION_OFFSETS.length;
+      if (cop.searchIndex == null) cop.searchIndex = index % INVESTIGATION_OFFSETS.length;
       if (cop.patrolPause == null) cop.patrolPause = 0;
       index++;
     }
+  }
+
+  handleWantedLevelChange(level) {
+    if (level <= this.previousLevel) return;
+
+    this.rememberPlayerPosition();
+    const zone = this.zoneAt(this.scene.player.x, this.scene.player.y);
+    this.redirectNearbyPatrols(zone, level >= 2 ? 5 : 3);
+    RawAudio.play("police");
+
+    if (level === 1) {
+      this.scene.lastActionText = "WANTED LEVEL 1: police actively search the last known area and chase on sight.";
+    } else if (level === 2) {
+      this.scene.lastActionText = "WANTED LEVEL 2: more units join the search and pursue aggressively, even through nearby shadows.";
+    } else if (level >= 3) {
+      this.scene.lastActionText = "WANTED LEVEL 3: police flood the district and a helicopter spotlight joins the hunt.";
+    }
+  }
+
+  rememberPlayerPosition() {
+    if (this.scene.currentLayer !== LAYERS.STREET) return;
+    this.lastKnownPlayer = {
+      x: this.scene.player.x,
+      y: this.scene.player.y,
+      zoneId: this.zoneAt(this.scene.player.x, this.scene.player.y).id
+    };
   }
 
   addHeat(x, y, amount, reason = "disturbance") {
@@ -127,17 +191,16 @@ export class PoliceSystem {
     }
   }
 
-  spawnForExposure() {
-    const level = this.scene.exposureSystem.level();
-    if (level < 2) return;
-    const desired = Math.min(5, Math.max(3, level));
+  spawnForExposure(level = this.scene.exposureSystem.level()) {
+    if (level < 1) return;
+    const desired = configForLevel(level).desired;
     const activePolice = this.police().length;
     this.spawnedThisTick = 0;
-    while (activePolice + this.spawnedThisTick < desired) this.spawnPolice();
+    while (activePolice + this.spawnedThisTick < desired) this.spawnPolice(level);
     this.spawnedThisTick = 0;
   }
 
-  spawnPolice() {
+  spawnPolice(level = this.scene.exposureSystem.level()) {
     this.spawnedThisTick++;
     this.spawned++;
     const routeKey = ROUTE_KEYS[this.spawned % ROUTE_KEYS.length];
@@ -150,53 +213,64 @@ export class PoliceSystem {
       x: spawnPoint.x + offset.x,
       y: spawnPoint.y + offset.y,
       layer: LAYERS.STREET,
-      behavior: "police",
+      behavior: "guard",
       speed: 28,
       dirX: -1,
       dirY: 0,
       patrolRoute: routeKey,
       patrolIndex: this.spawned % route.length,
-      patrolOffsetIndex: this.spawned % FORMATION_OFFSETS.length
+      patrolOffsetIndex: this.spawned % FORMATION_OFFSETS.length,
+      searchIndex: this.spawned % INVESTIGATION_OFFSETS.length
     });
     cop.active = true;
-    cop.investigateTarget = this.hottestPoint();
+    cop.investigateTarget = level >= 1 ? null : this.hottestPoint();
     this.scene.npcSystem.npcs.push(cop);
     RawAudio.play("police");
-    this.scene.lastActionText = "Police enter the district from different patrol routes.";
+    this.scene.lastActionText = level >= 2
+      ? "Police reinforcements enter from multiple patrol routes."
+      : "An additional patrol joins the active search.";
   }
 
-  updatePolice(dt) {
+  updatePolice(dt, level) {
+    const cfg = configForLevel(level);
     for (const cop of this.police()) {
       if (cop.dead || cop.hiddenBody || cop.stunnedTimer > 0) continue;
+
       if (cop.patrolPause > 0) {
-        cop.patrolPause = Math.max(0, cop.patrolPause - dt);
-        continue;
+        cop.patrolPause = Math.max(0, cop.patrolPause - dt * (level >= 2 ? 2.2 : 1));
+        if (cop.patrolPause > 0) continue;
       }
 
-      const target = this.targetForCop(cop);
+      const target = this.targetForCop(cop, level, cfg);
       if (!target) continue;
 
       const speed = target.kind === "player"
-        ? CHASE_SPEED
-        : target.kind === "suspiciousPlayer"
-          ? SHADOW_CHASE_SPEED
+        ? cfg.chaseSpeed
+        : target.kind === "search"
+          ? cfg.searchSpeed
           : target.kind === "heat"
             ? INVESTIGATE_SPEED
             : PATROL_SPEED;
 
       this.moveNpcToward(cop, target.x, target.y, dt, speed);
-      this.resolveTargetArrival(cop, target);
+      this.resolveTargetArrival(cop, target, level);
     }
   }
 
-  targetForCop(cop) {
-    const level = this.scene.exposureSystem.level();
-    const playerVisible = this.playerVisibleToCop(cop, PLAYER_SPOTTED_RADIUS);
-    const playerNear = this.scene.currentLayer === LAYERS.STREET
-      && Phaser.Math.Distance.Between(cop.x, cop.y, this.scene.player.x, this.scene.player.y) < PLAYER_SUSPICIOUS_RADIUS;
+  targetForCop(cop, level, cfg = configForLevel(level)) {
+    if (level >= 1) {
+      const playerVisible = this.playerVisibleToCop(cop, cfg.sight, cfg.shadowSight);
+      if (playerVisible) {
+        this.rememberPlayerPosition();
+        cop.chasingPlayer = true;
+        return { x: this.scene.player.x, y: this.scene.player.y, kind: "player" };
+      }
 
-    if (level >= 2 && playerVisible) return { x: this.scene.player.x, y: this.scene.player.y, kind: "player" };
-    if (level >= 1 && playerNear && !this.scene.currentShadow()) return { x: this.scene.player.x, y: this.scene.player.y, kind: "suspiciousPlayer" };
+      cop.chasingPlayer = false;
+      const search = this.searchPointForCop(cop);
+      if (search) return search;
+    }
+
     if (cop.investigateTarget?.kind === "heat") return cop.investigateTarget;
 
     const hot = this.hottestZone();
@@ -208,27 +282,45 @@ export class PoliceSystem {
     return this.nextPatrolPoint(cop);
   }
 
-  playerVisibleToCop(cop, radius) {
-    if (this.scene.currentLayer !== LAYERS.STREET) return false;
-    if (this.scene.currentShadow()) return false;
-    if (this.scene.witnessSystem?.canWitnessSee) return this.scene.witnessSystem.canWitnessSee(cop, this.scene.player, radius);
-    return Phaser.Math.Distance.Between(cop.x, cop.y, this.scene.player.x, this.scene.player.y) <= radius;
+  searchPointForCop(cop) {
+    if (!this.lastKnownPlayer) return null;
+    const offset = INVESTIGATION_OFFSETS[cop.searchIndex % INVESTIGATION_OFFSETS.length];
+    let x = this.lastKnownPlayer.x + offset.x;
+    let y = this.lastKnownPlayer.y + offset.y;
+
+    if (!this.scene.npcSystem.canNpcStandAt(cop, x, y)) {
+      x = this.lastKnownPlayer.x;
+      y = this.lastKnownPlayer.y;
+    }
+
+    return { x, y, kind: "search" };
   }
 
-  resolveTargetArrival(cop, target) {
+  playerVisibleToCop(cop, radius, shadowRadius = 0) {
+    if (this.scene.currentLayer !== LAYERS.STREET) return false;
+    const distance = Phaser.Math.Distance.Between(cop.x, cop.y, this.scene.player.x, this.scene.player.y);
+    const inShadow = Boolean(this.scene.currentShadow());
+    const effectiveRadius = inShadow ? shadowRadius : radius;
+    if (!effectiveRadius || distance > effectiveRadius) return false;
+    if (this.scene.witnessSystem?.canWitnessSee) return this.scene.witnessSystem.canWitnessSee(cop, this.scene.player, effectiveRadius);
+    return true;
+  }
+
+  resolveTargetArrival(cop, target, level) {
     const d = Phaser.Math.Distance.Between(cop.x, cop.y, target.x, target.y);
     if (target.kind === "heat" && d < 24) {
       cop.investigateTarget = null;
-      cop.patrolPause = 0.55 + Math.random() * 0.7;
+      cop.patrolPause = level >= 2 ? 0.15 : 0.45 + Math.random() * 0.45;
+      return;
+    }
+    if (target.kind === "search" && d < 20) {
+      cop.searchIndex = (cop.searchIndex + 1) % INVESTIGATION_OFFSETS.length;
+      cop.patrolPause = level >= 2 ? 0.08 : 0.22 + Math.random() * 0.25;
       return;
     }
     if (target.kind === "patrol" && d < 18) {
       cop.patrolIndex = (cop.patrolIndex + 1) % this.routeFor(cop).length;
       cop.patrolPause = 0.35 + Math.random() * 0.55;
-      return;
-    }
-    if ((target.kind === "player" || target.kind === "suspiciousPlayer") && d < 18) {
-      this.scene.exposureSystem.add(target.kind === "player" ? 4 : 2, "Police close in and force you to move.");
     }
   }
 
@@ -264,6 +356,129 @@ export class PoliceSystem {
     return { x: targetX + sx, y: targetY + sy };
   }
 
+  checkSurrounded(level) {
+    if (level < 1 || this.scene.currentLayer !== LAYERS.STREET) return;
+    if (this.scene.missionSystem?.failed || this.scene.missionSystem?.completed) return;
+
+    const radius = configForLevel(level).surroundRadius;
+    const nearby = this.police().filter(cop => !cop.hiddenBody && cop.stunnedTimer <= 0
+      && Phaser.Math.Distance.Between(cop.x, cop.y, this.scene.player.x, this.scene.player.y) <= radius);
+    if (nearby.length < 3) return;
+
+    const angles = nearby
+      .map(cop => Math.atan2(cop.y - this.scene.player.y, cop.x - this.scene.player.x))
+      .sort((a, b) => a - b);
+    let largestGap = 0;
+    for (let i = 0; i < angles.length; i++) {
+      const current = angles[i];
+      const next = i === angles.length - 1 ? angles[0] + Math.PI * 2 : angles[i + 1];
+      largestGap = Math.max(largestGap, next - current);
+    }
+
+    if (largestGap <= Math.PI * 1.16) {
+      this.triggerArrest("Police surround you from multiple sides and take you into custody.");
+    }
+  }
+
+  updateHelicopter(dt, level) {
+    const shouldBeActive = level >= 3
+      && this.scene.currentLayer !== LAYERS.SEWER
+      && !this.scene.missionSystem?.failed
+      && !this.scene.missionSystem?.completed;
+
+    if (!shouldBeActive) {
+      this.helicopter.active = false;
+      this.helicopter.lock = 0;
+      this.helicopterGraphics.clear();
+      return;
+    }
+
+    const heli = this.helicopter;
+    if (!heli.active) {
+      heli.active = true;
+      heli.x = this.scene.player.x - 120;
+      heli.y = this.scene.player.y - 110;
+      heli.spotX = this.scene.player.x + 70;
+      heli.spotY = this.scene.player.y;
+      heli.phase = 0;
+      heli.lock = 0;
+      RawAudio.play("police");
+      this.scene.lastActionText = "HELICOPTER DEPLOYED: avoid the moving spotlight or you will be detained.";
+    }
+
+    heli.phase += dt * 1.45;
+    const desiredHeliX = this.scene.player.x + Math.cos(heli.phase * 0.42) * 126;
+    const desiredHeliY = this.scene.player.y - 112 + Math.sin(heli.phase * 0.34) * 42;
+    const heliLerp = Math.min(1, dt * 0.78);
+    heli.x = Phaser.Math.Linear(heli.x, desiredHeliX, heliLerp);
+    heli.y = Phaser.Math.Linear(heli.y, desiredHeliY, heliLerp);
+
+    const desiredSpotX = this.scene.player.x + Math.sin(heli.phase) * 58;
+    const desiredSpotY = this.scene.player.y + Math.cos(heli.phase * 0.76) * 42;
+    const spotLerp = Math.min(1, dt * 1.12);
+    heli.spotX = Phaser.Math.Linear(heli.spotX, desiredSpotX, spotLerp);
+    heli.spotY = Phaser.Math.Linear(heli.spotY, desiredSpotY, spotLerp);
+
+    const playerDistance = Phaser.Math.Distance.Between(heli.spotX, heli.spotY, this.scene.player.x, this.scene.player.y);
+    if (playerDistance <= HELICOPTER_LIGHT_RADIUS) {
+      heli.lock = Math.min(HELICOPTER_LOCK_SECONDS, heli.lock + dt);
+    } else {
+      heli.lock = Math.max(0, heli.lock - dt * 1.8);
+    }
+
+    this.drawHelicopter();
+
+    if (heli.lock >= HELICOPTER_LOCK_SECONDS) {
+      this.triggerArrest("The helicopter spotlight locks onto you and directs police to the arrest.");
+    }
+  }
+
+  drawHelicopter() {
+    const heli = this.helicopter;
+    const graphics = this.helicopterGraphics;
+    graphics.clear();
+
+    const lockPct = heli.lock / HELICOPTER_LOCK_SECONDS;
+    const lightColor = lockPct > 0.55 ? 0xffb02e : 0xfff2a8;
+    const dx = heli.spotX - heli.x;
+    const dy = heli.spotY - heli.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const px = (-dy / len) * HELICOPTER_LIGHT_RADIUS;
+    const py = (dx / len) * HELICOPTER_LIGHT_RADIUS;
+
+    graphics.fillStyle(lightColor, 0.055 + lockPct * 0.08);
+    graphics.fillTriangle(
+      heli.x,
+      heli.y + 8,
+      heli.spotX + px,
+      heli.spotY + py,
+      heli.spotX - px,
+      heli.spotY - py
+    );
+    graphics.fillStyle(lightColor, 0.11 + lockPct * 0.13).fillCircle(heli.spotX, heli.spotY, HELICOPTER_LIGHT_RADIUS);
+    graphics.lineStyle(2, lightColor, 0.62 + lockPct * 0.28).strokeCircle(heli.spotX, heli.spotY, HELICOPTER_LIGHT_RADIUS);
+
+    graphics.fillStyle(0x111827, 0.98).fillEllipse(heli.x, heli.y, 34, 14);
+    graphics.fillStyle(0x4da3ff, 0.9).fillRect(heli.x - 7, heli.y - 5, 14, 9);
+    graphics.lineStyle(2, 0xd9ecff, 0.86);
+    graphics.beginPath();
+    graphics.moveTo(heli.x - 28, heli.y - 10);
+    graphics.lineTo(heli.x + 28, heli.y + 10);
+    graphics.strokePath();
+    graphics.beginPath();
+    graphics.moveTo(heli.x - 28, heli.y + 10);
+    graphics.lineTo(heli.x + 28, heli.y - 10);
+    graphics.strokePath();
+  }
+
+  triggerArrest(reason) {
+    if (this.arrestTriggered || this.scene.missionSystem?.failed || this.scene.missionSystem?.completed) return;
+    this.arrestTriggered = true;
+    this.scene.playerSpeed = 0;
+    RawAudio.play("police");
+    this.scene.missionSystem?.failArrest?.(reason);
+  }
+
   police() {
     return this.scene.npcSystem.npcs.filter(npc => npc.type === NPC_TYPES.POLICE && !npc.inactive && !npc.dead);
   }
@@ -294,9 +509,13 @@ export class PoliceSystem {
   }
 
   summary() {
+    const level = this.scene.exposureSystem.level();
     const cops = this.police().length;
-    const investigating = this.police().filter(c => c.investigateTarget?.kind === "heat").length;
-    const hottest = Object.entries(this.localHeat).sort((a, b) => b[1] - a[1])[0];
-    return `Police ${cops} · patrols ${Math.max(0, cops - investigating)} · investigating ${investigating} · heat ${hottest ? `${hottest[0]} ${Math.round(hottest[1])}%` : "quiet"}`;
+    const chasing = this.police().filter(cop => cop.chasingPlayer).length;
+    const searching = level >= 1 ? Math.max(0, cops - chasing) : 0;
+    const helicopter = this.helicopter.active
+      ? ` · helicopter active · spotlight ${Math.round((this.helicopter.lock / HELICOPTER_LOCK_SECONDS) * 100)}%`
+      : "";
+    return `Police ${cops} · wanted ${level} · chasing ${chasing} · searching ${searching}${helicopter}`;
   }
 }
