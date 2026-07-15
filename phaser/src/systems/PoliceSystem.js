@@ -21,9 +21,9 @@ const LOCAL_ZONES = Object.freeze([
   { id: "alleys", name: "Alleys", x: 80, y: 232, w: 820, h: 330 }
 ]);
 
-const CHASE_SPEED = PLAYER.baseSpeed * 0.96;
-const INVESTIGATE_SPEED = PLAYER.baseSpeed * 0.52;
-const PATROL_SPEED = PLAYER.baseSpeed * 0.28;
+const CHASE_SPEED = PLAYER.baseSpeed * 0.74;
+const INVESTIGATE_SPEED = PLAYER.baseSpeed * 0.42;
+const PATROL_SPEED = PLAYER.baseSpeed * 0.24;
 
 export class PoliceSystem {
   constructor(scene) {
@@ -90,7 +90,7 @@ export class PoliceSystem {
 
   updatePolice(dt) {
     for (const cop of this.police()) {
-      if (cop.dead || cop.hiddenBody) continue;
+      if (cop.dead || cop.hiddenBody || cop.stunnedTimer > 0) continue;
       let target = null;
       const heat = this.hottestPoint();
       const level = this.scene.exposureSystem.level();
@@ -121,7 +121,7 @@ export class PoliceSystem {
   }
 
   moveNpcToward(npc, x, y, dt, speed) {
-    this.scene.npcSystem.moveTowardAtSpeed(npc, x, y, dt, speed, { smart: true });
+    this.scene.npcSystem.moveTowardAtSpeed(npc, x, y, dt, speed);
     npc.container.setPosition(npc.x, npc.y);
   }
 
