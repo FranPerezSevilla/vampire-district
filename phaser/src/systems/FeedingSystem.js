@@ -1,5 +1,6 @@
 import { HUNGER } from "../data/balance.js";
 import { NPC_TYPES } from "../data/npcs.js";
+import { RawAudio } from "./RawAudioSystem.js";
 
 const ATTACK_RADIUS = 26;
 const STUN_SECONDS = 5.8;
@@ -88,6 +89,7 @@ export class FeedingSystem {
 
   stun(npc) {
     if (!npc || npc.dead || npc.inactive) return;
+    RawAudio.play("stun");
     this.scene.npcSystem.markStunned(npc, STUN_SECONDS);
     this.stats.stuns++;
     const seen = this.scene.witnessSystem?.onMundaneViolence(npc, `${this.targetName(npc)} stunned`, 5) || 0;
@@ -96,6 +98,7 @@ export class FeedingSystem {
 
   kill(npc) {
     if (!npc || npc.dead || npc.inactive) return;
+    RawAudio.play("kill");
     const seen = this.scene.witnessSystem?.onMundaneViolence(npc, `${this.targetName(npc)} killed`, this.killSeverity(npc)) || 0;
     this.scene.npcSystem.markKilled(npc);
     this.scene.evidenceSystem?.onKillCompleted(npc);
@@ -122,6 +125,7 @@ export class FeedingSystem {
     npc.vx = 0;
     npc.vy = 0;
     npc.luredTimer = 0;
+    RawAudio.play("drainStart");
     this.scene.lastActionText = `DRAIN started: ${this.targetName(npc)}. Moving will cancel it. If someone sees, they freeze first, then run to report.`;
   }
 
@@ -138,6 +142,7 @@ export class FeedingSystem {
 
   cancel(message = "Drain cancelled.") {
     this.active = null;
+    RawAudio.play("drainCancel");
     this.scene.lastActionText = message;
   }
 
@@ -147,6 +152,7 @@ export class FeedingSystem {
     const npc = feed.npc;
     this.active = null;
 
+    RawAudio.play("drainComplete");
     const witnessResult = this.scene.witnessSystem?.onDrainCompleted(npc, feed.seenNotified) || { witnesses: 0 };
     const relief = this.reliefFor(npc);
     this.hunger = Math.max(0, this.hunger - relief);
