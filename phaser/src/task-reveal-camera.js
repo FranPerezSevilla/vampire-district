@@ -4,7 +4,7 @@ import { GameScene } from "./scenes/GameScene.js";
 
 const REVEAL_HOLD_MS = 4500;
 const ZOOM_IN_MS = 760;
-const ZOOM_OUT_MS = 2200;
+const ZOOM_OUT_MS = 2400;
 const BUBBLE_TO_ZOOM_GAP_MS = 260;
 
 function renderScale() {
@@ -21,42 +21,6 @@ function normalZoomFor(scene) {
         : CAMERA.streetZoom;
 
   return baseZoom * renderScale();
-}
-
-function finalCameraScroll(camera, player, zoom) {
-  const viewWidth = camera.width / zoom;
-  const viewHeight = camera.height / zoom;
-
-  const scrollX = viewWidth >= WORLD.width
-    ? (WORLD.width - viewWidth) / 2
-    : Phaser.Math.Clamp(player.x - viewWidth / 2, 0, WORLD.width - viewWidth);
-
-  const scrollY = viewHeight >= WORLD.height
-    ? (WORLD.height - viewHeight) / 2
-    : Phaser.Math.Clamp(player.y - viewHeight / 2, 0, WORLD.height - viewHeight);
-
-  return { x: scrollX, y: scrollY };
-}
-
-function smoothStep(value) {
-  const t = Phaser.Math.Clamp(value, 0, 1);
-  return t * t * (3 - 2 * t);
-}
-
-function keepPlayerInsideView(center, player, camera, zoom) {
-  const halfWidth = camera.width / zoom / 2;
-  const halfHeight = camera.height / zoom / 2;
-
-  // The player always keeps a generous safety margin while the camera opens up.
-  const marginX = Math.min(halfWidth * 0.34, Math.max(12, halfWidth - 12));
-  const marginY = Math.min(halfHeight * 0.34, Math.max(12, halfHeight - 12));
-  const horizontalRoom = Math.max(8, halfWidth - marginX);
-  const verticalRoom = Math.max(8, halfHeight - marginY);
-
-  return {
-    x: Phaser.Math.Clamp(center.x, player.x - horizontalRoom, player.x + horizontalRoom),
-    y: Phaser.Math.Clamp(center.y, player.y - verticalRoom, player.y + verticalRoom)
-  };
 }
 
 function setRevealUi(payload, open) {
@@ -135,17 +99,13 @@ function installCalmTaskRevealCamera() {
 
           this.time.delayedCall(BUBBLE_TO_ZOOM_GAP_MS, () => {
             const targetZoom = normalZoomFor(this);
-            const targetScroll = finalCameraScroll(camera, this.player, targetZoom);
-            const targetCenter = {
-              x: targetScroll.x + camera.width / targetZoom / 2,
-              y: targetScroll.y + camera.height / targetZoom / 2
-            };
             const zoomAtStart = camera.zoom;
-            const focusAtStart = { x: this.player.x, y: this.player.y };
 
-            // Tween a neutral progress value instead of scrollX/scrollY directly.
-            // This keeps the character visible throughout the whole zoom-out and
-            // only eases toward the final legal camera framing near the end.
+            // Restore the real world bounds before opening the camera. As the
+            // viewport grows, Phaser clamps the camera progressively instead of
+            // snapping it into the rooftop framing at the very end.
+            camera.setBounds(0, 0, WORLD.width, WORLD.height);
+
             this.tweens.addCounter({
               from: 0,
               to: 1,
@@ -156,20 +116,14 @@ function installCalmTaskRevealCamera() {
                 const zoom = Phaser.Math.Linear(zoomAtStart, targetZoom, progress);
                 camera.setZoom(zoom);
 
-                const framingProgress = smoothStep((progress - 0.68) / 0.32);
-                const desiredCenter = {
-                  x: Phaser.Math.Linear(focusAtStart.x, targetCenter.x, framingProgress),
-                  y: Phaser.Math.Linear(focusAtStart.y, targetCenter.y, framingProgress)
-                };
-                const safeCenter = keepPlayerInsideView(desiredCenter, this.player, camera, zoom);
-                camera.centerOn(safeCenter.x, safeCenter.y);
+                // Keep the character as the camera focus for the whole zoom-out.
+                // The active bounds perform any required rooftop/world framing
+                // gradually while guaranteeing the player remains on screen.
+                camera.centerOn(this.player.x, this.player.y);
               },
               onComplete: () => {
-                // At this point the camera is already at exactly the normal view,
-                // so restoring bounds and follow does not create a second jump.
                 camera.setZoom(targetZoom);
-                camera.setBounds(0, 0, WORLD.width, WORLD.height);
-                camera.setScroll(targetScroll.x, targetScroll.y);
+                camera.centerOn(this.player.x, this.player.y);
                 camera.startFollow(this.player, true, 0.12, 0.12);
 
                 cinematic.active = false;
