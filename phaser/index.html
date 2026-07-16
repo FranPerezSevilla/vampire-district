@@ -3,8 +3,22 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Night Blood District - Phaser Migration</title>
+  <title>Night Blood District - Phaser</title>
   <link rel="stylesheet" href="./styles.css" />
+  <style>
+    :root {
+      --game-width: 1440px;
+      --game-height: 960px;
+    }
+
+    .shell { width: min(var(--game-width), calc(100vw - 28px)); }
+    .topbar-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+    .resolution-control { min-height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 8px 6px 11px; border: 1px solid rgba(241, 230, 255, .20); border-radius: 10px; background: rgba(255, 255, 255, .04); color: #9d93b8; font-size: 12px; font-weight: 700; }
+    .resolution-control select { min-height: 26px; border: 0; border-radius: 6px; padding: 3px 7px; color: #f1e6ff; background: #191c2d; font-size: 12px; font-weight: 800; cursor: pointer; }
+    .game-frame, #game-root { width: var(--game-width); max-width: 100%; min-height: 0; aspect-ratio: 3 / 2; }
+    #game-root canvas { width: var(--game-width) !important; max-width: 100% !important; height: auto !important; }
+    @media (max-width: 720px) { .topbar-actions { width: 100%; justify-content: space-between; } }
+  </style>
 </head>
 <body>
   <main class="shell">
@@ -13,16 +27,74 @@
         <p class="eyebrow">Phaser migration build</p>
         <h1>Night Blood District</h1>
       </div>
-      <a class="legacy-link" href="../legacy/">Legacy prototype</a>
+      <div class="topbar-actions">
+        <label class="resolution-control" for="resolution-select">
+          Game resolution
+          <select id="resolution-select" aria-label="Game rendering resolution">
+            <option value="compact">960 × 640</option>
+            <option value="large">1280 × 853</option>
+            <option value="qhd" selected>1440 × 960</option>
+            <option value="ultra">1920 × 1280 · Ultra</option>
+          </select>
+        </label>
+        <a class="legacy-link" href="../legacy/">Legacy prototype</a>
+      </div>
     </header>
 
     <section class="game-frame" aria-label="Playable Phaser migration prototype">
       <div id="game-root"></div>
+
+      <div id="game-ui" class="game-ui" aria-label="Game HUD">
+        <div class="hud-vitals" aria-label="Vampire hunger">
+          <div class="blood-sigil" aria-hidden="true"><span></span></div>
+          <div class="vital-copy">
+            <div class="vital-heading"><span>HUNGER</span><strong id="hud-hunger-value">--%</strong></div>
+            <div class="vital-track" aria-hidden="true"><span id="hud-hunger-fill"></span></div>
+          </div>
+        </div>
+
+        <div id="hud-wanted" class="hud-wanted level-0" aria-label="Police alert level">
+          <div class="wanted-copy"><small>POLICE</small><strong id="hud-wanted-state">CLEAR</strong></div>
+          <div class="wanted-pips" aria-hidden="true">
+            <span data-wanted-pip="1"></span><span data-wanted-pip="2"></span><span data-wanted-pip="3"></span>
+          </div>
+        </div>
+
+        <div class="hud-actions">
+          <button id="hud-mission-button" class="hud-button mission" type="button"><span>MISSION</span><small id="hud-mission-step">1/4</small><kbd>M</kbd></button>
+          <button id="hud-menu-button" class="hud-button menu" type="button" aria-label="Open menu"><span>MENU</span><kbd>H</kbd></button>
+        </div>
+
+        <div class="power-dock" aria-label="Vampire powers">
+          <div class="power-orb" data-power="dash"><span>Q</span><small>Dash</small><i class="power-state">Ready</i></div>
+          <div class="power-orb" data-power="whisper"><span>R</span><small>Whisper</small><i class="power-state">Ready</i></div>
+          <div class="power-orb" data-power="sense"><span>F</span><small>Sense</small><i class="power-state">Ready</i></div>
+        </div>
+
+        <aside id="mission-drawer" class="mission-drawer" aria-label="Active mission panel">
+          <div class="drawer-kicker">ACTIVE ORDER</div>
+          <h2>Mission</h2>
+          <p id="mission-current" class="mission-current">Loading...</p>
+          <ul id="mission-checklist" class="mission-checklist"></ul>
+          <p id="mission-last" class="mission-last"></p>
+        </aside>
+
+        <div id="interaction-menu" class="interaction-menu" aria-label="Interaction choices"></div>
+        <div id="hud-toast" class="hud-toast"><span id="hud-toast-text"></span></div>
+        <div id="hud-prompt" class="hud-prompt"><kbd>E</kbd><span id="hud-prompt-text"></span></div>
+
+        <div id="ui-modal" class="ui-modal" role="dialog" aria-modal="true">
+          <div class="ui-modal-panel">
+            <h2 id="ui-modal-title">Night Blood District</h2>
+            <div id="ui-modal-body"></div>
+            <button id="ui-modal-action" class="hud-button mission modal-action" type="button">Start run · Enter</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="notes" aria-label="Build notes">
-      <b>Phase 11 UI:</b> Compact top HUD, vampire power orbs, intro overlay and pause menu with Stats tab are active. Root GitHub Pages loads this Phaser version.
-      <span>Enter/click start · H menu · Q/Space Dash · R Whisper · F Blood Sense · E interact/feed/body/routes</span>
+      <b>HUD pass:</b> Compact vampire vitals, wanted-state escalation and a low-profile power dock replace the old dashboard strip.
     </section>
   </main>
 
