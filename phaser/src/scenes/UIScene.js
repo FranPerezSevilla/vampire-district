@@ -4,6 +4,13 @@ const POWER_CONFIG = Object.freeze({
   sense: { label: "Sense", max: 4.0 }
 });
 
+const WANTED_LABELS = Object.freeze({
+  0: "CLEAR",
+  1: "SEARCH",
+  2: "PURSUIT",
+  3: "AIR SUPPORT"
+});
+
 export class UIScene extends Phaser.Scene {
   constructor() {
     super("UIScene");
@@ -14,6 +21,7 @@ export class UIScene extends Phaser.Scene {
     this.resultDismissed = false;
     this.missionOpen = false;
     this.lastToastText = "";
+    this.toastUntil = 0;
   }
 
   create() {
@@ -33,16 +41,23 @@ export class UIScene extends Phaser.Scene {
     const $ = id => document.getElementById(id);
     this.dom = {
       root: $("game-ui"),
-      hunger: $("hud-hunger"),
-      exposure: $("hud-exposure"),
+      vitals: document.querySelector(".hud-vitals"),
+      hungerValue: $("hud-hunger-value"),
+      hungerFill: $("hud-hunger-fill"),
+      wanted: $("hud-wanted"),
+      wantedState: $("hud-wanted-state"),
+      wantedPips: [...document.querySelectorAll("[data-wanted-pip]")],
       missionButton: $("hud-mission-button"),
+      missionStep: $("hud-mission-step"),
       menuButton: $("hud-menu-button"),
       missionDrawer: $("mission-drawer"),
       missionCurrent: $("mission-current"),
       missionChecklist: $("mission-checklist"),
       missionLast: $("mission-last"),
       prompt: $("hud-prompt"),
+      promptText: $("hud-prompt-text"),
       toast: $("hud-toast"),
+      toastText: $("hud-toast-text"),
       interactionMenu: $("interaction-menu"),
       modal: $("ui-modal"),
       modalTitle: $("ui-modal-title"),
@@ -126,10 +141,31 @@ export class UIScene extends Phaser.Scene {
   }
 
   renderHud(data) {
-    this.setText(this.dom.hunger, this.compactHunger(data.hungerText));
-    this.setText(this.dom.exposure, this.compactExposure(data.exposureText));
+    const hunger = this.hungerPercent(data.hungerText);
+    this.setText(this.dom.hungerValue, `${Math.round(hunger)}%`);
+    if (this.dom.hungerFill) this.dom.hungerFill.style.width = `${Phaser.Math.Clamp(hunger, 0, 100)}%`;
+
+    const hungerState = hunger >= 78 ? "critical" : hunger >= 52 ? "warning" : "safe";
+    if (this.dom.vitals) this.dom.vitals.dataset.hungerState = hungerState;
+
+    const wantedLevel = this.wantedLevel(data.exposureText);
+    if (this.dom.wanted) {
+      this.dom.wanted.classList.remove("level-0", "level-1", "level-2", "level-3");
+      this.dom.wanted.classList.add(`level-${wantedLevel}`);
+    }
+    this.setText(this.dom.wantedState, WANTED_LABELS[wantedLevel]);
+    for (const pip of this.dom.wantedPips) {
+      const pipLevel = Number(pip.dataset.wantedPip || 0);
+      pip.classList.toggle("active", pipLevel <= wantedLevel);
+    }
+
+    this.dom.root?.classList.toggle("hunger-critical", hungerState === "critical");
+    this.dom.root?.classList.toggle("wanted-high", wantedLevel >= 2);
+    this.dom.root?.classList.toggle("wanted-air", wantedLevel >= 3);
+
     this.dom.missionButton?.classList.toggle("active", this.missionOpen);
     this.dom.menuButton?.classList.toggle("active", this.pauseOpen);
+    this.setText(this.dom.missionStep, this.missionProgressLabel(data.mission));
   }
 
   renderMission(data) {
@@ -154,21 +190,26 @@ export class UIScene extends Phaser.Scene {
       if (!node) continue;
       const remaining = this.cooldownFor(text, cfg.label);
       node.classList.toggle("cooldown", remaining > 0);
-      const label = node.querySelector("small");
-      if (label) label.textContent = remaining > 0 ? remaining.toFixed(1) : cfg.label;
+      const state = node.querySelector(".power-state");
+      if (state) state.textContent = remaining > 0 ? `${remaining.toFixed(1)}s` : "Ready";
     }
   }
 
   renderPrompt(data) {
     const hasMenu = Boolean(data.menu && data.menu.options?.length);
     const prompt = !this.modalBlocksInput() && !hasMenu ? data.prompt : "";
-    this.setText(this.dom.prompt, prompt ? `E: ${prompt.replace(/^E:\s*/i, "")}` : "");
-    this.dom.prompt?.classList.toggle("visible", Boolean(prompt));
+    const cleanPrompt = prompt.replace(/^E:\s*/i, "");
+    this.setText(this.dom.promptText, cleanPrompt);
+    this.dom.prompt?.classList.toggle("visible", Boolean(cleanPrompt));
 
     const toast = !this.modalBlocksInput() && data.lastAction ? data.lastAction : "";
-    this.setText(this.dom.toast, toast);
-    this.dom.toast?.classList.toggle("visible", Boolean(toast && toast !== this.lastToastText));
-    this.lastToastText = toast;
+    if (toast && toast !== this.lastToastText) {
+      this.lastToastText = toast;
+      this.toastUntil = this.time.now + 2800;
+      this.setText(this.dom.toastText, toast);
+    }
+    const toastVisible = !this.modalBlocksInput() && Boolean(this.dom.toastText?.textContent) && this.time.now < this.toastUntil;
+    this.dom.toast?.classList.toggle("visible", toastVisible);
   }
 
   renderInteractionMenu(menu) {
@@ -313,14 +354,23 @@ export class UIScene extends Phaser.Scene {
     else this.scene.resume("GameScene");
   }
 
-  compactHunger(text) {
-    const match = String(text).match(/Hunger\s+([^·]+)/i);
-    return `Hunger ${match ? match[1].trim() : "--"}`;
+  hungerPercent(text) {
+    const match = String(text).match(/Hunger\s+([0-9.]+)%/i);
+    return Phaser.Math.Clamp(Number.parseFloat(match?.[1] || "0") || 0, 0, 100);
   }
 
-  compactExposure(text) {
-    const match = String(text).match(/Exposure\s+([^·]+)/i);
-    return `Exposure ${match ? match[1].trim() : "--"}`;
+  wantedLevel(text) {
+    const match = String(text).match(/Exposure\s+Lv\s*([0-9]+)/i);
+    return Phaser.Math.Clamp(Number.parseInt(match?.[1] || "0", 10) || 0, 0, 3);
+  }
+
+  missionProgressLabel(text) {
+    const value = String(text || "");
+    const match = value.match(/^(\d\/4)/);
+    if (match) return match[1];
+    if (value.startsWith("COMPLETE")) return "DONE";
+    if (value.startsWith("FAILED")) return "FAIL";
+    return "1/4";
   }
 
   cooldownFor(text, label) {
