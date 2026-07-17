@@ -42,14 +42,15 @@ Create safe foundations for mouse combat without adding more overlapping input p
 - ✅ Tutorial restrictions use central control modes rather than per-gameplay-key ownership.
 - ✅ Window blur, document visibility, pointer-leave and scene shutdown reset input.
 - ✅ Added pure geometry and responsive pointer-mapping helpers.
-- ✅ Added a zero-dependency Node test setup with 15 passing tests.
+- ✅ Added a zero-dependency Node test setup.
 - ✅ Replaced the old multi-purpose `movement-controls.js` implementation with a thin bootstrap/UI compatibility module.
 - ✅ Added dedicated technical documentation in `docs/INPUT_SYSTEM.md`.
 
 ### Preserved compatibility
 
 - Space still doubles as sprint and traversal in the current playable build. Its sprint role is isolated inside `InputSystem` and is removed in Milestone 5.
-- Left-click, right-click and wheel actions are collected now but remain unconsumed until their combat/weapon milestones.
+- Right-click and wheel actions are collected but remain unconsumed until their drain/weapon milestones.
+- Left-click now consumes the existing primary-attack action through Milestone 2.
 
 ### Acceptance status
 
@@ -61,34 +62,39 @@ Create safe foundations for mouse combat without adding more overlapping input p
 
 ## Milestone 2 — Mouse aim and unarmed combat
 
-**Status: ⬜ Planned**
+**Status: 🟡 Implementation complete; browser regression and tuning pending**
 
 ### Goal
 
 Deliver the first complete directional combat loop without weapons.
 
-### Work
+### Implemented
 
-- Mouse-driven player facing.
-- Aim dead zone and last-direction retention.
-- Left-click unarmed attack.
-- Attack windup, active and recovery windows.
-- Directional melee hit arc.
-- Duplicate-hit prevention.
-- NPC resilience data.
-- Stagger and downed states.
-- Civilian/target resilience: 3.
-- Police/thug resilience: 4.
-- Hunter resilience: 5.
-- Short combat feedback and downed visuals.
+- ✅ Mouse-driven player facing through responsive world coordinates.
+- ✅ Aim dead zone and last-direction retention.
+- ✅ Left-click unarmed attack.
+- ✅ Explicit windup, active and recovery windows.
+- ✅ Directional melee hit arc.
+- ✅ Duplicate-hit prevention per attack.
+- ✅ Data-driven NPC resilience.
+- ✅ Stagger and downed states.
+- ✅ Civilian/target resilience: 3.
+- ✅ Police/thug resilience: 4.
+- ✅ Hunter resilience: 5.
+- ✅ Temporary resilience feedback and clear downed visuals.
+- ✅ Downed NPCs stop moving, pursuing and reporting.
+- ✅ Rooftop tutorial now requires punching the thug down before the temporary E drain.
+- ✅ Pure combat geometry and resilience tests.
+- ✅ Dedicated documentation in `docs/COMBAT_SYSTEM.md`.
 
-### Acceptance criteria
+### Acceptance status
 
-- Three valid punches down a civilian.
-- Four valid punches down a police officer.
-- One attack cannot damage the same target twice.
-- Attacks miss targets outside range/arc.
-- Combat does not trigger while UI owns input.
+- ✅ Pure tests verify three-hit civilian and four-hit police knockdown.
+- ✅ One attack owns a hit set and cannot damage the same target twice.
+- ✅ Pure arc tests reject targets behind or outside range.
+- ✅ Combat actions are gated by the central UI/tutorial input modes.
+- 🟡 Complete browser validation is still required for cursor accuracy, attack cadence, tutorial knockdown/drain and different viewport/render-quality combinations.
+- 🟡 Feel tuning for range, timings and feedback remains open after playtesting.
 
 ## Milestone 3 — Player damage and Hunger combat loop
 
@@ -245,7 +251,7 @@ Make NPC types respond coherently to being attacked and to nearby combat.
 
 ## Milestone 9 — Tutorial and UX update
 
-**Status: ⬜ Planned**
+**Status: 🟡 Partially implemented**
 
 ### Goal
 
@@ -254,7 +260,7 @@ Teach the new controls with minimal text and no input ambiguity.
 ### Work
 
 - Update intro tutorial copy.
-- Teach mouse aim and left-click attack at the rooftop blocker.
+- ✅ Teach mouse aim and left-click attack at the rooftop blocker.
 - Teach right-click drain after knockdown or rear approach.
 - Teach Space as traversal only.
 - Teach wheel weapon cycling when the first weapon is acquired.
@@ -266,7 +272,7 @@ Teach the new controls with minimal text and no input ambiguity.
 - A first-time player can complete the opening route without reading external instructions.
 - No tutorial prompt advertises obsolete controls.
 - Dialogue remains short and anchored to the speaker.
-- Every tutorial lock releases correctly after Escape/action completion.
+- Every tutorial lock releases correctly after click/action completion.
 
 ## Milestone 10 — Consolidation, tests and performance
 
@@ -280,7 +286,7 @@ Turn the expanded vertical slice into a maintainable baseline.
 
 - Move the remaining integration adapters into explicit first-class bootstrap/core methods.
 - Remove superseded prototype patches.
-- Unit tests for combat geometry and state transitions.
+- Expand unit tests for combat geometry and state transitions.
 - Playwright smoke tests for controls and responsive aim.
 - Manual regression checklist.
 - Performance pass for cones, sound fields, outskirts and combat effects.
