@@ -42,7 +42,7 @@ Create safe foundations for mouse combat without adding more overlapping input p
 - ✅ Tutorial restrictions use central control modes rather than per-gameplay-key ownership.
 - ✅ Window blur, document visibility, pointer-leave and scene shutdown reset input.
 - ✅ Added pure geometry and responsive pointer-mapping helpers.
-- ✅ Added a zero-dependency Node test setup with 13 passing tests.
+- ✅ Added a zero-dependency Node test setup with 15 passing tests.
 - ✅ Replaced the old multi-purpose `movement-controls.js` implementation with a thin bootstrap/UI compatibility module.
 - ✅ Added dedicated technical documentation in `docs/INPUT_SYSTEM.md`.
 
