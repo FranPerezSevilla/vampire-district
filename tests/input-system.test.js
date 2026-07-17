@@ -14,6 +14,15 @@ class FakeTarget {
     const list = this.listeners.get(type) || [];
     this.listeners.set(type, list.filter(item => item !== listener));
   }
+  emit(type, ...args) {
+    for (const listener of this.listeners.get(type) || []) listener(...args);
+  }
+  on(type, listener) {
+    this.addEventListener(type, listener);
+  }
+  off(type, listener) {
+    this.removeEventListener(type, listener);
+  }
   getBoundingClientRect() {
     return { left: 100, top: 50, width: 720, height: 480 };
   }
@@ -63,6 +72,7 @@ function makeScene() {
   const keys = Object.fromEntries(keyboardKeys.map(name => [name, key()]));
   const canvas = new FakeTarget();
   const registryValues = new Map();
+  const registryEvents = new FakeTarget();
   return {
     keys,
     canvas,
@@ -71,7 +81,10 @@ function makeScene() {
       keys,
       player: { x: 20, y: 30 },
       time: { now: 1234 },
-      registry: { get: keyName => registryValues.get(keyName) },
+      registry: {
+        get: keyName => registryValues.get(keyName),
+        events: registryEvents
+      },
       taskRevealCinematic: { active: false },
       scale: { gameSize: { width: 1440, height: 960 } },
       cameras: {
@@ -132,6 +145,35 @@ test("InputSystem central control modes block powers without disabling raw keys"
   assert.equal(frame.traversePressed, true);
   assert.equal(frame.dashPressed, false);
   assert.equal(keys.dash.enabled, true);
+  input.destroy();
+});
+
+test("InputSystem does not queue pointer or wheel actions while world input is locked", () => {
+  const { scene, keys } = makeScene();
+  const input = new InputSystem(scene, { keys });
+  input.setWorldEnabled(false);
+  input.onPointerDown({ button: 0, clientX: 120, clientY: 80 });
+  input.onPointerDown({ button: 2, clientX: 120, clientY: 80 });
+  input.onWheel({ deltaY: 100, preventDefault() {} });
+  input.setWorldEnabled(true);
+
+  const frame = input.beginFrame();
+  assert.equal(frame.primaryPressed, false);
+  assert.equal(frame.primaryHeld, false);
+  assert.equal(frame.drainPressed, false);
+  assert.equal(frame.drainHeld, false);
+  assert.equal(frame.weaponStep, 0);
+  input.destroy();
+});
+
+test("InputSystem resets held actions when UI or task locks change", () => {
+  const { scene, keys } = makeScene();
+  const input = new InputSystem(scene, { keys });
+  input.onPointerDown({ button: 0, clientX: 120, clientY: 80 });
+  keys.w.isDown = true;
+  scene.registry.events.emit("changedata-uiPaused", null, true, false);
+  assert.equal(input.primaryHeld, false);
+  assert.equal(keys.w.isDown, false);
   input.destroy();
 });
 
