@@ -16,7 +16,8 @@ At least one run must resize the browser several times without reloading.
 
 - Intro banner opens and world input does nothing behind it.
 - Enter starts the tutorial exactly once.
-- Escape advances one dialogue bubble at a time.
+- Left click advances one dialogue bubble at a time; Escape remains a keyboard fallback.
+- The click used to close a dialogue does not become an attack afterward.
 - Holding movement, Space, E, Q, R, F or either mouse button while closing a dialogue does not replay that action afterward.
 - H opens/closes the menu outside restricted tutorial states.
 - M opens/closes the mission drawer outside restricted tutorial states.
@@ -33,25 +34,26 @@ At least one run must resize the browser several times without reloading.
 
 - WASD/arrows move.
 - Space still runs and activates the nearby rooftop route in the current compatibility build.
-- E and Q/R/F remain unavailable.
+- E, left-click attack and Q/R/F remain unavailable.
 
-### Rooftop blocker / drain tutorial
+### Rooftop blocker / combat-drain tutorial
 
 - The thug and sire dialogue lock movement.
-- After dialogue, movement and Space work.
-- E drains the tutorial target.
+- After dialogue, movement, Space, aim and left-click attack work.
+- E drain remains filtered until the thug is downed.
+- After four punches, E drains the tutorial target.
 - Q/R/F remain unavailable until the tutorial finishes.
 
 ### Police informant / tip
 
 - Space traversal and E clue interaction work.
-- Other interaction options stay filtered.
+- Left-click attack and other interaction options stay filtered.
 - The informant conversation does not accept world actions behind the dialogue.
 - Controls return after the final sire message.
 
 ### Full mode
 
-- Space traversal, E interactions and Q/R/F powers all work.
+- Space traversal, E interactions, left-click attack and Q/R/F powers all work.
 - Interaction menus navigate with W/S or arrows, confirm with E/Enter, cancel with Escape and accept number shortcuts.
 
 ## Traversal and interaction separation
@@ -70,6 +72,7 @@ For each route:
 
 - Space activates it.
 - E does not activate it.
+- Left click does not activate it.
 - When a route and a normal interaction are both nearby, the HUD shows the correct contextual key.
 - Repeated Space presses during an active transition do not start another transition.
 
@@ -100,12 +103,12 @@ Open the browser console and inspect `game.scene.getScene("GameScene").currentIn
 - Hold a mouse button, move outside the canvas and release: no held action remains.
 - Pause while moving, release the key, then resume: movement remains neutral.
 - Resize while moving: no input state becomes stuck.
-- Crossing the district boundary warning resets input cleanly after Escape.
+- Crossing the district boundary warning resets input cleanly after the dialogue click/Escape fallback.
 
 ## Mission regression
 
 - The first objective arrow sequence still advances correctly.
-- Rooftop blocker ordering and forced tutorial drain still work.
+- Rooftop blocker ordering, knockdown and temporary E drain work.
 - Police informant gives the factual clue, leaves and disappears.
 - Sire gives the final instruction once.
 - Journalist mission steps advance normally.
