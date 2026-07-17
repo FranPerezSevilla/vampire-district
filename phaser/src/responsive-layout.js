@@ -1,6 +1,6 @@
 const DESIGN_WIDTH = 1440;
 const DESIGN_HEIGHT = 960;
-const MIN_FRAME_WIDTH = 360;
+const MIN_FRAME_WIDTH = 280;
 const MAX_FRAME_WIDTH = 1920;
 
 function installResponsiveStyles() {
@@ -98,20 +98,23 @@ function resizeGameFrame() {
   if (!shell || !frame || !root || !ui) return;
 
   const viewport = viewportSize();
+  const compactHeight = viewport.height < 760;
+  document.body.classList.toggle("nbd-height-constrained", compactHeight);
+
   const frameTop = frame.getBoundingClientRect().top;
   const notes = document.querySelector(".notes");
-  const notesHeight = notes && getComputedStyle(notes).display !== "none" ? notes.offsetHeight + 14 : 0;
-  const widthAllowance = Math.max(MIN_FRAME_WIDTH, viewport.width - 24);
-  const availableHeight = Math.max(240, viewport.height - frameTop - notesHeight - 12);
+  const notesHeight = compactHeight
+    ? 0
+    : notes && getComputedStyle(notes).display !== "none"
+      ? notes.offsetHeight + 14
+      : 0;
+  const widthAllowance = Math.max(1, viewport.width - 24);
+  const availableHeight = Math.max(180, viewport.height - frameTop - notesHeight - 12);
   const widthFromHeight = availableHeight * (DESIGN_WIDTH / DESIGN_HEIGHT);
-  const frameWidth = Math.max(
-    Math.min(MIN_FRAME_WIDTH, widthAllowance),
-    Math.min(MAX_FRAME_WIDTH, widthAllowance, widthFromHeight)
-  );
+  const rawWidth = Math.min(MAX_FRAME_WIDTH, widthAllowance, widthFromHeight);
+  const frameWidth = Math.max(Math.min(MIN_FRAME_WIDTH, widthAllowance), rawWidth);
   const frameHeight = frameWidth * (DESIGN_HEIGHT / DESIGN_WIDTH);
-  const heightConstrained = widthFromHeight + 3 < widthAllowance;
 
-  document.body.classList.toggle("nbd-height-constrained", heightConstrained && viewport.height < 860);
   document.documentElement.style.setProperty("--game-width", `${Math.round(frameWidth)}px`);
   document.documentElement.style.setProperty("--game-height", `${Math.round(frameHeight)}px`);
   document.documentElement.style.setProperty("--game-ui-scale", String(frameWidth / DESIGN_WIDTH));
@@ -142,11 +145,13 @@ function installResponsiveLayout() {
   window.addEventListener("orientationchange", scheduleResize, { passive: true });
   window.visualViewport?.addEventListener("resize", scheduleResize, { passive: true });
 
-  const observer = new ResizeObserver(scheduleResize);
-  const topbar = document.querySelector(".topbar");
-  const notes = document.querySelector(".notes");
-  if (topbar) observer.observe(topbar);
-  if (notes) observer.observe(notes);
+  if (window.ResizeObserver) {
+    const observer = new ResizeObserver(scheduleResize);
+    const topbar = document.querySelector(".topbar");
+    const notes = document.querySelector(".notes");
+    if (topbar) observer.observe(topbar);
+    if (notes) observer.observe(notes);
+  }
 }
 
 installResponsiveLayout();
