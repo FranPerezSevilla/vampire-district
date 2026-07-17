@@ -21,7 +21,7 @@ The original GTA2 PC layout was keyboard-centric: directional keys for movement/
 |---|---|
 | WASD / arrows | Move at default run speed. |
 | Mouse | Aim and face. |
-| Left mouse | Attack/fire equipped weapon. |
+| Left mouse | Attack/fire equipped weapon. During an active dialogue bubble, advances the dialogue instead. |
 | Right mouse | Drain valid target. |
 | Wheel up/down | Previous/next owned weapon. |
 | Space | Execute contextual traversal. |
@@ -31,7 +31,15 @@ The original GTA2 PC layout was keyboard-centric: directional keys for movement/
 | F | Blood Sense. |
 | M | Mission panel. |
 | H | Menu/help. |
-| Escape | Advance dialogue or close the active UI layer. |
+| Escape | Close the active UI layer; remains a fallback for advancing dialogue. |
+
+## Dialogue input priority
+
+- A visible dialogue bubble owns the next left click anywhere inside the game frame.
+- That click advances exactly one bubble and is consumed before it reaches combat or world input.
+- A short opening guard prevents the click that caused a state transition from immediately skipping a newly opened bubble.
+- Escape remains available as a keyboard fallback.
+- Closing a dialogue resets held and edge-triggered world input so the advance click cannot become a queued attack.
 
 ## Movement behaviour
 
@@ -52,7 +60,7 @@ The normal WASD speed becomes the current fast movement speed. Space no longer c
 
 ## Primary attack rules
 
-- Left mouse always means “use the equipped weapon toward the cursor”.
+- Left mouse always means “use the equipped weapon toward the cursor” when no dialogue or UI layer owns the input.
 - Unarmed attacks use a short arc and range.
 - Holding the button does not generate one hit per frame; each weapon owns its cadence.
 - Attacks can hit NPCs and damageable props.
@@ -146,6 +154,7 @@ E does not:
 - Do not suppress browser right-click elsewhere on the page.
 - Prevent page scrolling from the wheel only while the game is consuming weapon-cycle input.
 - Clear held mouse actions on window blur or pointer leaving during a channelled drain.
+- Consume dialogue-advance clicks before the canvas receives them.
 
 ## Accessibility and fallback
 
@@ -163,7 +172,9 @@ Planned later:
 
 - [ ] Aim remains accurate after browser resizing.
 - [ ] Aim remains accurate at every camera zoom.
-- [ ] Left mouse attacks once per valid cadence.
+- [ ] One left click advances exactly one visible dialogue bubble.
+- [ ] A dialogue-advance click never becomes an attack after the bubble closes.
+- [ ] Left mouse attacks once per valid cadence outside dialogue.
 - [ ] Right-click never opens the browser menu over the game.
 - [ ] Right mouse cannot front-drain an alert standing target.
 - [ ] Wheel changes one weapon step without scrolling the page.
