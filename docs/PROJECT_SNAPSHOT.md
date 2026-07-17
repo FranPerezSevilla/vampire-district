@@ -83,7 +83,7 @@ Milestone 1 removes the previous multi-purpose movement-control patch and centra
 ## Milestone 1 validation state
 
 - Action gating, pointer scaling, camera conversion, wheel normalization and reset behaviour have automated coverage.
-- Thirteen zero-dependency Node tests pass in the implementation workspace.
+- Fifteen zero-dependency Node tests pass in the implementation workspace.
 - The full tutorial/mission still requires manual browser regression at representative viewport sizes and at least two render-quality presets before the milestone is marked completely done.
 
 ## Locked design decisions
