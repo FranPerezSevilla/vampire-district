@@ -35,7 +35,7 @@ class PlayerObjectiveArrow {
     this.label = scene.add.text(0, 0, "", {
       fontFamily: "Arial, Helvetica, sans-serif",
       fontSize: "11px",
-      fontStyle: "800",
+      fontStyle: "bold",
       color: "#fff6dc",
       align: "center"
     }).setOrigin(0.5, 1).setDepth(87);
