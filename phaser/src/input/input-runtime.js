@@ -1,3 +1,4 @@
+import { CombatSystem } from "../combat/CombatSystem.js";
 import { PLAYER } from "../data/balance.js";
 import { LAYERS } from "../data/district.js";
 import { GameScene } from "../scenes/GameScene.js";
@@ -53,6 +54,8 @@ function installGameSceneInputRuntime() {
     this.inputSystem = new InputSystem(this, { keys: this.keys });
     this.keys = this.inputSystem.keys;
     this.currentInputFrame = this.inputSystem.snapshot();
+    this.combatSystem?.destroy?.();
+    this.combatSystem = new CombatSystem(this);
     this.nearestMovement = null;
     return result;
   };
@@ -84,13 +87,15 @@ function installGameSceneInputRuntime() {
 
     this.handleLayerDebugInput(frame);
     this.powersSystem.update(dt, frame);
+    this.combatSystem?.update(dt, frame);
 
     let availableActions = this.collectInteractions();
     let split = splitActions(availableActions);
     this.nearestMovement = nearest(this, split.movement);
     this.nearestInteraction = nearest(this, split.interaction);
 
-    if (frame.traversePressed && !this.feedingSystem.isActive()) {
+    const combatBusy = Boolean(this.combatSystem?.isBusy());
+    if (!combatBusy && frame.traversePressed && !this.feedingSystem.isActive()) {
       const handledMovement = runMovementAction(this, split.movement);
       if (handledMovement) {
         this.nearestMovement = null;
@@ -98,7 +103,7 @@ function installGameSceneInputRuntime() {
       }
     }
 
-    if (!this.transitionSystem?.active && frame.interactPressed && split.interaction.length) {
+    if (!combatBusy && !this.transitionSystem?.active && frame.interactPressed && split.interaction.length) {
       const handled = this.interactionSystem.handleAction(split.interaction);
       if (handled) {
         this.nearestInteraction = this.interactionSystem.isOpen
@@ -113,7 +118,7 @@ function installGameSceneInputRuntime() {
         this.feedingSystem.update(dt, frame.hasMovementIntent);
         this.npcSystem.update(0);
       } else {
-        this.updatePlayerMovement(dt, frame);
+        if (!this.combatSystem?.blocksMovement()) this.updatePlayerMovement(dt, frame);
         this.npcSystem.update(dt);
         this.witnessSystem.update(dt);
       }
