@@ -5,11 +5,11 @@ _Last updated: 2026-07-17_
 ## 1. Runtime and stack
 
 - Browser runtime.
-- Phaser 3 for world rendering, cameras, tweens, scene timing and the low-level keyboard/pointer plugin.
+- Phaser 3 for world rendering, cameras, tweens, scene timing and low-level keyboard/pointer input.
 - DOM/CSS overlay for HUD, dialogue, prompts and modals.
 - Native ES modules loaded directly by the browser.
-- Data-driven world definitions in JavaScript modules.
-- Node's built-in test runner for pure logic and input tests.
+- Data-driven world and combat definitions in JavaScript modules.
+- Node's built-in test runner for pure input, geometry and combat tests.
 - No backend dependency for the current vertical slice.
 
 ## 2. Scene model
@@ -26,7 +26,7 @@ Owns the playable world and coordinates:
 - map and route rendering;
 - camera updates;
 - one gameplay input-frame consumption point;
-- interaction collection and dispatch;
+- traversal and interaction dispatch;
 - system updates;
 - layer switching;
 - registry publication for the UI.
@@ -42,13 +42,12 @@ Owns the DOM-backed presentation layer:
 - intro, pause, failure and success modals;
 - UI-only keyboard navigation.
 
-World/gameplay input and UI-only input are intentionally separate. `InputSystem` is authoritative for gameplay; `UIScene` still owns menu/help/mission navigation while the game scene is paused.
+World input and UI input are intentionally separate. `InputSystem` is authoritative for gameplay; `UIScene` owns menu/help/mission behaviour while the game scene is paused.
 
-## 3. First-class systems
-
-Current world systems:
+## 3. Current systems
 
 - `InputSystem`
+- `CombatSystem`
 - `NpcSystem`
 - `PoliceSystem`
 - `WitnessSystem`
@@ -63,7 +62,7 @@ Current world systems:
 
 Feature modules also provide tutorial flow, responsive layout, objective guidance, police-informant behaviour, city outskirts, dialogue layout, final-report presentation and sensory awareness.
 
-## 4. Milestone 1 input architecture
+## 4. Input architecture
 
 ### Authoritative files
 
@@ -73,28 +72,25 @@ Feature modules also provide tutorial flow, responsive layout, objective guidanc
 - `phaser/src/input/tutorial-input-adapter.js`
 - `phaser/src/utils/geometry.js`
 
-`phaser/src/movement-controls.js` is now a thin bootstrap and HUD-copy compatibility module. It no longer decides gameplay actions.
+`phaser/src/movement-controls.js` is a thin bootstrap and HUD-copy compatibility module. It does not decide gameplay actions.
 
 ### Frame lifecycle
 
 ```text
 DOM / Phaser keyboard, pointer and wheel events
   → InputSystem.beginFrame()
-  → raw edge/held state
-  → central control-mode and world-lock gating
-  → one immutable-style frame snapshot
-  → GameScene dispatches traversal, interaction and powers
+  → held and pressed state
+  → control-mode and world-lock gating
+  → one frame snapshot
+  → GameScene dispatches traversal, interaction, powers and combat
   → simulation systems update
   → GameScene publishes presentation state
 ```
 
-A frame contains:
+Important fields:
 
 ```js
 {
-  timestamp,
-  controlMode,
-  worldEnabled,
   move: { x, y },
   hasMovementIntent,
   aimWorld: { x, y },
@@ -109,37 +105,28 @@ A frame contains:
   weaponStep,
   dashPressed,
   whisperPressed,
-  bloodSensePressed,
-  menuUpPressed,
-  menuDownPressed,
-  menuConfirmPressed,
-  menuCancelPressed,
-  menuDigitPressed,
-  debugLayerPressed
+  bloodSensePressed
 }
 ```
-
-Combat fields exist before combat implementation so later milestones reuse the same contract.
 
 ### Action ownership
 
 - `GameScene` owns Space traversal dispatch.
 - `GameScene` owns E interaction dispatch.
-- `PowersSystem` receives Q/R/F actions from the frame.
+- `PowersSystem` receives Q/R/F actions.
+- `CombatSystem` receives aim and primary-attack actions.
 - `InteractionSystem` receives abstract menu actions.
-- No active gameplay path in `movement-controls.js` queries Space/E/Q/R/F directly.
+- No gameplay system queries raw mouse buttons or Space/E/Q/R/F independently.
 
 ### Control modes
 
 | Mode | World actions |
 |---|---|
-| `full` | All current/future world actions. |
+| `full` | All current and future world actions. |
 | `movement` | Move, aim and traverse. |
-| `drain` | Move, aim, traverse and current tutorial E-drain interaction. |
+| `drain` | Move, aim, punch, traverse and temporary tutorial E drain. |
 | `tip` | Move, aim, traverse and clue interaction. |
 | `locked` | No world action; aim position may continue updating. |
-
-The tutorial maps narrative states to these modes. Gameplay keys remain enabled at the Phaser layer; the central action gate decides what reaches simulation.
 
 ### World locks
 
@@ -147,19 +134,17 @@ World actions are suppressed when:
 
 - `uiPaused` is set;
 - `taskRevealActive` is set;
-- the tutorial/cinematic explicitly disables world input.
+- the tutorial/cinematic disables world input.
 
-Held and edge input is reset on:
+Held and edge input resets on:
 
 - window blur;
 - document visibility loss;
 - pointer leaving the canvas;
-- world lock transitions;
+- real world-lock transitions;
 - scene shutdown.
 
 ### Pointer mapping
-
-Responsive CSS changes display size independently from internal render size. Aim conversion is explicit:
 
 ```text
 client pointer
@@ -169,261 +154,127 @@ client pointer
   → aimWorld
 ```
 
-The conversion does not depend on the selected Low/High/Very high/Ultra render-quality label. Tests cover CSS scaling and camera zoom; browser smoke tests remain required.
+The same `aimWorld` value is consumed by `CombatSystem`. Render quality and CSS display size do not create a second aim calculation.
 
-### Pointer and wheel browser rules
+## 5. Combat architecture
 
-- Right-click context menu is suppressed only inside the game canvas.
-- Pointer-held actions cancel when the pointer leaves the canvas.
-- Wheel delta becomes a discrete `-1`, `0` or `1` step.
-- Page scrolling is not suppressed until a future `WeaponSystem` explicitly owns wheel input.
+### Authoritative files
 
-## 5. Current technical debt
+- `phaser/src/data/combat.js`
+- `phaser/src/combat/CombatSystem.js`
+- `phaser/src/combat/combat-compatibility.js`
+- `tests/combat.test.js`
 
-Rapid vertical-slice iteration introduced runtime prototype adapters. Milestone 1 removes the previous overlapping movement/power/interaction input patch, but some integration still replaces legacy methods because the original core classes predate explicit composition.
+### `CombatSystem` responsibilities
 
-Remaining risks:
+Implemented:
 
-1. Import order can still affect non-input feature adapters.
-2. Some effective behaviour remains distributed between core classes and feature modules.
-3. Browser-level mission regression is manual.
-4. AI behaviour still uses several competing flags instead of one explicit state machine.
+- derive stable player-facing direction from `aimWorld`;
+- retain last direction inside the aim dead zone;
+- start unarmed attacks from `primaryPressed`;
+- own windup, active and recovery phases;
+- resolve directional melee hit geometry;
+- prevent duplicate hits per attack;
+- initialize and damage NPC resilience;
+- apply stagger and downed transitions;
+- stop downed NPC movement, pursuit and reporting;
+- draw aim, attack-arc, resilience and downed feedback;
+- emit plain-data combat events.
 
-Rules for new work:
+Future responsibilities:
 
-- no system may query raw Space/E/Q/R/F or mouse buttons;
-- combat and weapons consume `InputSystem` frames;
-- new pure geometry/state logic requires unit tests;
-- new cross-system behaviour should prefer events/plain data over another prototype replacement;
-- known adapter debt must be documented.
+- receive weapon attack requests;
+- validate enemy attacks against the player;
+- apply player hit stun and invulnerability;
+- emit player-damage and combat-noise events;
+- coordinate final right-click drain target queries.
 
-## 6. Target high-level architecture
-
-```text
-GameScene
- ├─ InputSystem                 implemented
- ├─ TraversalSystem             evolves from TransitionSystem
- ├─ CombatSystem               Milestone 2
- ├─ WeaponSystem               Milestone 7
- ├─ FeedingSystem
- ├─ NpcSystem
- ├─ PerceptionSystem           consolidates vision + hearing
- ├─ PoliceSystem
- ├─ WitnessSystem
- ├─ MissionSystem
- └─ World/Presentation adapters
-
-UIScene
- ├─ HudPresenter
- ├─ DialoguePresenter
- ├─ PromptPresenter
- └─ ModalPresenter
-```
-
-The project does not need a full ECS rewrite for the current scope. Plain objects remain suitable if state ownership and transitions are explicit.
-
-## 7. Combat architecture
-
-### `CombatSystem`
-
-Planned responsibilities:
-
-- resolve attack requests;
-- create windup, active and recovery windows;
-- create directional hit shapes;
-- prevent duplicate hits within one attack;
-- apply resilience damage and hit stun;
-- transition targets to staggered/downed/dead states;
-- emit noise and combat events;
-- notify Hunger/feedback systems when the player takes damage.
-
-### `WeaponSystem`
-
-Planned responsibilities:
-
-- inventory and equipped weapon;
-- consume `weaponStep` from the existing input frame;
-- weapon data lookup;
-- ammo/reload state when introduced;
-- convert primary input into attack requests for `CombatSystem`;
-- enable wheel capture only while weapon cycling is active.
-
-Recommended data modules:
-
-- `data/combat.js`
-- `data/weapons.js`
-- `data/controls.js`
-
-Example weapon definition:
+### Unarmed attack contract
 
 ```js
 {
   id: "unarmed",
-  type: "melee",
   damage: 1,
-  range: 28,
-  arcRadians: 0.95,
+  range: 32,
+  halfAngle: 0.62,
   windupMs: 90,
   activeMs: 110,
-  recoveryMs: 230,
-  soundRadius: 72,
-  soundKind: "melee"
+  recoveryMs: 240,
+  staggerMs: 320
 }
 ```
 
-## 8. NPC combat state
+The attack direction is captured when the attack begins. A `Set` of target IDs prevents repeated damage during the active window.
 
-Human NPCs should receive an explicit combat object:
+### NPC combat state
 
 ```js
 npc.combat = {
-  maxResilience: 3,
-  resilience: 3,
+  maxResilience,
+  resilience,
   state: "active", // active | staggered | downed | dead | drained
   staggerUntil: 0,
-  downedUntil: 0,
-  invulnerableUntil: 0,
+  feedbackUntil: 0,
   lastHitBy: null
 };
 ```
 
-Police, hunters and special targets receive data-driven overrides.
+Resilience overrides:
 
-State priority, highest first:
+- civilian/target: 3;
+- police/thug: 4;
+- hunter: 5.
 
-1. dead / drained / hidden body;
+State priority used by current compatibility:
+
+1. dead / drained / hidden;
 2. downed;
-3. active feeding/drain victim;
+3. active drain victim;
 4. staggered;
-5. arrested/mission cinematic lock;
-6. confirmed visual alert/pursuit;
+5. cinematic/input lock;
+6. visual alert/pursuit;
 7. witness reporting;
-8. heard-only sound reaction;
+8. heard-only reaction;
 9. investigation;
-10. normal patrol/wander/loiter.
+10. patrol/wander.
 
-## 9. Pure geometry contract
+Downed NPCs receive an infinite compatibility stun so existing police, witness and navigation systems already stop processing them. `combat-compatibility.js` suppresses the legacy `STUNNED` marker while the new `DOWN` presentation is active.
 
-Implemented helpers already cover:
+## 6. Pure geometry and state helpers
+
+Implemented helpers include:
 
 - vector normalization;
 - dot products and angles;
 - point-in-cone checks;
 - browser-client to internal-game mapping;
 - internal-screen to camera-world mapping;
-- directional candidate scoring.
+- directional candidate scoring;
+- world aim with dead-zone retention;
+- melee-arc hit query;
+- data-driven resilience creation;
+- resilience-to-downed transition.
 
-Combat milestones extend this module with:
+Pure helpers do not depend on Phaser globals and run under Node tests.
 
-- point-inside-attack-arc;
-- line/segment obstruction checks;
+Future helpers:
+
+- line/segment obstruction;
 - rear-drain eligibility;
 - drain-target selection;
 - deterministic traversal selection.
 
-Pure helpers must not depend on Phaser globals so they run in Node tests.
+## 7. Combat events
 
-## 10. Damage-to-Hunger flow
-
-```text
-Enemy attack confirms hit
-  → CombatSystem applies hit stun / invulnerability
-  → CombatSystem emits player:damaged
-  → Feeding/Hunger system adds Hunger
-  → UI receives updated registry state
-  → Perception receives impact/noise event if applicable
-```
-
-Hunger remains the single player attrition resource for the first combat milestone.
-
-## 11. Drain flow
-
-```text
-right-button action pressed/held
-  → CombatSystem queries valid candidates
-  → FeedingSystem starts channel on selected target
-  → target enters feeding-victim state
-  → movement/damage/invalid geometry can cancel
-  → Witness/Perception systems evaluate sight and sound
-  → completion lowers Hunger and resolves target as drained
-```
-
-A standing target is rear-drainable only when unaware and when the player lies inside its rear arc. A downed target ignores approach angle.
-
-## 12. Traversal architecture
-
-`TransitionSystem` should evolve into a first-class traversal service rather than remain coupled to interaction options.
-
-Candidate contract:
-
-```js
-{
-  id,
-  type: "roofJump" | "roofDrop" | "fireEscape" | "sewer",
-  from: { x, y, layer },
-  to: { x, y, layer },
-  activationRadius,
-  priorityPenalty,
-  enabled(scene),
-  execute(scene)
-}
-```
-
-`InputSystem` already emits `traversePressed`. Milestone 5 moves selection to deterministic distance/aim scoring and removes Space sprint compatibility.
-
-## 13. Perception architecture
-
-The sensory-awareness feature should consolidate into a `PerceptionSystem` with explicit queries:
-
-- `canSee(observer, subject, eventConfig)`
-- `canHear(observer, soundEvent)`
-
-Sound event contract:
-
-```js
-{
-  kind: "roofDrop" | "streetlightBreak" | "melee" | "gunshot",
-  x,
-  y,
-  layer,
-  radius,
-  directional: false,
-  sourceEntityId,
-  severity
-}
-```
-
-Hearing creates investigate/`WTF`; only confirmed sight or a special rule promotes it to pursuit/reporting.
-
-## 14. Damageable world props
-
-Streetlights should become world entities:
-
-```js
-{
-  id,
-  type: "streetlight",
-  x,
-  y,
-  maxDurability: 1,
-  durability: 1,
-  state: "active" // active | broken
-}
-```
-
-Combat hit queries include props. Breaking a light updates shadow data, emits noise and redraws the layer.
-
-## 15. Event model
-
-Recommended plain-data events:
+Implemented plain-data events:
 
 - `combat:attack-started`
 - `combat:hit`
 - `combat:entity-downed`
+
+Planned events:
+
 - `combat:entity-killed`
-- `feeding:started`
-- `feeding:cancelled`
-- `feeding:completed`
 - `player:damaged`
 - `hunger:changed`
 - `noise:emitted`
@@ -431,11 +282,76 @@ Recommended plain-data events:
 - `traversal:started`
 - `traversal:completed`
 
-Events should carry identifiers and plain data, not system instances.
+Events carry identifiers and values, not system instances.
 
-## 16. Testing strategy
+## 8. Damage-to-Hunger flow
 
-### Current automated tests
+Planned for Milestone 3:
+
+```text
+Enemy attack confirms hit
+  → CombatSystem checks invulnerability
+  → player hit stun / i-frames
+  → player:damaged event
+  → Feeding/Hunger system adds Hunger
+  → HUD updates
+```
+
+Hunger remains the single player attrition resource. No conventional health bar is planned for the first combat pass.
+
+## 9. Drain flow
+
+Planned for Milestone 4:
+
+```text
+right-button action pressed/held
+  → CombatSystem selects valid target
+  → downed target: any approach angle
+  → standing unaware target: rear arc only
+  → FeedingSystem starts channel
+  → movement/damage/invalid geometry cancels
+  → completion reduces Hunger and resolves target
+```
+
+The current rooftop tutorial temporarily uses E after the thug is downed.
+
+## 10. Perception integration
+
+Current punches use the existing mundane-violence and police-pressure paths. Full combat perception should consolidate into explicit queries:
+
+- `canSee(observer, subject, eventConfig)`
+- `canHear(observer, soundEvent)`
+
+Planned sound event:
+
+```js
+{
+  kind: "melee" | "gunshot" | "roofDrop" | "streetlightBreak",
+  x,
+  y,
+  layer,
+  radius,
+  sourceEntityId,
+  severity
+}
+```
+
+Hearing creates investigate/`WTF`; confirmed sight promotes the response according to NPC type.
+
+## 11. Damageable props and weapons
+
+Streetlights will become damageable entities consumed by the same hit-query infrastructure.
+
+`WeaponSystem` will own:
+
+- inventory and equipped weapon;
+- `weaponStep` consumption;
+- weapon data lookup;
+- ammo/reload where needed;
+- conversion from primary input into a `CombatSystem` attack request;
+- wheel capture while weapon cycling is active.
+
+## 12. Testing strategy
 
 Run:
 
@@ -443,58 +359,54 @@ Run:
 npm test
 ```
 
-The Milestone 1 suite covers:
+Current automated coverage includes:
 
 - input control-mode gating;
-- world locks;
-- wheel-step normalization;
-- vector and cone geometry;
-- responsive client-to-game conversion;
-- camera screen-to-world conversion;
-- input edge consumption;
-- pointer/keyboard reset behaviour.
+- real lock transitions and stuck-input prevention;
+- responsive pointer conversion;
+- vector/cone geometry;
+- aim dead-zone retention;
+- melee arc hit/miss;
+- civilian, police and hunter resilience;
+- downed-state damage protection.
 
-### Next unit tests
+Manual browser validation remains required for:
 
-- attack arc hit/miss;
-- resilience and downed transitions;
-- duplicate-hit prevention;
-- rear-drain eligibility;
-- traversal candidate priority;
-- hearing-only versus sight-confirmed reactions;
-- invulnerability frames and damage-to-Hunger conversion.
+- complete opening tutorial;
+- four-hit thug knockdown followed by E drain;
+- civilian and police hit counts;
+- attack timing and movement lock;
+- aim before/after resizing;
+- Low and Ultra render quality;
+- narrow and desktop viewports;
+- pause/dialogue click ownership.
 
-### Browser smoke tests
+## 13. Current technical debt
 
-Playwright or an equivalent harness should eventually verify:
+- `input-runtime.js` still adapts legacy scene methods rather than being composed directly inside the original `GameScene` source.
+- `combat-compatibility.js` temporarily shields the new downed state from legacy marker rendering.
+- AI still uses several booleans instead of one final state machine.
+- Combat noise is not yet a first-class perception event.
+- Browser smoke tests are still manual.
 
-- multiple viewport sizes and render qualities;
-- intro/dialogue locks;
-- pointer aim at known world markers;
-- every Space traversal type;
-- right-click context-menu suppression;
-- wheel weapon cycling without page scroll;
-- unarmed hit counts and drain eligibility.
+Rules for future work:
 
-### Manual Milestone 1 regression still required
+- no new raw-input path;
+- no duplicate damage implementation outside `CombatSystem`;
+- new geometry/state logic requires pure tests;
+- new cross-system behaviour should prefer events and plain data;
+- adapter debt must be documented and removed during consolidation.
 
-- complete tutorial and mission once at laptop size;
-- repeat traversal at one narrow viewport;
-- test at least Low and Ultra quality;
-- test pause, dialogue Escape, interaction menus and boundary warning;
-- resize while moving and verify no stuck input;
-- blur/refocus while holding movement/Space.
-
-## 17. Migration plan
+## 14. Migration plan
 
 1. **Implemented:** central action frame and responsive pointer mapping.
-2. **Implemented:** Space/E/Q/R/F ownership moved out of the old movement patch.
-3. Complete browser regression and record failures.
-4. Add `CombatSystem`, mouse facing and unarmed attacks.
-5. Add NPC resilience/stagger/downed state.
-6. Convert incoming damage to Hunger.
-7. Move drain validation into explicit combat/feeding queries.
-8. Remove Space sprint compatibility and implement deterministic traversal scoring.
+2. **Implemented:** Space/E/Q/R/F ownership centralized.
+3. **Implemented:** mouse aim, unarmed attack timing and melee arc.
+4. **Implemented:** resilience, stagger and downed state.
+5. Validate Milestones 1 and 2 in-browser.
+6. Convert incoming enemy damage to Hunger.
+7. Move drain validation to right-click rear/downed queries.
+8. Remove Space sprint compatibility and add deterministic traversal scoring.
 9. Convert streetlights into damageable props.
 10. Add `WeaponSystem` and wheel cycling.
 11. Consolidate remaining adapters into explicit bootstrap/core ownership.
