@@ -35,6 +35,10 @@ function patchTutorialNarration() {
 }
 
 function patchIntroModalCopy() {
+  if (!UIScene.prototype.__nbdSireTutorialIntroPatch) {
+    window.requestAnimationFrame(patchIntroModalCopy);
+    return;
+  }
   if (UIScene.prototype.__nbdIntroModalCopyPatch) return;
 
   const originalRenderModal = UIScene.prototype.renderModal;
