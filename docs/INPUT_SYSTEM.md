@@ -95,12 +95,14 @@ This is covered by unit tests for CSS-scaled canvases and camera zoom. Manual br
 
 - the browser window loses focus;
 - the document becomes hidden;
-- the UI pause state changes;
-- the task-reveal/cinematic lock changes;
+- the UI pause state actually changes;
+- the task-reveal/cinematic lock actually changes;
 - the tutorial changes control mode or disables world input;
 - the scene shuts down.
 
-Pointer-held actions are cancelled when the pointer leaves the canvas. Pointer and wheel actions received while world input is locked are discarded rather than replayed after a dialogue or modal closes. Context-menu suppression is scoped to the game canvas only. Wheel scrolling is only prevented when a future `WeaponSystem` explicitly enables wheel capture.
+`UIScene` republishes its current pause state during rendering. The input layer therefore compares the new and previous lock values and ignores identical publications. Resetting on every repeated `uiPaused = false` event would erase WASD and other keyboard state before `GameScene` could consume it.
+
+Pointer-held actions are cancelled when the pointer leaves the canvas. The canvas is focusable and receives focus after dialogue clicks so keyboard control returns immediately. Pointer and wheel actions received while world input is locked are discarded rather than replayed after a dialogue or modal closes. Context-menu suppression is scoped to the game canvas only. Wheel scrolling is only prevented when a future `WeaponSystem` explicitly enables wheel capture.
 
 ## Runtime ownership
 
@@ -127,7 +129,8 @@ The zero-dependency Node test suite currently covers:
 - action gating for every tutorial mode;
 - world-lock behaviour;
 - pointer/wheel suppression while locked;
-- reset behaviour across UI/task locks and browser lifecycle changes;
+- reset behaviour across real UI/task lock transitions;
+- preservation of keyboard state when the UI republishes an unchanged pause value;
 - wheel-step normalization;
 - vector normalization and cone queries;
 - responsive client-to-game mapping;
