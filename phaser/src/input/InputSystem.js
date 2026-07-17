@@ -73,6 +73,7 @@ export class InputSystem {
     this.onPointerDown = event => {
       this.pointerInside = true;
       this.rememberPointerClient(event);
+      this.canvas?.focus?.({ preventScroll: true });
       if (!this.worldEnabled || this.sceneBlocked()) return;
       if (event.button === 0) {
         this.primaryHeld = true;
@@ -95,7 +96,13 @@ export class InputSystem {
       if (!step) return;
       this.pendingWheelStep = Math.max(-1, Math.min(1, this.pendingWheelStep + step));
     };
-    this.onWorldLockChanged = () => this.reset();
+    this.onWorldLockChanged = (_parent, value, previousValue) => {
+      // UIScene republishes uiPaused every frame. Reset only when the lock
+      // actually changes; resetting on identical values clears every key before
+      // GameScene can consume it and makes keyboard input appear completely dead.
+      if (Boolean(value) === Boolean(previousValue)) return;
+      this.resetWorldEdges();
+    };
     this.onBlur = () => this.reset();
     this.onVisibilityChange = () => {
       if (typeof document !== "undefined" && document.hidden) this.reset();
@@ -116,6 +123,7 @@ export class InputSystem {
   bindDomEvents() {
     if (!this.canvas || typeof window === "undefined" || typeof document === "undefined") return;
 
+    if (!this.canvas.hasAttribute?.("tabindex")) this.canvas.tabIndex = 0;
     this.canvas.addEventListener("pointerenter", this.onPointerEnter);
     this.canvas.addEventListener("pointerleave", this.onPointerLeave);
     this.canvas.addEventListener("pointermove", this.onPointerMove);
