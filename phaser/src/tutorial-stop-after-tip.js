@@ -26,19 +26,6 @@ function installSilentPostTipFlow() {
     return true;
   };
 
-  const originalUpdate = director.update.bind(director);
-  director.update = function updateUntilTipOnly(...args) {
-    if (this.scene.missionSystem?.tipCollected) {
-      finishTutorialSilently(this);
-      return;
-    }
-    return originalUpdate(...args);
-  };
-
-  scene.events.off(Phaser.Scenes.Events.UPDATE, originalUpdate, director);
-  scene.events.off(Phaser.Scenes.Events.UPDATE, director.update, director);
-  scene.events.on(Phaser.Scenes.Events.UPDATE, director.update, director);
-
   director.__nbdSilentPostTipPatch = true;
 }
 
