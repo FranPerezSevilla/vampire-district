@@ -65,11 +65,15 @@ export class InputSystem {
     this.onPointerLeave = () => {
       this.pointerInside = false;
       this.primaryHeld = false;
+      this.primaryPressed = false;
       this.drainHeld = false;
+      this.drainPressed = false;
+      this.pointerClient = null;
     };
     this.onPointerDown = event => {
       this.pointerInside = true;
       this.rememberPointerClient(event);
+      if (!this.worldEnabled || this.sceneBlocked()) return;
       if (event.button === 0) {
         this.primaryHeld = true;
         this.primaryPressed = true;
@@ -84,11 +88,14 @@ export class InputSystem {
     };
     this.onContextMenu = event => event.preventDefault();
     this.onWheel = event => {
+      const capturesWheel = this.wheelCaptureEnabled || Boolean(this.scene.weaponSystem);
+      if (capturesWheel) event.preventDefault();
+      if (!this.worldEnabled || this.sceneBlocked()) return;
       const step = wheelStepFromDelta(event.deltaY);
       if (!step) return;
       this.pendingWheelStep = Math.max(-1, Math.min(1, this.pendingWheelStep + step));
-      if (this.wheelCaptureEnabled || this.scene.weaponSystem) event.preventDefault();
     };
+    this.onWorldLockChanged = () => this.reset();
     this.onBlur = () => this.reset();
     this.onVisibilityChange = () => {
       if (typeof document !== "undefined" && document.hidden) this.reset();
@@ -118,6 +125,8 @@ export class InputSystem {
     window.addEventListener("pointerup", this.onPointerUp);
     window.addEventListener("blur", this.onBlur);
     document.addEventListener("visibilitychange", this.onVisibilityChange);
+    this.scene.registry?.events?.on?.("changedata-uiPaused", this.onWorldLockChanged);
+    this.scene.registry?.events?.on?.("changedata-taskRevealActive", this.onWorldLockChanged);
   }
 
   destroy() {
@@ -132,6 +141,8 @@ export class InputSystem {
       window.removeEventListener("blur", this.onBlur);
       document.removeEventListener("visibilitychange", this.onVisibilityChange);
     }
+    this.scene.registry?.events?.off?.("changedata-uiPaused", this.onWorldLockChanged);
+    this.scene.registry?.events?.off?.("changedata-taskRevealActive", this.onWorldLockChanged);
     this.reset();
   }
 
@@ -154,13 +165,16 @@ export class InputSystem {
   }
 
   resetWorldEdges() {
+    this.primaryHeld = false;
     this.primaryPressed = false;
+    this.drainHeld = false;
     this.drainPressed = false;
     this.pendingWheelStep = 0;
     this.scene.input.keyboard?.resetKeys?.();
   }
 
   reset() {
+    this.pointerInside = false;
     this.primaryHeld = false;
     this.primaryPressed = false;
     this.drainHeld = false;
