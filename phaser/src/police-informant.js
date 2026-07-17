@@ -99,7 +99,32 @@ function departInformant(scene, informant) {
   });
 }
 
-function installMissionInteraction(scene, director, informant) {
+function finishTutorial(director) {
+  director.busy = false;
+  director.state = "complete";
+  director.freezeWorld?.(false);
+  director.setControlMode?.("full");
+  director.setTip?.("", "");
+  document.getElementById("tutorial-dialogue")?.classList.remove("open");
+  document.getElementById("tutorial-strip")?.classList.remove("visible");
+}
+
+async function showFinalSireAdvice(director) {
+  director.__nbdFinalAdviceShown = true;
+  director.busy = true;
+  director.state = "final-sire";
+  director.setControlMode?.("locked");
+  director.setTip?.("", "");
+  director.freezeWorld?.(true);
+
+  await director.showDialogue({
+    speaker: "TU SIRE · EN TU MENTE",
+    text: "Acaba con él y vuelve al refugio. No la cagues.",
+    kind: "thought"
+  });
+}
+
+function installMissionInteraction(scene, director) {
   const mission = scene.missionSystem;
   if (!mission || mission.__nbdPoliceInformantPatch) return;
 
@@ -166,15 +191,12 @@ function installMissionInteraction(scene, director, informant) {
       });
 
       originalCollectPoliceRoofTip();
+      await showFinalSireAdvice(director);
       await departInformant(scene, activeInformant);
-      await director.runFinalSireMessage?.();
+      finishTutorial(director);
     } finally {
       this.__nbdInformantConversationRunning = false;
-      if (director.state !== "complete") {
-        director.busy = false;
-        director.freezeWorld?.(false);
-        director.setControlMode?.("full");
-      }
+      if (director.state !== "complete") finishTutorial(director);
     }
   };
 
@@ -195,9 +217,9 @@ function installPoliceInformant() {
   if (scene.__nbdPoliceInformantInstalled) return;
 
   installPoliceDialogueStyle();
-  const informant = createInformant(scene);
+  createInformant(scene);
   excludeInformantFromPoliceAI(scene);
-  installMissionInteraction(scene, director, informant);
+  installMissionInteraction(scene, director);
   scene.__nbdPoliceInformantInstalled = true;
 }
 
