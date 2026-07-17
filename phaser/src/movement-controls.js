@@ -1,3 +1,4 @@
+import "./combat/combat-compatibility.js";
 import "./input/input-runtime.js";
 import "./input/tutorial-input-adapter.js";
 import { UIScene } from "./scenes/UIScene.js";
@@ -41,11 +42,11 @@ function installUiControlCopy() {
     const updatedBody = String(bodyHtml || "")
       .replace(
         "WASD/arrows move · Shift sprint · E interact · Q/Space Dash",
-        "WASD/arrows move · hold Space to run · Space jumps/climbs/descends · E interacts · Q Dash"
+        "WASD/arrows move · mouse aims · left-click punches · hold Space to run · Space traverses · E interacts · Q Dash"
       )
       .replace(
         "Movement: WASD/arrows · Shift sprint",
-        "Movement: WASD/arrows · hold Space to run · Space near routes to jump, climb or descend"
+        "Movement: WASD/arrows · mouse aim · left-click punch · hold Space to run · Space near routes to traverse"
       )
       .replace("Powers: Q/Space Dash", "Powers: Q Dash");
     return originalSetModal.call(this, title, updatedBody, actionLabel);
