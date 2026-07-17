@@ -64,7 +64,7 @@ Milestone 1 changes ownership, not the player-facing control design:
 - F creates `bloodSensePressed`.
 - Left mouse creates primary-attack held/pressed state for Milestone 2.
 - Right mouse creates drain held/pressed state for Milestone 4 and suppresses the browser context menu inside the canvas.
-- The wheel creates a debounced discrete `weaponStep` for Milestone 7.
+- Wheel events are coalesced into a discrete `weaponStep` for Milestone 7.
 
 Space stops modifying speed in Milestone 5. The compatibility behaviour is intentionally isolated to one line in `InputSystem`.
 
@@ -95,10 +95,12 @@ This is covered by unit tests for CSS-scaled canvases and camera zoom. Manual br
 
 - the browser window loses focus;
 - the document becomes hidden;
-- the tutorial or a cinematic disables world input;
+- the UI pause state changes;
+- the task-reveal/cinematic lock changes;
+- the tutorial changes control mode or disables world input;
 - the scene shuts down.
 
-Pointer-held actions are cancelled when the pointer leaves the canvas. Context-menu suppression is scoped to the game canvas only. Wheel scrolling is only prevented when a future `WeaponSystem` explicitly enables wheel capture.
+Pointer-held actions are cancelled when the pointer leaves the canvas. Pointer and wheel actions received while world input is locked are discarded rather than replayed after a dialogue or modal closes. Context-menu suppression is scoped to the game canvas only. Wheel scrolling is only prevented when a future `WeaponSystem` explicitly enables wheel capture.
 
 ## Runtime ownership
 
@@ -124,11 +126,15 @@ The zero-dependency Node test suite currently covers:
 
 - action gating for every tutorial mode;
 - world-lock behaviour;
+- pointer/wheel suppression while locked;
+- reset behaviour across UI/task locks and browser lifecycle changes;
 - wheel-step normalization;
 - vector normalization and cone queries;
 - responsive client-to-game mapping;
 - camera screen-to-world mapping;
-- InputSystem edge consumption and reset behaviour.
+- InputSystem edge consumption.
+
+The same command runs automatically in GitHub Actions on pushes to `main` and on pull requests.
 
 ## Known limitations
 
