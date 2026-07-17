@@ -1,3 +1,4 @@
+import "./english-copy.js";
 import { UIScene } from "./scenes/UIScene.js";
 
 const INTRO_NARRATION = "Hace varias décadas que fuiste convertido. Entre los vampiros no eres más que un torpe chiquillo que aún está aprendiendo. Te limitas a hacer recados e ir de acá para allá. Te sientes atrapado en una no-vida que prometía ser mucho más emocionante de lo que realmente es.";
