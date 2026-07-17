@@ -5,7 +5,7 @@ This roadmap is ordered by dependency, not by calendar date. Combat should be bu
 ## Status legend
 
 - ✅ Complete
-- 🟡 In progress / partially implemented
+- 🟡 In progress / implemented but awaiting validation
 - ⬜ Planned
 - ◇ Optional or deferred
 
@@ -26,29 +26,38 @@ This roadmap is ordered by dependency, not by calendar date. Combat should be bu
 
 ## Milestone 1 — Architecture stabilization
 
-**Status: ⬜ Planned**
+**Status: 🟡 Implementation complete; browser regression validation pending**
 
 ### Goal
 
-Create safe foundations for mouse combat without adding more overlapping prototype patches.
+Create safe foundations for mouse combat without adding more overlapping input patches.
 
-### Work
+### Implemented
 
-- Introduce a central action-based `InputSystem`.
-- Route keyboard, pointer and wheel input through one frame snapshot.
-- Consolidate Space traversal ownership.
-- Consolidate E interaction ownership.
-- Move power input behind abstract actions.
-- Add window blur/input reset handling.
-- Add pure geometry helpers and initial unit-test setup.
-- Document or remove superseded patch modules.
+- ✅ Added a central action-based `InputSystem`.
+- ✅ Keyboard, pointer buttons, pointer position and wheel input now produce one frame snapshot.
+- ✅ Space traversal dispatch has one authoritative runtime owner.
+- ✅ E interaction dispatch has one authoritative runtime owner.
+- ✅ Q/R/F power dispatch consumes abstract actions instead of Phaser keys.
+- ✅ Tutorial restrictions use central control modes rather than per-gameplay-key ownership.
+- ✅ Window blur, document visibility, pointer-leave and scene shutdown reset input.
+- ✅ Added pure geometry and responsive pointer-mapping helpers.
+- ✅ Added a zero-dependency Node test setup with 13 passing tests.
+- ✅ Replaced the old multi-purpose `movement-controls.js` implementation with a thin bootstrap/UI compatibility module.
+- ✅ Added dedicated technical documentation in `docs/INPUT_SYSTEM.md`.
 
-### Acceptance criteria
+### Preserved compatibility
 
-- Existing tutorial and mission remain playable.
-- Space/E/Q/R/F behaviour has one authoritative implementation.
-- Input can be disabled by dialogue/modal state without per-system exceptions.
-- Pointer world coordinates are correct at all viewport sizes and quality presets.
+- Space still doubles as sprint and traversal in the current playable build. Its sprint role is isolated inside `InputSystem` and is removed in Milestone 5.
+- Left-click, right-click and wheel actions are collected now but remain unconsumed until their combat/weapon milestones.
+
+### Acceptance status
+
+- ✅ Space/E/Q/R/F have one authoritative gameplay implementation.
+- ✅ Dialogue/tutorial locks suppress world actions centrally.
+- ✅ Responsive client-to-game and screen-to-world conversion is unit-tested.
+- ✅ Existing tutorial control modes are mapped to the input layer.
+- 🟡 Full browser regression of the complete mission at representative viewport sizes and quality presets is still required.
 
 ## Milestone 2 — Mouse aim and unarmed combat
 
@@ -115,8 +124,7 @@ Turn feeding into a precise combat/stealth verb.
 
 ### Work
 
-- Suppress browser context menu in the game frame.
-- Right-click drain targeting.
+- Use the existing right-button action from `InputSystem`.
 - Downed-target drain from any angle.
 - Standing stealth drain from rear arc only.
 - Awareness/alert eligibility checks.
@@ -143,9 +151,9 @@ Remove the final movement/control ambiguity.
 ### Work
 
 - Running becomes the default movement speed.
-- Space no longer modifies speed.
+- Remove the compatibility `sprintHeld` use of Space.
 - Space remains roof jump, roof drop, fire escape and sewer traversal only.
-- Deterministic traversal candidate scoring.
+- Deterministic traversal candidate scoring using the geometry helper baseline.
 - Context icon before activation.
 - **Proposed:** Shift becomes quiet walk/sneak.
 - Movement sound levels feed the hearing system.
@@ -194,7 +202,8 @@ Add weapons without changing the established aim and damage contracts.
 
 - Data-driven `WeaponSystem`.
 - Inventory and equipped weapon.
-- Wheel cycling with debounce.
+- Consume the existing discrete `weaponStep` action.
+- Enable wheel-scroll suppression only while the weapon system owns the wheel.
 - Weapon-change HUD toast.
 - Improvised melee weapon.
 - Pistol/hitscan foundation.
@@ -269,9 +278,9 @@ Turn the expanded vertical slice into a maintainable baseline.
 
 ### Work
 
+- Move the remaining integration adapters into explicit first-class bootstrap/core methods.
 - Remove superseded prototype patches.
-- Move feature initialization into an explicit bootstrap.
-- Unit tests for geometry and state transitions.
+- Unit tests for combat geometry and state transitions.
 - Playwright smoke tests for controls and responsive aim.
 - Manual regression checklist.
 - Performance pass for cones, sound fields, outskirts and combat effects.
