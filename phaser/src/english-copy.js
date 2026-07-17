@@ -30,7 +30,7 @@ const DIALOGUE = new Map([
     "Alimentarte reduce tu hambre. Usar tus poderes la aumenta. No dejes que suba demasiado o perderás el control. Y no permitas que nadie te vea alimentarte: pondrías en peligro el velo que mantenemos ante los humanos.",
     "Feeding lowers your Hunger. Using your powers raises it. Do not let it climb too high, or you will lose control. And never let anyone see you feed: you would endanger the veil that keeps humanity blind to us."
   ],
-  ["Acaba con él y vuelve al refugio. No la cagues.", "Finish him and return to the refuge. Do not screw this up."],
+  ["Acaba con él y vuelve al refugio. No la cagues.", "Dispatch him, then return to the refuge. See that you do not fail me."],
   [
     "Lo tienes cerca. Aísla al traidor y acaba con él. Que ningún humano vea lo que realmente eres.",
     "He is close. Isolate the traitor and finish him. Do not let any human see what you truly are."
