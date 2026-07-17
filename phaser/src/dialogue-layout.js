@@ -2,22 +2,23 @@ const SIRE_SEGMENTS = new Map([
   [
     "Mi pequeño niño, llegó el momento de que me seas útil. Cruza por los tejados y llega a la comisaría. Allí te darán un chivatazo para que puedas cazar al traidor que pretende delatarnos.",
     [
-      "My little boy, the hour has come for you to prove useful.",
-      "Cross the rooftops and make your way to the police station.",
-      "There, one of our servants will furnish you with the traitor's whereabouts. Hunt him down before he betrays our existence."
+      "My little boy, I have a task for you.",
+      "A journalist has learned too much about us and intends to expose what he knows.",
+      "Cross the rooftops to the police station. Our informant there will tell you where to find him.",
+      "Then silence the journalist before he puts the veil at risk."
     ]
   ],
   [
     "Alimentarte reduce tu hambre. Usar tus poderes la aumenta. No dejes que suba demasiado o perderás el control. Y no permitas que nadie te vea alimentarte: pondrías en peligro el velo que mantenemos ante los humanos.",
     [
-      "Feeding tempers your Hunger. The exercise of your gifts stirs it anew.",
-      "Permit it to rise too far, and the Beast shall master you.",
-      "Never feed before mortal eyes. Their ignorance is the veil that preserves us."
+      "Feeding lowers your Hunger. Using your powers raises it.",
+      "If your Hunger climbs too high, you may lose control.",
+      "Never feed where humans can see you. A witness can put the veil at risk."
     ]
   ],
   [
     "Acaba con él y vuelve al refugio. No la cagues.",
-    ["Dispatch him, then return to the refuge. See that you do not fail me."]
+    ["Finish the journalist, then return to the refuge. Do not fail me."]
   ]
 ]);
 
@@ -31,12 +32,12 @@ function installDialogueLayoutStyles() {
       top: 0;
       width: min(420px, calc(100% - 32px));
       padding: 14px 16px 16px;
-      transform: translate(-50%, calc(-100% - 18px)) scale(.96);
+      transform: translate(-50%, calc(-100% - 22px)) scale(.96);
       transform-origin: 50% 100%;
     }
 
     .tutorial-dialogue.actor-anchored.open {
-      transform: translate(-50%, calc(-100% - 18px)) scale(1);
+      transform: translate(-50%, calc(-100% - 22px)) scale(1);
     }
 
     .tutorial-dialogue.actor-anchored .tutorial-dialogue__speaker {
@@ -104,7 +105,7 @@ function positionDialogue(director, dialogue, payload) {
   const halfWidth = Math.max(120, dialogue.offsetWidth / 2);
   const safeX = Phaser.Math.Clamp(screenX, halfWidth + 10, host.clientWidth - halfWidth - 10);
   const bubbleHeight = Math.max(80, dialogue.offsetHeight);
-  const safeAnchorY = Phaser.Math.Clamp(screenY - 26, bubbleHeight + 16, host.clientHeight - 28);
+  const safeAnchorY = Phaser.Math.Clamp(screenY - 42, bubbleHeight + 16, host.clientHeight - 28);
 
   dialogue.style.left = `${safeX}px`;
   dialogue.style.top = `${safeAnchorY}px`;
