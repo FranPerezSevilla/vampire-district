@@ -1,0 +1,9 @@
+{
+  "name": "vampire-district",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "test:input": "node --test tests/input-actions.test.js tests/geometry.test.js tests/input-system.test.js"
+  }
+}
