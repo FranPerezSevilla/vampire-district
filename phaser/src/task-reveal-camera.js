@@ -1,5 +1,6 @@
 import "./tutorial-copy.js";
 import "./objective-marker.js";
+import "./objective-marker-guard.js";
 import { CAMERA, WORLD } from "./data/balance.js";
 import { LAYERS } from "./data/district.js";
 import { GameScene } from "./scenes/GameScene.js";
