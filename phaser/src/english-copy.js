@@ -114,6 +114,7 @@ function ensureAdvanceHint(dialogue) {
 function waitForDialogueAdvance(director) {
   const scene = director.scene;
   const host = document.querySelector(".game-frame") || document.getElementById("game-ui");
+  const canvas = scene.game?.canvas || document.querySelector("#game-root canvas");
   director.dialogueAdvanceKey ||= scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
   const key = director.dialogueAdvanceKey;
   const openedAt = performance.now();
@@ -134,6 +135,8 @@ function waitForDialogueAdvance(director) {
       cleanup();
       key.reset?.();
       scene.inputSystem?.resetWorldEdges?.();
+      if (scene.input?.keyboard) scene.input.keyboard.enabled = true;
+      canvas?.focus?.({ preventScroll: true });
       resolve();
     };
 
@@ -144,7 +147,8 @@ function waitForDialogueAdvance(director) {
     const onPointerDown = event => {
       if (event.button !== 0 || performance.now() - openedAt < 120) return;
       event.preventDefault();
-      event.stopPropagation();
+      // Let the click reach Phaser while the world is still locked. InputSystem
+      // discards it, and the canvas receives focus for the following keyboard input.
       finish();
     };
 
