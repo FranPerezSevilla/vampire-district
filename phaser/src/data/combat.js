@@ -49,11 +49,11 @@ export function createNpcCombatState(type) {
 }
 
 export function worldAimDirection(player, aimWorld, previous = { x: 0, y: -1 }, deadZone = UNARMED_ATTACK.aimDeadZone) {
-  const dx = (aimWorld?.x || 0) - (player?.x || 0);
-  const dy = (aimWorld?.y || 0) - (player?.y || 0);
+  const dx = (aimWorld?.x ?? 0) - (player?.x ?? 0);
+  const dy = (aimWorld?.y ?? 0) - (player?.y ?? 0);
   const distance = Math.hypot(dx, dy);
   if (distance < deadZone) {
-    const fallback = normalizeVector(previous?.x || 0, previous?.y || -1, { x: 0, y: -1 });
+    const fallback = normalizeVector(previous?.x ?? 0, previous?.y ?? -1, { x: 0, y: -1 });
     return { x: fallback.x, y: fallback.y };
   }
   const direction = normalizeVector(dx, dy, previous);
