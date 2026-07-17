@@ -105,27 +105,51 @@ function ensureAdvanceHint(dialogue) {
   if (!hint) {
     hint = document.createElement("div");
     hint.className = "tutorial-dialogue__advance";
-    hint.textContent = "ESC · Continue";
+    hint.textContent = "CLICK · Continue";
     dialogue.appendChild(hint);
   }
   return hint;
 }
 
-function waitForEscape(director) {
+function waitForDialogueAdvance(director) {
   const scene = director.scene;
+  const host = document.querySelector(".game-frame") || document.getElementById("game-ui");
   director.dialogueAdvanceKey ||= scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
   const key = director.dialogueAdvanceKey;
+  const openedAt = performance.now();
   key.enabled = true;
   key.reset?.();
 
   return new Promise(resolve => {
-    const onUpdate = () => {
-      if (!Phaser.Input.Keyboard.JustDown(key)) return;
+    let finished = false;
+
+    const cleanup = () => {
       scene.events.off(Phaser.Scenes.Events.UPDATE, onUpdate);
+      host?.removeEventListener("pointerdown", onPointerDown, true);
+    };
+
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      cleanup();
       key.reset?.();
+      scene.inputSystem?.resetWorldEdges?.();
       resolve();
     };
+
+    const onUpdate = () => {
+      if (Phaser.Input.Keyboard.JustDown(key)) finish();
+    };
+
+    const onPointerDown = event => {
+      if (event.button !== 0 || performance.now() - openedAt < 120) return;
+      event.preventDefault();
+      event.stopPropagation();
+      finish();
+    };
+
     scene.events.on(Phaser.Scenes.Events.UPDATE, onUpdate);
+    host?.addEventListener("pointerdown", onPointerDown, true);
   });
 }
 
@@ -141,7 +165,7 @@ function installEnglishTutorialCopy() {
   installDialogueAdvanceStyle();
 
   if (!director.showDialogue.__nbdEnglishPersistentDialoguePatch) {
-    const patchedShowDialogue = async function showDialogueInEnglishUntilEscape(payload = {}) {
+    const patchedShowDialogue = async function showDialogueInEnglishUntilAdvance(payload = {}) {
       const dialogue = director.ui?.dialogue;
       if (!dialogue) return;
 
@@ -152,16 +176,17 @@ function installEnglishTutorialCopy() {
       dialogue.className = `tutorial-dialogue ${kind}`;
       dialogue.querySelector("#tutorial-dialogue-speaker").textContent = speaker;
       dialogue.querySelector("#tutorial-dialogue-text").textContent = text;
-      ensureAdvanceHint(dialogue).textContent = "ESC · Continue";
+      ensureAdvanceHint(dialogue).textContent = "CLICK · Continue";
 
       window.requestAnimationFrame(() => dialogue.classList.add("open"));
-      await waitForEscape(director);
+      await waitForDialogueAdvance(director);
       dialogue.classList.remove("open");
-      await director.wait(240);
+      await director.wait(180);
     };
 
     patchedShowDialogue.__nbdEnglishCopyPatch = true;
     patchedShowDialogue.__nbdEnglishPersistentDialoguePatch = true;
+    patchedShowDialogue.__nbdMouseAdvancePatch = true;
     director.showDialogue = patchedShowDialogue;
   }
 
