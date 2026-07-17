@@ -4,7 +4,7 @@ _Status: implemented in Milestone 1; browser regression validation remains requi
 
 ## Purpose
 
-`InputSystem` is the authoritative source of gameplay input. Keyboard, pointer buttons, pointer position and mouse-wheel movement are collected once per simulation frame and exposed as an action snapshot. Gameplay systems no longer decide independently whether Space, E, Q, R or F were pressed.
+`InputSystem` is the authoritative source of gameplay input. Keyboard, pointer buttons, pointer position and mouse-wheel movement are collected once per simulation frame and exposed as an action snapshot. Gameplay systems no longer decide independently whether Space, E, Q, R, F or a mouse button was pressed.
 
 The UI scene still owns UI-only keys such as menu/help and mission-panel navigation. World actions are suppressed centrally whenever the game is paused, a task reveal is active or the tutorial selects a restricted control mode.
 
@@ -12,7 +12,7 @@ The UI scene still owns UI-only keys such as menu/help and mission-panel navigat
 
 - `phaser/src/input/actions.js` — action names, control modes, empty-frame factory and pure action gating.
 - `phaser/src/input/InputSystem.js` — raw browser/Phaser input collection and frame creation.
-- `phaser/src/input/input-runtime.js` — integration with `GameScene`, `InteractionSystem` and `PowersSystem`.
+- `phaser/src/input/input-runtime.js` — integration with `GameScene`, `InteractionSystem`, `PowersSystem` and `CombatSystem`.
 - `phaser/src/input/tutorial-input-adapter.js` — maps tutorial states to central control modes.
 - `phaser/src/utils/geometry.js` — pure vector, cone, client-to-game and screen-to-world helpers.
 - `phaser/src/movement-controls.js` — thin bootstrap plus HUD copy compatibility; it no longer owns gameplay controls.
@@ -50,19 +50,18 @@ Every active `GameScene` update receives one object with this shape:
 }
 ```
 
-The combat fields are already present even though combat and weapons are later milestones. This prevents the mouse-combat work from introducing a second input path.
+The same frame is consumed by movement, traversal, interactions, powers and unarmed combat. Right-click drain and weapon cycling remain future consumers rather than future input paths.
 
-## Current bindings preserved by Milestone 1
-
-Milestone 1 changes ownership, not the player-facing control design:
+## Current bindings
 
 - WASD / arrows create the normalized `move` vector.
+- Mouse position creates responsive `aimWorld` coordinates.
+- Left mouse creates `primaryHeld` and `primaryPressed`; `CombatSystem` consumes the pressed edge for one unarmed attack.
 - Space creates `traversePressed` and currently remains `sprintHeld` for compatibility with the existing tutorial.
 - E creates `interactPressed` and menu confirmation.
 - Q creates `dashPressed`.
 - R creates `whisperPressed`.
 - F creates `bloodSensePressed`.
-- Left mouse creates primary-attack held/pressed state for Milestone 2.
 - Right mouse creates drain held/pressed state for Milestone 4 and suppresses the browser context menu inside the canvas.
 - Wheel events are coalesced into a discrete `weaponStep` for Milestone 7.
 
@@ -74,11 +73,11 @@ Space stops modifying speed in Milestone 5. The compatibility behaviour is inten
 |---|---|
 | `full` | All current and future world actions. |
 | `movement` | Movement, aim and traversal. |
-| `drain` | Movement, aim, traversal and the current E-based tutorial drain interaction. |
+| `drain` | Movement, aim, primary attack, traversal and the current E-based tutorial drain interaction. |
 | `tip` | Movement, aim, traversal and clue interaction. |
 | `locked` | Aim tracking only; no world action is emitted. |
 
-The tutorial adapter changes modes instead of disabling individual gameplay keys. Raw keys remain enabled so dialogue Escape handling and later remapping are not coupled to tutorial logic.
+The tutorial adapter changes modes instead of disabling individual gameplay keys. Raw keys remain enabled so dialogue handling and later remapping are not coupled to tutorial logic.
 
 ## Pointer mapping
 
@@ -87,7 +86,7 @@ Responsive CSS changes the displayed canvas size without changing its internal g
 1. Browser client coordinates are converted to internal game coordinates using the canvas bounding rectangle and camera dimensions.
 2. Internal game coordinates are converted to world coordinates using the camera world view and zoom.
 
-This is covered by unit tests for CSS-scaled canvases and camera zoom. Manual browser checks are still required for every render-quality preset and representative viewport.
+`CombatSystem` consumes this shared result directly. It does not perform a second viewport conversion.
 
 ## Browser lifecycle
 
@@ -100,21 +99,22 @@ This is covered by unit tests for CSS-scaled canvases and camera zoom. Manual br
 - the tutorial changes control mode or disables world input;
 - the scene shuts down.
 
-`UIScene` republishes its current pause state during rendering. The input layer therefore compares the new and previous lock values and ignores identical publications. Resetting on every repeated `uiPaused = false` event would erase WASD and other keyboard state before `GameScene` could consume it.
+`UIScene` republishes its current pause state during rendering. The input layer compares new and previous lock values and ignores identical publications, preventing WASD and other keyboard state from being erased every frame.
 
 Pointer-held actions are cancelled when the pointer leaves the canvas. The canvas is focusable and receives focus after dialogue clicks so keyboard control returns immediately. Pointer and wheel actions received while world input is locked are discarded rather than replayed after a dialogue or modal closes. Context-menu suppression is scoped to the game canvas only. Wheel scrolling is only prevented when a future `WeaponSystem` explicitly enables wheel capture.
 
 ## Runtime ownership
 
-`GameScene` consumes one input frame and is the only owner of:
+`GameScene` consumes one input frame and owns:
 
 - traversal dispatch;
 - E interaction dispatch;
 - movement-vector application;
 - interaction-menu navigation;
-- power action dispatch.
+- power action dispatch;
+- forwarding primary attack and aim to `CombatSystem`.
 
-`PowersSystem` receives abstract actions rather than querying Phaser keys. `InteractionSystem` receives menu actions rather than querying keys. This removes the previous duplicate Space/E/Q/R/F handling from `movement-controls.js`.
+`PowersSystem`, `InteractionSystem` and `CombatSystem` receive abstract actions rather than querying raw keys or browser events.
 
 ## Tests
 
@@ -124,7 +124,7 @@ Run:
 npm test
 ```
 
-The zero-dependency Node test suite currently covers:
+The zero-dependency Node suite covers:
 
 - action gating for every tutorial mode;
 - world-lock behaviour;
@@ -135,14 +135,15 @@ The zero-dependency Node test suite currently covers:
 - vector normalization and cone queries;
 - responsive client-to-game mapping;
 - camera screen-to-world mapping;
-- InputSystem edge consumption.
+- InputSystem edge consumption;
+- combat-mode permission for primary attack.
 
 The same command runs automatically in GitHub Actions on pushes to `main` and on pull requests.
 
 ## Known limitations
 
-- The integration layer still replaces a small set of legacy prototype methods because the original vertical slice predates first-class bootstrap composition. The previous multi-purpose `movement-controls.js` patch has been removed, but final core-file migration belongs to Milestone 10.
+- The integration layer still replaces a small set of legacy prototype methods because the original vertical slice predates first-class bootstrap composition. Final core-file migration belongs to Milestone 10.
 - UI-only keyboard handling remains in `UIScene`; the new system is authoritative for world/gameplay input.
 - Wheel events are collected but not consumed by gameplay until `WeaponSystem` exists.
-- Primary attack and right-click drain fields are collected but intentionally unused until their milestones.
+- Right-click drain fields are collected but intentionally unused until Milestone 4.
 - Browser smoke tests have not yet been automated.
