@@ -14,21 +14,25 @@ Open `index.html` through a local/static web server, or use the published GitHub
 - Wanted escalation, pursuit, arrest and helicopter support.
 - Police informant, journalist objective and sire report.
 - Action-based gameplay `InputSystem` with tested responsive pointer mapping.
+- Mouse-directed unarmed combat with resilience, stagger and knockdown.
 
 ## Current controls
 
 - WASD / arrows: move.
-- Hold Space: run in the current build.
+- Mouse: aim and face.
+- Left mouse: punch in the aimed direction.
+- Hold Space: run in the current compatibility build.
 - Space near a route: jump, climb, descend or use a sewer entrance.
-- E: interact.
+- E: interact; the opening tutorial temporarily uses E to drain the thug after knockdown.
 - Q: Shadow Dash.
 - R: Vampiric Whisper.
 - F: Blood Sense.
 - M: mission panel.
 - H: menu/help.
-- Escape: advance dialogue or close the active UI layer.
+- Left click: advance an open dialogue bubble.
+- Escape: keyboard fallback for dialogue / close UI.
 
-The target combat scheme adds mouse aim, left-click attacks, right-click draining, wheel weapon selection and traversal-only Space. See [`docs/CONTROL_SCHEME.md`](docs/CONTROL_SCHEME.md).
+The target control scheme still moves draining to right-click, weapon selection to the wheel and reserves Space exclusively for traversal. See [`docs/CONTROL_SCHEME.md`](docs/CONTROL_SCHEME.md).
 
 ## Tests
 
@@ -40,4 +44,4 @@ npm test
 
 ## Documentation
 
-Start with [`docs/README.md`](docs/README.md). The documentation set includes the current project snapshot, functional specification, technical architecture, implemented input system and dependency-ordered roadmap.
+Start with [`docs/README.md`](docs/README.md). The documentation set includes the current project snapshot, functional specification, technical architecture, implemented input and combat systems, and dependency-ordered roadmap.
