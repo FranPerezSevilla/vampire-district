@@ -1,58 +1,43 @@
 # Vampire District
 
-A top-down vampire stealth-action prototype built with Phaser 3 for the browser.
+**Vampire District** is a Phaser 3 top-down vampire stealth-action vertical slice for the browser. The player crosses rooftops, streets and sewers, manages Hunger and the veil, evades escalating police pressure and silences a journalist before the clan is exposed.
 
-## Current vertical slice
+Open `index.html` through a local/static web server, or use the published GitHub Pages build when available. ES modules will not work reliably through every browser's `file://` mode.
 
-You are a young vampire sent by your sire to stop a journalist from exposing the clan. The playable mission crosses rooftops, streets and sewers while teaching traversal, feeding, Hunger, witnesses, police pressure and the veil.
+## Current playable features
 
-Implemented systems include:
-
-- responsive Phaser world and DOM-backed HUD;
-- rooftop, street and sewer traversal;
-- narrative tutorial and speaker-anchored dialogue;
-- police informant and journalist mission flow;
-- Hunger, feeding and vampire powers;
-- NPC vision and hearing reactions;
-- police pursuit, arrest and helicopter escalation;
-- responsive render-quality presets;
-- extended city scenery around the playable district.
+- Responsive Phaser build with selectable internal render quality.
+- Street, rooftop and sewer traversal.
+- Narrative tutorial with speaker-anchored dialogue.
+- Hunger, feeding and vampire powers.
+- Civilian and police vision/hearing reactions.
+- Wanted escalation, pursuit, arrest and helicopter support.
+- Police informant, journalist objective and sire report.
+- Action-based gameplay `InputSystem` with tested responsive pointer mapping.
 
 ## Current controls
 
-These are the bindings in the current playable build. The planned combat-control replacement is documented separately.
-
-- WASD / arrow keys: move.
-- Space: run and contextual traversal.
+- WASD / arrows: move.
+- Hold Space: run in the current build.
+- Space near a route: jump, climb, descend or use a sewer entrance.
 - E: interact.
 - Q: Shadow Dash.
 - R: Vampiric Whisper.
 - F: Blood Sense.
 - M: mission panel.
-- H: menu.
-- Escape: advance dialogue / close UI.
+- H: menu/help.
+- Escape: advance dialogue or close the active UI layer.
 
-## Planned combat direction
+The target combat scheme adds mouse aim, left-click attacks, right-click draining, wheel weapon selection and traversal-only Space. See [`docs/CONTROL_SCHEME.md`](docs/CONTROL_SCHEME.md).
 
-The next major milestone introduces mouse-directed combat:
+## Tests
 
-- mouse to aim;
-- left mouse to attack/fire;
-- right mouse to drain valid targets;
-- mouse wheel to cycle weapons;
-- default running;
-- Space reserved exclusively for traversal;
-- NPC resilience, knockdown and damage increasing player Hunger.
+The project uses Node's built-in test runner and has no test dependencies:
+
+```bash
+npm test
+```
 
 ## Documentation
 
-- [Documentation index](docs/README.md)
-- [Project snapshot](docs/PROJECT_SNAPSHOT.md)
-- [Functional specification](docs/FUNCTIONAL_SPEC.md)
-- [Technical architecture](docs/TECHNICAL_ARCHITECTURE.md)
-- [Control scheme](docs/CONTROL_SCHEME.md)
-- [Roadmap](docs/ROADMAP.md)
-
-## Development principle
-
-Keep the browser build immediately playable, but do not add new major systems through overlapping runtime patches. New combat work should begin with the input and architecture stabilization milestone described in the roadmap.
+Start with [`docs/README.md`](docs/README.md). The documentation set includes the current project snapshot, functional specification, technical architecture, implemented input system and dependency-ordered roadmap.
