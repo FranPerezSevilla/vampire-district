@@ -1,3 +1,4 @@
+import "./tutorial-copy.js";
 import { CAMERA, WORLD } from "./data/balance.js";
 import { LAYERS } from "./data/district.js";
 import { GameScene } from "./scenes/GameScene.js";
