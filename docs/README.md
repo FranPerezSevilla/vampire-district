@@ -8,6 +8,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Functional specification](FUNCTIONAL_SPEC.md) — intended player experience and gameplay rules.
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — current architecture, target architecture and engineering constraints.
 - [Input system](INPUT_SYSTEM.md) — implemented Milestone 1 frame contract, browser mapping, control modes and tests.
+- [Combat system](COMBAT_SYSTEM.md) — implemented Milestone 2 mouse aim, unarmed timing, resilience, stagger and knockdown.
 - [Milestone 1 regression](MILESTONE_1_REGRESSION.md) — required browser, viewport, tutorial and stuck-input validation before final sign-off.
 - [Control scheme](CONTROL_SCHEME.md) — target keyboard-and-mouse controls and interaction priority rules.
 - [Roadmap](ROADMAP.md) — ordered milestones with acceptance criteria.
