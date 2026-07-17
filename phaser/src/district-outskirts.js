@@ -158,18 +158,14 @@ function restoreExpandedCameraBounds(scene) {
   );
 }
 
-function isTryingToLeave(scene) {
+function isTryingToLeave(scene, frame = scene.currentInputFrame) {
   if (scene.currentLayer !== LAYERS.STREET) return false;
-  const keys = scene.keys || {};
-  const left = keys.left?.isDown || keys.a?.isDown;
-  const right = keys.right?.isDown || keys.d?.isDown;
-  const up = keys.up?.isDown || keys.w?.isDown;
-  const down = keys.down?.isDown || keys.s?.isDown;
+  const move = frame?.move || { x: 0, y: 0 };
 
-  return (scene.player.x <= BORDER_TRIGGER && left)
-    || (scene.player.x >= WORLD.width - BORDER_TRIGGER && right)
-    || (scene.player.y <= BORDER_TRIGGER && up)
-    || (scene.player.y >= WORLD.height - BORDER_TRIGGER && down);
+  return (scene.player.x <= BORDER_TRIGGER && move.x < 0)
+    || (scene.player.x >= WORLD.width - BORDER_TRIGGER && move.x > 0)
+    || (scene.player.y <= BORDER_TRIGGER && move.y < 0)
+    || (scene.player.y >= WORLD.height - BORDER_TRIGGER && move.y > 0);
 }
 
 async function showBoundaryWarning(scene) {
@@ -197,7 +193,7 @@ async function showBoundaryWarning(scene) {
     director.state = "complete";
     director.busy = false;
     director.setControlMode?.("full");
-    scene.input.keyboard?.resetKeys?.();
+    scene.inputSystem?.reset?.();
     scene.__nbdBoundaryWarningUntil = scene.time.now + WARNING_COOLDOWN_MS;
     scene.__nbdBoundaryWarningActive = false;
   }
@@ -207,9 +203,9 @@ function installBoundaryMovementWarning() {
   if (GameScene.prototype.__nbdDistrictBoundaryPatch) return;
 
   const originalUpdatePlayerMovement = GameScene.prototype.updatePlayerMovement;
-  GameScene.prototype.updatePlayerMovement = function updatePlayerMovementWithBoundaryWarning(dt) {
-    const leaving = isTryingToLeave(this);
-    const result = originalUpdatePlayerMovement.call(this, dt);
+  GameScene.prototype.updatePlayerMovement = function updatePlayerMovementWithBoundaryWarning(dt, frame = this.currentInputFrame) {
+    const leaving = isTryingToLeave(this, frame);
+    const result = originalUpdatePlayerMovement.call(this, dt, frame);
     if (leaving) void showBoundaryWarning(this);
     return result;
   };
