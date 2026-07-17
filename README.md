@@ -1,29 +1,58 @@
 # Vampire District
 
-Playable single-file HTML prototype for a top-down vampire urban sandbox.
+A top-down vampire stealth-action prototype built with Phaser 3 for the browser.
 
-## Current concept
+## Current vertical slice
 
-You are the vampire responsible for a district. Your clan orders you to intercept and eliminate a journalist before they expose a cover-up involving your clan leader.
+You are a young vampire sent by your sire to stop a journalist from exposing the clan. The playable mission crosses rooftops, streets and sewers while teaching traversal, feeding, Hunger, witnesses, police pressure and the veil.
 
-## Prototype goals
+Implemented systems include:
 
-- Top-down HTML5 canvas prototype.
-- Single `index.html` file.
-- Vanilla JavaScript, CSS and HTML.
-- No external frameworks or required assets.
-- Gameplay loop: locate target, lure into shadow, eliminate, hide evidence, escape pressure and return to the safehouse.
+- responsive Phaser world and DOM-backed HUD;
+- rooftop, street and sewer traversal;
+- narrative tutorial and speaker-anchored dialogue;
+- police informant and journalist mission flow;
+- Hunger, feeding and vampire powers;
+- NPC vision and hearing reactions;
+- police pursuit, arrest and helicopter escalation;
+- responsive render-quality presets;
+- extended city scenery around the playable district.
 
-## Controls
+## Current controls
 
-- WASD / Arrow keys: move
-- Shift: sprint
-- E: interact / feed / hide body / use routes
-- R: vampiric whisper
-- Q / Space: Shadow Dash
-- F: Blood Sense
-- H: help
+These are the bindings in the current playable build. The planned combat-control replacement is documented separately.
 
-## Development rule
+- WASD / arrow keys: move.
+- Space: run and contextual traversal.
+- E: interact.
+- Q: Shadow Dash.
+- R: Vampiric Whisper.
+- F: Blood Sense.
+- M: mission panel.
+- H: menu.
+- Escape: advance dialogue / close UI.
 
-Keep the prototype runnable by opening `index.html` directly in a browser.
+## Planned combat direction
+
+The next major milestone introduces mouse-directed combat:
+
+- mouse to aim;
+- left mouse to attack/fire;
+- right mouse to drain valid targets;
+- mouse wheel to cycle weapons;
+- default running;
+- Space reserved exclusively for traversal;
+- NPC resilience, knockdown and damage increasing player Hunger.
+
+## Documentation
+
+- [Documentation index](docs/README.md)
+- [Project snapshot](docs/PROJECT_SNAPSHOT.md)
+- [Functional specification](docs/FUNCTIONAL_SPEC.md)
+- [Technical architecture](docs/TECHNICAL_ARCHITECTURE.md)
+- [Control scheme](docs/CONTROL_SCHEME.md)
+- [Roadmap](docs/ROADMAP.md)
+
+## Development principle
+
+Keep the browser build immediately playable, but do not add new major systems through overlapping runtime patches. New combat work should begin with the input and architecture stabilization milestone described in the roadmap.
