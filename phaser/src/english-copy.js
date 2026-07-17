@@ -70,6 +70,65 @@ function translateKey(key) {
     .replaceAll("TÚ", "YOU");
 }
 
+function installDialogueAdvanceStyle() {
+  if (document.getElementById("nbd-dialogue-advance-style")) return;
+  const style = document.createElement("style");
+  style.id = "nbd-dialogue-advance-style";
+  style.textContent = `
+    .tutorial-dialogue__advance {
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(241, 230, 255, .14);
+      color: rgba(241, 230, 255, .64);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .12em;
+      text-align: right;
+      text-transform: uppercase;
+    }
+
+    .tutorial-dialogue.thought .tutorial-dialogue__advance {
+      border-top-color: rgba(186, 133, 255, .18);
+      color: rgba(205, 166, 255, .74);
+    }
+
+    .tutorial-dialogue.thug .tutorial-dialogue__advance {
+      border-top-color: rgba(255, 176, 46, .18);
+      color: rgba(255, 202, 114, .78);
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function ensureAdvanceHint(dialogue) {
+  let hint = dialogue.querySelector(".tutorial-dialogue__advance");
+  if (!hint) {
+    hint = document.createElement("div");
+    hint.className = "tutorial-dialogue__advance";
+    hint.textContent = "ESC · Continue";
+    dialogue.appendChild(hint);
+  }
+  return hint;
+}
+
+function waitForEscape(director) {
+  const scene = director.scene;
+  director.dialogueAdvanceKey ||= scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+  const key = director.dialogueAdvanceKey;
+  key.enabled = true;
+  key.reset?.();
+
+  return new Promise(resolve => {
+    const onUpdate = () => {
+      if (!Phaser.Input.Keyboard.JustDown(key)) return;
+      scene.events.off(Phaser.Scenes.Events.UPDATE, onUpdate);
+      key.reset?.();
+      resolve();
+    };
+    scene.events.on(Phaser.Scenes.Events.UPDATE, onUpdate);
+  });
+}
+
 function installEnglishTutorialCopy() {
   const gameScene = window.NBD_PHASER_GAME?.scene?.getScene?.("GameScene");
   const director = gameScene?.tutorialDirector;
@@ -79,16 +138,30 @@ function installEnglishTutorialCopy() {
     return;
   }
 
-  if (!director.showDialogue.__nbdEnglishCopyPatch) {
-    const originalShowDialogue = director.showDialogue.bind(director);
-    const patchedShowDialogue = function showDialogueInEnglish(payload = {}) {
-      return originalShowDialogue({
-        ...payload,
-        speaker: SPEAKERS.get(payload.speaker) || payload.speaker,
-        text: DIALOGUE.get(payload.text) || payload.text
-      });
+  installDialogueAdvanceStyle();
+
+  if (!director.showDialogue.__nbdEnglishPersistentDialoguePatch) {
+    const patchedShowDialogue = async function showDialogueInEnglishUntilEscape(payload = {}) {
+      const dialogue = director.ui?.dialogue;
+      if (!dialogue) return;
+
+      const speaker = SPEAKERS.get(payload.speaker) || payload.speaker || "";
+      const text = DIALOGUE.get(payload.text) || payload.text || "";
+      const kind = payload.kind || "speech";
+
+      dialogue.className = `tutorial-dialogue ${kind}`;
+      dialogue.querySelector("#tutorial-dialogue-speaker").textContent = speaker;
+      dialogue.querySelector("#tutorial-dialogue-text").textContent = text;
+      ensureAdvanceHint(dialogue).textContent = "ESC · Continue";
+
+      window.requestAnimationFrame(() => dialogue.classList.add("open"));
+      await waitForEscape(director);
+      dialogue.classList.remove("open");
+      await director.wait(240);
     };
+
     patchedShowDialogue.__nbdEnglishCopyPatch = true;
+    patchedShowDialogue.__nbdEnglishPersistentDialoguePatch = true;
     director.showDialogue = patchedShowDialogue;
   }
 
@@ -103,7 +176,7 @@ function installEnglishTutorialCopy() {
 }
 
 function installEnglishIntroModal() {
-  if (!UIScene.prototype.__nbdIntroModalCopyPatch) {
+  if (!UIScene.prototype.__nbdSireTutorialIntroPatch) {
     window.requestAnimationFrame(installEnglishIntroModal);
     return;
   }
@@ -116,7 +189,7 @@ function installEnglishIntroModal() {
     if (this.introOpen) {
       this.setModal(
         "Night Blood District",
-        `<p><strong>Your unlife began decades ago.</strong></p><p>Among vampires, you are still little more than a clumsy fledgling, useful for errands and minor jobs.</p><p>Start the night and listen for your sire's call.</p>`,
+        `<p>You were turned several decades ago. Among vampires, you are still little more than a clumsy fledgling with much to learn.</p><p>You spend your nights running errands and being sent from one place to another. You feel trapped in an unlife that promised to be far more exciting than it truly is.</p>`,
         "Begin the night · Enter"
       );
     }
