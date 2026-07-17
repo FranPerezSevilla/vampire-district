@@ -185,7 +185,7 @@ function installMissionInteraction(scene, director) {
 
       await director.showDialogue({
         speaker: "POLICE INFORMANT",
-        text: "He plans to hand over everything he knows before dawn. Reach him first.",
+        text: "He is wearing a grey coat and carrying a camera bag.",
         kind: "police",
         targetId: INFORMANT_ID
       });
