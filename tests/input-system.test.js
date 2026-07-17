@@ -166,7 +166,7 @@ test("InputSystem does not queue pointer or wheel actions while world input is l
   input.destroy();
 });
 
-test("InputSystem resets held actions when UI or task locks change", () => {
+test("InputSystem resets held actions when UI or task locks actually change", () => {
   const { scene, keys } = makeScene();
   const input = new InputSystem(scene, { keys });
   input.onPointerDown({ button: 0, clientX: 120, clientY: 80 });
@@ -174,6 +174,20 @@ test("InputSystem resets held actions when UI or task locks change", () => {
   scene.registry.events.emit("changedata-uiPaused", null, true, false);
   assert.equal(input.primaryHeld, false);
   assert.equal(keys.w.isDown, false);
+  input.destroy();
+});
+
+test("InputSystem keeps keyboard state when UIScene republishes the same pause value", () => {
+  const { scene, keys } = makeScene();
+  const input = new InputSystem(scene, { keys });
+  keys.w.isDown = true;
+
+  scene.registry.events.emit("changedata-uiPaused", null, false, false);
+
+  assert.equal(keys.w.isDown, true);
+  const frame = input.beginFrame();
+  assert.equal(frame.hasMovementIntent, true);
+  assert.deepEqual(frame.move, { x: 0, y: -1 });
   input.destroy();
 });
 
