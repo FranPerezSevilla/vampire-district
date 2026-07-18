@@ -66,6 +66,7 @@ export function createEmptyInputFrame(overrides = {}) {
     hasMovementIntent: false,
     aimWorld: { x: 0, y: 0 },
     pointerInside: false,
+    quietHeld: false,
     sprintHeld: false,
     primaryHeld: false,
     primaryPressed: false,
@@ -99,7 +100,9 @@ export function applyControlMode(frame, mode, worldEnabled = true) {
     worldEnabled: enabled,
     move: moveAllowed ? { ...frame.move } : { x: 0, y: 0 },
     hasMovementIntent: moveAllowed && Boolean(frame.hasMovementIntent),
-    sprintHeld: moveAllowed && Boolean(frame.sprintHeld),
+    quietHeld: moveAllowed && Boolean(frame.quietHeld),
+    // Kept as a neutral compatibility field until old snapshots/tests stop reading it.
+    sprintHeld: false,
     primaryHeld: allows(INPUT_ACTIONS.PRIMARY_ATTACK) && Boolean(frame.primaryHeld),
     primaryPressed: allows(INPUT_ACTIONS.PRIMARY_ATTACK) && Boolean(frame.primaryPressed),
     drainHeld: allows(INPUT_ACTIONS.DRAIN) && Boolean(frame.drainHeld),
