@@ -52,6 +52,7 @@ export class DrainSystem {
   canStart(frame) {
     return Boolean(
       frame?.worldEnabled
+      && frame?.drainHeld
       && !this.scene.transitionSystem?.active
       && !this.scene.interactionSystem?.isOpen
       && !this.scene.feedingSystem?.isActive()
