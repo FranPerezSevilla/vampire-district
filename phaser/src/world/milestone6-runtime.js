@@ -1,24 +1,6 @@
-import { CombatSystem } from "../combat/CombatSystem.js";
-import { UNARMED_ATTACK } from "../data/combat.js";
 import { GameScene } from "../scenes/GameScene.js";
 import { UIScene } from "../scenes/UIScene.js";
 import { PropDamageSystem } from "../systems/PropDamageSystem.js";
-
-function installPropAttackBridge() {
-  if (CombatSystem.prototype.__nbdDamageablePropsPatch) return;
-
-  const originalResolveAttackHits = CombatSystem.prototype.resolveAttackHits;
-  CombatSystem.prototype.resolveAttackHits = function resolveNpcAndPropHits(...args) {
-    const result = originalResolveAttackHits.apply(this, args);
-    if (this.attack) {
-      const origin = { x: this.scene.player.x, y: this.scene.player.y };
-      this.scene.propDamageSystem?.resolveAttack?.(this.attack, origin, UNARMED_ATTACK);
-    }
-    return result;
-  };
-
-  CombatSystem.prototype.__nbdDamageablePropsPatch = true;
-}
 
 function installPropRuntime() {
   if (GameScene.prototype.__nbdDamageablePropsPatch) return;
@@ -70,6 +52,5 @@ function installPropReportState() {
   UIScene.prototype.__nbdDamageablePropsPatch = true;
 }
 
-installPropAttackBridge();
 installPropRuntime();
 installPropReportState();
