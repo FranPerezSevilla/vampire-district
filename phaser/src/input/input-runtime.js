@@ -7,6 +7,7 @@ import { GameScene } from "../scenes/GameScene.js";
 import { InteractionSystem } from "../systems/InteractionSystem.js";
 import { PowersSystem } from "../systems/PowersSystem.js";
 import { RawAudio } from "../systems/RawAudioSystem.js";
+import { WeaponSystem } from "../systems/WeaponSystem.js";
 import { InputSystem } from "./InputSystem.js";
 import { createEmptyInputFrame } from "./actions.js";
 
@@ -56,6 +57,8 @@ function installGameSceneInputRuntime() {
     this.inputSystem = new InputSystem(this, { keys: this.keys });
     this.keys = this.inputSystem.keys;
     this.currentInputFrame = this.inputSystem.snapshot();
+    this.weaponSystem?.destroy?.();
+    this.weaponSystem = new WeaponSystem(this);
     this.combatSystem?.destroy?.();
     this.combatSystem = new CombatSystem(this);
     this.playerDamageSystem?.destroy?.();
@@ -72,6 +75,7 @@ function installGameSceneInputRuntime() {
     this.playerDamageSystem?.preUpdate(rawFrame);
     const frame = this.playerDamageSystem?.filterFrame(rawFrame) || rawFrame;
     this.currentInputFrame = frame;
+    this.weaponSystem?.update(frame);
 
     if (this.transitionSystem?.active) {
       this.nearestMovement = null;
