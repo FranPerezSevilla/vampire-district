@@ -35,6 +35,19 @@ export const ENEMY_MELEE_BY_TYPE = Object.freeze({
     recoveryMs: 880,
     cooldownMs: 420,
     color: 0xff9d35
+  }),
+  [NPC_TYPES.THUG]: Object.freeze({
+    id: "thug_hook",
+    label: "rooftop thug swing",
+    hungerDamage: 8,
+    startRange: 28,
+    range: 24,
+    halfAngle: 0.88,
+    windupMs: 520,
+    activeMs: 150,
+    recoveryMs: 900,
+    cooldownMs: 650,
+    color: 0xb36b42
   })
 });
 
