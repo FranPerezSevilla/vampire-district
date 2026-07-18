@@ -1,9 +1,9 @@
 import { MissionSystem } from "./systems/MissionSystem.js";
 import { RawAudio } from "./systems/RawAudioSystem.js";
 
-const SIRE_APPROVAL = "Well done. You silenced the journalist and returned as ordered. The veil holds. You have served me well tonight.";
+export const SIRE_APPROVAL = "Well done. You silenced the journalist and returned as ordered. The veil holds. You have served me well tonight.";
 
-function isAtReturnObjective(mission) {
+export function isAtReturnObjective(mission) {
   if (!mission || mission.step !== 3 || mission.completed || mission.failed) return false;
   const marker = mission.marker?.();
   return Boolean(marker && marker.label === "REPORT" && mission.isNear?.(marker));
