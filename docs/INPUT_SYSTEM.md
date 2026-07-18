@@ -12,7 +12,7 @@ The UI scene still owns UI-only keys such as menu/help and mission-panel navigat
 
 - `phaser/src/input/actions.js` — action names, control modes, empty-frame factory and pure action gating.
 - `phaser/src/input/InputSystem.js` — raw browser/Phaser input collection and frame creation.
-- `phaser/src/input/input-runtime.js` — integration with `GameScene`, `InteractionSystem`, `PowersSystem` and `CombatSystem`.
+- `phaser/src/input/input-runtime.js` — integration with `GameScene`, interactions, powers, combat, player damage and draining.
 - `phaser/src/input/tutorial-input-adapter.js` — maps tutorial states to central control modes.
 - `phaser/src/utils/geometry.js` — pure vector, cone, client-to-game and screen-to-world helpers.
 - `phaser/src/movement-controls.js` — thin bootstrap plus HUD copy compatibility; it no longer owns gameplay controls.
@@ -50,19 +50,19 @@ Every active `GameScene` update receives one object with this shape:
 }
 ```
 
-The same frame is consumed by movement, traversal, interactions, powers and unarmed combat. Right-click drain and weapon cycling remain future consumers rather than future input paths.
+The same frame is consumed by movement, traversal, interactions, powers, unarmed combat, enemy-damage filtering and contextual draining. Weapon cycling remains a future consumer rather than a future input path.
 
 ## Current bindings
 
 - WASD / arrows create the normalized `move` vector.
 - Mouse position creates responsive `aimWorld` coordinates.
 - Left mouse creates `primaryHeld` and `primaryPressed`; `CombatSystem` consumes the pressed edge for one unarmed attack.
+- Right mouse creates `drainHeld` and `drainPressed`; `DrainSystem` uses the pressed edge to start and the held state to maintain the channel.
 - Space creates `traversePressed` and currently remains `sprintHeld` for compatibility with the existing tutorial.
-- E creates `interactPressed` and menu confirmation.
+- E creates `interactPressed` and menu confirmation. It no longer starts a drain.
 - Q creates `dashPressed`.
 - R creates `whisperPressed`.
 - F creates `bloodSensePressed`.
-- Right mouse creates drain held/pressed state for Milestone 4 and suppresses the browser context menu inside the canvas.
 - Wheel events are coalesced into a discrete `weaponStep` for Milestone 7.
 
 Space stops modifying speed in Milestone 5. The compatibility behaviour is intentionally isolated to one line in `InputSystem`.
@@ -73,7 +73,7 @@ Space stops modifying speed in Milestone 5. The compatibility behaviour is inten
 |---|---|
 | `full` | All current and future world actions. |
 | `movement` | Movement, aim and traversal. |
-| `drain` | Movement, aim, primary attack, traversal and the current E-based tutorial drain interaction. |
+| `drain` | Movement, aim, primary attack, right-click drain, traversal and limited tutorial interaction. |
 | `tip` | Movement, aim, traversal and clue interaction. |
 | `locked` | Aim tracking only; no world action is emitted. |
 
@@ -86,7 +86,7 @@ Responsive CSS changes the displayed canvas size without changing its internal g
 1. Browser client coordinates are converted to internal game coordinates using the canvas bounding rectangle and camera dimensions.
 2. Internal game coordinates are converted to world coordinates using the camera world view and zoom.
 
-`CombatSystem` consumes this shared result directly. It does not perform a second viewport conversion.
+`CombatSystem` and `DrainSystem` consume this shared result directly. Neither performs a second viewport conversion.
 
 ## Browser lifecycle
 
@@ -101,7 +101,7 @@ Responsive CSS changes the displayed canvas size without changing its internal g
 
 `UIScene` republishes its current pause state during rendering. The input layer compares new and previous lock values and ignores identical publications, preventing WASD and other keyboard state from being erased every frame.
 
-Pointer-held actions are cancelled when the pointer leaves the canvas. The canvas is focusable and receives focus after dialogue clicks so keyboard control returns immediately. Pointer and wheel actions received while world input is locked are discarded rather than replayed after a dialogue or modal closes. Context-menu suppression is scoped to the game canvas only. Wheel scrolling is only prevented when a future `WeaponSystem` explicitly enables wheel capture.
+Pointer-held actions are cancelled when the pointer leaves the canvas. This also causes an active right-click drain to cancel on the next simulation frame. The canvas is focusable and receives focus after dialogue clicks so keyboard control returns immediately. Pointer and wheel actions received while world input is locked are discarded rather than replayed after a dialogue or modal closes. Context-menu suppression is scoped to the game canvas only. Wheel scrolling is only prevented when a future `WeaponSystem` explicitly enables wheel capture.
 
 ## Runtime ownership
 
@@ -112,9 +112,11 @@ Pointer-held actions are cancelled when the pointer leaves the canvas. The canva
 - movement-vector application;
 - interaction-menu navigation;
 - power action dispatch;
-- forwarding primary attack and aim to `CombatSystem`.
+- forwarding primary attack and aim to `CombatSystem`;
+- forwarding right-button state and aim to `DrainSystem`;
+- applying `PlayerDamageSystem` action filtering during hit stun.
 
-`PowersSystem`, `InteractionSystem` and `CombatSystem` receive abstract actions rather than querying raw keys or browser events.
+`PowersSystem`, `InteractionSystem`, `CombatSystem`, `DrainSystem` and `PlayerDamageSystem` receive abstract actions rather than querying raw keys or browser events.
 
 ## Tests
 
@@ -136,7 +138,7 @@ The zero-dependency Node suite covers:
 - responsive client-to-game mapping;
 - camera screen-to-world mapping;
 - InputSystem edge consumption;
-- combat-mode permission for primary attack.
+- combat-mode permission for primary attack and right-click drain.
 
 The same command runs automatically in GitHub Actions on pushes to `main` and on pull requests.
 
@@ -145,5 +147,4 @@ The same command runs automatically in GitHub Actions on pushes to `main` and on
 - The integration layer still replaces a small set of legacy prototype methods because the original vertical slice predates first-class bootstrap composition. Final core-file migration belongs to Milestone 10.
 - UI-only keyboard handling remains in `UIScene`; the new system is authoritative for world/gameplay input.
 - Wheel events are collected but not consumed by gameplay until `WeaponSystem` exists.
-- Right-click drain fields are collected but intentionally unused until Milestone 4.
 - Browser smoke tests have not yet been automated.
