@@ -19,6 +19,7 @@ Open `index.html` through a local/static web server, or use the published GitHub
 - Player hit stun, invulnerability and incoming damage converted into Hunger.
 - Contextual right-click draining for downed targets and unaware targets approached from behind.
 - Default running, optional quiet movement and deterministic contextual traversal.
+- Damageable streetlights that break through aimed attacks, create darkness and trigger sight/hearing reactions.
 - Critical Hunger feedback and frenzy failure at the Hunger limit.
 
 ## Current controls
@@ -26,10 +27,10 @@ Open `index.html` through a local/static web server, or use the published GitHub
 - WASD / arrows: run by default.
 - Hold Shift: move slowly and make substantially less footstep noise.
 - Mouse: aim and face.
-- Left mouse: punch in the aimed direction.
+- Left mouse: punch NPCs or damage aimed world objects.
 - Right mouse: aim at a valid target and hold to drain.
 - Space: contextual traversal only — jump, climb, descend or use a sewer entrance.
-- E: non-traversal interactions; legacy stun/kill options remain temporarily available outside the guided tutorial.
+- E: non-traversal interactions; it no longer breaks streetlights.
 - Q: Shadow Dash.
 - R: Vampiric Whisper.
 - F: Blood Sense.
@@ -50,4 +51,4 @@ npm test
 
 ## Documentation
 
-Start with [`docs/README.md`](docs/README.md). The documentation set includes the current project snapshot, functional specification, technical architecture, implemented input/combat/drain/movement systems and the dependency-ordered roadmap.
+Start with [`docs/README.md`](docs/README.md). The documentation set includes the current project snapshot, functional specification, technical architecture, implemented input/combat/drain/movement/prop systems and the dependency-ordered roadmap.
