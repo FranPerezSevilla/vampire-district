@@ -11,6 +11,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — current architecture, target architecture and engineering constraints.
 - [Input system](INPUT_SYSTEM.md) — central frame contract, browser mapping, control modes and tests.
 - [Combat system](COMBAT_SYSTEM.md) — mouse combat, NPC resilience and damage-to-Hunger loop.
+- [Police alert](POLICE_ALERT.md) — progressive wanted escalation for police assault and neutralization.
 - [Drain system](DRAIN_SYSTEM.md) — right-click eligibility, rear/downed targeting, channel cancellation and perception.
 - [Movement system](MOVEMENT_SYSTEM.md) — default running, Shift quiet movement, footsteps and deterministic traversal.
 - [Damageable props](PROP_SYSTEM.md) — streetlight durability, attack integration, darkness, reactions and events.
