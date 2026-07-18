@@ -1,6 +1,6 @@
 # Project snapshot
 
-_Last updated: 2026-07-17_
+_Last updated: 2026-07-18_
 
 ## Product vision
 
@@ -37,8 +37,10 @@ The player is a young vampire carrying out orders for their sire. The current ve
 6. The player learns how Hunger and witnesses work.
 7. A police informant on the station roof gives the journalist's location.
 8. The sire gives one final instruction.
-9. The player reaches the nightclub area, handles the journalist and returns to the refuge.
-10. The final report is presented as approval from the sire.
+9. The player reaches the nightclub area and handles the journalist.
+10. Handling the journalist does not complete the mission; the active objective becomes returning to the rooftop refuge.
+11. On reaching the refuge, the sire acknowledges the completed order in a dialogue bubble.
+12. Only after that bubble is dismissed does the mission become complete and the final night report open.
 
 ## Current control model
 
@@ -103,6 +105,8 @@ Milestones 1 and 2 establish reusable input and combat contracts. The remaining 
 - Taking damage will increase Hunger instead of introducing a separate conventional player health bar in the first combat implementation.
 - New combat code consumes `InputSystem` actions rather than querying raw browser or Phaser keys.
 - NPC durability is represented as resilience, ending in a downed state rather than immediate death.
+- Neutralizing the journalist changes the objective to returning home; mission completion occurs only at the refuge.
+- The finale order is sire dialogue first, final report second.
 
 ## Open design decisions
 
@@ -124,4 +128,4 @@ Milestones 1 and 2 establish reusable input and combat contracts. The remaining 
 
 ## Immediate project priority
 
-Validate the Milestone 2 combat loop in-browser, then implement Milestone 3: enemy attack requests, player hit stun, invulnerability frames and incoming damage converted into Hunger. Right-click drain and weapons remain later milestones and must reuse the same input and combat contracts.
+Validate the Milestone 2 combat loop and the refuge-gated finale in-browser, then implement Milestone 3: enemy attack requests, player hit stun, invulnerability frames and incoming damage converted into Hunger. Right-click drain and weapons remain later milestones and must reuse the same input and combat contracts.
