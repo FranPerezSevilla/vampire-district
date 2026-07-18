@@ -3,7 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.js",
-    "test:input": "node --test tests/input-actions.test.js tests/geometry.test.js tests/input-system.test.js"
+    "test": "npm run test:unit",
+    "test:unit": "node --test tests/*.test.js",
+    "test:input": "node --test tests/input-actions.test.js tests/geometry.test.js tests/input-system.test.js",
+    "test:browser": "playwright test",
+    "serve:test": "python3 -m http.server 4173 --bind 127.0.0.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1"
   }
 }
