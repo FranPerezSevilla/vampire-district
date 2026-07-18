@@ -26,6 +26,10 @@ class FakeTarget {
   getBoundingClientRect() {
     return { left: 100, top: 50, width: 720, height: 480 };
   }
+  hasAttribute() {
+    return false;
+  }
+  focus() {}
 }
 
 function key() {
@@ -66,6 +70,7 @@ globalThis.Phaser = {
 };
 
 const { InputSystem } = await import("../phaser/src/input/InputSystem.js");
+await import("../phaser/src/input/movement-input-adapter.js");
 const { CONTROL_MODES } = await import("../phaser/src/input/actions.js");
 
 function makeScene() {
@@ -109,11 +114,12 @@ function makeScene() {
   };
 }
 
-test("InputSystem creates one action frame from keyboard and CSS-scaled pointer input", () => {
+test("InputSystem creates movement, quiet and traversal actions from one frame", () => {
   const { scene, keys } = makeScene();
   const input = new InputSystem(scene, { keys });
   input.onPointerMove({ clientX: 460, clientY: 290 });
   keys.d.isDown = true;
+  keys.shift.isDown = true;
   keys.space.isDown = true;
   keys.space._justDown = true;
   keys.dash._justDown = true;
@@ -121,7 +127,8 @@ test("InputSystem creates one action frame from keyboard and CSS-scaled pointer 
   const frame = input.beginFrame();
   assert.deepEqual(frame.move, { x: 1, y: 0 });
   assert.equal(frame.hasMovementIntent, true);
-  assert.equal(frame.sprintHeld, true);
+  assert.equal(frame.quietHeld, true);
+  assert.equal(frame.sprintHeld, false);
   assert.equal(frame.traversePressed, true);
   assert.equal(frame.dashPressed, true);
   assert.deepEqual(frame.aimWorld, { x: 460, y: 280 });
@@ -132,16 +139,31 @@ test("InputSystem creates one action frame from keyboard and CSS-scaled pointer 
   input.destroy();
 });
 
+test("holding Space never becomes sprint state", () => {
+  const { scene, keys } = makeScene();
+  const input = new InputSystem(scene, { keys });
+  keys.w.isDown = true;
+  keys.space.isDown = true;
+
+  const frame = input.beginFrame();
+  assert.equal(frame.hasMovementIntent, true);
+  assert.equal(frame.sprintHeld, false);
+  assert.equal(frame.quietHeld, false);
+  input.destroy();
+});
+
 test("InputSystem central control modes block powers without disabling raw keys", () => {
   const { scene, keys } = makeScene();
   const input = new InputSystem(scene, { keys });
   input.setControlMode(CONTROL_MODES.MOVEMENT);
   keys.d.isDown = true;
+  keys.shift.isDown = true;
   keys.dash._justDown = true;
   keys.space._justDown = true;
 
   const frame = input.beginFrame();
   assert.equal(frame.hasMovementIntent, true);
+  assert.equal(frame.quietHeld, true);
   assert.equal(frame.traversePressed, true);
   assert.equal(frame.dashPressed, false);
   assert.equal(keys.dash.enabled, true);
