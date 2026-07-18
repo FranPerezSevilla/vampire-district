@@ -20,7 +20,7 @@ export class MissionSystem {
     this.rooftopJumps = 0;
     this.tipCollected = false;
     this.resultPublished = false;
-    this.lastMissionText = "You are a vampire sent to keep the clan's veil intact. Cross the rooftops, reach the police station roof, and force a tip about the journalist.";
+    this.lastMissionText = "Cross the rooftops, reach the police station roof and obtain the journalist's location.";
   }
 
   update() {
@@ -28,7 +28,11 @@ export class MissionSystem {
     if (this.completed || this.failed) return;
 
     if (this.step === 1 && this.isNear(OBJECTIVE_POINTS.club)) {
-      this.setStep(2, "Locate and neutralize the journalist outside the nightclub. Stun, kill or drain are possible, but public draining risks breaking the veil.", "You reach the nightclub district. The journalist is nearby.");
+      this.setStep(
+        2,
+        "Locate and neutralize the journalist outside the nightclub. Weapons or draining can solve the objective, but public feeding risks the veil.",
+        "You reach the nightclub district. The journalist is nearby."
+      );
     }
 
     if (this.step === 3 && this.isNear(OBJECTIVE_POINTS.refuge)) {
@@ -49,6 +53,7 @@ export class MissionSystem {
     if (journalist.inactive !== shouldHide) {
       journalist.inactive = shouldHide;
       journalist.container?.setVisible(!shouldHide && journalist.layer === this.scene.currentLayer);
+      this.scene.npcSystem?.rebuildSpatialIndex?.();
     }
   }
 
@@ -83,11 +88,20 @@ export class MissionSystem {
   }
 
   setStep(step, missionText, actionText) {
+    const previousStep = this.step;
     this.step = step;
     this.lastMissionText = missionText;
     this.scene.lastActionText = actionText;
     RawAudio.play("confirm");
     this.scene.redrawLayer(actionText);
+    if (step !== previousStep) {
+      this.scene.events?.emit?.("mission:step-changed", {
+        previousStep,
+        step,
+        missionText,
+        actionText
+      });
+    }
   }
 
   collectInteractions() {
@@ -114,14 +128,14 @@ export class MissionSystem {
         id: "mission_placeholder_journalist",
         type: "mission",
         label: "Assess journalist",
-        detail: "choose stun / kill / drain nearby",
+        detail: "use an equipped weapon or drain a valid target",
         priority: 15,
         distance: this.distanceTo(OBJECTIVE_POINTS.journalist),
         x: OBJECTIVE_POINTS.journalist.x,
         y: OBJECTIVE_POINTS.journalist.y,
         run: () => {
           RawAudio.play("menu");
-          this.scene.lastActionText = "The journalist is close. As a vampire, decide: stun, kill, or drain. Public draining may tear the veil.";
+          this.scene.lastActionText = "The journalist is close. Isolate them, attack with the equipped weapon, or drain when vulnerable.";
         }
       });
     }
@@ -167,12 +181,14 @@ export class MissionSystem {
   publishResult(status, title, subtitle) {
     if (this.resultPublished) return;
     this.resultPublished = true;
-    this.scene.registry.set("missionResult", {
+    const result = {
       status,
       title,
       subtitle,
       stats: this.resultStats()
-    });
+    };
+    this.scene.statePublisher?.set?.("missionResult", result)
+      || this.scene.registry.set("missionResult", result);
   }
 
   resultStats() {
@@ -184,6 +200,9 @@ export class MissionSystem {
       police: this.scene.policeSystem?.summary?.() || "Police unavailable",
       witnesses: this.scene.witnessSystem?.summary?.() || "Witnesses unavailable",
       evidence: this.scene.evidenceSystem?.summary?.() || "Evidence unavailable",
+      props: this.scene.propDamageSystem?.summary?.() || "Props unavailable",
+      weapon: this.scene.weaponSystem?.summary?.() || "Weapon unavailable",
+      ai: this.scene.aiStateSystem?.summary?.() || "AI unavailable",
       npc: this.scene.npcSystem?.summary?.() || "NPCs unavailable",
       last: this.scene.lastActionText || "--"
     };
@@ -192,7 +211,7 @@ export class MissionSystem {
   activeTaskText() {
     if (this.failed) return `FAILED · ${this.failureReason || "The run is over."}`;
     if (this.completed) return "COMPLETE · Report accepted by the clan.";
-    if (this.step === 0) return `Active Task: vampire rooftop route to police roof · jumps ${Math.min(this.rooftopJumps, REQUIRED_ROOFTOP_JUMPS)}/${REQUIRED_ROOFTOP_JUMPS} · neutralize the blocker and collect the informant tip.`;
+    if (this.step === 0) return `Active Task: rooftop route to police roof · jumps ${Math.min(this.rooftopJumps, REQUIRED_ROOFTOP_JUMPS)}/${REQUIRED_ROOFTOP_JUMPS} · neutralize the blocker and collect the informant tip.`;
     if (this.step === 1) return "Active Task: reach the nightclub district. The journalist is now revealed.";
     if (this.step === 2) return "Active Task: isolate and neutralize the journalist. Avoid public draining; it can tear the veil.";
     if (this.step === 3) return "Active Task: return to the rooftop refuge and report.";
@@ -202,9 +221,9 @@ export class MissionSystem {
   objectiveText() {
     if (this.failed) return `FAILED · ${this.failureReason || "The run is over."}`;
     if (this.completed) return "COMPLETE · Report to the clan validated.";
-    if (this.step === 0) return "1/4 Vampire route: jump across roofs, beat the blocker, and reach the police roof tip.";
-    if (this.step === 1) return "2/4 Tip acquired: reach the nightclub by street, roof routes, or sewers.";
-    if (this.step === 2) return "3/4 Neutralize the journalist: stun, kill or drain. Public drain can break the veil.";
+    if (this.step === 0) return "1/4 Vampire route: jump across roofs, beat the blocker and reach the police roof tip.";
+    if (this.step === 1) return "2/4 Tip acquired: reach the nightclub by street, roof routes or sewers.";
+    if (this.step === 2) return "3/4 Neutralize the journalist. Public draining can break the veil.";
     if (this.step === 3) return "4/4 Return to the rooftop refuge and report.";
     return this.lastMissionText;
   }
