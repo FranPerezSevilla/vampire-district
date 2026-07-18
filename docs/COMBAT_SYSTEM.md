@@ -1,18 +1,19 @@
 # Combat system
 
-_Status: Milestones 2–7 are implemented; browser regression and feel tuning remain pending._
+_Status: Milestones 2–8 are implemented; browser regression and feel tuning remain pending._
 
 ## Purpose
 
 The combat layer covers:
 
 - mouse-directed attacks using the equipped weapon;
-- NPC resilience, stagger and persistent downed state;
+- NPC resilience, stagger and downed state;
 - damageable world props;
-- hostile police/hunter melee attacks;
+- role-approved police, hunter and rooftop-thug melee attacks;
 - incoming damage converted into Hunger;
 - right-click contextual draining;
-- weapon-specific noise and visual reactions.
+- weapon-specific noise and visual reactions;
+- AI priority, reporting interruption and timed recovery.
 
 All gameplay input comes from the authoritative `InputSystem` frame.
 
@@ -21,15 +22,17 @@ All gameplay input comes from the authoritative `InputSystem` frame.
 - `phaser/src/data/combat.js` — NPC combat states, resilience and shared melee helpers.
 - `phaser/src/data/weapons.js` — equipped-weapon definitions, ammo and hitscan helpers.
 - `phaser/src/data/player-combat.js` — enemy melee definitions and player damage state.
+- `phaser/src/data/ai.js` — AI priority, roles, recovery, police formation and hunter prediction.
 - `phaser/src/data/drain.js` — drain eligibility and target selection.
 - `phaser/src/combat/CombatSystem.js` — aim, equipped attack lifecycle, melee/hitscan resolution and NPC damage.
 - `phaser/src/combat/PlayerDamageSystem.js` — hostile attacks, player stun, invulnerability and Hunger damage.
 - `phaser/src/combat/DrainSystem.js` — right-click target/channel behaviour.
 - `phaser/src/systems/WeaponSystem.js` — inventory, wheel selection, ammo, weapon audio and attack noise.
+- `phaser/src/systems/AiStateSystem.js` — resolved NPC state, conflict cancellation and recovery.
 - `phaser/src/systems/PropDamageSystem.js` — world-prop damage endpoint.
 - `phaser/src/systems/FeedingSystem.js` — Hunger relief and drain completion.
-- `phaser/src/input/input-runtime.js` — central system update order.
-- `tests/combat.test.js`, `tests/player-damage.test.js`, `tests/drain.test.js`, `tests/weapons.test.js`.
+- `phaser/src/ai/milestone8-runtime.js` — police roles, witness interruption, thug retaliation and hunter memory.
+- `tests/combat.test.js`, `tests/player-damage.test.js`, `tests/drain.test.js`, `tests/weapons.test.js`, `tests/ai.test.js`.
 
 ## Controls
 
@@ -44,7 +47,7 @@ Weapon cycling is blocked by tutorial modes, UI locks, active attacks, draining,
 
 ## Equipped attack lifecycle
 
-Each attack snapshots:
+Each player attack snapshots:
 
 - equipped weapon config;
 - aim direction;
@@ -94,16 +97,16 @@ Candidate pool:
 
 Validation:
 
-1. Candidate lies in front of stored direction.
-2. Forward distance is inside range.
-3. Perpendicular distance intersects target radius plus bullet width.
-4. Navigation/world geometry reports a clear segment.
-5. Closest valid forward candidate wins.
-6. Perpendicular distance and stable ID break ties.
+1. candidate lies in front of stored direction;
+2. forward distance is inside range;
+3. perpendicular distance intersects target radius plus bullet width;
+4. navigation/world geometry reports a clear segment;
+5. closest valid forward candidate wins;
+6. perpendicular distance and stable ID break ties.
 
 The same ordered ray decides between NPCs and props. A nearer entity or building blocks a farther target. A stored endpoint draws the tracer.
 
-## NPC resilience
+## NPC resilience and AI priority
 
 | NPC type | Maximum resilience |
 |---|---:|
@@ -113,15 +116,31 @@ The same ordered ray decides between NPCs and props. A nearer entity or building
 | Rooftop thug | 4 |
 | Hunter | 5 |
 
-State flow:
+Combat state:
 
 ```text
 active → staggered → downed → dead / drained
 ```
 
-At zero resilience the NPC stops movement, pursuit, attacking and reporting. It remains a valid drain target.
+Resolved AI priority:
 
-Resulting baseline hit counts:
+```text
+inactive/dead
+→ downed
+→ being drained
+→ staggered
+→ attacking
+→ chasing
+→ fleeing/reporting
+→ lured
+→ investigating sound
+→ searching
+→ patrolling/idle
+```
+
+At zero resilience an NPC cannot move, pursue, attack or report. It remains a valid drain target. Police and hunters may later recover; civilians, journalist and rooftop thug do not.
+
+Resulting baseline player hit counts:
 
 | Weapon | Civilian / journalist | Police / thug | Hunter |
 |---|---:|---:|---:|
@@ -133,7 +152,9 @@ Resulting baseline hit counts:
 
 ### Melee
 
-A confirmed melee hit uses ordinary-violence witness/police paths. Heard-only NPCs inside weapon sound range turn and show `WTF`; hearing alone does not pursue or report.
+A confirmed melee hit uses one ordinary-violence dispatch. Visual witnesses enter their type-specific response. Heard-only NPCs inside weapon sound range turn and show `WTF`; hearing alone does not pursue or report.
+
+The hit victim receives its own state transition separately, preventing duplicate victim/witness alarms.
 
 ### Pistol
 
@@ -145,9 +166,23 @@ A gunshot emits even on a miss:
 - hunters/thugs who see it become alarmed;
 - heard-only NPCs turn and show `WTF` without automatic pursuit/reporting.
 
+Confirmed visual response clears the heard-only marker before chase/report selection.
+
 ## Enemy attacks
 
-Milestone 3 reuses existing hostility rather than a final AI state machine.
+`PlayerDamageSystem` owns every enemy attack phase. AI roles decide which enemy may request one.
+
+### Rooftop thug swing
+
+- Hunger damage: +8;
+- start range: 28;
+- hit range: 24;
+- windup: 520 ms;
+- active: 150 ms;
+- recovery: 900 ms;
+- cooldown: 650 ms.
+
+The thug remains passive during dialogue and becomes hostile after the first confirmed player hit. His long windup is designed to be readable in the tutorial.
 
 ### Police baton
 
@@ -159,6 +194,8 @@ Milestone 3 reuses existing hostility rather than a final AI state machine.
 - recovery: 620 ms;
 - cooldown: 260 ms.
 
+Only the police officer assigned the current `attacker` role may begin a baton attack. Other visible officers move to containment positions. Leadership can hand off after the active turn/recovery instead of every officer attacking together.
+
 ### Hunter heavy strike
 
 - Hunger damage: +20;
@@ -169,7 +206,48 @@ Milestone 3 reuses existing hostility rather than a final AI state machine.
 - recovery: 880 ms;
 - cooldown: 420 ms.
 
+A hunter may request the attack while directly hunting or while valid last-known-position memory remains.
+
 The direction and attacker position are captured at attack start. The player can dodge outside the stored range/arc.
+
+## Police encounter roles
+
+During confirmed contact:
+
+- one deterministic officer is `attacker`;
+- the role remains stable for a finite window;
+- officers in attack cooldown are penalized during the next selection;
+- remaining officers use different containment slots;
+- soft separation still adjusts paths;
+- the existing surrounded-arrest check remains active.
+
+Containment radii are 43/49/55 units for wanted levels 1/2/3.
+
+## Civilian/journalist interruption
+
+Visual violence creates:
+
+```text
+reaction → flee/report
+```
+
+A hit during flight creates stagger. The witness retains report target/reason and resumes afterward. Downing, draining, killing, hiding or intercepting cancels the report permanently. Heard-only response never creates a report intent.
+
+## Hunter pursuit memory
+
+A direct sighting stores a point predicted 54 units ahead of current player movement. The hunter retains that point for 6200 ms after losing sight, including through shadow. After memory expires it returns to blood tracking, route blocking or patrol.
+
+## Downed recovery
+
+| NPC type | Delay | Restored resilience |
+|---|---:|---:|
+| Civilian | never | — |
+| Journalist | never | — |
+| Rooftop thug | never | — |
+| Police | 18 s | 2 / 4 |
+| Hunter | 24 s | 3 / 5 |
+
+Recovered enemies begin with a short stagger. Police rejoin search; hunters resume hunt memory. A drain in progress prevents recovery, and a completed drain/kill resolves permanently.
 
 ## Player damage and Hunger
 
@@ -184,6 +262,7 @@ A confirmed hit:
 
 ```text
 enemy active window
+  → role/intent permission
   → range/arc check
   → invulnerability check
   → current weapon attack/drain cancelled
@@ -210,7 +289,7 @@ Hit stun suppresses movement, weapon attack/cycling, powers, traversal, E intera
 - not alarmed, chasing, attacking, reacting or reporting;
 - range/aim/geometry valid.
 
-The channel requires held right mouse and cancels on release, movement, damage, layer/range loss or blocked geometry. See [Drain system](DRAIN_SYSTEM.md).
+The channel requires held right mouse and cancels on release, movement, damage, layer/range loss or blocked geometry. Break range is 42. Active drain has higher AI priority than attack/chase/report and blocks timed recovery. See [Drain system](DRAIN_SYSTEM.md).
 
 ## Props
 
@@ -235,7 +314,7 @@ Player combat provides:
 - persistent weapon/ammo HUD;
 - weapon-change and empty feedback.
 
-Enemy combat provides telegraph arcs, camera shake, invulnerability flicker and `HUNGER +N` feedback.
+Enemy combat provides telegraph arcs, camera shake, invulnerability flicker and `HUNGER +N` feedback. Police formation is communicated through actual positioning rather than permanent role labels.
 
 Draining provides valid-target rings, active tether, `HOLD RMB`, progress and invalid feedback.
 
@@ -244,10 +323,11 @@ Draining provides valid-target rings, active tether, `HOLD RMB`, progress and in
 The rooftop sequence remains Unarmed:
 
 1. aim at the thug;
-2. knock him down with four punches;
-3. aim and hold right mouse to drain.
+2. the first hit makes him retaliate with a slow telegraph;
+3. knock him down with four punches;
+4. aim and hold right mouse to drain.
 
-Weapon cycling is not allowed by the tutorial control mode. It becomes available after full control is restored.
+Weapon cycling is not allowed by the tutorial control mode. The thug never recovers after knockdown.
 
 ## Automated tests
 
@@ -262,20 +342,26 @@ Coverage includes:
 - aim dead-zone and melee hit/miss geometry;
 - resilience/downed transitions;
 - enemy attack timing, damage and invulnerability;
+- thug timing/damage;
 - drain eligibility and priority;
 - weapon inventory/cycling;
 - pipe strength/range/cadence;
 - pistol ammo/empty rejection;
 - hitscan nearest-target, width, range and obstruction;
-- prop durability and repeated-damage rejection.
+- prop durability and repeated-damage rejection;
+- AI priority and sight-over-sound;
+- witness interruption;
+- police leader/containment selection;
+- hunter prediction;
+- recovery timing/resilience.
 
 ## Known limitations
 
-- Enemy combat still relies on existing police/hunter flags rather than a unified AI priority state machine.
-- The rooftop thug and civilians do not retaliate yet.
+- AI priority is centralized, but movement is still distributed among specialist systems through runtime adapters.
+- Police containment uses target slots and soft separation rather than full tactical path planning.
+- Hunter prediction uses current movement direction, not learned route history.
 - All three prototype weapons are owned from the start.
 - Pistol reload/replenishment is not implemented.
 - Hitscan obstruction reuses navigation line-clear checks.
 - Legacy E stun/kill actions remain temporarily available outside the guided tutorial.
-- Combat/weapon/perception integration still contains adapter debt.
-- Browser-level validation of wheel ownership, tracer alignment, obstruction, weapon balance and the complete mission remains required.
+- Browser-level validation of formations, recovery timing, hunter memory, weapon balance and the complete mission remains required.
