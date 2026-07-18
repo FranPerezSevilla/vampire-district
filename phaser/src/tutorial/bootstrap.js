@@ -9,7 +9,16 @@ function attachTutorialDirector() {
     return;
   }
   if (scene.tutorialDirector) return;
-  scene.tutorialDirector = new TutorialDirector(scene, uiScene);
+
+  const director = new TutorialDirector(scene, uiScene);
+  scene.tutorialDirector = director;
+  const startIfReady = () => {
+    if (!uiScene.introOpen && !director.started) void director.startIntro();
+  };
+  scene.registry?.events?.on?.("changedata-uiPaused", (_parent, paused) => {
+    if (!paused) startIfReady();
+  });
+  startIfReady();
 }
 
 attachTutorialDirector();
