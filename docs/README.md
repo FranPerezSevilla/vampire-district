@@ -8,13 +8,15 @@ This directory is the project source of truth for design, implementation and pla
 - [Functional specification](FUNCTIONAL_SPEC.md) — intended player experience and gameplay rules.
 - [Mission flow](MISSION_FLOW.md) — journalist handling, return-to-refuge completion rule and sire-dialogue-to-report ordering.
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — current architecture, target architecture and engineering constraints.
-- [Input system](INPUT_SYSTEM.md) — implemented Milestone 1 frame contract, browser mapping, control modes and tests.
-- [Combat system](COMBAT_SYSTEM.md) — implemented mouse combat, NPC resilience and damage-to-Hunger loop.
-- [Drain system](DRAIN_SYSTEM.md) — Milestone 4 right-click eligibility, rear/downed targeting, channel cancellation and perception.
+- [Input system](INPUT_SYSTEM.md) — central frame contract, browser mapping, control modes and tests.
+- [Combat system](COMBAT_SYSTEM.md) — mouse combat, NPC resilience and damage-to-Hunger loop.
+- [Drain system](DRAIN_SYSTEM.md) — right-click eligibility, rear/downed targeting, channel cancellation and perception.
+- [Movement system](MOVEMENT_SYSTEM.md) — default running, Shift quiet movement, footsteps and deterministic traversal.
 - [Milestone 1 regression](MILESTONE_1_REGRESSION.md) — browser, viewport, tutorial and stuck-input validation.
 - [Milestone 2 regression](MILESTONE_2_REGRESSION.md) — combat, resilience, tutorial and refuge-finale browser validation.
 - [Milestone 3 regression](MILESTONE_3_REGRESSION.md) — enemy attacks, Hunger damage, hit stun and invulnerability validation.
 - [Milestone 4 regression](MILESTONE_4_REGRESSION.md) — right-click targeting, channel, rear/downed eligibility and perception validation.
+- [Milestone 5 regression](MILESTONE_5_REGRESSION.md) — movement speed, quiet footsteps, Space traversal and route-conflict validation.
 - [Control scheme](CONTROL_SCHEME.md) — target keyboard-and-mouse controls and interaction priority rules.
 - [Roadmap](ROADMAP.md) — ordered milestones with acceptance criteria.
 
