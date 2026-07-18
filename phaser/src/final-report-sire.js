@@ -6,29 +6,15 @@ function installFinalReportStyle() {
   const style = document.createElement("style");
   style.id = "nbd-final-report-sire-style";
   style.textContent = `
-    .final-report-sire {
+    .final-report-outcome {
       margin: 0 0 16px;
-      padding: 15px 17px;
-      border-left: 3px solid rgba(167, 92, 255, .82);
-      background: linear-gradient(145deg, rgba(47, 26, 73, .44), rgba(10, 8, 18, .36));
-    }
-
-    .final-report-sire__speaker {
-      display: block;
-      margin-bottom: 7px;
-      color: #cda6ff;
-      font-size: 10px;
-      font-weight: 900;
-      letter-spacing: .13em;
-      text-transform: uppercase;
-    }
-
-    .final-report-sire p {
-      margin: 0;
-      color: #f4ecff;
-      font-size: clamp(17px, 1.45vw, 22px);
+      padding: 13px 15px;
+      border-left: 3px solid rgba(120, 199, 163, .82);
+      background: linear-gradient(145deg, rgba(20, 51, 42, .42), rgba(8, 15, 15, .36));
+      color: #e5fff2;
+      font-size: clamp(15px, 1.2vw, 19px);
       font-weight: 720;
-      line-height: 1.32;
+      line-height: 1.34;
     }
 
     .final-report-summary {
@@ -56,7 +42,7 @@ function installSireFinalReport() {
       const stats = this.escapeHtml(this.statsText(data));
       this.setModal(
         "REPORT ACCEPTED",
-        `<div class="final-report-sire"><span class="final-report-sire__speaker">YOUR SIRE · IN YOUR MIND</span><p>Well done. The journalist is silenced, and the veil remains intact. You have served me well tonight.</p></div><div class="final-report-summary">Night report</div><pre>${stats}</pre>`,
+        `<div class="final-report-outcome">The journalist is silenced. You returned to the refuge, and the veil remains intact.</div><div class="final-report-summary">Night report</div><pre>${stats}</pre>`,
         "Continue free roam · Enter/Esc"
       );
     }
