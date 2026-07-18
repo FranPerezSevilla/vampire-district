@@ -7,6 +7,12 @@ import {
   worldAimDirection
 } from "../data/combat.js";
 import { NPC_TYPES } from "../data/npcs.js";
+import {
+  WEAPON_IDS,
+  WEAPON_TYPES,
+  selectHitscanTarget,
+  weaponById
+} from "../data/weapons.js";
 import { resolveAction } from "../systems/ActionSystem.js";
 import { RawAudio } from "../systems/RawAudioSystem.js";
 
@@ -73,12 +79,17 @@ export class CombatSystem {
     this.tutorialPatched = true;
   }
 
+  currentAttackConfig() {
+    return this.scene.weaponSystem?.currentWeapon?.() || weaponById(WEAPON_IDS.UNARMED);
+  }
+
   updateAim(frame) {
+    const config = this.currentAttackConfig();
     this.aimDirection = worldAimDirection(
       this.scene.player,
       frame?.aimWorld,
       this.aimDirection,
-      UNARMED_ATTACK.aimDeadZone
+      config.aimDeadZone ?? UNARMED_ATTACK.aimDeadZone
     );
 
     const angle = Math.atan2(this.aimDirection.y, this.aimDirection.x) + Math.PI / 2;
@@ -91,10 +102,11 @@ export class CombatSystem {
       return;
     }
 
+    const config = this.attack.config;
     this.attack.elapsedMs += dt * 1000;
-    const activeStart = UNARMED_ATTACK.windupMs;
-    const recoveryStart = activeStart + UNARMED_ATTACK.activeMs;
-    const completeAt = recoveryStart + UNARMED_ATTACK.recoveryMs;
+    const activeStart = config.windupMs;
+    const recoveryStart = activeStart + config.activeMs;
+    const completeAt = recoveryStart + config.recoveryMs;
 
     if (this.attack.elapsedMs < activeStart) {
       this.attack.phase = "windup";
@@ -127,31 +139,109 @@ export class CombatSystem {
   }
 
   startAttack() {
+    const selected = this.currentAttackConfig();
+    const config = { ...selected };
+    if (this.scene.weaponSystem && !this.scene.weaponSystem.beginAttack(config)) return false;
+
     this.attackSerial += 1;
     this.attack = {
       serial: this.attackSerial,
       elapsedMs: 0,
       phase: "windup",
       direction: { ...this.aimDirection },
-      hitIds: new Set()
+      hitIds: new Set(),
+      resolved: false,
+      tracer: null,
+      config
     };
-    RawAudio.play("stun", { cooldown: 0.08 });
+
+    if (!this.scene.weaponSystem) RawAudio.play("stun", { cooldown: 0.08 });
     this.scene.events?.emit?.("combat:attack-started", {
       attackId: this.attack.serial,
-      weaponId: UNARMED_ATTACK.id,
+      weaponId: config.id,
+      attackType: config.attackType,
       direction: { ...this.attack.direction }
     });
+    return true;
   }
 
   resolveAttackHits() {
+    if (!this.attack) return;
+    if (this.attack.config.attackType === WEAPON_TYPES.HITSCAN) {
+      this.resolveHitscanAttack();
+      return;
+    }
+
     const origin = { x: this.scene.player.x, y: this.scene.player.y };
     for (const npc of this.scene.npcSystem?.npcs || []) {
       if (!this.validTarget(npc)) continue;
       if (this.attack.hitIds.has(npc.id)) continue;
-      if (!targetInsideMeleeArc(origin, this.attack.direction, npc, UNARMED_ATTACK)) continue;
+      if (!targetInsideMeleeArc(origin, this.attack.direction, npc, this.attack.config)) continue;
       this.attack.hitIds.add(npc.id);
-      this.applyHit(npc);
+      this.applyHit(npc, this.attack.config);
     }
+
+    this.scene.propDamageSystem?.resolveAttack?.(this.attack, origin, this.attack.config);
+  }
+
+  resolveHitscanAttack() {
+    if (!this.attack || this.attack.resolved) return;
+    this.attack.resolved = true;
+    const config = this.attack.config;
+    const origin = { x: this.scene.player.x, y: this.scene.player.y };
+    const candidates = [];
+
+    for (const npc of this.scene.npcSystem?.npcs || []) {
+      if (!this.validTarget(npc)) continue;
+      candidates.push({
+        id: `npc:${npc.id}`,
+        kind: "npc",
+        entity: npc,
+        x: npc.x,
+        y: npc.y,
+        hitRadius: 7
+      });
+    }
+
+    for (const prop of this.scene.propDamageSystem?.props || []) {
+      if (!this.scene.propDamageSystem.validTarget(prop)) continue;
+      candidates.push({
+        id: `prop:${prop.id}`,
+        kind: "prop",
+        entity: prop,
+        x: prop.x,
+        y: prop.y,
+        hitRadius: prop.hitRadius || 7
+      });
+    }
+
+    const selected = selectHitscanTarget(origin, this.attack.direction, candidates, config, {
+      lineClear: candidate => this.hitscanLineClear(origin, candidate)
+    });
+    const endpoint = selected
+      ? { x: selected.candidate.x, y: selected.candidate.y, hit: true }
+      : {
+          x: origin.x + this.attack.direction.x * config.range,
+          y: origin.y + this.attack.direction.y * config.range,
+          hit: false
+        };
+    this.attack.tracer = endpoint;
+
+    if (!selected) return;
+    const candidate = selected.candidate;
+    this.attack.hitIds.add(candidate.id);
+    if (candidate.kind === "npc") this.applyHit(candidate.entity, config);
+    if (candidate.kind === "prop") {
+      this.scene.propDamageSystem?.damage?.(candidate.entity, config.damage || 1, this.attack.serial);
+    }
+  }
+
+  hitscanLineClear(origin, candidate) {
+    if (!this.scene.npcSystem?.lineClear) return true;
+    const subject = candidate.kind === "npc"
+      ? candidate.entity
+      : { layer: this.scene.currentLayer };
+    return this.scene.npcSystem.lineClear(subject, origin.x, origin.y, candidate.x, candidate.y);
   }
 
   validTarget(npc) {
@@ -162,32 +252,34 @@ export class CombatSystem {
     return state === COMBAT_STATES.ACTIVE || state === COMBAT_STATES.STAGGERED;
   }
 
-  applyHit(npc) {
+  applyHit(npc, config = this.attack?.config || this.currentAttackConfig()) {
     const now = this.scene.time.now;
     const combat = npc.combat || (npc.combat = createNpcCombatState(npc.type));
     if (!combat) return;
 
-    applyNpcDamage(combat, UNARMED_ATTACK.damage);
-    combat.lastHitBy = "player";
-    combat.feedbackUntil = now + UNARMED_ATTACK.feedbackMs;
+    applyNpcDamage(combat, config.damage || 1);
+    combat.lastHitBy = config.id || "player";
+    combat.feedbackUntil = now + (config.feedbackMs || UNARMED_ATTACK.feedbackMs);
     npc.vx = 0;
     npc.vy = 0;
     npc.luredTimer = 0;
     npc.soundReactionTimer = 0;
 
-    this.notifyViolence(npc, combat.state === COMBAT_STATES.DOWNED);
+    this.notifyViolence(npc, combat.state === COMBAT_STATES.DOWNED, config);
 
     if (combat.state === COMBAT_STATES.DOWNED) {
-      this.knockDown(npc);
+      this.knockDown(npc, config);
     } else {
-      combat.staggerUntil = now + UNARMED_ATTACK.staggerMs;
-      npc.stunnedTimer = Math.max(npc.stunnedTimer || 0, UNARMED_ATTACK.staggerMs / 1000);
+      combat.staggerUntil = now + (config.staggerMs || UNARMED_ATTACK.staggerMs);
+      npc.stunnedTimer = Math.max(npc.stunnedTimer || 0, (config.staggerMs || UNARMED_ATTACK.staggerMs) / 1000);
       this.alertVictim(npc);
-      this.scene.lastActionText = `HIT: ${this.targetName(npc)} · resilience ${combat.resilience}/${combat.maxResilience}.`;
+      this.scene.lastActionText = `HIT · ${config.name}: ${this.targetName(npc)} · resilience ${combat.resilience}/${combat.maxResilience}.`;
     }
 
     this.scene.events?.emit?.("combat:hit", {
       attackId: this.attack?.serial || 0,
+      weaponId: config.id,
+      damage: config.damage || 1,
       targetId: npc.id,
       resilience: combat.resilience,
       maxResilience: combat.maxResilience,
@@ -195,27 +287,35 @@ export class CombatSystem {
     });
   }
 
-  notifyViolence(npc, downed) {
-    resolveAction(this.scene, "stun", {
-      x: npc.x,
-      y: npc.y,
-      layer: npc.layer,
-      target: npc,
-      exclude: [npc],
-      cooldownKey: `unarmed:${this.attack?.serial || this.attackSerial}`,
-      cooldown: 0.05
-    });
+  notifyViolence(npc, downed, config) {
+    if (config.attackType === WEAPON_TYPES.MELEE) {
+      resolveAction(this.scene, "stun", {
+        x: npc.x,
+        y: npc.y,
+        layer: npc.layer,
+        target: npc,
+        exclude: [npc],
+        cooldownKey: `${config.id}:${this.attack?.serial || this.attackSerial}`,
+        cooldown: 0.05
+      });
 
-    this.scene.witnessSystem?.onMundaneViolence?.(
-      npc,
-      `${this.targetName(npc)} ${downed ? "knocked down" : "punched"}`,
-      downed ? 9 : 6
-    );
+      this.scene.witnessSystem?.onMundaneViolence?.(
+        npc,
+        `${this.targetName(npc)} ${downed ? `knocked down with ${config.name.toLowerCase()}` : config.violenceLabel || "struck"}`,
+        downed ? Math.max(9, config.witnessSeverity || 6) : config.witnessSeverity || 6
+      );
+      this.scene.weaponSystem?.onMeleeImpact?.(config, npc);
+    }
 
     if (npc.type === NPC_TYPES.POLICE) {
-      const reason = `A police officer was ${downed ? "knocked down" : "assaulted"}.`;
+      const reason = `A police officer was ${downed ? "knocked down" : config.violenceLabel || "assaulted"}.`;
       this.scene.exposureSystem?.forceLevel?.(1, reason);
-      this.scene.policeSystem?.addHeat?.(npc.x, npc.y, downed ? 24 : 15, reason);
+      this.scene.policeSystem?.addHeat?.(
+        npc.x,
+        npc.y,
+        config.attackType === WEAPON_TYPES.HITSCAN ? config.policeHeat || 34 : downed ? 24 : 15,
+        reason
+      );
       const zone = this.scene.policeSystem?.zoneAt?.(this.scene.player.x, this.scene.player.y);
       if (this.scene.policeSystem) {
         this.scene.policeSystem.lastKnownPlayer = {
@@ -243,7 +343,7 @@ export class CombatSystem {
     if (npc.type === NPC_TYPES.POLICE) npc.chasingPlayer = true;
   }
 
-  knockDown(npc) {
+  knockDown(npc, config = this.attack?.config || this.currentAttackConfig()) {
     npc.combat.state = COMBAT_STATES.DOWNED;
     npc.combat.resilience = 0;
     npc.stunnedTimer = Number.POSITIVE_INFINITY;
@@ -258,8 +358,12 @@ export class CombatSystem {
     npc.vy = 0;
 
     RawAudio.play("bodyDrop", { cooldown: 0.08 });
-    this.scene.lastActionText = `DOWNED: ${this.targetName(npc)}. A downed target can no longer move, pursue or report.`;
-    this.scene.events?.emit?.("combat:entity-downed", { targetId: npc.id, type: npc.type });
+    this.scene.lastActionText = `DOWNED · ${config.name}: ${this.targetName(npc)} can no longer move, pursue or report.`;
+    this.scene.events?.emit?.("combat:entity-downed", {
+      targetId: npc.id,
+      type: npc.type,
+      weaponId: config.id
+    });
   }
 
   blocksMovement() {
@@ -325,17 +429,19 @@ export class CombatSystem {
     graphics.clear();
     if (!frame?.worldEnabled) return;
 
+    const config = this.attack?.config || this.currentAttackConfig();
     const px = this.scene.player.x;
     const py = this.scene.player.y;
     if (frame.pointerInside) {
-      const ax = px + this.aimDirection.x * 27;
-      const ay = py + this.aimDirection.y * 27;
-      graphics.lineStyle(2, 0xd7c8ff, 0.72);
+      const distance = config.reticleDistance || 27;
+      const ax = px + this.aimDirection.x * distance;
+      const ay = py + this.aimDirection.y * distance;
+      graphics.lineStyle(2, config.color || 0xd7c8ff, 0.72);
       graphics.beginPath();
       graphics.moveTo(px + this.aimDirection.x * 9, py + this.aimDirection.y * 9);
       graphics.lineTo(ax, ay);
       graphics.strokePath();
-      graphics.lineStyle(1, 0xd7c8ff, 0.58).strokeCircle(ax, ay, 4);
+      graphics.lineStyle(1, config.color || 0xd7c8ff, 0.58).strokeCircle(ax, ay, config.attackType === WEAPON_TYPES.HITSCAN ? 5 : 4);
     }
 
     if (this.attack) this.drawAttackArc();
@@ -352,25 +458,42 @@ export class CombatSystem {
   }
 
   drawAttackArc() {
+    const config = this.attack.config;
     const phase = this.attack.phase;
-    const color = phase === "active" ? 0xfff2a8 : phase === "windup" ? 0xa75cff : 0x78c7a3;
+    const color = config.color || (phase === "active" ? 0xfff2a8 : phase === "windup" ? 0xa75cff : 0x78c7a3);
     const alpha = phase === "active" ? 0.88 : phase === "windup" ? 0.48 : 0.24;
-    const angle = Math.atan2(this.attack.direction.y, this.attack.direction.x);
-    const start = angle - UNARMED_ATTACK.halfAngle;
-    const end = angle + UNARMED_ATTACK.halfAngle;
     const px = this.scene.player.x;
     const py = this.scene.player.y;
 
+    if (config.attackType === WEAPON_TYPES.HITSCAN) {
+      const endpoint = this.attack.tracer || {
+        x: px + this.attack.direction.x * Math.min(config.range, 80),
+        y: py + this.attack.direction.y * Math.min(config.range, 80),
+        hit: false
+      };
+      this.graphics.lineStyle(phase === "active" ? 3 : 1, color, alpha);
+      this.graphics.beginPath();
+      this.graphics.moveTo(px + this.attack.direction.x * 8, py + this.attack.direction.y * 8);
+      this.graphics.lineTo(endpoint.x, endpoint.y);
+      this.graphics.strokePath();
+      if (endpoint.hit) this.graphics.lineStyle(2, 0xfff2a8, alpha).strokeCircle(endpoint.x, endpoint.y, 7);
+      return;
+    }
+
+    const angle = Math.atan2(this.attack.direction.y, this.attack.direction.x);
+    const start = angle - config.halfAngle;
+    const end = angle + config.halfAngle;
+
     this.graphics.lineStyle(2, color, alpha);
     this.graphics.beginPath();
-    this.graphics.arc(px, py, UNARMED_ATTACK.range, start, end, false);
+    this.graphics.arc(px, py, config.range, start, end, false);
     this.graphics.strokePath();
     this.graphics.lineStyle(1, color, alpha * 0.62);
     this.graphics.beginPath();
     this.graphics.moveTo(px, py);
-    this.graphics.lineTo(px + Math.cos(start) * UNARMED_ATTACK.range, py + Math.sin(start) * UNARMED_ATTACK.range);
+    this.graphics.lineTo(px + Math.cos(start) * config.range, py + Math.sin(start) * config.range);
     this.graphics.moveTo(px, py);
-    this.graphics.lineTo(px + Math.cos(end) * UNARMED_ATTACK.range, py + Math.sin(end) * UNARMED_ATTACK.range);
+    this.graphics.lineTo(px + Math.cos(end) * config.range, py + Math.sin(end) * config.range);
     this.graphics.strokePath();
   }
 
