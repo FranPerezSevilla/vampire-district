@@ -38,6 +38,17 @@ test("iron pipe is a slower, longer and stronger melee weapon than unarmed", () 
   assert.ok(pipe.soundRadius > unarmed.soundRadius);
 });
 
+test("weapon damage and sound pressure increase from unarmed to pipe to pistol", () => {
+  const unarmed = weaponById(WEAPON_IDS.UNARMED);
+  const pipe = weaponById(WEAPON_IDS.PIPE);
+  const pistol = weaponById(WEAPON_IDS.PISTOL);
+
+  assert.deepEqual([unarmed.damage, pipe.damage, pistol.damage], [1, 2, 3]);
+  assert.ok(unarmed.soundRadius < pipe.soundRadius);
+  assert.ok(pipe.soundRadius < pistol.soundRadius);
+  assert.equal(pistol.attackType, WEAPON_TYPES.HITSCAN);
+});
+
 test("pistol consumes finite ammunition and rejects an empty shot", () => {
   const pistol = weaponById(WEAPON_IDS.PISTOL);
   const first = consumeWeaponAmmo(pistol, pistol.ammoCapacity);
