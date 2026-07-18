@@ -4,6 +4,7 @@ import "./objective-marker.js";
 import "./objective-marker-guard.js";
 import "./district-outskirts.js";
 import "./sensory-awareness.js";
+import "./ai/sensory-priority-guard.js";
 import { CAMERA, WORLD } from "./data/balance.js";
 import { LAYERS } from "./data/district.js";
 import { GameScene } from "./scenes/GameScene.js";
