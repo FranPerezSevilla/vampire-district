@@ -28,10 +28,15 @@ export class FeedingSystem {
   collectInteractions() {
     if (this.active) return [];
 
-    const npc = this.scene.npcSystem.nearestAttackable(this.scene.player.x, this.scene.player.y, this.scene.currentLayer, ATTACK_RADIUS);
+    const npc = this.scene.npcSystem.nearestAttackable(
+      this.scene.player.x,
+      this.scene.player.y,
+      this.scene.currentLayer,
+      ATTACK_RADIUS
+    );
     if (!npc) return [];
 
-    const d = Phaser.Math.Distance.Between(this.scene.player.x, this.scene.player.y, npc.x, npc.y);
+    const distance = Phaser.Math.Distance.Between(this.scene.player.x, this.scene.player.y, npc.x, npc.y);
     const options = [];
 
     if (npc.type !== NPC_TYPES.RAT && npc.stunnedTimer <= 0) {
@@ -41,9 +46,10 @@ export class FeedingSystem {
         label: `Stun ${this.targetName(npc)}`,
         detail: npc.type === NPC_TYPES.THUG ? "opens police roof jump temporarily" : "non-lethal · temporary control · small noise",
         priority: npc.type === NPC_TYPES.THUG ? 132 : 118,
-        distance: d,
+        distance,
         x: npc.x,
         y: npc.y,
+        target: npc,
         run: () => this.stun(npc)
       });
     }
@@ -55,9 +61,10 @@ export class FeedingSystem {
         label: `Kill ${this.targetName(npc)}`,
         detail: npc.type === NPC_TYPES.THUG ? "opens police roof jump · lethal" : "lethal · noisy · leaves body · no hunger relief",
         priority: npc.type === NPC_TYPES.THUG ? 128 : npc.type === NPC_TYPES.TARGET ? 122 : 106,
-        distance: d,
+        distance,
         x: npc.x,
         y: npc.y,
+        target: npc,
         run: () => this.kill(npc)
       });
     }
@@ -112,6 +119,7 @@ export class FeedingSystem {
     this.scene.evidenceSystem?.onKillCompleted(npc);
     this.stats.kills++;
     this.trackNeutralized(npc);
+    this.publishNeutralized(npc, "killed", "lethal action");
     this.addNoise(npc.x, npc.y, this.killNoise(npc), `${this.targetName(npc)} killed; impact and struggle heard`);
     if (npc.type === NPC_TYPES.TARGET) {
       this.stats.targetHandled = true;
@@ -203,6 +211,7 @@ export class FeedingSystem {
 
     this.scene.npcSystem.markFed(npc);
     this.scene.evidenceSystem?.onFeedCompleted(npc);
+    this.publishNeutralized(npc, "drained", "drain");
 
     if (npc.type === NPC_TYPES.TARGET) {
       this.scene.missionSystem.resolveJournalistPlaceholder("Journalist drained. Return to the rooftop refuge to report before the district reacts.");
@@ -226,6 +235,16 @@ export class FeedingSystem {
       amount: this.hunger - hungerBefore
     });
     this.scene.redrawLayer(this.scene.lastActionText);
+  }
+
+  publishNeutralized(npc, kind, weaponId) {
+    if (!npc || npc.type === NPC_TYPES.RAT) return;
+    this.scene.events?.emit?.("combat:entity-neutralized", {
+      targetId: npc.id,
+      type: npc.type,
+      kind,
+      weaponId
+    });
   }
 
   trackNeutralized(npc) {
