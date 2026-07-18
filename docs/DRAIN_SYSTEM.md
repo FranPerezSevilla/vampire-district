@@ -1,22 +1,24 @@
 # Contextual drain system
 
-_Status: Milestone 4 implementation complete; browser regression and tuning remain pending._
+_Status: Milestone 4 implementation complete and integrated with Milestone 8 AI; browser regression and tuning remain pending._
 
 ## Purpose
 
-Draining is now a dedicated vampire action owned by the right mouse button. It no longer appears as an E interaction. The system distinguishes a vulnerable downed target from a standing target that can only be taken from behind while unaware.
+Draining is a dedicated vampire action owned by the right mouse button. It no longer appears as an E interaction. The system distinguishes a vulnerable downed target from a standing target that can only be taken from behind while unaware.
 
 ## Authoritative files
 
 - `phaser/src/data/drain.js` — pure eligibility, awareness and target-selection rules.
 - `phaser/src/combat/DrainSystem.js` — right-button channel, runtime validation, feedback and heard-only reactions.
 - `phaser/src/systems/FeedingSystem.js` — channel progress, Hunger relief, completion and cancellation events.
+- `phaser/src/systems/AiStateSystem.js` — drain priority and downed-recovery suppression.
 - `phaser/src/input/input-runtime.js` — updates the drain system from the central input frame.
 - `tests/drain.test.js` — pure eligibility and priority tests.
+- `tests/ai.test.js` — recovery suppression and state-priority tests.
 
 ## Input contract
 
-`InputSystem` already exposes:
+`InputSystem` exposes:
 
 ```js
 {
@@ -67,6 +69,17 @@ When more than one target is valid:
 
 Within the same category, distance and aim angle decide. The journalist receives only a very small tie-break bonus; it cannot override a clearly closer or better-aligned target.
 
+## AI and recovery priority
+
+A drain victim cannot simultaneously attack, chase or report. The AI resolver stops those lower-priority intents while `drainVictim` is active.
+
+Police and hunters have timed downed recovery, but recovery is suspended as soon as a valid drain channel starts:
+
+- releasing/cancelling after the timer has elapsed allows recovery on the next eligible update;
+- completing the drain marks the target permanently resolved;
+- killing the target also prevents recovery;
+- civilians, journalist and rooftop thug never recover even without a drain.
+
 ## Channel cancellation
 
 A right-click drain cancels when:
@@ -84,12 +97,13 @@ Taking damage already cancels `FeedingSystem.active` through `PlayerDamageSystem
 
 ## Perception
 
-Visual witnesses continue to use the existing active-drain witness checks. A drain also emits a muffled struggle at start:
+Visual witnesses continue to use the active-drain witness checks. A drain also emits a muffled struggle at start:
 
-- NPCs who see the drain use their normal visual response.
-- NPCs who only hear it turn toward the source and enter `WTF`.
-- Hearing alone does not start pursuit or reporting.
-- The victim is excluded from witnessing its own drain.
+- NPCs who see the drain use their normal visual response;
+- NPCs who only hear it turn toward the source and enter `WTF`;
+- hearing alone does not start pursuit or reporting;
+- the victim is excluded from witnessing its own drain;
+- confirmed sight later overrides a heard-only reaction.
 
 ## Feedback
 
@@ -101,13 +115,13 @@ Visual witnesses continue to use the existing active-drain witness checks. A dra
 
 ## Tutorial
 
-The rooftop blocker sequence now teaches:
+The rooftop blocker sequence teaches:
 
-1. Aim and left-click four times to knock the thug down.
-2. Aim at the downed thug.
-3. Hold the right mouse button until the drain completes.
+1. aim and left-click four times to knock the thug down while reading his slow retaliation;
+2. aim at the downed thug;
+3. hold the right mouse button until the drain completes.
 
-The tutorial control mode permits both primary attack and the abstract drain action. E is no longer used to drain.
+The tutorial control mode permits primary attack and the abstract drain action. E is no longer used to drain. The thug has no recovery timer.
 
 ## Events
 
@@ -118,12 +132,14 @@ Implemented events:
 - `feeding:cancelled`
 - `feeding:completed`
 - `hunger:changed`
+- `ai:state-changed`
+- `combat:entity-recovered`
 
 Events carry identifiers and plain values rather than system instances.
 
 ## Known limitations
 
-- Legacy E-based stun and kill options remain temporarily available outside the guided rooftop drain. They are separate from feeding and will be removed or replaced as combat interactions and weapons are consolidated.
-- Drain hearing currently reuses the sensory reaction state through a small runtime bridge rather than a final unified `PerceptionSystem` event contract.
-- Exact range, rear angle, aim assistance and channel feel require browser playtesting.
+- Legacy E-based stun and kill options remain temporarily available outside the guided rooftop drain.
+- Drain hearing currently reuses the sensory reaction state through a runtime bridge rather than a final unified `PerceptionSystem` event contract.
+- Exact range, rear angle, aim assistance, recovery interruption and channel feel require browser playtesting.
 - Browser smoke tests are still manual.
