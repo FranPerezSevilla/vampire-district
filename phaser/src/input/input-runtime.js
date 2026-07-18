@@ -1,4 +1,5 @@
 import { CombatSystem } from "../combat/CombatSystem.js";
+import { PlayerDamageSystem } from "../combat/PlayerDamageSystem.js";
 import { PLAYER } from "../data/balance.js";
 import { LAYERS } from "../data/district.js";
 import { GameScene } from "../scenes/GameScene.js";
@@ -56,18 +57,23 @@ function installGameSceneInputRuntime() {
     this.currentInputFrame = this.inputSystem.snapshot();
     this.combatSystem?.destroy?.();
     this.combatSystem = new CombatSystem(this);
+    this.playerDamageSystem?.destroy?.();
+    this.playerDamageSystem = new PlayerDamageSystem(this);
     this.nearestMovement = null;
     return result;
   };
 
   GameScene.prototype.update = function updateFromInputFrame(_time, deltaMs) {
     const dt = Math.min(deltaMs / 1000, 0.05);
-    const frame = this.inputSystem?.beginFrame() || createEmptyInputFrame();
+    const rawFrame = this.inputSystem?.beginFrame() || createEmptyInputFrame();
+    this.playerDamageSystem?.preUpdate(rawFrame);
+    const frame = this.playerDamageSystem?.filterFrame(rawFrame) || rawFrame;
     this.currentInputFrame = frame;
 
     if (this.transitionSystem?.active) {
       this.nearestMovement = null;
       this.nearestInteraction = null;
+      this.playerDamageSystem?.postUpdate(0, frame);
       this.updateCameraForLayer();
       this.drawPromptMarker();
       this.publishState();
@@ -79,6 +85,7 @@ function installGameSceneInputRuntime() {
       this.nearestMovement = null;
       this.nearestInteraction = null;
       this.npcSystem.refreshVisibility();
+      this.playerDamageSystem?.postUpdate(0, frame);
       this.updateCameraForLayer();
       this.drawPromptMarker();
       this.publishState();
@@ -94,7 +101,7 @@ function installGameSceneInputRuntime() {
     this.nearestMovement = nearest(this, split.movement);
     this.nearestInteraction = nearest(this, split.interaction);
 
-    const combatBusy = Boolean(this.combatSystem?.isBusy());
+    const combatBusy = Boolean(this.combatSystem?.isBusy() || this.playerDamageSystem?.isHitStunned());
     if (!combatBusy && frame.traversePressed && !this.feedingSystem.isActive()) {
       const handledMovement = runMovementAction(this, split.movement);
       if (handledMovement) {
@@ -118,7 +125,8 @@ function installGameSceneInputRuntime() {
         this.feedingSystem.update(dt, frame.hasMovementIntent);
         this.npcSystem.update(0);
       } else {
-        if (!this.combatSystem?.blocksMovement()) this.updatePlayerMovement(dt, frame);
+        const movementBlocked = this.combatSystem?.blocksMovement() || this.playerDamageSystem?.blocksMovement();
+        if (!movementBlocked) this.updatePlayerMovement(dt, frame);
         this.npcSystem.update(dt);
         this.witnessSystem.update(dt);
       }
@@ -127,12 +135,15 @@ function installGameSceneInputRuntime() {
       this.exposureSystem.cool(dt);
       this.policeSystem.update(dt);
       this.hunterSystem.update(dt);
+      this.playerDamageSystem?.postUpdate(dt, frame);
       this.missionSystem.update();
 
       availableActions = this.collectInteractions();
       split = splitActions(availableActions);
       this.nearestMovement = nearest(this, split.movement);
       this.nearestInteraction = nearest(this, split.interaction);
+    } else {
+      this.playerDamageSystem?.postUpdate(0, frame);
     }
 
     this.updateCameraForLayer();
