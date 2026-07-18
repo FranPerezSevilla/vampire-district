@@ -1,7 +1,4 @@
-// Compatibility feature bootstrap. Task reveal camera ownership moved to the
-// first-class TaskRevealSystem in Milestone 10.
+// Compatibility feature bootstrap. Task reveals, objective guidance and district
+// outskirts are now first-class systems composed by GameplayRuntime.
 import "./responsive-layout.js";
 import "./tutorial-copy.js";
-import "./objective-marker.js";
-import "./objective-marker-guard.js";
-import "./district-outskirts.js";
