@@ -1,4 +1,3 @@
-import { CombatSystem } from "./CombatSystem.js";
 import { policeViolenceTargetLevel, exposureNeededForPoliceLevel } from "../data/police-alert.js";
 import { NPC_TYPES } from "../data/npcs.js";
 import { GameScene } from "../scenes/GameScene.js";
@@ -6,7 +5,9 @@ import { FeedingSystem } from "../systems/FeedingSystem.js";
 
 function escalatePoliceViolence(scene, npc, { neutralized = false, weaponId = "unknown" } = {}) {
   if (!scene || !npc || npc.type !== NPC_TYPES.POLICE) return 0;
-  if (neutralized && npc.__nbdPoliceNeutralizationEscalated) return scene.exposureSystem?.level?.() || 0;
+  if (neutralized && npc.__nbdPoliceNeutralizationEscalated) {
+    return Math.min(3, scene.exposureSystem?.level?.() || 0);
+  }
 
   const exposure = scene.exposureSystem;
   const police = scene.policeSystem;
@@ -32,7 +33,7 @@ function escalatePoliceViolence(scene, npc, { neutralized = false, weaponId = "u
 
   if (neutralized) npc.__nbdPoliceNeutralizationEscalated = true;
 
-  const finalLevel = exposure.level();
+  const finalLevel = Math.min(3, exposure.level());
   scene.lastActionText = neutralized
     ? `POLICE DOWN: alert rises to level ${finalLevel}. More units converge on the district.`
     : `POLICE ASSAULT: alert is now level ${finalLevel}.`;
@@ -77,7 +78,7 @@ function installLegacyNeutralizationEscalation() {
     if (npc?.type === NPC_TYPES.POLICE) {
       escalatePoliceViolence(this.scene, npc, {
         neutralized: true,
-        weaponId: npc.deathKind === "drained" ? "drain" : "lethal action"
+        weaponId: npc.deathKind === "killed" ? "lethal action" : "drain"
       });
     }
     return result;
