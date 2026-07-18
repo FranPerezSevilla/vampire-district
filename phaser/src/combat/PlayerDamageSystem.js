@@ -262,6 +262,9 @@ export class PlayerDamageSystem {
 
   syncPlayerFeedback() {
     const now = this.scene.time.now;
+    const hunger = Number(this.scene.feedingSystem?.hunger) || 0;
+    this.state.critical = hunger >= PLAYER_DAMAGE.criticalThreshold && hunger < PLAYER_DAMAGE.frenzyThreshold;
+
     const invulnerable = this.isInvulnerable();
     if (this.scene.player) {
       const pulse = invulnerable ? 0.55 + Math.abs(Math.sin(now / 55)) * 0.45 : 1;
