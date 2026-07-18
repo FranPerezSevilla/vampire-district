@@ -31,21 +31,25 @@ function cop(id, overrides = {}) {
   };
 }
 
+function policeContext(properties) {
+  return Object.assign(Object.create(PoliceSystem.prototype), properties);
+}
+
 test("downed and drain victims do not count as active police response units", () => {
   const active = cop("active");
   const downed = cop("downed", { combat: { state: COMBAT_STATES.DOWNED } });
   const draining = cop("draining", { drainVictim: true });
-  const context = { _allPolice: [active, downed, draining] };
+  const context = policeContext({ _allPolice: [active, downed, draining] });
 
   assert.deepEqual(
-    PoliceSystem.prototype.police.call(context).map(item => item.id),
+    context.police().map(item => item.id),
     ["active"]
   );
 });
 
 test("an active attack-leader deadline is not extended every frame", () => {
   const leader = cop("leader", { ai: { role: AI_ROLES.ATTACKER, leaderUntil: 1_500 } });
-  const context = {
+  const context = policeContext({
     attackLeaderId: leader.id,
     _allPolice: [leader],
     scene: {
@@ -53,9 +57,9 @@ test("an active attack-leader deadline is not extended every frame", () => {
       player: { x: 0, y: 0 },
       npcSystem: { npcs: [leader] }
     }
-  };
+  });
 
-  PoliceSystem.prototype.updatePolice.call(context, 0.016, 1);
+  context.updatePolice(0.016, 1);
 
   assert.equal(leader.ai.leaderUntil, 1_500);
 });
@@ -69,7 +73,7 @@ test("containment officers face the player after moving into their slot", () => 
     dirY: 0,
     ai: { role: AI_ROLES.CONTAIN, leaderUntil: 0 }
   });
-  const context = {
+  const context = policeContext({
     attackLeaderId: null,
     _allPolice: [containment],
     scene: {
@@ -77,9 +81,9 @@ test("containment officers face the player after moving into their slot", () => 
       player: { x: 0, y: 0 },
       npcSystem: { npcs: [containment] }
     }
-  };
+  });
 
-  PoliceSystem.prototype.updatePolice.call(context, 0.016, 1);
+  context.updatePolice(0.016, 1);
 
   assert.equal(containment.dirX, -1);
   assert.equal(containment.dirY, 0);
