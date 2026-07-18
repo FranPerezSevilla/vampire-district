@@ -6,7 +6,7 @@ _Last updated: 2026-07-18_
 
 **Vampire District** is a top-down urban stealth-action game inspired by the readable city layout, systemic police pressure and immediate navigation of early Grand Theft Auto games, but built around a vampire fantasy.
 
-The player is a young vampire carrying out orders for their sire. The current vertical slice teaches traversal, feeding, Hunger, witnesses, police pressure, unarmed combat, damage-to-Hunger, contextual draining, quiet movement and the veil through one contained mission.
+The player is a young vampire carrying out orders for their sire. The current vertical slice teaches traversal, feeding, Hunger, witnesses, police pressure, unarmed combat, damage-to-Hunger, contextual draining, quiet movement, environmental destruction and the veil through one contained mission.
 
 ## Current playable vertical slice
 
@@ -25,6 +25,8 @@ Implemented:
 - Right-click draining for downed targets and unaware rear approaches.
 - Default running, Shift quiet movement and traversal-only Space.
 - Deterministic route selection and world-space traversal prompt.
+- Damageable streetlights using the same directional attack contract as NPC combat.
+- Broken streetlights remove light, create persistent darkness and trigger sight/hearing reactions.
 - Refuge-gated completion: sire dialogue first, report second.
 
 ## Current mission flow
@@ -45,10 +47,10 @@ Implemented:
 - WASD / arrows: run by default.
 - Hold Shift: slower quiet movement with a much smaller hearing radius.
 - Mouse: face and aim.
-- Left mouse: directional unarmed attack.
+- Left mouse: directional unarmed attack against NPCs or world props.
 - Right mouse: hold to drain a valid aimed target.
 - Space: contextual traversal only.
-- E: contextual non-traversal interactions; legacy stun/kill interaction options remain temporary outside the guided tutorial.
+- E: contextual non-traversal interactions; it does not drain, traverse or break streetlights.
 - Q: Dash.
 - R: Whisper.
 - F: Blood Sense.
@@ -63,8 +65,9 @@ Mouse wheel weapon cycling remains planned.
 
 - Default run multiplier: `1.55`.
 - Quiet movement multiplier: `0.72`.
-- Run footstep base hearing radius: `120`.
-- Quiet footstep base hearing radius: `42`.
+- Run footstep base hearing radius: `120` for enhanced listeners.
+- Ordinary NPC run-hearing range: `42`.
+- Quiet footstep base hearing radius: `42`; ordinary NPCs ignore quiet footsteps.
 - Space has no held-speed behaviour.
 - Traversal selection order: committed close/forward route, distance, aim, route priority, stable ID.
 
@@ -79,12 +82,21 @@ Mouse wheel weapon cycling remains planned.
 
 ## Drain snapshot
 
-- Start range: `30` units.
-- Break range: `38` units.
+- Start range: `34` units.
+- Break range: `42` units.
 - Downed target: any approach angle.
 - Standing target: unaware rear arc only.
 - Hold right mouse to channel.
 - Release, movement, damage, invalid layer/range or blocked geometry cancels.
+
+## World-prop snapshot
+
+- Streetlights: `1` durability.
+- Hit query: stored unarmed origin, direction, range and arc plus a small prop radius.
+- Input: left mouse; E destruction is removed.
+- Broken state persists in `brokenLights`.
+- Result: light removed, shadow created, glass feedback and perception reaction.
+- Hearing-only break response remains `WTF` without automatic pursuit/reporting.
 
 ## Architecture snapshot
 
@@ -97,8 +109,9 @@ The prototype currently uses:
 - `PlayerDamageSystem` for enemy attacks, hit stun, invulnerability and Hunger damage.
 - `DrainSystem` for right-click eligibility and channel validation.
 - `MovementNoiseSystem` for actual-displacement footsteps and heard-only reactions.
+- `PropDamageSystem` for streetlight durability, attack resolution and break effects.
 - Existing systems for NPCs, police, witnesses, missions, feeding, exposure, powers, evidence, hunters, interactions and transitions.
-- Pure data modules for combat, player damage, drain, movement and traversal selection.
+- Pure data modules for combat, player damage, drain, movement, traversal and props.
 
 Temporary adapters still patch legacy scene/system methods. Milestone 10 will fold them into explicit composition.
 
@@ -111,10 +124,11 @@ Automated pure coverage includes:
 - melee geometry and resilience;
 - enemy attack timing and damage thresholds;
 - right-click drain eligibility and priority;
-- default/quiet movement speed rules;
-- deterministic traversal scoring.
+- default/quiet movement speed and hearing tiers;
+- deterministic traversal scoring;
+- prop hit/miss geometry, durability and repeated-damage protection.
 
-Manual browser regression remains required across the complete mission, representative viewport sizes, Low/Ultra quality and every route type before Milestones 1–5 become fully complete.
+Manual browser regression remains required across the complete mission, representative viewport sizes, Low/Ultra quality and every route/prop reaction before Milestones 1–6 become fully complete.
 
 ## Locked design decisions
 
@@ -126,6 +140,8 @@ Manual browser regression remains required across the complete mission, represen
 - Hunger is the player's combat attrition resource.
 - Feeding is tactical recovery.
 - NPC durability is resilience leading to downed state.
+- World destruction uses the same aimed attack language as combat.
+- E does not break streetlights.
 - Journalist handling requires an actual return to the refuge.
 - Finale order is sire dialogue, then final report.
 
@@ -134,6 +150,7 @@ Manual browser regression remains required across the complete mission, represen
 - Final speed and footstep-hearing tuning after browser playtesting.
 - Final police/hunter attack values.
 - Final drain range, rear angle and channel feel.
+- Final streetlight hit radius, exposure cost and break feedback.
 - Whether downed NPCs recover.
 - Initial weapon set.
 - Whether perception visualization is always visible.
@@ -147,8 +164,8 @@ Manual browser regression remains required across the complete mission, represen
 3. Competing AI flags before the final priority state machine.
 4. Hunger damage creating a positive feedback difficulty spiral.
 5. Screen clutter from objectives, perception and combat feedback.
-6. Footstep and traversal tuning differing across zoom levels.
+6. Footstep, traversal and prop-hit tuning differing across zoom levels.
 
 ## Immediate project priority
 
-Validate Milestone 5 in-browser: default run speed, Shift quiet movement, route conflicts, every Space transition and heard-only footstep reactions. Then move to Milestone 6: damageable streetlights and reusable world-prop damage.
+Validate Milestone 6 in-browser: aimed hit alignment, E removal, persistent broken-light darkness, visual witnesses, heard-only `WTF` reactions and full mission compatibility. Then implement Milestone 7: weapons and mouse-wheel inventory on the shared NPC/prop damage contracts.
