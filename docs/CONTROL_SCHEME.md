@@ -4,7 +4,7 @@
 
 Use a modern top-down keyboard-and-mouse layout rather than copying GTA2's keyboard-centric turning and attack controls.
 
-The implemented scheme keeps GTA2-style immediacy and contextual city traversal while using mouse-directed combat and a dedicated vampire drain action.
+The implemented scheme keeps GTA2-style immediacy and contextual city traversal while using mouse-directed combat, world destruction and a dedicated vampire drain action.
 
 ## Current bindings
 
@@ -13,7 +13,7 @@ The implemented scheme keeps GTA2-style immediacy and contextual city traversal 
 | WASD / arrows | Run at the normal movement speed. |
 | Hold Shift | Move slowly and generate much quieter footsteps. |
 | Mouse | Aim and face. |
-| Left mouse | Punch or use the equipped weapon toward the cursor. During dialogue, advances the bubble instead. |
+| Left mouse | Punch NPCs or damage aimed world props. During dialogue, advances the bubble instead. |
 | Right mouse | Hold to drain a valid downed, rear-approached or rat target. |
 | Space | Execute one contextual traversal route. |
 | E | Talk, collect, inspect and use non-traversal interactions. |
@@ -40,7 +40,7 @@ WASD/arrows use the fast movement baseline without another key. Space has no spe
 
 ### Quiet movement
 
-Holding Shift applies a lower movement multiplier and a substantially smaller footstep hearing radius. It is a stealth choice, not a sprint key.
+Holding Shift applies a lower movement multiplier and substantially reduces footstep reactions. Ordinary NPCs only hear running inside the short range and ignore quiet footsteps; police and hunters retain enhanced hearing.
 
 ### Facing
 
@@ -55,7 +55,9 @@ Holding Shift applies a lower movement multiplier and a substantially smaller fo
 - The current weapon is unarmed.
 - One press starts one timed attack; holding does not hit every frame.
 - Windup, active and recovery phases control commitment.
-- One attack cannot damage the same NPC twice.
+- One attack cannot damage the same NPC or prop twice.
+- NPCs and world props consume the same stored attack origin, direction, range and arc.
+- A baseline streetlight breaks after one confirmed hit.
 - UI, dialogue, transitions, hit stun and active drain suppress attacks.
 
 ## Drain rules
@@ -119,14 +121,14 @@ E does not:
 - use sewers;
 - attack;
 - drain;
-- permanently own streetlight destruction.
+- break streetlights.
 
 ## Browser rules
 
 - Right-click context menu is suppressed only over the game canvas.
 - Wheel scrolling is suppressed only when a future weapon system owns it.
 - Pointer-held actions clear on blur and pointer leave.
-- Dialogue clicks never leak into combat.
+- Dialogue clicks never leak into combat or prop damage.
 - Space/Shift state clears across pause, task reveal and focus loss.
 
 ## Accessibility and future work
@@ -149,6 +151,8 @@ Implemented in code, browser validation still pending unless noted:
 - [ ] Dialogue click advances exactly one bubble and never becomes an attack.
 - [ ] Left mouse attacks once per valid cadence.
 - [ ] Three punches down a civilian; four down a police officer.
+- [ ] One aimed punch breaks a baseline streetlight; a miss does not.
+- [ ] E never exposes streetlight destruction.
 - [ ] Right-click cannot front-drain an alert standing target.
 - [ ] Right-click never opens the browser menu over the game.
 - [ ] Space never changes speed or activates Dash.
