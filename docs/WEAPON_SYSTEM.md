@@ -1,35 +1,37 @@
 # Weapon system
 
-_Status: Milestone 7 implementation complete; browser regression and tuning remain pending._
+_Status: Milestone 7 implementation complete; Milestone 9 teaching/HUD pass implemented; browser regression and tuning remain pending._
 
 ## Purpose
 
-Milestone 7 adds a data-driven inventory without changing the established controls:
+The weapon layer adds a data-driven inventory without changing the established controls:
 
-- mouse position still owns aim;
+- mouse position owns aim;
 - left mouse uses the equipped weapon;
 - mouse wheel selects one owned weapon step;
-- NPC resilience and damageable props continue using shared combat contracts.
+- NPC resilience and damageable props use shared combat contracts.
 
 ## Authoritative files
 
 - `phaser/src/data/weapons.js` — weapon definitions, inventory order, ammo helpers and pure hitscan selection.
-- `phaser/src/systems/WeaponSystem.js` — inventory, equipped state, wheel cycling, ammo consumption, sound and perception reactions.
-- `phaser/src/combat/CombatSystem.js` — weapon attack timing, melee/hitscan resolution and NPC damage.
+- `phaser/src/systems/WeaponSystem.js` — inventory, equipped state, wheel cycling, ammo, sound and perception reactions.
+- `phaser/src/combat/CombatSystem.js` — attack timing, melee/hitscan resolution and NPC damage.
 - `phaser/src/systems/PropDamageSystem.js` — shared prop damage endpoint.
-- `phaser/src/input/input-runtime.js` — updates weapon selection from the central input frame before combat.
+- `phaser/src/input/input-runtime.js` — updates weapon selection before combat from the central input frame.
 - `phaser/src/weapons/milestone7-ui.js` — persistent equipped-weapon/ammo HUD.
-- `tests/weapons.test.js` — pure inventory, cycling, ammo and hitscan tests.
+- `phaser/src/systems/UxGuidanceSystem.js` — first-use wheel teaching and HUD attention state.
+- `phaser/src/ux/milestone9-runtime.js` — accessible HUD semantics and high-contrast aim integration.
+- `tests/weapons.test.js` and `tests/ux-guidance.test.js`.
 
 ## Starting inventory
 
-The vertical slice starts with all three prototype weapons because pickup progression is outside this milestone:
+The vertical slice starts with all three prototype weapons because pickup progression is outside the current scope:
 
 1. Unarmed.
 2. Iron Pipe.
 3. Pistol.
 
-The opening rooftop tutorial remains unarmed because its restricted control mode does not expose `weaponStep`. Mouse-wheel cycling becomes available once full gameplay control is restored.
+The opening rooftop tutorial remains unarmed because restricted control modes do not expose `weaponStep`. Mouse-wheel cycling becomes available after the police informant leaves and full control returns.
 
 ## Controls
 
@@ -37,7 +39,22 @@ The opening rooftop tutorial remains unarmed because its restricted control mode
 - Mouse wheel up: previous owned weapon.
 - Left mouse: use equipped weapon.
 
-The wheel listener remains scoped to the game canvas. Page scrolling is prevented only because `WeaponSystem` actively owns weapon cycling. UI, dialogue, transitions, draining, hit stun and attack commitment suppress weapon changes.
+The wheel listener remains scoped to the game canvas. Page scrolling is prevented only while `WeaponSystem` owns weapon cycling. UI, dialogue, transitions, draining, hit stun and attack commitment suppress weapon changes.
+
+## First-use teaching
+
+Once full control is restored and the task reveal has closed, a compact non-blocking strip appears:
+
+```text
+WHEEL · Change weapon. Scroll once to equip the Iron Pipe or Pistol.
+```
+
+- the world remains interactive;
+- the weapon HUD receives an attention pulse;
+- the first successful `weapon:changed` event completes the step;
+- the next short message confirms the equipped weapon and `LMB` attack;
+- cycling before the strip becomes visible still counts;
+- the guidance does not read raw wheel input or create another control path.
 
 ## Weapon baselines
 
@@ -49,17 +66,17 @@ The wheel listener remains scoped to the game canvas. Page scrolling is prevente
 
 Timing columns are windup / active / recovery.
 
-The pistol has no reload action in this slice because R is already Whisper and the prototype does not yet have a full inventory/reload interface. At zero ammunition, left click gives an `EMPTY` message and the player must cycle to another weapon.
+The pistol has no reload action because R is Whisper and the prototype has no full inventory/reload interface. At zero ammunition, left click gives `EMPTY` feedback and the player must cycle to another weapon.
 
 ## Melee resolution
 
-Unarmed and Iron Pipe attacks use the existing forward-arc contract:
+Unarmed and Iron Pipe use the existing forward arc:
 
 - direction captured at attack start;
-- range and half-angle from the equipped weapon;
-- one `hitIds` set shared across NPC and prop targets;
+- equipped range and half-angle;
+- one `hitIds` set shared across NPCs and props;
 - every valid entity inside the active arc can be damaged once;
-- pipe damage removes two resilience points and uses longer commitment/stagger timings.
+- pipe removes two resilience points and has longer commitment/stagger.
 
 Streetlights consume the same melee config. Their one-point durability means either melee weapon breaks one on a valid hit.
 
@@ -74,11 +91,11 @@ Candidate pool:
 
 Selection rules:
 
-1. Candidate must be in front of the stored shot direction.
-2. Candidate must be inside pistol range.
-3. Perpendicular distance from the shot line must fit target radius plus bullet width.
-4. World geometry must report a clear line.
-5. The closest valid candidate along the ray wins.
+1. Candidate is in front of stored shot direction.
+2. Candidate is inside range.
+3. Perpendicular distance fits target radius plus bullet width.
+4. World geometry reports a clear line.
+5. Closest valid candidate along the ray wins.
 6. Perpendicular distance and stable ID break exact ties.
 
 This creates one ordered ray across NPCs and props: a nearer NPC blocks a farther streetlight, and a building blocks both.
@@ -89,36 +106,37 @@ Pistol ammo is consumed when an attack starts, including a miss. It is not consu
 
 - world input is locked;
 - combat cannot start;
-- the pistol is already empty.
+- the pistol is empty.
 
-The HUD displays current ammunition as `remaining/capacity`. Unarmed and pipe display infinity.
+The HUD displays `remaining/capacity`. Unarmed and pipe display infinity.
 
 ## Noise and reactions
 
 ### Melee impact
 
-A confirmed punch or pipe strike emits an impact sound event. NPCs that only hear it turn and show `WTF`; hearing alone does not begin pursuit or reporting. Visual assault reactions continue through the existing witness and police paths.
+A confirmed punch or pipe strike emits impact sound. NPCs that only hear it turn and show `WTF`; hearing alone does not begin pursuit or reporting. Visual assault reactions continue through witness and police paths.
 
 ### Gunshot
 
 A pistol shot emits noise even when it misses.
 
 - Sound radius: 280 units.
-- Police who see the shot pursue and add strong heat.
-- Civilians/journalist who see it enter ordinary witness behaviour.
+- Police who see it pursue and add strong heat.
+- Civilians/journalist who see it enter witness behaviour.
 - Hunters/thugs who see it become alarmed.
-- NPCs that only hear it turn and show `WTF` without automatic pursuit or reporting.
-
-The pistol therefore creates substantially more district pressure than unarmed or pipe attacks.
+- NPCs that only hear it turn and show `WTF` without automatic pursuit/reporting.
 
 ## UI and feedback
 
-- Persistent bottom-left weapon indicator.
-- Equipped name and ammo count.
-- Empty pistol state uses warning colour.
-- Every successful wheel step uses the existing toast with `EQUIPPED: ...`.
+- Persistent lower-right weapon indicator; the power dock remains lower-left.
+- Increased weapon name and ammo typography.
+- Empty pistol warning state.
+- Successful wheel step produces `EQUIPPED: ...`.
+- First-use teaching temporarily pulses the weapon HUD.
 - Attack arc/reticle colour follows the weapon.
-- Pistol draws a tracer to the first hit or maximum range.
+- Optional high-contrast aim adds black outline, white core, larger ring and cross mark.
+- Pistol draws a tracer to first hit or maximum range.
+- Weapon status exposes name, ammunition and inventory slot to assistive technology.
 - Final report includes equipped weapon and remaining ammo.
 
 ## Events
@@ -134,14 +152,9 @@ Implemented plain-data events:
 
 ## Automated coverage
 
-`tests/weapons.test.js` covers:
+`tests/weapons.test.js` covers inventory order, one-step cycling/wraparound, pipe differences, ammunition, empty rejection, nearest hitscan selection and obstruction rejection.
 
-- starting inventory order;
-- one-step wheel cycling and wraparound;
-- pipe damage/range/recovery relative to unarmed;
-- finite pistol ammunition and empty rejection;
-- nearest hitscan target selection across NPC/prop candidates;
-- rejection behind the player, outside shot width, beyond range or behind blocking geometry.
+`tests/ux-guidance.test.js` covers the locked/awaiting/completed first-use phase and high-contrast presentation rules.
 
 Run:
 
@@ -152,8 +165,8 @@ npm test
 ## Known limitations
 
 - All prototype weapons are owned from the start; pickups/economy are not implemented.
-- Pistol ammo cannot be replenished or reloaded yet.
+- Pistol ammo cannot be replenished or reloaded.
 - No projectile travel time, spread growth, recoil or headshots.
-- Hitscan obstruction reuses the existing navigation-based line-clear query rather than a dedicated collision ray service.
-- Weapon perception is integrated with current witness/AI flags rather than the final unified AI/perception state machine.
-- Browser validation remains required for wheel direction, trackpads, tracer alignment, obstruction, simultaneous targets and responsive HUD layout.
+- Hitscan obstruction reuses navigation line-clear rather than a dedicated collision ray.
+- Guidance duration and HUD position require browser validation at supported viewports.
+- Runtime integration remains adapter-based until Milestone 10.
