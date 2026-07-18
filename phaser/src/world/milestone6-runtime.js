@@ -1,6 +1,7 @@
 import { CombatSystem } from "../combat/CombatSystem.js";
 import { UNARMED_ATTACK } from "../data/combat.js";
 import { GameScene } from "../scenes/GameScene.js";
+import { UIScene } from "../scenes/UIScene.js";
 import { PropDamageSystem } from "../systems/PropDamageSystem.js";
 
 function installPropAttackBridge() {
@@ -46,5 +47,29 @@ function installPropRuntime() {
   GameScene.prototype.__nbdDamageablePropsPatch = true;
 }
 
+function installPropReportState() {
+  if (UIScene.prototype.__nbdDamageablePropsPatch) return;
+
+  const originalReadState = UIScene.prototype.readState;
+  const originalStatsText = UIScene.prototype.statsText;
+
+  UIScene.prototype.readState = function readStateWithProps(...args) {
+    const data = originalReadState.apply(this, args);
+    return {
+      ...data,
+      propText: this.registry.get("propText") || "Props unavailable"
+    };
+  };
+
+  UIScene.prototype.statsText = function statsTextWithProps(data) {
+    const base = originalStatsText.call(this, data);
+    const line = data?.propText || "Props unavailable";
+    return base.replace("Position:", `${line}\nPosition:`);
+  };
+
+  UIScene.prototype.__nbdDamageablePropsPatch = true;
+}
+
 installPropAttackBridge();
 installPropRuntime();
+installPropReportState();
