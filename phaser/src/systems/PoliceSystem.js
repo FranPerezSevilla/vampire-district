@@ -1,4 +1,11 @@
+import {
+  AI_ROLES,
+  AI_RULES,
+  policeContainmentTarget,
+  selectPoliceAttackLeader
+} from "../data/ai.js";
 import { PLAYER } from "../data/balance.js";
+import { COMBAT_STATES } from "../data/combat.js";
 import { LAYERS } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 import { RawAudio } from "./RawAudioSystem.js";
@@ -71,8 +78,12 @@ const WANTED_CONFIG = Object.freeze({
   3: { desired: 8, chaseSpeed: PLAYER.baseSpeed * 1.14, searchSpeed: PLAYER.baseSpeed * 0.92, sight: 286, shadowSight: 142, surroundRadius: 55 }
 });
 
+function clampLevel(level) {
+  return Math.max(0, Math.min(3, Math.floor(Number(level) || 0)));
+}
+
 function configForLevel(level) {
-  return WANTED_CONFIG[Math.min(3, Math.max(0, level))];
+  return WANTED_CONFIG[clampLevel(level)];
 }
 
 export class PoliceSystem {
@@ -82,6 +93,7 @@ export class PoliceSystem {
     this.spawned = 0;
     this.spawnedThisTick = 0;
     this.previousLevel = 0;
+    this.attackLeaderId = null;
     this.lastKnownPlayer = null;
     this.arrestTriggered = false;
     this.helicopter = {
@@ -102,7 +114,8 @@ export class PoliceSystem {
     this.ensurePatrolState();
     this.coolHeat(dt);
 
-    const level = this.scene.exposureSystem.level();
+    const rawLevel = this.scene.exposureSystem.level();
+    const level = clampLevel(rawLevel);
     this.handleWantedLevelChange(level);
     this.spawnForExposure(level);
     this.updatePolice(dt, level);
@@ -164,12 +177,12 @@ export class PoliceSystem {
 
   redirectNearbyPatrols(zone, count = 1) {
     const cops = this.police()
-      .filter(cop => !cop.dead && !cop.hiddenBody && cop.stunnedTimer <= 0)
+      .filter(cop => !cop.hiddenBody && cop.stunnedTimer <= 0)
       .sort((a, b) => Phaser.Math.Distance.Between(a.x, a.y, zone.x + zone.w / 2, zone.y + zone.h / 2)
         - Phaser.Math.Distance.Between(b.x, b.y, zone.x + zone.w / 2, zone.y + zone.h / 2));
 
-    for (let i = 0; i < Math.min(cops.length, count + 1); i++) {
-      this.assignInvestigation(cops[i], zone, i);
+    for (let index = 0; index < Math.min(cops.length, count + 1); index++) {
+      this.assignInvestigation(cops[index], zone, index);
     }
   }
 
@@ -192,15 +205,17 @@ export class PoliceSystem {
   }
 
   spawnForExposure(level = this.scene.exposureSystem.level()) {
-    if (level < 1) return;
-    const desired = configForLevel(level).desired;
+    const clamped = clampLevel(level);
+    if (clamped < 1) return;
+    const desired = configForLevel(clamped).desired;
     const activePolice = this.police().length;
     this.spawnedThisTick = 0;
-    while (activePolice + this.spawnedThisTick < desired) this.spawnPolice(level);
+    while (activePolice + this.spawnedThisTick < desired) this.spawnPolice(clamped);
     this.spawnedThisTick = 0;
   }
 
   spawnPolice(level = this.scene.exposureSystem.level()) {
+    const clamped = clampLevel(level);
     this.spawnedThisTick++;
     this.spawned++;
     const routeKey = ROUTE_KEYS[this.spawned % ROUTE_KEYS.length];
@@ -223,42 +238,149 @@ export class PoliceSystem {
       searchIndex: this.spawned % INVESTIGATION_OFFSETS.length
     });
     cop.active = true;
-    cop.investigateTarget = level >= 1 ? null : this.hottestPoint();
+    cop.investigateTarget = clamped >= 1 ? null : this.hottestPoint();
     this.scene.npcSystem.npcs.push(cop);
+    this.scene.npcSystem.rebuildSpatialIndex?.();
     RawAudio.play("police");
-    this.scene.lastActionText = level >= 2
+    this.scene.lastActionText = clamped >= 2
       ? "Police reinforcements enter from multiple patrol routes."
       : "An additional patrol joins the active search.";
   }
 
   updatePolice(dt, level) {
-    const cfg = configForLevel(level);
-    for (const cop of this.police()) {
-      if (cop.dead || cop.hiddenBody || cop.stunnedTimer > 0) continue;
+    const clamped = clampLevel(level);
+    const cfg = configForLevel(clamped);
+    const entries = [];
+    const now = this.scene.time?.now || 0;
 
-      if (cop.patrolPause > 0) {
-        cop.patrolPause = Math.max(0, cop.patrolPause - dt * (level >= 2 ? 2.2 : 1));
-        if (cop.patrolPause > 0) continue;
+    for (const cop of this.police()) {
+      this.scene.aiStateSystem?.ensureNpc?.(cop);
+      if (cop.combat?.state === COMBAT_STATES.STAGGERED
+        || (Number.isFinite(cop.stunnedTimer) && cop.stunnedTimer > 0)) {
+        this.stopNpc(cop);
+        continue;
       }
 
-      const target = this.targetForCop(cop, level, cfg);
-      if (!target) continue;
+      if (cop.enemyAttack) {
+        cop.ai.role = AI_ROLES.ATTACKER;
+        cop.ai.intent = "attack";
+        entries.push({ cop, target: { x: this.scene.player.x, y: this.scene.player.y, kind: "player" } });
+        continue;
+      }
 
-      const speed = target.kind === "player"
-        ? cfg.chaseSpeed
-        : target.kind === "search"
-          ? cfg.searchSpeed
-          : target.kind === "heat"
-            ? INVESTIGATE_SPEED
-            : PATROL_SPEED;
+      if (cop.patrolPause > 0) {
+        cop.patrolPause = Math.max(0, cop.patrolPause - dt * (clamped >= 2 ? 2.2 : 1));
+        if (cop.patrolPause > 0) {
+          this.stopNpc(cop);
+          continue;
+        }
+      }
 
+      const target = this.targetForCop(cop, clamped, cfg);
+      entries.push({ cop, target });
+    }
+
+    const playerEntries = entries.filter(entry => entry.target?.kind === "player");
+    const previousLeaderId = this.attackLeaderId;
+    const leaderId = selectPoliceAttackLeader(
+      playerEntries.map(entry => entry.cop),
+      this.scene.player,
+      { previousId: previousLeaderId || null, now }
+    );
+    this.attackLeaderId = leaderId;
+
+    const leader = playerEntries.find(entry => entry.cop.id === leaderId)?.cop || null;
+    if (leader?.ai && (leaderId !== previousLeaderId || (leader.ai.leaderUntil || 0) <= now)) {
+      leader.ai.leaderUntil = now + AI_RULES.policeLeaderHoldMs;
+    }
+
+    const containment = playerEntries
+      .filter(entry => entry.cop.id !== leaderId)
+      .sort((a, b) => String(a.cop.id || "").localeCompare(String(b.cop.id || "")));
+    const aim = this.scene.combatSystem?.aimDirection || this.scene.currentInputFrame?.move || { x: 1, y: 0 };
+    const rotation = Math.atan2(aim.y || 0, aim.x || 1) + Math.PI / 2;
+
+    for (const entry of entries) {
+      const { cop, target } = entry;
+      if (!target || cop.enemyAttack) continue;
+
+      if (target.kind === "player") {
+        cop.chasingPlayer = true;
+        cop.soundReactionTimer = 0;
+        cop.__nbdWtfLabel?.setVisible?.(false);
+        if (cop.id === leaderId) {
+          cop.ai.role = AI_ROLES.ATTACKER;
+          cop.ai.intent = "close-to-attack";
+          this.movePoliceAttacker(cop, dt, clamped);
+        } else {
+          const slot = containment.findIndex(item => item.cop === cop);
+          const point = policeContainmentTarget(
+            this.scene.player,
+            Math.max(0, slot),
+            Math.max(1, containment.length),
+            Math.max(1, clamped),
+            { rotation }
+          );
+          cop.ai.role = AI_ROLES.CONTAIN;
+          cop.ai.intent = "contain";
+          const distance = Phaser.Math.Distance.Between(cop.x, cop.y, point.x, point.y);
+          if (distance > 8) {
+            this.moveNpcToward(cop, point.x, point.y, dt, cfg.chaseSpeed * 0.94);
+          } else {
+            this.stopNpc(cop);
+          }
+          this.facePlayer(cop);
+        }
+        continue;
+      }
+
+      cop.chasingPlayer = false;
+      cop.ai.role = target.kind === "patrol"
+        ? AI_ROLES.PATROL
+        : target.kind === "heat" || target.kind === "search"
+          ? AI_ROLES.SEARCH
+          : AI_ROLES.INVESTIGATE;
+      cop.ai.intent = target.kind || "patrol";
+      const speed = target.kind === "search"
+        ? cfg.searchSpeed
+        : target.kind === "heat"
+          ? INVESTIGATE_SPEED
+          : PATROL_SPEED;
       this.moveNpcToward(cop, target.x, target.y, dt, speed);
-      this.resolveTargetArrival(cop, target, level);
+      this.resolveTargetArrival(cop, target, clamped);
     }
   }
 
+  movePoliceAttacker(cop, dt, level) {
+    const player = this.scene.player;
+    const dx = player.x - cop.x;
+    const dy = player.y - cop.y;
+    const distance = Math.hypot(dx, dy) || 1;
+    const standOff = 23;
+    if (distance <= standOff + 2) {
+      this.stopNpc(cop);
+      this.facePlayer(cop);
+      return;
+    }
+
+    const targetX = player.x - (dx / distance) * standOff;
+    const targetY = player.y - (dy / distance) * standOff;
+    this.moveNpcToward(cop, targetX, targetY, dt, configForLevel(level).chaseSpeed);
+    this.facePlayer(cop);
+  }
+
   targetForCop(cop, level, cfg = configForLevel(level)) {
-    if (level >= 1) {
+    const clamped = clampLevel(level);
+
+    if (cop.soundReactionTimer > 0 && !cop.chasingPlayer) {
+      const seesPlayer = this.playerVisibleToCop(cop, cfg.sight, cfg.shadowSight);
+      if (!seesPlayer) return null;
+      cop.soundReactionTimer = 0;
+      cop.__nbdWtfLabel?.setVisible?.(false);
+      if (cop.ai) cop.ai.intent = "visual-contact";
+    }
+
+    if (clamped >= 1) {
       const playerVisible = this.playerVisibleToCop(cop, cfg.sight, cfg.shadowSight);
       if (playerVisible) {
         this.rememberPlayerPosition();
@@ -297,7 +419,7 @@ export class PoliceSystem {
   }
 
   playerVisibleToCop(cop, radius, shadowRadius = 0) {
-    if (this.scene.currentLayer !== LAYERS.STREET) return false;
+    if (this.scene.currentLayer !== LAYERS.STREET || cop.layer !== LAYERS.STREET) return false;
     const distance = Phaser.Math.Distance.Between(cop.x, cop.y, this.scene.player.x, this.scene.player.y);
     const inShadow = Boolean(this.scene.currentShadow());
     const effectiveRadius = inShadow ? shadowRadius : radius;
@@ -307,18 +429,18 @@ export class PoliceSystem {
   }
 
   resolveTargetArrival(cop, target, level) {
-    const d = Phaser.Math.Distance.Between(cop.x, cop.y, target.x, target.y);
-    if (target.kind === "heat" && d < 24) {
+    const distance = Phaser.Math.Distance.Between(cop.x, cop.y, target.x, target.y);
+    if (target.kind === "heat" && distance < 24) {
       cop.investigateTarget = null;
       cop.patrolPause = level >= 2 ? 0.15 : 0.45 + Math.random() * 0.45;
       return;
     }
-    if (target.kind === "search" && d < 20) {
+    if (target.kind === "search" && distance < 20) {
       cop.searchIndex = (cop.searchIndex + 1) % INVESTIGATION_OFFSETS.length;
       cop.patrolPause = level >= 2 ? 0.08 : 0.22 + Math.random() * 0.25;
       return;
     }
-    if (target.kind === "patrol" && d < 18) {
+    if (target.kind === "patrol" && distance < 18) {
       cop.patrolIndex = (cop.patrolIndex + 1) % this.routeFor(cop).length;
       cop.patrolPause = 0.35 + Math.random() * 0.55;
     }
@@ -345,15 +467,31 @@ export class PoliceSystem {
   applySoftSeparation(cop, targetX, targetY) {
     let sx = 0;
     let sy = 0;
-    for (const other of this.police()) {
-      if (other === cop || other.dead || other.hiddenBody) continue;
-      const d = Phaser.Math.Distance.Between(cop.x, cop.y, other.x, other.y);
-      if (d <= 0 || d > 34) continue;
-      const force = (34 - d) / 34;
-      sx += ((cop.x - other.x) / d) * force * 28;
-      sy += ((cop.y - other.y) / d) * force * 28;
+    const nearby = this.scene.npcSystem?.queryRadius?.(cop.x, cop.y, 34, cop.layer)
+      || this.police();
+    for (const other of nearby) {
+      if (other === cop || other.type !== NPC_TYPES.POLICE || other.dead || other.hiddenBody) continue;
+      if (other.combat?.state === COMBAT_STATES.DOWNED || other.drainVictim) continue;
+      const distance = Phaser.Math.Distance.Between(cop.x, cop.y, other.x, other.y);
+      if (distance <= 0 || distance > 34) continue;
+      const force = (34 - distance) / 34;
+      sx += ((cop.x - other.x) / distance) * force * 28;
+      sy += ((cop.y - other.y) / distance) * force * 28;
     }
     return { x: targetX + sx, y: targetY + sy };
+  }
+
+  stopNpc(cop) {
+    cop.vx = 0;
+    cop.vy = 0;
+  }
+
+  facePlayer(cop) {
+    const dx = this.scene.player.x - cop.x;
+    const dy = this.scene.player.y - cop.y;
+    const length = Math.hypot(dx, dy) || 1;
+    cop.dirX = dx / length;
+    cop.dirY = dy / length;
   }
 
   checkSurrounded(level) {
@@ -361,17 +499,29 @@ export class PoliceSystem {
     if (this.scene.missionSystem?.failed || this.scene.missionSystem?.completed) return;
 
     const radius = configForLevel(level).surroundRadius;
-    const nearby = this.police().filter(cop => !cop.hiddenBody && cop.stunnedTimer <= 0
-      && Phaser.Math.Distance.Between(cop.x, cop.y, this.scene.player.x, this.scene.player.y) <= radius);
+    const nearby = this.scene.npcSystem?.queryRadius?.(
+      this.scene.player.x,
+      this.scene.player.y,
+      radius,
+      LAYERS.STREET,
+      npc => npc.type === NPC_TYPES.POLICE
+        && !npc.dead
+        && !npc.inactive
+        && !npc.hiddenBody
+        && !npc.missionInformant
+        && npc.stunnedTimer <= 0
+        && npc.combat?.state !== COMBAT_STATES.DOWNED
+        && !npc.drainVictim
+    ) || [];
     if (nearby.length < 3) return;
 
     const angles = nearby
       .map(cop => Math.atan2(cop.y - this.scene.player.y, cop.x - this.scene.player.x))
       .sort((a, b) => a - b);
     let largestGap = 0;
-    for (let i = 0; i < angles.length; i++) {
-      const current = angles[i];
-      const next = i === angles.length - 1 ? angles[0] + Math.PI * 2 : angles[i + 1];
+    for (let index = 0; index < angles.length; index++) {
+      const current = angles[index];
+      const next = index === angles.length - 1 ? angles[0] + Math.PI * 2 : angles[index + 1];
       largestGap = Math.max(largestGap, next - current);
     }
 
@@ -442,9 +592,9 @@ export class PoliceSystem {
     const lightColor = lockPct > 0.55 ? 0xffb02e : 0xfff2a8;
     const dx = heli.spotX - heli.x;
     const dy = heli.spotY - heli.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const px = (-dy / len) * HELICOPTER_LIGHT_RADIUS;
-    const py = (dx / len) * HELICOPTER_LIGHT_RADIUS;
+    const length = Math.hypot(dx, dy) || 1;
+    const px = (-dy / length) * HELICOPTER_LIGHT_RADIUS;
+    const py = (dx / length) * HELICOPTER_LIGHT_RADIUS;
 
     graphics.fillStyle(lightColor, 0.055 + lockPct * 0.08);
     graphics.fillTriangle(
@@ -480,7 +630,14 @@ export class PoliceSystem {
   }
 
   police() {
-    return this.scene.npcSystem.npcs.filter(npc => npc.type === NPC_TYPES.POLICE && !npc.inactive && !npc.dead);
+    return this.scene.npcSystem.npcs.filter(npc => Boolean(
+      npc.type === NPC_TYPES.POLICE
+      && !npc.inactive
+      && !npc.dead
+      && !npc.missionInformant
+      && npc.combat?.state !== COMBAT_STATES.DOWNED
+      && !npc.drainVictim
+    ));
   }
 
   zoneAt(x, y) {
@@ -509,13 +666,18 @@ export class PoliceSystem {
   }
 
   summary() {
-    const level = this.scene.exposureSystem.level();
-    const cops = this.police().length;
-    const chasing = this.police().filter(cop => cop.chasingPlayer).length;
-    const searching = level >= 1 ? Math.max(0, cops - chasing) : 0;
+    const level = clampLevel(this.scene.exposureSystem.level());
+    const cops = this.police();
+    const chasing = cops.filter(cop => cop.chasingPlayer).length;
+    const searching = level >= 1 ? Math.max(0, cops.length - chasing) : 0;
+    const roles = cops.reduce((counts, cop) => {
+      const role = cop.ai?.role || AI_ROLES.PATROL;
+      counts[role] = (counts[role] || 0) + 1;
+      return counts;
+    }, Object.create(null));
     const helicopter = this.helicopter.active
       ? ` · helicopter active · spotlight ${Math.round((this.helicopter.lock / HELICOPTER_LOCK_SECONDS) * 100)}%`
       : "";
-    return `Police ${cops} · wanted ${level} · chasing ${chasing} · searching ${searching}${helicopter}`;
+    return `Police ${cops.length} · wanted ${level} · attacker ${roles[AI_ROLES.ATTACKER] || 0} · containment ${roles[AI_ROLES.CONTAIN] || 0} · searching ${searching}${helicopter}`;
   }
 }
