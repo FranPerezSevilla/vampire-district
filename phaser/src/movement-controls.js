@@ -7,7 +7,9 @@ import "./movement/milestone5-runtime.js";
 import "./world/milestone6-runtime.js";
 import "./ai/milestone8-runtime.js";
 import "./ai/police-turn-guard.js";
+import "./ai/sensory-priority-guard.js";
 import "./weapons/milestone7-ui.js";
+import "./ux/milestone9-runtime.js";
 import { UIScene } from "./scenes/UIScene.js";
 
 function installUiControlCopy() {
