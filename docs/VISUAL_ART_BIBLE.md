@@ -288,3 +288,164 @@ Antes de sustituir el arte del distrito completo, crear una escena jugable que c
 Cualquier cambio que altere paleta, iluminación, siluetas, materiales, VFX, UI, iconografía o lectura de rutas debe actualizar este documento en el mismo commit o serie de commits.
 
 Las referencias externas sirven para analizar tono y soluciones, no para copiar. No se deben incorporar al repositorio escaneos, páginas o imágenes con copyright sin permiso; los moodboards de producción deben usar material propio, licenciado o enlazado con atribución adecuada.
+
+## 17. Edificios y landmarks en cenital puro
+
+Esta sección fija cómo construir edificios icónicos sin abandonar la cámara cenital. **Cenital puro no significa plano ni genérico:** la profundidad procede de la planta, el perímetro, los materiales, la sombra de caída, los objetos de cubierta, el entorno urbano y la iluminación; nunca de inclinar la cámara para enseñar una fachada.
+
+### 17.1 Contrato de cámara
+
+- La vista de referencia es **ortográfica, vertical y a 90 grados** sobre el plano del suelo.
+- No hay horizonte, perspectiva de tres cuartos, fuga isométrica ni paredes laterales completas usadas como escaparate.
+- La altura se comunica con cornisas, labios de cubierta, oclusión, sombra de caída y relaciones entre niveles.
+- Una cara vertical mínima puede existir para separar alturas, pero debe ser consistente en todo el distrito y nunca convertirse en una fachada ilustrada.
+- Entradas y funciones se sugieren mediante pavimento, marquesinas vistas en planta, umbrales, señalética horizontal, filas de personas, vehículos y luz.
+- Un landmark debe seguir siendo reconocible con todos sus rótulos eliminados y la imagen convertida a escala de grises.
+
+### 17.2 Regla de las cinco capas
+
+Todo landmark debe diferenciarse mediante estas cinco capas. **Silueta y halo urbano son obligatorios**; las otras tres deben reforzarlos.
+
+| Capa | Pregunta de diseño | Resultado esperado |
+|---|---|---|
+| 1. Planta y silueta | ¿Qué contorno único forma desde arriba? | Reconocimiento instantáneo sin texto |
+| 2. Halo urbano | ¿Cómo modifica acera, patio, parking, callejón y espacio público? | El edificio ocupa una situación urbana, no solo una celda |
+| 3. Materiales | ¿Qué familia de superficies le pertenece? | Identidad por valor, desgaste y textura |
+| 4. Props-signature | ¿Qué tres a cinco objetos aparecen juntos solo aquí? | Vocabulario visual repetible y memorable |
+| 5. Luz y color | ¿Qué firma lumínica lo identifica de noche? | Reconocimiento atmosférico sin colorear el edificio entero |
+
+La identidad no puede depender únicamente del color. Si dos landmarks pierden su acento cromático, todavía deben distinguirse por contorno, organización y densidad.
+
+### 17.3 Gramática de planta y cubierta
+
+- Los edificios comunes usan plantas modulares y predominantemente ortogonales; los landmarks reciben una desviación controlada.
+- Cada landmark tiene **una forma dominante** y **una asimetría secundaria**: ábside, patio, ala, torre, marquesina, garaje, retranqueo o anexo.
+- Evitar siluetas arbitrariamente complejas. El contorno debe poder describirse con una frase breve y dibujarse de memoria.
+- Las cubiertas se dividen en masas grandes antes de añadir chimeneas, tragaluces, conductos o antenas.
+- El equipamiento de techo se agrupa por función y deja corredores visuales limpios para movimiento, combate y traversal.
+- La forma del tejado debe comunicar su época: pizarra y nave inclinada, azotea de alquitrán, dientes de sierra industriales, patio interior o cubierta técnica.
+- La relación con la calle forma parte de la silueta: edificio a esquina, retirado tras una verja, abierto a una plaza, pegado a un callejón o rodeado por servicio.
+- No todos los landmarks deben ser grandes. Una huella pequeña con un halo urbano distintivo puede ser más memorable que otro bloque monumental.
+
+### 17.4 Halo urbano
+
+El landmark incluye el edificio y su perímetro inmediato. El halo debe resolver:
+
+- cómo llega un peatón normal;
+- dónde se acumula la vida social;
+- dónde se sitúa la autoridad o la vigilancia;
+- dónde se deposita basura, carga o mantenimiento;
+- qué lado está expuesto y qué lado ofrece sombra;
+- cómo se conecta con azoteas, callejones, escaleras o alcantarillas;
+- qué cicatriz punk contradice la función oficial del lugar.
+
+Un edificio importante debe generar al menos **una ruta pública iluminada** y **una aproximación lateral o trasera más oscura**. Ambas han de leerse por composición antes de mostrar un prompt.
+
+### 17.5 Integración con gameplay
+
+- El perímetro jugable se lee con un contraste continuo; decoración y charcos no pueden confundirse con huecos o muros.
+- Los accesos se anticipan mediante desgaste, convergencia de líneas, luz, espacio de espera y props funcionales.
+- Una ruta de azotea conserva una franja limpia de detalle y usa la acumulación de objetos para enmarcar, no bloquear visualmente.
+- Saltos, descensos y escaleras se integran en la arquitectura: borde erosionado, pasarela, rellano, marquesina o mantenimiento.
+- Las cámaras, focos y posiciones policiales deben tener soporte físico creíble y una lectura clara desde arriba.
+- El landmark debe ofrecer decisiones, no solo decoración: exposición frente a cobertura, ruta rápida frente a silenciosa, calle frente a tejado o acceso principal frente a servicio.
+- Los props interactivos no pueden compartir silueta con props puramente decorativos del mismo tamaño.
+- La zona de combate inmediata reduce detalle de alta frecuencia para proteger la lectura de ataques, derribos y drenajes.
+
+### 17.6 Ficha obligatoria para cada landmark
+
+Antes de producir un landmark, completar esta ficha:
+
+1. **Función urbana:** para qué existe en la ciudad.
+2. **Función narrativa:** qué revela sobre el distrito y sus relaciones de poder.
+3. **Función jugable:** qué decisiones, riesgos y rutas genera.
+4. **Silueta hero:** frase que describe su huella desde arriba.
+5. **Asimetría secundaria:** elemento que rompe la forma dominante.
+6. **Halo urbano:** patio, parking, verja, plaza, callejón o servicio.
+7. **Materiales propios:** máximo tres familias dominantes.
+8. **Props-signature:** entre tres y cinco elementos recurrentes.
+9. **Firma lumínica:** temperatura, alcance, dirección y zonas de sombra.
+10. **Cicatriz punk:** intervención social, deterioro o apropiación contemporánea.
+11. **Ruta expuesta:** acceso rápido, legible y vigilado.
+12. **Ruta de sombra:** acceso más seguro, indirecto o exigente.
+13. **Prohibición principal:** recurso visual que no debe usarse para resolver su identidad.
+
+### 17.7 Iglesia antigua
+
+**Silueta hero:** nave alargada con transepto legible, ábside poligonal y un patio cercado que completa la huella.
+
+- **Planta:** la cruz o nave debe percibirse por masas de cubierta, sin depender de una cruz gigante pintada sobre el tejado.
+- **Asimetría:** capilla lateral, sacristía, pequeño campanario, mausoleo o ala parcialmente derruida.
+- **Halo urbano:** verja de hierro, sendero de losas, cementerio compacto, patio de vigilia o jardín seco.
+- **Materiales:** pizarra casi negra, piedra caliza húmeda y hierro envejecido.
+- **Props-signature:** lápidas, estatua o ángel dañado, árbol sin hojas, velas agrupadas y pequeño mausoleo.
+- **Firma lumínica:** faroles de sodio contenidos, hueso viejo en el acceso y un único acento vino muy tenue asociado a vidriera o ritual.
+- **Cicatriz punk:** carteles de protesta, grafiti en el muro exterior, flores improvisadas, flyers o una vigilia no autorizada.
+- **Ruta expuesta:** acceso axial desde la calle, visible y ceremonial.
+- **Ruta de sombra:** perímetro del ábside, cementerio lateral o conexión de servicio entre reja y callejón.
+- **Cubierta jugable:** caballete, transepto y anexos deben crear tramos claros; gárgolas y pináculos se concentran en bordes para no ensuciar el centro transitable.
+- **Prohibido:** convertirla en castillo medieval, llenar toda la superficie de cruces o apoyarse en una fachada oblicua para que «parezca iglesia».
+
+La iglesia debe transmitir **antigüedad, memoria y contradicción social**, no santidad inequívoca. Su belleza está dañada y el barrio la ha reutilizado.
+
+### 17.8 Comisaría
+
+**Silueta hero:** bloque institucional rectangular o en U, acompañado por explanada frontal y recinto de servicio trasero.
+
+- **Planta:** geometría rígida, modular y simétrica; el orden contrasta con la irregularidad del barrio.
+- **Asimetría:** garaje lateral, patio de detenidos, ala administrativa, torre de comunicaciones o anexo posterior.
+- **Halo urbano:** parking señalizado, acceso controlado, bolardos, barrera, acera amplia y patio de servicio vallado.
+- **Materiales:** hormigón envejecido, piedra cívica fría, membrana de cubierta, metal pintado y vidrio de seguridad.
+- **Props-signature:** coches patrulla, marcas de estacionamiento, focos, cámaras, barreras y valla de depósito/evidencias.
+- **Firma lumínica:** blanco frío y azul policial en áreas amplias; menos intimidad y más exposición que cualquier edificio vecino.
+- **Cicatriz punk:** grafiti borrado parcialmente, carteles arrancados, barricadas reparadas, protestas pegadas a la valla o cámaras añadidas sin elegancia.
+- **Ruta expuesta:** plaza o parking frontal bajo luz y vigilancia.
+- **Ruta de sombra:** carga, contenedores, garaje, patio de evidencias o callejón de mantenimiento.
+- **Cubierta jugable:** máquinas agrupadas en islas, pasillos técnicos limpios, tragaluz o antena como referencia y bordes con focos orientados.
+- **Prohibido:** identificarla solo mediante un rótulo `POLICE`, pintar todo el bloque de azul o darle aspecto de edificio futurista impecable.
+
+La comisaría debe transmitir **control territorial y presión sistémica**. Incluso vacía, su organización comunica que alguien observa, registra y responde.
+
+### 17.9 Otras familias de edificio
+
+| Familia | Silueta cenital | Halo y props-signature | Firma lumínica / gameplay |
+|---|---|---|---|
+| Refugio | Torre o cubierta alta asimétrica con un núcleo privado | Antenas, depósito, shaft, reja y acceso clandestino | Hueso y vino contenidos; dominio de altura y regreso seguro |
+| Club | Bloque profundo con marquesina en planta y gran zona técnica posterior | Cola, portero, flyers, ventilación, taxis y contenedores | Magenta sucio; frente social expuesto y servicio trasero oscuro |
+| Viviendas / mercado | Perímetro irregular alrededor de patio interior | Escaleras de incendio, ropa, toldos, cajas, bicicletas y basura | Sodio doméstico; rutas densas, civiles y visión fragmentada |
+| Almacén | Nave ancha, cubierta dentada o grandes luces estructurales | Muelles, palés, contenedores, grúas pequeñas y vallado | Fluorescente enfermo; espacios de combate y aproximaciones laterales |
+| Bloque viejo | Rectángulo erosionado con patios y anexos acumulados | Reparaciones, depósitos, chatarra, cables y altares improvisados | Luz desigual; múltiples atajos y escondites |
+| Edificio cívico menor | Planta clara con retranqueo o pequeña plaza | Bancos, placas, jardineras rotas, papeleras y cámaras | Blanco frío gastado; espacio abierto con poca cobertura |
+
+Estas familias comparten kits modulares. Su identidad procede de combinaciones y ritmos distintos, no de construir cada edificio como un asset completamente único.
+
+### 17.10 Antipatrones
+
+- Rectángulos idénticos diferenciados únicamente por color o texto en el tejado.
+- Perspectiva oblicua introducida solo para enseñar puertas, ventanas o fachadas.
+- Ornamentación gótica repartida de forma uniforme por todos los edificios.
+- Cubiertas llenas de pequeños objetos sin jerarquía ni corredores jugables.
+- Landmark que solo se reconoce gracias a neón, rótulo o icono flotante.
+- Entradas falsas o decorativas que compiten con el acceso real.
+- Todos los edificios alineados con el mismo retranqueo, escala y relación con la acera.
+- Texturas únicas de alta frecuencia que impiden reutilizar módulos o leer NPC.
+- Comisaría futurista y pulida, iglesia de fantasía medieval o club cyberpunk saturado.
+- Silueta espectacular en el concept art que deja de funcionar a tamaño real de juego.
+
+### 17.11 Pruebas de aceptación de un edificio
+
+Un landmark se aprueba solo si cumple todas estas pruebas:
+
+- Se reconoce en menos de dos segundos a escala de gameplay y sin UI.
+- Sigue siendo distinguible en escala de grises y sin rótulos.
+- Su captura mantiene cámara ortográfica cenital; no necesita fachada oblicua.
+- Su huella puede describirse con una frase y dibujarse de memoria.
+- La ruta expuesta y la ruta de sombra se entienden antes de interactuar.
+- El perímetro, la cubierta transitable y los huecos no se confunden.
+- Sus tres a cinco props-signature forman una familia coherente.
+- La iluminación refuerza su función sin colorear toda la masa.
+- El detalle decorativo no oculta personajes, ataques, cuerpos ni rutas.
+- Funciona en Compact y conserva riqueza suficiente en Ultra.
+- Iglesia, comisaría, club y refugio no intercambian su identidad al sustituir sus colores por neutros.
+
+La iconicidad cenital nace de una combinación repetible: **contorno memorable + situación urbana + material propio + objetos firma + luz funcional**.
