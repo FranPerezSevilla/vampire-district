@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Night Blood District - Phaser</title>
+  <title>Vampire District</title>
   <link rel="stylesheet" href="./styles.css" />
   <style>
     :root {
@@ -24,24 +24,24 @@
   <main class="shell">
     <header class="topbar">
       <div>
-        <p class="eyebrow">Phaser migration build</p>
-        <h1>Night Blood District</h1>
+        <p class="eyebrow">Playable vertical slice</p>
+        <h1>Vampire District</h1>
       </div>
       <div class="topbar-actions">
         <label class="resolution-control" for="resolution-select">
-          Game resolution
-          <select id="resolution-select" aria-label="Game rendering resolution">
-            <option value="compact">960 × 640</option>
-            <option value="large">1280 × 853</option>
-            <option value="qhd" selected>1440 × 960</option>
-            <option value="ultra">1920 × 1280 · Ultra</option>
+          Render quality
+          <select id="resolution-select" aria-label="Internal game render quality">
+            <option value="compact">Low · 960 × 640</option>
+            <option value="large">High · 1280 × 853</option>
+            <option value="qhd" selected>Very high · 1440 × 960</option>
+            <option value="ultra">Ultra · 1920 × 1280</option>
           </select>
         </label>
         <a class="legacy-link" href="../legacy/">Legacy prototype</a>
       </div>
     </header>
 
-    <section class="game-frame" aria-label="Playable Phaser migration prototype">
+    <section class="game-frame" aria-label="Playable Vampire District vertical slice">
       <div id="game-root"></div>
 
       <div id="game-ui" class="game-ui" aria-label="Game HUD">
@@ -85,7 +85,7 @@
 
         <div id="ui-modal" class="ui-modal" role="dialog" aria-modal="true">
           <div class="ui-modal-panel">
-            <h2 id="ui-modal-title">Night Blood District</h2>
+            <h2 id="ui-modal-title">Vampire District</h2>
             <div id="ui-modal-body"></div>
             <button id="ui-modal-action" class="hud-button mission modal-action" type="button">Start run · Enter</button>
           </div>
@@ -94,7 +94,7 @@
     </section>
 
     <section class="notes" aria-label="Build notes">
-      <b>Controls:</b> Hold Space to run; tap Space near routes to jump, climb or descend. E is reserved for interactions.
+      <b>Controls:</b> WASD or arrows run · Shift moves quietly · mouse aims · left click attacks · wheel changes weapon · right click drains · Space traverses · E interacts.
     </section>
   </main>
 
