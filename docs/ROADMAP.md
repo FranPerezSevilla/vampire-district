@@ -49,8 +49,8 @@ Create safe foundations for mouse combat without adding more overlapping input p
 ### Preserved compatibility
 
 - Space still doubles as sprint and traversal in the current playable build. Its sprint role is isolated inside `InputSystem` and is removed in Milestone 5.
-- Right-click and wheel actions are collected but remain unconsumed until their drain/weapon milestones.
-- Left-click now consumes the existing primary-attack action through Milestone 2.
+- Mouse wheel actions are collected but remain unconsumed until the weapon milestone.
+- Left-click is consumed by Milestone 2 and right-click by Milestone 4 through the same frame contract.
 
 ### Acceptance status
 
@@ -83,7 +83,7 @@ Deliver the first complete directional combat loop without weapons.
 - ✅ Hunter resilience: 5.
 - ✅ Temporary resilience feedback and clear downed visuals.
 - ✅ Downed NPCs stop moving, pursuing and reporting.
-- ✅ Rooftop tutorial now requires punching the thug down before the temporary E drain.
+- ✅ Rooftop tutorial requires punching the thug down before draining.
 - ✅ Pure combat geometry and resilience tests.
 - ✅ Dedicated documentation in `docs/COMBAT_SYSTEM.md`.
 
@@ -133,29 +133,39 @@ Make Hunger the player's attrition/health pressure during combat.
 
 ## Milestone 4 — Contextual right-click drain
 
-**Status: ⬜ Planned**
+**Status: 🟡 Implementation complete; browser regression and tuning pending**
 
 ### Goal
 
 Turn feeding into a precise combat/stealth verb.
 
-### Work
+### Implemented
 
-- Use the existing right-button action from `InputSystem`.
-- Downed-target drain from any angle.
-- Standing stealth drain from rear arc only.
-- Awareness/alert eligibility checks.
-- Drain channel, interruption and cancellation.
-- Reticle feedback for valid/invalid drain.
-- Witness and hearing integration.
+- ✅ Existing `drainPressed` and `drainHeld` actions now drive feeding.
+- ✅ Downed targets are drainable from any approach angle.
+- ✅ Standing targets require an unaware rear approach.
+- ✅ Alert, chasing, attacking and reporting targets are rejected.
+- ✅ Aim alignment, start range and blocking-geometry validation.
+- ✅ Deterministic target priority: downed, rats, standing rear targets.
+- ✅ Hold-to-channel behaviour.
+- ✅ Cancellation on release, movement, damage, invalid range/layer or blocked geometry.
+- ✅ Compact valid-target, active-channel and invalid-click feedback.
+- ✅ Existing visual witness behaviour remains active.
+- ✅ Heard-only NPCs turn toward the struggle and enter `WTF` without pursuit.
+- ✅ E drain removed from the interaction list.
+- ✅ Rooftop tutorial updated to use right mouse after knockdown.
+- ✅ Pure tests for rear/downed eligibility, awareness, aim, range, geometry and priority.
+- ✅ Dedicated documentation and browser regression checklist.
 
-### Acceptance criteria
+### Acceptance status
 
-- Downed targets are drainable.
-- Unaware standing targets are drainable from behind.
-- Alert/front-facing standing targets are not drainable.
-- Moving away or taking damage cancels the drain.
-- Right-click never opens the browser menu over the game.
+- ✅ Pure tests verify downed draining from any side.
+- ✅ Pure tests verify rear-only standing draining.
+- ✅ Alert/front-facing targets are rejected.
+- ✅ Damage and movement share the established cancellation paths.
+- ✅ Right-click remains context-menu-safe inside the game canvas.
+- 🟡 Complete browser validation is still required for channel feel, multiple candidates, witness/hearing reactions and viewport/render-quality combinations.
+- 🟡 Range, rear angle and aim assistance remain tuning baselines.
 
 ## Milestone 5 — Traversal-only Space and quiet movement
 
@@ -272,7 +282,8 @@ Teach the new controls with minimal text and no input ambiguity.
 
 - Update intro tutorial copy.
 - ✅ Teach mouse aim and left-click attack at the rooftop blocker.
-- Teach right-click drain after knockdown or rear approach.
+- ✅ Teach right-click drain after knockdown.
+- Teach rear-approach standing drain in a later encounter.
 - Teach Space as traversal only.
 - Teach wheel weapon cycling when the first weapon is acquired.
 - Update HUD/prompt icons.
