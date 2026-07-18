@@ -5,3 +5,4 @@ import "./tutorial-encounter-order.js";
 import "./combat/combat-tutorial-copy.js";
 import "./police-informant.js";
 import "./final-report-sire.js";
+import "./mission-return-finale.js";
