@@ -1,35 +1,42 @@
 # Combat system
 
-_Status: Milestones 2 and 3 are implemented; browser regression and feel tuning remain pending._
+_Status: Milestones 2–4 are implemented; browser regression and feel tuning remain pending._
 
 ## Purpose
 
-The combat layer now covers both sides of the first melee loop:
+The combat layer now covers the first bidirectional melee and feeding loop:
 
 - mouse-directed player punches damage NPC resilience;
 - existing hostile police and hunter pursuit can create enemy melee attacks;
 - confirmed enemy hits increase player Hunger instead of reducing a separate health bar;
-- hit stun and invulnerability prevent overlapping enemies from producing unavoidable damage spikes.
+- hit stun and invulnerability prevent overlapping enemies from producing unavoidable damage spikes;
+- right-click drains downed targets or unaware standing targets approached from behind.
 
-All combat input still comes from the authoritative `InputSystem` frame.
+All combat and drain input comes from the authoritative `InputSystem` frame.
 
 ## Files
 
 - `phaser/src/data/combat.js` — NPC combat states, unarmed timing, resilience values and pure player-attack helpers.
 - `phaser/src/data/player-combat.js` — player damage state, enemy melee definitions, Hunger thresholds and pure hit/timing helpers.
+- `phaser/src/data/drain.js` — pure drain eligibility, awareness and target-selection rules.
 - `phaser/src/combat/CombatSystem.js` — player facing, punch lifecycle, hit resolution, NPC resilience and knockdown presentation.
 - `phaser/src/combat/PlayerDamageSystem.js` — hostile melee lifecycle, player hit stun, invulnerability, Hunger damage and feedback.
-- `phaser/src/input/input-runtime.js` — instantiates and updates both combat systems from one frame loop.
+- `phaser/src/combat/DrainSystem.js` — right-click target selection, channel validation, feedback and heard-only reactions.
+- `phaser/src/systems/FeedingSystem.js` — drain progress, Hunger relief, completion and cancellation events.
+- `phaser/src/input/input-runtime.js` — instantiates and updates all combat systems from one frame loop.
 - `tests/combat.test.js` — aim, player melee arc and NPC resilience tests.
 - `tests/player-damage.test.js` — enemy melee, hit-stun, invulnerability and damage-to-Hunger tests.
+- `tests/drain.test.js` — rear/downed eligibility, awareness, range, aim and priority tests.
 
 ## Current controls
 
 - Move with WASD or arrows.
 - Aim by moving the mouse over the game canvas.
 - Left-click performs one unarmed attack toward the stored aim direction.
-- Space and E retain their current compatibility behaviour until later milestones.
-- Right-click drain and wheel weapon selection are still collected by `InputSystem` but are not yet consumed by their final systems.
+- Right-click starts a valid drain and must remain held through the channel.
+- Space retains its current run/traversal compatibility until Milestone 5.
+- E no longer drains; legacy stun/kill options remain temporarily available outside the guided tutorial.
+- Wheel weapon selection is collected by `InputSystem` but is not yet consumed.
 
 ## Player unarmed attack
 
@@ -59,7 +66,7 @@ The implemented NPC state flow is:
 
 `active → staggered → downed → dead / drained`
 
-At zero resilience, the NPC stops moving, pursuing and reporting, receives a persistent downed presentation and remains available to the existing drain/kill layer. Recovery is intentionally deferred.
+At zero resilience, the NPC stops moving, pursuing and reporting, receives a persistent downed presentation and becomes a high-priority drain target. Recovery is intentionally deferred.
 
 ## Enemy melee attacks
 
@@ -132,7 +139,7 @@ Baseline timing:
 - critical Hunger threshold: 85;
 - frenzy/failure threshold: 100.
 
-While hit-stunned, movement, attacks, powers, traversal and E interactions are suppressed through a filtered input frame. Aim can continue updating.
+While hit-stunned, movement, attacks, powers, traversal, E interactions and right-click draining are suppressed through a filtered input frame. Aim can continue updating.
 
 Invulnerability prevents several nearby enemies from stacking damage in the same instant. An enemy whose active window overlaps the invulnerability period spends that attack without applying Hunger again.
 
@@ -151,7 +158,42 @@ enemy attack active window
 
 At Hunger 85 or above, the hit feedback becomes critical. At 100 Hunger, the current baseline ends the run with a `FRENZY` failure because the vampire loses control before completing the sire's order.
 
-Feeding still reduces Hunger, so it functions as recovery without introducing another resource bar.
+Feeding reduces Hunger, so it functions as recovery without introducing another resource bar.
+
+## Contextual drain
+
+### Downed targets
+
+A downed target can be drained from the front, side or rear. The player must still aim at it, be within 30 world units and have clear geometry between both entities.
+
+### Standing targets
+
+A standing target is drainable only when:
+
+- unaware of the player;
+- not alarmed, chasing, attacking or reporting;
+- the player is inside its rear arc;
+- aim, range and line-clear checks pass.
+
+Hunters actively in hunt mode are considered aware. Rats remain directly drainable without human rear-awareness rules.
+
+### Selection
+
+Valid targets are prioritized as:
+
+1. downed;
+2. rats;
+3. standing rear targets.
+
+Distance and aim angle break ties inside the same category.
+
+### Channel
+
+The right mouse button must remain held. The drain cancels on release, movement, incoming damage, layer change, blocked geometry or exceeding the 38-unit break range. Cancellation does not lower Hunger or resolve the target.
+
+Visual witnesses use the established veil-risk behaviour. NPCs that only hear the struggle turn toward it and enter `WTF` without automatically pursuing or reporting.
+
+See [Drain system](DRAIN_SYSTEM.md) for the complete contract.
 
 ## Presentation
 
@@ -176,15 +218,23 @@ Player damage provides:
 - `HUNGER +N` floating feedback;
 - an additional critical ring when Hunger is dangerous.
 
+Draining provides:
+
+- `RMB · DRAIN` on a valid target;
+- distinct downed/standing target rings;
+- an active tether and `HOLD RMB` label;
+- the existing feeding progress bar;
+- brief `NO VALID DRAIN` feedback on rejection.
+
 ## Tutorial compatibility
 
-The rooftop tutorial continues to teach:
+The rooftop tutorial teaches:
 
 1. aim at the thug;
 2. knock him down with four punches;
-3. press E to drain him.
+3. aim at him and hold right mouse until the drain completes.
 
-The thug remains non-retaliatory for now, keeping the opening tutorial focused. Final right-click drain eligibility belongs to Milestone 4.
+The standing thug cannot be drained before knockdown. E is no longer used for feeding. The thug remains non-retaliatory for now, keeping the opening tutorial focused.
 
 ## Automated tests
 
@@ -204,13 +254,18 @@ Automated coverage includes:
 - police and hunter damage differences;
 - hit stun and invulnerability timing;
 - overlapping attacks not stacking Hunger;
-- critical and frenzy thresholds.
+- critical and frenzy thresholds;
+- downed drain from any approach angle;
+- standing rear-only drain;
+- awareness rejection;
+- drain range, aim and geometry rejection;
+- downed-over-standing target priority.
 
 ## Known limitations
 
 - Enemy melee currently relies on existing police/hunter pursuit intent rather than a unified AI combat state machine.
 - The rooftop thug and civilians do not retaliate yet.
-- Standing targets can still use the legacy E drain outside the specially filtered tutorial path; final rear/downed right-click validation belongs to Milestone 4.
-- Punch and enemy-strike sounds do not yet use a fully consolidated perception-event service.
+- Legacy E stun/kill actions remain temporarily available outside the guided drain tutorial.
+- Drain hearing uses the existing sensory reaction fields through a runtime bridge rather than a final consolidated perception-event service.
 - Combat integration still enters through the input runtime adapter rather than a final core-scene bootstrap.
-- Browser-level tests of dodge timing, simultaneous attackers, cursor accuracy and the complete mission remain required.
+- Browser-level tests of dodge timing, drain geometry, simultaneous attackers, cursor accuracy and the complete mission remain required.
