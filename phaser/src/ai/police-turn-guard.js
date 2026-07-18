@@ -1,4 +1,5 @@
 import { AI_ROLES } from "../data/ai.js";
+import { COMBAT_STATES } from "../data/combat.js";
 import { PoliceSystem } from "../systems/PoliceSystem.js";
 
 function facePlayer(cop, player) {
@@ -11,6 +12,14 @@ function facePlayer(cop, player) {
 
 function installPoliceAttackTurnGuard() {
   if (PoliceSystem.prototype.__nbdPoliceAttackTurnGuard) return;
+
+  const originalPolice = PoliceSystem.prototype.police;
+  PoliceSystem.prototype.police = function activePoliceOnly() {
+    return originalPolice.call(this).filter(cop => Boolean(
+      cop.combat?.state !== COMBAT_STATES.DOWNED
+      && !cop.drainVictim
+    ));
+  };
 
   const originalUpdatePolice = PoliceSystem.prototype.updatePolice;
   PoliceSystem.prototype.updatePolice = function updatePoliceWithStableFiniteAttackTurn(...args) {
