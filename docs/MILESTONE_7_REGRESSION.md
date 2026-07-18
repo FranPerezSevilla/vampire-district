@@ -83,6 +83,17 @@ Use this checklist before changing Milestone 7 from 🟡 to ✅. Record browser,
 - Downed, dead, inactive and mission-informant NPCs do not react.
 - Visual and auditory responses do not duplicate into multiple stacked alerts from one shot.
 
+## Police violence escalation
+
+- The first confirmed hit against a police officer raises the HUD to at least level 1.
+- Downing that officer raises the HUD to level 2.
+- Downing a second distinct officer raises the HUD to level 3.
+- Level 3 activates the strongest police response and helicopter support.
+- Repeated hits on the same already-downed officer do not add another neutralization level.
+- Killing or draining through the remaining legacy interaction path uses the same escalation rule.
+- Escalation remains stable for more than one frame while standing in a broken-light shadow.
+- Local patrols redirect toward the violence and reinforcements spawn for the resulting level.
+
 ## Props and darkness
 
 - Unarmed, pipe and pistol all share the same streetlight durability state.
@@ -109,5 +120,6 @@ Milestone 7 may be marked ✅ only when:
 - ray obstruction and nearest-target ordering are correct;
 - ammo cannot duplicate or become negative;
 - weapon noise preserves sight-versus-hearing rules;
+- police violence escalates progressively and does not stick at level 1;
 - full mission regression passes;
 - failures are fixed or recorded as known limitations.
