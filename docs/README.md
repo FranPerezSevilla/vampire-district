@@ -12,6 +12,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Input system](INPUT_SYSTEM.md) — central frame contract, browser mapping, control modes and tests.
 - [Combat system](COMBAT_SYSTEM.md) — mouse combat, NPC resilience and damage-to-Hunger loop.
 - [Police alert](POLICE_ALERT.md) — progressive wanted escalation for police assault and neutralization.
+- [NPC AI](AI_SYSTEM.md) — priority states, police roles, witness interruption, hunter memory, thug retaliation and recovery.
 - [Drain system](DRAIN_SYSTEM.md) — right-click eligibility, rear/downed targeting, channel cancellation and perception.
 - [Movement system](MOVEMENT_SYSTEM.md) — default running, Shift quiet movement, footsteps and deterministic traversal.
 - [Damageable props](PROP_SYSTEM.md) — streetlight durability, attack integration, darkness, reactions and events.
@@ -23,6 +24,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Milestone 5 regression](MILESTONE_5_REGRESSION.md) — movement speed, quiet footsteps, Space traversal and route-conflict validation.
 - [Milestone 6 regression](MILESTONE_6_REGRESSION.md) — prop hit geometry, persistent darkness and visual/heard-only reaction validation.
 - [Milestone 7 regression](MILESTONE_7_REGRESSION.md) — wheel ownership, weapon damage, hitscan obstruction, ammo and gunshot reactions.
+- [Milestone 8 regression](MILESTONE_8_REGRESSION.md) — state priority, police roles, witness interruption, hunter memory and recovery validation.
 - [Control scheme](CONTROL_SCHEME.md) — target keyboard-and-mouse controls and interaction priority rules.
 - [Roadmap](ROADMAP.md) — ordered milestones with acceptance criteria.
 
