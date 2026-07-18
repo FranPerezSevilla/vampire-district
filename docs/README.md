@@ -5,6 +5,7 @@ This directory is the project source of truth for design, implementation and pla
 ## Documents
 
 - [Project snapshot](PROJECT_SNAPSHOT.md) — current playable state, product direction, known risks and open decisions.
+- [Visual art bible](VISUAL_ART_BIBLE.md) — approved classic urban gothic-punk direction, palette, lighting, character language and art-test criteria.
 - [Functional specification](FUNCTIONAL_SPEC.md) — intended player experience and gameplay rules.
 - [Mission flow](MISSION_FLOW.md) — journalist handling, return-to-refuge completion rule and sire-dialogue-to-report ordering.
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — current architecture, target architecture and engineering constraints.
