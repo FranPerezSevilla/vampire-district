@@ -4,11 +4,10 @@ _Last updated: 2026-07-18_
 
 ## 1. Runtime and stack
 
-- Browser runtime.
-- Phaser 3 for world rendering, camera, timing, tweens and low-level input.
+- Browser runtime with Phaser 3.
 - DOM/CSS overlay for HUD, dialogue, prompts and result screens.
 - Native ES modules.
-- Data-driven world, input, movement, traversal and combat definitions.
+- Data-driven world, input, movement, traversal, combat, drain and prop definitions.
 - Node's built-in test runner with no test dependencies.
 - No backend dependency for the current vertical slice.
 
@@ -18,27 +17,23 @@ _Last updated: 2026-07-18_
 
 Coordinates:
 
-- player/world simulation;
-- map and route rendering;
-- camera updates;
+- player/world simulation and rendering;
+- camera and map layers;
 - one gameplay input-frame consumption point;
-- movement and traversal dispatch;
-- interactions and powers;
-- combat, drain and player-damage updates;
-- system update order;
-- registry publication for the UI.
+- movement, traversal, interactions and powers;
+- player combat, draining, enemy damage and world-prop damage;
+- system update order and UI registry publication.
 
 ### `UIScene`
 
 Owns:
 
 - Hunger/exposure/power HUD;
-- mission drawer;
-- interaction prompt/menu;
+- mission drawer and interaction presentation;
 - intro, pause, failure and success modals;
-- UI-only keyboard handling while the world is paused.
+- UI-only keyboard handling while world input is paused.
 
-World input and UI input remain separate. `InputSystem` is authoritative for gameplay actions.
+`InputSystem` remains authoritative for all world actions.
 
 ## 3. Current systems
 
@@ -47,6 +42,7 @@ World input and UI input remain separate. `InputSystem` is authoritative for gam
 - `PlayerDamageSystem`
 - `DrainSystem`
 - `MovementNoiseSystem`
+- `PropDamageSystem`
 - `NpcSystem`
 - `PoliceSystem`
 - `WitnessSystem`
@@ -59,7 +55,7 @@ World input and UI input remain separate. `InputSystem` is authoritative for gam
 - `InteractionSystem`
 - `TransitionSystem`
 
-Feature modules also provide responsive layout, tutorial flow/copy, dialogue anchoring, objective guidance, city outskirts, police informant behaviour, sensory-awareness patches and the refuge finale.
+Feature modules also provide responsive layout, tutorial flow/copy, dialogue anchoring, objective guidance, city outskirts, police-informant behaviour, sensory-awareness bridges and the refuge finale.
 
 ## 4. Input architecture
 
@@ -78,16 +74,16 @@ Frame lifecycle:
 browser / Phaser input
   → InputSystem.beginFrame()
   → control-mode and world-lock gating
-  → Milestone 5 movement migration: Shift quiet, sprint false
+  → Shift quiet movement / obsolete sprint neutralization
   → PlayerDamageSystem hit-stun filter
   → GameScene dispatches movement/traversal/interactions/powers/combat/drain
-  → NPC/police/hunter simulation
-  → enemy damage resolution
-  → movement-noise update from actual displacement
+  → CombatSystem resolves NPCs and PropDamageSystem resolves world props
+  → NPC/police/hunter simulation and enemy damage
+  → MovementNoiseSystem measures actual displacement
   → UI registry publication
 ```
 
-Important frame fields:
+Important fields:
 
 ```js
 {
@@ -111,7 +107,7 @@ Important frame fields:
 
 No active gameplay feature added after Milestone 1 reads raw Space/E/Q/R/F or mouse buttons.
 
-## 5. Movement architecture
+## 5. Movement and traversal
 
 Authoritative files:
 
@@ -121,20 +117,13 @@ Authoritative files:
 - `phaser/src/movement/milestone5-runtime.js`
 - `tests/movement.test.js`
 
-### Speed contract
-
-```js
-movementSpeed(playerSpeed, quietHeld)
-```
+Speed contract:
 
 - normal run multiplier: `1.55`;
-- quiet multiplier: `0.72`.
+- quiet multiplier: `0.72`;
+- Space does not affect speed.
 
-Space does not affect speed.
-
-### Traversal contract
-
-Existing world systems still produce route options. `selectTraversalCandidate()` gives deterministic ownership:
+Traversal candidate order:
 
 1. close and forward committed route;
 2. distance;
@@ -142,24 +131,7 @@ Existing world systems still produce route options. `selectTraversalCandidate()`
 4. route priority;
 5. stable ID.
 
-The same selected object drives the world prompt and Space execution.
-
-### Footstep contract
-
-`MovementNoiseSystem` measures actual player displacement instead of raw key state.
-
-```js
-{
-  mode: "run" | "quiet",
-  stepDistance,
-  hearingRadius,
-  reactionSeconds
-}
-```
-
-A heard-only footstep turns an eligible NPC, stops it briefly and shows `WTF`. It does not set pursuit/reporting. Already alarmed, chasing, attacking, downed or inactive NPCs are excluded.
-
-`movement:footstep` emits plain data: mode, position, layer, hearing radius and heard-only count.
+Footsteps follow actual displacement. Ordinary NPCs only hear running inside the short 42-unit range and ignore quiet footsteps. Police and hunters retain enhanced hearing. Heard-only footsteps produce orientation and `WTF`, not automatic pursuit/reporting.
 
 ## 6. Player attack and NPC resilience
 
@@ -170,24 +142,20 @@ Authoritative files:
 - `phaser/src/combat/combat-compatibility.js`
 - `tests/combat.test.js`
 
-Player attack:
+Unarmed contract:
 
-- mouse-facing direction;
-- 10-unit aim dead zone;
-- 90 ms windup;
-- 110 ms active window;
-- 240 ms recovery;
-- 32-unit directional arc;
-- one damage point;
-- per-attack hit-ID set.
+```js
+{
+  damage: 1,
+  range: 32,
+  halfAngle: 0.62,
+  windupMs: 90,
+  activeMs: 110,
+  recoveryMs: 240
+}
+```
 
-NPC resilience:
-
-- civilian/target: 3;
-- police/thug: 4;
-- hunter: 5.
-
-State subset:
+Each attack stores origin/direction and owns a `hitIds` set. NPC resilience is civilian/target 3, police/thug 4 and hunter 5. The state subset is:
 
 ```text
 active → staggered → downed → dead / drained
@@ -195,7 +163,36 @@ active → staggered → downed → dead / drained
 
 Downed NPCs stop movement, pursuit and reporting and remain valid drain targets.
 
-## 7. Enemy attacks and damage-to-Hunger
+## 7. Damageable world props
+
+Authoritative files:
+
+- `phaser/src/data/props.js`
+- `phaser/src/systems/PropDamageSystem.js`
+- `phaser/src/world/milestone6-runtime.js`
+- `tests/props.test.js`
+
+Each district light becomes a streetlight prop with one durability point and a 7-unit hit radius.
+
+```text
+CombatSystem active window
+  → NPC hit query
+  → PropDamageSystem hit query using the same origin/direction/range/arc
+  → per-attack prop:<id> duplicate protection
+  → durability damage
+  → brokenLights world state
+  → light removal + shadow creation + feedback/perception events
+```
+
+`GameScene.collectInteractions()` is filtered so E no longer exposes `breakLight`. The older core method remains unreachable compatibility debt.
+
+A broken streetlight reuses the existing map rules:
+
+- `currentLight()` excludes its ID;
+- `currentShadowAt()` returns the circular broken-light shadow;
+- redraws preserve the state through `brokenLights`.
+
+## 8. Enemy attacks and damage-to-Hunger
 
 Authoritative files:
 
@@ -203,31 +200,16 @@ Authoritative files:
 - `phaser/src/combat/PlayerDamageSystem.js`
 - `tests/player-damage.test.js`
 
-Police attacks reuse `chasingPlayer`; hunters reuse active hunt intent.
-
-Confirmed damage:
-
-```text
-enemy active window
-  → stored arc/range validation
-  → invulnerability check
-  → current punch/drain interrupted
-  → Hunger increased
-  → hit stun + invulnerability
-  → player:damaged / hunger:changed events
-  → frenzy failure at 100
-```
+Police attacks reuse `chasingPlayer`; hunters reuse hunt intent. Confirmed damage interrupts punch/drain, raises Hunger, applies 260 ms hit stun and 720 ms invulnerability, and causes frenzy failure at 100 Hunger.
 
 Baselines:
 
 - police: Hunger +12;
 - hunter: Hunger +20;
-- hit stun: 260 ms;
-- invulnerability: 720 ms;
 - critical: 85;
 - frenzy: 100.
 
-## 8. Drain architecture
+## 9. Drain architecture
 
 Authoritative files:
 
@@ -243,13 +225,9 @@ Eligibility:
 - standing human: unaware rear arc;
 - all require range, aim and clear geometry.
 
-The right button uses pressed state to start and held state to maintain. Release, movement, damage or invalid geometry cancels.
+Right-button pressed state starts and held state maintains. Release, movement, damage or invalid geometry cancels.
 
-Visual witnesses retain veil behaviour. Heard-only NPCs turn and show `WTF` without automatic pursuit.
-
-## 9. Mission completion architecture
-
-Handling the journalist sets mission step 3 and the refuge marker. It does not publish success.
+## 10. Mission completion
 
 ```text
 journalist handled
@@ -264,19 +242,21 @@ journalist handled
 
 Authoritative feature: `phaser/src/mission-return-finale.js`.
 
-## 10. Perception architecture
+## 11. Perception architecture
 
-Current perception is distributed between witness, sensory-awareness, drain and movement systems.
+Perception remains distributed between witness, sensory-awareness, drain, movement and prop systems.
 
 Shared rule:
 
-- confirmed sight promotes NPC-type response;
-- hearing alone creates temporary orientation/investigation;
+- confirmed sight promotes the NPC-type response;
+- hearing alone creates temporary orientation/`WTF`;
 - hearing alone does not automatically pursue or report.
+
+Streetlight break uses the existing `breakLight` sensory profile. Visual witnesses react according to type; heard-only NPCs turn toward the break.
 
 Target consolidation remains a future `PerceptionSystem` with explicit `canSee()` and `canHear()` queries.
 
-## 11. Events
+## 12. Events
 
 Implemented plain-data events include:
 
@@ -291,10 +271,13 @@ Implemented plain-data events include:
 - `feeding:completed`
 - `feeding:right-click-started`
 - `movement:footstep`
+- `prop:damaged`
+- `prop:broken`
+- `noise:emitted`
 
 Events carry identifiers and values rather than system instances.
 
-## 12. Testing
+## 13. Testing
 
 Run:
 
@@ -304,23 +287,21 @@ npm test
 
 Pure coverage includes:
 
-- input gating and reset behaviour;
-- responsive pointer conversion;
-- aim and melee geometry;
-- resilience/downed transitions;
-- enemy attack phases and damage thresholds;
-- invulnerability overlap rejection;
-- drain eligibility and target priority;
-- default/quiet movement speeds;
-- deterministic traversal scoring.
+- input gating/reset and pointer conversion;
+- aim, melee geometry and resilience;
+- enemy attack phases, damage and invulnerability;
+- drain eligibility and priority;
+- movement speed/hearing tiers and traversal scoring;
+- prop hit/miss geometry, durability and repeated-damage protection.
 
-Browser regression remains manual and is described in `docs/MILESTONE_1_REGRESSION.md` through `docs/MILESTONE_5_REGRESSION.md`.
+Browser regression remains manual and is described in `docs/MILESTONE_1_REGRESSION.md` through `docs/MILESTONE_6_REGRESSION.md`.
 
-## 13. Technical debt
+## 14. Technical debt
 
 - `movement-input-adapter.js` should be folded into `InputSystem`.
-- `input-runtime.js` and `milestone5-runtime.js` adapt legacy scene methods.
-- `combat-compatibility.js` shields new downed behaviour from older marker/violence paths.
+- `input-runtime.js`, `milestone5-runtime.js` and `milestone6-runtime.js` adapt legacy scene methods.
+- `combat-compatibility.js` shields new downed behaviour from older paths.
+- Prop damage currently patches the player attack resolution instead of being first-class composition.
 - AI still uses competing flags instead of one priority state machine.
 - Perception is not yet consolidated.
 - Browser smoke tests are not automated.
@@ -328,20 +309,21 @@ Browser regression remains manual and is described in `docs/MILESTONE_1_REGRESSI
 Rules for new work:
 
 - no new raw-input path;
-- no duplicate damage or drain implementation;
+- no duplicate NPC, player or prop damage implementations;
+- weapons must reuse the current attack and prop contracts;
 - new geometry/state rules require pure tests;
 - cross-system behaviour should prefer plain-data events;
 - adapter debt must be removed in Milestone 10.
 
-## 14. Migration plan
+## 15. Migration plan
 
 1. ✅ Central input frame.
 2. ✅ Mouse aim, unarmed combat and resilience.
 3. ✅ Enemy attacks and damage-to-Hunger.
 4. ✅ Contextual right-click drain.
 5. ✅ Default run, Shift quiet movement and traversal-only Space.
-6. Validate Milestones 1–5 in-browser.
-7. Convert streetlights to damageable props.
-8. Add weapons and wheel cycling.
+6. ✅ Damageable streetlights and reusable prop damage.
+7. Validate Milestones 1–6 in-browser.
+8. Add weapons and wheel cycling on shared NPC/prop contracts.
 9. Implement explicit AI priority states.
 10. Consolidate adapters and add browser smoke tests.
