@@ -66,10 +66,10 @@ function installUxStyle() {
       bottom: 18px !important;
       min-width: 142px !important;
     }
-    .weapon-hud small { font-size: 11px !important; }
+    .weapon-hud small { font-size: 12px !important; }
     .weapon-hud strong { font-size: 14px !important; }
     .weapon-hud span { font-size: 13px !important; }
-    .weapon-hud kbd { font-size: 10px !important; }
+    .weapon-hud kbd { font-size: 12px !important; }
     .weapon-hud.attention {
       border-color: rgba(255, 242, 168, .78) !important;
       box-shadow: 0 0 0 2px rgba(255, 176, 46, .12), 0 10px 32px rgba(0, 0, 0, .42) !important;
@@ -79,6 +79,17 @@ function installUxStyle() {
       0%, 100% { transform: translateY(0); filter: brightness(.92); }
       50% { transform: translateY(-2px); filter: brightness(1.16); }
     }
+
+    .vital-heading span,
+    .wanted-copy small,
+    .drawer-kicker,
+    .hud-button small,
+    .power-orb i,
+    .interaction-menu p,
+    .tutorial-dialogue__advance {
+      font-size: 12px !important;
+    }
+    .power-orb { height: 58px !important; }
 
     .nbd-accessibility {
       margin: 16px 0 4px;
@@ -137,7 +148,7 @@ function installUxStyle() {
         padding: 7px 9px;
         font-size: 12px;
       }
-      .ux-guidance kbd { min-width: 52px; font-size: 11px; }
+      .ux-guidance kbd { min-width: 52px; font-size: 12px; }
       .weapon-hud { min-width: 118px !important; }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -258,6 +269,7 @@ export class UxGuidanceSystem {
   }
 
   worldGuidanceVisible(frame) {
+    const uiScene = this.scene.scene?.get?.("UIScene");
     return Boolean(
       frame?.worldEnabled
       && !this.scene.registry?.get?.("uiPaused")
@@ -265,6 +277,7 @@ export class UxGuidanceSystem {
       && !this.scene.taskRevealCinematic?.active
       && !this.scene.transitionSystem?.active
       && !this.scene.interactionSystem?.isOpen
+      && !uiScene?.missionOpen
       && !this.scene.missionSystem?.failed
       && !this.scene.missionSystem?.completed
     );
