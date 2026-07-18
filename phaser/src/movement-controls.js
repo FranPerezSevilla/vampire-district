@@ -1,4 +1,5 @@
 import "./combat/combat-compatibility.js";
+import "./combat/police-alert-runtime.js";
 import "./input/movement-input-adapter.js";
 import "./input/input-runtime.js";
 import "./input/tutorial-input-adapter.js";
