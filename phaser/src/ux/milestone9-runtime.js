@@ -115,7 +115,6 @@ function installUiAccessibilityRuntime() {
   if (UIScene.prototype.__nbdMilestone9UxPatch) return;
 
   const originalBindDom = UIScene.prototype.bindDom;
-  const originalSetModal = UIScene.prototype.setModal;
   const originalRenderHud = UIScene.prototype.renderHud;
 
   UIScene.prototype.bindDom = function bindDomWithAccessibility(...args) {
@@ -138,8 +137,8 @@ function installUiAccessibilityRuntime() {
     this.dom.weapon?.setAttribute?.("role", "status");
     this.dom.weapon?.setAttribute?.("aria-live", "polite");
 
-    if (this.dom.root && !this.__nbdAccessibilityPointerHandler) {
-      this.__nbdAccessibilityPointerHandler = event => {
+    if (this.dom.root && !this.__nbdAccessibilityClickHandler) {
+      this.__nbdAccessibilityClickHandler = event => {
         const button = event.target?.closest?.("[data-aim-contrast-toggle]");
         if (!button) return;
         event.preventDefault();
@@ -150,10 +149,10 @@ function installUiAccessibilityRuntime() {
         button.setAttribute("aria-pressed", enabled ? "true" : "false");
         button.textContent = `High-contrast aim: ${enabled ? "On" : "Off"}`;
       };
-      this.dom.root.addEventListener("pointerdown", this.__nbdAccessibilityPointerHandler);
+      this.dom.root.addEventListener("click", this.__nbdAccessibilityClickHandler);
       this.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, () => {
-        this.dom.root?.removeEventListener?.("pointerdown", this.__nbdAccessibilityPointerHandler);
-        this.__nbdAccessibilityPointerHandler = null;
+        this.dom.root?.removeEventListener?.("click", this.__nbdAccessibilityClickHandler);
+        this.__nbdAccessibilityClickHandler = null;
       });
     }
 
@@ -164,8 +163,13 @@ function installUiAccessibilityRuntime() {
     const enabled = Boolean(this.registry?.get?.("aimHighContrast"));
     const body = title === "Pause Menu"
       ? `${String(bodyHtml || "")}${accessibilityMarkup(enabled)}`
-      : bodyHtml;
-    return originalSetModal.call(this, title, body, actionLabel);
+      : String(bodyHtml || "");
+
+    this.setText(this.dom.modalTitle, title);
+    if (this.dom.modalBody && this.dom.modalBody.innerHTML !== body) {
+      this.dom.modalBody.innerHTML = body;
+    }
+    this.setText(this.dom.modalAction, actionLabel);
   };
 
   UIScene.prototype.renderHud = function renderAccessibleHud(data) {
