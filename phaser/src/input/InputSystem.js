@@ -5,41 +5,49 @@ import {
   normalizeControlMode,
   wheelStepFromDelta
 } from "./actions.js";
+import {
+  bindingConflicts,
+  loadInputBindings,
+  normalizeInputBindings,
+  saveInputBindings
+} from "./bindings.js";
 import { clientToGamePoint, normalizeVector, screenToWorldPoint } from "../utils/geometry.js";
 
-const KEY_BINDINGS = Object.freeze({
-  up: "UP",
-  down: "DOWN",
-  left: "LEFT",
-  right: "RIGHT",
-  w: "W",
-  a: "A",
-  s: "S",
-  d: "D",
-  shift: "SHIFT",
-  interact: "E",
-  dash: "Q",
-  whisper: "R",
-  sense: "F",
-  enter: "ENTER",
-  escape: "ESC",
-  space: "SPACE",
-  street: "ONE",
-  roofLow: "TWO",
-  roofHigh: "THREE",
-  sewer: "FOUR",
-  five: "FIVE",
-  six: "SIX",
-  seven: "SEVEN",
-  eight: "EIGHT",
-  nine: "NINE"
+const KEY_SLOTS = Object.freeze({
+  up: "up",
+  down: "down",
+  left: "left",
+  right: "right",
+  w: "w",
+  a: "a",
+  s: "s",
+  d: "d",
+  shift: "quiet",
+  interact: "interact",
+  dash: "dash",
+  whisper: "whisper",
+  sense: "sense",
+  enter: "confirm",
+  escape: "cancel",
+  space: "traverse",
+  street: "debugStreet",
+  roofLow: "debugRoofLow",
+  roofHigh: "debugRoofHigh",
+  sewer: "debugSewer",
+  five: "menuFive",
+  six: "menuSix",
+  seven: "menuSeven",
+  eight: "menuEight",
+  nine: "menuNine"
 });
 
 export class InputSystem {
-  constructor(scene, { keys = null } = {}) {
+  constructor(scene, { keys = null, bindings = null, storage = globalThis?.localStorage } = {}) {
     if (!scene) throw new TypeError("InputSystem requires a Phaser scene.");
 
     this.scene = scene;
+    this.storage = storage;
+    this.bindings = normalizeInputBindings(bindings || loadInputBindings(storage));
     this.keys = keys || this.createKeys();
     this.controlMode = CONTROL_MODES.FULL;
     this.worldEnabled = true;
@@ -97,9 +105,6 @@ export class InputSystem {
       this.pendingWheelStep = Math.max(-1, Math.min(1, this.pendingWheelStep + step));
     };
     this.onWorldLockChanged = (_parent, value, previousValue) => {
-      // UIScene republishes uiPaused every frame. Reset only when the lock
-      // actually changes; resetting on identical values clears every key before
-      // GameScene can consume it and makes keyboard input appear completely dead.
       if (Boolean(value) === Boolean(previousValue)) return;
       this.resetWorldEdges();
     };
@@ -109,15 +114,40 @@ export class InputSystem {
     };
 
     this.bindDomEvents();
+    this.publishBindings();
     scene.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, this.destroy, this);
   }
 
   createKeys() {
     const codes = Phaser.Input.Keyboard.KeyCodes;
-    const bindings = Object.fromEntries(
-      Object.entries(KEY_BINDINGS).map(([name, code]) => [name, codes[code]])
+    const keyCodes = Object.fromEntries(
+      Object.entries(KEY_SLOTS).map(([slot, action]) => {
+        const codeName = this.bindings[action];
+        const code = codes[codeName];
+        if (!Number.isFinite(code)) throw new Error(`Unknown Phaser key code ${codeName} for ${action}.`);
+        return [slot, code];
+      })
     );
-    return this.scene.input.keyboard.addKeys(bindings);
+    return this.scene.input.keyboard.addKeys(keyCodes);
+  }
+
+  bindingSnapshot() {
+    return {
+      bindings: { ...this.bindings },
+      conflicts: bindingConflicts(this.bindings),
+      appliesAfterRestart: true
+    };
+  }
+
+  setBindings(nextBindings, { persist = true } = {}) {
+    this.bindings = normalizeInputBindings({ ...this.bindings, ...(nextBindings || {}) });
+    if (persist) saveInputBindings(this.bindings, this.storage);
+    this.publishBindings();
+    return this.bindingSnapshot();
+  }
+
+  publishBindings() {
+    this.scene.registry?.set?.("inputBindings", this.bindingSnapshot());
   }
 
   bindDomEvents() {
@@ -221,9 +251,8 @@ export class InputSystem {
       hasMovementIntent: Boolean(move.length),
       aimWorld,
       pointerInside: this.pointerInside || Boolean(this.scene.input?.activePointer?.withinGame),
-      // Preserve the current build's behaviour until traversal-only Space lands
-      // in Milestone 5. Ownership is centralized here, so that later change is local.
-      sprintHeld: this.isDown(this.keys.space),
+      quietHeld: this.isDown(this.keys.shift),
+      sprintHeld: false,
       primaryHeld: this.primaryHeld,
       primaryPressed: this.consumePrimaryPressed(),
       drainHeld: this.drainHeld,
