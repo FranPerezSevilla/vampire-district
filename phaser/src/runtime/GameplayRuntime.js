@@ -10,6 +10,7 @@ import { MovementNoiseSystem } from "../systems/MovementNoiseSystem.js";
 import { PoliceViolenceSystem } from "../systems/PoliceViolenceSystem.js";
 import { PropDamageSystem } from "../systems/PropDamageSystem.js";
 import { SensoryAwarenessSystem } from "../systems/SensoryAwarenessSystem.js";
+import { TaskRevealSystem } from "../systems/TaskRevealSystem.js";
 import { UxGuidanceSystem } from "../systems/UxGuidanceSystem.js";
 import { WeaponSystem } from "../systems/WeaponSystem.js";
 import { RuntimeDiagnostics } from "./RuntimeDiagnostics.js";
@@ -47,6 +48,7 @@ export class GameplayRuntime {
     scene.sensoryAwarenessSystem = new SensoryAwarenessSystem(scene);
     scene.aiStateSystem = new AiStateSystem(scene);
     scene.policeViolenceSystem = new PoliceViolenceSystem(scene);
+    scene.taskRevealSystem = new TaskRevealSystem(scene);
     scene.uxGuidanceSystem = new UxGuidanceSystem(scene);
 
     scene.traversalPromptLabel?.destroy?.();
@@ -75,6 +77,7 @@ export class GameplayRuntime {
     diagnostics.claim("PoliceSystem.updatePolice", "PoliceSystem");
     diagnostics.claim("HunterSystem.updateHunters", "HunterSystem");
     diagnostics.claim("CombatSystem.notifyViolence", "CombatSystem");
+    diagnostics.claim("TaskRevealSystem.play", "TaskRevealSystem");
 
     for (const name of [
       "InputSystem",
@@ -87,6 +90,7 @@ export class GameplayRuntime {
       "SensoryAwarenessSystem",
       "AiStateSystem",
       "PoliceViolenceSystem",
+      "TaskRevealSystem",
       "UxGuidanceSystem"
     ]) diagnostics.registerSystem(name);
 
