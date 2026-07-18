@@ -186,11 +186,12 @@ function installUiAccessibilityRuntime() {
 
   UIScene.prototype.setModal = function setModalWithAccessibility(title, bodyHtml, actionLabel) {
     const enabled = Boolean(this.registry?.get?.("aimHighContrast"));
-    const body = title === "Pause Menu"
+    const visibleTitle = title === "Night Blood District" ? "Vampire District" : title;
+    const body = visibleTitle === "Pause Menu"
       ? `${String(bodyHtml || "")}${accessibilityMarkup(enabled)}`
       : String(bodyHtml || "");
 
-    this.setText(this.dom.modalTitle, title);
+    this.setText(this.dom.modalTitle, visibleTitle);
     if (this.dom.modalBody && this.dom.modalBody.innerHTML !== body) {
       this.dom.modalBody.innerHTML = body;
     }
