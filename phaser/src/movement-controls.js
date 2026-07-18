@@ -1,6 +1,4 @@
-// Milestone 10 composes gameplay systems directly from GameScene and
-// GameplayRuntime. This legacy entry remains in both HTML routes so older cached
-// pages do not fail, but it now loads only temporary tutorial/UI bridges that do
-// not own the core simulation loop.
+// Milestone 10 composes gameplay and HUD systems directly. This legacy entry
+// remains in both HTML routes for cache compatibility and now loads only the
+// tutorial control-mode bridge until TutorialDirector is moved into a class.
 import "./input/tutorial-input-adapter.js";
-import "./weapons/milestone7-ui.js";
