@@ -49,9 +49,10 @@ test("movement mode exposes movement, quiet modifier and traversal only", () => 
   assert.equal(frame.interactPressed, false);
   assert.equal(frame.primaryPressed, false);
   assert.equal(frame.dashPressed, false);
+  assert.equal(frame.weaponStep, 0);
 });
 
-test("rooftop combat tutorial mode allows punching and right-click drain but blocks powers", () => {
+test("rooftop combat tutorial mode allows punching and right-click drain but blocks powers and weapon cycling", () => {
   const frame = applyControlMode(activeFrame(), CONTROL_MODES.DRAIN, true);
   assert.equal(frame.primaryPressed, true);
   assert.equal(frame.primaryHeld, true);
@@ -61,6 +62,7 @@ test("rooftop combat tutorial mode allows punching and right-click drain but blo
   assert.equal(frame.traversePressed, true);
   assert.equal(frame.whisperPressed, false);
   assert.equal(frame.bloodSensePressed, false);
+  assert.equal(frame.weaponStep, 0);
 });
 
 test("world lock clears movement modifiers and world actions without clearing menu input", () => {
@@ -69,6 +71,7 @@ test("world lock clears movement modifiers and world actions without clearing me
   assert.equal(frame.quietHeld, false);
   assert.equal(frame.traversePressed, false);
   assert.equal(frame.interactPressed, false);
+  assert.equal(frame.weaponStep, 0);
   assert.equal(frame.menuConfirmPressed, true);
 });
 
