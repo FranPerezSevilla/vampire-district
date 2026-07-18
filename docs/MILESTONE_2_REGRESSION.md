@@ -79,6 +79,17 @@ Use this checklist before changing Milestone 2 from 🟡 to ✅. Record browser,
 - Downing police does not leave that officer actively pursuing.
 - Other witnesses/police react once rather than receiving duplicate stacked alerts from one hit.
 
+## Journalist and mission finale
+
+- Killing or draining the journalist changes the active objective to returning to the rooftop refuge.
+- Handling the journalist does not immediately open the mission-complete report.
+- Reaching the refuge starts a sire dialogue bubble before mission completion is published.
+- The sire says: `Well done. You silenced the journalist and returned as ordered. The veil holds. You have served me well tonight.`
+- The world remains locked while the sire bubble is visible.
+- Dismissing that bubble opens the final `REPORT ACCEPTED` modal.
+- The report modal does not repeat the same sire speech; it shows the outcome summary and night statistics.
+- The success report cannot appear before the return-to-refuge objective is reached.
+
 ## UI and browser ownership
 
 - Left-click advances dialogue while a bubble is open.
@@ -96,4 +107,6 @@ Milestone 2 may be marked ✅ only when:
 - no attack leaks through a UI/dialogue lock;
 - the full rooftop tutorial can be completed;
 - downed NPCs are excluded from active AI behaviour;
+- the journalist objective requires a real return to the refuge;
+- the finale always appears in the order sire dialogue → final report;
 - failures are fixed or recorded as known limitations.
