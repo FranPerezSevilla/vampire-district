@@ -7,6 +7,8 @@ import { createEmptyInputFrame } from "../input/actions.js";
 import { isTraversalAction } from "../systems/InteractionSystem.js";
 import { AiStateSystem } from "../systems/AiStateSystem.js";
 import { MovementNoiseSystem } from "../systems/MovementNoiseSystem.js";
+import { ObjectiveMarkerSystem } from "../systems/ObjectiveMarkerSystem.js";
+import { OutskirtsSystem } from "../systems/OutskirtsSystem.js";
 import { PoliceViolenceSystem } from "../systems/PoliceViolenceSystem.js";
 import { PropDamageSystem } from "../systems/PropDamageSystem.js";
 import { SensoryAwarenessSystem } from "../systems/SensoryAwarenessSystem.js";
@@ -49,7 +51,13 @@ export class GameplayRuntime {
     scene.aiStateSystem = new AiStateSystem(scene);
     scene.policeViolenceSystem = new PoliceViolenceSystem(scene);
     scene.taskRevealSystem = new TaskRevealSystem(scene);
+    scene.outskirtsSystem = new OutskirtsSystem(scene);
+    scene.objectiveMarkerSystem = new ObjectiveMarkerSystem(scene);
     scene.uxGuidanceSystem = new UxGuidanceSystem(scene);
+
+    // ObjectiveMarkerSystem is the sole player-facing objective marker. The old
+    // static map marker is disabled on this scene instance without a prototype patch.
+    scene.drawMissionMarker = () => {};
 
     scene.traversalPromptLabel?.destroy?.();
     scene.traversalPromptLabel = scene.add.text(0, 0, "SPACE", {
@@ -78,6 +86,8 @@ export class GameplayRuntime {
     diagnostics.claim("HunterSystem.updateHunters", "HunterSystem");
     diagnostics.claim("CombatSystem.notifyViolence", "CombatSystem");
     diagnostics.claim("TaskRevealSystem.play", "TaskRevealSystem");
+    diagnostics.claim("ObjectiveMarkerSystem.update", "ObjectiveMarkerSystem");
+    diagnostics.claim("OutskirtsSystem.updatePresentation", "OutskirtsSystem");
 
     for (const name of [
       "InputSystem",
@@ -91,6 +101,8 @@ export class GameplayRuntime {
       "AiStateSystem",
       "PoliceViolenceSystem",
       "TaskRevealSystem",
+      "OutskirtsSystem",
+      "ObjectiveMarkerSystem",
       "UxGuidanceSystem"
     ]) diagnostics.registerSystem(name);
 
@@ -189,7 +201,11 @@ export class GameplayRuntime {
         scene.npcSystem.update(0);
       } else {
         const movementBlocked = scene.combatSystem?.blocksMovement() || scene.playerDamageSystem?.blocksMovement();
-        if (!movementBlocked) scene.updatePlayerMovement(dt, frame);
+        if (!movementBlocked) {
+          const leaving = scene.outskirtsSystem?.isTryingToLeave?.(frame);
+          scene.updatePlayerMovement(dt, frame);
+          if (leaving) void scene.outskirtsSystem?.warnBoundary?.();
+        }
         scene.npcSystem.update(dt);
         scene.witnessSystem.update(dt);
       }
@@ -220,6 +236,8 @@ export class GameplayRuntime {
   finishFrame() {
     const scene = this.scene;
     scene.updateCameraForLayer();
+    scene.outskirtsSystem?.updatePresentation?.();
+    scene.objectiveMarkerSystem?.update?.(scene.time?.now || 0);
     scene.drawPromptMarker();
     const frameMs = this.diagnostics.endFrame();
     scene.statePublisher?.setMany?.({
