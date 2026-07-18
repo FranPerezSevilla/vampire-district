@@ -12,6 +12,9 @@ import {
   sewerTunnels,
   shadowZones
 } from "../data/district.js";
+import { movementSpeed } from "../data/movement.js";
+import { GameplayRuntime } from "../runtime/GameplayRuntime.js";
+import { RegistryPublisher } from "../runtime/RegistryPublisher.js";
 import { EvidenceSystem } from "../systems/EvidenceSystem.js";
 import { ExposureSystem } from "../systems/ExposureSystem.js";
 import { FeedingSystem } from "../systems/FeedingSystem.js";
@@ -51,19 +54,33 @@ const ROOF_DROPS = Object.freeze([
   }
 ]);
 
+const HIDDEN_MAP_LABELS = new Set([
+  "LAMP",
+  "JUMP",
+  "JUMP ARC",
+  "LAND",
+  "DOWN",
+  "DROP",
+  "FIRE",
+  "SEWER"
+]);
+
 export class GameScene extends Phaser.Scene {
   constructor() {
     super("GameScene");
     this.currentLayer = LAYERS.ROOF_HIGH;
     this.playerSpeed = PLAYER.baseSpeed;
     this.nearestInteraction = null;
+    this.nearestMovement = null;
     this.lastActionText = "Initial rooftop refuge.";
     this.brokenLights = new Set();
+    this.taskRevealCinematic = { active: false, queued: null, initialPlayed: false };
   }
 
   create() {
     this.cameras.main.setBounds(0, 0, WORLD.width, WORLD.height);
     this.physics.world.setBounds(0, 0, WORLD.width, WORLD.height);
+    this.statePublisher = new RegistryPublisher(this.registry);
 
     this.mapLabels = [];
     this.map = this.add.graphics();
@@ -76,34 +93,6 @@ export class GameScene extends Phaser.Scene {
     this.player.add([this.playerBody, this.playerHead]);
     this.player.setDepth(50);
 
-    this.keys = this.input.keyboard.addKeys({
-      up: Phaser.Input.Keyboard.KeyCodes.UP,
-      down: Phaser.Input.Keyboard.KeyCodes.DOWN,
-      left: Phaser.Input.Keyboard.KeyCodes.LEFT,
-      right: Phaser.Input.Keyboard.KeyCodes.RIGHT,
-      w: Phaser.Input.Keyboard.KeyCodes.W,
-      a: Phaser.Input.Keyboard.KeyCodes.A,
-      s: Phaser.Input.Keyboard.KeyCodes.S,
-      d: Phaser.Input.Keyboard.KeyCodes.D,
-      shift: Phaser.Input.Keyboard.KeyCodes.SHIFT,
-      interact: Phaser.Input.Keyboard.KeyCodes.E,
-      dash: Phaser.Input.Keyboard.KeyCodes.Q,
-      whisper: Phaser.Input.Keyboard.KeyCodes.R,
-      sense: Phaser.Input.Keyboard.KeyCodes.F,
-      enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
-      escape: Phaser.Input.Keyboard.KeyCodes.ESC,
-      space: Phaser.Input.Keyboard.KeyCodes.SPACE,
-      street: Phaser.Input.Keyboard.KeyCodes.ONE,
-      roofLow: Phaser.Input.Keyboard.KeyCodes.TWO,
-      roofHigh: Phaser.Input.Keyboard.KeyCodes.THREE,
-      sewer: Phaser.Input.Keyboard.KeyCodes.FOUR,
-      five: Phaser.Input.Keyboard.KeyCodes.FIVE,
-      six: Phaser.Input.Keyboard.KeyCodes.SIX,
-      seven: Phaser.Input.Keyboard.KeyCodes.SEVEN,
-      eight: Phaser.Input.Keyboard.KeyCodes.EIGHT,
-      nine: Phaser.Input.Keyboard.KeyCodes.NINE
-    });
-
     this.interactionSystem = new InteractionSystem(this);
     this.missionSystem = new MissionSystem(this);
     this.npcSystem = new NpcSystem(this);
@@ -115,76 +104,23 @@ export class GameScene extends Phaser.Scene {
     this.hunterSystem = new HunterSystem(this);
     this.powersSystem = new PowersSystem(this);
     this.transitionSystem = new TransitionSystem(this);
+    this.gameplayRuntime = new GameplayRuntime(this);
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.redrawLayer(this.lastActionText);
     this.publishState();
   }
 
-  update(_time, deltaMs) {
-    const dt = Math.min(deltaMs / 1000, 0.05);
-
-    if (this.transitionSystem?.active) {
-      this.nearestInteraction = null;
-      this.updateCameraForLayer();
-      this.drawPromptMarker();
-      this.publishState();
-      return;
-    }
-
-    if (this.interactionSystem.isOpen) {
-      this.interactionSystem.updateInput(this.keys);
-      this.nearestInteraction = null;
-      this.npcSystem.refreshVisibility();
-      this.updateCameraForLayer();
-      this.drawPromptMarker();
-      this.publishState();
-      return;
-    }
-
-    this.handleLayerDebugKeys();
-    this.powersSystem.update(dt, this.keys);
-
-    const availableActions = this.collectInteractions();
-    this.nearestInteraction = this.findNearestInteraction(availableActions);
-
-    if (Phaser.Input.Keyboard.JustDown(this.keys.interact)) {
-      const handled = this.interactionSystem.handleAction(availableActions);
-      if (handled) {
-        this.nearestInteraction = this.interactionSystem.isOpen
-          ? null
-          : this.findNearestInteraction(this.collectInteractions());
-      }
-    }
-
-    if (!this.interactionSystem.isOpen) {
-      if (this.feedingSystem.isActive()) {
-        this.witnessSystem.update(dt);
-        this.feedingSystem.update(dt, this.playerHasMovementIntent());
-        this.npcSystem.update(0);
-      } else {
-        this.updatePlayerMovement(dt);
-        this.npcSystem.update(dt);
-        this.witnessSystem.update(dt);
-      }
-      this.evidenceSystem.update(dt);
-      this.exposureSystem.cool(dt);
-      this.policeSystem.update(dt);
-      this.hunterSystem.update(dt);
-      this.missionSystem.update();
-      this.nearestInteraction = this.findNearestInteraction(this.collectInteractions());
-    }
-
-    this.updateCameraForLayer();
-    this.drawPromptMarker();
-    this.publishState();
+  update(time, deltaMs) {
+    this.gameplayRuntime?.update(time, deltaMs);
   }
 
-  handleLayerDebugKeys() {
-    if (Phaser.Input.Keyboard.JustDown(this.keys.street)) this.switchLayer(LAYERS.STREET, { x: 488, y: 326 }, "Debug: street layer.");
-    if (Phaser.Input.Keyboard.JustDown(this.keys.roofLow)) this.switchLayer(LAYERS.ROOF_LOW, { x: 345, y: 168 }, "Debug: low rooftops.");
-    if (Phaser.Input.Keyboard.JustDown(this.keys.roofHigh)) this.switchLayer(LAYERS.ROOF_HIGH, { x: 150, y: 146 }, "Debug: high refuge rooftop.");
-    if (Phaser.Input.Keyboard.JustDown(this.keys.sewer)) this.switchLayer(LAYERS.SEWER, { x: 472, y: 326 }, "Debug: sewer layer.");
+  handleLayerDebugInput(frame = this.currentInputFrame) {
+    const layer = Number(frame?.debugLayerPressed || 0);
+    if (layer === 1) this.switchLayer(LAYERS.STREET, { x: 488, y: 326 }, "Debug: street layer.");
+    if (layer === 2) this.switchLayer(LAYERS.ROOF_LOW, { x: 345, y: 168 }, "Debug: low rooftops.");
+    if (layer === 3) this.switchLayer(LAYERS.ROOF_HIGH, { x: 150, y: 146 }, "Debug: high refuge rooftop.");
+    if (layer === 4) this.switchLayer(LAYERS.SEWER, { x: 472, y: 326 }, "Debug: sewer layer.");
   }
 
   switchLayer(layer, position, status) {
@@ -192,26 +128,20 @@ export class GameScene extends Phaser.Scene {
     this.player.setPosition(position.x, position.y);
     this.player.setScale(1);
     this.lastActionText = status || "Layer changed.";
+    this.inputSystem?.resetWorldEdges?.();
     this.redrawLayer(this.lastActionText);
     this.npcSystem?.refreshVisibility();
   }
 
-  playerHasMovementIntent() {
-    return this.keys.left.isDown || this.keys.a.isDown || this.keys.right.isDown || this.keys.d.isDown || this.keys.up.isDown || this.keys.w.isDown || this.keys.down.isDown || this.keys.s.isDown;
+  playerHasMovementIntent(frame = this.currentInputFrame) {
+    return Boolean(frame?.hasMovementIntent);
   }
 
-  updatePlayerMovement(dt) {
-    const dir = new Phaser.Math.Vector2(0, 0);
-    if (this.keys.left.isDown || this.keys.a.isDown) dir.x -= 1;
-    if (this.keys.right.isDown || this.keys.d.isDown) dir.x += 1;
-    if (this.keys.up.isDown || this.keys.w.isDown) dir.y -= 1;
-    if (this.keys.down.isDown || this.keys.s.isDown) dir.y += 1;
-    if (dir.lengthSq() === 0) return;
-
-    dir.normalize();
-    const speed = this.playerSpeed * (this.keys.shift.isDown ? PLAYER.sprintMultiplier : 1);
-    const nextX = this.player.x + dir.x * speed * dt;
-    const nextY = this.player.y + dir.y * speed * dt;
+  updatePlayerMovement(dt, frame = this.currentInputFrame) {
+    if (!frame?.hasMovementIntent) return;
+    const speed = movementSpeed(this.playerSpeed, frame.quietHeld);
+    const nextX = this.player.x + frame.move.x * speed * dt;
+    const nextY = this.player.y + frame.move.y * speed * dt;
 
     if (this.canStandAt(nextX, this.player.y)) this.player.x = nextX;
     if (this.canStandAt(this.player.x, nextY)) this.player.y = nextY;
@@ -221,19 +151,18 @@ export class GameScene extends Phaser.Scene {
     if (x < 8 || y < 8 || x > WORLD.width - 8 || y > WORLD.height - 8) return false;
 
     if (this.currentLayer === LAYERS.SEWER) {
-      return sewerTunnels.some(t => this.pointInRect(x, y, t));
+      return sewerTunnels.some(tunnel => this.pointInRect(x, y, tunnel));
     }
 
     if (this.currentLayer === LAYERS.ROOF_LOW || this.currentLayer === LAYERS.ROOF_HIGH) {
-      return (roofAreas[this.currentLayer] || []).some(r => this.pointInRect(x, y, r));
+      return (roofAreas[this.currentLayer] || []).some(roof => this.pointInRect(x, y, roof));
     }
 
-    return !buildings.some(b => this.rectsOverlap({ x: x - 5, y: y - 7, w: 10, h: 14 }, b));
+    return !buildings.some(building => this.rectsOverlap({ x: x - 5, y: y - 7, w: 10, h: 14 }, building));
   }
 
   findNearestInteraction(options = this.collectInteractions()) {
-    const sorted = this.interactionSystem.sortOptions(options);
-    return sorted[0] || null;
+    return this.interactionSystem.sortOptions(options)[0] || null;
   }
 
   collectInteractions() {
@@ -243,42 +172,20 @@ export class GameScene extends Phaser.Scene {
     options.push(...this.witnessSystem.collectInteractions());
     options.push(...this.missionSystem.collectInteractions());
     options.push(...this.feedingSystem.collectInteractions());
-
     if (this.feedingSystem.isActive()) return options;
-
     options.push(...this.evidenceSystem.collectInteractions());
-
-    if (this.currentLayer === LAYERS.STREET) {
-      for (const light of lights) {
-        if (this.brokenLights.has(light.id)) continue;
-        const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, light.x, light.y);
-        if (d <= 32) {
-          options.push({
-            id: `break_${light.id}`,
-            type: "breakLight",
-            label: `Break ${light.name}`,
-            detail: "creates shadow · raises suspicion",
-            priority: 80,
-            distance: d,
-            x: light.x,
-            y: light.y,
-            run: () => this.breakLight(light)
-          });
-        }
-      }
-    }
 
     for (const escape of fireEscapes) {
       if (this.currentLayer === LAYERS.STREET) {
-        const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, escape.street.x, escape.street.y);
-        if (d <= radius) {
+        const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, escape.street.x, escape.street.y);
+        if (distance <= radius) {
           options.push({
             id: `${escape.id}_up`,
             type: "fireEscapeUp",
             label: `Climb ${escape.name}`,
             detail: "street → rooftop · animated climb",
             priority: 40,
-            distance: d,
+            distance,
             x: escape.street.x,
             y: escape.street.y,
             run: () => this.transitionSystem.fireEscape({
@@ -293,15 +200,15 @@ export class GameScene extends Phaser.Scene {
       }
 
       if (this.currentLayer === escape.roof.layer) {
-        const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, escape.roof.x, escape.roof.y);
-        if (d <= radius) {
+        const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, escape.roof.x, escape.roof.y);
+        if (distance <= radius) {
           options.push({
             id: `${escape.id}_down`,
             type: "fireEscapeDown",
             label: `Descend ${escape.name}`,
             detail: "rooftop → street · animated descent",
             priority: 40,
-            distance: d,
+            distance,
             x: escape.roof.x,
             y: escape.roof.y,
             run: () => this.transitionSystem.fireEscape({
@@ -318,15 +225,15 @@ export class GameScene extends Phaser.Scene {
 
     for (const access of sewerAccesses) {
       if (this.currentLayer === LAYERS.STREET && access.street) {
-        const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, access.street.x, access.street.y);
-        if (d <= radius) {
+        const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, access.street.x, access.street.y);
+        if (distance <= radius) {
           options.push({
             id: `${access.id}_down`,
             type: "sewerDown",
             label: `Enter ${access.name}`,
             detail: "street → sewers",
             priority: 35,
-            distance: d,
+            distance,
             x: access.street.x,
             y: access.street.y,
             run: () => this.switchLayer(LAYERS.SEWER, { x: access.sewer.x, y: access.sewer.y }, `You descend through the ${access.name}.`)
@@ -335,8 +242,8 @@ export class GameScene extends Phaser.Scene {
       }
 
       if (this.currentLayer === LAYERS.SEWER) {
-        const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, access.sewer.x, access.sewer.y);
-        if (d <= radius) {
+        const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, access.sewer.x, access.sewer.y);
+        if (distance <= radius) {
           const targetLayer = access.roof ? access.roof.layer : LAYERS.STREET;
           const target = access.roof ? access.roof : access.street;
           if (target) {
@@ -346,10 +253,14 @@ export class GameScene extends Phaser.Scene {
               label: access.roof ? "Climb private shaft to refuge" : `Exit ${access.name}`,
               detail: access.roof ? "sewers → rooftop refuge" : "sewers → street",
               priority: access.roof ? 55 : 35,
-              distance: d,
+              distance,
               x: access.sewer.x,
               y: access.sewer.y,
-              run: () => this.switchLayer(targetLayer, { x: target.x, y: target.y }, access.roof ? "You climb the private shaft onto your rooftop refuge." : `You climb out through the ${access.name}.`)
+              run: () => this.switchLayer(
+                targetLayer,
+                { x: target.x, y: target.y },
+                access.roof ? "You climb the private shaft onto your rooftop refuge." : `You climb out through the ${access.name}.`
+              )
             });
           }
         }
@@ -358,15 +269,15 @@ export class GameScene extends Phaser.Scene {
 
     for (const route of rooftopRoutes) {
       if (this.currentLayer === route.aLayer) {
-        const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, route.ax, route.ay);
-        if (d <= radius) {
+        const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, route.ax, route.ay);
+        if (distance <= radius) {
           options.push({
             id: `${route.id}_a_to_b`,
             type: "roofJump",
             label: route.aToB,
             detail: "animated rooftop jump",
             priority: 45,
-            distance: d,
+            distance,
             x: route.ax,
             y: route.ay,
             run: () => this.transitionSystem.roofJump({
@@ -380,15 +291,15 @@ export class GameScene extends Phaser.Scene {
       }
 
       if (this.currentLayer === route.bLayer) {
-        const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, route.bx, route.by);
-        if (d <= radius) {
+        const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, route.bx, route.by);
+        if (distance <= radius) {
           options.push({
             id: `${route.id}_b_to_a`,
             type: "roofJump",
             label: route.bToA,
             detail: "animated rooftop jump",
             priority: 45,
-            distance: d,
+            distance,
             x: route.bx,
             y: route.by,
             run: () => this.transitionSystem.roofJump({
@@ -404,15 +315,15 @@ export class GameScene extends Phaser.Scene {
 
     if (this.currentLayer === LAYERS.ROOF_LOW) {
       for (const drop of ROOF_DROPS) {
-        const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, drop.roof.x, drop.roof.y);
-        if (d <= radius) {
+        const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, drop.roof.x, drop.roof.y);
+        if (distance <= radius) {
           options.push({
             id: drop.id,
             type: "roofDrop",
             label: drop.label,
             detail: "fast roof → street drop · noisy landing",
             priority: 42,
-            distance: d,
+            distance,
             x: drop.roof.x,
             y: drop.roof.y,
             run: () => this.transitionSystem.roofDrop({
@@ -431,11 +342,8 @@ export class GameScene extends Phaser.Scene {
 
   breakLight(light) {
     if (!light || this.brokenLights.has(light.id)) return;
-    this.brokenLights.add(light.id);
-    this.exposureSystem.add(8, `${light.name} broken. The avenue notices.`);
-    this.exposureSystem.forceLevel(1, "Vandalism makes civilians nervous.");
-    this.lastActionText = `${light.name} broken. You create a useful patch of darkness.`;
-    this.redrawLayer(this.lastActionText);
+    const prop = this.propDamageSystem?.props?.find(candidate => candidate.id === light.id);
+    if (prop) this.propDamageSystem.damage(prop, prop.durability || 1, 0);
   }
 
   updateCameraForLayer() {
@@ -447,29 +355,38 @@ export class GameScene extends Phaser.Scene {
         : this.currentLayer === LAYERS.SEWER
           ? CAMERA.sewerZoom
           : CAMERA.streetZoom;
-    const targetZoom = baseZoom * (WORLD.renderScale || 1);
+    const renderScale = typeof window !== "undefined"
+      ? window.NBD_RESOLUTION_PRESET?.renderScale || 1
+      : 1;
+    const targetZoom = baseZoom * renderScale;
     camera.setZoom(Phaser.Math.Linear(camera.zoom, targetZoom, 0.08));
   }
 
   publishState() {
     const layerName = LAYER_NAMES[this.currentLayer] || "Unknown";
     const zone = this.describeCurrentZone();
-    this.registry.set("currentLayer", this.currentLayer);
-    this.registry.set("statusText", `${layerName} · ${zone}`);
-    this.registry.set("visibilityText", this.visibilityText());
-    this.registry.set("missionText", this.missionSystem.objectiveText());
-    this.registry.set("npcText", this.npcSystem ? this.npcSystem.summary() : "NPCs loading");
-    this.registry.set("hungerText", this.feedingSystem ? this.feedingSystem.summary() : "Hunger loading");
-    this.registry.set("powersText", this.powersSystem ? this.powersSystem.summary() : "Powers loading");
-    this.registry.set("exposureText", this.exposureSystem ? this.exposureSystem.summary() : "Exposure loading");
-    this.registry.set("witnessText", this.witnessSystem ? this.witnessSystem.summary() : "Witnesses loading");
-    this.registry.set("evidenceText", this.evidenceSystem ? this.evidenceSystem.summary() : "Evidence loading");
-    this.registry.set("policeText", this.policeSystem ? this.policeSystem.summary() : "Police loading");
-    this.registry.set("hunterText", this.hunterSystem ? this.hunterSystem.summary() : "Hunters dormant");
-    this.registry.set("playerXY", `${Math.round(this.player.x)}, ${Math.round(this.player.y)}`);
-    this.registry.set("interactionPrompt", this.interactionSystem.isOpen ? "" : this.nearestInteraction ? `E: ${this.nearestInteraction.label}` : "");
-    this.registry.set("lastActionText", this.lastActionText);
-    this.registry.set("interactionMenu", this.interactionSystem.snapshot());
+    const movementPrompt = this.nearestMovement ? `SPACE: ${this.nearestMovement.label}` : "";
+    const interactionPrompt = this.nearestInteraction ? `E: ${this.nearestInteraction.label}` : "";
+    this.statePublisher?.setMany?.({
+      currentLayer: this.currentLayer,
+      statusText: `${layerName} · ${zone}`,
+      visibilityText: this.visibilityText(),
+      missionText: this.missionSystem.objectiveText(),
+      npcText: this.npcSystem?.summary() || "NPCs loading",
+      hungerText: this.feedingSystem?.summary() || "Hunger loading",
+      powersText: this.powersSystem?.summary() || "Powers loading",
+      exposureText: this.exposureSystem?.summary() || "Exposure loading",
+      witnessText: this.witnessSystem?.summary() || "Witnesses loading",
+      evidenceText: this.evidenceSystem?.summary() || "Evidence loading",
+      policeText: this.policeSystem?.summary() || "Police loading",
+      hunterText: this.hunterSystem?.summary() || "Hunters dormant",
+      propText: this.propDamageSystem?.summary() || "Props loading",
+      aiText: this.aiStateSystem?.summary() || "AI loading",
+      playerXY: `${Math.round(this.player.x)}, ${Math.round(this.player.y)}`,
+      interactionPrompt: this.interactionSystem.isOpen ? "" : movementPrompt || interactionPrompt,
+      lastActionText: this.lastActionText,
+      interactionMenu: this.interactionSystem.snapshot()
+    });
   }
 
   describeCurrentZone() {
@@ -493,7 +410,8 @@ export class GameScene extends Phaser.Scene {
 
   currentLight() {
     if (this.currentLayer !== LAYERS.STREET) return null;
-    return lights.find(l => !this.brokenLights.has(l.id) && Phaser.Math.Distance.Between(this.player.x, this.player.y, l.x, l.y) < l.radius) || null;
+    return lights.find(light => !this.brokenLights.has(light.id)
+      && Phaser.Math.Distance.Between(this.player.x, this.player.y, light.x, light.y) < light.radius) || null;
   }
 
   currentShadow() {
@@ -502,9 +420,10 @@ export class GameScene extends Phaser.Scene {
 
   currentShadowAt(x, y, layer = this.currentLayer) {
     if (layer !== LAYERS.STREET) return null;
-    const brokenLamp = lights.find(l => this.brokenLights.has(l.id) && Phaser.Math.Distance.Between(x, y, l.x, l.y) < l.radius * 0.72);
+    const brokenLamp = lights.find(light => this.brokenLights.has(light.id)
+      && Phaser.Math.Distance.Between(x, y, light.x, light.y) < light.radius * 0.72);
     if (brokenLamp) return { id: `broken-${brokenLamp.id}`, name: "broken light shadow" };
-    return shadowZones.find(z => this.pointInRect(x, y, z)) || null;
+    return shadowZones.find(zone => this.pointInRect(x, y, zone)) || null;
   }
 
   redrawLayer(statusText = "") {
@@ -525,21 +444,17 @@ export class GameScene extends Phaser.Scene {
     this.drawMissionMarker();
     this.drawHunterRouteBlocks();
     this.npcSystem?.refreshVisibility();
-    if (statusText) this.registry.set("lastActionText", statusText);
+    if (statusText) this.statePublisher?.set?.("lastActionText", statusText);
   }
 
   drawDistrictStreet() {
     this.map.fillStyle(COLORS.streetBase, 1).fillRect(0, 0, WORLD.width, WORLD.height);
-
     for (const road of roads) this.drawRoad(road);
     this.drawShadowZones();
     this.drawLights();
     this.drawSewerManholes();
     for (const building of buildings) this.drawBuilding(building);
-
-    if (this.currentLayer > LAYERS.STREET) {
-      this.map.fillStyle(0x000000, 0.46).fillRect(0, 0, WORLD.width, WORLD.height);
-    }
+    if (this.currentLayer > LAYERS.STREET) this.map.fillStyle(0x000000, 0.46).fillRect(0, 0, WORLD.width, WORLD.height);
   }
 
   drawRoad(road) {
@@ -558,9 +473,7 @@ export class GameScene extends Phaser.Scene {
     for (const zone of shadowZones) {
       const alpha = zone.id === "districtDarkness" ? 0.20 : 0.44 + zone.strength * 0.18;
       this.map.fillStyle(0x0d0a18, alpha).fillRect(zone.x, zone.y, zone.w, zone.h);
-      if (zone.id !== "districtDarkness") {
-        this.map.lineStyle(1, 0xd7c8ff, 0.14).strokeRect(zone.x, zone.y, zone.w, zone.h);
-      }
+      if (zone.id !== "districtDarkness") this.map.lineStyle(1, 0xd7c8ff, 0.14).strokeRect(zone.x, zone.y, zone.w, zone.h);
     }
 
     for (const light of lights) {
@@ -601,7 +514,7 @@ export class GameScene extends Phaser.Scene {
     for (let x = building.x + 14; x < building.x + building.w - 14; x += 26) {
       for (let y = building.y + 18; y < building.y + building.h - 14; y += 24) this.map.fillRect(x, y, 8, 5);
     }
-    this.addMapLabel(building.sign, building.x + 9, building.y + 15, 0xefe6ff);
+    if (this.currentLayer === LAYERS.STREET) this.addMapLabel(building.sign, building.x + 9, building.y + 15, 0xefe6ff);
   }
 
   drawRoofLayer() {
@@ -654,12 +567,6 @@ export class GameScene extends Phaser.Scene {
       if (this.currentLayer === LAYERS.SEWER) this.drawRouteMarker(access.sewer.x, access.sewer.y, access.roof ? "SHAFT" : "EXIT", 0x78c7a3);
     }
 
-    if (this.currentLayer === LAYERS.STREET) {
-      for (const light of lights) {
-        if (!this.brokenLights.has(light.id)) this.drawRouteMarker(light.x, light.y, "LAMP", 0xffe16b);
-      }
-    }
-
     if (this.currentLayer > LAYERS.STREET) {
       for (const route of rooftopRoutes) {
         if (route.aLayer === this.currentLayer) this.drawRouteMarker(route.ax, route.ay, "JUMP", 0xd7c8ff);
@@ -698,11 +605,19 @@ export class GameScene extends Phaser.Scene {
 
   drawPromptMarker() {
     this.promptGraphics.clear();
-    if (this.nearestInteraction) {
+    this.traversalPromptLabel?.setVisible(false);
+
+    if (this.nearestMovement) {
+      const { x, y } = this.nearestMovement;
+      this.promptGraphics.lineStyle(2, 0x78c7a3, 0.95).strokeCircle(x, y, 17);
+      this.promptGraphics.fillStyle(0x78c7a3, 0.12).fillCircle(x, y, 17);
+      this.traversalPromptLabel?.setText("SPACE").setPosition(x, y - 21).setVisible(true);
+    } else if (this.nearestInteraction) {
       const { x, y } = this.nearestInteraction;
       this.promptGraphics.lineStyle(2, 0xfff2a8, 0.95).strokeCircle(x, y, 15);
       this.promptGraphics.fillStyle(0xfff2a8, 0.15).fillCircle(x, y, 15);
     }
+
     this.npcSystem?.drawMarkers?.(this.promptGraphics);
     this.witnessSystem?.drawMarkers(this.promptGraphics);
     this.evidenceSystem?.drawMarkers(this.promptGraphics);
@@ -714,12 +629,12 @@ export class GameScene extends Phaser.Scene {
     if (!progress) return;
     const x = progress.x;
     const y = progress.y - 26;
-    const w = 46;
-    const h = 6;
-    this.promptGraphics.fillStyle(0x000000, 0.68).fillRect(x - w / 2 - 1, y - 1, w + 2, h + 2);
-    this.promptGraphics.fillStyle(0x35101b, 1).fillRect(x - w / 2, y, w, h);
-    this.promptGraphics.fillStyle(0xff3b50, 1).fillRect(x - w / 2, y, w * progress.pct, h);
-    this.promptGraphics.lineStyle(1, 0xffd1da, 0.85).strokeRect(x - w / 2, y, w, h);
+    const width = 46;
+    const height = 6;
+    this.promptGraphics.fillStyle(0x000000, 0.68).fillRect(x - width / 2 - 1, y - 1, width + 2, height + 2);
+    this.promptGraphics.fillStyle(0x35101b, 1).fillRect(x - width / 2, y, width, height);
+    this.promptGraphics.fillStyle(0xff3b50, 1).fillRect(x - width / 2, y, width * progress.pct, height);
+    this.promptGraphics.lineStyle(1, 0xffd1da, 0.85).strokeRect(x - width / 2, y, width, height);
   }
 
   drawSewers() {
@@ -732,12 +647,18 @@ export class GameScene extends Phaser.Scene {
   }
 
   addMapLabel(text, x, y, color) {
-    const label = this.add.text(x, y, text, {
-      fontFamily: "monospace",
-      fontSize: "8px",
+    const value = HIDDEN_MAP_LABELS.has(String(text || "").trim().toUpperCase()) ? "" : text;
+    if (!value) return null;
+    const label = this.add.text(x, y, value, {
+      fontFamily: "Arial, Helvetica, sans-serif",
+      fontSize: "12px",
+      fontStyle: "bold",
       color: `#${color.toString(16).padStart(6, "0")}`
     }).setDepth(20);
+    label.setResolution?.(3);
+    label.setStroke?.("#05060b", 3);
     this.mapLabels.push(label);
+    return label;
   }
 
   clearMapLabels() {
@@ -745,8 +666,8 @@ export class GameScene extends Phaser.Scene {
     this.mapLabels.length = 0;
   }
 
-  pointInRect(x, y, r) {
-    return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+  pointInRect(x, y, rect) {
+    return x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
   }
 
   rectsOverlap(a, b) {
