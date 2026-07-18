@@ -38,7 +38,7 @@ function installRooftopEncounterOrder() {
     this.state = "drain-thug";
     this.busy = false;
     this.setControlMode?.("drain");
-    this.setTip?.("MOUSE / E", "Aim with the mouse and left-click to knock him down. Press E to drain him once he is down.");
+    this.setTip?.("MOUSE / RMB", "Aim with the mouse and left-click to knock him down. Then aim at him and hold the right mouse button to drain.");
   };
 
   // Keep both older entry points safe in case another system invokes them directly.
