@@ -4,82 +4,77 @@ _Last updated: 2026-07-18_
 
 ## Product vision
 
-**Vampire District** is a top-down urban stealth-action game inspired by the readable city layout, systemic police pressure and immediate navigation of early Grand Theft Auto games, but built around a vampire fantasy.
+**Vampire District** is a top-down urban stealth-action game inspired by the readable city layout, systemic police pressure and immediate navigation of early Grand Theft Auto games, rebuilt around a vampire fantasy.
 
-The player is a young vampire carrying out orders for their sire. The current vertical slice teaches traversal, feeding, Hunger, witnesses, police pressure, combat, weapon choice, damage-to-Hunger, contextual draining, quiet movement, environmental destruction, type-specific AI reactions and the veil through one contained mission.
+The current vertical slice follows a young vampire carrying out an order from their sire. It teaches traversal, Hunger, feeding, witnesses, police pressure, combat, weapon choice, contextual draining, environmental destruction, AI reactions and the veil through one contained mission.
 
 ## Current playable vertical slice
 
 Implemented:
 
-- Phaser 3 browser build with responsive presentation and render-quality presets.
+- Phaser 3 browser build with responsive presentation and selectable internal render quality.
 - Street, low-rooftop, high-rooftop and sewer layers.
-- Contextual jumps, roof drops, fire escapes, sewer access and refuge shaft.
-- Narrative tutorial with speaker-anchored, click-advanced dialogue.
-- Police-roof informant and journalist mission.
+- Contextual jumps, drops, fire escapes, sewer access and refuge shaft.
+- Speaker-anchored narrative tutorial advanced with click or Escape.
+- Police-roof informant, journalist objective and mandatory return-to-refuge finale.
 - Objective guidance, Hunger, powers, exposure, evidence and witnesses.
-- Police escalation, pursuit, melee attacks, arrest and helicopter support.
-- Vision and hearing reactions, including heard-only `WTF` behaviour.
-- Mouse-directed combat with NPC resilience, stagger and downed state.
-- Enemy damage converted into Hunger with hit stun and invulnerability.
-- Right-click draining for downed targets and unaware rear approaches.
+- Police search, pursuit, melee attacks, escalating reinforcements, arrest and helicopter support.
+- Separate sight and hearing channels, including heard-only `WTF` reactions.
+- Mouse-directed combat with resilience, stagger and downed states.
+- Incoming damage converted into Hunger with hit stun and invulnerability.
+- Right-click drain for downed targets and unaware rear approaches.
 - Default running, Shift quiet movement and traversal-only Space.
-- Deterministic route selection and world-space traversal prompt.
-- Damageable streetlights using the same attack contract as NPC combat.
-- Broken streetlights remove light, create persistent darkness and trigger sight/hearing reactions.
-- Three-weapon inventory: Unarmed, Iron Pipe and Pistol.
-- Mouse-wheel weapon cycling, persistent weapon/ammo HUD and change toast.
-- Shared melee and hitscan damage across NPCs and props.
-- Explicit per-NPC AI priority state, role and intent.
-- Police attacker/containment roles instead of every officer stacking on the player.
-- Civilian and journalist reaction/flee/report flow with deterministic interruption.
-- Slow rooftop-thug retaliation after the first confirmed hit.
-- Hunter movement prediction and last-known-position memory through shadow.
-- Police/hunter downed recovery with type-specific timings and restored resilience.
-- Refuge-gated completion: sire dialogue first, report second.
+- Deterministic route selection and matching world prompt.
+- Damageable streetlights that remove light and create persistent darkness.
+- Three-weapon inventory: Unarmed, Iron Pipe and eight-round Pistol.
+- Mouse-wheel cycling, equipped-weapon/ammo HUD and shared melee/hitscan damage.
+- Resolved per-NPC AI priority, police combat roles, witness interruption and hunter memory.
+- Police/hunter recovery with type-specific delays and restored resilience.
+- First-use wheel guidance after the informant sequence.
+- Recovery countdown labels for downed police and hunters.
+- Optional high-contrast aim, semantic HUD state and reduced-motion UI treatment.
 
-## Current mission flow
+## Mission flow
 
-1. The intro establishes the player as an inexperienced vampire.
-2. The sire orders the player to silence a journalist.
+1. Intro establishes the inexperienced vampire.
+2. The sire orders the journalist silenced.
 3. Rooftop traversal is introduced.
-4. The rooftop thug confronts the player, becomes hostile after the first hit and can retaliate with a slow readable swing.
-5. The player knocks him down and right-click drains him while weapon cycling remains tutorial-locked.
+4. The rooftop thug confronts the player and retaliates after the first hit.
+5. The player knocks him down and drains him while weapon cycling remains locked.
 6. Hunger and witness rules are explained.
-7. The police informant gives the journalist's location.
-8. Full controls unlock, including mouse-wheel weapon selection.
+7. The police informant gives the journalist's location and leaves.
+8. Full controls unlock; compact wheel guidance teaches weapon selection.
 9. The player reaches the club and handles the journalist.
-10. The mission changes to returning to the rooftop refuge.
-11. At the refuge, the sire acknowledges the result in a dialogue bubble.
+10. The objective changes to returning to the rooftop refuge.
+11. The sire acknowledges the result in a dialogue bubble.
 12. Only after dismissing the bubble does `REPORT ACCEPTED` open.
 
 ## Current controls
 
 - WASD / arrows: run by default.
-- Hold Shift: slower quiet movement with a much smaller hearing radius.
+- Hold Shift: slower quiet movement.
 - Mouse: face and aim.
-- Left mouse: use equipped weapon against NPCs or world props.
+- Left mouse: use equipped weapon.
 - Mouse wheel: previous/next owned weapon.
-- Right mouse: hold to drain a valid aimed target.
+- Hold right mouse: drain a valid aimed target.
 - Space: contextual traversal only.
-- E: contextual non-traversal interactions; it does not drain, traverse or break streetlights.
+- E: non-traversal interactions only.
 - Q: Dash.
 - R: Whisper.
 - F: Blood Sense.
 - M: mission panel.
-- H: menu/help.
-- Left click during dialogue: advance one bubble.
-- Escape: dialogue/UI keyboard fallback.
+- H: pause/help and accessibility options.
+- Left click / Escape: advance dialogue.
 
-## Movement snapshot
+## Movement and perception snapshot
 
-- Default run multiplier: `1.55`.
-- Quiet movement multiplier: `0.72`.
-- Run footstep base hearing radius: `120` for enhanced listeners.
+- Run multiplier: `1.55`.
+- Quiet multiplier: `0.72`.
+- Enhanced-listener run radius: `120`.
 - Ordinary NPC run-hearing range: `42`.
-- Quiet footstep base hearing radius: `42`; ordinary NPCs ignore quiet footsteps.
-- Space has no held-speed behaviour.
-- Traversal selection order: committed close/forward route, distance, aim, route priority, stable ID.
+- Ordinary NPCs ignore quiet footsteps.
+- Hearing alone creates attention/orientation, never automatic pursuit or reporting.
+- Confirmed sight overrides heard-only investigation.
 
 ## Weapon snapshot
 
@@ -89,12 +84,11 @@ Implemented:
 | Iron Pipe | Melee | 2 | 42 | Unlimited |
 | Pistol | Hitscan | 3 | 260 | 8 |
 
-- The wheel wraps through the three owned weapons one step at a time.
-- Pistol shots use one ordered ray across NPC and prop candidates.
-- The nearest aligned, unobstructed candidate wins.
-- Ammo is consumed on every valid pistol shot, including misses.
-- Empty pistol attacks are rejected; reload/replenishment is not implemented yet.
-- Gunshots have a `280`-unit sound radius and create stronger police pressure than melee.
+- Wheel wraps through owned weapons one step at a time.
+- Pistol resolves the nearest aligned unobstructed NPC/prop candidate.
+- Every valid shot consumes ammunition, including misses.
+- Empty attacks produce feedback but no tracer, damage or noise.
+- Gunshot sound radius: `280`.
 
 ## Combat and AI snapshot
 
@@ -102,53 +96,42 @@ Player pressure:
 
 - Police baton: `Hunger +12`.
 - Hunter heavy strike: `Hunger +20`.
-- Rooftop thug swing: `Hunger +8` with `520 ms` windup.
+- Rooftop thug swing: `Hunger +8`, `520 ms` windup.
 - Player hit stun: `260 ms`.
 - Player invulnerability: `720 ms`.
-- Critical Hunger: `85`.
-- Frenzy failure: `100`.
+- Critical Hunger: `85`; frenzy failure: `100`.
 
 Resolved AI priority:
 
 ```text
-inactive/dead
-→ downed
-→ being drained
-→ staggered
-→ attacking
-→ chasing
-→ fleeing/reporting
-→ lured
-→ investigating sound
-→ searching
-→ patrolling/idle
+inactive/dead → downed → being drained → staggered → attacking
+→ chasing → fleeing/reporting → lured → investigating → searching → patrol/idle
 ```
 
-Police roles:
+Police:
 
-- one stable officer receives the `attacker` role;
-- other officers with visual contact move to deterministic containment slots;
-- containment radii are `43`, `49` and `55` at wanted levels 1–3;
-- attack leadership can hand off after the current turn/recovery;
-- existing separation, reinforcements, search, arrest and helicopter systems remain active.
+- one stable attacker;
+- other visible officers use deterministic containment slots;
+- containment radii `43`, `49`, `55` at wanted levels 1–3;
+- finite attack leadership and deterministic handoff;
+- existing search, reinforcement, arrest and helicopter behaviour retained.
 
 Witnesses:
 
-- confirmed sight creates reaction, then flight toward a report point;
-- stagger pauses the flight and the witness resumes afterward;
-- downing, draining, killing, hiding or intercepting cancels the report;
-- hearing alone remains temporary orientation and `WTF`.
+- confirmed sight creates reaction then flight to a report point;
+- stagger pauses flight;
+- downing, draining, killing, hiding or intercepting cancels reporting;
+- hearing alone remains `WTF`.
 
 Hunter:
 
-- predicts `54` units ahead of current player movement;
-- remembers the last known point for `6200 ms` after losing sight;
-- can continue a remembered chase through shadow;
-- falls back to blood tracking, route blocking and patrol after memory expires.
+- predicts `54` units ahead of player movement;
+- remembers the last known point for `6200 ms`;
+- can continue a remembered chase through shadow.
 
 Recovery:
 
-| Type | Recovery | Restored resilience |
+| Type | Delay | Restored resilience |
 |---|---:|---:|
 | Civilian | Never | — |
 | Journalist | Never | — |
@@ -156,114 +139,84 @@ Recovery:
 | Police | 18 s | 2 / 4 |
 | Hunter | 24 s | 3 / 5 |
 
-Starting a drain before the timer expires prevents recovery. A completed drain or kill resolves the NPC permanently.
+Starting a drain suspends recovery. Completed drain or kill resolves the NPC permanently.
 
-## Drain snapshot
+## Milestone 9 UX snapshot
 
-- Start range: `34` units.
-- Break range: `42` units.
-- Downed target: any approach angle.
-- Standing target: unaware rear arc only.
-- Hold right mouse to channel.
-- Release, movement, damage, invalid layer/range or blocked geometry cancels.
-
-## World-prop snapshot
-
-- Streetlights: `1` durability.
-- Melee hit query: stored origin, direction, weapon range/arc plus prop radius.
-- Pistol hit query: shared nearest hitscan ray.
-- Input: left mouse; E destruction is removed.
-- Broken state persists in `brokenLights`.
-- Result: light removed, shadow created, glass feedback and perception reaction.
-- Hearing-only break response remains `WTF` without automatic pursuit/reporting.
+- After full tutorial control returns, a non-blocking `WHEEL` strip persists until the first successful weapon change.
+- The weapon HUD pulses during this first-use step, then confirms the equipped weapon and `LMB` attack input.
+- The first recoverable knockdown explains that police and hunters can rise.
+- Downed recoverable enemies show `POLICE RISES Ns` or `HUNTER RISES Ns` using `npc.ai.recoverAt`.
+- The final four seconds use urgent presentation.
+- Labels hide while draining, paused, in a task reveal, dead or no longer downed.
+- Weapon HUD is lower-right; power dock remains lower-left.
+- Pause Menu includes a locally saved high-contrast black-and-white aim toggle.
+- Hunger, wanted state, weapon, prompt, toast and buttons expose meaningful assistive state.
+- `prefers-reduced-motion` removes non-essential HUD/tutorial animation.
+- Both playable routes use `Vampire District`, `Render quality` and current controls.
 
 ## Architecture snapshot
 
-The prototype currently uses:
+Current major systems:
 
-- `GameScene` for world coordination and rendering.
-- `UIScene` for DOM-backed HUD and modals.
-- `InputSystem` for the authoritative action frame.
-- `WeaponSystem` for inventory, equipped state, wheel cycling, ammo and attack noise.
-- `CombatSystem` for aim, weapon attack timing, melee/hitscan resolution, resilience and knockdown.
-- `PlayerDamageSystem` for enemy attacks, hit stun, invulnerability and Hunger damage.
-- `AiStateSystem` for resolved NPC state, conflict cancellation, recovery and transition events.
-- `DrainSystem` for right-click eligibility and channel validation.
-- `MovementNoiseSystem` for actual-displacement footsteps and heard-only reactions.
-- `PropDamageSystem` for streetlight durability and break effects.
-- Existing specialist systems for NPC movement, police, witnesses, missions, feeding, exposure, powers, evidence, hunters, interactions and transitions.
-- Pure data modules for AI, combat, weapons, player damage, drain, movement, traversal and props.
+- `InputSystem`
+- `WeaponSystem`
+- `CombatSystem`
+- `PlayerDamageSystem`
+- `AiStateSystem`
+- `DrainSystem`
+- `MovementNoiseSystem`
+- `PropDamageSystem`
+- `UxGuidanceSystem`
+- specialist NPC, police, witness, mission, feeding, exposure, power, evidence, hunter, interaction and transition systems.
 
-Temporary adapters still patch legacy scene/system methods. Milestone 10 will fold them into explicit composition.
+Pure data modules cover input actions, AI, combat, weapons, player damage, drain, movement, traversal, props and UX guidance.
+
+Temporary prototype adapters still patch scene/system methods. Milestone 10 will fold them into explicit composition.
 
 ## Validation state
 
-Automated pure coverage includes:
+Automated pure coverage includes input locks, pointer mapping, melee/resilience, enemy damage, drain eligibility, movement/hearing, traversal scoring, prop damage, weapon cycling/ammo/hitscan, AI priority, police formation, witness interruption, hunter prediction, recovery, first-use guidance, preference parsing and recovery countdown presentation.
 
-- input gating and stuck-input prevention;
-- responsive pointer mapping;
-- melee geometry and resilience;
-- enemy attack timing and damage thresholds;
-- right-click drain eligibility and priority;
-- default/quiet movement speed and hearing tiers;
-- deterministic traversal scoring;
-- prop hit/miss geometry, durability and repeated-damage protection;
-- weapon inventory order and wheel wraparound;
-- pistol ammo consumption and empty rejection;
-- hitscan nearest-target, range, width and obstruction checks;
-- AI state priority and sound-versus-sight precedence;
-- police leader selection and containment geometry;
-- witness interruption rules;
-- hunter prediction and bounds;
-- type-specific recovery timing/resilience;
-- rooftop-thug attack timing and damage.
-
-Manual browser regression remains required across the complete mission, representative viewport sizes, Low/Ultra quality, police formations, hunter memory and recovery before Milestones 1–8 become fully complete.
+Manual browser regression remains required across the complete mission, representative viewport sizes, Low/Ultra quality, police formations, recovery labels, first-use timing and accessibility behaviour before Milestones 1–9 become fully complete.
 
 ## Locked design decisions
 
 - Top-down readability over camera-heavy presentation.
-- Vision and hearing remain separate channels.
-- Hearing alone creates attention, not automatic pursuit/reporting.
-- Confirmed sight overrides heard-only investigation.
-- Space is exclusively traversal.
-- Running is normal; Shift is quiet movement.
-- Hunger is the player's combat attrition resource.
-- Feeding is tactical recovery.
-- NPC durability is resilience leading to downed state.
-- Police and hunters can recover; civilians, journalist and rooftop thug remain down.
-- World destruction uses the same aimed attack language as combat.
-- E does not break streetlights.
+- Vision and hearing are separate channels.
+- Hearing alone does not pursue or report.
+- Space is traversal only; Shift is quiet movement.
+- Hunger is combat attrition and feeding is recovery.
+- NPC resilience leads to downed state.
+- Police/hunters recover; civilians, journalist and thug remain down.
+- World destruction uses the combat attack language.
+- E does not traverse, drain or break streetlights.
 - Mouse wheel owns weapon selection while gameplay is active.
-- Gunshots are hitscan in the first weapon implementation.
-- Journalist handling requires an actual return to the refuge.
-- Finale order is sire dialogue, then final report.
+- Journalist handling requires returning to the refuge.
+- Finale order is sire dialogue, then report.
+- Accessibility presentation must not change hit geometry or gameplay state.
 
 ## Open design decisions
 
-- Final speed and footstep-hearing tuning after browser playtesting.
-- Final police/hunter/thug attack values.
-- Final police formation radii and attack-turn cadence.
-- Final hunter memory and pursuit-lead values.
-- Final police/hunter recovery timings and restored resilience.
-- Final drain range, rear angle and channel feel.
-- Final streetlight hit radius, exposure cost and feedback.
-- Final weapon damage, cadence, ammo and noise tuning.
-- Pistol reload/replenishment design.
-- Whether weapons should be found/purchased rather than owned from the start.
-- Whether perception visualization is always visible.
-- Final aim/reticle accessibility options.
+- Final movement/hearing tuning.
+- Final police, hunter and thug combat values.
+- Final formation, memory and recovery values.
+- Final drain feel.
+- Final weapon balance and pistol replenishment.
+- Whether weapons are found rather than initially owned.
+- Whether perception visualization remains permanently visible.
+- Future reduced-camera-shake option.
 
 ## Main risks
 
 1. Prototype adapter depth and import-order sensitivity.
 2. Missing automated browser regression.
-3. Specialist systems still own movement through adapters around the resolved AI state.
-4. Hunger damage creating a positive-feedback difficulty spiral.
-5. Screen clutter from objectives, perception, combat and weapon HUD feedback.
-6. Hitscan obstruction relying on navigation-based line checks.
-7. Police containment and recovery balance differing across zoom levels and crowd density.
+3. Specialist movement systems still surround the resolved AI state through adapters.
+4. Hunger damage can create a positive-feedback difficulty spiral.
+5. Screen clutter from perception, objectives, combat and recovery labels.
+6. Hitscan obstruction uses navigation-based line checks.
+7. UI/accessibility behaviour may vary by browser and assistive technology.
 
 ## Immediate project priority
 
-Validate Milestone 8 in-browser: priority conflicts, police attacker/containment roles, witness interruption, rooftop-thug retaliation, hunter shadow memory, police/hunter recovery and complete mission compatibility. Then complete Milestone 9: first-use weapon/recovery teaching, final HUD accessibility and obsolete-copy cleanup.
+Validate Milestone 9 in-browser: tutorial timing, wheel/trackpad behaviour, HUD separation, recovery countdown alignment, high-contrast aim, keyboard focus, screen-reader labels, resizing, Low/Ultra quality and complete mission compatibility. Then begin Milestone 10 consolidation, browser smoke tests and performance work.
