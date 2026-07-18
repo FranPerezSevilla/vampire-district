@@ -98,27 +98,38 @@ Deliver the first complete directional combat loop without weapons.
 
 ## Milestone 3 — Player damage and Hunger combat loop
 
-**Status: ⬜ Planned**
+**Status: 🟡 Implementation complete; browser regression and tuning pending**
 
 ### Goal
 
 Make Hunger the player's attrition/health pressure during combat.
 
-### Work
+### Implemented
 
-- Enemy attack requests and hit validation.
-- Player hit stun and invulnerability frames.
-- Incoming damage adds Hunger.
-- Hunger gain varies by attack strength.
-- Critical-Hunger feedback during combat.
-- Tuning pass to prevent unavoidable damage spirals.
+- ✅ Police melee attack requests reuse existing chase intent.
+- ✅ Hunter melee attacks reuse existing hunt intent.
+- ✅ Enemy windup, active and recovery phases.
+- ✅ Stored direction, range and arc hit validation.
+- ✅ Player hit stun and central action suppression.
+- ✅ 720 ms invulnerability window against overlapping attacks.
+- ✅ Incoming damage increases Hunger instead of reducing health.
+- ✅ Police strike baseline: Hunger +12.
+- ✅ Hunter heavy strike baseline: Hunger +20.
+- ✅ Damage interrupts the current punch or drain channel.
+- ✅ Floating Hunger feedback, player flicker, impact ring and camera shake.
+- ✅ Critical Hunger feedback from 85.
+- ✅ Frenzy mission failure at 100 Hunger.
+- ✅ Pure tests for damage, invulnerability, timing, range and thresholds.
+- ✅ Dedicated Milestone 3 regression checklist and updated combat documentation.
 
-### Acceptance criteria
+### Acceptance status
 
-- Repeated overlap cannot instantly max Hunger.
-- Feeding clearly recovers combat pressure.
-- Taking damage remains readable without a separate health bar.
-- Critical Hunger still uses the established loss-of-control rules.
+- ✅ Pure tests verify that overlapping damage is rejected during invulnerability.
+- ✅ Damage is capped at 100 Hunger and attack strength changes the amount gained.
+- ✅ Enemy active windows attempt a hit only once.
+- ✅ Hit stun filters movement, attacks, traversal, interactions and powers through the existing input frame.
+- 🟡 Complete browser validation is still required for dodge readability, simultaneous attackers, control recovery and frenzy failure.
+- 🟡 Police/hunter timings and damage values remain tuning baselines.
 
 ## Milestone 4 — Contextual right-click drain
 
@@ -233,9 +244,9 @@ Make NPC types respond coherently to being attacked and to nearby combat.
 
 ### Work
 
-- Police approach/attack behaviour.
+- Expand police combat priorities beyond the Milestone 3 baseline melee.
 - Civilian flee/report behaviour.
-- Thug/hunter aggression.
+- Thug retaliation and richer hunter aggression.
 - Downed and optional recovery rules.
 - AI priority state machine.
 - Friendly/neutral collision and separation during combat.
