@@ -17,36 +17,56 @@ export class PowersSystem {
     this.graphics = scene.add.graphics().setDepth(48);
   }
 
-  update(dt, keys) {
+  update(dt, input = this.scene.currentInputFrame) {
     this.scene.feedingSystem?.addPassiveHunger(dt);
     this.cooldowns.dash = Math.max(0, this.cooldowns.dash - dt);
     this.cooldowns.whisper = Math.max(0, this.cooldowns.whisper - dt);
     this.cooldowns.sense = Math.max(0, this.cooldowns.sense - dt);
     this.senseTimer = Math.max(0, this.senseTimer - dt);
 
-    this.rememberMoveDirection(keys);
+    const frame = this.normalizeInput(input);
+    if (frame.hasMovementIntent) this.lastDir = { ...frame.move };
 
     if (!this.scene.interactionSystem?.isOpen && !this.scene.feedingSystem?.isActive()) {
-      if (Phaser.Input.Keyboard.JustDown(keys.sense)) this.useBloodSense();
-      if (Phaser.Input.Keyboard.JustDown(keys.whisper)) this.useWhisper();
-      if (Phaser.Input.Keyboard.JustDown(keys.dash) || Phaser.Input.Keyboard.JustDown(keys.space)) this.useDash();
+      if (frame.bloodSensePressed) this.useBloodSense();
+      if (frame.whisperPressed) this.useWhisper();
+      if (frame.dashPressed) this.useDash();
     }
 
     this.drawSenseOverlay();
     this.drawLureLines();
   }
 
-  rememberMoveDirection(keys) {
+  normalizeInput(input) {
+    if (input && Object.hasOwn(input, "dashPressed")) {
+      return {
+        move: input.move || { x: 0, y: 0 },
+        hasMovementIntent: Boolean(input.hasMovementIntent),
+        dashPressed: Boolean(input.dashPressed),
+        whisperPressed: Boolean(input.whisperPressed),
+        bloodSensePressed: Boolean(input.bloodSensePressed)
+      };
+    }
+
+    const keys = input || {};
     let x = 0;
     let y = 0;
-    if (keys.left.isDown || keys.a.isDown) x -= 1;
-    if (keys.right.isDown || keys.d.isDown) x += 1;
-    if (keys.up.isDown || keys.w.isDown) y -= 1;
-    if (keys.down.isDown || keys.s.isDown) y += 1;
-    if (x || y) {
-      const len = Math.hypot(x, y) || 1;
-      this.lastDir = { x: x / len, y: y / len };
-    }
+    if (keys.left?.isDown || keys.a?.isDown) x -= 1;
+    if (keys.right?.isDown || keys.d?.isDown) x += 1;
+    if (keys.up?.isDown || keys.w?.isDown) y -= 1;
+    if (keys.down?.isDown || keys.s?.isDown) y += 1;
+    const length = Math.hypot(x, y) || 1;
+    return {
+      move: { x: x / length, y: y / length },
+      hasMovementIntent: Boolean(x || y),
+      dashPressed: this.justDown(keys.dash),
+      whisperPressed: this.justDown(keys.whisper),
+      bloodSensePressed: this.justDown(keys.sense)
+    };
+  }
+
+  justDown(key) {
+    return Boolean(key && Phaser.Input.Keyboard.JustDown(key));
   }
 
   addHunger(amount, label) {
@@ -151,7 +171,14 @@ export class PowersSystem {
   nearestLurable(radius = 164) {
     let best = null;
     let bestScore = Infinity;
-    for (const npc of this.scene.npcSystem.npcs) {
+    const candidates = this.scene.npcSystem?.queryRadius?.(
+      this.scene.player.x,
+      this.scene.player.y,
+      radius + 42,
+      this.scene.currentLayer
+    ) || this.scene.npcSystem?.npcs || [];
+
+    for (const npc of candidates) {
       if (npc.dead || npc.hiddenBody || npc.inactive || npc.intercepted || npc.stunnedTimer > 0) continue;
       if (![NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)) continue;
       if (npc.layer !== this.scene.currentLayer) continue;
@@ -175,7 +202,7 @@ export class PowersSystem {
     const alpha = 0.36 + Math.sin(this.scene.time.now / 110) * 0.08;
     this.graphics.lineStyle(1, 0xa75cff, alpha).strokeCircle(this.scene.player.x, this.scene.player.y, 96);
 
-    for (const npc of this.scene.npcSystem.npcs) {
+    for (const npc of this.scene.npcSystem?.visibleInCamera?.(80) || this.scene.npcSystem.npcs) {
       if (npc.layer !== this.scene.currentLayer || npc.hiddenBody) continue;
       if (npc.dead) {
         this.mark(npc.x, npc.y, 0xff3b50, 12, npc.deathKind === "killed" ? "killed" : "drained");
@@ -209,7 +236,7 @@ export class PowersSystem {
   }
 
   drawLureLines() {
-    for (const npc of this.scene.npcSystem.npcs) {
+    for (const npc of this.scene.npcSystem?.visibleInCamera?.(40) || this.scene.npcSystem.npcs) {
       if (npc.layer !== this.scene.currentLayer || npc.dead || npc.hiddenBody || npc.luredTimer <= 0) continue;
       const pulse = 0.28 + Math.sin(this.scene.time.now / 70) * 0.10;
       this.graphics.lineStyle(2, 0xff4bd8, 0.42 + pulse);
@@ -226,9 +253,7 @@ export class PowersSystem {
     this.graphics.lineStyle(2, color, 0.86).strokeCircle(x, y, radius);
     this.graphics.fillStyle(color, 0.12).fillCircle(x, y, radius);
     this.graphics.fillStyle(color, 0.80).fillRect(x - 1, y - radius - 6, 2, 5);
-    if (label) {
-      this.scene.addMapLabel(label, x + radius * 0.65, y - radius, color);
-    }
+    if (label) this.scene.addMapLabel(label, x + radius * 0.65, y - radius, color);
   }
 
   summary() {
