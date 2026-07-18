@@ -1,5 +1,8 @@
+import { AI_ROLES, AI_RULES, AI_STATES, createNpcAiState } from "../data/ai.js";
+import { COMBAT_STATES } from "../data/combat.js";
 import { LAYERS } from "../data/district.js";
 import { npcDefinitions, NPC_TYPES } from "../data/npcs.js";
+import { SpatialHash } from "../utils/SpatialHash.js";
 
 const PALETTE = Object.freeze({
   [NPC_TYPES.CIVILIAN]: { body: 0xc8b58a, head: 0xd5b48b, label: "CIV" },
@@ -28,10 +31,24 @@ const STREET_NAV_POINTS = Object.freeze([
   { x: 866, y: 456 }
 ]);
 
+const PASSIVE_STOP_STATES = new Set([
+  AI_STATES.INACTIVE,
+  AI_STATES.DEAD,
+  AI_STATES.DOWNED,
+  AI_STATES.DRAINING,
+  AI_STATES.STAGGERED,
+  AI_STATES.ATTACKING,
+  AI_STATES.CHASING,
+  AI_STATES.FLEEING,
+  AI_STATES.SEARCHING
+]);
+
 export class NpcSystem {
   constructor(scene) {
     this.scene = scene;
+    this.spatial = new SpatialHash(96);
     this.npcs = npcDefinitions.map(def => this.createNpc(def));
+    this.rebuildSpatialIndex();
   }
 
   createNpc(def) {
@@ -41,7 +58,7 @@ export class NpcSystem {
 
     const angle = Math.random() * Math.PI * 2;
     const dirLen = Math.hypot(def.dirX || 0, def.dirY || 0) || 1;
-    return {
+    const npc = {
       ...def,
       x: def.x,
       y: def.y,
@@ -65,6 +82,9 @@ export class NpcSystem {
       witnessReason: "",
       masqueradeRisk: false,
       reactionTimer: 0,
+      soundReactionTimer: 0,
+      soundSourceX: def.x,
+      soundSourceY: def.y,
       luredTimer: 0,
       lureFlash: 0,
       lureStopDistance: 24,
@@ -72,6 +92,9 @@ export class NpcSystem {
       aiTimer: 0.6 + Math.random() * 1.8,
       container
     };
+    npc.ai = createNpcAiState(npc, this.scene.time?.now || 0);
+    this.scene.aiStateSystem?.ensureNpc?.(npc);
+    return npc;
   }
 
   paintLivingNpc(container, type, palette) {
@@ -80,10 +103,11 @@ export class NpcSystem {
     const head = this.scene.add.rectangle(0, type === NPC_TYPES.RAT ? -2 : -6, type === NPC_TYPES.RAT ? 3 : 6, type === NPC_TYPES.RAT ? 3 : 6, palette.head, 1);
     container.add([shadow, body, head]);
 
-    if (type === NPC_TYPES.TARGET || type === NPC_TYPES.POLICE || type === NPC_TYPES.HUNTER || type === NPC_TYPES.THUG || type === NPC_TYPES.RAT) {
+    if ([NPC_TYPES.TARGET, NPC_TYPES.POLICE, NPC_TYPES.HUNTER, NPC_TYPES.THUG, NPC_TYPES.RAT].includes(type)) {
       const label = this.scene.add.text(8, -14, palette.label, {
-        fontFamily: "monospace",
-        fontSize: "8px",
+        fontFamily: "Arial, Helvetica, sans-serif",
+        fontSize: "12px",
+        fontStyle: "bold",
         color: `#${palette.body.toString(16).padStart(6, "0")}`,
         backgroundColor: "rgba(0,0,0,.45)",
         padding: { x: 2, y: 1 }
@@ -95,19 +119,60 @@ export class NpcSystem {
   update(dt) {
     for (const npc of this.npcs) {
       if (npc.lureFlash > 0) npc.lureFlash = Math.max(0, npc.lureFlash - dt);
-      if (npc.stunnedTimer > 0) npc.stunnedTimer = Math.max(0, npc.stunnedTimer - dt);
+      if (npc.stunnedTimer > 0 && Number.isFinite(npc.stunnedTimer)) {
+        npc.stunnedTimer = Math.max(0, npc.stunnedTimer - dt);
+      }
       this.updateNpc(npc, dt);
       npc.container.setPosition(npc.x, npc.y);
-      npc.container.setVisible(this.isVisible(npc));
+      npc.container.setVisible(this.isRenderable(npc));
     }
+    this.rebuildSpatialIndex();
   }
 
   updateNpc(npc, dt) {
-    if (npc.dead || npc.inactive || npc.intercepted || npc.behavior === "guard" || npc.behavior === "hidden") return;
+    if (!npc || npc.missionInformant) return;
+    const state = npc.ai?.state;
 
+    if (state === AI_STATES.INVESTIGATING && npc.soundReactionTimer > 0 && !npc.alarmed && !npc.chasingPlayer) {
+      npc.soundReactionTimer = Math.max(0, npc.soundReactionTimer - dt);
+      this.facePoint(npc, npc.soundSourceX, npc.soundSourceY);
+      this.stopNpc(npc);
+      npc.__nbdWtfLabel?.setPosition?.(npc.x, npc.y - 26).setVisible?.(true);
+      if (npc.soundReactionTimer <= 0) npc.__nbdWtfLabel?.setVisible?.(false);
+      return;
+    }
+    npc.__nbdWtfLabel?.setVisible?.(false);
+
+    if (state === AI_STATES.CHASING && npc.type === NPC_TYPES.THUG && npc.thugHostile) {
+      if (npc.enemyAttack) {
+        this.stopNpc(npc);
+        return;
+      }
+      const distance = Phaser.Math.Distance.Between(npc.x, npc.y, this.scene.player.x, this.scene.player.y);
+      npc.chasingPlayer = true;
+      npc.ai.role = AI_ROLES.ATTACKER;
+      npc.ai.intent = "retaliate";
+      if (distance > AI_RULES.thugStopDistance) {
+        this.moveTowardAtSpeed(npc, this.scene.player.x, this.scene.player.y, dt, AI_RULES.thugChaseSpeed);
+      } else {
+        this.stopNpc(npc);
+        this.facePoint(npc, this.scene.player.x, this.scene.player.y);
+      }
+      return;
+    }
+
+    if (PASSIVE_STOP_STATES.has(state)) {
+      this.stopNpc(npc);
+      return;
+    }
+    if (state === AI_STATES.PATROLLING && [NPC_TYPES.POLICE, NPC_TYPES.HUNTER].includes(npc.type)) {
+      this.stopNpc(npc);
+      return;
+    }
+
+    if (npc.dead || npc.inactive || npc.intercepted || npc.behavior === "guard" || npc.behavior === "hidden") return;
     if (npc.stunnedTimer > 0) {
-      npc.vx = 0;
-      npc.vy = 0;
+      this.stopNpc(npc);
       return;
     }
 
@@ -116,7 +181,6 @@ export class NpcSystem {
       this.followPlayerUnderWhisper(npc, dt);
       return;
     }
-
     if (npc.alarmed) return;
 
     if (npc.behavior === "loiter") {
@@ -142,8 +206,7 @@ export class NpcSystem {
     if (npc.aiTimer <= 0) {
       npc.aiTimer = 0.8 + Math.random() * 2.2;
       if (Math.random() < 0.42) {
-        npc.vx = 0;
-        npc.vy = 0;
+        this.stopNpc(npc);
         return;
       }
       const angle = Math.random() * Math.PI * 2;
@@ -162,18 +225,27 @@ export class NpcSystem {
     this.setFacingFromVelocity(npc);
   }
 
+  stopNpc(npc) {
+    if (!npc) return;
+    npc.vx = 0;
+    npc.vy = 0;
+  }
+
+  facePoint(npc, x, y) {
+    const dx = (Number(x) || 0) - npc.x;
+    const dy = (Number(y) || 0) - npc.y;
+    const length = Math.hypot(dx, dy) || 1;
+    npc.dirX = dx / length;
+    npc.dirY = dy / length;
+  }
+
   followPlayerUnderWhisper(npc, dt) {
     const d = Phaser.Math.Distance.Between(npc.x, npc.y, this.scene.player.x, this.scene.player.y);
     const stopDistance = npc.lureStopDistance || (npc.type === NPC_TYPES.TARGET ? 30 : 24);
-    const dx = this.scene.player.x - npc.x;
-    const dy = this.scene.player.y - npc.y;
-    const len = Math.hypot(dx, dy) || 1;
-    npc.dirX = dx / len;
-    npc.dirY = dy / len;
+    this.facePoint(npc, this.scene.player.x, this.scene.player.y);
 
     if (d <= stopDistance) {
-      npc.vx = 0;
-      npc.vy = 0;
+      this.stopNpc(npc);
       return;
     }
 
@@ -195,7 +267,7 @@ export class NpcSystem {
   }
 
   moveTowardAtSpeed(npc, x, y, dt, speed) {
-    if (!npc || npc.dead || npc.stunnedTimer > 0) return;
+    if (!npc || npc.dead || npc.stunnedTimer > 0 || npc.combat?.state === COMBAT_STATES.DOWNED) return;
     const target = this.navigationTarget(npc, x, y);
     const dx = target.x - npc.x;
     const dy = target.y - npc.y;
@@ -230,8 +302,7 @@ export class NpcSystem {
         if (this.canNpcStandAt(npc, fx, npc.y)) npc.x = fx;
         if (this.canNpcStandAt(npc, npc.x, fy)) npc.y = fy;
       } else {
-        npc.vx = 0;
-        npc.vy = 0;
+        this.stopNpc(npc);
       }
     }
   }
@@ -263,8 +334,8 @@ export class NpcSystem {
   lineClear(npc, ax, ay, bx, by) {
     const dist = Phaser.Math.Distance.Between(ax, ay, bx, by);
     const steps = Math.max(1, Math.ceil(dist / 12));
-    for (let i = 1; i <= steps; i++) {
-      const t = i / steps;
+    for (let index = 1; index <= steps; index++) {
+      const t = index / steps;
       const x = Phaser.Math.Linear(ax, bx, t);
       const y = Phaser.Math.Linear(ay, by, t);
       if (!this.canNpcStandAt(npc, x, y)) return false;
@@ -280,14 +351,50 @@ export class NpcSystem {
     return canStand;
   }
 
+  rebuildSpatialIndex() {
+    this.spatial.rebuild(this.npcs);
+  }
+
+  queryRadius(x, y, radius, layer = this.scene.currentLayer, predicate = null) {
+    return this.spatial.queryRadius(x, y, radius, layer, predicate);
+  }
+
+  queryRect(rect, predicate = null) {
+    return this.spatial.queryRect(rect, predicate);
+  }
+
+  visibleInCamera(margin = 48) {
+    const view = this.scene.cameras?.main?.worldView;
+    if (!view) return this.npcs.filter(npc => npc.layer === this.scene.currentLayer);
+    return this.queryRect({
+      x: view.x - margin,
+      y: view.y - margin,
+      w: view.width + margin * 2,
+      h: view.height + margin * 2,
+      layer: this.scene.currentLayer
+    });
+  }
+
   isVisible(npc) {
     if (npc.hiddenBody) return false;
     if (npc.inactive && npc.type !== NPC_TYPES.RAT && !npc.intercepted) return false;
     return npc.layer === this.scene.currentLayer;
   }
 
+  isRenderable(npc) {
+    if (!this.isVisible(npc)) return false;
+    const view = this.scene.cameras?.main?.worldView;
+    if (!view) return true;
+    const margin = 64;
+    return npc.x >= view.x - margin
+      && npc.x <= view.x + view.width + margin
+      && npc.y >= view.y - margin
+      && npc.y <= view.y + view.height + margin;
+  }
+
   refreshVisibility() {
-    for (const npc of this.npcs) npc.container.setVisible(this.isVisible(npc));
+    this.rebuildSpatialIndex();
+    for (const npc of this.npcs) npc.container.setVisible(this.isRenderable(npc));
   }
 
   attackableTypes() {
@@ -297,11 +404,11 @@ export class NpcSystem {
   nearestAttackable(x, y, layer, radius = 26) {
     let best = null;
     let bestD = Infinity;
-    for (const npc of this.npcs) {
-      if (npc.layer !== layer || npc.inactive || npc.dead || npc.intercepted) continue;
+    for (const npc of this.queryRadius(x, y, radius, layer)) {
+      if (npc.inactive || npc.dead || npc.intercepted) continue;
       if (!this.attackableTypes().includes(npc.type)) continue;
       const d = Phaser.Math.Distance.Between(x, y, npc.x, npc.y);
-      if (d <= radius && d < bestD) {
+      if (d < bestD) {
         best = npc;
         bestD = d;
       }
@@ -318,8 +425,7 @@ export class NpcSystem {
     npc.stunnedTimer = Math.max(npc.stunnedTimer || 0, seconds);
     npc.alarmed = false;
     npc.reactionTimer = 0;
-    npc.vx = 0;
-    npc.vy = 0;
+    this.stopNpc(npc);
     npc.luredTimer = 0;
   }
 
@@ -341,11 +447,18 @@ export class NpcSystem {
     npc.dragged = false;
     npc.alarmed = false;
     npc.reactionTimer = 0;
+    npc.soundReactionTimer = 0;
     npc.masqueradeRisk = false;
     npc.luredTimer = 0;
     npc.stunnedTimer = 0;
-    npc.vx = 0;
-    npc.vy = 0;
+    npc.chasingPlayer = false;
+    npc.enemyAttack = null;
+    this.stopNpc(npc);
+    if (npc.ai) {
+      npc.ai.state = AI_STATES.DEAD;
+      npc.ai.intent = deathKind;
+      npc.ai.recoverAt = 0;
+    }
     npc.container.removeAll(true);
 
     const corpseColor = deathKind === "drained" ? 0x4b0e1a : 0x332d38;
@@ -353,13 +466,15 @@ export class NpcSystem {
     const body = this.scene.add.rectangle(0, 2, npc.type === NPC_TYPES.RAT ? 8 : 14, npc.type === NPC_TYPES.RAT ? 4 : 7, corpseColor, 1);
     const head = this.scene.add.rectangle(npc.type === NPC_TYPES.RAT ? 4 : 6, 1, npc.type === NPC_TYPES.RAT ? 3 : 4, npc.type === NPC_TYPES.RAT ? 3 : 4, 0x12060a, 1);
     const label = this.scene.add.text(8, -12, labelText, {
-      fontFamily: "monospace",
-      fontSize: "8px",
+      fontFamily: "Arial, Helvetica, sans-serif",
+      fontSize: "12px",
+      fontStyle: "bold",
       color: deathKind === "drained" ? "#ff3b50" : "#d7c8ff",
       backgroundColor: "rgba(0,0,0,.45)",
       padding: { x: 2, y: 1 }
     });
     npc.container.add([body, head, label]);
+    this.rebuildSpatialIndex();
   }
 
   bodyLabel(npc, deathKind) {
@@ -373,39 +488,35 @@ export class NpcSystem {
   }
 
   visibleBodies(layer = this.scene.currentLayer) {
-    return this.npcs.filter(n => n.dead && !n.hiddenBody && n.layer === layer);
+    return this.npcs.filter(npc => npc.dead && !npc.hiddenBody && npc.layer === layer);
   }
 
   drawMarkers(graphics) {
-    for (const npc of this.npcs) {
-      if (!this.isVisible(npc) || npc.dead) continue;
-      if (npc.type === NPC_TYPES.THUG && npc.stunnedTimer <= 0) {
-        graphics.lineStyle(2, 0xb36b42, 0.9).strokeCircle(npc.x, npc.y, 18);
-        graphics.fillStyle(0xb36b42, 0.12).fillCircle(npc.x, npc.y, 18);
-        this.scene.addMapLabel("No te pienso dejar pasar", npc.x - 18, npc.y - 28, 0xffd483);
-      }
-      if (npc.stunnedTimer > 0) {
+    for (const npc of this.visibleInCamera(36)) {
+      if (!this.isVisible(npc) || npc.dead || npc.combat?.state === COMBAT_STATES.DOWNED) continue;
+      if (npc.stunnedTimer > 0 && Number.isFinite(npc.stunnedTimer)) {
         graphics.lineStyle(2, 0xfff2a8, 0.9).strokeCircle(npc.x, npc.y, 16);
         graphics.fillStyle(0xfff2a8, 0.13).fillCircle(npc.x, npc.y, 16);
         this.scene.addMapLabel("STUNNED", npc.x + 12, npc.y - 18, 0xfff2a8);
       }
-      if (npc.luredTimer > 0) {
-        this.scene.addMapLabel("LURED", npc.x + 12, npc.y - 28, 0xff4bd8);
-      }
+      if (npc.luredTimer > 0) this.scene.addMapLabel("LURED", npc.x + 12, npc.y - 28, 0xff4bd8);
     }
   }
 
   summary() {
-    const visible = this.npcs.filter(n => this.isVisible(n)).length;
-    const bodies = this.npcs.filter(n => n.dead && this.isVisible(n)).length;
-    const stunned = this.npcs.filter(n => n.stunnedTimer > 0 && this.isVisible(n)).length;
-    const alarmed = this.npcs.filter(n => n.alarmed && this.isVisible(n)).length;
-    const lured = this.npcs.filter(n => n.luredTimer > 0 && this.isVisible(n)).length;
-    const police = this.npcs.filter(n => n.type === NPC_TYPES.POLICE && !n.dead && this.isVisible(n)).length;
-    const rats = this.npcs.filter(n => n.type === NPC_TYPES.RAT && !n.dead && this.isVisible(n)).length;
-    const thugBlocking = this.npcs.some(n => n.type === NPC_TYPES.THUG && !n.dead && n.stunnedTimer <= 0 && this.isVisible(n));
-    const targetVisible = this.npcs.some(n => n.type === NPC_TYPES.TARGET && !n.dead && this.isVisible(n));
+    const current = this.npcs.filter(npc => this.isVisible(npc));
+    const visible = current.length;
+    const bodies = current.filter(npc => npc.dead).length;
+    const downed = current.filter(npc => npc.combat?.state === COMBAT_STATES.DOWNED && !npc.dead).length;
+    const stunned = current.filter(npc => npc.stunnedTimer > 0 && Number.isFinite(npc.stunnedTimer)).length;
+    const alarmed = current.filter(npc => npc.alarmed).length;
+    const lured = current.filter(npc => npc.luredTimer > 0).length;
+    const police = current.filter(npc => npc.type === NPC_TYPES.POLICE && !npc.dead).length;
+    const rats = current.filter(npc => npc.type === NPC_TYPES.RAT && !npc.dead).length;
+    const thugBlocking = current.some(npc => npc.type === NPC_TYPES.THUG && !npc.dead && npc.combat?.state !== COMBAT_STATES.DOWNED);
+    const targetVisible = current.some(npc => npc.type === NPC_TYPES.TARGET && !npc.dead);
     if (alarmed) return `${visible} NPC/body marker(s) · ${alarmed} witness(es) fleeing`;
+    if (downed) return `${visible} NPC/body marker(s) · ${downed} downed`;
     if (thugBlocking) return `${visible} NPC(s) visible · rooftop thug blocks police roof jump`;
     if (stunned) return `${visible} NPC/body marker(s) · ${stunned} stunned`;
     if (lured) return `${visible} NPC/body marker(s) · ${lured} lured`;
