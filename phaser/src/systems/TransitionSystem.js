@@ -17,6 +17,7 @@ export class TransitionSystem {
     if (this.active) return false;
     this.active = true;
     this.scene.nearestInteraction = null;
+    this.scene.nearestMovement = null;
     this.scene.lastActionText = message;
     this.graphics.clear();
     return true;
@@ -26,10 +27,7 @@ export class TransitionSystem {
     if (this.policeRoofJumpBlocked(from, to)) {
       RawAudio.play("cancel");
       const thug = this.rooftopThug();
-      if (thug) {
-        this.scene.addMapLabel("No te pienso dejar pasar", thug.x - 18, thug.y - 28, 0xffd483);
-        this.graphics.lineStyle(2, 0xff3b50, 0.85).strokeCircle(thug.x, thug.y, 22);
-      }
+      if (thug) this.graphics.lineStyle(2, 0xff3b50, 0.85).strokeCircle(thug.x, thug.y, 22);
       this.scene.lastActionText = "The rooftop thug blocks the jump to the police station. Neutralize him to open the route.";
       return;
     }
@@ -69,7 +67,12 @@ export class TransitionSystem {
           y: to.y,
           layer: toLayer
         });
-        this.complete(toLayer, to, status);
+        const reaction = this.scene.sensoryAwarenessSystem?.emit?.("roofDrop", {
+          x: to.x,
+          y: to.y,
+          layer: toLayer
+        });
+        this.complete(toLayer, to, reaction ? `${status} ${reaction}` : status);
       },
       falling: true
     });
@@ -109,8 +112,8 @@ export class TransitionSystem {
     this.graphics.beginPath();
     this.graphics.moveTo(from.x, from.y);
     const steps = 18;
-    for (let i = 1; i <= steps; i++) {
-      const t = i / steps;
+    for (let index = 1; index <= steps; index++) {
+      const t = index / steps;
       const inv = 1 - t;
       const x = inv * inv * from.x + 2 * inv * t * midX + t * t * to.x;
       const y = inv * inv * from.y + 2 * inv * t * midY + t * t * to.y;
@@ -126,7 +129,6 @@ export class TransitionSystem {
     this.graphics.lineTo(to.x, to.y);
     this.graphics.strokePath();
     this.graphics.fillStyle(0xffb02e, 0.18).fillCircle(to.x, to.y, 20);
-    this.scene.addMapLabel("DROP", to.x + 12, to.y - 12, 0xffb02e);
   }
 
   drawLadder(from, to) {
@@ -137,8 +139,8 @@ export class TransitionSystem {
     this.graphics.strokePath();
 
     const steps = 7;
-    for (let i = 1; i < steps; i++) {
-      const t = i / steps;
+    for (let index = 1; index < steps; index++) {
+      const t = index / steps;
       const x = Phaser.Math.Linear(from.x, to.x, t);
       const y = Phaser.Math.Linear(from.y, to.y, t);
       this.graphics.lineStyle(1, 0xd7c8ff, 0.42);
