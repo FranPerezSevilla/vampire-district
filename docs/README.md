@@ -14,12 +14,14 @@ This directory is the project source of truth for design, implementation and pla
 - [Drain system](DRAIN_SYSTEM.md) — right-click eligibility, rear/downed targeting, channel cancellation and perception.
 - [Movement system](MOVEMENT_SYSTEM.md) — default running, Shift quiet movement, footsteps and deterministic traversal.
 - [Damageable props](PROP_SYSTEM.md) — streetlight durability, attack integration, darkness, reactions and events.
+- [Weapon system](WEAPON_SYSTEM.md) — inventory, wheel cycling, melee/hitscan attacks, ammo, HUD and noise.
 - [Milestone 1 regression](MILESTONE_1_REGRESSION.md) — browser, viewport, tutorial and stuck-input validation.
 - [Milestone 2 regression](MILESTONE_2_REGRESSION.md) — combat, resilience, tutorial and refuge-finale browser validation.
 - [Milestone 3 regression](MILESTONE_3_REGRESSION.md) — enemy attacks, Hunger damage, hit stun and invulnerability validation.
 - [Milestone 4 regression](MILESTONE_4_REGRESSION.md) — right-click targeting, channel, rear/downed eligibility and perception validation.
 - [Milestone 5 regression](MILESTONE_5_REGRESSION.md) — movement speed, quiet footsteps, Space traversal and route-conflict validation.
 - [Milestone 6 regression](MILESTONE_6_REGRESSION.md) — prop hit geometry, persistent darkness and visual/heard-only reaction validation.
+- [Milestone 7 regression](MILESTONE_7_REGRESSION.md) — wheel ownership, weapon damage, hitscan obstruction, ammo and gunshot reactions.
 - [Control scheme](CONTROL_SCHEME.md) — target keyboard-and-mouse controls and interaction priority rules.
 - [Roadmap](ROADMAP.md) — ordered milestones with acceptance criteria.
 
