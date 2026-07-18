@@ -1,3 +1,4 @@
+import { AI_ROLES, AI_STATES } from "../data/ai.js";
 import { COMBAT_STATES } from "../data/combat.js";
 import {
   PLAYER_DAMAGE,
@@ -91,18 +92,26 @@ export class PlayerDamageSystem {
   }
 
   validEnemy(npc) {
-    if (!npc || npc.dead || npc.inactive || npc.hiddenBody || npc.intercepted) return false;
+    if (!npc || npc.dead || npc.inactive || npc.hiddenBody || npc.intercepted || npc.drainVictim) return false;
     if (npc.layer !== this.scene.currentLayer) return false;
     if (npc.stunnedTimer > 0) return false;
     return npc.combat?.state !== COMBAT_STATES.DOWNED;
   }
 
   enemyWantsToAttack(npc) {
-    if (npc.type === NPC_TYPES.POLICE) return Boolean(npc.chasingPlayer);
+    if (!npc?.ai) return false;
+    if (npc.type === NPC_TYPES.POLICE) {
+      return npc.ai.state === AI_STATES.CHASING
+        && npc.ai.role === AI_ROLES.ATTACKER
+        && Boolean(npc.chasingPlayer);
+    }
     if (npc.type === NPC_TYPES.HUNTER) {
-      if (npc.hunterIntent !== "hunt") return false;
-      if (this.scene.currentShadow?.()) return false;
-      return true;
+      return npc.ai.state === AI_STATES.CHASING
+        && npc.hunterIntent === "hunt";
+    }
+    if (npc.type === NPC_TYPES.THUG) {
+      return npc.ai.state === AI_STATES.CHASING
+        && Boolean(npc.thugHostile);
     }
     return false;
   }
@@ -229,6 +238,7 @@ export class PlayerDamageSystem {
       ...frame,
       move: { x: 0, y: 0 },
       hasMovementIntent: false,
+      quietHeld: false,
       sprintHeld: false,
       primaryHeld: false,
       primaryPressed: false,
