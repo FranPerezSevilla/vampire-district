@@ -1,4 +1,5 @@
 import { CombatSystem } from "../combat/CombatSystem.js";
+import { DrainSystem } from "../combat/DrainSystem.js";
 import { PlayerDamageSystem } from "../combat/PlayerDamageSystem.js";
 import { PLAYER } from "../data/balance.js";
 import { LAYERS } from "../data/district.js";
@@ -59,6 +60,8 @@ function installGameSceneInputRuntime() {
     this.combatSystem = new CombatSystem(this);
     this.playerDamageSystem?.destroy?.();
     this.playerDamageSystem = new PlayerDamageSystem(this);
+    this.drainSystem?.destroy?.();
+    this.drainSystem = new DrainSystem(this);
     this.nearestMovement = null;
     return result;
   };
@@ -73,6 +76,7 @@ function installGameSceneInputRuntime() {
     if (this.transitionSystem?.active) {
       this.nearestMovement = null;
       this.nearestInteraction = null;
+      this.drainSystem?.update(0, frame);
       this.playerDamageSystem?.postUpdate(0, frame);
       this.updateCameraForLayer();
       this.drawPromptMarker();
@@ -85,6 +89,7 @@ function installGameSceneInputRuntime() {
       this.nearestMovement = null;
       this.nearestInteraction = null;
       this.npcSystem.refreshVisibility();
+      this.drainSystem?.update(0, frame);
       this.playerDamageSystem?.postUpdate(0, frame);
       this.updateCameraForLayer();
       this.drawPromptMarker();
@@ -95,13 +100,18 @@ function installGameSceneInputRuntime() {
     this.handleLayerDebugInput(frame);
     this.powersSystem.update(dt, frame);
     this.combatSystem?.update(dt, frame);
+    this.drainSystem?.update(dt, frame);
 
     let availableActions = this.collectInteractions();
     let split = splitActions(availableActions);
     this.nearestMovement = nearest(this, split.movement);
     this.nearestInteraction = nearest(this, split.interaction);
 
-    const combatBusy = Boolean(this.combatSystem?.isBusy() || this.playerDamageSystem?.isHitStunned());
+    const combatBusy = Boolean(
+      this.combatSystem?.isBusy()
+      || this.playerDamageSystem?.isHitStunned()
+      || this.drainSystem?.isBusy()
+    );
     if (!combatBusy && frame.traversePressed && !this.feedingSystem.isActive()) {
       const handledMovement = runMovementAction(this, split.movement);
       if (handledMovement) {
