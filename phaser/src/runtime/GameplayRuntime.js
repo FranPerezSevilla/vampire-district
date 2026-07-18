@@ -55,8 +55,6 @@ export class GameplayRuntime {
     scene.objectiveMarkerSystem = new ObjectiveMarkerSystem(scene);
     scene.uxGuidanceSystem = new UxGuidanceSystem(scene);
 
-    // ObjectiveMarkerSystem is the sole player-facing objective marker. The old
-    // static map marker is disabled on this scene instance without a prototype patch.
     scene.drawMissionMarker = () => {};
 
     scene.traversalPromptLabel?.destroy?.();
@@ -88,6 +86,7 @@ export class GameplayRuntime {
     diagnostics.claim("TaskRevealSystem.play", "TaskRevealSystem");
     diagnostics.claim("ObjectiveMarkerSystem.update", "ObjectiveMarkerSystem");
     diagnostics.claim("OutskirtsSystem.updatePresentation", "OutskirtsSystem");
+    diagnostics.claim("TutorialDirector.filterActions", "TutorialDirector");
 
     for (const name of [
       "InputSystem",
@@ -165,7 +164,7 @@ export class GameplayRuntime {
     scene.combatSystem?.update(dt, frame);
     scene.drainSystem?.update(dt, frame);
 
-    let availableActions = scene.collectInteractions();
+    let availableActions = this.filterActions(scene.collectInteractions());
     let split = splitActions(availableActions);
     scene.nearestMovement = nearest(scene, split.movement);
     scene.nearestInteraction = nearest(scene, split.interaction);
@@ -190,7 +189,7 @@ export class GameplayRuntime {
       if (handled) {
         scene.nearestInteraction = scene.interactionSystem.isOpen
           ? null
-          : nearest(scene, splitActions(scene.collectInteractions()).interaction);
+          : nearest(scene, splitActions(this.filterActions(scene.collectInteractions())).interaction);
       }
     }
 
@@ -218,8 +217,9 @@ export class GameplayRuntime {
       scene.aiStateSystem?.postUpdate?.(dt, frame);
       scene.playerDamageSystem?.postUpdate(dt, frame);
       scene.missionSystem.update();
+      scene.tutorialDirector?.update?.(dt, frame);
 
-      availableActions = scene.collectInteractions();
+      availableActions = this.filterActions(scene.collectInteractions());
       split = splitActions(availableActions);
       scene.nearestMovement = nearest(scene, split.movement);
       scene.nearestInteraction = nearest(scene, split.interaction);
@@ -231,6 +231,10 @@ export class GameplayRuntime {
     scene.movementNoiseSystem?.update(frame);
     scene.uxGuidanceSystem?.update?.(dt, frame);
     this.finishFrame();
+  }
+
+  filterActions(options) {
+    return this.scene.tutorialDirector?.filterActions?.(options) || options;
   }
 
   finishFrame() {
