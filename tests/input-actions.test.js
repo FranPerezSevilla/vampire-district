@@ -12,6 +12,7 @@ function activeFrame() {
     worldEnabled: true,
     move: { x: 1, y: 0 },
     hasMovementIntent: true,
+    quietHeld: true,
     sprintHeld: true,
     primaryHeld: true,
     primaryPressed: true,
@@ -28,19 +29,22 @@ function activeFrame() {
   });
 }
 
-test("full control mode preserves world actions", () => {
+test("full control mode preserves world actions but neutralizes obsolete sprint state", () => {
   const frame = applyControlMode(activeFrame(), CONTROL_MODES.FULL, true);
   assert.deepEqual(frame.move, { x: 1, y: 0 });
+  assert.equal(frame.quietHeld, true);
+  assert.equal(frame.sprintHeld, false);
   assert.equal(frame.traversePressed, true);
   assert.equal(frame.interactPressed, true);
   assert.equal(frame.dashPressed, true);
   assert.equal(frame.weaponStep, 1);
 });
 
-test("movement mode exposes movement and traversal only", () => {
+test("movement mode exposes movement, quiet modifier and traversal only", () => {
   const frame = applyControlMode(activeFrame(), CONTROL_MODES.MOVEMENT, true);
   assert.deepEqual(frame.move, { x: 1, y: 0 });
-  assert.equal(frame.sprintHeld, true);
+  assert.equal(frame.quietHeld, true);
+  assert.equal(frame.sprintHeld, false);
   assert.equal(frame.traversePressed, true);
   assert.equal(frame.interactPressed, false);
   assert.equal(frame.primaryPressed, false);
@@ -59,9 +63,10 @@ test("rooftop combat tutorial mode allows punching and right-click drain but blo
   assert.equal(frame.bloodSensePressed, false);
 });
 
-test("world lock clears world actions without clearing menu input", () => {
+test("world lock clears movement modifiers and world actions without clearing menu input", () => {
   const frame = applyControlMode(activeFrame(), CONTROL_MODES.FULL, false);
   assert.deepEqual(frame.move, { x: 0, y: 0 });
+  assert.equal(frame.quietHeld, false);
   assert.equal(frame.traversePressed, false);
   assert.equal(frame.interactPressed, false);
   assert.equal(frame.menuConfirmPressed, true);
