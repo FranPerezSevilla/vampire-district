@@ -86,6 +86,7 @@ function installUxStyle() {
     .hud-button small,
     .power-orb i,
     .interaction-menu p,
+    .interaction-row small,
     .tutorial-dialogue__advance {
       font-size: 12px !important;
     }
@@ -150,6 +151,9 @@ function installUxStyle() {
       }
       .ux-guidance kbd { min-width: 52px; font-size: 12px; }
       .weapon-hud { min-width: 118px !important; }
+      .power-orb { height: 42px !important; }
+      .wanted-copy strong,
+      .hud-toast { font-size: 12px !important; }
     }
     @media (prefers-reduced-motion: reduce) {
       .ux-guidance.visible,
