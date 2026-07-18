@@ -114,7 +114,7 @@ The term **resilience** is used instead of “lives” because NPCs do not respa
 - **Recovered:** optional later state if the recovery timer is enabled.
 - **Drained / killed:** terminal state.
 
-The first milestone may keep downed NPCs on the ground until the encounter resolves. Recovery can be added after the core combat loop is stable.
+The current implementation keeps downed NPCs on the ground until the encounter resolves. Recovery can be added after the core combat loop is stable.
 
 ## 7. Contextual drain
 
@@ -140,31 +140,60 @@ When no valid target exists, right mouse does not open the browser context menu 
 
 ### Channel behaviour
 
-- Drain is held/chanelled for the configured feeding duration.
+- Drain is held/channelled for the configured feeding duration.
 - Movement, taking damage or losing the target cancels it.
 - Witness and sound systems continue to evaluate the action.
 - Completion reduces Hunger and resolves the target as drained.
 
 ## 8. Player damage and Hunger
 
-The first combat pass does not add a separate player health bar.
+The player does not use a separate conventional health bar. Enemy damage is pressure on the Hunger resource.
 
-- Incoming damage increases Hunger.
-- Stronger attacks increase Hunger more than light attacks.
-- Taking damage causes short hit stun and brief invulnerability to prevent multi-hit spikes.
-- At critical Hunger, existing loss-of-control/failure rules apply.
+### Confirmed damage behaviour
+
+- A valid enemy active window adds Hunger.
+- Stronger attacks add more Hunger.
+- The current player punch is cancelled.
+- An active drain channel is cancelled.
+- Movement, attack, powers, traversal and interaction are briefly suppressed by hit stun.
+- Aim may continue updating during hit stun.
+- A following invulnerability window rejects overlapping damage.
 - Feeding functions as recovery because it lowers Hunger.
 
-**Initial tuning proposal**
+### Implemented timing baseline
 
-| Incoming hit | Hunger increase |
+| Player response | Value |
 |---|---:|
-| Light melee | +8 |
-| Police melee / heavy strike | +12 |
-| Firearm hit | +16 |
-| Hunter / supernatural heavy hit | +20 |
+| Hit stun | 260 ms |
+| Invulnerability | 720 ms |
+| Floating damage feedback | 620 ms |
+| Critical Hunger threshold | 85 |
+| Frenzy/failure threshold | 100 |
 
-These values are tuning placeholders, not final balance.
+### Implemented enemy damage baseline
+
+| Enemy attack | Hunger increase |
+|---|---:|
+| Police baton strike | +12 |
+| Hunter heavy strike | +20 |
+
+These remain tuning values rather than permanent final balance.
+
+### Overlap rule
+
+Only the first confirmed hit inside the invulnerability period applies Hunger. Other enemy active windows are spent without damage. This prevents several enemies standing together from instantly filling the Hunger resource.
+
+### Critical Hunger and frenzy
+
+- At Hunger 85 or above, player damage feedback becomes critical.
+- At Hunger 100, the current vertical-slice rule ends the mission with `FRENZY`: the vampire loses control before fulfilling the sire's order.
+- Draining before the limit is reached lowers Hunger and restores tactical room.
+
+### Current enemy eligibility
+
+- Police use melee only while their existing AI marks them as actively chasing the player.
+- Hunters use melee while active and hunting outside shadow.
+- Civilians, the journalist and rooftop thug do not autonomously attack yet.
 
 ## 9. Weapons
 
@@ -229,9 +258,13 @@ Sound uses a wider directional field and event-specific radius.
 - Target resilience is not permanently displayed over every NPC.
 - On hit, short pips or a compact feedback burst may show remaining resilience.
 - Downed state must be visually obvious.
+- Enemy melee windup must be telegraphed before its active window.
+- Player damage shows Hunger gain rather than a health-loss number.
+- Invulnerability is shown by player flicker and a short impact ring.
+- Critical Hunger receives a stronger red warning treatment.
 - Space traversal prompt and E interaction prompt remain distinct.
 - Mouse-wheel weapon changes show a short weapon-name toast.
-- Dialogue remains above the speaker and advances with Escape.
+- Dialogue remains above the speaker and advances with left click; Escape is the fallback.
 - Vision/hearing visualization should be configurable to avoid permanent screen clutter.
 
 ## 12. Browser behaviour
@@ -240,6 +273,7 @@ Sound uses a wider directional field and event-specific radius.
 - Prevent wheel-driven page scrolling only while the pointer is over the active game area.
 - Do not capture mouse input while a modal or menu owns focus.
 - Pause or neutralize combat input when the tab loses focus.
+- Enemy attacks must not resolve behind dialogue, pause, task reveal or result UI.
 
 ## 13. Acceptance criteria for the first combat slice
 
@@ -253,7 +287,11 @@ The first combat slice is complete when:
 - Right mouse drains a downed target.
 - Right mouse drains an unaware standing target only from behind.
 - A front-facing alert target cannot be stealth-drained.
-- Taking damage raises Hunger and respects invulnerability frames.
+- Police and hunter melee attacks are visibly telegraphed and dodgeable.
+- Taking damage raises Hunger and respects hit stun/invulnerability.
+- Overlapping enemy attacks cannot stack during one invulnerability window.
+- Feeding clearly recovers combat pressure.
+- Hunger 100 follows the current frenzy failure rule.
 - Streetlights can be broken by attacks.
 - Visual witnesses and heard-only NPCs react differently.
 - Space performs traversal only and never runs, attacks or activates a vampire power.
