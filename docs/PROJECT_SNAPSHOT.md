@@ -6,7 +6,7 @@ _Last updated: 2026-07-18_
 
 **Vampire District** is a top-down urban stealth-action game inspired by the readable city layout, systemic police pressure and immediate navigation of early Grand Theft Auto games, but built around a vampire fantasy.
 
-The player is a young vampire carrying out orders for their sire. The current vertical slice teaches traversal, feeding, Hunger, witnesses, police pressure, combat, weapon choice, damage-to-Hunger, contextual draining, quiet movement, environmental destruction and the veil through one contained mission.
+The player is a young vampire carrying out orders for their sire. The current vertical slice teaches traversal, feeding, Hunger, witnesses, police pressure, combat, weapon choice, damage-to-Hunger, contextual draining, quiet movement, environmental destruction, type-specific AI reactions and the veil through one contained mission.
 
 ## Current playable vertical slice
 
@@ -30,6 +30,12 @@ Implemented:
 - Three-weapon inventory: Unarmed, Iron Pipe and Pistol.
 - Mouse-wheel weapon cycling, persistent weapon/ammo HUD and change toast.
 - Shared melee and hitscan damage across NPCs and props.
+- Explicit per-NPC AI priority state, role and intent.
+- Police attacker/containment roles instead of every officer stacking on the player.
+- Civilian and journalist reaction/flee/report flow with deterministic interruption.
+- Slow rooftop-thug retaliation after the first confirmed hit.
+- Hunter movement prediction and last-known-position memory through shadow.
+- Police/hunter downed recovery with type-specific timings and restored resilience.
 - Refuge-gated completion: sire dialogue first, report second.
 
 ## Current mission flow
@@ -37,14 +43,15 @@ Implemented:
 1. The intro establishes the player as an inexperienced vampire.
 2. The sire orders the player to silence a journalist.
 3. Rooftop traversal is introduced.
-4. The player knocks down and right-click drains the rooftop blocker while weapon cycling remains tutorial-locked.
-5. Hunger and witness rules are explained.
-6. The police informant gives the journalist's location.
-7. Full controls unlock, including mouse-wheel weapon selection.
-8. The player reaches the club and handles the journalist.
-9. The mission changes to returning to the rooftop refuge.
-10. At the refuge, the sire acknowledges the result in a dialogue bubble.
-11. Only after dismissing the bubble does `REPORT ACCEPTED` open.
+4. The rooftop thug confronts the player, becomes hostile after the first hit and can retaliate with a slow readable swing.
+5. The player knocks him down and right-click drains him while weapon cycling remains tutorial-locked.
+6. Hunger and witness rules are explained.
+7. The police informant gives the journalist's location.
+8. Full controls unlock, including mouse-wheel weapon selection.
+9. The player reaches the club and handles the journalist.
+10. The mission changes to returning to the rooftop refuge.
+11. At the refuge, the sire acknowledges the result in a dialogue bubble.
+12. Only after dismissing the bubble does `REPORT ACCEPTED` open.
 
 ## Current controls
 
@@ -89,14 +96,67 @@ Implemented:
 - Empty pistol attacks are rejected; reload/replenishment is not implemented yet.
 - Gunshots have a `280`-unit sound radius and create stronger police pressure than melee.
 
-## Combat pressure snapshot
+## Combat and AI snapshot
+
+Player pressure:
 
 - Police baton: `Hunger +12`.
 - Hunter heavy strike: `Hunger +20`.
+- Rooftop thug swing: `Hunger +8` with `520 ms` windup.
 - Player hit stun: `260 ms`.
 - Player invulnerability: `720 ms`.
 - Critical Hunger: `85`.
 - Frenzy failure: `100`.
+
+Resolved AI priority:
+
+```text
+inactive/dead
+→ downed
+→ being drained
+→ staggered
+→ attacking
+→ chasing
+→ fleeing/reporting
+→ lured
+→ investigating sound
+→ searching
+→ patrolling/idle
+```
+
+Police roles:
+
+- one stable officer receives the `attacker` role;
+- other officers with visual contact move to deterministic containment slots;
+- containment radii are `43`, `49` and `55` at wanted levels 1–3;
+- attack leadership can hand off after the current turn/recovery;
+- existing separation, reinforcements, search, arrest and helicopter systems remain active.
+
+Witnesses:
+
+- confirmed sight creates reaction, then flight toward a report point;
+- stagger pauses the flight and the witness resumes afterward;
+- downing, draining, killing, hiding or intercepting cancels the report;
+- hearing alone remains temporary orientation and `WTF`.
+
+Hunter:
+
+- predicts `54` units ahead of current player movement;
+- remembers the last known point for `6200 ms` after losing sight;
+- can continue a remembered chase through shadow;
+- falls back to blood tracking, route blocking and patrol after memory expires.
+
+Recovery:
+
+| Type | Recovery | Restored resilience |
+|---|---:|---:|
+| Civilian | Never | — |
+| Journalist | Never | — |
+| Rooftop thug | Never | — |
+| Police | 18 s | 2 / 4 |
+| Hunter | 24 s | 3 / 5 |
+
+Starting a drain before the timer expires prevents recovery. A completed drain or kill resolves the NPC permanently.
 
 ## Drain snapshot
 
@@ -127,11 +187,12 @@ The prototype currently uses:
 - `WeaponSystem` for inventory, equipped state, wheel cycling, ammo and attack noise.
 - `CombatSystem` for aim, weapon attack timing, melee/hitscan resolution, resilience and knockdown.
 - `PlayerDamageSystem` for enemy attacks, hit stun, invulnerability and Hunger damage.
+- `AiStateSystem` for resolved NPC state, conflict cancellation, recovery and transition events.
 - `DrainSystem` for right-click eligibility and channel validation.
 - `MovementNoiseSystem` for actual-displacement footsteps and heard-only reactions.
 - `PropDamageSystem` for streetlight durability and break effects.
-- Existing systems for NPCs, police, witnesses, missions, feeding, exposure, powers, evidence, hunters, interactions and transitions.
-- Pure data modules for combat, weapons, player damage, drain, movement, traversal and props.
+- Existing specialist systems for NPC movement, police, witnesses, missions, feeding, exposure, powers, evidence, hunters, interactions and transitions.
+- Pure data modules for AI, combat, weapons, player damage, drain, movement, traversal and props.
 
 Temporary adapters still patch legacy scene/system methods. Milestone 10 will fold them into explicit composition.
 
@@ -149,20 +210,28 @@ Automated pure coverage includes:
 - prop hit/miss geometry, durability and repeated-damage protection;
 - weapon inventory order and wheel wraparound;
 - pistol ammo consumption and empty rejection;
-- hitscan nearest-target, range, width and obstruction checks.
+- hitscan nearest-target, range, width and obstruction checks;
+- AI state priority and sound-versus-sight precedence;
+- police leader selection and containment geometry;
+- witness interruption rules;
+- hunter prediction and bounds;
+- type-specific recovery timing/resilience;
+- rooftop-thug attack timing and damage.
 
-Manual browser regression remains required across the complete mission, representative viewport sizes, Low/Ultra quality and every route/weapon/prop reaction before Milestones 1–7 become fully complete.
+Manual browser regression remains required across the complete mission, representative viewport sizes, Low/Ultra quality, police formations, hunter memory and recovery before Milestones 1–8 become fully complete.
 
 ## Locked design decisions
 
 - Top-down readability over camera-heavy presentation.
 - Vision and hearing remain separate channels.
-- Hearing alone creates attention, not automatic pursuit.
+- Hearing alone creates attention, not automatic pursuit/reporting.
+- Confirmed sight overrides heard-only investigation.
 - Space is exclusively traversal.
 - Running is normal; Shift is quiet movement.
 - Hunger is the player's combat attrition resource.
 - Feeding is tactical recovery.
 - NPC durability is resilience leading to downed state.
+- Police and hunters can recover; civilians, journalist and rooftop thug remain down.
 - World destruction uses the same aimed attack language as combat.
 - E does not break streetlights.
 - Mouse wheel owns weapon selection while gameplay is active.
@@ -173,27 +242,28 @@ Manual browser regression remains required across the complete mission, represen
 ## Open design decisions
 
 - Final speed and footstep-hearing tuning after browser playtesting.
-- Final police/hunter attack values.
+- Final police/hunter/thug attack values.
+- Final police formation radii and attack-turn cadence.
+- Final hunter memory and pursuit-lead values.
+- Final police/hunter recovery timings and restored resilience.
 - Final drain range, rear angle and channel feel.
-- Final streetlight hit radius, exposure cost and break feedback.
+- Final streetlight hit radius, exposure cost and feedback.
 - Final weapon damage, cadence, ammo and noise tuning.
 - Pistol reload/replenishment design.
 - Whether weapons should be found/purchased rather than owned from the start.
-- Whether downed NPCs recover.
 - Whether perception visualization is always visible.
-- Civilian and thug retaliation scope.
 - Final aim/reticle accessibility options.
 
 ## Main risks
 
 1. Prototype adapter depth and import-order sensitivity.
 2. Missing automated browser regression.
-3. Competing AI flags before the final priority state machine.
-4. Hunger damage creating a positive feedback difficulty spiral.
+3. Specialist systems still own movement through adapters around the resolved AI state.
+4. Hunger damage creating a positive-feedback difficulty spiral.
 5. Screen clutter from objectives, perception, combat and weapon HUD feedback.
 6. Hitscan obstruction relying on navigation-based line checks.
-7. Weapon balance differing significantly across zoom levels and crowd density.
+7. Police containment and recovery balance differing across zoom levels and crowd density.
 
 ## Immediate project priority
 
-Validate Milestone 7 in-browser: wheel ownership, tutorial lock, weapon HUD, pipe damage, pistol ammo, tracer alignment, building obstruction, nearest NPC/prop ordering, gunshot reactions and full mission compatibility. Then implement Milestone 8: explicit AI combat priorities and richer type-specific responses.
+Validate Milestone 8 in-browser: priority conflicts, police attacker/containment roles, witness interruption, rooftop-thug retaliation, hunter shadow memory, police/hunter recovery and complete mission compatibility. Then complete Milestone 9: first-use weapon/recovery teaching, final HUD accessibility and obsolete-copy cleanup.
