@@ -9,9 +9,10 @@ This directory is the project source of truth for design, implementation and pla
 - [Mission flow](MISSION_FLOW.md) — journalist handling, return-to-refuge completion rule and sire-dialogue-to-report ordering.
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — current architecture, target architecture and engineering constraints.
 - [Input system](INPUT_SYSTEM.md) — implemented Milestone 1 frame contract, browser mapping, control modes and tests.
-- [Combat system](COMBAT_SYSTEM.md) — implemented Milestone 2 mouse aim, unarmed timing, resilience, stagger and knockdown.
+- [Combat system](COMBAT_SYSTEM.md) — implemented mouse aim, unarmed combat, enemy melee, resilience, knockdown and damage-to-Hunger flow.
 - [Milestone 1 regression](MILESTONE_1_REGRESSION.md) — browser, viewport, tutorial and stuck-input validation.
 - [Milestone 2 regression](MILESTONE_2_REGRESSION.md) — combat, resilience, tutorial and refuge-finale browser validation.
+- [Milestone 3 regression](MILESTONE_3_REGRESSION.md) — enemy melee, hit stun, invulnerability, Hunger damage and frenzy validation.
 - [Control scheme](CONTROL_SCHEME.md) — target keyboard-and-mouse controls and interaction priority rules.
 - [Roadmap](ROADMAP.md) — ordered milestones with acceptance criteria.
 
