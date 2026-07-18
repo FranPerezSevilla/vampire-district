@@ -1,3 +1,4 @@
+import { PlayerDamageSystem } from "../combat/PlayerDamageSystem.js";
 import { InputSystem } from "./InputSystem.js";
 import { INPUT_ACTIONS, modeAllows } from "./actions.js";
 
@@ -14,4 +15,16 @@ if (!InputSystem.prototype.__nbdTraversalOnlySpacePatch) {
   };
 
   InputSystem.prototype.__nbdTraversalOnlySpacePatch = true;
+}
+
+if (!PlayerDamageSystem.prototype.__nbdQuietMovementFilterPatch) {
+  const originalFilterFrame = PlayerDamageSystem.prototype.filterFrame;
+
+  PlayerDamageSystem.prototype.filterFrame = function filterFrameWithoutQuietMovementDuringStun(frame) {
+    const filtered = originalFilterFrame.call(this, frame);
+    if (filtered !== frame) filtered.quietHeld = false;
+    return filtered;
+  };
+
+  PlayerDamageSystem.prototype.__nbdQuietMovementFilterPatch = true;
 }
