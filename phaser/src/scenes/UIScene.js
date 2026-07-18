@@ -205,6 +205,8 @@ export class UIScene extends Phaser.Scene {
   }
 
   handleKeys() {
+    if (this.registry.get("taskRevealActive")) return;
+
     if (Phaser.Input.Keyboard.JustDown(this.keys.enter)) {
       if (this.introOpen) this.closeIntro();
       else if (this.resultOpen && this.resultType === "success") this.closeResult();
@@ -367,11 +369,16 @@ export class UIScene extends Phaser.Scene {
 
     if (this.resultOpen) {
       const failure = this.resultType === "failure";
-      const title = failure ? (data.result?.title || "MISSION FAILED") : "MISSION COMPLETE";
+      const title = failure ? (data.result?.title || "MISSION FAILED") : (data.result?.title || "REPORT ACCEPTED");
       const intro = failure
         ? (data.result?.subtitle || "The run is over and control is locked.")
-        : "The journalist is handled and the vampire clan can still contain the district.";
-      this.setModal(title, `<p>${this.escapeHtml(intro)}</p><pre>${this.escapeHtml(this.statsText(data))}</pre>`, failure ? "Reload page to restart" : "Continue free roam · Enter/Esc");
+        : (data.result?.subtitle || "Your sire accepts the night's work.");
+      const reportHeading = failure ? "Run report" : "Night report";
+      this.setModal(
+        title,
+        `<p>${this.escapeHtml(intro)}</p><p><strong>${reportHeading}</strong></p><pre>${this.escapeHtml(this.statsText(data))}</pre>`,
+        failure ? "Reload page to restart" : "Continue free roam · Enter/Esc"
+      );
       return;
     }
 
@@ -444,7 +451,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   togglePause() {
-    if (this.introOpen || this.resultOpen) return;
+    if (this.introOpen || this.resultOpen || this.registry.get("taskRevealActive")) return;
     this.pauseOpen = !this.pauseOpen;
     if (this.pauseOpen) this.closeMissionDrawer();
     this.updateUiPause();
@@ -473,7 +480,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   toggleMissionDrawer() {
-    if (this.modalBlocksInput()) return;
+    if (this.modalBlocksInput() || this.registry.get("taskRevealActive")) return;
     this.missionOpen = !this.missionOpen;
   }
 
