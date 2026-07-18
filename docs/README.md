@@ -6,11 +6,12 @@ This directory is the project source of truth for design, implementation and pla
 
 - [Project snapshot](PROJECT_SNAPSHOT.md) — current playable state, product direction, known risks and open decisions.
 - [Functional specification](FUNCTIONAL_SPEC.md) — intended player experience and gameplay rules.
+- [Mission flow](MISSION_FLOW.md) — journalist handling, return-to-refuge completion rule and sire-dialogue-to-report ordering.
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — current architecture, target architecture and engineering constraints.
 - [Input system](INPUT_SYSTEM.md) — implemented Milestone 1 frame contract, browser mapping, control modes and tests.
 - [Combat system](COMBAT_SYSTEM.md) — implemented Milestone 2 mouse aim, unarmed timing, resilience, stagger and knockdown.
 - [Milestone 1 regression](MILESTONE_1_REGRESSION.md) — browser, viewport, tutorial and stuck-input validation.
-- [Milestone 2 regression](MILESTONE_2_REGRESSION.md) — aim, hit geometry, resilience, downed-state and rooftop tutorial validation.
+- [Milestone 2 regression](MILESTONE_2_REGRESSION.md) — combat, resilience, tutorial and refuge-finale browser validation.
 - [Control scheme](CONTROL_SCHEME.md) — target keyboard-and-mouse controls and interaction priority rules.
 - [Roadmap](ROADMAP.md) — ordered milestones with acceptance criteria.
 
