@@ -5,51 +5,48 @@ _Last updated: 2026-07-18_
 ## 1. Runtime and stack
 
 - Browser runtime.
-- Phaser 3 for world rendering, cameras, tweens, scene timing and low-level input.
-- DOM/CSS overlay for HUD, dialogue, prompts and modals.
+- Phaser 3 for world rendering, camera, timing, tweens and low-level input.
+- DOM/CSS overlay for HUD, dialogue, prompts and result screens.
 - Native ES modules.
-- Data-driven JavaScript modules for world, input, combat and drain rules.
-- Node's built-in test runner for pure logic.
+- Data-driven world, input, movement, traversal and combat definitions.
+- Node's built-in test runner with no test dependencies.
 - No backend dependency for the current vertical slice.
 
-## 2. Scene model
-
-### `BootScene`
-
-Owns startup required by the Phaser scene list.
+## 2. Scene ownership
 
 ### `GameScene`
 
 Coordinates:
 
-- player and world state;
-- map/layer rendering;
+- player/world simulation;
+- map and route rendering;
 - camera updates;
 - one gameplay input-frame consumption point;
-- traversal and E interaction dispatch;
-- player attacks, enemy attacks and contextual draining;
-- mission and simulation-system updates;
+- movement and traversal dispatch;
+- interactions and powers;
+- combat, drain and player-damage updates;
+- system update order;
 - registry publication for the UI.
 
 ### `UIScene`
 
 Owns:
 
-- Hunger and police HUD;
-- mission panel;
-- power dock;
-- prompts and interaction menu;
-- intro, pause, failure, frenzy and success modals;
-- UI-only keyboard navigation.
+- Hunger/exposure/power HUD;
+- mission drawer;
+- interaction prompt/menu;
+- intro, pause, failure and success modals;
+- UI-only keyboard handling while the world is paused.
 
-World input and UI input remain separate. `InputSystem` is authoritative for gameplay; `UIScene` owns UI actions while the game scene is paused or blocked.
+World input and UI input remain separate. `InputSystem` is authoritative for gameplay actions.
 
-## 3. Current first-class systems
+## 3. Current systems
 
 - `InputSystem`
 - `CombatSystem`
 - `PlayerDamageSystem`
 - `DrainSystem`
+- `MovementNoiseSystem`
 - `NpcSystem`
 - `PoliceSystem`
 - `WitnessSystem`
@@ -62,49 +59,47 @@ World input and UI input remain separate. `InputSystem` is authoritative for gam
 - `InteractionSystem`
 - `TransitionSystem`
 
-Feature modules also provide tutorial flow, responsive layout, objective guidance, police-informant behaviour, sensory awareness, city outskirts, dialogue layout, mission-return finale and final-report presentation.
+Feature modules also provide responsive layout, tutorial flow/copy, dialogue anchoring, objective guidance, city outskirts, police informant behaviour, sensory-awareness patches and the refuge finale.
 
 ## 4. Input architecture
 
-### Authoritative files
+Authoritative files:
 
 - `phaser/src/input/actions.js`
 - `phaser/src/input/InputSystem.js`
+- `phaser/src/input/movement-input-adapter.js`
 - `phaser/src/input/input-runtime.js`
 - `phaser/src/input/tutorial-input-adapter.js`
 - `phaser/src/utils/geometry.js`
 
-`phaser/src/movement-controls.js` is a thin bootstrap/UI compatibility module. It no longer decides gameplay actions.
-
-### Frame lifecycle
+Frame lifecycle:
 
 ```text
-DOM / Phaser keyboard, pointer and wheel events
+browser / Phaser input
   → InputSystem.beginFrame()
   → control-mode and world-lock gating
-  → PlayerDamageSystem filters actions during hit stun
-  → one gameplay frame
-  → powers / player combat / contextual drain
-  → traversal and E interaction dispatch
-  → NPC, police, hunter and witness simulation
-  → enemy attack resolution
-  → mission update
+  → Milestone 5 movement migration: Shift quiet, sprint false
+  → PlayerDamageSystem hit-stun filter
+  → GameScene dispatches movement/traversal/interactions/powers/combat/drain
+  → NPC/police/hunter simulation
+  → enemy damage resolution
+  → movement-noise update from actual displacement
   → UI registry publication
 ```
 
-Important fields:
+Important frame fields:
 
 ```js
 {
-  move: { x, y },
+  move,
   hasMovementIntent,
-  aimWorld: { x, y },
-  pointerInside,
-  sprintHeld,
-  primaryHeld,
+  quietHeld,
+  sprintHeld: false,
+  aimWorld,
   primaryPressed,
-  drainHeld,
+  primaryHeld,
   drainPressed,
+  drainHeld,
   traversePressed,
   interactPressed,
   weaponStep,
@@ -114,234 +109,174 @@ Important fields:
 }
 ```
 
-### Action ownership
+No active gameplay feature added after Milestone 1 reads raw Space/E/Q/R/F or mouse buttons.
 
-- `GameScene`: Space traversal and E interaction dispatch.
-- `PowersSystem`: Q/R/F abstract actions.
-- `CombatSystem`: aim and left-click attack.
-- `DrainSystem`: aim plus right-button pressed/held state.
-- `PlayerDamageSystem`: temporary action suppression during hit stun.
-- `InteractionSystem`: abstract menu actions.
+## 5. Movement architecture
 
-No active gameplay system queries raw mouse buttons or raw Space/E/Q/R/F independently.
+Authoritative files:
 
-### Control modes
+- `phaser/src/data/movement.js`
+- `phaser/src/data/traversal.js`
+- `phaser/src/systems/MovementNoiseSystem.js`
+- `phaser/src/movement/milestone5-runtime.js`
+- `tests/movement.test.js`
 
-| Mode | World actions |
-|---|---|
-| `full` | All current/future world actions. |
-| `movement` | Move, aim and traverse. |
-| `drain` | Move, aim, punch, right-click drain, traverse and limited tutorial interaction. |
-| `tip` | Move, aim, traverse and clue interaction. |
-| `locked` | Aim tracking only; no world action. |
+### Speed contract
 
-### World locks and lifecycle
-
-World input is suppressed by:
-
-- UI pause/result state;
-- task reveal;
-- tutorial/cinematic locks;
-- scene transitions where appropriate.
-
-Held and edge input resets on:
-
-- browser blur;
-- document visibility loss;
-- pointer leaving the canvas;
-- real lock-state changes;
-- scene shutdown.
-
-### Pointer mapping
-
-```text
-browser client coordinate
-  → canvas bounding-rect normalization
-  → internal game coordinate
-  → camera world view + zoom
-  → aimWorld
+```js
+movementSpeed(playerSpeed, quietHeld)
 ```
 
-`CombatSystem` and `DrainSystem` consume the same `aimWorld`; no second viewport calculation exists.
+- normal run multiplier: `1.55`;
+- quiet multiplier: `0.72`.
 
-## 5. Player attack architecture
+Space does not affect speed.
 
-### Files
+### Traversal contract
+
+Existing world systems still produce route options. `selectTraversalCandidate()` gives deterministic ownership:
+
+1. close and forward committed route;
+2. distance;
+3. aim angle;
+4. route priority;
+5. stable ID.
+
+The same selected object drives the world prompt and Space execution.
+
+### Footstep contract
+
+`MovementNoiseSystem` measures actual player displacement instead of raw key state.
+
+```js
+{
+  mode: "run" | "quiet",
+  stepDistance,
+  hearingRadius,
+  reactionSeconds
+}
+```
+
+A heard-only footstep turns an eligible NPC, stops it briefly and shows `WTF`. It does not set pursuit/reporting. Already alarmed, chasing, attacking, downed or inactive NPCs are excluded.
+
+`movement:footstep` emits plain data: mode, position, layer, hearing radius and heard-only count.
+
+## 6. Player attack and NPC resilience
+
+Authoritative files:
 
 - `phaser/src/data/combat.js`
 - `phaser/src/combat/CombatSystem.js`
 - `phaser/src/combat/combat-compatibility.js`
 - `tests/combat.test.js`
 
-### Unarmed contract
+Player attack:
 
-```js
-{
-  id: "unarmed",
-  damage: 1,
-  range: 32,
-  halfAngle: 0.62,
-  windupMs: 90,
-  activeMs: 110,
-  recoveryMs: 240,
-  staggerMs: 320
-}
-```
+- mouse-facing direction;
+- 10-unit aim dead zone;
+- 90 ms windup;
+- 110 ms active window;
+- 240 ms recovery;
+- 32-unit directional arc;
+- one damage point;
+- per-attack hit-ID set.
 
-The direction is captured at attack start. Each attack owns a target-ID set, preventing duplicate damage during one active window.
-
-### NPC combat state
-
-```js
-npc.combat = {
-  maxResilience,
-  resilience,
-  state: "active", // active | staggered | downed | dead | drained
-  staggerUntil: 0,
-  feedbackUntil: 0,
-  lastHitBy: null
-};
-```
-
-Resilience:
+NPC resilience:
 
 - civilian/target: 3;
 - police/thug: 4;
 - hunter: 5.
 
-Downed NPCs receive a compatibility stun so patrol, pursuit and reporting stop. They remain valid drain/kill targets.
+State subset:
 
-## 6. Enemy attack and player-damage architecture
+```text
+active → staggered → downed → dead / drained
+```
 
-### Files
+Downed NPCs stop movement, pursuit and reporting and remain valid drain targets.
+
+## 7. Enemy attacks and damage-to-Hunger
+
+Authoritative files:
 
 - `phaser/src/data/player-combat.js`
 - `phaser/src/combat/PlayerDamageSystem.js`
 - `tests/player-damage.test.js`
 
-### Current enemy attacks
+Police attacks reuse `chasingPlayer`; hunters reuse active hunt intent.
 
-Police baton:
+Confirmed damage:
 
-```js
-{
-  hungerDamage: 12,
-  startRange: 29,
-  range: 25,
-  windupMs: 300,
-  activeMs: 120,
-  recoveryMs: 620,
-  cooldownMs: 260
-}
-```
-
-Hunter heavy strike:
-
-```js
-{
-  hungerDamage: 20,
-  startRange: 34,
-  range: 29,
-  windupMs: 430,
-  activeMs: 150,
-  recoveryMs: 880,
-  cooldownMs: 420
-}
-```
-
-Police attack only while already chasing. Hunters attack only while active, hunting and outside shadow. Richer combat AI remains Milestone 8 work.
-
-### Player damage state
-
-```js
-playerCombatState = {
-  hitStunUntil,
-  invulnerableUntil,
-  feedbackUntil,
-  lastDamage,
-  lastSourceId,
-  lastLabel,
-  critical
-};
+```text
+enemy active window
+  → stored arc/range validation
+  → invulnerability check
+  → current punch/drain interrupted
+  → Hunger increased
+  → hit stun + invulnerability
+  → player:damaged / hunger:changed events
+  → frenzy failure at 100
 ```
 
 Baselines:
 
+- police: Hunger +12;
+- hunter: Hunger +20;
 - hit stun: 260 ms;
 - invulnerability: 720 ms;
-- feedback: 620 ms;
-- critical: 85 Hunger;
-- frenzy failure: 100 Hunger.
+- critical: 85;
+- frenzy: 100.
 
-### Damage flow
+## 8. Drain architecture
 
-```text
-enemy active window confirms hit
-  → invulnerability check
-  → current punch/drain cancelled
-  → Hunger increased and capped at 100
-  → hit stun and invulnerability applied
-  → player:damaged + hunger:changed
-  → feedback / possible frenzy failure
-```
-
-## 7. Contextual drain architecture
-
-### Files
+Authoritative files:
 
 - `phaser/src/data/drain.js`
 - `phaser/src/combat/DrainSystem.js`
 - `phaser/src/systems/FeedingSystem.js`
 - `tests/drain.test.js`
 
-### Pure eligibility
+Eligibility:
 
-`evaluateDrainCandidate()` checks:
+- downed: any side;
+- rat: direct;
+- standing human: unaware rear arc;
+- all require range, aim and clear geometry.
 
-- type and entity availability;
-- current layer;
-- 30-unit start range;
-- aim alignment;
-- clear geometry;
-- downed state or unaware rear approach.
+The right button uses pressed state to start and held state to maintain. Release, movement, damage or invalid geometry cancels.
 
-Standing targets are rejected when alarmed, chasing, attacking or reporting. An active hunter in hunt mode is considered aware.
+Visual witnesses retain veil behaviour. Heard-only NPCs turn and show `WTF` without automatic pursuit.
 
-### Selection
+## 9. Mission completion architecture
 
-```text
-valid candidates
-  → downed priority
-  → rat priority
-  → standing rear-target priority
-  → distance
-  → aim angle
-  → small mission-target tie break
-```
-
-### Channel
+Handling the journalist sets mission step 3 and the refuge marker. It does not publish success.
 
 ```text
-right-button pressed + held
-  → select candidate
-  → FeedingSystem.startDrain()
-  → hold target and advance progress
-  → cancel on release / movement / damage / invalid geometry / invalid distance
-  → completion lowers Hunger and resolves target
+journalist handled
+  → return-to-refuge objective
+  → player reaches refuge
+  → world locked
+  → sire approval dialogue
+  → dialogue dismissed
+  → mission completed
+  → final report modal
 ```
 
-Start range is 30 units; break range is 38 units.
+Authoritative feature: `phaser/src/mission-return-finale.js`.
 
-### Perception
+## 10. Perception architecture
 
-- Visual witnesses continue through `WitnessSystem.watchActiveDrain()`.
-- Police visual detection continues through the action-resolution path.
-- Heard-only NPCs receive the existing sound-reaction fields and `WTF` presentation.
-- Hearing alone does not create pursuit/reporting.
+Current perception is distributed between witness, sensory-awareness, drain and movement systems.
 
-This hearing bridge is intentionally temporary until sensory code becomes a consolidated `PerceptionSystem`.
+Shared rule:
 
-## 8. Events
+- confirmed sight promotes NPC-type response;
+- hearing alone creates temporary orientation/investigation;
+- hearing alone does not automatically pursue or report.
+
+Target consolidation remains a future `PerceptionSystem` with explicit `canSee()` and `canHear()` queries.
+
+## 11. Events
 
 Implemented plain-data events include:
 
@@ -350,32 +285,16 @@ Implemented plain-data events include:
 - `combat:entity-downed`
 - `combat:enemy-attack-started`
 - `player:damaged`
-- `feeding:right-click-started`
+- `hunger:changed`
 - `feeding:started`
 - `feeding:cancelled`
 - `feeding:completed`
-- `hunger:changed`
+- `feeding:right-click-started`
+- `movement:footstep`
 
-Events carry identifiers and values, not system instances.
+Events carry identifiers and values rather than system instances.
 
-## 9. Pure helper coverage
-
-Current pure helpers cover:
-
-- vector normalization, dot products and angles;
-- point-in-cone checks;
-- CSS/client to game coordinates;
-- screen to camera-world conversion;
-- aim dead-zone retention;
-- player melee hit geometry;
-- NPC resilience transitions;
-- enemy attack phases and hit geometry;
-- player hit stun/invulnerability thresholds;
-- drain rear/downed eligibility;
-- drain awareness rejection;
-- drain target priority.
-
-## 10. Testing strategy
+## 12. Testing
 
 Run:
 
@@ -383,48 +302,46 @@ Run:
 npm test
 ```
 
-Manual browser validation remains required for:
+Pure coverage includes:
 
-- full opening tutorial;
-- pointer accuracy at multiple sizes/qualities;
-- punch cadence and hit counts;
-- police/hunter telegraphs and dodging;
-- simultaneous attackers and invulnerability;
-- right-click rear/downed eligibility;
-- release/movement/damage drain cancellation;
-- visual versus heard-only drain reactions;
-- journalist resolution and refuge finale;
-- pause/dialogue/result ownership.
+- input gating and reset behaviour;
+- responsive pointer conversion;
+- aim and melee geometry;
+- resilience/downed transitions;
+- enemy attack phases and damage thresholds;
+- invulnerability overlap rejection;
+- drain eligibility and target priority;
+- default/quiet movement speeds;
+- deterministic traversal scoring.
 
-## 11. Current technical debt
+Browser regression remains manual and is described in `docs/MILESTONE_1_REGRESSION.md` through `docs/MILESTONE_5_REGRESSION.md`.
 
-- `input-runtime.js` still adapts legacy scene methods instead of being composed directly in `GameScene`.
-- `combat-compatibility.js` shields the new downed state from legacy markers/dispatch.
-- Enemy attacks use existing chase/hunt flags rather than one final AI state machine.
-- Hunger mutation remains inside `FeedingSystem` rather than a dedicated resource service.
-- Drain hearing uses existing sensory flags through a runtime bridge.
-- Legacy E stun/kill actions remain outside the final control contract.
-- Browser smoke tests are manual.
+## 13. Technical debt
 
-Rules for future work:
+- `movement-input-adapter.js` should be folded into `InputSystem`.
+- `input-runtime.js` and `milestone5-runtime.js` adapt legacy scene methods.
+- `combat-compatibility.js` shields new downed behaviour from older marker/violence paths.
+- AI still uses competing flags instead of one priority state machine.
+- Perception is not yet consolidated.
+- Browser smoke tests are not automated.
 
-- no new raw-input paths;
-- no duplicate damage or drain eligibility implementations;
-- pure state/geometry logic requires tests;
-- cross-system behaviour should prefer plain events/data;
-- adapter debt must be removed during consolidation.
+Rules for new work:
 
-## 12. Migration plan
+- no new raw-input path;
+- no duplicate damage or drain implementation;
+- new geometry/state rules require pure tests;
+- cross-system behaviour should prefer plain-data events;
+- adapter debt must be removed in Milestone 10.
 
-1. **Implemented:** central action frame and responsive pointer mapping.
-2. **Implemented:** Space/E/Q/R/F ownership centralized.
-3. **Implemented:** mouse aim, unarmed timing and melee arc.
-4. **Implemented:** resilience, stagger and downed state.
-5. **Implemented:** police/hunter melee and telegraphs.
-6. **Implemented:** player hit stun, invulnerability and damage-to-Hunger.
-7. **Implemented:** right-click rear/downed drain eligibility and channel.
-8. Validate Milestones 1–4 in-browser.
-9. Remove Space sprint compatibility and add deterministic traversal scoring.
-10. Convert streetlights into damageable props.
-11. Add `WeaponSystem` and wheel cycling.
-12. Consolidate adapters into explicit core ownership.
+## 14. Migration plan
+
+1. ✅ Central input frame.
+2. ✅ Mouse aim, unarmed combat and resilience.
+3. ✅ Enemy attacks and damage-to-Hunger.
+4. ✅ Contextual right-click drain.
+5. ✅ Default run, Shift quiet movement and traversal-only Space.
+6. Validate Milestones 1–5 in-browser.
+7. Convert streetlights to damageable props.
+8. Add weapons and wheel cycling.
+9. Implement explicit AI priority states.
+10. Consolidate adapters and add browser smoke tests.
