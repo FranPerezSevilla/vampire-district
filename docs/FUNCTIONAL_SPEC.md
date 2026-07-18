@@ -9,17 +9,18 @@ The game should feel immediate, readable and systemic:
 - traversal should be one contextual action without a route menu;
 - feeding should be powerful, risky and tactically useful;
 - vision and hearing should create different reactions;
-- movement, stealth, violence, feeding and route choice should solve situations.
+- movement, stealth, violence, weapon choice, feeding and route choice should solve situations.
 
 ## 2. Core gameplay loop
 
 1. Receive an order from the sire.
 2. Navigate streets, rooftops and sewers.
 3. Read NPC vision, hearing and alert state.
-4. Avoid, distract, strike, knock down or drain targets.
-5. Control Hunger and protect the veil.
-6. Manage evidence and police pressure.
-7. Complete the objective and return to report.
+4. Avoid, distract, strike, shoot, knock down or drain targets.
+5. Use darkness and routes to control encounters.
+6. Control Hunger and protect the veil.
+7. Manage evidence and police pressure.
+8. Complete the objective and return to report.
 
 ## 3. Current control scheme
 
@@ -28,7 +29,8 @@ The game should feel immediate, readable and systemic:
 | Move | WASD / arrows | Run by default. |
 | Quiet movement | Hold Shift | Slower movement and much smaller footstep hearing radius. |
 | Aim / face | Mouse | Player faces the cursor's world position. |
-| Primary attack | Left mouse | Punch or use the equipped weapon in the aimed direction. |
+| Primary attack | Left mouse | Use equipped weapon in the aimed direction. |
+| Weapon selection | Mouse wheel | Previous/next owned weapon. |
 | Drain | Hold right mouse | Drain a valid aimed target while the channel remains valid. |
 | Traverse | Space | Jump, climb, descend or enter/exit a sewer. No speed effect. |
 | Interact | E | Talk, collect, inspect and use non-traversal objects. |
@@ -39,7 +41,7 @@ The game should feel immediate, readable and systemic:
 | Menu | H | Toggle menu/help. |
 | Dialogue | Left click / Escape | Advance one dialogue bubble. |
 
-Mouse-wheel weapon cycling is planned but not implemented.
+The tutorial control modes suppress weapon cycling until full gameplay control is restored.
 
 ## 4. Movement and stealth
 
@@ -57,6 +59,8 @@ Current baselines:
 |---|---:|---:|
 | Run | 1.55 | 120 |
 | Quiet | 0.72 | 42 |
+
+Ordinary NPCs only react to running inside the short 42-unit range and ignore quiet footsteps. Police and hunters retain enhanced hearing.
 
 Footsteps only create `WTF`/orientation when heard without a confirmed sighting. Hearing alone does not start pursuit or reporting.
 
@@ -87,19 +91,74 @@ The highlighted route and executed route must always be the same. Space with no 
 
 - Cursor coordinates are projected through the active camera.
 - The last valid aim direction is retained near the player.
-- A short indicator shows facing.
+- A weapon-coloured indicator shows facing.
 - Aim must remain correct after resizing, CSS scaling, zoom and quality changes.
+- Attack direction and equipped weapon config are stored at attack start.
+- One press starts one attack; holding does not damage every frame.
+- UI, dialogue, transitions, hit stun and draining suppress attacks.
 
-Unarmed baseline:
+## 7. Weapon inventory
 
-- short directional arc;
+Starting inventory:
+
+1. Unarmed.
+2. Iron Pipe.
+3. Pistol.
+
+Mouse wheel changes exactly one owned slot per normalized step and wraps at either end. The weapon HUD always shows current name and ammunition.
+
+### Unarmed
+
+- melee forward arc;
 - one resilience damage;
-- windup, active and recovery phases;
-- one hit per target per attack;
-- brief victim stagger;
-- ordinary-violence witness/police consequences.
+- 32-unit range;
+- fast commitment;
+- low sound pressure;
+- unlimited use.
 
-## 7. NPC resilience and states
+### Iron Pipe
+
+- melee forward arc;
+- two resilience damage;
+- 42-unit range;
+- slower windup/recovery;
+- stronger stagger and sound;
+- unlimited use.
+
+### Pistol
+
+- hitscan;
+- three resilience damage;
+- 260-unit range;
+- eight rounds;
+- ammunition consumed on every valid shot, including misses;
+- no reload/replenishment in the current slice;
+- empty attacks produce feedback but no shot, damage or noise.
+
+## 8. Melee and hitscan rules
+
+### Melee
+
+- uses weapon range and half-angle;
+- every NPC/prop inside the arc can be hit once;
+- one shared per-attack hit set prevents duplicate damage;
+- pipe and unarmed use the same target/state infrastructure.
+
+### Hitscan
+
+The pistol creates one ordered ray across NPC and prop candidates.
+
+A candidate must:
+
+- be in front of the captured direction;
+- be within range;
+- intersect shot width plus entity radius;
+- be on the current layer;
+- have clear world geometry.
+
+The closest valid candidate along the ray wins. A nearby NPC can block a farther lamp, a lamp can block a farther NPC and buildings block both.
+
+## 9. NPC resilience and states
 
 | NPC type | Resilience |
 |---|---:|
@@ -117,7 +176,7 @@ active → staggered → downed → drained / killed
 
 Downed NPCs cannot move, pursue, attack or report. Recovery is not implemented yet.
 
-## 8. Contextual drain
+## 10. Contextual drain
 
 ### Downed drain
 
@@ -145,7 +204,7 @@ Downed NPCs cannot move, pursue, attack or report. Recovery is not implemented y
 
 Completion lowers Hunger and resolves the target as drained.
 
-## 9. Player damage and Hunger
+## 11. Player damage and Hunger
 
 The player has no conventional health bar in the current slice.
 
@@ -158,7 +217,19 @@ The player has no conventional health bar in the current slice.
 
 Invulnerability prevents overlapping enemies from instantly filling Hunger. Feeding functions as recovery.
 
-## 10. Perception
+## 12. World props
+
+Streetlights are damageable props rather than E interactions.
+
+- durability: one point;
+- unarmed and pipe use the same melee arc as NPC combat;
+- pistol uses the same ordered hitscan ray as NPC targets;
+- misses do nothing;
+- broken state removes light and creates a persistent shadow patch;
+- glass feedback and prop/noise events fire once;
+- E never exposes destruction.
+
+## 13. Perception
 
 ### Vision
 
@@ -166,20 +237,26 @@ Confirmed sight uses facing, cone, range and layer. It promotes the appropriate 
 
 - police pursue/escalate;
 - civilians and the journalist react/report;
-- hunters use hostile behaviour.
+- hunters/thugs become hostile or alarmed.
 
 ### Hearing
 
-Sound uses wider event-specific ranges.
+Sound uses event-specific ranges.
 
 - heard-only NPCs stop and turn toward the source;
 - `WTF` or investigate feedback appears;
 - hearing alone does not pursue or report;
 - later confirmed sight can promote the response.
 
-This rule applies to footsteps, roof drops, streetlight impacts and drain struggle sounds.
+Current sound hierarchy:
 
-## 11. Mission completion
+```text
+quiet footsteps < punch < pipe impact < broken streetlight < gunshot
+```
+
+A gunshot emits even when it misses. Melee impact noise requires a confirmed hit.
+
+## 14. Mission completion
 
 Handling the journalist is not mission completion.
 
@@ -195,50 +272,36 @@ journalist handled
 
 The report never appears before the return objective and never precedes the sire's final dialogue.
 
-## 12. World props
-
-Streetlights are still a legacy E interaction. Milestone 6 will convert them to damageable props:
-
-- punches/weapons apply damage;
-- misses do nothing;
-- break updates lighting;
-- visual witnesses react;
-- heard-only NPCs turn without automatic pursuit.
-
-## 13. Weapons
-
-Weapons will reuse the existing aim, attack timing and damage contracts.
-
-Initial proposed set:
-
-1. unarmed;
-2. improvised melee weapon;
-3. pistol.
-
-Each weapon defines damage, range, cadence, hit shape/spread, sound and ammo rules where relevant.
-
-## 14. UI and browser behaviour
+## 15. UI and browser behaviour
 
 - dialogue click owns input before combat;
 - world-space `SPACE` marker shows selected traversal;
 - target resilience appears briefly rather than permanently;
 - downed state is visually obvious;
+- weapon HUD shows equipped name and ammunition;
+- wheel changes show an `EQUIPPED` toast;
+- empty pistol uses warning feedback;
 - right-click context menu is suppressed only over the game;
-- wheel scroll remains normal until weapon cycling owns it;
-- blur/pause/task reveal clear held input;
+- wheel scrolling is suppressed only over the active game canvas while WeaponSystem owns it;
+- normal scrolling remains outside the canvas;
+- blur/pause/task reveal clear held and pending input;
 - perception feedback should not permanently overcrowd the screen.
 
-## 15. Acceptance criteria for the current combat-movement slice
+## 16. Acceptance criteria for the current combat-movement-weapon slice
 
 - Aim remains accurate across supported sizes and zooms.
-- Left mouse attacks in the aimed direction.
-- Resilience counts are exact.
+- Left mouse uses the equipped weapon in the aimed direction.
+- Resilience counts and weapon damage are exact.
+- One wheel gesture changes one slot and cannot leak through tutorial/UI locks.
+- Pistol ammo decrements once and never becomes negative.
+- Hitscan nearest-target and obstruction rules are deterministic.
 - Overlapping enemy attacks respect invulnerability.
 - Right mouse drains downed targets and unaware rear targets only.
 - Taking damage raises Hunger.
 - WASD runs without a modifier.
 - Shift is measurably slower and quieter.
 - Space performs traversal only.
-- E never performs traversal or draining.
+- E never performs traversal, draining or streetlight destruction.
 - Nearby traversal conflicts resolve deterministically.
+- Hearing alone never automatically pursues or reports.
 - Handling the journalist still requires returning to the refuge.
