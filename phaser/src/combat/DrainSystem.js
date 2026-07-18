@@ -10,6 +10,7 @@ const HEARING_BY_TYPE = Object.freeze({
   [NPC_TYPES.HUNTER]: 158,
   [NPC_TYPES.THUG]: 126
 });
+const MAX_DRAIN_HEARING = Math.max(...Object.values(HEARING_BY_TYPE));
 
 export class DrainSystem {
   constructor(scene) {
@@ -20,7 +21,7 @@ export class DrainSystem {
     this.graphics = scene.add.graphics().setDepth(72);
     this.label = scene.add.text(0, 0, "", {
       fontFamily: "Arial, Helvetica, sans-serif",
-      fontSize: "10px",
+      fontSize: "12px",
       fontStyle: "bold",
       color: "#ffd8df",
       backgroundColor: "rgba(24, 5, 13, .86)",
@@ -68,7 +69,13 @@ export class DrainSystem {
     if (!player || !this.scene.npcSystem) return null;
 
     const director = this.scene.tutorialDirector;
-    const candidates = this.scene.npcSystem.npcs.filter(npc => {
+    const candidates = this.scene.npcSystem.queryRadius?.(
+      player.x,
+      player.y,
+      DRAIN_RULES.startRange + 8,
+      this.scene.currentLayer
+    ) || this.scene.npcSystem.npcs;
+    const eligibleCandidates = candidates.filter(npc => {
       if (director?.state === "drain-thug" && npc.id === "rooftop_thug") {
         return npc.combat?.state === COMBAT_STATES.DOWNED;
       }
@@ -78,7 +85,7 @@ export class DrainSystem {
     return selectDrainCandidate(
       { x: player.x, y: player.y, layer: this.scene.currentLayer },
       this.scene.combatSystem?.aimDirection || { x: 0, y: -1 },
-      candidates,
+      eligibleCandidates,
       {
         currentLayer: this.scene.currentLayer,
         lineClear: npc => this.lineClear(npc)
@@ -148,11 +155,18 @@ export class DrainSystem {
 
   emitDrainHearing(victim) {
     const source = { x: victim.x, y: victim.y, layer: victim.layer };
+    const candidates = this.scene.npcSystem?.queryRadius?.(
+      source.x,
+      source.y,
+      MAX_DRAIN_HEARING,
+      source.layer
+    ) || this.scene.npcSystem?.npcs || [];
     let heard = 0;
 
-    for (const npc of this.scene.npcSystem?.npcs || []) {
+    for (const npc of candidates) {
       if (npc === victim || npc.dead || npc.inactive || npc.intercepted || npc.hiddenBody || npc.missionInformant) continue;
-      if (npc.layer !== source.layer || npc.stunnedTimer > 0 || npc.alarmed || npc.chasingPlayer) continue;
+      if (npc.layer !== source.layer || npc.stunnedTimer > 0 || npc.alarmed || npc.chasingPlayer || npc.drainVictim) continue;
+      if (npc.combat?.state === COMBAT_STATES.DOWNED || npc.enemyAttack) continue;
       const radius = HEARING_BY_TYPE[npc.type];
       if (!radius) continue;
       const distance = Phaser.Math.Distance.Between(npc.x, npc.y, source.x, source.y);
@@ -184,7 +198,7 @@ export class DrainSystem {
     if (npc.__nbdWtfLabel) return npc.__nbdWtfLabel;
     npc.__nbdWtfLabel = this.scene.add.text(npc.x, npc.y - 26, "WTF", {
       fontFamily: "Arial, Helvetica, sans-serif",
-      fontSize: "10px",
+      fontSize: "12px",
       fontStyle: "bold",
       color: "#ffd58b",
       backgroundColor: "rgba(5, 6, 11, .78)",
