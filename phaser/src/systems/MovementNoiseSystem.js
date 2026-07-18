@@ -30,8 +30,7 @@ export class MovementNoiseSystem {
     this.pulseMode = "run";
     this.graphics = scene.add.graphics().setDepth(41);
 
-    // Milestone 5 makes the simulation the only owner of footsteps. The older
-    // keyboard listener may still unlock WebAudio, but it no longer produces steps.
+    // Footsteps are owned by measured world displacement rather than raw key state.
     if (RawAudio.stepTimer && typeof window !== "undefined") window.clearInterval(RawAudio.stepTimer);
     RawAudio.stepTimer = null;
     RawAudio.keysDown?.clear?.();
@@ -77,8 +76,17 @@ export class MovementNoiseSystem {
     this.pulseMode = profile.mode;
     this.pulseUntil = this.scene.time.now + 190;
 
+    const maxRadius = profile.hearingRadius * 1.26;
+    const candidates = this.scene.npcSystem?.queryRadius?.(
+      this.scene.player.x,
+      this.scene.player.y,
+      maxRadius,
+      this.scene.currentLayer,
+      npc => HUMAN_TYPES.has(npc.type)
+    ) || this.scene.npcSystem?.npcs || [];
+
     let heardOnly = 0;
-    for (const npc of this.scene.npcSystem?.npcs || []) {
+    for (const npc of candidates) {
       if (!this.canHearNpc(npc)) continue;
       const radius = footstepHearingRadius(profile, npc.type);
       if (radius <= 0) continue;
@@ -124,6 +132,7 @@ export class MovementNoiseSystem {
       && npc.layer === this.scene.currentLayer
       && npc.stunnedTimer <= 0
       && npc.combat?.state !== COMBAT_STATES.DOWNED
+      && !npc.drainVictim
       && !npc.alarmed
       && !npc.chasingPlayer
       && !npc.enemyAttack
@@ -151,7 +160,7 @@ export class MovementNoiseSystem {
     if (!npc.__nbdWtfLabel) {
       npc.__nbdWtfLabel = this.scene.add.text(npc.x, npc.y - 26, "WTF", {
         fontFamily: "Arial, Helvetica, sans-serif",
-        fontSize: "10px",
+        fontSize: "12px",
         fontStyle: "bold",
         color: "#ffd58b",
         backgroundColor: "rgba(5, 6, 11, .78)",
