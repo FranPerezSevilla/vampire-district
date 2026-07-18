@@ -4,15 +4,18 @@ _Status: Milestone 8 implementation complete; browser regression and tuning rema
 
 ## Purpose
 
-Milestone 8 replaces contradictory combinations of `alarmed`, `chasingPlayer`, `soundReactionTimer`, `reportTarget`, `enemyAttack` and combat flags with one resolved priority state per NPC. Existing systems still own their specialist movement and presentation, but `AiStateSystem` decides which intent is currently allowed to win.
+Milestone 8 replaces contradictory combinations of `alarmed`, `chasingPlayer`, `soundReactionTimer`, `reportTarget`, `enemyAttack` and combat flags with one resolved priority state per NPC. Existing systems still own specialist movement and presentation, but `AiStateSystem` decides which intent is currently allowed to win.
 
 ## Authoritative files
 
 - `phaser/src/data/ai.js` — pure states, priorities, recovery rules, police leader/containment selection and hunter prediction.
 - `phaser/src/systems/AiStateSystem.js` — runtime state resolution, conflict cancellation, recovery and events.
 - `phaser/src/ai/milestone8-runtime.js` — integration with NPC, witness, police, hunter and enemy-attack systems.
+- `phaser/src/ai/police-turn-guard.js` — finite attack turns, active-officer counts and containment facing.
+- `phaser/src/ai/sensory-priority-guard.js` — confirmed police sight above heard-only investigation.
 - `phaser/src/data/player-combat.js` — police, hunter and rooftop-thug attack definitions.
 - `tests/ai.test.js` — pure priority, formation, recovery and prediction coverage.
+- `tests/ai-runtime.test.js` — real `AiStateSystem` recovery/event behaviour against a minimal scene.
 - `tests/player-damage.test.js` — enemy attack timing and damage coverage.
 
 ## Priority model
@@ -71,9 +74,10 @@ When one or more officers have confirmed sight:
 2. that officer closes to baton distance and is the only officer allowed to start a melee attack;
 3. remaining visible officers receive deterministic `contain` positions around the player;
 4. soft separation remains active while they move to those positions;
-5. if the attacker is downed, unavailable or too far away, leadership passes to the nearest ready officer.
+5. containment officers face the player after moving so circling does not accidentally erase contact;
+6. if the attacker is downed, unavailable or too far away, leadership passes to a ready officer.
 
-Leader selection is stable for `1450 ms`, unless the officer becomes invalid. Attack cooldown and heard-only reaction state penalize leadership selection.
+Leader selection is stable for `1450 ms`, unless the officer becomes invalid. The window is finite rather than extended every frame. Attack cooldown and heard-only reaction state penalize the next leadership selection.
 
 Containment radius grows with alert level:
 
@@ -84,6 +88,8 @@ Containment radius grows with alert level:
 | 3 | 55 units |
 
 Search, heat investigation and normal patrol remain separate roles. The existing level-dependent reinforcement counts and helicopter behaviour remain unchanged.
+
+Downed/drained officers are excluded from the active response count. A replacement may therefore spawn while an officer's 18-second recovery timer is running. If the officer later rises, the district can temporarily exceed the normal desired unit count.
 
 ## Civilian and journalist behaviour
 
@@ -110,8 +116,6 @@ Rules:
 
 The blocker becomes hostile after the first confirmed player hit. He does not attack during the opening dialogue and does not recover after knockdown.
 
-Baseline retaliation:
-
 | Property | Value |
 |---|---:|
 | Hunger damage | +8 |
@@ -132,7 +136,7 @@ On confirmed sight, a hunter:
 
 - stores a predicted point `54` units ahead of the current movement direction;
 - keeps that memory for `6200 ms`;
-- pursues the last known point while direct sight is lost;
+- pursues the last-known point while direct sight is lost;
 - shortens the remaining memory after reaching an empty last-known position;
 - falls back to blood tracking, route blocking and church patrol only after memory expires.
 
@@ -179,10 +183,19 @@ Recovery emits `combat:entity-recovered`.
 - hunter pursuit prediction and world-bound clamping;
 - slow, low-damage thug retaliation.
 
+`tests/ai-runtime.test.js` instantiates the real coordinator and verifies:
+
+- recovery occurs exactly at the scheduled time;
+- restored resilience and short stagger are applied;
+- `combat:entity-recovered` emits once;
+- police last-known search state is refreshed;
+- active drain suppresses recovery;
+- civilian knockdown remains permanent.
+
 ## Known limitations
 
 - The integration layer still adapts existing system prototypes; Milestone 10 will fold this into first-class composition.
 - Police containment targets do not yet perform full tactical path planning around complex obstacles.
 - Hunter prediction uses current movement direction rather than a learned route model.
-- Recovery timers and formation distances are tuning baselines.
+- Recovery timers, formation distances and replacement pressure are tuning baselines.
 - Browser smoke testing remains manual.
