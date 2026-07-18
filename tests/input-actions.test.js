@@ -47,10 +47,12 @@ test("movement mode exposes movement and traversal only", () => {
   assert.equal(frame.dashPressed, false);
 });
 
-test("rooftop combat tutorial mode allows punching and E drain but blocks powers", () => {
+test("rooftop combat tutorial mode allows punching and right-click drain but blocks powers", () => {
   const frame = applyControlMode(activeFrame(), CONTROL_MODES.DRAIN, true);
   assert.equal(frame.primaryPressed, true);
   assert.equal(frame.primaryHeld, true);
+  assert.equal(frame.drainPressed, true);
+  assert.equal(frame.drainHeld, true);
   assert.equal(frame.interactPressed, true);
   assert.equal(frame.traversePressed, true);
   assert.equal(frame.whisperPressed, false);
