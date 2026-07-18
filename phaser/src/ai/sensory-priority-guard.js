@@ -1,13 +1,22 @@
 import { PoliceSystem } from "../systems/PoliceSystem.js";
 
+const SIGHT_BY_LEVEL = Object.freeze({
+  0: Object.freeze({ sight: 150, shadowSight: 0 }),
+  1: Object.freeze({ sight: 190, shadowSight: 58 }),
+  2: Object.freeze({ sight: 238, shadowSight: 100 }),
+  3: Object.freeze({ sight: 286, shadowSight: 142 })
+});
+
 function installPoliceSightPriorityGuard() {
   if (PoliceSystem.prototype.__nbdPoliceSightPriorityGuard) return;
 
   const originalTargetForCop = PoliceSystem.prototype.targetForCop;
   PoliceSystem.prototype.targetForCop = function targetForCopWithSightAboveSound(cop, level, config, ...rest) {
     if (cop?.soundReactionTimer > 0 && !cop.chasingPlayer) {
-      const sight = Number(config?.sight) || 150;
-      const shadowSight = Number(config?.shadowSight) || 0;
+      const clampedLevel = Math.max(0, Math.min(3, Math.floor(Number(level) || 0)));
+      const fallback = SIGHT_BY_LEVEL[clampedLevel];
+      const sight = Number(config?.sight) || fallback.sight;
+      const shadowSight = Number(config?.shadowSight) || fallback.shadowSight;
       const seesPlayer = Boolean(this.playerVisibleToCop?.(cop, sight, shadowSight));
 
       if (!seesPlayer) return null;
