@@ -17,6 +17,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Movement system](MOVEMENT_SYSTEM.md) — default running, Shift quiet movement, footsteps and deterministic traversal.
 - [Damageable props](PROP_SYSTEM.md) — streetlight durability, attack integration, darkness, reactions and events.
 - [Weapon system](WEAPON_SYSTEM.md) — inventory, wheel cycling, melee/hitscan attacks, ammo, HUD and noise.
+- [Tutorial UX and accessibility](UX_ACCESSIBILITY.md) — first-use weapon teaching, recovery countdowns, HUD layout, semantic labels and high-contrast aim.
 - [Milestone 1 regression](MILESTONE_1_REGRESSION.md) — browser, viewport, tutorial and stuck-input validation.
 - [Milestone 2 regression](MILESTONE_2_REGRESSION.md) — combat, resilience, tutorial and refuge-finale browser validation.
 - [Milestone 3 regression](MILESTONE_3_REGRESSION.md) — enemy attacks, Hunger damage, hit stun and invulnerability validation.
@@ -25,6 +26,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Milestone 6 regression](MILESTONE_6_REGRESSION.md) — prop hit geometry, persistent darkness and visual/heard-only reaction validation.
 - [Milestone 7 regression](MILESTONE_7_REGRESSION.md) — wheel ownership, weapon damage, hitscan obstruction, ammo and gunshot reactions.
 - [Milestone 8 regression](MILESTONE_8_REGRESSION.md) — state priority, police roles, witness interruption, hunter memory and recovery validation.
+- [Milestone 9 regression](MILESTONE_9_REGRESSION.md) — first-use guidance, recovery timers, HUD separation, assistive semantics and high-contrast aim.
 - [Control scheme](CONTROL_SCHEME.md) — target keyboard-and-mouse controls and interaction priority rules.
 - [Roadmap](ROADMAP.md) — ordered milestones with acceptance criteria.
 
