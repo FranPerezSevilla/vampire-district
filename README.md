@@ -1,6 +1,6 @@
 # Vampire District
 
-**Vampire District** is a Phaser 3 top-down vampire stealth-action vertical slice for the browser. The player crosses rooftops, streets and sewers, manages Hunger and the veil, evades escalating police pressure and silences a journalist before the clan is exposed.
+**Vampire District** is a Phaser 3 top-down vampire stealth-action vertical slice for the browser. The player crosses rooftops, streets and sewers, manages Hunger and the veil, fights through escalating police pressure and silences a journalist before the clan is exposed.
 
 Open `index.html` through a local/static web server, or use the published GitHub Pages build when available. ES modules will not work reliably through every browser's `file://` mode.
 
@@ -12,9 +12,12 @@ Open `index.html` through a local/static web server, or use the published GitHub
 - Hunger, feeding and vampire powers.
 - Civilian and police vision/hearing reactions.
 - Wanted escalation, pursuit, arrest and helicopter support.
-- Police informant, journalist objective and sire report.
+- Police informant, journalist objective, refuge-gated completion and sire report.
 - Action-based gameplay `InputSystem` with tested responsive pointer mapping.
 - Mouse-directed unarmed combat with resilience, stagger and knockdown.
+- Police and hunter melee telegraphs.
+- Player hit stun, invulnerability and incoming damage converted into Hunger.
+- Critical Hunger feedback and frenzy failure at the Hunger limit.
 
 ## Current controls
 
@@ -44,4 +47,4 @@ npm test
 
 ## Documentation
 
-Start with [`docs/README.md`](docs/README.md). The documentation set includes the current project snapshot, functional specification, technical architecture, implemented input and combat systems, and dependency-ordered roadmap.
+Start with [`docs/README.md`](docs/README.md). The documentation set includes the current project snapshot, functional specification, technical architecture, implemented input/combat systems and the dependency-ordered roadmap.
