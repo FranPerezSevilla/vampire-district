@@ -1,4 +1,13 @@
+import { AI_ROLES } from "../data/ai.js";
 import { PoliceSystem } from "../systems/PoliceSystem.js";
+
+function facePlayer(cop, player) {
+  const dx = player.x - cop.x;
+  const dy = player.y - cop.y;
+  const length = Math.hypot(dx, dy) || 1;
+  cop.dirX = dx / length;
+  cop.dirY = dy / length;
+}
 
 function installPoliceAttackTurnGuard() {
   if (PoliceSystem.prototype.__nbdPoliceAttackTurnGuard) return;
@@ -23,6 +32,14 @@ function installPoliceAttackTurnGuard() {
       && previousLeader?.ai
       && previousDeadline > now) {
       previousLeader.ai.leaderUntil = previousDeadline;
+    }
+
+    // Containment movement targets a slot beside the player. Face the player
+    // after moving so the next visual query does not drop contact simply because
+    // the officer was circling into formation.
+    for (const cop of this.police()) {
+      if (cop.ai?.role !== AI_ROLES.CONTAIN || !cop.chasingPlayer || cop.enemyAttack) continue;
+      facePlayer(cop, this.scene.player);
     }
 
     return result;
