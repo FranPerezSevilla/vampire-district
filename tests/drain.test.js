@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { COMBAT_STATES } from "../phaser/src/data/combat.js";
+import { COMBAT_STATES, UNARMED_ATTACK } from "../phaser/src/data/combat.js";
 import {
   DRAIN_KINDS,
+  DRAIN_RULES,
   evaluateDrainCandidate,
   selectDrainCandidate
 } from "../phaser/src/data/drain.js";
@@ -31,6 +32,18 @@ test("a downed target is drainable from any approach angle", () => {
     combat: { state: COMBAT_STATES.DOWNED }
   });
   const result = evaluateDrainCandidate(player, aimRight, target);
+  assert.equal(result.eligible, true);
+  assert.equal(result.kind, DRAIN_KINDS.DOWNED);
+});
+
+test("a target downed at maximum punch range is immediately drainable", () => {
+  assert.ok(DRAIN_RULES.range >= UNARMED_ATTACK.range);
+  const thug = npc({
+    type: NPC_TYPES.THUG,
+    x: UNARMED_ATTACK.range,
+    combat: { state: COMBAT_STATES.DOWNED }
+  });
+  const result = evaluateDrainCandidate(player, aimRight, thug);
   assert.equal(result.eligible, true);
   assert.equal(result.kind, DRAIN_KINDS.DOWNED);
 });
