@@ -135,10 +135,18 @@ export class WeaponSystem {
       y: this.scene.player.y,
       layer: this.scene.currentLayer
     };
+    const maxRadius = Math.max(weapon.soundRadius || 0, weapon.visualRadius || 0);
+    const candidates = this.scene.npcSystem?.queryRadius?.(
+      source.x,
+      source.y,
+      maxRadius,
+      source.layer,
+      npc => HUMAN_TYPES.has(npc.type)
+    ) || this.scene.npcSystem?.npcs || [];
     let visualWitnesses = 0;
     let heardOnly = 0;
 
-    for (const npc of this.scene.npcSystem?.npcs || []) {
+    for (const npc of candidates) {
       if (!this.validObserver(npc, source.layer)) continue;
       const saw = Boolean(this.scene.witnessSystem?.canWitnessSee?.(
         npc,
@@ -172,8 +180,15 @@ export class WeaponSystem {
   }
 
   emitHeardOnly(weapon, source, excluded = new Set()) {
+    const candidates = this.scene.npcSystem?.queryRadius?.(
+      source.x,
+      source.y,
+      weapon.soundRadius,
+      source.layer,
+      npc => HUMAN_TYPES.has(npc.type)
+    ) || this.scene.npcSystem?.npcs || [];
     let heardOnly = 0;
-    for (const npc of this.scene.npcSystem?.npcs || []) {
+    for (const npc of candidates) {
       if (excluded.has(npc) || !this.validObserver(npc, source.layer)) continue;
       if (npc.alarmed || npc.chasingPlayer || npc.enemyAttack) continue;
       const distance = Phaser.Math.Distance.Between(npc.x, npc.y, source.x, source.y);
@@ -221,6 +236,8 @@ export class WeaponSystem {
 
     npc.alarmed = true;
     npc.reactionTimer = Math.max(npc.reactionTimer || 0, 0.55);
+    if (npc.type === NPC_TYPES.THUG) npc.thugHostile = true;
+    if (npc.type === NPC_TYPES.HUNTER) npc.hunterIntent = "hunt";
   }
 
   startHeardOnlyReaction(npc, source, seconds) {
@@ -246,7 +263,7 @@ export class WeaponSystem {
     if (!npc.__nbdWtfLabel) {
       npc.__nbdWtfLabel = this.scene.add.text(npc.x, npc.y - 26, "WTF", {
         fontFamily: "Arial, Helvetica, sans-serif",
-        fontSize: "10px",
+        fontSize: "12px",
         fontStyle: "bold",
         color: "#ffd58b",
         backgroundColor: "rgba(5, 6, 11, .78)",
@@ -270,6 +287,7 @@ export class WeaponSystem {
       && npc.layer === layer
       && npc.stunnedTimer <= 0
       && npc.combat?.state !== COMBAT_STATES.DOWNED
+      && !npc.drainVictim
     );
   }
 
@@ -294,7 +312,8 @@ export class WeaponSystem {
   }
 
   publish() {
-    this.scene.registry?.set?.("weaponState", this.state());
+    this.scene.statePublisher?.set?.("weaponState", this.state())
+      || this.scene.registry?.set?.("weaponState", this.state());
   }
 
   summary() {
