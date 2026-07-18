@@ -52,7 +52,7 @@ const TIPS = new Map([
   ],
   [
     "Pulsa E para drenar al objetivo. Durante este tutorial, es la única acción ofensiva disponible.",
-    "Press E to drain the target. During this tutorial, it is your only offensive action."
+    "Aim at the downed target and hold the right mouse button to drain."
   ],
   [
     "Cruza hasta la comisaría con ESPACIO y pulsa E para recoger el chivatazo.",
