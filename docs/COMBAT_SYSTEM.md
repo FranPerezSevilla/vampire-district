@@ -1,240 +1,253 @@
 # Combat system
 
-_Status: Milestones 2–4 are implemented; browser regression and feel tuning remain pending._
+_Status: Milestones 2–7 are implemented; browser regression and feel tuning remain pending._
 
 ## Purpose
 
-The combat layer now covers the first bidirectional melee and feeding loop:
+The combat layer covers:
 
-- mouse-directed player punches damage NPC resilience;
-- existing hostile police and hunter pursuit can create enemy melee attacks;
-- confirmed enemy hits increase player Hunger instead of reducing a separate health bar;
-- hit stun and invulnerability prevent overlapping enemies from producing unavoidable damage spikes;
-- right-click drains downed targets or unaware standing targets approached from behind.
+- mouse-directed attacks using the equipped weapon;
+- NPC resilience, stagger and persistent downed state;
+- damageable world props;
+- hostile police/hunter melee attacks;
+- incoming damage converted into Hunger;
+- right-click contextual draining;
+- weapon-specific noise and visual reactions.
 
-All combat and drain input comes from the authoritative `InputSystem` frame.
+All gameplay input comes from the authoritative `InputSystem` frame.
 
 ## Files
 
-- `phaser/src/data/combat.js` — NPC combat states, unarmed timing, resilience values and pure player-attack helpers.
-- `phaser/src/data/player-combat.js` — player damage state, enemy melee definitions, Hunger thresholds and pure hit/timing helpers.
-- `phaser/src/data/drain.js` — pure drain eligibility, awareness and target-selection rules.
-- `phaser/src/combat/CombatSystem.js` — player facing, punch lifecycle, hit resolution, NPC resilience and knockdown presentation.
-- `phaser/src/combat/PlayerDamageSystem.js` — hostile melee lifecycle, player hit stun, invulnerability, Hunger damage and feedback.
-- `phaser/src/combat/DrainSystem.js` — right-click target selection, channel validation, feedback and heard-only reactions.
-- `phaser/src/systems/FeedingSystem.js` — drain progress, Hunger relief, completion and cancellation events.
-- `phaser/src/input/input-runtime.js` — instantiates and updates all combat systems from one frame loop.
-- `tests/combat.test.js` — aim, player melee arc and NPC resilience tests.
-- `tests/player-damage.test.js` — enemy melee, hit-stun, invulnerability and damage-to-Hunger tests.
-- `tests/drain.test.js` — rear/downed eligibility, awareness, range, aim and priority tests.
+- `phaser/src/data/combat.js` — NPC combat states, resilience and shared melee helpers.
+- `phaser/src/data/weapons.js` — equipped-weapon definitions, ammo and hitscan helpers.
+- `phaser/src/data/player-combat.js` — enemy melee definitions and player damage state.
+- `phaser/src/data/drain.js` — drain eligibility and target selection.
+- `phaser/src/combat/CombatSystem.js` — aim, equipped attack lifecycle, melee/hitscan resolution and NPC damage.
+- `phaser/src/combat/PlayerDamageSystem.js` — hostile attacks, player stun, invulnerability and Hunger damage.
+- `phaser/src/combat/DrainSystem.js` — right-click target/channel behaviour.
+- `phaser/src/systems/WeaponSystem.js` — inventory, wheel selection, ammo, weapon audio and attack noise.
+- `phaser/src/systems/PropDamageSystem.js` — world-prop damage endpoint.
+- `phaser/src/systems/FeedingSystem.js` — Hunger relief and drain completion.
+- `phaser/src/input/input-runtime.js` — central system update order.
+- `tests/combat.test.js`, `tests/player-damage.test.js`, `tests/drain.test.js`, `tests/weapons.test.js`.
 
-## Current controls
+## Controls
 
-- Move with WASD or arrows.
-- Aim by moving the mouse over the game canvas.
-- Left-click performs one unarmed attack toward the stored aim direction.
-- Right-click starts a valid drain and must remain held through the channel.
-- Space retains its current run/traversal compatibility until Milestone 5.
-- E no longer drains; legacy stun/kill options remain temporarily available outside the guided tutorial.
-- Wheel weapon selection is collected by `InputSystem` but is not yet consumed.
+- Mouse: aim and face.
+- Left mouse: use equipped weapon.
+- Mouse wheel: previous/next owned weapon.
+- Right mouse: hold a valid drain.
+- Space: traversal only.
+- E: non-traversal interactions.
 
-## Player unarmed attack
+Weapon cycling is blocked by tutorial modes, UI locks, active attacks, draining, hit stun and transitions.
 
-The baseline punch uses three phases:
+## Equipped attack lifecycle
 
-| Phase | Duration | Behaviour |
-|---|---:|---|
-| Windup | 90 ms | Direction is committed; movement is briefly locked. |
-| Active | 110 ms | Targets inside the melee arc can be hit once. |
-| Recovery | 240 ms | No new interaction or traversal starts until recovery ends. |
+Each attack snapshots:
 
-The hit shape is a 32-unit forward arc with a half-angle of 0.62 radians. Each attack owns a `hitIds` set, preventing duplicate damage to the same NPC during one active window.
+- equipped weapon config;
+- aim direction;
+- serial ID;
+- elapsed phase time;
+- one shared `hitIds` set;
+- hitscan resolution/tracer state when relevant.
+
+All weapons use:
+
+```text
+windup → active → recovery → complete
+```
+
+Cycling cannot change an attack already in progress.
+
+## Weapon baselines
+
+| Weapon | Type | Damage | Range | Windup | Active | Recovery | Ammo |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Unarmed | melee | 1 | 32 | 90 ms | 110 ms | 240 ms | unlimited |
+| Iron Pipe | melee | 2 | 42 | 130 ms | 125 ms | 360 ms | unlimited |
+| Pistol | hitscan | 3 | 260 | 65 ms | 45 ms | 430 ms | 8 |
+
+The pistol consumes ammo when a valid shot starts, including a miss. At zero rounds, left click produces `EMPTY` feedback without starting an attack or noise event.
+
+## Melee resolution
+
+Unarmed and Iron Pipe use a forward cone/arc:
+
+- stored origin and direction;
+- weapon-specific range and half-angle;
+- every valid NPC and prop inside the arc can be hit once;
+- NPC and `prop:<id>` keys share the same attack hit set;
+- moving the cursor after attack start does not bend the active swing.
+
+The Iron Pipe removes two resilience points, reaches farther, staggers longer and creates more sound than Unarmed.
+
+## Hitscan resolution
+
+The Pistol resolves once during its active phase.
+
+Candidate pool:
+
+- active/staggered human NPCs on the current layer;
+- unbroken damageable props on the current layer.
+
+Validation:
+
+1. Candidate lies in front of stored direction.
+2. Forward distance is inside range.
+3. Perpendicular distance intersects target radius plus bullet width.
+4. Navigation/world geometry reports a clear segment.
+5. Closest valid forward candidate wins.
+6. Perpendicular distance and stable ID break ties.
+
+The same ordered ray decides between NPCs and props. A nearer entity or building blocks a farther target. A stored endpoint draws the tracer.
 
 ## NPC resilience
 
 | NPC type | Maximum resilience |
 |---|---:|
 | Civilian | 3 |
-| Journalist / normal target | 3 |
+| Journalist | 3 |
 | Police | 4 |
 | Rooftop thug | 4 |
 | Hunter | 5 |
 
-Every confirmed punch removes one point.
+State flow:
 
-The implemented NPC state flow is:
-
-`active → staggered → downed → dead / drained`
-
-At zero resilience, the NPC stops moving, pursuing and reporting, receives a persistent downed presentation and becomes a high-priority drain target. Recovery is intentionally deferred.
-
-## Enemy melee attacks
-
-Milestone 3 reuses hostility already established by AI rather than adding a new full AI state machine.
-
-### Police
-
-A police officer may attack only while its existing police behaviour marks it as actively chasing the player.
-
-| Property | Value |
-|---|---:|
-| Hunger damage | +12 |
-| Start range | 29 units |
-| Confirmed-hit range | 25 units |
-| Windup | 300 ms |
-| Active | 120 ms |
-| Recovery | 620 ms |
-| Post-attack cooldown | 260 ms |
-
-### Hunter
-
-An active hunter can attack while hunting the player outside shadow.
-
-| Property | Value |
-|---|---:|
-| Hunger damage | +20 |
-| Start range | 34 units |
-| Confirmed-hit range | 29 units |
-| Windup | 430 ms |
-| Active | 150 ms |
-| Recovery | 880 ms |
-| Post-attack cooldown | 420 ms |
-
-Civilians, the journalist and the rooftop thug do not gain autonomous attack behaviour in this milestone. Type-specific retaliation and richer combat priorities remain part of Milestone 8.
-
-## Enemy hit validation
-
-At attack start, the enemy stores:
-
-- its position;
-- a normalized direction toward the player;
-- attack timing state;
-- whether the active window has already attempted a hit.
-
-The enemy is visually locked in place during the attack. The active window succeeds only when the player remains inside both the stored forward arc and the attack range. Moving away or around the attacker can therefore avoid the hit.
-
-Each enemy attack attempts damage once. A missed active window does not keep checking every frame.
-
-## Player damage state
-
-The player does not have a conventional health value. Confirmed damage increases Hunger.
-
-```js
-playerCombatState = {
-  hitStunUntil,
-  invulnerableUntil,
-  feedbackUntil,
-  lastDamage,
-  lastSourceId,
-  lastLabel,
-  critical
-};
+```text
+active → staggered → downed → dead / drained
 ```
 
-Baseline timing:
+At zero resilience the NPC stops movement, pursuit, attacking and reporting. It remains a valid drain target.
+
+Resulting baseline hit counts:
+
+| Weapon | Civilian / journalist | Police / thug | Hunter |
+|---|---:|---:|---:|
+| Unarmed | 3 | 4 | 5 |
+| Iron Pipe | 2 | 2 | 3 |
+| Pistol | 1 | 2 | 2 |
+
+## Violence and noise
+
+### Melee
+
+A confirmed melee hit uses ordinary-violence witness/police paths. Heard-only NPCs inside weapon sound range turn and show `WTF`; hearing alone does not pursue or report.
+
+### Pistol
+
+A gunshot emits even on a miss:
+
+- sound radius: 280;
+- police who see it pursue and add strong heat;
+- civilians/journalist who see it enter witness behaviour;
+- hunters/thugs who see it become alarmed;
+- heard-only NPCs turn and show `WTF` without automatic pursuit/reporting.
+
+## Enemy attacks
+
+Milestone 3 reuses existing hostility rather than a final AI state machine.
+
+### Police baton
+
+- Hunger damage: +12;
+- start range: 29;
+- hit range: 25;
+- windup: 300 ms;
+- active: 120 ms;
+- recovery: 620 ms;
+- cooldown: 260 ms.
+
+### Hunter heavy strike
+
+- Hunger damage: +20;
+- start range: 34;
+- hit range: 29;
+- windup: 430 ms;
+- active: 150 ms;
+- recovery: 880 ms;
+- cooldown: 420 ms.
+
+The direction and attacker position are captured at attack start. The player can dodge outside the stored range/arc.
+
+## Player damage and Hunger
+
+The player has no conventional health bar.
 
 - hit stun: 260 ms;
 - invulnerability: 720 ms;
-- floating feedback: 620 ms;
-- critical Hunger threshold: 85;
-- frenzy/failure threshold: 100.
+- critical Hunger: 85;
+- frenzy failure: 100.
 
-While hit-stunned, movement, attacks, powers, traversal, E interactions and right-click draining are suppressed through a filtered input frame. Aim can continue updating.
-
-Invulnerability prevents several nearby enemies from stacking damage in the same instant. An enemy whose active window overlaps the invulnerability period spends that attack without applying Hunger again.
-
-## Damage-to-Hunger flow
+A confirmed hit:
 
 ```text
-enemy attack active window
-  → stored arc/range validation
+enemy active window
+  → range/arc check
   → invulnerability check
-  → current player attack/drain interrupted
-  → Hunger increased and capped at 100
-  → hit stun + invulnerability applied
-  → player:damaged and hunger:changed events emitted
-  → visual/audio feedback
+  → current weapon attack/drain cancelled
+  → Hunger increased
+  → hit stun + invulnerability
+  → feedback/events
 ```
 
-At Hunger 85 or above, the hit feedback becomes critical. At 100 Hunger, the current baseline ends the run with a `FRENZY` failure because the vampire loses control before completing the sire's order.
-
-Feeding reduces Hunger, so it functions as recovery without introducing another resource bar.
+Hit stun suppresses movement, weapon attack/cycling, powers, traversal, E interaction and draining. Aim continues updating.
 
 ## Contextual drain
 
-### Downed targets
+### Downed
 
-A downed target can be drained from the front, side or rear. The player must still aim at it, be within 30 world units and have clear geometry between both entities.
+- any approach angle;
+- start range 34;
+- aimed toward;
+- clear geometry.
 
-### Standing targets
+### Standing
 
-A standing target is drainable only when:
+- unaware;
+- player inside rear arc;
+- not alarmed, chasing, attacking, reacting or reporting;
+- range/aim/geometry valid.
 
-- unaware of the player;
-- not alarmed, chasing, attacking or reporting;
-- the player is inside its rear arc;
-- aim, range and line-clear checks pass.
+The channel requires held right mouse and cancels on release, movement, damage, layer/range loss or blocked geometry. See [Drain system](DRAIN_SYSTEM.md).
 
-Hunters actively in hunt mode are considered aware. Rats remain directly drainable without human rear-awareness rules.
+## Props
 
-### Selection
+Streetlights have one durability point.
 
-Valid targets are prioritized as:
+- melee uses the equipped arc;
+- pistol uses the shared ordered hitscan ray;
+- broken props ignore later damage;
+- break removes light and creates persistent shadow;
+- E never exposes destruction.
 
-1. downed;
-2. rats;
-3. standing rear targets.
-
-Distance and aim angle break ties inside the same category.
-
-### Channel
-
-The right mouse button must remain held. The drain cancels on release, movement, incoming damage, layer change, blocked geometry or exceeding the 38-unit break range. Cancellation does not lower Hunger or resolve the target.
-
-Visual witnesses use the established veil-risk behaviour. NPCs that only hear the struggle turn toward it and enter `WTF` without automatically pursuing or reporting.
-
-See [Drain system](DRAIN_SYSTEM.md) for the complete contract.
+See [Damageable props](PROP_SYSTEM.md).
 
 ## Presentation
 
-Player attacks provide:
+Player combat provides:
 
-- world-space aim line;
-- windup/active/recovery arc;
+- weapon-coloured aim line/reticle;
+- melee arc or pistol tracer;
 - temporary resilience pips;
-- flattened `DOWN` state.
+- clear `DOWN` state;
+- persistent weapon/ammo HUD;
+- weapon-change and empty feedback.
 
-Enemy attacks provide:
+Enemy combat provides telegraph arcs, camera shake, invulnerability flicker and `HUNGER +N` feedback.
 
-- a coloured telegraph arc during windup;
-- a stronger active-window arc;
-- distinct police-blue and hunter-orange feedback.
-
-Player damage provides:
-
-- brief camera shake;
-- player flicker during invulnerability;
-- a red impact ring;
-- `HUNGER +N` floating feedback;
-- an additional critical ring when Hunger is dangerous.
-
-Draining provides:
-
-- `RMB · DRAIN` on a valid target;
-- distinct downed/standing target rings;
-- an active tether and `HOLD RMB` label;
-- the existing feeding progress bar;
-- brief `NO VALID DRAIN` feedback on rejection.
+Draining provides valid-target rings, active tether, `HOLD RMB`, progress and invalid feedback.
 
 ## Tutorial compatibility
 
-The rooftop tutorial teaches:
+The rooftop sequence remains Unarmed:
 
 1. aim at the thug;
 2. knock him down with four punches;
-3. aim at him and hold right mouse until the drain completes.
+3. aim and hold right mouse to drain.
 
-The standing thug cannot be drained before knockdown. E is no longer used for feeding. The thug remains non-retaliatory for now, keeping the opening tutorial focused.
+Weapon cycling is not allowed by the tutorial control mode. It becomes available after full control is restored.
 
 ## Automated tests
 
@@ -244,28 +257,25 @@ Run:
 npm test
 ```
 
-Automated coverage includes:
+Coverage includes:
 
-- aim dead-zone retention;
-- player melee hit/miss geometry;
-- NPC resilience and downed transitions;
-- enemy attack phase timing;
-- enemy forward-arc and range validation;
-- police and hunter damage differences;
-- hit stun and invulnerability timing;
-- overlapping attacks not stacking Hunger;
-- critical and frenzy thresholds;
-- downed drain from any approach angle;
-- standing rear-only drain;
-- awareness rejection;
-- drain range, aim and geometry rejection;
-- downed-over-standing target priority.
+- aim dead-zone and melee hit/miss geometry;
+- resilience/downed transitions;
+- enemy attack timing, damage and invulnerability;
+- drain eligibility and priority;
+- weapon inventory/cycling;
+- pipe strength/range/cadence;
+- pistol ammo/empty rejection;
+- hitscan nearest-target, width, range and obstruction;
+- prop durability and repeated-damage rejection.
 
 ## Known limitations
 
-- Enemy melee currently relies on existing police/hunter pursuit intent rather than a unified AI combat state machine.
+- Enemy combat still relies on existing police/hunter flags rather than a unified AI priority state machine.
 - The rooftop thug and civilians do not retaliate yet.
-- Legacy E stun/kill actions remain temporarily available outside the guided drain tutorial.
-- Drain hearing uses the existing sensory reaction fields through a runtime bridge rather than a final consolidated perception-event service.
-- Combat integration still enters through the input runtime adapter rather than a final core-scene bootstrap.
-- Browser-level tests of dodge timing, drain geometry, simultaneous attackers, cursor accuracy and the complete mission remain required.
+- All three prototype weapons are owned from the start.
+- Pistol reload/replenishment is not implemented.
+- Hitscan obstruction reuses navigation line-clear checks.
+- Legacy E stun/kill actions remain temporarily available outside the guided tutorial.
+- Combat/weapon/perception integration still contains adapter debt.
+- Browser-level validation of wheel ownership, tracer alignment, obstruction, weapon balance and the complete mission remains required.
