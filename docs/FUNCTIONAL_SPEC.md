@@ -9,17 +9,18 @@ The game should feel immediate, readable and systemic:
 - traversal should be one contextual action without a route menu;
 - feeding should be powerful, risky and tactically useful;
 - vision and hearing should create different reactions;
+- NPCs should never appear to chase, report, investigate and attack at the same time;
 - movement, stealth, violence, weapon choice, feeding and route choice should solve situations.
 
 ## 2. Core gameplay loop
 
 1. Receive an order from the sire.
 2. Navigate streets, rooftops and sewers.
-3. Read NPC vision, hearing and alert state.
+3. Read NPC vision, hearing, AI role and alert state.
 4. Avoid, distract, strike, shoot, knock down or drain targets.
 5. Use darkness and routes to control encounters.
 6. Control Hunger and protect the veil.
-7. Manage evidence and police pressure.
+7. Manage evidence, reports and police pressure.
 8. Complete the objective and return to report.
 
 ## 3. Current control scheme
@@ -52,8 +53,6 @@ Normal WASD movement uses the fast traversal speed. Space is never a sprint modi
 ### Quiet movement
 
 Holding Shift lowers speed and footstep pressure. Quiet movement should allow deliberate approaches without making every nearby NPC react.
-
-Current baselines:
 
 | Mode | Speed multiplier | Base hearing radius |
 |---|---:|---:|
@@ -158,7 +157,7 @@ A candidate must:
 
 The closest valid candidate along the ray wins. A nearby NPC can block a farther lamp, a lamp can block a farther NPC and buildings block both.
 
-## 9. NPC resilience and states
+## 9. NPC resilience, combat state and AI state
 
 | NPC type | Resilience |
 |---|---:|
@@ -168,20 +167,149 @@ The closest valid candidate along the ray wins. A nearby NPC can block a farther
 | Rooftop thug | 4 |
 | Hunter | 5 |
 
-State flow:
+Combat state:
 
 ```text
 active → staggered → downed → drained / killed
 ```
 
-Downed NPCs cannot move, pursue, attack or report. Recovery is not implemented yet.
+Resolved AI priority:
 
-## 10. Contextual drain
+```text
+inactive / dead
+→ downed
+→ being drained
+→ staggered
+→ attacking
+→ chasing
+→ fleeing / reporting
+→ lured
+→ investigating sound
+→ searching
+→ patrolling
+→ idle
+```
+
+The resolved state must prevent contradictory behaviour:
+
+- a downed NPC cannot move, pursue, report or attack;
+- a target being drained cannot attack or flee;
+- stagger pauses movement, attack and reporting;
+- confirmed visual response clears heard-only `WTF`;
+- dead, hidden and intercepted NPCs cannot regain lower-priority intent.
+
+## 10. Civilian and journalist behaviour
+
+### Confirmed visual violence
+
+A civilian or the journalist who sees violence follows:
+
+```text
+react
+→ turn toward source
+→ flee toward best report point
+→ report
+```
+
+Rules:
+
+- the initial reaction is brief and readable;
+- a hit during flight causes stagger and stops movement;
+- the report target/reason survive stagger, so flight resumes afterward;
+- downing cancels the report permanently;
+- draining, killing, hiding or intercepting also prevents the report;
+- the journalist follows the same rules until mission handling resolves them.
+
+### Heard-only event
+
+- stop briefly;
+- turn toward the source;
+- show `WTF`;
+- do not choose a report point;
+- do not begin pursuit.
+
+Later visual confirmation may promote the response.
+
+## 11. Police combat behaviour
+
+Wanted/search behaviour remains level-dependent. During confirmed player contact, police use roles rather than every officer targeting the same coordinate.
+
+### Attacker
+
+- one eligible officer is selected deterministically;
+- the officer closes to baton distance;
+- only this role may start a baton telegraph;
+- leadership is held for a finite window;
+- after attack/recovery, another ready officer may take the next turn.
+
+### Containment
+
+Other officers with contact:
+
+- receive different deterministic positions around the player;
+- continue to face and contain rather than all attacking simultaneously;
+- preserve soft separation;
+- contribute to the existing surrounded-arrest rule.
+
+Containment radius:
+
+| Wanted level | Radius |
+|---:|---:|
+| 1 | 43 |
+| 2 | 49 |
+| 3 | 55 |
+
+Search, patrol, heat investigation, reinforcements and the level-3 helicopter remain active. A police officer who only hears an event investigates; confirmed sight overrides that sound reaction.
+
+## 12. Rooftop thug behaviour
+
+The tutorial thug remains passive during dialogue and the sire's instruction. The first confirmed player hit makes him hostile.
+
+| Property | Value |
+|---|---:|
+| Hunger damage | +8 |
+| Start range | 28 |
+| Hit range | 24 |
+| Windup | 520 ms |
+| Active | 150 ms |
+| Recovery | 900 ms |
+| Cooldown | 650 ms |
+
+The long telegraph keeps the tutorial readable. He does not recover after knockdown and remains a valid right-click drain target.
+
+## 13. Hunter behaviour
+
+A hunter uses direct sight, prediction and memory:
+
+- confirmed sight stores a point 54 units ahead of current player movement;
+- the hunter keeps the last-known point for 6200 ms after losing sight;
+- entering shadow does not cancel the chase immediately;
+- while memory is valid, the hunter continues toward that point and may attack at close range;
+- reaching an empty last-known point shortens the remaining search;
+- after memory expires, blood tracking, route blocking and church patrol resume.
+
+## 14. Downed recovery
+
+Recovery is type-specific:
+
+| NPC type | Recovery delay | Restored resilience |
+|---|---:|---:|
+| Civilian | Never | — |
+| Journalist | Never | — |
+| Rooftop thug | Never | — |
+| Police | 18 s | 2 / 4 |
+| Hunter | 24 s | 3 / 5 |
+
+Recovered police/hunters first enter a short stagger. Police rejoin the search; hunters resume the hunt with refreshed memory.
+
+Starting a drain before the timer expires prevents recovery. Completing a drain or killing the NPC prevents all later recovery.
+
+## 15. Contextual drain
 
 ### Downed drain
 
 - target is downed;
-- within range;
+- within 34-unit start range;
 - aimed toward;
 - clear geometry;
 - approach angle does not matter.
@@ -200,14 +328,17 @@ Downed NPCs cannot move, pursue, attack or report. Recovery is not implemented y
 - taking damage cancels;
 - release cancels;
 - range/layer/geometry loss cancels;
-- witnesses and hearing continue evaluating.
+- exceeding 42 units cancels;
+- witnesses and hearing continue evaluating;
+- target recovery is suspended during the channel.
 
 Completion lowers Hunger and resolves the target as drained.
 
-## 11. Player damage and Hunger
+## 16. Player damage and Hunger
 
 The player has no conventional health bar in the current slice.
 
+- rooftop thug swing: Hunger +8;
 - police melee: Hunger +12;
 - hunter heavy strike: Hunger +20;
 - hit stun: 260 ms;
@@ -217,7 +348,7 @@ The player has no conventional health bar in the current slice.
 
 Invulnerability prevents overlapping enemies from instantly filling Hunger. Feeding functions as recovery.
 
-## 12. World props
+## 17. World props
 
 Streetlights are damageable props rather than E interactions.
 
@@ -229,15 +360,16 @@ Streetlights are damageable props rather than E interactions.
 - glass feedback and prop/noise events fire once;
 - E never exposes destruction.
 
-## 13. Perception
+## 18. Perception
 
 ### Vision
 
 Confirmed sight uses facing, cone, range and layer. It promotes the appropriate response:
 
-- police pursue/escalate;
+- police pursue/escalate and receive combat roles;
 - civilians and the journalist react/report;
-- hunters/thugs become hostile or alarmed.
+- hunters begin or refresh pursuit memory;
+- the rooftop thug becomes hostile when directly attacked.
 
 ### Hearing
 
@@ -246,7 +378,7 @@ Sound uses event-specific ranges.
 - heard-only NPCs stop and turn toward the source;
 - `WTF` or investigate feedback appears;
 - hearing alone does not pursue or report;
-- later confirmed sight can promote the response.
+- later confirmed sight promotes the response and clears `WTF`.
 
 Current sound hierarchy:
 
@@ -256,7 +388,7 @@ quiet footsteps < punch < pipe impact < broken streetlight < gunshot
 
 A gunshot emits even when it misses. Melee impact noise requires a confirmed hit.
 
-## 14. Mission completion
+## 19. Mission completion
 
 Handling the journalist is not mission completion.
 
@@ -272,7 +404,7 @@ journalist handled
 
 The report never appears before the return objective and never precedes the sire's final dialogue.
 
-## 15. UI and browser behaviour
+## 20. UI and browser behaviour
 
 - dialogue click owns input before combat;
 - world-space `SPACE` marker shows selected traversal;
@@ -285,9 +417,9 @@ The report never appears before the return objective and never precedes the sire
 - wheel scrolling is suppressed only over the active game canvas while WeaponSystem owns it;
 - normal scrolling remains outside the canvas;
 - blur/pause/task reveal clear held and pending input;
-- perception feedback should not permanently overcrowd the screen.
+- perception and AI-role feedback should not permanently overcrowd the screen.
 
-## 16. Acceptance criteria for the current combat-movement-weapon slice
+## 21. Acceptance criteria for the current slice
 
 - Aim remains accurate across supported sizes and zooms.
 - Left mouse uses the equipped weapon in the aimed direction.
@@ -296,6 +428,12 @@ The report never appears before the return objective and never precedes the sire
 - Pistol ammo decrements once and never becomes negative.
 - Hitscan nearest-target and obstruction rules are deterministic.
 - Overlapping enemy attacks respect invulnerability.
+- Only the current police attacker begins baton attacks.
+- Containment officers occupy different positions around the player.
+- Visual witness reporting pauses on stagger and ends on knockdown.
+- Rooftop thug retaliation is slow, readable and +8 Hunger.
+- Hunter memory persists briefly after sight loss and through shadow.
+- Police/hunter recovery timings and resilience are exact.
 - Right mouse drains downed targets and unaware rear targets only.
 - Taking damage raises Hunger.
 - WASD runs without a modifier.
