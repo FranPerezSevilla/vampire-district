@@ -20,6 +20,12 @@ function writeStoredAimContrast(enabled) {
   }
 }
 
+function setAttributeIfChanged(node, name, value) {
+  if (!node) return;
+  const text = String(value);
+  if (node.getAttribute?.(name) !== text) node.setAttribute?.(name, text);
+}
+
 function hideGuidanceForWorldLock(scene) {
   const system = scene?.uxGuidanceSystem;
   if (!system) return;
@@ -150,17 +156,17 @@ function installUiAccessibilityRuntime() {
       modalPanel.style.overflowY = "auto";
     }
 
-    this.dom.vitals?.setAttribute?.("role", "progressbar");
-    this.dom.vitals?.setAttribute?.("aria-valuemin", "0");
-    this.dom.vitals?.setAttribute?.("aria-valuemax", "100");
-    this.dom.wanted?.setAttribute?.("role", "status");
-    this.dom.wanted?.setAttribute?.("aria-live", "polite");
-    this.dom.prompt?.setAttribute?.("role", "status");
-    this.dom.prompt?.setAttribute?.("aria-live", "polite");
-    this.dom.toast?.setAttribute?.("role", "status");
-    this.dom.toast?.setAttribute?.("aria-live", "polite");
-    this.dom.weapon?.setAttribute?.("role", "status");
-    this.dom.weapon?.setAttribute?.("aria-live", "polite");
+    setAttributeIfChanged(this.dom.vitals, "role", "progressbar");
+    setAttributeIfChanged(this.dom.vitals, "aria-valuemin", "0");
+    setAttributeIfChanged(this.dom.vitals, "aria-valuemax", "100");
+    setAttributeIfChanged(this.dom.wanted, "role", "status");
+    setAttributeIfChanged(this.dom.wanted, "aria-live", "polite");
+    setAttributeIfChanged(this.dom.prompt, "role", "status");
+    setAttributeIfChanged(this.dom.prompt, "aria-live", "polite");
+    setAttributeIfChanged(this.dom.toast, "role", "status");
+    setAttributeIfChanged(this.dom.toast, "aria-live", "polite");
+    setAttributeIfChanged(this.dom.weapon, "role", "status");
+    setAttributeIfChanged(this.dom.weapon, "aria-live", "polite");
 
     if (this.dom.root && !this.__nbdAccessibilityClickHandler) {
       this.__nbdAccessibilityClickHandler = event => {
@@ -171,7 +177,7 @@ function installUiAccessibilityRuntime() {
         const enabled = !Boolean(this.registry.get("aimHighContrast"));
         this.registry.set("aimHighContrast", enabled);
         writeStoredAimContrast(enabled);
-        button.setAttribute("aria-pressed", enabled ? "true" : "false");
+        setAttributeIfChanged(button, "aria-pressed", enabled ? "true" : "false");
         button.textContent = `High-contrast aim: ${enabled ? "On" : "Off"}`;
       };
       this.dom.root.addEventListener("click", this.__nbdAccessibilityClickHandler);
@@ -208,12 +214,13 @@ function installUiAccessibilityRuntime() {
     const slot = Math.max(1, inventory.indexOf(weapon.id) + 1);
     const slotText = inventory.length ? `, slot ${slot} of ${inventory.length}` : "";
 
-    this.dom.vitals?.setAttribute?.("aria-valuenow", String(hunger));
-    this.dom.vitals?.setAttribute?.("aria-label", `Vampire Hunger ${hunger} percent`);
-    this.dom.wanted?.setAttribute?.("aria-label", `Police alert level ${wanted}: ${wantedState}`);
-    this.dom.missionButton?.setAttribute?.("aria-expanded", this.missionOpen ? "true" : "false");
-    this.dom.menuButton?.setAttribute?.("aria-expanded", this.pauseOpen ? "true" : "false");
-    this.dom.weapon?.setAttribute?.(
+    setAttributeIfChanged(this.dom.vitals, "aria-valuenow", hunger);
+    setAttributeIfChanged(this.dom.vitals, "aria-label", `Vampire Hunger ${hunger} percent`);
+    setAttributeIfChanged(this.dom.wanted, "aria-label", `Police alert level ${wanted}: ${wantedState}`);
+    setAttributeIfChanged(this.dom.missionButton, "aria-expanded", this.missionOpen ? "true" : "false");
+    setAttributeIfChanged(this.dom.menuButton, "aria-expanded", this.pauseOpen ? "true" : "false");
+    setAttributeIfChanged(
+      this.dom.weapon,
       "aria-label",
       `Equipped weapon ${weapon.name || "Unarmed"}, ammunition ${weapon.ammoText || "unlimited"}${slotText}`
     );
