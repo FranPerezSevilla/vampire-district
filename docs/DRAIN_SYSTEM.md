@@ -35,9 +35,11 @@ A drain starts only when the right button is pressed and remains held. Releasing
 A target in combat state `downed` is drainable:
 
 - from any approach direction;
-- while inside the 30-unit start range;
+- while inside the 34-unit start range;
 - while aimed at;
 - when no blocking geometry lies between player and target.
+
+The start range deliberately exceeds the 32-unit unarmed punch range. A target knocked down by a maximum-range punch must be immediately eligible for feeding without requiring a confusing extra step toward the body.
 
 ### Standing target
 
@@ -74,7 +76,7 @@ A right-click drain cancels when:
 - the player takes damage;
 - the target becomes unavailable;
 - the target changes layer;
-- distance exceeds the 38-unit break range;
+- distance exceeds the 42-unit break range;
 - blocking geometry separates player and target;
 - UI, dialogue, transition or world locking interrupts gameplay.
 
