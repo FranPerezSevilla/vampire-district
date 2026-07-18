@@ -161,21 +161,39 @@ Acceptance status:
 
 ## Milestone 7 — Weapon system and mouse-wheel inventory
 
-**Status: ⬜ Planned**
+**Status: 🟡 Implementation complete; browser regression and tuning pending**
 
-Planned:
+Implemented:
 
-- Data-driven `WeaponSystem` and inventory.
-- Consume existing discrete `weaponStep` input.
-- Wheel capture only while the game owns weapon cycling.
-- Improvised melee weapon and pistol/hitscan baseline.
-- Weapon-specific damage, cadence, ammo and sound where required.
+- Data-driven `WeaponSystem` and starting inventory.
+- Unarmed, Iron Pipe and Pistol weapon definitions.
+- Existing discrete `weaponStep` input drives one-slot wheel cycling with wraparound.
+- Wheel page-scroll capture is enabled only while the playable weapon system owns it.
+- Tutorial control modes suppress cycling until full control is restored.
+- Equipped weapon and ammunition HUD.
+- Weapon-change toast and plain-data `weapon:changed` event.
+- Unarmed and pipe share the established directional melee arc.
+- Pipe damage, range, cadence, stagger and sound differ from unarmed.
+- Pistol uses one ordered hitscan ray across NPCs and damageable props.
+- Nearest target, shot width, range and blocking-geometry validation.
+- Finite 8-round pistol ammunition and empty rejection.
+- Pistol tracer and weapon-specific aim/attack colours.
+- Gunshots create much wider heard-only reactions and strong visual police pressure.
+- Hearing alone still produces `WTF`, not automatic pursuit/reporting.
+- Shared NPC resilience and prop durability endpoints.
+- Pure cycling, ammo and hitscan tests.
+- Dedicated weapon documentation and browser regression checklist.
 
-Acceptance:
+Acceptance status:
 
-- One wheel gesture changes one owned weapon step.
-- Unarmed and weapon attacks share NPC/prop damage contracts.
-- Gunshots create stronger hearing/police pressure than punches.
+- ✅ Pure tests verify one-step cycling and wraparound.
+- ✅ Pipe is stronger/longer/slower than unarmed.
+- ✅ Empty pistol shots are rejected without negative ammo.
+- ✅ Hitscan selects the closest aligned NPC/prop candidate.
+- ✅ Behind, off-line, out-of-range and blocked candidates are rejected.
+- ✅ Unarmed and weapons share NPC/prop damage contracts.
+- 🟡 Browser validation remains required for wheel/trackpad ownership, HUD layout, tracer alignment, obstruction, ammo and full mission regression.
+- 🟡 Damage, cadence, ammo count, shot width and noise radii remain tuning baselines.
 
 ## Milestone 8 — AI combat behaviours
 
@@ -205,10 +223,11 @@ Implemented:
 - Mouse aim and left-click punch tutorial.
 - Right-click drain tutorial.
 - Default-run, Shift quiet movement and traversal-only Space tutorial copy.
+- Persistent weapon/ammo HUD and weapon-change toast.
 
 Planned:
 
-- Weapon cycling tutorial.
+- Explicit first-use weapon cycling tutorial.
 - Final HUD/icon accessibility pass.
 - High-contrast aim option and obsolete-copy sweep.
 
