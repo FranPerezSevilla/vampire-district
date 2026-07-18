@@ -1,6 +1,8 @@
 import "./combat/combat-compatibility.js";
+import "./input/movement-input-adapter.js";
 import "./input/input-runtime.js";
 import "./input/tutorial-input-adapter.js";
+import "./movement/milestone5-runtime.js";
 import { UIScene } from "./scenes/UIScene.js";
 
 function installUiControlCopy() {
@@ -42,11 +44,19 @@ function installUiControlCopy() {
     const updatedBody = String(bodyHtml || "")
       .replace(
         "WASD/arrows move · Shift sprint · E interact · Q/Space Dash",
-        "WASD/arrows move · mouse aims · left-click punches · hold Space to run · Space traverses · E interacts · Q Dash"
+        "WASD/arrows run · hold Shift to move quietly · mouse aims · left-click punches · Space traverses · E interacts · Q Dash"
       )
       .replace(
         "Movement: WASD/arrows · Shift sprint",
-        "Movement: WASD/arrows · mouse aim · left-click punch · hold Space to run · Space near routes to traverse"
+        "Movement: WASD/arrows run by default · hold Shift for quiet movement · Space near routes to traverse"
+      )
+      .replace(
+        "WASD/arrows move · mouse aims · left-click punches · hold Space to run · Space traverses · E interacts · Q Dash",
+        "WASD/arrows run · hold Shift to move quietly · mouse aims · left-click punches · Space traverses · E interacts · Q Dash"
+      )
+      .replace(
+        "Movement: WASD/arrows · mouse aim · left-click punch · hold Space to run · Space near routes to traverse",
+        "Movement: WASD/arrows run by default · hold Shift for quiet movement · mouse aim · left-click punch · Space near routes to traverse"
       )
       .replace("Powers: Q/Space Dash", "Powers: Q Dash");
     return originalSetModal.call(this, title, updatedBody, actionLabel);
