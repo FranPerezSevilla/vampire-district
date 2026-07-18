@@ -17,6 +17,7 @@ Open `index.html` through a local/static web server, or use the published GitHub
 - Mouse-directed unarmed combat with resilience, stagger and knockdown.
 - Police and hunter melee telegraphs.
 - Player hit stun, invulnerability and incoming damage converted into Hunger.
+- Contextual right-click draining for downed targets and unaware targets approached from behind.
 - Critical Hunger feedback and frenzy failure at the Hunger limit.
 
 ## Current controls
@@ -24,9 +25,10 @@ Open `index.html` through a local/static web server, or use the published GitHub
 - WASD / arrows: move.
 - Mouse: aim and face.
 - Left mouse: punch in the aimed direction.
+- Right mouse: aim at a valid target and hold to drain.
 - Hold Space: run in the current compatibility build.
 - Space near a route: jump, climb, descend or use a sewer entrance.
-- E: interact; the opening tutorial temporarily uses E to drain the thug after knockdown.
+- E: non-drain interactions; legacy stun/kill options remain temporarily available outside the guided tutorial.
 - Q: Shadow Dash.
 - R: Vampiric Whisper.
 - F: Blood Sense.
@@ -35,7 +37,7 @@ Open `index.html` through a local/static web server, or use the published GitHub
 - Left click: advance an open dialogue bubble.
 - Escape: keyboard fallback for dialogue / close UI.
 
-The target control scheme still moves draining to right-click, weapon selection to the wheel and reserves Space exclusively for traversal. See [`docs/CONTROL_SCHEME.md`](docs/CONTROL_SCHEME.md).
+The remaining target-control work moves weapon selection to the wheel, makes running the default and reserves Space exclusively for traversal. See [`docs/CONTROL_SCHEME.md`](docs/CONTROL_SCHEME.md).
 
 ## Tests
 
@@ -47,4 +49,4 @@ npm test
 
 ## Documentation
 
-Start with [`docs/README.md`](docs/README.md). The documentation set includes the current project snapshot, functional specification, technical architecture, implemented input/combat systems and the dependency-ordered roadmap.
+Start with [`docs/README.md`](docs/README.md). The documentation set includes the current project snapshot, functional specification, technical architecture, implemented input/combat/drain systems and the dependency-ordered roadmap.
