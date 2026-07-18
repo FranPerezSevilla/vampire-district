@@ -9,8 +9,11 @@ export const DRAIN_KINDS = Object.freeze({
 });
 
 export const DRAIN_RULES = Object.freeze({
-  range: 30,
-  breakRange: 38,
+  // Unarmed punches can connect at 32 units. Keep drain acquisition slightly
+  // beyond that so a freshly downed target is immediately feedable without a
+  // confusing extra shuffle toward the body.
+  range: 34,
+  breakRange: 42,
   aimHalfAngle: 1.0,
   rearHalfAngle: 0.92,
   invalidFeedbackMs: 650
