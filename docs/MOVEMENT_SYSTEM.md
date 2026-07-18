@@ -80,12 +80,14 @@ Traversal types remain:
 
 `MovementNoiseSystem` owns movement audio and perception. The older raw-key footstep timer is disabled once the playable scene is created, so sound follows actual world movement rather than keyboard state.
 
-| Mode | Step distance | Base hearing radius | Reaction |
-|---|---:|---:|---:|
-| Default run | 22 units | 120 units | 0.85 s |
-| Quiet movement | 18 units | 42 units | 0.38 s |
+| Movement | Base sound radius | Ordinary NPC reaction | Police / hunter reaction |
+|---|---:|---|---|
+| Default run | 120 units | `WTF` only inside the short 42-unit range | Enhanced hearing across the wider run radius |
+| Quiet movement | 42 units | No footstep reaction | May hear at close range with type multiplier |
 
-Police and hunters receive modest hearing multipliers. A footstep only creates a heard-only response when the NPC is inside hearing range but outside its current vision cone.
+Ordinary NPCs here means civilians, the journalist and the rooftop thug. They do not use the full run radius. Running only makes them turn and display `WTF` when the player is inside the short sound range. Quiet movement does not trigger their footstep reaction.
+
+Police and hunters retain enhanced hearing. A footstep only creates a heard-only response when the NPC is inside its effective hearing range but outside its current vision cone.
 
 Heard-only footstep response:
 
@@ -96,7 +98,7 @@ Heard-only footstep response:
 
 NPCs already alarmed, chasing, attacking, downed or otherwise inactive ignore this heard-only path.
 
-Each emitted step publishes a plain-data `movement:footstep` event containing mode, position, layer, hearing radius and heard-only count.
+Each emitted step publishes a plain-data `movement:footstep` event containing mode, position, layer, base hearing radius and heard-only count.
 
 ## Presentation
 
@@ -110,7 +112,10 @@ Each emitted step publishes a plain-data `movement:footstep` event containing mo
 `tests/movement.test.js` covers:
 
 - default run being faster than quiet movement;
-- quiet hearing radius being substantially smaller;
+- quiet base hearing radius being substantially smaller;
+- ordinary NPCs only hearing running inside the short range;
+- ordinary NPCs ignoring quiet footsteps;
+- police and hunters retaining enhanced hearing;
 - committed aligned traversal priority;
 - distance fallback;
 - aim tie-breaking;
@@ -126,6 +131,6 @@ Input tests also verify that:
 ## Known limitations
 
 - Footstep sight checks use the established cone geometry but not a consolidated obstacle/occlusion service.
-- Hearing multipliers and speed values are initial tuning baselines.
+- Hearing radii and speed values are initial tuning baselines.
 - The temporary movement-input and runtime adapters remain prototype integration debt.
 - Browser validation is still required across camera layers, viewport sizes and render-quality presets.
