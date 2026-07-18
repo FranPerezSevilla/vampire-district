@@ -2,195 +2,157 @@
 
 ## Decision
 
-Use a **modern top-down keyboard-and-mouse control scheme**, not a strict recreation of the original GTA2 controls.
+Use a modern top-down keyboard-and-mouse layout rather than copying GTA2's keyboard-centric turning and attack controls.
 
-The original GTA2 PC layout was keyboard-centric: directional keys for movement/turning, Left Control for attack, Enter for vehicles, Space for jump/handbrake and Z/X for weapon cycling. Vampire District keeps the immediate top-down readability and contextual traversal, but replaces the historical attack model with mouse-directed combat.
+The implemented scheme keeps GTA2-style immediacy and contextual city traversal while using mouse-directed combat and a dedicated vampire drain action.
 
-## Why this direction
-
-- Directional melee is clearer when the player points at the intended target.
-- Firearms can later use the same aiming model without replacing the movement system.
-- Right-click provides a dedicated vampire action instead of overloading E.
-- Mouse-wheel weapon selection is fast and familiar.
-- Space can become a reliable traversal verb across roofs, ladders and sewers.
-- The scheme works naturally with the existing top-down camera and responsive browser layout.
-
-## Target bindings
+## Current bindings
 
 | Input | World action |
 |---|---|
-| WASD / arrows | Move at default run speed. |
+| WASD / arrows | Run at the normal movement speed. |
+| Hold Shift | Move slowly and generate much quieter footsteps. |
 | Mouse | Aim and face. |
-| Left mouse | Attack/fire equipped weapon. During an active dialogue bubble, advances the dialogue instead. |
-| Right mouse | Drain valid target. |
-| Wheel up/down | Previous/next owned weapon. |
-| Space | Execute contextual traversal. |
-| E | Talk, collect, inspect and use non-traversal objects. |
+| Left mouse | Punch or use the equipped weapon toward the cursor. During dialogue, advances the bubble instead. |
+| Right mouse | Hold to drain a valid downed, rear-approached or rat target. |
+| Space | Execute one contextual traversal route. |
+| E | Talk, collect, inspect and use non-traversal interactions. |
 | Q | Shadow Dash. |
 | R | Vampiric Whisper. |
 | F | Blood Sense. |
 | M | Mission panel. |
 | H | Menu/help. |
-| Escape | Close the active UI layer; remains a fallback for advancing dialogue. |
+| Escape | Close UI or act as dialogue keyboard fallback. |
+| Wheel | Captured as discrete weapon steps; weapon cycling is not implemented yet. |
 
-## Current compatibility differences
+## Dialogue priority
 
-- Mouse aim and left-click unarmed attack are implemented.
-- Space still increases movement speed until Milestone 5 makes running the default.
-- E still performs the temporary rooftop-tutorial drain after the thug is downed.
-- Right-click drain validation is not implemented yet.
-- The wheel is captured as an action but does not change weapons yet.
-
-## Dialogue input priority
-
-- A visible dialogue bubble owns the next left click anywhere inside the game frame.
-- That click advances exactly one bubble and is discarded as a world/combat action.
-- A short opening guard prevents the click that caused a state transition from immediately skipping a newly opened bubble.
-- Escape remains available as a keyboard fallback.
-- Closing a dialogue resets held and edge-triggered world input and restores canvas focus.
+- A visible dialogue bubble owns the next left click in the game frame.
+- The click advances exactly one bubble and is discarded as a world action.
+- Escape remains a fallback.
+- Closing dialogue clears held/pressed world input and restores canvas focus.
 
 ## Movement behaviour
 
 ### Default run
 
-The target scheme makes normal WASD speed the fast movement speed. Space stops changing speed in Milestone 5.
+WASD/arrows use the fast movement baseline without another key. Space has no speed effect.
 
 ### Quiet movement
 
-**Proposed:** Shift temporarily reduces movement speed and footstep noise. This preserves a stealth choice without returning Space to a dual-purpose run/traverse key.
+Holding Shift applies a lower movement multiplier and a substantially smaller footstep hearing radius. It is a stealth choice, not a sprint key.
 
 ### Facing
 
 - The player faces the cursor's world position.
-- When the cursor is within a small dead zone around the player, the last aim direction is retained.
-- Movement direction does not override aim direction.
-- An attack stores its direction at attack start; later cursor movement does not bend it.
-- Dash will use aim direction when valid, otherwise movement direction.
+- The last valid direction is retained inside the aim dead zone.
+- Movement direction does not override aim.
+- Attacks store their direction at start.
 
-## Primary attack rules
+## Primary attack
 
-- Left mouse means “use the equipped weapon toward the cursor” while world input is active.
-- The current unarmed attack uses a short forward arc and range.
-- One press starts one attack; holding does not generate one hit per frame.
-- Each attack owns windup, active and recovery timing.
-- One attack cannot damage the same target twice.
-- Attacks are suppressed while a modal, dialogue, transition or interaction menu owns input.
-- Weapons and damageable props will reuse this same contract.
+- Left mouse uses the current weapon toward the cursor.
+- The current weapon is unarmed.
+- One press starts one timed attack; holding does not hit every frame.
+- Windup, active and recovery phases control commitment.
+- One attack cannot damage the same NPC twice.
+- UI, dialogue, transitions, hit stun and active drain suppress attacks.
 
 ## Drain rules
 
-Right mouse becomes a dedicated context-sensitive drain input in Milestone 4.
+Right mouse is the final drain input.
 
-Valid target order:
+Valid target priority:
 
-1. Closest downed target in range.
-2. Closest unaware standing target in range whose rear arc contains the player.
-3. No action.
+1. Downed target in range and aimed toward.
+2. Rat in range and aimed toward.
+3. Unaware standing target approached from its rear arc.
+4. No action.
 
-Tie-breakers:
+Standing targets are invalid when alert, chasing, attacking, reacting or reporting. The channel cancels on release, movement, damage, range/layer loss or blocked geometry.
 
-1. Shorter distance.
-2. Smaller angle from the player's aim direction.
-3. Mission target priority only when distance and angle are effectively equal.
-
-A standing target cannot be drained from the front merely because the cursor is over it.
+E does not drain.
 
 ## Traversal rules
 
-Space selects exactly one traversal candidate.
+Space selects exactly one valid traversal candidate.
 
-### Candidate filtering
+Candidate requirements:
 
-A traversal point must:
+- current layer;
+- enabled world/mission state;
+- within activation radius;
+- valid destination;
+- no active transition, combat lock, dialogue or drain.
 
-- be on the current layer;
-- be enabled by mission/world state;
-- be within activation radius;
-- not be blocked by an active transition, combat lock or dialogue;
-- have a valid destination.
+Selection order:
 
-### Selection score
+1. A route within 12 units and inside the forward aim threshold.
+2. Shortest world distance.
+3. Smallest aim angle.
+4. Existing route priority.
+5. Stable candidate ID.
 
-Recommended score:
+The same selection drives the world `SPACE` marker, HUD prompt and actual execution.
 
-```text
-score = worldDistance
-      + aimAnglePenalty
-      + facingPenalty
-      + priorityPenalty
-```
-
-Lower scores win. This prevents accidental sewer entry or ladder use when another route is clearly in front of the player.
-
-### Input examples
+Examples:
 
 - Space beside a rooftop gap: jump.
 - Space beside a manhole: enter sewer.
-- Space at a fire escape on the street: climb.
-- Space at a fire escape on a roof: descend.
-- Space with no valid route: no action.
+- Space at a fire escape: climb or descend.
+- Space with no route: no action.
 
 ## E interaction rules
 
-E remains deliberately narrow:
+E can:
 
-- speak to NPC;
-- collect mission clue;
-- inspect/use mission object;
-- manipulate evidence/body where that remains part of the design;
-- confirm a contextual non-movement interaction;
-- temporary rooftop-tutorial drain after knockdown.
+- speak to NPCs;
+- collect mission clues;
+- inspect/use mission objects;
+- manipulate evidence or bodies where supported;
+- confirm contextual non-movement interactions.
 
-E does not permanently own:
+E does not:
 
-- running;
-- jumping;
-- climbing;
-- sewer traversal;
-- attacking;
-- final drain behaviour;
-- breaking streetlights.
+- run;
+- jump or climb;
+- use sewers;
+- attack;
+- drain;
+- permanently own streetlight destruction.
 
-## Mouse-wheel rules
+## Browser rules
 
-- Only consume wheel input while the pointer is over the game area.
-- Convert wheel delta into discrete ±1 steps.
-- Debounce rapid trackpad noise.
-- Do not change weapons while a modal/menu is open.
-- Show a short equipped-weapon toast.
-- Add optional inverted wheel direction in settings later.
+- Right-click context menu is suppressed only over the game canvas.
+- Wheel scrolling is suppressed only when a future weapon system owns it.
+- Pointer-held actions clear on blur and pointer leave.
+- Dialogue clicks never leak into combat.
+- Space/Shift state clears across pause, task reveal and focus loss.
 
-## Browser-specific requirements
+## Accessibility and future work
 
-- Suppress the context menu on right-click inside the game frame only.
-- Do not suppress browser right-click elsewhere on the page.
-- Prevent page scrolling from the wheel only while the game is consuming weapon-cycle input.
-- Clear held mouse actions on window blur or pointer leave.
-- Restore canvas focus after dialogue clicks.
-
-## Accessibility and fallback
-
-Planned later:
+Planned:
 
 - remappable bindings;
 - keyboard-only aim fallback;
-- optional click-to-toggle drain instead of hold;
+- optional click-to-toggle drain;
 - high-contrast reticle;
 - reduced screen shake;
-- wheel-direction setting;
-- gamepad action mapping using the same abstract input actions.
+- wheel-direction preference;
+- gamepad mapping through the same abstract actions.
 
 ## Acceptance checklist
 
-- [ ] Aim remains accurate after browser resizing.
-- [ ] Aim remains accurate at every camera zoom.
-- [ ] One left click advances exactly one visible dialogue bubble.
-- [ ] A dialogue-advance click never becomes an attack after the bubble closes.
-- [ ] Left mouse attacks once per valid cadence outside dialogue.
-- [ ] Three valid punches down a civilian and four down a police officer.
+Implemented in code, browser validation still pending unless noted:
+
+- [ ] Aim remains accurate after resizing and every camera zoom.
+- [ ] Dialogue click advances exactly one bubble and never becomes an attack.
+- [ ] Left mouse attacks once per valid cadence.
+- [ ] Three punches down a civilian; four down a police officer.
+- [ ] Right-click cannot front-drain an alert standing target.
 - [ ] Right-click never opens the browser menu over the game.
-- [ ] Right mouse cannot front-drain an alert standing target.
-- [ ] Wheel changes one weapon step without scrolling the page.
-- [ ] Space never runs or activates Dash after Milestone 5.
+- [ ] Space never changes speed or activates Dash.
+- [ ] Shift produces slower, quieter movement.
 - [ ] E never selects a traversal route.
 - [ ] Two nearby traversal points resolve deterministically.
+- [ ] Wheel changes one weapon step without scrolling after Milestone 7.
