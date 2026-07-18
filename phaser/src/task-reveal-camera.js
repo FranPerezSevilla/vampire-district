@@ -1,4 +1,3 @@
-// Compatibility feature bootstrap. Task reveals, objective guidance and district
-// outskirts are now first-class systems composed by GameplayRuntime.
+// Compatibility feature bootstrap. Task reveals, objective guidance, outskirts
+// and tutorial narrative are now first-class systems.
 import "./responsive-layout.js";
-import "./tutorial-copy.js";
