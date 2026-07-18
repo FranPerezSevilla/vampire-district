@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="650" viewBox="0 0 1440 650" role="img" aria-labelledby="title desc">
+  <title id="title">Vampire District — paleta gothic punk urbano clásico</title>
+  <desc id="desc">Doce colores organizados por neutros, luz urbana, autoridad y acentos vampíricos, con una proporción de uso 70 20 10.</desc>
+  <rect width="1440" height="650" rx="28" fill="#08070D"/>
+  <rect x="18" y="18" width="1404" height="614" rx="20" fill="none" stroke="#403B40" stroke-width="2"/>
+
+  <text x="64" y="72" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">VAMPIRE DISTRICT · PALETA BASE</text>
+  <text x="64" y="108" fill="#879078" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="600">Gothic punk urbano clásico · La ciudad utiliza luz; el vampiro utiliza color.</text>
+
+  <g transform="translate(64 148)">
+    <rect width="200" height="150" rx="12" fill="#111018" stroke="#403B40"/>
+    <rect x="10" y="10" width="180" height="82" rx="8" fill="#08070D"/>
+    <text x="14" y="118" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700">Abismo</text>
+    <text x="14" y="140" fill="#879078" font-family="monospace" font-size="14">#08070D</text>
+  </g>
+  <g transform="translate(284 148)">
+    <rect width="200" height="150" rx="12" fill="#111018" stroke="#403B40"/>
+    <rect x="10" y="10" width="180" height="82" rx="8" fill="#15151D"/>
+    <text x="14" y="118" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700">Asfalto nocturno</text>
+    <text x="14" y="140" fill="#879078" font-family="monospace" font-size="14">#15151D</text>
+  </g>
+  <g transform="translate(504 148)">
+    <rect width="200" height="150" rx="12" fill="#111018" stroke="#403B40"/>
+    <rect x="10" y="10" width="180" height="82" rx="8" fill="#2A2930"/>
+    <text x="14" y="118" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700">Piedra mojada</text>
+    <text x="14" y="140" fill="#879078" font-family="monospace" font-size="14">#2A2930</text>
+  </g>
+  <g transform="translate(724 148)">
+    <rect width="200" height="150" rx="12" fill="#111018" stroke="#403B40"/>
+    <rect x="10" y="10" width="180" height="82" rx="8" fill="#403B40"/>
+    <text x="14" y="118" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700">Hollín</text>
+    <text x="14" y="140" fill="#879078" font-family="monospace" font-size="14">#403B40</text>
+  </g>
+  <g transform="translate(944 148)">
+    <rect width="200" height="150" rx="12" fill="#111018" stroke="#403B40"/>
+    <rect x="10" y="10" width="180" height="82" rx="8" fill="#D5CDBF"/>
+    <text x="14" y="118" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700">Hueso viejo</text>
+    <text x="14" y="140" fill="#879078" font-family="monospace" font-size="14">#D5CDBF</text>
+  </g>
+  <g transform="translate(1164 148)">
+    <rect width="200" height="150" rx="12" fill="#111018" stroke="#403B40"/>
+    <rect x="10" y="10" width="180" height="82" rx="8" fill="#C58C43"/>
+    <text x="14" y="118" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700">Sodio sucio</text>
+    <text x="14" y="140" fill="#879078" font-family="monospace" font-size="14">#C58C43</text>
+  </g>
+
+  <g transform="translate(64 320)">
+    <rect width="200" height="150" rx="12" fill="#111018" stroke="#403B40"/>
+    <rect x="10" y="10" width="180" height="82" rx="8" fill="#879078"/>
+    <text x="14" y="118" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700">Fluorescente</text>
+    <text x="14" y="140" fill="#879078" font-family="monospace" font-size="14">#879078</text>
+  </g>
+  <g transform="translate(284 320)">
+    <rect width="200" height="150" rx="12" fill="#111018" stroke="#403B40"/>
+    <rect x="10" y="10" width="180" height="82" rx="8" fill="#4777A8"/>
+    <text x="14" y="118" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700">Azul policial</text>
+    <text x="14" y="140" fill="#879078" font-family="monospace" font-size="14">#4777A8</text>
+  </g>
+  <g transform="translate(504 320)">
+    <rect width="200" height="150" rx="12" fill="#111018" stroke="#403B40"/>
+    <rect x="10" y="10" width="180" height="82" rx="8" fill="#761E31"/>
+    <text x="14" y="118" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700">Vino de sangre</text>
+    <text x="14" y="140" fill="#879078" font-family="monospace" font-size="14">#761E31</text>
+  </g>
+  <g transform="translate(724 320)">
+    <rect width="200" height="150" rx="12" fill="#111018" stroke="#403B40"/>
+    <rect x="10" y="10" width="180" height="82" rx="8" fill="#C23A4B"/>
+    <text x="14" y="118" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700">Sangre fresca</text>
+    <text x="14" y="140" fill="#879078" font-family="monospace" font-size="14">#C23A4B</text>
+  </g>
+  <g transform="translate(944 320)">
+    <rect width="200" height="150" rx="12" fill="#111018" stroke="#403B40"/>
+    <rect x="10" y="10" width="180" height="82" rx="8" fill="#684875"/>
+    <text x="14" y="118" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700">Violeta hematoma</text>
+    <text x="14" y="140" fill="#879078" font-family="monospace" font-size="14">#684875</text>
+  </g>
+  <g transform="translate(1164 320)">
+    <rect width="200" height="150" rx="12" fill="#111018" stroke="#403B40"/>
+    <rect x="10" y="10" width="180" height="82" rx="8" fill="#962D6C"/>
+    <text x="14" y="118" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700">Magenta de club</text>
+    <text x="14" y="140" fill="#879078" font-family="monospace" font-size="14">#962D6C</text>
+  </g>
+
+  <text x="64" y="526" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="800" letter-spacing="1.5">PROPORCIÓN ORIENTATIVA</text>
+  <rect x="64" y="548" width="918" height="34" rx="8" fill="#2A2930"/>
+  <rect x="982" y="548" width="262" height="34" fill="#C58C43"/>
+  <rect x="1244" y="548" width="131" height="34" rx="0 8 8 0" fill="#761E31"/>
+  <text x="78" y="572" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">70% NEUTROS</text>
+  <text x="1000" y="572" fill="#08070D" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="900">20% LUZ</text>
+  <text x="1262" y="572" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="900">10%</text>
+  <text x="64" y="616" fill="#879078" font-family="Inter, Arial, sans-serif" font-size="14">Los acentos saturados aparecen por función narrativa o jugable, nunca como relleno ambiental.</text>
+</svg>
