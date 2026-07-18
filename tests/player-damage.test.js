@@ -79,3 +79,12 @@ test("hunter strikes are slower and more damaging than police strikes", () => {
   assert.ok(hunter.windupMs > police.windupMs);
   assert.ok(hunter.recoveryMs > police.recoveryMs);
 });
+
+test("rooftop thug retaliation is slower and less damaging than police combat", () => {
+  const police = enemyMeleeForType(NPC_TYPES.POLICE);
+  const thug = enemyMeleeForType(NPC_TYPES.THUG);
+  assert.ok(thug);
+  assert.ok(thug.windupMs > police.windupMs);
+  assert.ok(thug.recoveryMs > police.recoveryMs);
+  assert.ok(thug.hungerDamage < police.hungerDamage);
+});
