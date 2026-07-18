@@ -20,6 +20,14 @@ function writeStoredAimContrast(enabled) {
   }
 }
 
+function hideGuidanceForWorldLock(scene) {
+  const system = scene?.uxGuidanceSystem;
+  if (!system) return;
+  system.renderMessage?.(null);
+  system.setWeaponAttention?.(false);
+  for (const label of system.labels?.values?.() || []) label.setVisible?.(false);
+}
+
 function installGameSceneUxRuntime() {
   if (GameScene.prototype.__nbdMilestone9UxPatch) return;
 
@@ -30,6 +38,17 @@ function installGameSceneUxRuntime() {
     const result = originalCreate.apply(this, args);
     this.uxGuidanceSystem?.destroy?.();
     this.uxGuidanceSystem = new UxGuidanceSystem(this);
+
+    this.__nbdUxWorldLockHandler = (_parent, value) => {
+      if (value) hideGuidanceForWorldLock(this);
+    };
+    this.registry?.events?.on?.("changedata-uiPaused", this.__nbdUxWorldLockHandler);
+    this.registry?.events?.on?.("changedata-taskRevealActive", this.__nbdUxWorldLockHandler);
+    this.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.registry?.events?.off?.("changedata-uiPaused", this.__nbdUxWorldLockHandler);
+      this.registry?.events?.off?.("changedata-taskRevealActive", this.__nbdUxWorldLockHandler);
+      this.__nbdUxWorldLockHandler = null;
+    });
     return result;
   };
 
@@ -123,6 +142,12 @@ function installUiAccessibilityRuntime() {
 
     if (typeof this.registry?.get?.("aimHighContrast") !== "boolean") {
       this.registry?.set?.("aimHighContrast", readStoredAimContrast());
+    }
+
+    const modalPanel = this.dom.modal?.querySelector?.(".ui-modal-panel");
+    if (modalPanel) {
+      modalPanel.style.maxHeight = "calc(100% - 32px)";
+      modalPanel.style.overflowY = "auto";
     }
 
     this.dom.vitals?.setAttribute?.("role", "progressbar");
