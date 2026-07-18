@@ -63,10 +63,11 @@ Use this checklist before changing Milestone 2 from 🟡 to ✅. Record browser,
 
 - Thug speaks before the sire instruction.
 - Tutorial text instructs mouse aim and left click.
-- E drain is unavailable while the thug is standing.
+- Right-click drain is unavailable while the thug is standing.
 - Four punches knock the thug down.
-- After knockdown, the tip changes to `E` drain.
-- E starts the existing drain channel.
+- After knockdown, the tip changes to `RMB` drain.
+- Aiming at the thug and holding right mouse starts the drain channel.
+- E does not drain the thug.
 - Completing the drain advances to the Hunger lesson.
 - The police-roof jump opens while the thug is down and remains open after drain.
 
@@ -94,7 +95,8 @@ Use this checklist before changing Milestone 2 from 🟡 to ✅. Record browser,
 
 - Left-click advances dialogue while a bubble is open.
 - Left-click attacks only when world input is enabled.
-- Right-click still does not open the browser context menu over the canvas.
+- Right-click drains only when world input is enabled and a valid target exists.
+- Right-click does not open the browser context menu over the canvas.
 - Menus, mission drawer and result screens retain input ownership.
 - Losing window focus clears held mouse and keyboard state.
 
