@@ -34,26 +34,27 @@ At least one run must resize the browser several times without reloading.
 
 - WASD/arrows move.
 - Space still runs and activates the nearby rooftop route in the current compatibility build.
-- E, left-click attack and Q/R/F remain unavailable.
+- E, mouse attacks/draining and Q/R/F remain unavailable.
 
 ### Rooftop blocker / combat-drain tutorial
 
 - The thug and sire dialogue lock movement.
 - After dialogue, movement, Space, aim and left-click attack work.
-- E drain remains filtered until the thug is downed.
-- After four punches, E drains the tutorial target.
+- Right-click drain remains invalid until the thug is downed.
+- After four punches, aiming at the thug and holding right mouse drains him.
+- E does not drain the tutorial target.
 - Q/R/F remain unavailable until the tutorial finishes.
 
 ### Police informant / tip
 
 - Space traversal and E clue interaction work.
-- Left-click attack and other interaction options stay filtered.
+- Mouse combat and other interaction options stay filtered.
 - The informant conversation does not accept world actions behind the dialogue.
 - Controls return after the final sire message.
 
 ### Full mode
 
-- Space traversal, E interactions, left-click attack and Q/R/F powers all work.
+- Space traversal, E interactions, left-click attack, right-click drain and Q/R/F powers all work.
 - Interaction menus navigate with W/S or arrows, confirm with E/Enter, cancel with Escape and accept number shortcuts.
 
 ## Traversal and interaction separation
@@ -72,7 +73,7 @@ For each route:
 
 - Space activates it.
 - E does not activate it.
-- Left click does not activate it.
+- Mouse buttons do not activate it.
 - When a route and a normal interaction are both nearby, the HUD shows the correct contextual key.
 - Repeated Space presses during an active transition do not start another transition.
 
@@ -108,7 +109,7 @@ Open the browser console and inspect `game.scene.getScene("GameScene").currentIn
 ## Mission regression
 
 - The first objective arrow sequence still advances correctly.
-- Rooftop blocker ordering, knockdown and temporary E drain work.
+- Rooftop blocker ordering, knockdown and right-click drain work.
 - Police informant gives the factual clue, leaves and disappears.
 - Sire gives the final instruction once.
 - Journalist mission steps advance normally.
