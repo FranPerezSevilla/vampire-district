@@ -1,5 +1,20 @@
+import { evaluateTraversalCandidate, selectTraversalCandidate } from "../data/traversal.js";
 import { resolveAction } from "./ActionSystem.js";
 import { RawAudio } from "./RawAudioSystem.js";
+
+const TRAVERSAL_TYPES = new Set([
+  "fireEscapeUp",
+  "fireEscapeDown",
+  "sewerDown",
+  "sewerUp",
+  "privateShaft",
+  "roofJump",
+  "roofDrop"
+]);
+
+export function isTraversalAction(option) {
+  return Boolean(option && TRAVERSAL_TYPES.has(option.type));
+}
 
 export class InteractionSystem {
   constructor(scene) {
@@ -11,11 +26,29 @@ export class InteractionSystem {
     return Boolean(this.menu);
   }
 
-  sortOptions(options) {
+  sortOptions(options = []) {
+    if (options.length && options.every(isTraversalAction) && this.scene?.player) {
+      const player = { x: this.scene.player.x, y: this.scene.player.y };
+      const aim = this.scene.combatSystem?.aimDirection || { x: 0, y: -1 };
+      const selected = selectTraversalCandidate(player, aim, options);
+      if (!selected) return [];
+      return [...options].sort((a, b) => {
+        if (a === selected) return -1;
+        if (b === selected) return 1;
+        const ea = evaluateTraversalCandidate(player, aim, a);
+        const eb = evaluateTraversalCandidate(player, aim, b);
+        const score = ea.score - eb.score;
+        if (Math.abs(score) > 1e-9) return score;
+        return String(a.id || "").localeCompare(String(b.id || ""));
+      });
+    }
+
     return [...options].sort((a, b) => {
       const priority = (b.priority || 0) - (a.priority || 0);
       if (priority !== 0) return priority;
-      return (a.distance || 0) - (b.distance || 0);
+      const distance = (a.distance || 0) - (b.distance || 0);
+      if (Math.abs(distance) > 1e-9) return distance;
+      return String(a.id || "").localeCompare(String(b.id || ""));
     });
   }
 
@@ -76,7 +109,7 @@ export class InteractionSystem {
 
   actionIdForOption(option) {
     if (!option) return null;
-    if (["breakLight", "roofDrop", "roofJump"].includes(option.type)) return option.type;
+    if (["roofDrop", "roofJump"].includes(option.type)) return option.type;
     if (option.type === "fireEscapeUp" || option.type === "fireEscapeDown") return "fireEscape";
     if (option.type === "evidence") {
       if (option.id === "hide_dragged_body") return "bodyHide";
@@ -88,7 +121,6 @@ export class InteractionSystem {
 
   soundForOption(option) {
     switch (option.type) {
-      case "breakLight": return "breakLight";
       case "fireEscapeUp":
       case "fireEscapeDown": return "routeClimb";
       case "sewerDown":
@@ -108,21 +140,53 @@ export class InteractionSystem {
     this.runOption(option);
   }
 
-  updateInput(keys) {
+  updateInput(input) {
     if (!this.menu) return false;
+    if (this.isInputFrame(input)) return this.updateFromFrame(input);
+    return this.updateFromLegacyKeys(input || {});
+  }
 
+  updateFromFrame(frame) {
+    if (frame.menuCancelPressed) {
+      this.close();
+      return true;
+    }
+    if (frame.menuUpPressed) {
+      this.menu.index = (this.menu.index - 1 + this.menu.options.length) % this.menu.options.length;
+      RawAudio.play("menu");
+      this.publish();
+      return true;
+    }
+    if (frame.menuDownPressed) {
+      this.menu.index = (this.menu.index + 1) % this.menu.options.length;
+      RawAudio.play("menu");
+      this.publish();
+      return true;
+    }
+
+    const digit = Number(frame.menuDigitPressed || 0);
+    if (digit >= 1 && digit <= this.menu.options.length) {
+      this.runOption(this.menu.options[digit - 1]);
+      return true;
+    }
+    if (frame.menuConfirmPressed) {
+      this.runSelected();
+      return true;
+    }
+    return true;
+  }
+
+  updateFromLegacyKeys(keys) {
     if (this.justDown(keys.escape)) {
       this.close();
       return true;
     }
-
     if (this.justDown(keys.up) || this.justDown(keys.w)) {
       this.menu.index = (this.menu.index - 1 + this.menu.options.length) % this.menu.options.length;
       RawAudio.play("menu");
       this.publish();
       return true;
     }
-
     if (this.justDown(keys.down) || this.justDown(keys.s)) {
       this.menu.index = (this.menu.index + 1) % this.menu.options.length;
       RawAudio.play("menu");
@@ -141,20 +205,25 @@ export class InteractionSystem {
       keys.eight,
       keys.nine
     ];
-
-    for (let i = 0; i < digitKeys.length; i++) {
-      if (this.justDown(digitKeys[i]) && i < this.menu.options.length) {
-        this.runOption(this.menu.options[i]);
+    for (let index = 0; index < digitKeys.length; index++) {
+      if (this.justDown(digitKeys[index]) && index < this.menu.options.length) {
+        this.runOption(this.menu.options[index]);
         return true;
       }
     }
-
     if (this.justDown(keys.interact) || this.justDown(keys.enter) || this.justDown(keys.space)) {
       this.runSelected();
       return true;
     }
-
     return true;
+  }
+
+  isInputFrame(input) {
+    return Boolean(input && (
+      Object.hasOwn(input, "menuCancelPressed")
+      || Object.hasOwn(input, "menuConfirmPressed")
+      || Object.hasOwn(input, "menuDigitPressed")
+    ));
   }
 
   snapshot() {
@@ -171,7 +240,8 @@ export class InteractionSystem {
   }
 
   publish() {
-    this.scene.registry.set("interactionMenu", this.snapshot());
+    this.scene.statePublisher?.set?.("interactionMenu", this.snapshot())
+      || this.scene.registry.set("interactionMenu", this.snapshot());
   }
 
   justDown(key) {
