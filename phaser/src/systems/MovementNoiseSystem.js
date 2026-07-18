@@ -1,5 +1,5 @@
 import { COMBAT_STATES } from "../data/combat.js";
-import { movementNoiseProfile } from "../data/movement.js";
+import { footstepHearingRadius, movementNoiseProfile } from "../data/movement.js";
 import { NPC_TYPES } from "../data/npcs.js";
 import { pointInsideCone } from "../utils/geometry.js";
 import { RawAudio } from "./RawAudioSystem.js";
@@ -18,14 +18,6 @@ const SIGHT_BY_TYPE = Object.freeze({
   [NPC_TYPES.POLICE]: { range: 132, halfAngle: 0.62 },
   [NPC_TYPES.HUNTER]: { range: 148, halfAngle: 0.58 },
   [NPC_TYPES.THUG]: { range: 98, halfAngle: 0.68 }
-});
-
-const HEARING_MULTIPLIER = Object.freeze({
-  [NPC_TYPES.CIVILIAN]: 1,
-  [NPC_TYPES.TARGET]: 1.04,
-  [NPC_TYPES.POLICE]: 1.18,
-  [NPC_TYPES.HUNTER]: 1.24,
-  [NPC_TYPES.THUG]: 1.06
 });
 
 export class MovementNoiseSystem {
@@ -88,7 +80,8 @@ export class MovementNoiseSystem {
     let heardOnly = 0;
     for (const npc of this.scene.npcSystem?.npcs || []) {
       if (!this.canHearNpc(npc)) continue;
-      const radius = profile.hearingRadius * (HEARING_MULTIPLIER[npc.type] || 1);
+      const radius = footstepHearingRadius(profile, npc.type);
+      if (radius <= 0) continue;
       const distance = Phaser.Math.Distance.Between(npc.x, npc.y, this.scene.player.x, this.scene.player.y);
       if (distance > radius || this.canSeePlayer(npc)) continue;
 
