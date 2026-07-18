@@ -12,8 +12,8 @@ function attachCombatTutorialCopy() {
     const value = String(text || "");
     if (/only offensive action|única acción ofensiva/i.test(value)) {
       return originalSetTip(
-        "MOUSE / E",
-        "Aim with the mouse and left-click to knock him down. Press E to drain him once he is down.",
+        "MOUSE / RMB",
+        "Aim with the mouse and left-click to knock him down. Then aim at him and hold the right mouse button to drain.",
         duration
       );
     }
@@ -22,7 +22,7 @@ function attachCombatTutorialCopy() {
 
   scene.events.on("combat:entity-downed", payload => {
     if (payload?.targetId !== "rooftop_thug" || director.state !== "drain-thug") return;
-    director.setTip("E", "The thug is down. Press E to drain him.");
+    director.setTip("RMB", "The thug is down. Aim at him and hold the right mouse button to drain.");
   });
 
   director.__nbdCombatTutorialCopyPatch = true;
