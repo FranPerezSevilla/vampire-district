@@ -22,12 +22,12 @@ The implemented scheme keeps GTA2-style immediacy and contextual city traversal 
 | R | Vampiric Whisper. |
 | F | Blood Sense. |
 | M | Mission panel. |
-| H | Menu/help. |
+| H | Pause/help and accessibility settings. |
 | Escape | Close UI or act as dialogue keyboard fallback. |
 
 ## Dialogue priority
 
-- A visible dialogue bubble owns the next left click in the game frame.
+- A visible dialogue bubble owns the next left click.
 - The click advances exactly one bubble and is discarded as a world action.
 - Escape remains a fallback.
 - Closing dialogue clears held/pressed world input and restores canvas focus.
@@ -73,6 +73,8 @@ The wheel owns a discrete `weaponStep` action.
 - Active attacks, draining, hit stun, transitions and menus suppress cycling.
 - The HUD displays equipped weapon and ammunition.
 - The pistol has eight rounds and no reload action in the current slice.
+
+After the police informant leaves and full control returns, a compact `WHEEL` prompt remains until the first successful weapon change. It does not pause the world and consumes the existing `weapon:changed` event rather than raw wheel input. The first change produces a brief `LMB` confirmation.
 
 The browser page does not scroll while the pointer is over the playable canvas because `WeaponSystem` owns wheel capture. Normal browser scrolling remains available outside the canvas.
 
@@ -148,15 +150,24 @@ E does not:
 - Dialogue clicks never leak into combat or prop damage.
 - Space/Shift/wheel state clears across pause, task reveal and focus loss.
 
-## Accessibility and future work
+## Accessibility
 
-Planned:
+Implemented:
+
+- Pause Menu button for `High-contrast aim: On / Off`.
+- The high-contrast reticle uses black outline, white core, larger ring and cross mark rather than weapon colour alone.
+- The preference is stored locally under `nbd-aim-high-contrast`.
+- Hunger exposes progress values; wanted and weapon HUDs expose textual live state.
+- Mission/Menu expose `aria-expanded`; the aim toggle exposes `aria-pressed`.
+- Visible keyboard focus outlines.
+- Reduced-motion preference removes non-essential HUD/tutorial animation.
+
+Planned or deferred:
 
 - remappable bindings;
 - keyboard-only aim fallback;
 - optional click-to-toggle drain;
-- high-contrast reticle;
-- reduced screen shake;
+- reduced camera shake;
 - wheel-direction preference;
 - reload/replenishment input and inventory UI;
 - gamepad mapping through the same abstract actions.
@@ -178,5 +189,7 @@ Implemented in code, browser validation still pending unless noted:
 - [ ] E never selects a traversal route.
 - [ ] Two nearby traversal points resolve deterministically.
 - [ ] Wheel changes one owned weapon step without scrolling the page.
+- [ ] First-use wheel guidance appears only after full tutorial control.
 - [ ] Pistol ammo decrements once and never becomes negative.
 - [ ] Buildings and nearer entities block farther pistol targets.
+- [ ] High-contrast aim remains aligned and keyboard-operable.
