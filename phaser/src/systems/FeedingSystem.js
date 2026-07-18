@@ -26,19 +26,7 @@ export class FeedingSystem {
   }
 
   collectInteractions() {
-    if (this.active) {
-      return [{
-        id: "cancel_drain",
-        type: "drain",
-        label: "Cancel drain",
-        detail: "stop feeding before the body drops",
-        priority: 130,
-        distance: 0,
-        x: this.scene.player.x,
-        y: this.scene.player.y,
-        run: () => this.cancel("You pull away before finishing the drain.")
-      }];
-    }
+    if (this.active) return [];
 
     const npc = this.scene.npcSystem.nearestAttackable(this.scene.player.x, this.scene.player.y, this.scene.currentLayer, ATTACK_RADIUS);
     if (!npc) return [];
@@ -73,18 +61,6 @@ export class FeedingSystem {
         run: () => this.kill(npc)
       });
     }
-
-    options.push({
-      id: `drain_${npc.id}`,
-      type: "drain",
-      label: npc.type === NPC_TYPES.RAT ? "Drain rat" : `Drain ${this.targetName(npc)}`,
-      detail: `hunger -${this.reliefFor(npc)} · veil risk if seen`,
-      priority: npc.type === NPC_TYPES.TARGET ? 126 : 104,
-      distance: d,
-      x: npc.x,
-      y: npc.y,
-      run: () => this.startDrain(npc)
-    });
 
     return options;
   }
@@ -146,12 +122,12 @@ export class FeedingSystem {
     this.scene.redrawLayer(this.scene.lastActionText);
   }
 
-  startDrain(npc) {
-    if (!npc || npc.dead || this.active) return;
+  startDrain(npc, { source = "system", eligibility = "legacy" } = {}) {
+    if (!npc || npc.dead || npc.inactive || this.active) return false;
     RawAudio.play("drainStart");
     resolveAction(this.scene, "drain", {
       target: npc,
-      exclude: this.actionExclude(npc)
+      exclude: [npc]
     });
     this.active = {
       kind: "drain",
@@ -159,12 +135,23 @@ export class FeedingSystem {
       time: 0,
       duration: this.durationFor(npc),
       seenNotified: false,
-      maxWitnesses: 0
+      maxWitnesses: 0,
+      source,
+      eligibility
     };
     npc.vx = 0;
     npc.vy = 0;
     npc.luredTimer = 0;
-    this.scene.lastActionText = `DRAIN started: ${this.targetName(npc)}. Moving will cancel it. If someone sees, they freeze first, then run to report.`;
+    npc.enemyAttack = null;
+    npc.drainVictim = true;
+    this.scene.lastActionText = `DRAIN started: ${this.targetName(npc)}. Hold the drain input and stay still. If someone sees, they freeze first, then run to report.`;
+    this.scene.events?.emit?.("feeding:started", {
+      targetId: npc.id,
+      source,
+      eligibility,
+      duration: this.active.duration
+    });
+    return true;
   }
 
   update(dt, movementIntent = false) {
@@ -179,9 +166,18 @@ export class FeedingSystem {
   }
 
   cancel(message = "Drain cancelled.") {
-    if (this.active) RawAudio.play("drainCancel");
+    const feed = this.active;
+    if (feed) RawAudio.play("drainCancel");
+    if (feed?.npc) feed.npc.drainVictim = false;
     this.active = null;
     this.scene.lastActionText = message;
+    if (feed) {
+      this.scene.events?.emit?.("feeding:cancelled", {
+        targetId: feed.npc?.id || null,
+        source: feed.source || "system",
+        reason: message
+      });
+    }
   }
 
   completeDrain() {
@@ -189,10 +185,12 @@ export class FeedingSystem {
     if (!feed) return;
     const npc = feed.npc;
     this.active = null;
+    npc.drainVictim = false;
 
     RawAudio.play("drainComplete");
     const witnessResult = this.scene.witnessSystem?.onDrainCompleted(npc, feed.seenNotified) || { witnesses: 0 };
     const relief = this.reliefFor(npc);
+    const hungerBefore = this.hunger;
     this.hunger = Math.max(0, this.hunger - relief);
     this.stats.feeds++;
     if (npc.type === NPC_TYPES.TARGET) {
@@ -213,6 +211,20 @@ export class FeedingSystem {
     const publicNote = witnessResult.witnesses ? ` Veil witness(es): ${witnessResult.witnesses}.` : "";
     const unlock = npc.type === NPC_TYPES.THUG ? " The police roof jump is now open." : "";
     this.scene.lastActionText = `DRAIN complete: ${this.targetName(npc)}. Hunger -${relief}.${unlock} A body remains.${publicNote}`;
+    this.scene.events?.emit?.("feeding:completed", {
+      targetId: npc.id,
+      source: feed.source || "system",
+      eligibility: feed.eligibility || "legacy",
+      hungerBefore,
+      hungerAfter: this.hunger,
+      relief
+    });
+    this.scene.events?.emit?.("hunger:changed", {
+      source: "feeding",
+      before: hungerBefore,
+      after: this.hunger,
+      amount: this.hunger - hungerBefore
+    });
     this.scene.redrawLayer(this.scene.lastActionText);
   }
 
