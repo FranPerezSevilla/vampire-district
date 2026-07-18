@@ -44,7 +44,7 @@ function installUiControlCopy() {
     const updatedBody = String(bodyHtml || "")
       .replace(
         "WASD/arrows move · Shift sprint · E interact · Q/Space Dash",
-        "WASD/arrows run · hold Shift to move quietly · mouse aims · left-click punches · Space traverses · E interacts · Q Dash"
+        "WASD/arrows run · hold Shift to move quietly · mouse aims · left-click punches · hold right-click to drain · Space traverses · E interacts · Q Dash"
       )
       .replace(
         "Movement: WASD/arrows · Shift sprint",
@@ -52,11 +52,15 @@ function installUiControlCopy() {
       )
       .replace(
         "WASD/arrows move · mouse aims · left-click punches · hold Space to run · Space traverses · E interacts · Q Dash",
-        "WASD/arrows run · hold Shift to move quietly · mouse aims · left-click punches · Space traverses · E interacts · Q Dash"
+        "WASD/arrows run · hold Shift to move quietly · mouse aims · left-click punches · hold right-click to drain · Space traverses · E interacts · Q Dash"
       )
       .replace(
         "Movement: WASD/arrows · mouse aim · left-click punch · hold Space to run · Space near routes to traverse",
         "Movement: WASD/arrows run by default · hold Shift for quiet movement · mouse aim · left-click punch · Space near routes to traverse"
+      )
+      .replace(
+        "Interact: E near routes, targets, bodies, witnesses, lamps",
+        "Combat: left-click punch · hold right-click to drain valid targets<br>Interact: E for clues, dialogue, bodies and mission objects"
       )
       .replace("Powers: Q/Space Dash", "Powers: Q Dash");
     return originalSetModal.call(this, title, updatedBody, actionLabel);
