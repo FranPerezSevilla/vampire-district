@@ -4,7 +4,7 @@
 
 Use a modern top-down keyboard-and-mouse layout rather than copying GTA2's keyboard-centric turning and attack controls.
 
-The implemented scheme keeps GTA2-style immediacy and contextual city traversal while using mouse-directed combat, world destruction and a dedicated vampire drain action.
+The implemented scheme keeps GTA2-style immediacy and contextual city traversal while using mouse-directed combat, weapon selection, world destruction and a dedicated vampire drain action.
 
 ## Current bindings
 
@@ -13,8 +13,9 @@ The implemented scheme keeps GTA2-style immediacy and contextual city traversal 
 | WASD / arrows | Run at the normal movement speed. |
 | Hold Shift | Move slowly and generate much quieter footsteps. |
 | Mouse | Aim and face. |
-| Left mouse | Punch NPCs or damage aimed world props. During dialogue, advances the bubble instead. |
+| Left mouse | Use equipped weapon. During dialogue, advances the bubble instead. |
 | Right mouse | Hold to drain a valid downed, rear-approached or rat target. |
+| Wheel | Previous/next owned weapon. |
 | Space | Execute one contextual traversal route. |
 | E | Talk, collect, inspect and use non-traversal interactions. |
 | Q | Shadow Dash. |
@@ -23,7 +24,6 @@ The implemented scheme keeps GTA2-style immediacy and contextual city traversal 
 | M | Mission panel. |
 | H | Menu/help. |
 | Escape | Close UI or act as dialogue keyboard fallback. |
-| Wheel | Captured as discrete weapon steps; weapon cycling is not implemented yet. |
 
 ## Dialogue priority
 
@@ -51,14 +51,30 @@ Holding Shift applies a lower movement multiplier and substantially reduces foot
 
 ## Primary attack
 
-- Left mouse uses the current weapon toward the cursor.
-- The current weapon is unarmed.
+- Left mouse uses the equipped weapon toward the cursor.
+- Starting inventory is Unarmed, Iron Pipe and Pistol.
 - One press starts one timed attack; holding does not hit every frame.
 - Windup, active and recovery phases control commitment.
 - One attack cannot damage the same NPC or prop twice.
-- NPCs and world props consume the same stored attack origin, direction, range and arc.
-- A baseline streetlight breaks after one confirmed hit.
+- Melee weapons share the forward-arc contract.
+- The pistol uses one nearest-target hitscan ray across NPCs and props.
+- A baseline streetlight breaks after one confirmed attack from any current weapon.
 - UI, dialogue, transitions, hit stun and active drain suppress attacks.
+
+## Weapon cycling
+
+The wheel owns a discrete `weaponStep` action.
+
+- Wheel down advances one inventory slot.
+- Wheel up moves back one slot.
+- Selection wraps at either end.
+- Rapid wheel/trackpad input is coalesced to one signed step per simulation frame.
+- The opening tutorial blocks weapon cycling until full control is restored.
+- Active attacks, draining, hit stun, transitions and menus suppress cycling.
+- The HUD displays equipped weapon and ammunition.
+- The pistol has eight rounds and no reload action in the current slice.
+
+The browser page does not scroll while the pointer is over the playable canvas because `WeaponSystem` owns wheel capture. Normal browser scrolling remains available outside the canvas.
 
 ## Drain rules
 
@@ -121,15 +137,16 @@ E does not:
 - use sewers;
 - attack;
 - drain;
-- break streetlights.
+- break streetlights;
+- change or reload weapons.
 
 ## Browser rules
 
 - Right-click context menu is suppressed only over the game canvas.
-- Wheel scrolling is suppressed only when a future weapon system owns it.
+- Wheel scrolling is suppressed only while the active weapon system owns the canvas wheel.
 - Pointer-held actions clear on blur and pointer leave.
 - Dialogue clicks never leak into combat or prop damage.
-- Space/Shift state clears across pause, task reveal and focus loss.
+- Space/Shift/wheel state clears across pause, task reveal and focus loss.
 
 ## Accessibility and future work
 
@@ -141,6 +158,7 @@ Planned:
 - high-contrast reticle;
 - reduced screen shake;
 - wheel-direction preference;
+- reload/replenishment input and inventory UI;
 - gamepad mapping through the same abstract actions.
 
 ## Acceptance checklist
@@ -151,7 +169,7 @@ Implemented in code, browser validation still pending unless noted:
 - [ ] Dialogue click advances exactly one bubble and never becomes an attack.
 - [ ] Left mouse attacks once per valid cadence.
 - [ ] Three punches down a civilian; four down a police officer.
-- [ ] One aimed punch breaks a baseline streetlight; a miss does not.
+- [ ] One aimed attack breaks a baseline streetlight; a miss does not.
 - [ ] E never exposes streetlight destruction.
 - [ ] Right-click cannot front-drain an alert standing target.
 - [ ] Right-click never opens the browser menu over the game.
@@ -159,4 +177,6 @@ Implemented in code, browser validation still pending unless noted:
 - [ ] Shift produces slower, quieter movement.
 - [ ] E never selects a traversal route.
 - [ ] Two nearby traversal points resolve deterministically.
-- [ ] Wheel changes one weapon step without scrolling after Milestone 7.
+- [ ] Wheel changes one owned weapon step without scrolling the page.
+- [ ] Pistol ammo decrements once and never becomes negative.
+- [ ] Buildings and nearer entities block farther pistol targets.
