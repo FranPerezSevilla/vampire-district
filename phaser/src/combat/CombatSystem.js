@@ -7,6 +7,7 @@ import {
   worldAimDirection
 } from "../data/combat.js";
 import { NPC_TYPES } from "../data/npcs.js";
+import { aimPresentation } from "../data/ux-guidance.js";
 import {
   WEAPON_IDS,
   WEAPON_TYPES,
@@ -32,13 +33,11 @@ export class CombatSystem {
     this.attackSerial = 0;
     this.graphics = scene.add.graphics().setDepth(71);
     this.labels = new Map();
-    this.tutorialPatched = false;
     scene.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, this.destroy, this);
   }
 
   update(dt, frame) {
     this.ensureCombatStates();
-    this.installTutorialCompatibility();
     this.updateAim(frame);
     this.updateAttack(dt, frame);
     this.syncNpcVisuals();
@@ -61,22 +60,6 @@ export class CombatSystem {
         npc.combat.state = COMBAT_STATES.ACTIVE;
       }
     }
-  }
-
-  installTutorialCompatibility() {
-    const director = this.scene.tutorialDirector;
-    if (!director || director.__nbdCombatTutorialFilterPatch) return;
-
-    const originalFilterActions = director.filterActions.bind(director);
-    director.filterActions = options => {
-      const filtered = originalFilterActions(options);
-      if (director.state !== "drain-thug") return filtered;
-      const thug = director.thug?.();
-      const downed = thug?.combat?.state === COMBAT_STATES.DOWNED;
-      return downed ? filtered : filtered.filter(option => option.type !== "drain");
-    };
-    director.__nbdCombatTutorialFilterPatch = true;
-    this.tutorialPatched = true;
   }
 
   currentAttackConfig() {
@@ -173,7 +156,15 @@ export class CombatSystem {
     }
 
     const origin = { x: this.scene.player.x, y: this.scene.player.y };
-    for (const npc of this.scene.npcSystem?.npcs || []) {
+    const range = Math.max(0, Number(this.attack.config.range) || 0) + 12;
+    const candidates = this.scene.npcSystem?.queryRadius?.(
+      origin.x,
+      origin.y,
+      range,
+      this.scene.currentLayer
+    ) || this.scene.npcSystem?.npcs || [];
+
+    for (const npc of candidates) {
       if (!this.validTarget(npc)) continue;
       if (this.attack.hitIds.has(npc.id)) continue;
       if (!targetInsideMeleeArc(origin, this.attack.direction, npc, this.attack.config)) continue;
@@ -191,7 +182,13 @@ export class CombatSystem {
     const origin = { x: this.scene.player.x, y: this.scene.player.y };
     const candidates = [];
 
-    for (const npc of this.scene.npcSystem?.npcs || []) {
+    const nearbyNpcs = this.scene.npcSystem?.queryRadius?.(
+      origin.x,
+      origin.y,
+      config.range,
+      this.scene.currentLayer
+    ) || this.scene.npcSystem?.npcs || [];
+    for (const npc of nearbyNpcs) {
       if (!this.validTarget(npc)) continue;
       candidates.push({
         id: `npc:${npc.id}`,
@@ -246,7 +243,7 @@ export class CombatSystem {
 
   validTarget(npc) {
     if (!npc || !HUMAN_TYPES.has(npc.type) || npc.missionInformant) return false;
-    if (npc.dead || npc.inactive || npc.hiddenBody || npc.intercepted) return false;
+    if (npc.dead || npc.inactive || npc.hiddenBody || npc.intercepted || npc.drainVictim) return false;
     if (npc.layer !== this.scene.currentLayer) return false;
     const state = npc.combat?.state;
     return state === COMBAT_STATES.ACTIVE || state === COMBAT_STATES.STAGGERED;
@@ -287,45 +284,31 @@ export class CombatSystem {
     });
   }
 
-  notifyViolence(npc, downed, config) {
-    if (config.attackType === WEAPON_TYPES.MELEE) {
-      resolveAction(this.scene, "stun", {
-        x: npc.x,
-        y: npc.y,
-        layer: npc.layer,
-        target: npc,
-        exclude: [npc],
-        cooldownKey: `${config.id}:${this.attack?.serial || this.attackSerial}`,
-        cooldown: 0.05
-      });
+  notifyViolence(npc, downed, suppliedConfig = null) {
+    const config = suppliedConfig || this.attack?.config || weaponById(WEAPON_IDS.UNARMED);
+    // Gunshot perception is emitted once at trigger pull by WeaponSystem.
+    if (config.attackType !== WEAPON_TYPES.MELEE) return;
 
-      this.scene.witnessSystem?.onMundaneViolence?.(
-        npc,
-        `${this.targetName(npc)} ${downed ? `knocked down with ${config.name.toLowerCase()}` : config.violenceLabel || "struck"}`,
-        downed ? Math.max(9, config.witnessSeverity || 6) : config.witnessSeverity || 6
-      );
-      this.scene.weaponSystem?.onMeleeImpact?.(config, npc);
-    }
+    const civilianObservers = (this.scene.npcSystem?.npcs || [])
+      .filter(candidate => [NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(candidate.type));
+    resolveAction(this.scene, "stun", {
+      x: npc.x,
+      y: npc.y,
+      layer: npc.layer,
+      target: npc,
+      exclude: [npc, ...civilianObservers],
+      cooldownKey: `${config.id || "melee"}:${this.attack?.serial || this.attackSerial}`,
+      cooldown: 0.05
+    });
 
-    if (npc.type === NPC_TYPES.POLICE) {
-      const reason = `A police officer was ${downed ? "knocked down" : config.violenceLabel || "assaulted"}.`;
-      this.scene.exposureSystem?.forceLevel?.(1, reason);
-      this.scene.policeSystem?.addHeat?.(
-        npc.x,
-        npc.y,
-        config.attackType === WEAPON_TYPES.HITSCAN ? config.policeHeat || 34 : downed ? 24 : 15,
-        reason
-      );
-      const zone = this.scene.policeSystem?.zoneAt?.(this.scene.player.x, this.scene.player.y);
-      if (this.scene.policeSystem) {
-        this.scene.policeSystem.lastKnownPlayer = {
-          x: this.scene.player.x,
-          y: this.scene.player.y,
-          zoneId: zone?.id || "district"
-        };
-      }
-      RawAudio.play("police", { cooldown: 0.3 });
-    }
+    this.scene.witnessSystem?.onMundaneViolence?.(
+      npc,
+      `${this.targetName(npc)} ${downed
+        ? `knocked down with ${(config.name || "an attack").toLowerCase()}`
+        : config.violenceLabel || "struck"}`,
+      downed ? Math.max(9, config.witnessSeverity || 6) : config.witnessSeverity || 6
+    );
+    this.scene.weaponSystem?.onMeleeImpact?.(config, npc);
   }
 
   alertVictim(npc) {
@@ -333,7 +316,8 @@ export class CombatSystem {
       this.scene.witnessSystem?.alarmWitness?.(npc, "an assault", 9, {
         masqueradeRisk: false,
         reactionSeconds: 0.35,
-        source: this.scene.player
+        source: this.scene.player,
+        allowStunned: true
       });
       return;
     }
@@ -341,6 +325,11 @@ export class CombatSystem {
     npc.alarmed = true;
     npc.reactionTimer = Math.max(npc.reactionTimer || 0, 0.35);
     if (npc.type === NPC_TYPES.POLICE) npc.chasingPlayer = true;
+    if (npc.type === NPC_TYPES.THUG) npc.thugHostile = true;
+    if (npc.type === NPC_TYPES.HUNTER) {
+      npc.hunterIntent = "hunt";
+      npc.hunterLastKnown = { x: this.scene.player.x, y: this.scene.player.y };
+    }
   }
 
   knockDown(npc, config = this.attack?.config || this.currentAttackConfig()) {
@@ -351,9 +340,13 @@ export class CombatSystem {
     npc.chasingPlayer = false;
     npc.reactionTimer = 0;
     npc.reportTarget = null;
+    npc.reportSeverity = 0;
     npc.witnessReason = "";
+    npc.witnessSource = null;
+    npc.masqueradeRisk = false;
     npc.luredTimer = 0;
     npc.soundReactionTimer = 0;
+    npc.enemyAttack = null;
     npc.vx = 0;
     npc.vy = 0;
 
@@ -376,34 +369,39 @@ export class CombatSystem {
 
   syncNpcVisuals() {
     const now = this.scene.time.now;
+    const visible = new Set(this.scene.npcSystem?.visibleInCamera?.(48) || this.scene.npcSystem?.npcs || []);
     for (const npc of this.scene.npcSystem?.npcs || []) {
       if (!npc.combat || !npc.container) continue;
-      const label = this.ensureLabel(npc);
-      const onCurrentLayer = npc.layer === this.scene.currentLayer && !npc.hiddenBody;
+      const existingLabel = this.labels.get(npc.id);
+      const onCurrentLayer = visible.has(npc) && npc.layer === this.scene.currentLayer && !npc.hiddenBody;
 
       if (npc.dead) {
         npc.container.setScale(1).setAlpha(1);
-        label.setVisible(false);
+        existingLabel?.setVisible(false);
         continue;
       }
 
       if (npc.combat.state === COMBAT_STATES.DOWNED) {
         npc.container.setScale(1.32, 0.55).setAlpha(0.76);
-        label.setText("DOWN").setPosition(npc.x, npc.y - 19).setVisible(onCurrentLayer);
+        if (onCurrentLayer) {
+          this.ensureLabel(npc).setText("DOWN").setPosition(npc.x, npc.y - 19).setVisible(true);
+        } else {
+          existingLabel?.setVisible(false);
+        }
         continue;
       }
 
       npc.container.setScale(1);
-      if (npc.combat.feedbackUntil > now) {
+      if (npc.combat.feedbackUntil > now && onCurrentLayer) {
         const pulse = 0.68 + Math.abs(Math.sin(now / 55)) * 0.32;
         npc.container.setAlpha(pulse);
-        label
+        this.ensureLabel(npc)
           .setText(`${npc.combat.resilience}/${npc.combat.maxResilience}`)
           .setPosition(npc.x, npc.y - 19)
-          .setVisible(onCurrentLayer);
+          .setVisible(true);
       } else {
         npc.container.setAlpha(1);
-        label.setVisible(false);
+        existingLabel?.setVisible(false);
       }
     }
   }
@@ -412,7 +410,7 @@ export class CombatSystem {
     if (this.labels.has(npc.id)) return this.labels.get(npc.id);
     const label = this.scene.add.text(npc.x, npc.y - 19, "", {
       fontFamily: "Arial, Helvetica, sans-serif",
-      fontSize: "11px",
+      fontSize: "12px",
       fontStyle: "bold",
       color: "#fff0bd",
       backgroundColor: "rgba(5, 6, 11, .82)",
@@ -432,22 +430,12 @@ export class CombatSystem {
     const config = this.attack?.config || this.currentAttackConfig();
     const px = this.scene.player.x;
     const py = this.scene.player.y;
-    if (frame.pointerInside) {
-      const distance = config.reticleDistance || 27;
-      const ax = px + this.aimDirection.x * distance;
-      const ay = py + this.aimDirection.y * distance;
-      graphics.lineStyle(2, config.color || 0xd7c8ff, 0.72);
-      graphics.beginPath();
-      graphics.moveTo(px + this.aimDirection.x * 9, py + this.aimDirection.y * 9);
-      graphics.lineTo(ax, ay);
-      graphics.strokePath();
-      graphics.lineStyle(1, config.color || 0xd7c8ff, 0.58).strokeCircle(ax, ay, config.attackType === WEAPON_TYPES.HITSCAN ? 5 : 4);
-    }
+    if (frame.pointerInside) this.drawAimIndicator(config, px, py);
 
     if (this.attack) this.drawAttackArc();
 
     const now = this.scene.time.now;
-    for (const npc of this.scene.npcSystem?.npcs || []) {
+    for (const npc of this.scene.npcSystem?.visibleInCamera?.(40) || this.scene.npcSystem?.npcs || []) {
       if (!npc.combat || npc.dead || npc.hiddenBody || npc.layer !== this.scene.currentLayer) continue;
       if (npc.combat.state === COMBAT_STATES.DOWNED) {
         graphics.fillStyle(0xffb02e, 0.09).fillEllipse(npc.x, npc.y + 3, 26, 13);
@@ -455,6 +443,52 @@ export class CombatSystem {
       }
       if (npc.combat.feedbackUntil > now) this.drawResiliencePips(npc);
     }
+  }
+
+  drawAimIndicator(config, px, py) {
+    const distance = config.reticleDistance || 27;
+    const ax = px + this.aimDirection.x * distance;
+    const ay = py + this.aimDirection.y * distance;
+    const sx = px + this.aimDirection.x * 9;
+    const sy = py + this.aimDirection.y * 9;
+    const highContrast = Boolean(this.scene.registry?.get?.("aimHighContrast"));
+
+    if (highContrast) {
+      const presentation = aimPresentation(true);
+      const dx = -this.aimDirection.y;
+      const dy = this.aimDirection.x;
+      this.graphics.lineStyle(presentation.outerWidth, presentation.outerColor, 1);
+      this.graphics.beginPath();
+      this.graphics.moveTo(sx, sy);
+      this.graphics.lineTo(ax, ay);
+      this.graphics.strokePath();
+      this.graphics.lineStyle(presentation.innerWidth, presentation.innerColor, 1);
+      this.graphics.beginPath();
+      this.graphics.moveTo(sx, sy);
+      this.graphics.lineTo(ax, ay);
+      this.graphics.strokePath();
+      this.graphics.lineStyle(5, presentation.outerColor, 1).strokeCircle(ax, ay, presentation.reticleRadius + 2);
+      this.graphics.lineStyle(2, presentation.innerColor, 1).strokeCircle(ax, ay, presentation.reticleRadius);
+      this.graphics.lineStyle(5, presentation.outerColor, 1);
+      this.graphics.beginPath();
+      this.graphics.moveTo(ax - dx * presentation.crossRadius, ay - dy * presentation.crossRadius);
+      this.graphics.lineTo(ax + dx * presentation.crossRadius, ay + dy * presentation.crossRadius);
+      this.graphics.strokePath();
+      this.graphics.lineStyle(2, presentation.innerColor, 1);
+      this.graphics.beginPath();
+      this.graphics.moveTo(ax - dx * presentation.crossRadius, ay - dy * presentation.crossRadius);
+      this.graphics.lineTo(ax + dx * presentation.crossRadius, ay + dy * presentation.crossRadius);
+      this.graphics.strokePath();
+      return;
+    }
+
+    this.graphics.lineStyle(2, config.color || 0xd7c8ff, 0.72);
+    this.graphics.beginPath();
+    this.graphics.moveTo(sx, sy);
+    this.graphics.lineTo(ax, ay);
+    this.graphics.strokePath();
+    this.graphics.lineStyle(1, config.color || 0xd7c8ff, 0.58)
+      .strokeCircle(ax, ay, config.attackType === WEAPON_TYPES.HITSCAN ? 5 : 4);
   }
 
   drawAttackArc() {
