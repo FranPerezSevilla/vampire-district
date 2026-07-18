@@ -113,8 +113,8 @@ Implemented:
 - The same candidate drives both the prompt and execution.
 - World-space `SPACE` marker before activation.
 - Footstep audio follows actual movement rather than raw key state.
-- Running has a much larger hearing radius than quiet movement.
-- Heard-only footsteps turn NPCs and show `WTF` without starting pursuit.
+- Ordinary NPCs only show footstep `WTF` when running inside the short range.
+- Police and hunters retain enhanced hearing.
 - Pure movement and traversal tests.
 - Dedicated movement documentation and regression checklist.
 
@@ -124,29 +124,40 @@ Acceptance status:
 - ✅ Shift is the quiet-movement modifier.
 - ✅ Space with no route has no world action.
 - ✅ E remains separate from traversal.
-- ✅ Pure tests cover speed differences and deterministic route selection.
+- ✅ Pure tests cover speed differences, hearing tiers and deterministic route selection.
 - 🟡 Browser validation remains required for all route types, overlapping routes, NPC hearing and viewport/render-quality combinations.
 - 🟡 Speed, hearing radius and route-scoring thresholds remain tuning baselines.
 
 ## Milestone 6 — Damageable streetlights and world props
 
-**Status: ⬜ Planned**
+**Status: 🟡 Implementation complete; browser regression and tuning pending**
 
-Goal: make environmental destruction use the same combat language.
+Implemented:
 
-Planned:
+- Every district light is represented as a damageable streetlight prop.
+- Baseline durability is one damage point.
+- Left-click attacks use the same stored melee origin, direction, range and arc as NPC combat.
+- Per-attack prop hit IDs prevent repeated damage in one active window.
+- E-based `Break streetlight` interactions are removed from player-facing options.
+- Broken lights update the existing `brokenLights` world state.
+- Light fields disappear and circular darkness appears immediately.
+- Glass audio, break burst and `BROKEN` feedback.
+- Visual witnesses use their type-specific reaction.
+- Heard-only NPCs turn and show `WTF` without automatic pursuit/reporting.
+- Plain-data `prop:damaged`, `prop:broken` and `noise:emitted` events.
+- Reusable pure prop durability and hit-query contract.
+- Pure hit/miss and repeated-damage tests.
+- Dedicated prop documentation and browser regression checklist.
 
-- Convert lights into damageable prop entities.
-- Remove E-based light breaking.
-- Punches and weapons damage props.
-- Break events update lighting and emit sight/hearing reactions.
-- Reusable prop-damage contract.
+Acceptance status:
 
-Acceptance:
-
-- A valid hit breaks a baseline light; a miss does not.
-- Watching NPCs react visually.
-- Hearing-only NPCs turn and show `WTF` without pursuit.
+- ✅ A valid aimed hit breaks a baseline streetlight.
+- ✅ Behind/out-of-range attacks are rejected by pure tests.
+- ✅ A broken prop ignores repeated damage.
+- ✅ E no longer exposes streetlight destruction.
+- ✅ Broken-light shadow and light suppression reuse existing world rules.
+- 🟡 Browser validation remains required for visual alignment, persistent darkness, witness/hearing reactions and mission regression.
+- 🟡 Hit radius, exposure cost and break feedback remain tuning baselines.
 
 ## Milestone 7 — Weapon system and mouse-wheel inventory
 
@@ -163,7 +174,7 @@ Planned:
 Acceptance:
 
 - One wheel gesture changes one owned weapon step.
-- Unarmed and weapon attacks share damage contracts.
+- Unarmed and weapon attacks share NPC/prop damage contracts.
 - Gunshots create stronger hearing/police pressure than punches.
 
 ## Milestone 8 — AI combat behaviours
