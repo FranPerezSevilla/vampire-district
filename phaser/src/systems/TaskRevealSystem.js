@@ -7,10 +7,31 @@ const TASK_REVEALS = Object.freeze({
   3: Object.freeze({ step: "TASK 4 / 4", text: "Return to the rooftop refuge and report to your sire." })
 });
 
-const ZOOM_IN_MS = 760;
-const HOLD_MS = 4_500;
-const ZOOM_OUT_MS = 2_400;
-const BUBBLE_TO_ZOOM_GAP_MS = 260;
+const NORMAL_TIMING = Object.freeze({
+  zoomInMs: 760,
+  holdMs: 4_500,
+  zoomOutMs: 2_400,
+  bubbleGapMs: 260,
+  initialPollMs: 120,
+  blockedPollMs: 180,
+  queuedGapMs: 220
+});
+
+const RC_TEST_TIMING = Object.freeze({
+  zoomInMs: 18,
+  holdMs: 24,
+  zoomOutMs: 18,
+  bubbleGapMs: 0,
+  initialPollMs: 4,
+  blockedPollMs: 8,
+  queuedGapMs: 4
+});
+
+function timings() {
+  return typeof window !== "undefined" && window.NBD_RC_TEST_MODE
+    ? RC_TEST_TIMING
+    : NORMAL_TIMING;
+}
 
 function renderScale() {
   return typeof window !== "undefined"
@@ -118,6 +139,7 @@ export class TaskRevealSystem {
   waitUntilPlayable(payload) {
     this.waiting = payload;
     if (this.pollTimer) return;
+    const timing = timings();
     const poll = () => {
       this.pollTimer = null;
       if (!this.waiting || this.scene.missionSystem?.failed || this.scene.missionSystem?.completed) {
@@ -128,14 +150,14 @@ export class TaskRevealSystem {
       const tutorialReady = !director || director.state === "complete";
       const uiPaused = Boolean(this.scene.registry?.get?.("uiPaused"));
       if (!tutorialReady || uiPaused || director?.busy) {
-        this.pollTimer = this.scene.time.delayedCall(180, poll);
+        this.pollTimer = this.scene.time.delayedCall(timing.blockedPollMs, poll);
         return;
       }
       const reveal = this.waiting;
       this.waiting = null;
       this.play(reveal);
     };
-    this.pollTimer = this.scene.time.delayedCall(120, poll);
+    this.pollTimer = this.scene.time.delayedCall(timing.initialPollMs, poll);
   }
 
   play(payload) {
@@ -145,6 +167,7 @@ export class TaskRevealSystem {
       return false;
     }
 
+    const timing = timings();
     const camera = this.scene.cameras.main;
     const startingZoom = normalZoomFor(this.scene);
     const closeZoom = Math.min(startingZoom * 3.15, 8.75);
@@ -168,14 +191,14 @@ export class TaskRevealSystem {
     this.scene.tweens.add({
       targets: camera,
       zoom: closeZoom,
-      duration: ZOOM_IN_MS,
+      duration: timing.zoomInMs,
       ease: "Cubic.easeOut",
       onUpdate: () => camera.centerOn(this.scene.player.x, this.scene.player.y),
       onComplete: () => {
         this.setUi(payload, true);
-        this.scene.time.delayedCall(HOLD_MS, () => {
+        this.scene.time.delayedCall(timing.holdMs, () => {
           this.setUi(payload, false);
-          this.scene.time.delayedCall(BUBBLE_TO_ZOOM_GAP_MS, () => this.zoomOut(camera));
+          this.scene.time.delayedCall(timing.bubbleGapMs, () => this.zoomOut(camera));
         });
       }
     });
@@ -183,6 +206,7 @@ export class TaskRevealSystem {
   }
 
   zoomOut(camera) {
+    const timing = timings();
     const targetZoom = normalZoomFor(this.scene);
     const zoomAtStart = camera.zoom;
     camera.setBounds(0, 0, WORLD.width, WORLD.height);
@@ -190,7 +214,7 @@ export class TaskRevealSystem {
     this.scene.tweens.addCounter({
       from: 0,
       to: 1,
-      duration: ZOOM_OUT_MS,
+      duration: timing.zoomOutMs,
       ease: "Sine.easeInOut",
       onUpdate: tween => {
         const progress = tween.getValue();
@@ -209,7 +233,7 @@ export class TaskRevealSystem {
 
         const queued = this.queued;
         this.queued = null;
-        if (queued) this.scene.time.delayedCall(220, () => this.play(queued));
+        if (queued) this.scene.time.delayedCall(timing.queuedGapMs, () => this.play(queued));
       }
     });
   }
