@@ -24,6 +24,9 @@ export class ReleaseCandidateHarness {
     gameScene.events?.on?.("mission:step-changed", payload => {
       this.events.push({ type: "mission-step-changed", payload, at: performance.now() });
     });
+    gameScene.events?.on?.("police:violence-escalated", payload => {
+      this.events.push({ type: "police-violence-escalated", payload, at: performance.now() });
+    });
   }
 
   async waitFor(predicate, { timeoutMs = 4_000, label = "condition" } = {}) {
@@ -35,17 +38,21 @@ export class ReleaseCandidateHarness {
     throw new Error(`RC harness timed out waiting for ${label}`);
   }
 
-  async prepareJournalistObjective() {
+  unlockPostTutorialWorld() {
     const director = this.scene.tutorialDirector;
     if (!director) throw new Error("TutorialDirector is unavailable");
-
-    // Explicit test-only shortcut: mission progression below still uses public
-    // gameplay APIs rather than assigning mission.step directly.
     director.started = true;
     director.introPromise ||= Promise.resolve();
     director.finishTutorial();
     if (this.uiScene.introOpen) this.uiScene.closeIntro();
+    return director;
+  }
 
+  async prepareJournalistObjective() {
+    this.unlockPostTutorialWorld();
+
+    // Mission progression uses public gameplay APIs rather than assigning
+    // mission.step directly.
     while ((this.scene.missionSystem.rooftopJumps || 0) < 3) {
       this.scene.missionSystem.onRooftopJump();
     }
@@ -112,12 +119,64 @@ export class ReleaseCandidateHarness {
     return this.snapshot();
   }
 
+  async policeEscalationSequence() {
+    this.unlockPostTutorialWorld();
+    this.scene.switchLayer(
+      LAYERS.STREET,
+      { x: 488, y: 326 },
+      "RC test: police escalation sequence."
+    );
+
+    const officers = this.scene.policeSystem.police();
+    if (officers.length < 2) throw new Error("At least two police officers are required");
+    const [first, second] = officers;
+    const levels = [];
+
+    this.scene.events.emit("combat:hit", {
+      targetId: first.id,
+      weaponId: "unarmed",
+      downed: false
+    });
+    levels.push(this.scene.exposureSystem.level());
+
+    this.scene.events.emit("combat:hit", {
+      targetId: first.id,
+      weaponId: "unarmed",
+      downed: true
+    });
+    levels.push(this.scene.exposureSystem.level());
+
+    this.scene.events.emit("combat:hit", {
+      targetId: second.id,
+      weaponId: "pipe",
+      downed: true
+    });
+    levels.push(this.scene.exposureSystem.level());
+
+    this.scene.events.emit("combat:entity-neutralized", {
+      targetId: first.id,
+      weaponId: "drain",
+      kind: "drained"
+    });
+    const duplicateLevel = this.scene.exposureSystem.level();
+
+    await this.waitFor(
+      () => this.scene.policeSystem.helicopter.active,
+      { timeoutMs: 4_000, label: "helicopter after level-three escalation" }
+    );
+
+    return {
+      levels,
+      duplicateLevel,
+      helicopter: Boolean(this.scene.policeSystem.helicopter.active),
+      escalations: this.events
+        .filter(event => event.type === "police-violence-escalated")
+        .map(event => event.payload)
+    };
+  }
+
   async startPoliceStress() {
-    const director = this.scene.tutorialDirector;
-    director.started = true;
-    director.introPromise ||= Promise.resolve();
-    director.finishTutorial();
-    if (this.uiScene.introOpen) this.uiScene.closeIntro();
+    this.unlockPostTutorialWorld();
 
     const police = this.scene.policeSystem;
     if (!this.originalTriggerArrest) {
