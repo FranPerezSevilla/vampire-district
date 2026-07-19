@@ -4,15 +4,30 @@ _Last updated: 2026-07-19_
 
 ## Status
 
-**🟡 Implementation and automated coverage complete; remote CI confirmation and final manual browser pass pending.**
+**🟡 Automated release candidate green; final manual browser acceptance, dead-code cleanup and release tag pending.**
 
-The release-candidate pass is intentionally feature-frozen. It validates the current vertical slice before campaign, vehicle, faction and economy work begins.
+Validated gameplay source commit:
+
+```text
+f64837e6eab2ec58397593ec8033afb3b8a70eb1
+```
+
+Validation run 3 completed successfully on GitHub Actions:
+
+```text
+unit-tests    ✅
+browser-smoke ✅
+```
+
+The validation branch differed from the source commit only by a pull-request note and was closed without merging. The tested gameplay source already lives on `main`.
+
+The release-candidate pass remains feature-frozen. Campaign, vehicle, faction and economy work begins only after the remaining manual acceptance pass.
 
 ## Delivered
 
 ### Sire-first mission finale
 
-The refuge finale is now owned directly by `MissionSystem`:
+The refuge finale is owned directly by `MissionSystem`:
 
 ```text
 journalist killed or drained
@@ -30,11 +45,11 @@ journalist killed or drained
 - `mission:return-finale-started`
 - `mission:return-finale-completed`
 
-Unit coverage verifies killed and drained outcomes, premature refuge entry, repeated update calls and dialogue-before-report ordering.
+Unit and browser coverage verify killed and drained outcomes, premature refuge entry, repeated update calls, input clearing and dialogue-before-report ordering.
 
 ### Deterministic Phaser bootstrap
 
-Both playable routes now load `phaser/src/app-bootstrap.js` rather than a collection of independent scripts.
+Both playable routes load `phaser/src/app-bootstrap.js` rather than a collection of independent scripts.
 
 The bootstrap attempts sources in this order:
 
@@ -42,7 +57,7 @@ The bootstrap attempts sources in this order:
 2. pinned jsDelivr fallback;
 3. pinned cdnjs fallback.
 
-CI installs the npm dependency and browser tests require `window.NBD_PHASER_SOURCE === "local"`. Public static hosting can still use a pinned CDN fallback when `node_modules` is not deployed.
+CI installs the npm dependency and browser tests require `window.NBD_PHASER_SOURCE === "local"`. Static hosting can still use a pinned fallback when `node_modules` is not deployed.
 
 Runtime readiness is exposed through:
 
@@ -72,6 +87,8 @@ Covered scenarios:
 - verify the sire-first result order;
 - police violence escalation 1 → 2 → 3;
 - duplicate police neutralization protection;
+- police recovery with restored resilience;
+- visible witness versus heard-only `WTF`;
 - level-three police/helicopter stress;
 - runtime and DOM snapshots.
 
@@ -79,7 +96,7 @@ Task-reveal presentation uses shortened timing only in RC test mode, preserving 
 
 ### Browser coverage
 
-Playwright now covers:
+Playwright passes for:
 
 - both `/` and `/phaser/` boot routes;
 - pinned local Phaser ownership;
@@ -89,13 +106,29 @@ Playwright now covers:
 - drained-journalist golden path;
 - sire dialogue before `REPORT ACCEPTED`;
 - police alert progression 1 → 2 → 3;
+- duplicate neutralization protection;
 - helicopter activation;
-- a sustained level-three structural/performance smoke test;
+- police recovery;
+- visual witness versus heard-only reaction;
+- sustained level-three structural/performance smoke;
 - pause and task-reveal mouse/wheel lock protection;
 - Low and Ultra internal render quality;
 - wide-to-narrow resize and finite aim mapping;
-- high-contrast aim persistence;
+- high-contrast aim persistence and keyboard activation;
 - semantic HUD state and narrow-layout separation.
+
+### Regressions found and fixed by CI
+
+The first two browser runs were deliberately retained as diagnostic passes. They exposed and led to fixes for:
+
+- continuous pause-modal DOM replacement and unstable focus;
+- unreliable Phaser-frame polling for H/M/Escape/Enter UI commands;
+- missing first-class weapon-HUD positioning after retiring its legacy module;
+- native Enter activation being suppressed by Phaser's global keyboard manager;
+- slow software-WebGL timing assumptions in task reveals and stress samples;
+- uninitialized combat state in the police-recovery scenario.
+
+The third run passed after those corrections.
 
 ### Input cleanup
 
@@ -106,6 +139,15 @@ LMB → equipped attack
 RMB → contextual drain
 E   → non-combat interaction
 ```
+
+### UI and accessibility stabilization
+
+- H, M, Escape and Enter UI commands are owned by deterministic DOM keyboard events.
+- Dialogue capture still has priority and prevents Escape/click leakage.
+- Pause content uses a frozen snapshot, avoiding continuously changing diagnostic markup.
+- Modal HTML is replaced only when its source content changes.
+- High-contrast aim has explicit Enter/Space keyboard activation.
+- Weapon HUD layout is defined in static first-class CSS and remains lower-right on narrow viewports.
 
 ### CI
 
@@ -122,7 +164,7 @@ The browser job:
 - verifies `node_modules/phaser/dist/phaser.min.js` exists;
 - installs Chromium;
 - runs the complete RC browser suite;
-- uploads Playwright report and traces on failure.
+- uploads Playwright reports and traces only on failure.
 
 ## Automated files
 
@@ -130,6 +172,7 @@ The browser job:
 - `tests/browser/runtime-smoke.spec.js`
 - `tests/browser/mission-golden-path.spec.js`
 - `tests/browser/police-stress.spec.js`
+- `tests/browser/perception-recovery.spec.js`
 - `tests/browser/input-locks.spec.js`
 - `tests/browser/render-quality.spec.js`
 - `tests/browser/ui-accessibility.spec.js`
@@ -138,15 +181,14 @@ The browser job:
 
 ## Pending before ✅
 
-1. Confirm the GitHub Actions unit job on the final target commit.
-2. Confirm the GitHub Actions Playwright job on the same commit.
-3. Perform one manual full mission on `/` and one on `/phaser/`.
-4. Manually inspect normal-speed task reveals and tutorial camera movement.
-5. Validate mouse wheel behaviour with a physical mouse and trackpad.
-6. Run a longer manual level-three encounter and inspect memory in browser developer tools.
-7. Confirm keyboard and screen-reader behaviour in at least one supported desktop browser.
-8. Delete superseded unloaded prototype files only after the above passes.
-9. Tag `v0.1.0-rc.1` after the final target commit is green.
+1. Perform one manual full mission on `/` and one on `/phaser/`.
+2. Manually inspect normal-speed intro and task-reveal camera movement.
+3. Validate mouse-wheel behaviour with a physical mouse and trackpad.
+4. Run a longer manual level-three encounter and inspect memory in browser developer tools.
+5. Confirm keyboard and screen-reader behaviour in at least one supported desktop browser.
+6. Delete superseded unloaded prototype files after the manual pass.
+7. Run CI once more after physical dead-code deletion.
+8. Tag `v0.1.0-rc.1` only after that final cleanup commit is green.
 
 ## Non-goals
 
@@ -160,4 +202,4 @@ Milestone 10.1 does not add:
 - Retainers;
 - new weapons.
 
-Those begin after this release candidate is validated.
+Those begin after this release candidate is manually accepted and tagged.
