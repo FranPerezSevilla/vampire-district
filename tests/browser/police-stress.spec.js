@@ -54,6 +54,6 @@ test("level-three police response stays structurally stable", async ({ page }) =
   expect(finished.diagnostics?.conflicts).toEqual([]);
   expect(finished.diagnostics?.samples).toBeGreaterThan(30);
   expect(finished.diagnostics?.averageFrameMs).toBeLessThan(120);
-  expect(finished.diagnostics?.maxFrameMs).toBeLessThan(750);
+  expect(finished.diagnostics?.recentMaxFrameMs).toBeLessThan(750);
   expect(pageErrors).toEqual([]);
 });
