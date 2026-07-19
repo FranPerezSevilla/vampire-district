@@ -239,7 +239,11 @@ export class GameplayRuntime {
 
   finishFrame() {
     const scene = this.scene;
-    scene.updateCameraForLayer();
+    const cinematicOwnsCamera = Boolean(
+      scene.taskRevealCinematic?.active
+      || scene.registry?.get?.("taskRevealActive")
+    );
+    if (!cinematicOwnsCamera) scene.updateCameraForLayer();
     scene.outskirtsSystem?.updatePresentation?.();
     scene.objectiveMarkerSystem?.update?.(scene.time?.now || 0);
     scene.drawPromptMarker();

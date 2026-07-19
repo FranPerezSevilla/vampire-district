@@ -14,7 +14,12 @@ export const DRAIN_RULES = Object.freeze({
   // confusing extra shuffle toward the body.
   range: 34,
   breakRange: 42,
+  acquisitionPadding: 8,
   aimHalfAngle: 1.0,
+  // A body on the floor is visually smaller and has no facing threat. Keep the
+  // player aiming generally toward it, but make selection more forgiving than
+  // a standing rear drain.
+  downedAimHalfAngle: 1.35,
   rearHalfAngle: 0.92,
   invalidFeedbackMs: 650
 });
@@ -49,6 +54,7 @@ export function evaluateDrainCandidate(
     currentLayer = player?.layer,
     range = DRAIN_RULES.range,
     aimHalfAngle = DRAIN_RULES.aimHalfAngle,
+    downedAimHalfAngle = DRAIN_RULES.downedAimHalfAngle,
     rearHalfAngle = DRAIN_RULES.rearHalfAngle,
     lineClear = () => true
   } = {}
@@ -64,9 +70,11 @@ export function evaluateDrainCandidate(
   if (distance > range) return invalid("out-of-range");
   if (!lineClear(npc)) return invalid("blocked");
 
+  const downed = npc.combat?.state === COMBAT_STATES.DOWNED;
   const targetDirection = distance > 0.001 ? { x: dx / distance, y: dy / distance } : { x: 0, y: 0 };
   const aimAngle = distance > 0.001 ? angleBetween(aimDirection, targetDirection) : 0;
-  if (distance > 0.001 && aimAngle > aimHalfAngle) {
+  const allowedAimAngle = downed ? downedAimHalfAngle : aimHalfAngle;
+  if (distance > 0.001 && aimAngle > allowedAimAngle) {
     return { eligible: false, reason: "not-aimed", kind: null, distance, aimAngle };
   }
 
@@ -74,7 +82,7 @@ export function evaluateDrainCandidate(
     return { eligible: true, reason: "rat", kind: DRAIN_KINDS.RAT, distance, aimAngle };
   }
 
-  if (npc.combat?.state === COMBAT_STATES.DOWNED) {
+  if (downed) {
     return { eligible: true, reason: "downed", kind: DRAIN_KINDS.DOWNED, distance, aimAngle };
   }
 

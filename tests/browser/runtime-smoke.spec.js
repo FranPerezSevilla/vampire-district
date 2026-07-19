@@ -2,6 +2,27 @@ import { expect, test } from "@playwright/test";
 
 const ROUTES = ["/", "/phaser/"];
 
+async function dispatchDialogueAdvance(page) {
+  await page.waitForTimeout(320);
+  await page.evaluate(() => {
+    const target = document.querySelector("#game-root canvas") || document.querySelector(".game-frame");
+    if (!target) throw new Error("Playable game surface is unavailable");
+    const rect = target.getBoundingClientRect();
+    target.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      pointerId: 1,
+      pointerType: "mouse",
+      isPrimary: true,
+      button: 0,
+      buttons: 1,
+      clientX: rect.left + Math.min(120, Math.max(1, rect.width / 2)),
+      clientY: rect.top + Math.min(120, Math.max(1, rect.height / 2))
+    }));
+  });
+}
+
 for (const route of ROUTES) {
   test(`${route} composes one healthy gameplay runtime`, async ({ page }) => {
     const pageErrors = [];
@@ -84,9 +105,13 @@ test("intro resumes the world and opens the click-driven narrative", async ({ pa
   await expect(page.locator("#tutorial-dialogue")).toHaveClass(/open/, { timeout: 8_000 });
   await expect(page.locator(".tutorial-dialogue__advance")).toContainText("CLICK");
 
-  await page.waitForTimeout(280);
-  await page.locator(".game-frame").click({ position: { x: 120, y: 120 } });
-  await page.waitForTimeout(250);
+  const previous = await page.locator(".tutorial-dialogue__text").textContent();
+  await dispatchDialogueAdvance(page);
+  await page.waitForFunction(previousText => {
+    const dialogue = document.getElementById("tutorial-dialogue");
+    const current = document.querySelector(".tutorial-dialogue__text")?.textContent || "";
+    return Boolean(dialogue?.classList.contains("open") && current && current !== previousText);
+  }, previous || "", { timeout: 8_000 });
 
   const gameState = await page.evaluate(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
