@@ -38,6 +38,17 @@ export class ReleaseCandidateHarness {
     throw new Error(`RC harness timed out waiting for ${label}`);
   }
 
+  taskRevealIdle() {
+    const system = this.scene.taskRevealSystem;
+    return Boolean(
+      !this.scene.registry.get("taskRevealActive")
+      && !system?.active
+      && !system?.waiting
+      && !system?.queued
+      && !system?.pollTimer
+    );
+  }
+
   unlockPostTutorialWorld() {
     const director = this.scene.tutorialDirector;
     if (!director) throw new Error("TutorialDirector is unavailable");
@@ -59,7 +70,7 @@ export class ReleaseCandidateHarness {
     this.scene.missionSystem.collectPoliceRoofTip();
 
     await this.waitFor(
-      () => this.scene.missionSystem.step === 1 && !this.scene.registry.get("taskRevealActive"),
+      () => this.scene.missionSystem.step === 1 && this.taskRevealIdle(),
       { label: "informant objective reveal" }
     );
 
@@ -71,7 +82,7 @@ export class ReleaseCandidateHarness {
     this.scene.missionSystem.update();
 
     await this.waitFor(
-      () => this.scene.missionSystem.step === 2 && !this.scene.registry.get("taskRevealActive"),
+      () => this.scene.missionSystem.step === 2 && this.taskRevealIdle(),
       { label: "journalist objective reveal" }
     );
     return this.snapshot();
@@ -102,7 +113,7 @@ export class ReleaseCandidateHarness {
     }
 
     await this.waitFor(
-      () => this.scene.missionSystem.step === 3 && !this.scene.registry.get("taskRevealActive"),
+      () => this.scene.missionSystem.step === 3 && this.taskRevealIdle(),
       { label: "return-to-refuge objective reveal" }
     );
     return this.snapshot();
