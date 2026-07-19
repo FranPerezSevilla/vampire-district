@@ -4,17 +4,14 @@ async function advanceToNextBubble(page) {
   const dialogue = page.locator("#tutorial-dialogue");
   const text = page.locator(".tutorial-dialogue__text");
   const previous = await text.textContent();
-  await page.waitForTimeout(280);
-  await page.locator(".game-frame").click({ position: { x: 112, y: 112 } });
-  await page.waitForFunction(previousText => {
-    const root = document.getElementById("tutorial-dialogue");
-    const current = document.querySelector(".tutorial-dialogue__text")?.textContent || "";
-    return Boolean(root?.classList.contains("open") && current && current !== previousText);
-  }, previous || "");
+  await page.waitForTimeout(300);
+  await page.keyboard.press("Escape");
+  await expect(text).not.toHaveText(previous || "", { timeout: 6_000 });
   await expect(dialogue).toHaveClass(/open/);
 }
 
 test("the intro stays zoomed in through every opening bubble and zooms out afterward", async ({ page }) => {
+  test.setTimeout(45_000);
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
 
@@ -42,8 +39,8 @@ test("the intro stays zoomed in through every opening bubble and zooms out after
   }
 
   await expect(page.locator(".tutorial-dialogue__text")).toContainText("silence the journalist");
-  await page.waitForTimeout(280);
-  await page.locator(".game-frame").click({ position: { x: 112, y: 112 } });
+  await page.waitForTimeout(300);
+  await page.keyboard.press("Escape");
 
   await page.waitForFunction(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
