@@ -48,12 +48,18 @@ export class RuntimeDiagnostics {
     return this.samples.reduce((sum, value) => sum + value, 0) / this.samples.length;
   }
 
+  recentMaxFrameMs() {
+    if (!this.samples.length) return 0;
+    return Math.max(...this.samples);
+  }
+
   snapshot() {
     return {
       owners: Object.fromEntries(this.owners),
       systems: [...this.systems].sort(),
       samples: this.samples.length,
       averageFrameMs: Number(this.averageFrameMs().toFixed(3)),
+      recentMaxFrameMs: Number(this.recentMaxFrameMs().toFixed(3)),
       maxFrameMs: Number(this.maxFrameMs.toFixed(3)),
       conflicts: []
     };
@@ -66,6 +72,7 @@ export class RuntimeDiagnostics {
 
   summary() {
     const avg = this.averageFrameMs();
-    return `Runtime ${this.systems.size} systems · frame ${avg.toFixed(2)} ms avg · ${this.owners.size} owned methods`;
+    const recentMax = this.recentMaxFrameMs();
+    return `Runtime ${this.systems.size} systems · frame ${avg.toFixed(2)} ms avg / ${recentMax.toFixed(2)} ms recent max · ${this.owners.size} owned methods`;
   }
 }
