@@ -69,10 +69,11 @@ export class DrainSystem {
     if (!player || !this.scene.npcSystem) return null;
 
     const director = this.scene.tutorialDirector;
+    const acquisitionRadius = DRAIN_RULES.range + DRAIN_RULES.acquisitionPadding;
     const candidates = this.scene.npcSystem.queryRadius?.(
       player.x,
       player.y,
-      DRAIN_RULES.startRange + 8,
+      acquisitionRadius,
       this.scene.currentLayer
     ) || this.scene.npcSystem.npcs;
     const eligibleCandidates = candidates.filter(npc => {
