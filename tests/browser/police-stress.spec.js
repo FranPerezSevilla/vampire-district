@@ -1,5 +1,22 @@
 import { expect, test } from "@playwright/test";
 
+test("police violence escalates 1 to 2 to 3 without double-counting", async ({ page }) => {
+  const pageErrors = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
+
+  await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_RC_HARNESS_READY));
+
+  const sequence = await page.evaluate(() => window.NBD_RC_HARNESS.policeEscalationSequence());
+  expect(sequence.levels).toEqual([1, 2, 3]);
+  expect(sequence.duplicateLevel).toBe(3);
+  expect(sequence.helicopter).toBe(true);
+  expect(sequence.escalations).toHaveLength(3);
+  expect(sequence.escalations.map(event => event.level)).toEqual([1, 2, 3]);
+  expect(sequence.escalations.map(event => event.neutralized)).toEqual([false, true, true]);
+  expect(pageErrors).toEqual([]);
+});
+
 test("level-three police response stays structurally stable", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
