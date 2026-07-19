@@ -1,12 +1,35 @@
 # Project snapshot
 
-_Last updated: 2026-07-18_
+_Last updated: 2026-07-19_
 
 ## Product vision
 
-**Vampire District** is a top-down urban stealth-action game inspired by the readable city layout, systemic police pressure and immediate navigation of early Grand Theft Auto games, rebuilt around a vampire fantasy.
+**Vampire District** is a top-down urban action, stealth and crime game inspired by the readable city layout, systemic police pressure, vehicles, faction work and immediate navigation of early Grand Theft Auto games, rebuilt around an original vampire setting.
 
-The current vertical slice follows a young vampire carrying out an order from their sire. It teaches traversal, Hunger, feeding, witnesses, police pressure, combat, weapon choice, contextual draining, environmental destruction, AI reactions and the veil through one contained mission.
+The design rule is:
+
+> GTA2-like city structure; Vampire District consequences.
+
+The game should not become a conventional stealth game that merely uses a top-down camera. Streets, traffic, vehicles, weapons, faction territory, short missions and escalating urban chaos remain core long-term pillars. Rooftops, sewers, Hunger, feeding, the Veil, retainers and supernatural politics differentiate the project.
+
+## Original-IP decision
+
+The project will not use names, lore, ranks, symbols, factions or mechanical terminology from an existing licensed vampire setting.
+
+Working faction structure:
+
+- **Blackglass Directorate** — secretive institutional establishment.
+- **Red Assembly** — violent territorial coalition.
+- **Unaligned Houses** — separate independent operators, not one unified sect.
+
+Original enhanced-mortal system:
+
+- neutral system term: **Retainer**;
+- Directorate term: **Proxy**;
+- Assembly term: **Marked**;
+- Unaligned term: **Hand**.
+
+These are working setting names pending commercial trademark clearance. The authoritative design is documented in `ORIGINAL_SETTING_FACTIONS_RETAINERS_ECONOMY.md`.
 
 ## Current playable vertical slice
 
@@ -17,6 +40,7 @@ Implemented:
 - Contextual jumps, drops, fire escapes, sewer access and refuge shaft.
 - Speaker-anchored narrative tutorial advanced with click or Escape.
 - Police-roof informant, journalist objective and mandatory return-to-refuge finale.
+- Sire approval before `REPORT ACCEPTED` in the intended mission order.
 - Objective guidance, Hunger, powers, exposure, evidence and witnesses.
 - Police search, pursuit, melee attacks, escalating reinforcements, arrest and helicopter support.
 - Separate sight and hearing channels, including heard-only `WTF` reactions.
@@ -26,15 +50,16 @@ Implemented:
 - Default running, Shift quiet movement and traversal-only Space.
 - Deterministic route selection and matching world prompt.
 - Damageable streetlights that remove light and create persistent darkness.
-- Three-weapon inventory: Unarmed, Iron Pipe and eight-round Pistol.
+- Prototype three-weapon inventory: Unarmed, Iron Pipe and eight-round Pistol.
 - Mouse-wheel cycling, equipped-weapon/ammo HUD and shared melee/hitscan damage.
 - Resolved per-NPC AI priority, police combat roles, witness interruption and hunter memory.
 - Police/hunter recovery with type-specific delays and restored resilience.
 - First-use wheel guidance after the informant sequence.
 - Recovery countdown labels for downed police and hunters.
 - Optional high-contrast aim, semantic HUD state and reduced-motion UI treatment.
+- Consolidated `GameplayRuntime`, first-class tutorial/task/perception systems, runtime diagnostics and browser smoke-test infrastructure.
 
-## Mission flow
+## Current mission flow
 
 1. Intro establishes the inexperienced vampire.
 2. The sire orders the journalist silenced.
@@ -76,7 +101,7 @@ Implemented:
 - Hearing alone creates attention/orientation, never automatic pursuit or reporting.
 - Confirmed sight overrides heard-only investigation.
 
-## Weapon snapshot
+## Prototype weapon snapshot
 
 | Weapon | Type | Damage | Range | Ammo |
 |---|---|---:|---:|---:|
@@ -89,6 +114,41 @@ Implemented:
 - Every valid shot consumes ammunition, including misses.
 - Empty attacks produce feedback but no tracer, damage or noise.
 - Gunshot sound radius: `280`.
+
+The current all-owned inventory is a vertical-slice convenience. The campaign design replaces it with hard slots, paid ammunition, carried caps and refuge storage.
+
+## Campaign inventory direction
+
+Locked future loadout:
+
+```text
+Unarmed always available
+1 melee slot
+1 sidearm slot
+1 long-gun or special slot
+```
+
+Locked ammunition principles:
+
+- no floating street ammunition pickups;
+- main resupply at refuges and safehouses;
+- ammunition purchased with cash;
+- carried ammunition limits;
+- finite supplier stock;
+- separate carried inventory and refuge stash;
+- authored mission caches only;
+- vehicle trunks provide limited mobile storage;
+- a Quartermaster Retainer can improve supply, not create infinite ammunition.
+
+Initial carry-capacity baselines:
+
+| Ammunition | Maximum carried |
+|---|---:|
+| Pistol | 48 |
+| Submachine gun | 150 |
+| Shotgun | 24 |
+| Special bolts/stakes | 12 |
+| Heavy ammunition | 4–6 |
 
 ## Combat and AI snapshot
 
@@ -114,7 +174,7 @@ Police:
 - other visible officers use deterministic containment slots;
 - containment radii `43`, `49`, `55` at wanted levels 1–3;
 - finite attack leadership and deterministic handoff;
-- existing search, reinforcement, arrest and helicopter behaviour retained.
+- search, reinforcement, arrest and helicopter behaviour.
 
 Witnesses:
 
@@ -141,51 +201,158 @@ Recovery:
 
 Starting a drain suspends recovery. Completed drain or kill resolves the NPC permanently.
 
-## Milestone 9 UX snapshot
+## Faction gameplay direction
 
-- After full tutorial control returns, a non-blocking `WHEEL` strip persists until the first successful weapon change.
-- The weapon HUD pulses during this first-use step, then confirms the equipped weapon and `LMB` attack input.
-- The first recoverable knockdown explains that police and hunters can rise.
-- Downed recoverable enemies show `POLICE RISES Ns` or `HUNTER RISES Ns` using `npc.ai.recoverAt`.
-- The final four seconds use urgent presentation.
-- Labels hide while draining, paused, in a task reveal, dead or no longer downed.
-- Weapon HUD is lower-right; power dock remains lower-left.
-- Pause Menu includes a locally saved high-contrast black-and-white aim toggle.
-- Hunger, wanted state, weapon, prompt, toast and buttons expose meaningful assistive state.
-- `prefers-reduced-motion` removes non-essential HUD/tutorial animation.
-- Both playable routes use `Vampire District`, `Render quality` and current controls.
+### Blackglass Directorate
+
+- covert work;
+- police, hospital, property and media influence;
+- reliable but expensive supplies;
+- discreet vehicles;
+- evidence control;
+- low tolerance for public chaos.
+
+### Red Assembly
+
+- territorial assaults;
+- convoy attacks;
+- intimidation and sabotage;
+- cheaper irregular weapons;
+- stolen or modified vehicles;
+- mobile refuges;
+- high police pressure.
+
+### Unaligned Houses
+
+- separate contact reputation;
+- contract work;
+- information trading;
+- vehicle fencing;
+- specialist equipment;
+- neutral markets;
+- multiple buyers and betrayals.
+
+Reputation is tracked by faction and contact, not through one morality score.
+
+## Retainer direction
+
+Retainers are named mortals maintained through controlled vampire-blood doses. They gain improved recovery and limited supernatural-adjacent benefits, but retain personal agency.
+
+Tracked state:
+
+```text
+Role
+Loyalty
+Dependence
+Exposure
+Condition
+Competence
+Cash upkeep
+Dose due
+Assigned refuge
+Assigned vehicle
+Current task
+```
+
+Initial strategic roles:
+
+- Quartermaster;
+- Driver;
+- Cleaner;
+- Mechanic;
+- Fixer;
+- Scout;
+- Guard;
+- Medic.
+
+Retainers can be injured, captured, exposed, unpaid, disloyal or killed. They are not free permanent buffs.
+
+## Vehicle direction
+
+Vehicles are a core GTA2-like pillar, not a distant optional extra.
+
+Planned minimum loop:
+
+```text
+see vehicle
+→ enter or steal with contextual Space
+→ drive
+→ crash or run targets down
+→ receive vehicle damage
+→ abandon vehicle
+→ continue on foot, rooftops or sewers
+```
+
+Vehicles connect to:
+
+- traffic;
+- police pursuit and roadblocks;
+- faction ownership;
+- missions;
+- trunks and mobile storage;
+- ammunition and weapon transport;
+- Retainer drivers/mechanics;
+- witness, noise and evidence systems.
 
 ## Architecture snapshot
 
-Current major systems:
+Current high-level ownership:
+
+```text
+GameScene.update
+→ GameplayRuntime.update
+```
+
+Current major first-class systems include:
 
 - `InputSystem`
 - `WeaponSystem`
 - `CombatSystem`
 - `PlayerDamageSystem`
-- `AiStateSystem`
 - `DrainSystem`
 - `MovementNoiseSystem`
 - `PropDamageSystem`
+- `SensoryAwarenessSystem`
+- `AiStateSystem`
+- `PoliceViolenceSystem`
+- `TaskRevealSystem`
+- `OutskirtsSystem`
+- `ObjectiveMarkerSystem`
 - `UxGuidanceSystem`
+- `TutorialDirector`
 - specialist NPC, police, witness, mission, feeding, exposure, power, evidence, hunter, interaction and transition systems.
 
-Pure data modules cover input actions, AI, combat, weapons, player damage, drain, movement, traversal, props and UX guidance.
+Milestone 10 added:
 
-Temporary prototype adapters still patch scene/system methods. Milestone 10 will fold them into explicit composition.
+- runtime owner diagnostics;
+- spatial NPC indexing;
+- camera-margin culling;
+- change-aware registry publication;
+- source-ownership regression tests;
+- Playwright browser smoke tests;
+- input-remapping storage/API groundwork.
 
 ## Validation state
 
-Automated pure coverage includes input locks, pointer mapping, melee/resilience, enemy damage, drain eligibility, movement/hearing, traversal scoring, prop damage, weapon cycling/ammo/hitscan, AI priority, police formation, witness interruption, hunter prediction, recovery, first-use guidance, preference parsing and recovery countdown presentation.
+Milestone 10 core code is implemented. Remaining release-candidate requirements:
 
-Manual browser regression remains required across the complete mission, representative viewport sizes, Low/Ultra quality, police formations, recovery labels, first-use timing and accessibility behaviour before Milestones 1–9 become fully complete.
+- unit and Playwright CI green on the same commit;
+- complete mission run on both playable routes;
+- journalist death and drain variants;
+- Low and Ultra render quality;
+- wide, narrow and resized viewports;
+- keyboard/accessibility verification;
+- sustained level-3 police encounter;
+- final deletion of superseded unloaded patch files.
 
 ## Locked design decisions
 
+- Original setting and terminology; no licensed vampire factions or copied lore.
 - Top-down readability over camera-heavy presentation.
+- GTA2-like vehicles, traffic, factions, short missions and urban chaos remain core goals.
 - Vision and hearing are separate channels.
 - Hearing alone does not pursue or report.
-- Space is traversal only; Shift is quiet movement.
+- Space is traversal and vehicle entry/exit; Shift is quiet movement on foot.
 - Hunger is combat attrition and feeding is recovery.
 - NPC resilience leads to downed state.
 - Police/hunters recover; civilians, journalist and thug remain down.
@@ -195,28 +362,35 @@ Manual browser regression remains required across the complete mission, represen
 - Journalist handling requires returning to the refuge.
 - Finale order is sire dialogue, then report.
 - Accessibility presentation must not change hit geometry or gameplay state.
+- Ammunition is limited, paid and mainly managed through refuges/safehouses.
+- Retainers have agency, upkeep and failure states.
+- Unaligned Houses are separate relationships, not one faction reputation.
 
 ## Open design decisions
 
-- Final movement/hearing tuning.
-- Final police, hunter and thug combat values.
-- Final formation, memory and recovery values.
-- Final drain feel.
-- Final weapon balance and pistol replenishment.
-- Whether weapons are found rather than initially owned.
+- Final commercial faction names after trademark clearance.
+- Exact histories, leaders and bloodline taxonomy.
+- Final movement/hearing and combat tuning.
+- Final vehicle physics values and traffic density.
+- Final ammunition prices, caps and restock cadence.
+- Whether detention removes all carried ammunition or a difficulty-dependent percentage.
+- Blood reserve versus direct Hunger cost for Retainer doses.
+- Maximum number of active Retainers.
 - Whether perception visualization remains permanently visible.
 - Future reduced-camera-shake option.
 
 ## Main risks
 
-1. Prototype adapter depth and import-order sensitivity.
-2. Missing automated browser regression.
-3. Specialist movement systems still surround the resolved AI state through adapters.
-4. Hunger damage can create a positive-feedback difficulty spiral.
-5. Screen clutter from perception, objectives, combat and recovery labels.
-6. Hitscan obstruction uses navigation-based line checks.
-7. UI/accessibility behaviour may vary by browser and assistive technology.
+1. Milestone 10 still needs full browser and mission validation.
+2. Vehicle/traffic work can increase world and AI complexity sharply.
+3. Hunger damage can create a positive-feedback difficulty spiral.
+4. Screen clutter from perception, objectives, combat and recovery labels.
+5. Hitscan obstruction still uses navigation-based line checks.
+6. Economy can become either irrelevant or overly punitive without careful tuning.
+7. Retainers can become menu-only bonuses unless missions expose their risk and agency.
+8. Faction names require trademark clearance before commercial announcement.
+9. UI/accessibility behaviour may vary by browser and assistive technology.
 
 ## Immediate project priority
 
-Validate Milestone 9 in-browser: tutorial timing, wheel/trackpad behaviour, HUD separation, recovery countdown alignment, high-contrast aim, keyboard focus, screen-reader labels, resizing, Low/Ultra quality and complete mission compatibility. Then begin Milestone 10 consolidation, browser smoke tests and performance work.
+Complete Milestone 10.1 as a release-candidate stabilization pass. After the current vertical slice is validated, begin Milestone 11: data-driven missions, cash, reputation, persistent inventory and save/load foundations. Vehicles follow immediately as the next major playable pillar.
