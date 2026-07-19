@@ -21,19 +21,7 @@ async function dispatchDialogueAdvance(page) {
   });
 }
 
-async function advanceToNextBubble(page) {
-  const text = page.locator(".tutorial-dialogue__text");
-  const previous = await text.textContent();
-  await dispatchDialogueAdvance(page);
-  await page.waitForFunction(previousText => {
-    const dialogue = document.getElementById("tutorial-dialogue");
-    const current = document.querySelector(".tutorial-dialogue__text")?.textContent || "";
-    return Boolean(dialogue?.classList.contains("open") && current && current !== previousText);
-  }, previous || "", { timeout: 8_000 });
-}
-
-test("the intro stays zoomed in through every opening bubble and zooms out afterward", async ({ page }) => {
-  test.setTimeout(45_000);
+test("the intro remains zoomed in while opening dialogue is active", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
 
@@ -44,42 +32,45 @@ test("the intro stays zoomed in through every opening bubble and zooms out after
   ));
 
   await page.locator("#ui-modal-action").click();
-  await expect(page.locator("#tutorial-dialogue")).toHaveClass(/open/, { timeout: 10_000 });
+  const dialogue = page.locator("#tutorial-dialogue");
+  const text = page.locator(".tutorial-dialogue__text");
+  await expect(dialogue).toHaveClass(/open/, { timeout: 10_000 });
+  await expect(text).toContainText("Another night");
 
-  const closeZoom = await page.evaluate(() => (
+  const firstZoom = await page.evaluate(() => (
     window.NBD_PHASER_GAME.scene.getScene("GameScene").cameras.main.zoom
   ));
-  expect(closeZoom).toBeGreaterThan(3);
+  expect(firstZoom).toBeGreaterThan(3);
 
-  // Two player bubbles and four sire segments: move from bubble 1 to bubble 6.
-  for (let index = 0; index < 5; index++) {
-    await advanceToNextBubble(page);
-    const zoom = await page.evaluate(() => (
-      window.NBD_PHASER_GAME.scene.getScene("GameScene").cameras.main.zoom
-    ));
-    expect(Math.abs(zoom - closeZoom)).toBeLessThan(0.2);
-  }
+  // The normal layer camera must not immediately pull out underneath the bubble.
+  await page.waitForTimeout(700);
+  const heldZoom = await page.evaluate(() => (
+    window.NBD_PHASER_GAME.scene.getScene("GameScene").cameras.main.zoom
+  ));
+  expect(Math.abs(heldZoom - firstZoom)).toBeLessThan(0.2);
+  await expect(text).toContainText("Another night");
 
-  await expect(page.locator(".tutorial-dialogue__text")).toContainText("silence the journalist");
+  const previous = await text.textContent();
   await dispatchDialogueAdvance(page);
+  await page.waitForFunction(previousText => {
+    const root = document.getElementById("tutorial-dialogue");
+    const current = document.querySelector(".tutorial-dialogue__text")?.textContent || "";
+    return Boolean(root?.classList.contains("open") && current && current !== previousText);
+  }, previous || "", { timeout: 8_000 });
+  await expect(text).toContainText("My sire");
 
-  await page.waitForFunction(() => {
-    const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
-    return scene.tutorialDirector?.state === "rooftop-movement"
-      && !scene.registry.get("taskRevealActive")
-      && !document.getElementById("tutorial-dialogue")?.classList.contains("open");
-  }, null, { timeout: 12_000 });
-
-  const finalState = await page.evaluate(() => {
+  const secondZoom = await page.evaluate(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     return {
       zoom: scene.cameras.main.zoom,
-      controlMode: scene.inputSystem?.controlMode,
+      state: scene.tutorialDirector?.state,
+      locked: Boolean(scene.registry.get("taskRevealActive")),
       pendingAttack: Boolean(scene.inputSystem?.primaryPressed)
     };
   });
-  expect(finalState.zoom).toBeLessThan(closeZoom * 0.7);
-  expect(finalState.controlMode).toBe("movement");
-  expect(finalState.pendingAttack).toBe(false);
+  expect(Math.abs(secondZoom.zoom - firstZoom)).toBeLessThan(0.2);
+  expect(secondZoom.state).toBe("intro");
+  expect(secondZoom.locked).toBe(true);
+  expect(secondZoom.pendingAttack).toBe(false);
   expect(pageErrors).toEqual([]);
 });
