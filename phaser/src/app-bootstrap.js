@@ -89,6 +89,7 @@ function showFatalError(error) {
 try {
   await ensurePhaser();
   await import("./main.js");
+  await import("./ui/AccessibilityKeyboardBridge.js");
   await import("./task-reveal-camera.js");
   await import("./tutorial/bootstrap.js");
   if (window.NBD_RC_TEST_MODE) await import("./testing/bootstrap.js");
