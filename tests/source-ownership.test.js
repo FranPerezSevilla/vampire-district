@@ -24,10 +24,9 @@ test("the legacy movement entry no longer loads core runtime patches", async () 
     "ux/milestone9-runtime.js"
   ];
   for (const retired of retiredImports) assert.equal(content.includes(retired), false, retired);
-  assert.equal(content.includes("input/tutorial-input-adapter.js"), true);
 });
 
-test("main bootstrap creates Phaser without patching scene prototypes", async () => {
+test("main creates Phaser without patching scene prototypes", async () => {
   const content = await source("phaser/src/main.js");
   assert.equal(content.includes("GameScene.prototype"), false);
   assert.equal(content.includes("UIScene.prototype"), false);
@@ -53,4 +52,23 @@ test("task, objective and outskirts ownership no longer comes from feature patch
   assert.equal(runtime.includes("new ObjectiveMarkerSystem(scene)"), true);
   assert.equal(runtime.includes("new OutskirtsSystem(scene)"), true);
   assert.equal(runtime.includes("new SensoryAwarenessSystem(scene)"), true);
+});
+
+test("both playable routes use one pinned Phaser bootstrap", async () => {
+  for (const path of ["index.html", "phaser/index.html"]) {
+    const content = await source(path);
+    assert.equal(content.includes("cdn.jsdelivr.net/npm/phaser"), false, path);
+    assert.equal(content.includes("task-reveal-timing.js"), false, path);
+    assert.equal(content.includes("movement-controls.js"), false, path);
+    assert.equal(content.includes("tutorial-flow.js"), false, path);
+    assert.equal(content.includes("app-bootstrap.js"), true, path);
+  }
+
+  const bootstrap = await source("phaser/src/app-bootstrap.js");
+  assert.match(bootstrap, /node_modules\/phaser\/dist\/phaser\.min\.js/);
+  assert.match(bootstrap, /await import\("\.\/main\.js"\)/);
+  assert.match(bootstrap, /NBD_PHASER_SOURCE/);
+
+  const packageJson = JSON.parse(await source("package.json"));
+  assert.equal(packageJson.dependencies.phaser, "3.90.0");
 });
