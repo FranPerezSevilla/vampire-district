@@ -1,0 +1,28 @@
+.weapon-hud {
+  left: auto !important;
+  right: 18px !important;
+  bottom: 18px !important;
+  min-width: 142px !important;
+}
+
+.weapon-hud small,
+.weapon-hud kbd {
+  font-size: 12px !important;
+}
+
+.weapon-hud strong {
+  font-size: 14px !important;
+}
+
+.weapon-hud span {
+  font-size: 13px !important;
+}
+
+@media (max-width: 720px) {
+  .weapon-hud {
+    left: auto !important;
+    right: 10px !important;
+    bottom: 10px !important;
+    min-width: 118px !important;
+  }
+}
