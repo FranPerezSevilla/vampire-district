@@ -1,21 +1,52 @@
 .weapon-hud {
+  position: absolute;
   left: auto !important;
   right: 18px !important;
   bottom: 18px !important;
   min-width: 142px !important;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 2px 12px;
+  padding: 8px 10px;
+  border: 1px solid rgba(241, 230, 255, .18);
+  border-radius: 8px;
+  background: rgba(5, 6, 11, .78);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .24);
+  pointer-events: none;
+  z-index: 7;
 }
 
-.weapon-hud small,
-.weapon-hud kbd {
+.weapon-hud small {
+  grid-column: 1 / -1;
+  color: rgba(215, 200, 255, .62);
   font-size: 12px !important;
+  font-weight: 900;
+  letter-spacing: .15em;
 }
 
 .weapon-hud strong {
+  color: #f1e6ff;
   font-size: 14px !important;
+  line-height: 1;
 }
 
 .weapon-hud span {
+  color: #fff2a8;
   font-size: 13px !important;
+  font-weight: 900;
+}
+
+.weapon-hud.empty span {
+  color: #ff6b7a;
+}
+
+.weapon-hud kbd {
+  position: absolute;
+  right: 8px;
+  top: 6px;
+  color: rgba(241, 230, 255, .42);
+  font-size: 12px !important;
 }
 
 @media (max-width: 720px) {
@@ -24,5 +55,6 @@
     right: 10px !important;
     bottom: 10px !important;
     min-width: 118px !important;
+    padding: 7px 8px;
   }
 }
