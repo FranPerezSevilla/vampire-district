@@ -1,13 +1,35 @@
 import { expect, test } from "@playwright/test";
 
+async function dispatchDialogueAdvance(page) {
+  await page.waitForTimeout(320);
+  await page.evaluate(() => {
+    const target = document.querySelector("#game-root canvas") || document.querySelector(".game-frame");
+    if (!target) throw new Error("Playable game surface is unavailable");
+    const rect = target.getBoundingClientRect();
+    target.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      pointerId: 1,
+      pointerType: "mouse",
+      isPrimary: true,
+      button: 0,
+      buttons: 1,
+      clientX: rect.left + Math.min(112, Math.max(1, rect.width / 2)),
+      clientY: rect.top + Math.min(112, Math.max(1, rect.height / 2))
+    }));
+  });
+}
+
 async function advanceToNextBubble(page) {
-  const dialogue = page.locator("#tutorial-dialogue");
   const text = page.locator(".tutorial-dialogue__text");
   const previous = await text.textContent();
-  await page.waitForTimeout(300);
-  await page.keyboard.press("Escape");
-  await expect(text).not.toHaveText(previous || "", { timeout: 6_000 });
-  await expect(dialogue).toHaveClass(/open/);
+  await dispatchDialogueAdvance(page);
+  await page.waitForFunction(previousText => {
+    const dialogue = document.getElementById("tutorial-dialogue");
+    const current = document.querySelector(".tutorial-dialogue__text")?.textContent || "";
+    return Boolean(dialogue?.classList.contains("open") && current && current !== previousText);
+  }, previous || "", { timeout: 8_000 });
 }
 
 test("the intro stays zoomed in through every opening bubble and zooms out afterward", async ({ page }) => {
@@ -39,8 +61,7 @@ test("the intro stays zoomed in through every opening bubble and zooms out after
   }
 
   await expect(page.locator(".tutorial-dialogue__text")).toContainText("silence the journalist");
-  await page.waitForTimeout(300);
-  await page.keyboard.press("Escape");
+  await dispatchDialogueAdvance(page);
 
   await page.waitForFunction(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
