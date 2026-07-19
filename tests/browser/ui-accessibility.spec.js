@@ -1,33 +1,11 @@
 import { expect, test } from "@playwright/test";
 
 test("pause menu exposes a persistent keyboard-operable high-contrast aim option", async ({ page }) => {
-  await page.goto("/", { waitUntil: "domcontentloaded" });
-  await page.waitForFunction(() => Boolean(window.NBD_PHASER_GAME?.scene?.getScene?.("UIScene")?.dom));
-
-  await page.locator("#ui-modal-action").click();
-  await page.waitForFunction(() => Boolean(window.NBD_PHASER_GAME?.scene?.getScene?.("GameScene")?.tutorialDirector?.started));
-
-  // Complete the opening dialogue chain quickly; the test only needs full UI control.
-  for (let index = 0; index < 8; index++) {
-    const open = await page.locator("#tutorial-dialogue.open").count();
-    if (!open) {
-      await page.waitForTimeout(200);
-      continue;
-    }
-    await page.locator(".game-frame").click({ position: { x: 80, y: 80 } });
-    await page.waitForTimeout(180);
-  }
-
+  await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_RC_HARNESS_READY));
   await page.evaluate(() => {
-    const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
-    const director = scene.tutorialDirector;
-    director?.freezeWorld?.(false);
-    if (director) {
-      director.state = "complete";
-      director.busy = false;
-      director.setControlMode?.("full");
-      director.setTip?.("", "");
-    }
+    window.NBD_RC_HARNESS.unlockPostTutorialWorld();
+    return true;
   });
 
   await page.keyboard.press("h");
@@ -48,14 +26,14 @@ test("pause menu exposes a persistent keyboard-operable high-contrast aim option
   expect(stored).toEqual({ registry: true, storage: "true" });
 
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForFunction(() => Boolean(window.NBD_PHASER_GAME?.scene?.getScene?.("UIScene")?.dom));
+  await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_PHASER_GAME?.scene?.getScene?.("UIScene")?.dom));
   expect(await page.evaluate(() => window.NBD_PHASER_GAME.scene.getScene("UIScene").registry.get("aimHighContrast"))).toBe(true);
 });
 
 test("HUD regions expose semantic state and remain separated on a narrow viewport", async ({ page }) => {
   await page.setViewportSize({ width: 700, height: 720 });
-  await page.goto("/phaser/", { waitUntil: "domcontentloaded" });
-  await page.waitForFunction(() => Boolean(window.NBD_PHASER_GAME?.scene?.getScene?.("UIScene")?.dom));
+  await page.goto("/phaser/?rcTest=1", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_PHASER_GAME?.scene?.getScene?.("UIScene")?.dom));
 
   await expect(page.locator(".hud-vitals")).toHaveAttribute("role", "progressbar");
   await expect(page.locator(".hud-vitals")).toHaveAttribute("aria-valuemin", "0");
