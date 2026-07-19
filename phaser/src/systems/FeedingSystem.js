@@ -3,7 +3,6 @@ import { NPC_TYPES } from "../data/npcs.js";
 import { resolveAction } from "./ActionSystem.js";
 import { RawAudio } from "./RawAudioSystem.js";
 
-const ATTACK_RADIUS = 26;
 const STUN_SECONDS = 5.8;
 
 export class FeedingSystem {
@@ -26,50 +25,11 @@ export class FeedingSystem {
   }
 
   collectInteractions() {
-    if (this.active) return [];
-
-    const npc = this.scene.npcSystem.nearestAttackable(
-      this.scene.player.x,
-      this.scene.player.y,
-      this.scene.currentLayer,
-      ATTACK_RADIUS
-    );
-    if (!npc) return [];
-
-    const distance = Phaser.Math.Distance.Between(this.scene.player.x, this.scene.player.y, npc.x, npc.y);
-    const options = [];
-
-    if (npc.type !== NPC_TYPES.RAT && npc.stunnedTimer <= 0) {
-      options.push({
-        id: `stun_${npc.id}`,
-        type: "stun",
-        label: `Stun ${this.targetName(npc)}`,
-        detail: npc.type === NPC_TYPES.THUG ? "opens police roof jump temporarily" : "non-lethal · temporary control · small noise",
-        priority: npc.type === NPC_TYPES.THUG ? 132 : 118,
-        distance,
-        x: npc.x,
-        y: npc.y,
-        target: npc,
-        run: () => this.stun(npc)
-      });
-    }
-
-    if (npc.type !== NPC_TYPES.RAT) {
-      options.push({
-        id: `kill_${npc.id}`,
-        type: "kill",
-        label: `Kill ${this.targetName(npc)}`,
-        detail: npc.type === NPC_TYPES.THUG ? "opens police roof jump · lethal" : "lethal · noisy · leaves body · no hunger relief",
-        priority: npc.type === NPC_TYPES.THUG ? 128 : npc.type === NPC_TYPES.TARGET ? 122 : 106,
-        distance,
-        x: npc.x,
-        y: npc.y,
-        target: npc,
-        run: () => this.kill(npc)
-      });
-    }
-
-    return options;
+    // Combat is deliberately absent from E. Left mouse attacks with the equipped
+    // weapon and right mouse drains a valid target. These public methods remain
+    // available to mission logic and automated scenarios without creating a
+    // second player-input path.
+    return [];
   }
 
   addPassiveHunger(dt) {
