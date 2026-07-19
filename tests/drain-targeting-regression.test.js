@@ -99,3 +99,25 @@ test("the tutorial does not expose the rooftop thug as drainable while standing"
 
   assert.equal(system.findCandidate(), null);
 });
+
+test("holding RMB during attack recovery starts the drain when combat becomes available", () => {
+  const candidate = { npc: downedThug(), kind: DRAIN_KINDS.DOWNED };
+  let starts = 0;
+  const system = Object.create(DrainSystem.prototype);
+  system.scene = { feedingSystem: { active: null } };
+  system.findCandidate = () => candidate;
+  system.canStart = frame => Boolean(frame.drainHeld);
+  system.startDrain = selected => {
+    assert.equal(selected, candidate);
+    starts++;
+  };
+  system.rejectDrain = () => assert.fail("a valid held drain must not be rejected");
+  system.draw = () => {};
+
+  system.update(0, {
+    drainHeld: true,
+    drainPressed: false
+  });
+
+  assert.equal(starts, 1);
+});
