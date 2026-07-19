@@ -1,4 +1,6 @@
+import { COMBAT_STATES } from "../data/combat.js";
 import { LAYERS } from "../data/district.js";
+import { NPC_TYPES } from "../data/npcs.js";
 
 const CLUB_ENTRY = Object.freeze({ x: 642, y: 404 });
 const REFUGE = Object.freeze({ x: 150, y: 146 });
@@ -26,6 +28,9 @@ export class ReleaseCandidateHarness {
     });
     gameScene.events?.on?.("police:violence-escalated", payload => {
       this.events.push({ type: "police-violence-escalated", payload, at: performance.now() });
+    });
+    gameScene.events?.on?.("combat:entity-recovered", payload => {
+      this.events.push({ type: "entity-recovered", payload, at: performance.now() });
     });
   }
 
@@ -138,51 +143,177 @@ export class ReleaseCandidateHarness {
       "RC test: police escalation sequence."
     );
 
-    const officers = this.scene.policeSystem.police();
-    if (officers.length < 2) throw new Error("At least two police officers are required");
-    const [first, second] = officers;
-    const levels = [];
+    const police = this.scene.policeSystem;
+    const originalTriggerArrest = police.triggerArrest.bind(police);
+    police.triggerArrest = reason => {
+      this.events.push({ type: "escalation-arrest-would-trigger", payload: { reason }, at: performance.now() });
+    };
 
-    this.scene.events.emit("combat:hit", {
-      targetId: first.id,
-      weaponId: "unarmed",
-      downed: false
-    });
-    levels.push(this.scene.exposureSystem.level());
+    try {
+      const officers = police.police();
+      if (officers.length < 2) throw new Error("At least two police officers are required");
+      const [first, second] = officers;
+      const levels = [];
 
-    this.scene.events.emit("combat:hit", {
-      targetId: first.id,
-      weaponId: "unarmed",
-      downed: true
-    });
-    levels.push(this.scene.exposureSystem.level());
+      this.scene.events.emit("combat:hit", {
+        targetId: first.id,
+        weaponId: "unarmed",
+        downed: false
+      });
+      levels.push(this.scene.exposureSystem.level());
 
-    this.scene.events.emit("combat:hit", {
-      targetId: second.id,
-      weaponId: "pipe",
-      downed: true
-    });
-    levels.push(this.scene.exposureSystem.level());
+      this.scene.events.emit("combat:hit", {
+        targetId: first.id,
+        weaponId: "unarmed",
+        downed: true
+      });
+      levels.push(this.scene.exposureSystem.level());
 
-    this.scene.events.emit("combat:entity-neutralized", {
-      targetId: first.id,
-      weaponId: "drain",
-      kind: "drained"
-    });
-    const duplicateLevel = this.scene.exposureSystem.level();
+      this.scene.events.emit("combat:hit", {
+        targetId: second.id,
+        weaponId: "pipe",
+        downed: true
+      });
+      levels.push(this.scene.exposureSystem.level());
 
-    await this.waitFor(
-      () => this.scene.policeSystem.helicopter.active,
-      { timeoutMs: 4_000, label: "helicopter after level-three escalation" }
+      this.scene.events.emit("combat:entity-neutralized", {
+        targetId: first.id,
+        weaponId: "drain",
+        kind: "drained"
+      });
+      const duplicateLevel = this.scene.exposureSystem.level();
+
+      await this.waitFor(
+        () => police.helicopter.active,
+        { timeoutMs: 4_000, label: "helicopter after level-three escalation" }
+      );
+
+      return {
+        levels,
+        duplicateLevel,
+        helicopter: Boolean(police.helicopter.active),
+        escalations: this.events
+          .filter(event => event.type === "police-violence-escalated")
+          .map(event => event.payload)
+      };
+    } finally {
+      police.triggerArrest = originalTriggerArrest;
+    }
+  }
+
+  async policeRecoverySequence() {
+    this.unlockPostTutorialWorld();
+    this.scene.switchLayer(
+      LAYERS.STREET,
+      { x: 110, y: 110 },
+      "RC test: police recovery sequence."
     );
 
+    const officer = this.scene.policeSystem.police()[0];
+    if (!officer) throw new Error("A police officer is required for recovery testing");
+    const recoveryEventsBefore = this.events.filter(event => event.type === "entity-recovered").length;
+
+    this.scene.combatSystem.knockDown(officer, {
+      id: "rc-recovery",
+      name: "RC Recovery Hit",
+      staggerMs: 100,
+      witnessSeverity: 0
+    });
+
+    await this.waitFor(
+      () => officer.combat?.state === COMBAT_STATES.DOWNED
+        && Number.isFinite(officer.ai?.recoverAt)
+        && officer.ai.recoverAt > 0,
+      { label: "police recovery timer" }
+    );
+    const scheduledDelayMs = Math.max(0, officer.ai.recoverAt - this.scene.time.now);
+
+    await this.waitFor(
+      () => officer.combat?.state === COMBAT_STATES.STAGGERED
+        && officer.combat?.resilience === 2,
+      { timeoutMs: 2_000, label: "police recovery" }
+    );
+
+    const recoveryEvents = this.events.filter(event => event.type === "entity-recovered");
     return {
-      levels,
-      duplicateLevel,
-      helicopter: Boolean(this.scene.policeSystem.helicopter.active),
-      escalations: this.events
-        .filter(event => event.type === "police-violence-escalated")
-        .map(event => event.payload)
+      officerId: officer.id,
+      scheduledDelayMs,
+      state: officer.combat.state,
+      resilience: officer.combat.resilience,
+      maxResilience: officer.combat.maxResilience,
+      recoveredEventsAdded: recoveryEvents.length - recoveryEventsBefore,
+      lastRecovery: recoveryEvents.at(-1)?.payload || null
+    };
+  }
+
+  perceptionSplitSequence() {
+    this.unlockPostTutorialWorld();
+    const source = { x: 500, y: 320, layer: LAYERS.STREET };
+    this.scene.switchLayer(LAYERS.STREET, source, "RC test: sight and hearing split.");
+
+    const civilians = this.scene.npcSystem.npcs.filter(npc => (
+      npc.type === NPC_TYPES.CIVILIAN
+      && !npc.dead
+      && !npc.inactive
+      && !npc.hiddenBody
+      && !npc.intercepted
+    ));
+    if (civilians.length < 2) throw new Error("Two civilians are required for perception testing");
+    const [viewer, listener] = civilians;
+
+    const prepare = npc => {
+      npc.layer = LAYERS.STREET;
+      npc.dead = false;
+      npc.inactive = false;
+      npc.intercepted = false;
+      npc.hiddenBody = false;
+      npc.alarmed = false;
+      npc.hasReported = false;
+      npc.reportTarget = null;
+      npc.reportSeverity = 0;
+      npc.witnessReason = "";
+      npc.witnessSource = null;
+      npc.masqueradeRisk = false;
+      npc.reactionTimer = 0;
+      npc.soundReactionTimer = 0;
+      npc.chasingPlayer = false;
+      npc.enemyAttack = null;
+      npc.stunnedTimer = 0;
+      if (npc.combat) npc.combat.state = COMBAT_STATES.ACTIVE;
+    };
+    prepare(viewer);
+    prepare(listener);
+
+    viewer.x = 450;
+    viewer.y = 320;
+    viewer.dirX = 1;
+    viewer.dirY = 0;
+    listener.x = 500;
+    listener.y = 410;
+    listener.dirX = 1;
+    listener.dirY = 0;
+    viewer.container?.setPosition?.(viewer.x, viewer.y);
+    listener.container?.setPosition?.(listener.x, listener.y);
+    this.scene.npcSystem.rebuildSpatialIndex?.();
+
+    const summary = this.scene.sensoryAwarenessSystem.emit("roofDrop", source);
+    return {
+      summary,
+      viewer: {
+        id: viewer.id,
+        alarmed: Boolean(viewer.alarmed),
+        reportTarget: viewer.reportTarget?.id || null,
+        soundReactionTimer: viewer.soundReactionTimer || 0,
+        chasingPlayer: Boolean(viewer.chasingPlayer)
+      },
+      listener: {
+        id: listener.id,
+        alarmed: Boolean(listener.alarmed),
+        reportTarget: listener.reportTarget?.id || null,
+        soundReactionTimer: listener.soundReactionTimer || 0,
+        chasingPlayer: Boolean(listener.chasingPlayer),
+        wtfVisible: Boolean(listener.__nbdWtfLabel?.visible)
+      }
     };
   }
 
