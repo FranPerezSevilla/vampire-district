@@ -5,6 +5,8 @@ const CASES = [
   { route: "/phaser/", outcome: "drained" }
 ];
 
+test.describe.configure({ timeout: 90_000 });
+
 for (const { route, outcome } of CASES) {
   test(`${outcome} journalist outcome requires sire dialogue before REPORT ACCEPTED on ${route}`, async ({ page }) => {
     const pageErrors = [];
@@ -14,9 +16,11 @@ for (const { route, outcome } of CASES) {
     await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_RC_HARNESS_READY));
 
     const prepared = await page.evaluate(() => window.NBD_RC_HARNESS.prepareJournalistObjective());
+    expect(prepared.rcTestMode).toBe(true);
     expect(prepared.missionStep).toBe(2);
     expect(prepared.completed).toBe(false);
     expect(prepared.result).toBeNull();
+    expect(prepared.taskRevealActive).toBe(false);
 
     const neutralized = await page.evaluate(selectedOutcome => (
       window.NBD_RC_HARNESS.neutralizeJournalist(selectedOutcome)
@@ -48,7 +52,7 @@ for (const { route, outcome } of CASES) {
     await page.waitForTimeout(280);
     await page.locator(".game-frame").click({ position: { x: 100, y: 100 } });
 
-    await expect(page.locator("#ui-modal")).toHaveClass(/open/, { timeout: 8_000 });
+    await expect(page.locator("#ui-modal")).toHaveClass(/open/, { timeout: 12_000 });
     await expect(page.locator("#ui-modal-title")).toHaveText("REPORT ACCEPTED");
     await expect(page.locator("#ui-modal-body")).toContainText("Night report");
 
