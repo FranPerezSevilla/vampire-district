@@ -6,11 +6,7 @@
   <title>Vampire District</title>
   <link rel="stylesheet" href="./styles.css" />
   <style>
-    :root {
-      --game-width: 1440px;
-      --game-height: 960px;
-    }
-
+    :root { --game-width: 1440px; --game-height: 960px; }
     .shell { width: min(var(--game-width), calc(100vw - 28px)); }
     .topbar-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
     .resolution-control { min-height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 8px 6px 11px; border: 1px solid rgba(241, 230, 255, .20); border-radius: 10px; background: rgba(255, 255, 255, .04); color: #9d93b8; font-size: 12px; font-weight: 700; }
@@ -43,7 +39,6 @@
 
     <section class="game-frame" aria-label="Playable Vampire District vertical slice">
       <div id="game-root"></div>
-
       <div id="game-ui" class="game-ui" aria-label="Game HUD">
         <div class="hud-vitals" aria-label="Vampire hunger">
           <div class="blood-sigil" aria-hidden="true"><span></span></div>
@@ -98,11 +93,6 @@
     </section>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
-  <script type="module" src="./src/task-reveal-timing.js"></script>
-  <script type="module" src="./src/movement-controls.js"></script>
-  <script type="module" src="./src/main.js"></script>
-  <script type="module" src="./src/task-reveal-camera.js"></script>
-  <script type="module" src="./src/tutorial-flow.js"></script>
+  <script type="module" src="./src/app-bootstrap.js"></script>
 </body>
 </html>
