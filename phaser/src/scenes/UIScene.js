@@ -31,6 +31,16 @@ function storeAimContrast(enabled) {
   }
 }
 
+function isTextEntryTarget(target) {
+  const tag = String(target?.tagName || "").toUpperCase();
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || Boolean(target?.isContentEditable);
+}
+
+function isActivatableTarget(target) {
+  const tag = String(target?.tagName || "").toUpperCase();
+  return tag === "BUTTON" || tag === "A" || tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA";
+}
+
 export class UIScene extends Phaser.Scene {
   constructor() {
     super("UIScene");
@@ -45,16 +55,12 @@ export class UIScene extends Phaser.Scene {
     this.lastUiPaused = null;
     this.lastMissionMarkup = "";
     this.lastInteractionMarkup = "";
+    this.lastModalBodyHtml = "";
+    this.pauseSnapshot = null;
+    this.onDomKeyDown = null;
   }
 
   create() {
-    this.keys = this.input.keyboard.addKeys({
-      help: Phaser.Input.Keyboard.KeyCodes.H,
-      mission: Phaser.Input.Keyboard.KeyCodes.M,
-      escape: Phaser.Input.Keyboard.KeyCodes.ESC,
-      enter: Phaser.Input.Keyboard.KeyCodes.ENTER
-    });
-
     this.bindDom();
     this.openModal("intro");
     this.updateUiPause();
@@ -156,12 +162,18 @@ export class UIScene extends Phaser.Scene {
       this.setAttributeIfChanged(button, "aria-pressed", enabled ? "true" : "false");
       button.textContent = `High-contrast aim: ${enabled ? "On" : "Off"}`;
     });
+
+    this.onDomKeyDown = event => this.handleDomKeyDown(event);
+    window.addEventListener("keydown", this.onDomKeyDown);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (this.onDomKeyDown) window.removeEventListener("keydown", this.onDomKeyDown);
+      this.onDomKeyDown = null;
+    });
   }
 
   update() {
     const data = this.readState();
     this.updateMissionResult(data);
-    this.handleKeys();
     this.renderHud(data);
     this.renderMission(data);
     this.renderPowers(data.powersText);
@@ -204,28 +216,52 @@ export class UIScene extends Phaser.Scene {
     };
   }
 
-  handleKeys() {
-    if (this.registry.get("taskRevealActive")) return;
+  handleDomKeyDown(event) {
+    if (event.defaultPrevented || event.repeat || isTextEntryTarget(event.target)) return;
+    const code = event.code;
 
-    if (Phaser.Input.Keyboard.JustDown(this.keys.enter)) {
-      if (this.introOpen) this.closeIntro();
-      else if (this.resultOpen && this.resultType === "success") this.closeResult();
+    // Let the browser activate focused buttons and links with Enter/Space. The
+    // corresponding click handler owns those controls and must not be pre-empted.
+    if ((code === "Enter" || code === "Space") && isActivatableTarget(event.target)) return;
+
+    let handled = false;
+    if (code === "Enter") {
+      if (this.introOpen) {
+        this.closeIntro();
+        handled = true;
+      } else if (this.resultOpen && this.resultType === "success") {
+        this.closeResult();
+        handled = true;
+      }
+    } else if (code === "KeyM") {
+      if (!this.modalBlocksInput() && !this.registry.get("taskRevealActive")) {
+        this.toggleMissionDrawer();
+        handled = true;
+      }
+    } else if (code === "KeyH") {
+      if (!this.introOpen && !this.resultOpen && !this.registry.get("taskRevealActive")) {
+        this.togglePause();
+        handled = true;
+      }
+    } else if (code === "Escape") {
+      if (this.resultOpen && this.resultType === "success") {
+        this.closeResult();
+        handled = true;
+      } else if (this.pauseOpen) {
+        this.closePause();
+        handled = true;
+      } else if (this.missionOpen) {
+        this.closeMissionDrawer();
+        handled = true;
+      } else if (this.introOpen) {
+        this.closeIntro();
+        handled = true;
+      }
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.keys.mission) && !this.modalBlocksInput()) {
-      this.toggleMissionDrawer();
-    }
-
-    if (Phaser.Input.Keyboard.JustDown(this.keys.help) && !this.resultOpen && !this.introOpen) {
-      this.togglePause();
-    }
-
-    if (Phaser.Input.Keyboard.JustDown(this.keys.escape)) {
-      if (this.resultOpen && this.resultType === "success") this.closeResult();
-      else if (this.pauseOpen) this.closePause();
-      else if (this.missionOpen) this.closeMissionDrawer();
-      else if (this.introOpen) this.closeIntro();
-    }
+    if (!handled) return;
+    event.preventDefault();
+    event.stopPropagation();
   }
 
   renderHud(data) {
@@ -383,7 +419,8 @@ export class UIScene extends Phaser.Scene {
     }
 
     if (this.pauseOpen) {
-      const bindings = data.inputBindings?.bindings || {};
+      const pauseData = this.pauseSnapshot || data;
+      const bindings = pauseData.inputBindings?.bindings || {};
       const key = (action, fallback) => bindingLabel(bindings[action] || fallback);
       this.setModal(
         "Pause Menu",
@@ -392,7 +429,7 @@ export class UIScene extends Phaser.Scene {
            Combat: mouse aims · left-click uses equipped weapon · mouse wheel changes weapon · hold right-click to drain<br>
            Traversal: ${key("traverse", "SPACE")} near a route · Interact: ${key("interact", "E")} for dialogue, clues and evidence<br>
            Powers: ${key("dash", "Q")} Dash · ${key("whisper", "R")} Whisper · ${key("sense", "F")} Blood Sense · M Mission</p>
-         <p><strong>Stats</strong></p><pre>${this.escapeHtml(this.statsText(data))}</pre>
+         <p><strong>Stats</strong></p><pre>${this.escapeHtml(this.statsText(pauseData))}</pre>
          ${this.accessibilityMarkup()}`,
         "Close · H / Esc"
       );
@@ -414,9 +451,11 @@ export class UIScene extends Phaser.Scene {
 
   setModal(title, bodyHtml, actionLabel) {
     const visibleTitle = title === "Night Blood District" ? "Vampire District" : title;
+    const body = String(bodyHtml || "");
     this.setText(this.dom.modalTitle, visibleTitle);
-    if (this.dom.modalBody && this.dom.modalBody.innerHTML !== String(bodyHtml || "")) {
-      this.dom.modalBody.innerHTML = String(bodyHtml || "");
+    if (this.dom.modalBody && this.lastModalBodyHtml !== body) {
+      this.lastModalBodyHtml = body;
+      this.dom.modalBody.innerHTML = body;
     }
     this.setText(this.dom.modalAction, actionLabel);
   }
@@ -451,21 +490,31 @@ export class UIScene extends Phaser.Scene {
   }
 
   togglePause() {
-    if (this.introOpen || this.resultOpen || this.registry.get("taskRevealActive")) return;
+    if (this.introOpen || this.resultOpen || this.registry.get("taskRevealActive")) return false;
     this.pauseOpen = !this.pauseOpen;
-    if (this.pauseOpen) this.closeMissionDrawer();
+    if (this.pauseOpen) {
+      this.pauseSnapshot = this.readState();
+      this.closeMissionDrawer();
+    } else {
+      this.pauseSnapshot = null;
+    }
     this.updateUiPause();
+    return true;
   }
 
   closePause() {
+    if (!this.pauseOpen) return false;
     this.pauseOpen = false;
+    this.pauseSnapshot = null;
     this.updateUiPause();
+    return true;
   }
 
   openResult(type) {
     this.resultOpen = true;
     this.resultType = type;
     this.pauseOpen = false;
+    this.pauseSnapshot = null;
     this.missionOpen = false;
     if (type === "failure") this.resultDismissed = false;
     this.updateUiPause();
