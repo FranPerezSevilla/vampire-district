@@ -13,6 +13,7 @@ export class ReleaseCandidateHarness {
     this.uiScene = uiScene;
     this.events = [];
     this.startedAt = performance.now();
+    this.originalTriggerArrest = null;
 
     gameScene.events?.on?.("mission:return-finale-started", payload => {
       this.events.push({ type: "return-finale-started", payload, at: performance.now() });
@@ -38,8 +39,8 @@ export class ReleaseCandidateHarness {
     const director = this.scene.tutorialDirector;
     if (!director) throw new Error("TutorialDirector is unavailable");
 
-    // This is an explicit test-only shortcut. Mission progression below still
-    // uses public gameplay APIs rather than assigning mission.step directly.
+    // Explicit test-only shortcut: mission progression below still uses public
+    // gameplay APIs rather than assigning mission.step directly.
     director.started = true;
     director.introPromise ||= Promise.resolve();
     director.finishTutorial();
@@ -118,21 +119,36 @@ export class ReleaseCandidateHarness {
     director.finishTutorial();
     if (this.uiScene.introOpen) this.uiScene.closeIntro();
 
+    const police = this.scene.policeSystem;
+    if (!this.originalTriggerArrest) {
+      this.originalTriggerArrest = police.triggerArrest.bind(police);
+      police.triggerArrest = reason => {
+        this.events.push({ type: "stress-arrest-would-trigger", payload: { reason }, at: performance.now() });
+      };
+    }
+
     this.scene.switchLayer(
       LAYERS.STREET,
       { x: 488, y: 326 },
       "RC stress: central crossroad."
     );
     this.scene.exposureSystem.forceLevel(3, "RC stress scenario: maximum police response.");
-    this.scene.policeSystem.spawnForExposure(3);
+    police.spawnForExposure(3);
 
     await this.waitFor(
       () => this.scene.exposureSystem.level() >= 3
-        && this.scene.policeSystem.police().length >= 6
-        && this.scene.policeSystem.helicopter.active,
+        && police.police().length >= 6
+        && police.helicopter.active,
       { timeoutMs: 5_000, label: "level-three police response" }
     );
     return this.stressSnapshot();
+  }
+
+  stopPoliceStress() {
+    if (this.originalTriggerArrest) {
+      this.scene.policeSystem.triggerArrest = this.originalTriggerArrest;
+      this.originalTriggerArrest = null;
+    }
   }
 
   stressSnapshot() {
@@ -146,6 +162,7 @@ export class ReleaseCandidateHarness {
       dialogueNodes: document.querySelectorAll("#tutorial-dialogue").length,
       taskRevealNodes: document.querySelectorAll("#task-reveal").length,
       weaponHudNodes: document.querySelectorAll(".weapon-hud").length,
+      arrestAttempts: this.events.filter(event => event.type === "stress-arrest-would-trigger").length,
       diagnostics
     };
   }
