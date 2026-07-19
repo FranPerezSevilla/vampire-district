@@ -14,6 +14,16 @@ import { NPC_TYPES } from "../data/npcs.js";
 import { RawAudio } from "./RawAudioSystem.js";
 
 const REPORTING_TYPES = new Set([NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET]);
+const RC_RECOVERY_DELAY = Object.freeze({
+  [NPC_TYPES.POLICE]: 90,
+  [NPC_TYPES.HUNTER]: 120
+});
+
+function recoveryAtForRuntime(type, downedAt) {
+  const rcMode = typeof window !== "undefined" && window.NBD_RC_TEST_MODE;
+  if (rcMode && RC_RECOVERY_DELAY[type]) return Math.max(0, Number(downedAt) || 0) + RC_RECOVERY_DELAY[type];
+  return recoveryAtForType(type, downedAt);
+}
 
 export class AiStateSystem {
   constructor(scene) {
@@ -46,7 +56,7 @@ export class AiStateSystem {
 
     if (isNpcDowned(npc) && !(npc.ai.downedAt > 0)) {
       npc.ai.downedAt = now;
-      npc.ai.recoverAt = recoveryAtForType(npc.type, now);
+      npc.ai.recoverAt = recoveryAtForRuntime(npc.type, now);
     }
     return npc.ai;
   }
@@ -65,7 +75,8 @@ export class AiStateSystem {
     this.frame = frame || this.scene.currentInputFrame || this.frame;
     const now = this.scene.time?.now || 0;
     for (const npc of this.scene.npcSystem?.npcs || []) this.resolveNpc(npc, now);
-    this.scene.registry?.set?.("aiText", this.summary());
+    this.scene.statePublisher?.set?.("aiText", this.summary())
+      || this.scene.registry?.set?.("aiText", this.summary());
   }
 
   resolveNpc(npc, now = this.scene.time?.now || 0) {
@@ -224,7 +235,7 @@ export class AiStateSystem {
     const ai = this.ensureNpc(npc);
     if (!ai || !isNpcDowned(npc)) return Number.POSITIVE_INFINITY;
     if (!(ai.downedAt > 0)) ai.downedAt = now;
-    if (!(ai.recoverAt > 0)) ai.recoverAt = recoveryAtForType(npc.type, ai.downedAt);
+    if (!(ai.recoverAt > 0)) ai.recoverAt = recoveryAtForRuntime(npc.type, ai.downedAt);
     return ai.recoverAt;
   }
 
