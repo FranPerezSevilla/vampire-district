@@ -42,9 +42,12 @@ export class DrainSystem {
       return;
     }
 
-    if (frame?.drainPressed && this.canStart(frame)) {
+    // RMB is a held action. If the player presses it during the final attack
+    // recovery frame, keep it armed and begin as soon as combat releases the
+    // input instead of forcing an unexplained release-and-click retry.
+    if (frame?.drainHeld && this.canStart(frame)) {
       if (this.candidate) this.startDrain(this.candidate);
-      else this.rejectDrain();
+      else if (frame.drainPressed) this.rejectDrain();
     }
 
     this.draw(frame);
