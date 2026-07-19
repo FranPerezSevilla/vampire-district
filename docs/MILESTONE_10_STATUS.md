@@ -1,10 +1,23 @@
 # Milestone 10 status
 
-_Last updated: 2026-07-18_
+_Last updated: 2026-07-19_
 
 ## Status
 
-**🟡 Core implementation complete; automated CI confirmation and full browser/mission regression pending.**
+**🟡 Core implementation and automated CI validation complete; final manual acceptance and dead-code cleanup pending.**
+
+Validated gameplay source:
+
+```text
+f64837e6eab2ec58397593ec8033afb3b8a70eb1
+```
+
+GitHub Actions validation run 3 passed both jobs:
+
+```text
+unit-tests    ✅
+browser-smoke ✅
+```
 
 ## Delivered
 
@@ -31,39 +44,56 @@ _Last updated: 2026-07-18_
 - Pure tests for bindings, spatial queries, registry publication and runtime ownership.
 - Source tests preventing the old bootstrap stack from returning.
 - Direct PoliceSystem regression tests.
-- Playwright Chromium smoke tests for `/` and `/phaser/`.
-- GitHub Actions unit-test and browser-smoke jobs.
+- Playwright Chromium coverage for `/` and `/phaser/`.
+- Killed and drained journalist golden paths.
+- Sire dialogue before `REPORT ACCEPTED`.
+- Police alert 1 → 2 → 3, helicopter and duplicate-neutralization coverage.
+- Police recovery and sight/hearing split coverage.
+- Pause/task input locks, Low/Ultra, resizing, accessibility and narrow HUD coverage.
+- GitHub Actions unit-test and browser-smoke jobs passing on the validated source.
 
 ### Input groundwork
 
 - Persistable keyboard-binding contract.
 - Normalization, labels, conflict detection, load/save/reset helpers.
 - Published binding snapshot used by pause-menu control copy.
+- Deterministic DOM ownership for H, M, Escape and Enter UI commands.
 - Complete player-facing remapping UI remains a later product decision.
 
 ## Current validation boundary
 
-The code and automated suites are committed, but this status remains 🟡 until the same target commit has:
+Automated release-candidate acceptance is green. Milestone 10 remains 🟡 until the manual pass confirms:
 
-1. a confirmed passing unit-test CI job;
-2. a confirmed passing Playwright Chromium job;
-3. a complete manual mission run on both playable routes;
-4. Low and Ultra render-quality passes;
-5. wide, narrow and resized viewport passes;
-6. keyboard/accessibility verification;
-7. a sustained level-3 police encounter performance check.
+1. one complete mission on `/`;
+2. one complete mission on `/phaser/`;
+3. normal-speed intro and task-reveal camera feel;
+4. physical mouse-wheel and trackpad behaviour;
+5. a longer level-3 police encounter with memory inspection;
+6. keyboard and screen-reader behaviour in at least one desktop browser.
 
 ## Remaining cleanup boundary
 
-Several superseded prototype source files may still exist as unloaded historical implementation files. The playable HTML no longer imports them and source-ownership tests protect that fact. Physical deletion should be performed only after the consolidated runtime passes CI and the full mission regression, so a verified rollback remains possible during the transition.
+Several superseded prototype source files remain as unloaded historical implementation files. The playable HTML no longer imports them and source-ownership tests protect that fact. Physical deletion will occur after manual acceptance, followed by one final CI run.
+
+## Release boundary
+
+After manual acceptance and dead-code deletion:
+
+```text
+final cleanup commit
+→ unit + browser CI
+→ tag v0.1.0-rc.1
+```
 
 ## Next product work after validation
 
-Once Milestone 10 becomes ✅, the next roadmap decision is content-focused rather than architectural. Candidate directions are:
+The next planned milestone is **Milestone 11 — Campaign foundation**:
 
-- weapon pickup/reload/economy progression;
-- a second mission and reusable objective scripting;
-- additional district interiors or a second district;
-- art/audio production pass;
-- save/load campaign progression;
-- a complete in-game input remapping screen.
+- data-driven missions;
+- cash and transaction ledger;
+- original faction/contact reputation;
+- persistent campaign state;
+- carried inventory and refuge records;
+- save/load foundation.
+
+Vehicle core follows immediately in Milestone 12.
