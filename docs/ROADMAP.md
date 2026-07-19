@@ -17,12 +17,13 @@ Phaser district with street, rooftop and sewer layers; narrative tutorial; Hunge
 
 ## Milestone 1 — Architecture stabilization
 
-**Status: 🟡 Implementation complete; final release-candidate regression pending**
+**Status: 🟡 Implementation and automated regression complete; final manual acceptance pending**
 
 - Central action-based `InputSystem`.
 - One frame for keyboard, pointer, aim and wheel.
 - Tutorial modes and focus/reset protection.
 - Pure geometry/input tests.
+- Browser lock and dialogue-input coverage passes in the release-candidate suite.
 
 ## Milestone 2 — Mouse aim and unarmed combat
 
@@ -98,17 +99,18 @@ inactive/dead → downed → being drained → staggered → attacking
 
 ## Milestone 9 — Tutorial and UX update
 
-**Status: 🟡 Implementation complete; accessibility validation pending**
+**Status: 🟡 Automated accessibility coverage green; manual assistive-technology validation pending**
 
 - First-use weapon teaching.
 - Recovery countdowns.
 - Separated HUD regions.
 - High-contrast aim.
 - ARIA state and reduced-motion handling.
+- Keyboard activation, narrow layout and persistence pass in Chromium CI.
 
 ## Milestone 10 — Consolidation, tests and performance
 
-**Status: 🟡 Core implementation complete; CI and complete mission regression pending**
+**Status: 🟡 Core implementation and automated CI validation complete; manual acceptance and cleanup pending**
 
 Implemented:
 
@@ -118,37 +120,59 @@ Implemented:
 - runtime owner diagnostics;
 - spatial NPC queries and camera-margin culling;
 - change-aware registry and DOM publication;
-- Playwright browser smoke tests;
+- deterministic pinned Phaser bootstrap;
+- Playwright browser smoke and golden-path tests;
 - input-remapping data/storage groundwork.
 
-Acceptance still required:
+Automated acceptance passed on source commit `f64837e6eab2ec58397593ec8033afb3b8a70eb1`:
 
-- unit and Playwright CI green on the same commit;
-- complete mission run on both playable routes;
+- unit and Playwright CI green on the same source;
+- killed and drained journalist golden paths;
+- sire dialogue before `REPORT ACCEPTED`;
+- `/` and `/phaser/` boot routes;
 - Low and Ultra render quality;
 - wide, narrow and resized viewports;
-- keyboard/accessibility verification;
-- sustained level-3 police encounter;
-- physical deletion of superseded unloaded patch files after validation.
+- UI keyboard and accessibility checks;
+- police escalation, helicopter, recovery and perception split;
+- sustained level-3 structural/performance smoke;
+- no runtime owner conflict or critical browser error.
+
+Still required:
+
+- manual complete mission on both routes at normal timings;
+- physical mouse-wheel and trackpad validation;
+- longer manual level-3 memory inspection;
+- screen-reader verification;
+- physical deletion of superseded unloaded patch files;
+- one final CI pass after cleanup.
 
 ## Milestone 10.1 — Vertical Slice Release Candidate
 
-**Status: ⬜ Immediate next step**
+**Status: 🟡 Automated RC green; manual acceptance, dead-code cleanup and release tag pending**
 
-- Resolve consolidation regressions.
-- Confirm sire dialogue before `REPORT ACCEPTED`.
-- Run the complete mission through both journalist outcomes.
-- Validate police escalation 1 → 2 → 3, helicopter, recovery and witnesses.
-- Confirm unit and browser CI.
-- Remove verified-dead prototype files.
-- Tag the first stable vertical-slice release candidate.
+Delivered:
 
-Acceptance:
+- consolidation regressions resolved;
+- sire-first refuge finale restored and tested;
+- both journalist outcomes tested end to end;
+- police escalation 1 → 2 → 3, helicopter, recovery and witnesses tested;
+- pause/task/dialogue input leakage covered;
+- deterministic local Phaser used in CI;
+- lower-right weapon HUD and keyboard-accessible high-contrast aim stabilized;
+- unit and browser jobs pass together.
 
-- Complete mission passes without manual state editing.
-- No runtime owner conflict.
-- No input leakage from dialogue, pause or task reveals.
-- No critical browser errors across supported configurations.
+Remaining acceptance:
+
+- complete mission manually on `/` and `/phaser/`;
+- inspect normal-speed tutorial and task-reveal camera feel;
+- validate physical wheel and trackpad behaviour;
+- inspect memory during a longer level-3 encounter;
+- verify one screen reader/browser combination;
+- remove verified-dead prototype files;
+- rerun CI after cleanup;
+- tag `v0.1.0-rc.1`.
+
+See `MILESTONE_10_1_STATUS.md` for the validation record.
 
 ## Milestone 11 — Campaign foundation
 
