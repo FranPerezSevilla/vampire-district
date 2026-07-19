@@ -7,9 +7,10 @@ for (const route of ROUTES) {
     const pageErrors = [];
     page.on("pageerror", error => pageErrors.push(error.message));
 
-    await page.goto(route, { waitUntil: "domcontentloaded" });
+    await page.goto(`${route}?rcTest=1`, { waitUntil: "domcontentloaded" });
     await page.waitForFunction(() => Boolean(
-      window.NBD_PHASER_GAME
+      window.NBD_APP_READY
+      && window.NBD_PHASER_GAME
       && window.NBD_RUNTIME_DIAGNOSTICS
       && window.NBD_PHASER_GAME.scene?.getScene?.("GameScene")?.inputSystem
     ));
@@ -23,6 +24,7 @@ for (const route of ROUTES) {
       const gameScene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
       const diagnostics = window.NBD_RUNTIME_DIAGNOSTICS.snapshot();
       return {
+        phaserSource: window.NBD_PHASER_SOURCE,
         pausedOrActive: gameScene.sys.isPaused() || gameScene.sys.isActive(),
         owners: diagnostics.owners,
         conflicts: diagnostics.conflicts,
@@ -40,6 +42,7 @@ for (const route of ROUTES) {
       };
     });
 
+    expect(runtime.phaserSource).toBe("local");
     expect(runtime.pausedOrActive).toBeTruthy();
     expect(runtime.conflicts).toEqual([]);
     expect(runtime.owners["GameScene.update"]).toBe("GameplayRuntime");
@@ -69,8 +72,11 @@ for (const route of ROUTES) {
 }
 
 test("intro resumes the world and opens the click-driven narrative", async ({ page }) => {
-  await page.goto("/", { waitUntil: "domcontentloaded" });
-  await page.waitForFunction(() => Boolean(window.NBD_PHASER_GAME?.scene?.getScene?.("GameScene")?.tutorialDirector));
+  await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => Boolean(
+    window.NBD_APP_READY
+    && window.NBD_PHASER_GAME?.scene?.getScene?.("GameScene")?.tutorialDirector
+  ));
 
   await expect(page.locator("#ui-modal")).toHaveClass(/open/);
   await page.locator("#ui-modal-action").click();
@@ -78,6 +84,7 @@ test("intro resumes the world and opens the click-driven narrative", async ({ pa
   await expect(page.locator("#tutorial-dialogue")).toHaveClass(/open/, { timeout: 8_000 });
   await expect(page.locator(".tutorial-dialogue__advance")).toContainText("CLICK");
 
+  await page.waitForTimeout(280);
   await page.locator(".game-frame").click({ position: { x: 120, y: 120 } });
   await page.waitForTimeout(250);
 
