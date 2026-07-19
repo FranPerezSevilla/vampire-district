@@ -6,6 +6,8 @@ _Last updated: 2026-07-19_
 
 **🟡 Implementation and automated coverage complete; remote CI confirmation and final manual browser pass pending.**
 
+Validation branch: `rc/milestone-10-1-validation`. This branch intentionally changes documentation only; its source tree is otherwise the current release-candidate implementation from `main`, allowing pull-request CI to validate the exact runtime and tests.
+
 The release-candidate pass is intentionally feature-frozen. It validates the current vertical slice before campaign, vehicle, faction and economy work begins.
 
 ## Delivered
@@ -72,6 +74,8 @@ Covered scenarios:
 - verify the sire-first result order;
 - police violence escalation 1 → 2 → 3;
 - duplicate police neutralization protection;
+- police recovery;
+- visual witness versus heard-only `WTF`;
 - level-three police/helicopter stress;
 - runtime and DOM snapshots.
 
@@ -90,6 +94,8 @@ Playwright now covers:
 - sire dialogue before `REPORT ACCEPTED`;
 - police alert progression 1 → 2 → 3;
 - helicopter activation;
+- police recovery with restored resilience;
+- visual witness versus heard-only reaction;
 - a sustained level-three structural/performance smoke test;
 - pause and task-reveal mouse/wheel lock protection;
 - Low and Ultra internal render quality;
@@ -130,6 +136,7 @@ The browser job:
 - `tests/browser/runtime-smoke.spec.js`
 - `tests/browser/mission-golden-path.spec.js`
 - `tests/browser/police-stress.spec.js`
+- `tests/browser/perception-recovery.spec.js`
 - `tests/browser/input-locks.spec.js`
 - `tests/browser/render-quality.spec.js`
 - `tests/browser/ui-accessibility.spec.js`
