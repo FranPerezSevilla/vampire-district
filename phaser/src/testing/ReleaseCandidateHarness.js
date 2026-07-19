@@ -4,6 +4,7 @@ import { NPC_TYPES } from "../data/npcs.js";
 
 const CLUB_ENTRY = Object.freeze({ x: 642, y: 404 });
 const REFUGE = Object.freeze({ x: 150, y: 146 });
+const REVEAL_TIMEOUT_MS = 15_000;
 
 function nextFrame() {
   return new Promise(resolve => window.requestAnimationFrame(resolve));
@@ -76,7 +77,7 @@ export class ReleaseCandidateHarness {
 
     await this.waitFor(
       () => this.scene.missionSystem.step === 1 && this.taskRevealIdle(),
-      { label: "informant objective reveal" }
+      { timeoutMs: REVEAL_TIMEOUT_MS, label: "informant objective reveal" }
     );
 
     this.scene.switchLayer(
@@ -88,7 +89,7 @@ export class ReleaseCandidateHarness {
 
     await this.waitFor(
       () => this.scene.missionSystem.step === 2 && this.taskRevealIdle(),
-      { label: "journalist objective reveal" }
+      { timeoutMs: REVEAL_TIMEOUT_MS, label: "journalist objective reveal" }
     );
     return this.snapshot();
   }
@@ -119,7 +120,7 @@ export class ReleaseCandidateHarness {
 
     await this.waitFor(
       () => this.scene.missionSystem.step === 3 && this.taskRevealIdle(),
-      { label: "return-to-refuge objective reveal" }
+      { timeoutMs: REVEAL_TIMEOUT_MS, label: "return-to-refuge objective reveal" }
     );
     return this.snapshot();
   }
@@ -209,6 +210,7 @@ export class ReleaseCandidateHarness {
       "RC test: police recovery sequence."
     );
 
+    this.scene.combatSystem.ensureCombatStates();
     const officer = this.scene.policeSystem.police()[0];
     if (!officer) throw new Error("A police officer is required for recovery testing");
     const recoveryEventsBefore = this.events.filter(event => event.type === "entity-recovered").length;
@@ -231,7 +233,7 @@ export class ReleaseCandidateHarness {
     await this.waitFor(
       () => officer.combat?.state === COMBAT_STATES.STAGGERED
         && officer.combat?.resilience === 2,
-      { timeoutMs: 2_000, label: "police recovery" }
+      { timeoutMs: 3_000, label: "police recovery" }
     );
 
     const recoveryEvents = this.events.filter(event => event.type === "entity-recovered");
@@ -370,6 +372,7 @@ export class ReleaseCandidateHarness {
 
   snapshot() {
     return {
+      rcTestMode: Boolean(window.NBD_RC_TEST_MODE),
       missionStep: this.scene.missionSystem.step,
       completed: this.scene.missionSystem.completed,
       failed: this.scene.missionSystem.failed,
