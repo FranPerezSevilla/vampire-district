@@ -1,4 +1,4 @@
-import { CHECKPOINT_KINDS } from "./constants.js";
+import { CHECKPOINT_KINDS, MISSION_STATUS, OBJECTIVE_STATUS } from "./constants.js";
 
 export const CAMPAIGN_CHECKPOINT_VERSION = 1;
 
@@ -37,6 +37,48 @@ function numericRecord(value) {
     result[key] = Math.max(0, finite(item, 0));
   }
   return result;
+}
+
+function sanitizeObjectiveState(id, value) {
+  const source = plainObject(value);
+  return {
+    id: String(id || source.id || ""),
+    status: Object.values(OBJECTIVE_STATUS).includes(source.status)
+      ? source.status
+      : OBJECTIVE_STATUS.LOCKED,
+    progress: Math.max(0, finite(source.progress, 0)),
+    required: Math.max(1, finite(source.required, 1)),
+    completedAt: Math.max(0, integer(source.completedAt, 0)),
+    outcome: source.outcome == null ? null : String(source.outcome)
+  };
+}
+
+function sanitizeMissionSnapshot(value) {
+  const source = plainObject(value);
+  const id = String(source.id || "").trim();
+  if (!id) return null;
+  const objectives = {};
+  for (const [objectiveId, objective] of Object.entries(plainObject(source.objectives))) {
+    const sanitized = sanitizeObjectiveState(objectiveId, objective);
+    if (sanitized.id) objectives[sanitized.id] = sanitized;
+  }
+  return {
+    id,
+    definitionVersion: Math.max(1, integer(source.definitionVersion, 1)),
+    status: Object.values(MISSION_STATUS).includes(source.status)
+      ? source.status
+      : MISSION_STATUS.ACTIVE,
+    objectiveIndex: Math.max(0, integer(source.objectiveIndex, 0)),
+    objectives,
+    startedAt: Math.max(0, integer(source.startedAt, 0)),
+    updatedAt: Math.max(0, integer(source.updatedAt, 0)),
+    completedAt: Math.max(0, integer(source.completedAt, 0)),
+    failedAt: Math.max(0, integer(source.failedAt, 0)),
+    failureReason: String(source.failureReason || ""),
+    completionCount: Math.max(0, integer(source.completionCount, 0)),
+    rewardsGranted: Boolean(source.rewardsGranted),
+    metadata: primitiveRecord(source.metadata)
+  };
 }
 
 function sanitizeNpcState(id, value) {
@@ -85,6 +127,8 @@ export function sanitizeCampaignCheckpoint(candidate) {
   const id = String(source.id || "").trim();
   if (!id || !missionId) return null;
 
+  const mission = sanitizeMissionSnapshot(source.mission);
+  if (!mission || mission.id !== missionId) return null;
   const player = plainObject(source.player);
   const loadout = plainObject(source.loadout);
   const world = plainObject(source.world);
@@ -105,6 +149,7 @@ export function sanitizeCampaignCheckpoint(candidate) {
       : CHECKPOINT_KINDS.OBJECTIVE,
     createdAt: Math.max(0, integer(source.createdAt, 0)),
     resumable: source.resumable !== false,
+    mission,
     player: {
       x: finite(player.x, 0),
       y: finite(player.y, 0),
@@ -162,11 +207,10 @@ export function checkpointStateIsSafe(state = {}) {
 export function checkpointCanResume(checkpoint, campaignState) {
   const value = sanitizeCampaignCheckpoint(checkpoint);
   if (!value?.resumable) return false;
-  const record = campaignState?.missions?.records?.[value.missionId];
-  if (!record) return false;
-  if (record.status === "active") {
-    return campaignState.missions.activeMissionId === value.missionId
-      && (!value.objectiveId || record.objectives?.[value.objectiveId]?.status === "active");
-  }
-  return record.status === "completed" && value.kind === CHECKPOINT_KINDS.MISSION_COMPLETE;
+  const current = campaignState?.missions?.records?.[value.missionId];
+  if (!current) return false;
+  if (campaignState.missions.activeMissionId && campaignState.missions.activeMissionId !== value.missionId) return false;
+  if (value.mission.status === MISSION_STATUS.ACTIVE) return true;
+  return value.mission.status === MISSION_STATUS.COMPLETED
+    && value.kind === CHECKPOINT_KINDS.MISSION_COMPLETE;
 }
