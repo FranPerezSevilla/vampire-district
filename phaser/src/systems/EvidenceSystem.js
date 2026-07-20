@@ -204,13 +204,20 @@ export class EvidenceSystem {
     this.stats.bodiesHidden++;
     this.cleanBloodAround(body.x, body.y, body.layer, spot.cleanRadius || 78);
     this.scene.lastActionText = `Body hidden in ${spot.name}. Evidence pressure drops.`;
+    this.scene.events?.emit?.("evidence:body-hidden", {
+      targetId: body.id,
+      method: "hidden",
+      spotId: spot.id || null,
+      spotName: spot.name,
+      layer: body.layer
+    });
     if (body.type === NPC_TYPES.TARGET) this.scene.missionSystem.markEvidenceContained?.();
   }
 
   currentHideSpot() {
-    if (this.scene.currentLayer === LAYERS.SEWER) return { name: "sewers", cleanRadius: 120 };
-    if (this.scene.currentLayer === LAYERS.ROOF_HIGH) return { name: "rooftop refuge", cleanRadius: 110 };
-    if (this.scene.currentLayer === LAYERS.ROOF_LOW) return { name: "rooftop shadow", cleanRadius: 86 };
+    if (this.scene.currentLayer === LAYERS.SEWER) return { id: "sewers", name: "sewers", cleanRadius: 120 };
+    if (this.scene.currentLayer === LAYERS.ROOF_HIGH) return { id: "rooftop_refuge", name: "rooftop refuge", cleanRadius: 110 };
+    if (this.scene.currentLayer === LAYERS.ROOF_LOW) return { id: "rooftop_shadow", name: "rooftop shadow", cleanRadius: 86 };
 
     for (const spot of bodyHideSpots) {
       if (spot.layer !== this.scene.currentLayer) continue;
@@ -220,7 +227,7 @@ export class EvidenceSystem {
     }
 
     const shadow = this.shadowAt(this.scene.player.x, this.scene.player.y, this.scene.currentLayer);
-    if (shadow) return { name: shadow.name, cleanRadius: 70 };
+    if (shadow) return { id: shadow.id || "shadow", name: shadow.name, cleanRadius: 70 };
     return null;
   }
 

@@ -13,6 +13,11 @@ const DEFAULT_DEFINITIONS = Object.freeze([
   cleanTheSceneMission
 ]);
 
+function cloneSerializable(value, fallback) {
+  if (value == null) return fallback;
+  return JSON.parse(JSON.stringify(value));
+}
+
 export class CampaignSystem {
   constructor({
     storage = globalThis?.localStorage,
@@ -205,9 +210,13 @@ export class CampaignSystem {
       definitions: this.definitions.map(definition => ({
         id: definition.id,
         title: definition.title,
+        description: definition.description,
         factionId: definition.factionId,
+        contactId: definition.contactId,
         objectiveCount: definition.objectives.length,
-        replayable: definition.replayable
+        replayable: definition.replayable,
+        rewards: cloneSerializable(definition.rewards, {}),
+        metadata: cloneSerializable(definition.metadata, {})
       }))
     };
   }

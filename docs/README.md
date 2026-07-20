@@ -11,7 +11,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Mission flow](MISSION_FLOW.md) — journalist handling, return-to-refuge completion rule and sire-dialogue-to-report ordering.
 - [Campaign foundation](CAMPAIGN_FOUNDATION.md) — versioned state, MissionRunner authority, cash, reputation, save migration and safe world checkpoints.
 - [Milestone 11.2 status](MILESTONE_11_2_STATUS.md) — accepted direct mission authority, checkpoint policy, merge and validation record.
-- [Milestone 11.3 status](MILESTONE_11_3_STATUS.md) — player-facing New Game, Continue and safe Retry campaign entry flow.
+- [Milestone 11.3 status](MILESTONE_11_3_STATUS.md) — player-facing campaign entry, refuge contract board and playable `Clean the Scene` flow.
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — architecture and engineering constraints.
 - [Runtime consolidation](RUNTIME_CONSOLIDATION.md) — Milestone 10 system ownership, spatial queries, diagnostics and browser smoke tests.
 - [Milestone 10 status](MILESTONE_10_STATUS.md) — current implementation and validation boundary.
