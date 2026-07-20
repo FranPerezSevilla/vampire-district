@@ -1,4 +1,5 @@
-export const CAMPAIGN_SCHEMA_VERSION = 1;
+export const CAMPAIGN_SCHEMA_VERSION = 2;
+// Keep the original storage key so version-one campaign saves migrate in place.
 export const CAMPAIGN_STORAGE_KEY = "vampire-district-campaign-v1";
 
 export const CAMPAIGN_FACTIONS = Object.freeze({
@@ -61,6 +62,12 @@ export const OBJECTIVE_EVENT_BY_TYPE = Object.freeze({
   [OBJECTIVE_TYPES.STEAL_VEHICLE]: CAMPAIGN_EVENT_TYPES.VEHICLE_STOLEN,
   [OBJECTIVE_TYPES.DELIVER_VEHICLE]: CAMPAIGN_EVENT_TYPES.VEHICLE_DELIVERED,
   [OBJECTIVE_TYPES.LOSE_WANTED_LEVEL]: CAMPAIGN_EVENT_TYPES.WANTED_CHANGED
+});
+
+export const CHECKPOINT_KINDS = Object.freeze({
+  OBJECTIVE: "objective",
+  MISSION_COMPLETE: "mission-complete",
+  SYNTHESIZED: "synthesized"
 });
 
 export const REPUTATION_LIMITS = Object.freeze({ min: -100, max: 100 });
