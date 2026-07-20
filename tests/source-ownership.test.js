@@ -1,29 +1,54 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 
 const ROOT = new URL("../", import.meta.url);
+
+const RETIRED_RUNTIME_FILES = Object.freeze([
+  "phaser/src/input/input-runtime.js",
+  "phaser/src/input/movement-input-adapter.js",
+  "phaser/src/input/tutorial-input-adapter.js",
+  "phaser/src/movement/milestone5-runtime.js",
+  "phaser/src/world/milestone6-runtime.js",
+  "phaser/src/combat/combat-compatibility.js",
+  "phaser/src/combat/police-alert-runtime.js",
+  "phaser/src/ai/milestone8-runtime.js",
+  "phaser/src/ai/police-turn-guard.js",
+  "phaser/src/ai/sensory-priority-guard.js",
+  "phaser/src/weapons/milestone7-ui.js",
+  "phaser/src/ux/milestone9-runtime.js",
+  "phaser/src/movement-controls.js",
+  "phaser/src/task-reveal-camera.js",
+  "phaser/src/task-reveal-timing.js",
+  "phaser/src/tutorial-flow.js",
+  "phaser/src/tutorial-copy.js",
+  "phaser/src/tutorial-stop-after-tip.js",
+  "phaser/src/dialogue-layout.js",
+  "phaser/src/tutorial-encounter-order.js",
+  "phaser/src/combat/combat-tutorial-copy.js",
+  "phaser/src/movement/milestone5-tutorial-copy.js",
+  "phaser/src/police-informant.js",
+  "phaser/src/final-report-sire.js",
+  "phaser/src/mission-return-finale.js",
+  "phaser/src/english-copy.js",
+  "phaser/src/objective-marker.js",
+  "phaser/src/objective-marker-guard.js",
+  "phaser/src/district-outskirts.js",
+  "phaser/src/sensory-awareness.js"
+]);
 
 async function source(path) {
   return readFile(new URL(path, ROOT), "utf8");
 }
 
-test("the legacy movement entry no longer loads core runtime patches", async () => {
-  const content = await source("phaser/src/movement-controls.js");
-  const retiredImports = [
-    "input/input-runtime.js",
-    "input/movement-input-adapter.js",
-    "movement/milestone5-runtime.js",
-    "world/milestone6-runtime.js",
-    "combat/combat-compatibility.js",
-    "combat/police-alert-runtime.js",
-    "ai/milestone8-runtime.js",
-    "ai/police-turn-guard.js",
-    "ai/sensory-priority-guard.js",
-    "weapons/milestone7-ui.js",
-    "ux/milestone9-runtime.js"
-  ];
-  for (const retired of retiredImports) assert.equal(content.includes(retired), false, retired);
+test("retired runtime adapters and feature patches are physically removed", async () => {
+  for (const path of RETIRED_RUNTIME_FILES) {
+    await assert.rejects(
+      access(new URL(path, ROOT)),
+      error => error?.code === "ENOENT",
+      `${path} should not exist after release-candidate cleanup`
+    );
+  }
 });
 
 test("main creates Phaser without patching scene prototypes", async () => {
@@ -40,13 +65,7 @@ test("GameScene delegates one update loop to GameplayRuntime", async () => {
   assert.equal(content.includes("Phaser.Input.Keyboard.JustDown"), false);
 });
 
-test("task, objective and outskirts ownership no longer comes from feature patches", async () => {
-  const content = await source("phaser/src/task-reveal-camera.js");
-  assert.equal(content.includes("objective-marker.js"), false);
-  assert.equal(content.includes("objective-marker-guard.js"), false);
-  assert.equal(content.includes("district-outskirts.js"), false);
-  assert.equal(content.includes("sensory-awareness.js"), false);
-
+test("task, objective, outskirts and sensory ownership comes from first-class systems", async () => {
   const runtime = await source("phaser/src/runtime/GameplayRuntime.js");
   assert.equal(runtime.includes("new TaskRevealSystem(scene)"), true);
   assert.equal(runtime.includes("new ObjectiveMarkerSystem(scene)"), true);
@@ -67,6 +86,8 @@ test("both playable routes use one pinned Phaser bootstrap", async () => {
   const bootstrap = await source("phaser/src/app-bootstrap.js");
   assert.match(bootstrap, /node_modules\/phaser\/dist\/phaser\.min\.js/);
   assert.match(bootstrap, /await import\("\.\/main\.js"\)/);
+  assert.match(bootstrap, /await import\("\.\/responsive-layout\.js"\)/);
+  assert.equal(bootstrap.includes("task-reveal-camera.js"), false);
   assert.match(bootstrap, /NBD_PHASER_SOURCE/);
 
   const packageJson = JSON.parse(await source("package.json"));

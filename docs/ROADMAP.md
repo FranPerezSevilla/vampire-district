@@ -23,7 +23,7 @@ Phaser district with street, rooftop and sewer layers; narrative tutorial; Hunge
 - One frame for keyboard, pointer, aim and wheel.
 - Tutorial modes and focus/reset protection.
 - Pure geometry/input tests.
-- Browser lock and dialogue-input coverage passes in the release-candidate suite.
+- Browser lock and dialogue-input coverage.
 
 ## Milestone 2 — Mouse aim and unarmed combat
 
@@ -79,7 +79,7 @@ Phaser district with street, rooftop and sewer layers; narrative tutorial; Hunge
 - Shared melee/hitscan contracts.
 - Ammo, empty rejection, tracer and HUD.
 
-The current all-owned starting inventory is a vertical-slice convenience. Milestone 15 replaces it with hard weapon slots, carried ammunition limits, refuge stash and paid resupply.
+The current all-owned starting inventory is a vertical-slice convenience. Milestone 15 replaces it with hard weapon slots, carried-ammunition limits, refuge stash and paid resupply.
 
 ## Milestone 8 — AI combat behaviours
 
@@ -106,13 +106,13 @@ inactive/dead → downed → being drained → staggered → attacking
 - Separated HUD regions.
 - High-contrast aim.
 - ARIA state and reduced-motion handling.
-- Keyboard activation, narrow layout and persistence pass in Chromium CI.
+- Keyboard activation, narrow layout and persistence coverage.
 
 ## Milestone 10 — Consolidation, tests and performance
 
-**Status: 🟡 Core implementation and automated CI validation complete; manual acceptance and cleanup pending**
+**Status: 🟡 Runtime consolidation and physical cleanup complete; final manual acceptance pending**
 
-Implemented:
+Delivered:
 
 - one `GameplayRuntime` update owner;
 - direct `GameScene` / `UIScene` composition;
@@ -121,56 +121,66 @@ Implemented:
 - spatial NPC queries and camera-margin culling;
 - change-aware registry and DOM publication;
 - deterministic pinned Phaser bootstrap;
-- Playwright browser smoke and golden-path tests;
-- input-remapping data/storage groundwork.
+- Playwright smoke, golden-path, police-stress and accessibility coverage;
+- input-remapping data/storage groundwork;
+- physical deletion of superseded runtime, tutorial, AI, UI and perception patch files;
+- source-ownership tests that require the retired files to remain absent.
 
-Automated acceptance passed on source commit `f64837e6eab2ec58397593ec8033afb3b8a70eb1`:
+Automated cleanup acceptance passed on source `7e311aa1119603c5b7cdca5040ee8a90699dd0a5`:
 
-- unit and Playwright CI green on the same source;
+```text
+unit-tests    ✅
+browser-smoke ✅
+```
+
+Covered automatically:
+
 - killed and drained journalist golden paths;
 - sire dialogue before `REPORT ACCEPTED`;
+- armed free roam and unarmed impacts after the report;
 - `/` and `/phaser/` boot routes;
 - Low and Ultra render quality;
 - wide, narrow and resized viewports;
 - UI keyboard and accessibility checks;
 - police escalation, helicopter, recovery and perception split;
-- sustained level-3 structural/performance smoke;
+- sustained level-three structural/performance smoke;
 - no runtime owner conflict or critical browser error.
 
-Still required:
+Still required for final manual acceptance:
 
-- manual complete mission on both routes at normal timings;
+- normal-timing complete mission on both routes;
 - physical mouse-wheel and trackpad validation;
-- longer manual level-3 memory inspection;
-- screen-reader verification;
-- physical deletion of superseded unloaded patch files;
-- one final CI pass after cleanup.
+- longer level-three memory inspection;
+- one screen-reader/browser verification.
 
 ## Milestone 10.1 — Vertical Slice Release Candidate
 
-**Status: 🟡 Automated RC green; manual acceptance, dead-code cleanup and release tag pending**
+**Status: 🟡 Automated RC and dead-code cleanup green; manual acceptance and release tag pending**
 
 Delivered:
 
 - consolidation regressions resolved;
 - sire-first refuge finale restored and tested;
 - both journalist outcomes tested end to end;
+- post-report weapons, drain and free roam restored;
+- tutorial camera ownership stabilized;
 - police escalation 1 → 2 → 3, helicopter, recovery and witnesses tested;
 - pause/task/dialogue input leakage covered;
 - deterministic local Phaser used in CI;
 - lower-right weapon HUD and keyboard-accessible high-contrast aim stabilized;
-- unit and browser jobs pass together.
+- thirty retired source files physically removed;
+- obsolete patch-specific tests migrated or deleted;
+- unit failures now preserve a downloadable log artifact;
+- final cleanup unit and browser jobs pass together.
 
 Remaining acceptance:
 
-- complete mission manually on `/` and `/phaser/`;
+- complete the mission manually on `/` and `/phaser/`;
 - inspect normal-speed tutorial and task-reveal camera feel;
-- validate physical wheel and trackpad behaviour;
-- inspect memory during a longer level-3 encounter;
-- verify one screen reader/browser combination;
-- remove verified-dead prototype files;
-- rerun CI after cleanup;
-- tag `v0.1.0-rc.1`.
+- validate a physical wheel and trackpad;
+- inspect memory during a longer level-three encounter;
+- verify one screen-reader/browser combination;
+- create tag `v0.1.0-rc.1` after those checks are recorded.
 
 See `MILESTONE_10_1_STATUS.md` for the validation record.
 
@@ -178,9 +188,10 @@ See `MILESTONE_10_1_STATUS.md` for the validation record.
 
 **Status: ⬜ Planned**
 
+- Versioned, serializable `CampaignState`.
 - Data-driven `MissionDefinition` and `MissionRunner`.
 - Reusable objective types: reach, talk, collect, steal, chase, neutralize, destroy, escape and return.
-- Cash wallet and transaction ledger.
+- Cash wallet and immutable transaction ledger.
 - Original faction/contact reputation model.
 - Persistent campaign state and save/load foundation.
 - Persistent player inventory and refuge records.
@@ -191,6 +202,7 @@ Acceptance:
 - The journalist mission runs from data rather than mission-specific step branches.
 - A second test mission can be authored without changing the runner.
 - Cash, reputation and inventory serialize and restore deterministically.
+- Old save versions migrate explicitly or fail safely without corrupting current state.
 
 ## Milestone 12 — Vehicle core
 
@@ -206,9 +218,9 @@ Acceptance:
 
 Acceptance:
 
-- Player can move seamlessly between foot, roof/sewer traversal and vehicles.
+- Player moves seamlessly between foot, roof/sewer traversal and vehicles.
 - A vehicle never grants access to the complete refuge stash.
-- Vehicle theft produces witness/police consequences.
+- Vehicle theft produces witness and police consequences.
 
 ## Milestone 13 — Traffic and motorized police
 
@@ -231,7 +243,7 @@ Acceptance:
 
 **Status: ⬜ Planned**
 
-Working setting structure:
+Working structure:
 
 - **Blackglass Directorate** — secretive institutional establishment.
 - **Red Assembly** — violent territorial coalition.
@@ -260,9 +272,9 @@ Acceptance:
 
 Locked direction:
 
-- no floating street ammunition pickups;
+- no floating street-ammunition pickups;
 - one melee, one sidearm and one long/special weapon slot;
-- carried ammunition caps;
+- carried-ammunition caps;
 - separate carried loadout and refuge stash;
 - finite supplier stock;
 - ammunition purchased with cash;
@@ -289,7 +301,7 @@ Acceptance:
 
 **Status: ⬜ Planned**
 
-Original ghoul-equivalent terminology:
+Original enhanced-mortal terminology:
 
 - system term: **Retainer**;
 - Directorate term: **Proxy**;
@@ -369,7 +381,7 @@ Acceptance:
 
 - Second district.
 - Interiors and garages.
-- Full player-facing key remapping screen.
+- Full player-facing key-remapping screen.
 - Larger vehicle and weapon catalogues.
 - Additional bloodlines and original supernatural rivals.
 - Art/audio production pass.
