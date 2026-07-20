@@ -1,6 +1,6 @@
 import { TutorialDirector } from "./TutorialDirector.js";
 
-function applyRestoredTutorial(scene, director) {
+function applyRestoredTutorial(scene, uiScene, director) {
   scene.campaignCheckpointSystem?.applyPendingNpcState?.(director.informant);
   const checkpoint = scene.campaignCheckpointSystem?.tutorialCheckpoint?.()
     || scene.pendingTutorialCheckpoint;
@@ -24,6 +24,7 @@ function applyRestoredTutorial(scene, director) {
   }
   scene.registry?.set?.("campaignResumeApplied", true);
   scene.inputSystem?.resetWorldEdges?.();
+  if (uiScene.introOpen) uiScene.closeIntro?.();
   return true;
 }
 
@@ -42,7 +43,7 @@ function attachTutorialDirector() {
 
   const director = new TutorialDirector(scene, uiScene);
   scene.tutorialDirector = director;
-  applyRestoredTutorial(scene, director);
+  applyRestoredTutorial(scene, uiScene, director);
 
   const startIfReady = () => {
     if (!uiScene.introOpen && !director.started) void director.startIntro();
