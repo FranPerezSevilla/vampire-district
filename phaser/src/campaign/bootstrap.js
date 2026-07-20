@@ -1,37 +1,35 @@
-import { CampaignRuntimeBridge } from "./CampaignRuntimeBridge.js";
-import { CampaignSystem } from "./CampaignSystem.js";
+import { installCampaignBrowserApi } from "./CampaignBrowserApi.js";
+import { CampaignCheckpointSystem } from "./CampaignCheckpointSystem.js";
+import { campaign } from "./preload.js";
 
-function attachCampaignFoundation() {
+function attachCampaignRuntime() {
   const game = window.NBD_PHASER_GAME;
   const scene = game?.scene?.getScene?.("GameScene");
-  if (!scene?.missionSystem || !scene?.npcSystem || !scene?.statePublisher) {
-    window.requestAnimationFrame(attachCampaignFoundation);
+  if (!scene?.missionSystem
+    || !scene?.npcSystem
+    || !scene?.weaponSystem
+    || !scene?.propDamageSystem
+    || !scene?.evidenceSystem
+    || !scene?.statePublisher) {
+    window.requestAnimationFrame(attachCampaignRuntime);
     return;
   }
-  if (scene.campaignSystem) return;
+  if (scene.campaignCheckpointSystem) return;
 
-  const campaign = new CampaignSystem({
-    storage: window.localStorage,
-    autoLoad: true,
-    autoSave: true
-  });
   scene.campaignSystem = campaign;
-  scene.campaignRuntimeBridge = new CampaignRuntimeBridge(scene, campaign);
+  const checkpoints = new CampaignCheckpointSystem(scene, campaign);
+  scene.campaignCheckpointSystem = checkpoints;
+  const updateCheckpoint = () => checkpoints.update();
+  scene.events.on(Phaser.Scenes.Events.POST_UPDATE, updateCheckpoint);
+  const uninstallApi = installCampaignBrowserApi(scene, campaign, checkpoints);
 
-  window.NBD_CAMPAIGN = Object.freeze({
-    snapshot: () => campaign.snapshot(),
-    export: () => campaign.export(),
-    reset: () => {
-      const result = campaign.reset({ persist: true });
-      window.location.reload();
-      return result;
-    },
-    import: serialized => {
-      const result = campaign.import(serialized, { persist: true });
-      window.location.reload();
-      return result;
-    }
+  const uiScene = game.scene?.getScene?.("UIScene");
+  if (checkpoints.restored && uiScene?.introOpen) uiScene.closeIntro?.();
+
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    scene.events.off(Phaser.Scenes.Events.POST_UPDATE, updateCheckpoint);
+    uninstallApi?.();
   });
 }
 
-attachCampaignFoundation();
+attachCampaignRuntime();
