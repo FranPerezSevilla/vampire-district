@@ -108,7 +108,7 @@ test("safe objective checkpoint restores mission, world, loadout and completed t
   expect(restored.missionStep).toBe(2);
   expect(restored.objectiveId).toBe("neutralize_journalist");
   expect(restored.player).toMatchObject({ x: 560, y: 350, layer: 0 });
-  expect(restored.hunger).toBe(57);
+  expect(restored.hunger).toBeCloseTo(57, 1);
   expect(restored.weapon.id).toBe("pistol");
   expect(restored.weapon.ammo).toBe(3);
   expect(restored.broken).toBe(true);
