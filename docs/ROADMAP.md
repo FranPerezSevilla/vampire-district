@@ -186,23 +186,49 @@ See `MILESTONE_10_1_STATUS.md` for the validation record.
 
 ## Milestone 11 — Campaign foundation
 
-**Status: ⬜ Planned**
+**Status: 🟡 Milestone 11.2 implemented; final CI and browser acceptance pending**
+
+### 11.1 delivered
 
 - Versioned, serializable `CampaignState`.
-- Data-driven `MissionDefinition` and `MissionRunner`.
-- Reusable objective types: reach, talk, collect, steal, chase, neutralize, destroy, escape and return.
+- Data-driven `MissionDefinition` and generic `MissionRunner`.
+- Reusable objectives: reach, talk, collect, neutralize, destroy, escape, return, steal vehicle, deliver vehicle and lose wanted level.
 - Cash wallet and immutable transaction ledger.
-- Original faction/contact reputation model.
-- Persistent campaign state and save/load foundation.
-- Persistent player inventory and refuge records.
-- Migrate the journalist mission without changing its narrative result.
+- Separate faction and contact reputation.
+- Save/load, import/export and reset.
+- Opening journalist mission definition.
+- `Clean the Scene` second mission definition.
 
-Acceptance:
+### 11.2 delivered
 
-- The journalist mission runs from data rather than mission-specific step branches.
-- A second test mission can be authored without changing the runner.
-- Cash, reputation and inventory serialize and restore deterministically.
-- Old save versions migrate explicitly or fail safely without corrupting current state.
+- `MissionRunner` is authoritative for opening-mission objective, status, failure and reward state.
+- `MissionSystem` derives markers, text and compatibility step from the active definition rather than maintaining a parallel progression variable.
+- `CampaignRuntimeBridge` physically removed.
+- Campaign schema version 2 with an atomic latest-safe-checkpoint snapshot.
+- Objective-authored checkpoint policies and conservative migration spawns.
+- Restore of player position/layer, Hunger, selected weapon, inventory and ammunition.
+- Restore of broken streetlights, static NPC outcomes, corpses, blood evidence and counters.
+- Completed tutorial and informant departure restored without replaying the opening sequence.
+- Unsafe autosaved progress rolls back to the latest safe objective checkpoint.
+- Failed retries preserve their latest safe checkpoint; starting another mission clears it.
+- Completed missions require a completion checkpoint, protecting idempotent rewards from stale rollback.
+- Browser API for save, checkpoint inspection, reload, discard, import and reset.
+- Unit and Chromium coverage for direct authority and checkpoint reload.
+
+Acceptance pending on the branch:
+
+- final unit and Chromium jobs green on the same head;
+- both journalist outcomes still complete through the sire-first finale;
+- active objective checkpoint reload verified on both boot paths;
+- completed checkpoint reload preserves rewards and free roam;
+- no retired campaign bridge or duplicate authority remains.
+
+Next campaign slice after acceptance:
+
+- selectable mission board/safehouse UI;
+- activate `Clean the Scene` in the world;
+- explicit Continue, New Game and Retry-from-checkpoint presentation;
+- mission-specific world placement adapters that remain data-driven.
 
 ## Milestone 12 — Vehicle core
 
