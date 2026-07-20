@@ -95,7 +95,7 @@ export class CampaignSystem {
 
   startMission(id, options = {}) {
     const result = this.missions.start(id, options);
-    if (this.state.checkpoints.latest?.missionId !== id) this.clearCheckpoint({ emit: false });
+    if (this.state.checkpoints.latest) this.clearCheckpoint({ emit: false });
     return result;
   }
 
