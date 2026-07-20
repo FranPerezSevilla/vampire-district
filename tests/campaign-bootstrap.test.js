@@ -8,6 +8,15 @@ async function source(path) {
   return readFile(new URL(path, ROOT), "utf8");
 }
 
+test("app bootstrap loads pinned Phaser relative to its module before CDN fallback", async () => {
+  const content = await source("phaser/src/app-bootstrap.js");
+  const localIndex = content.indexOf('new URL("../../node_modules/phaser/dist/phaser.min.js", import.meta.url).href');
+  const jsdelivrIndex = content.indexOf('kind: "jsdelivr"');
+  assert.ok(localIndex >= 0, "the npm-pinned Phaser build must be addressable from both playable routes");
+  assert.ok(jsdelivrIndex > localIndex, "CDNs must remain fallbacks after the pinned local runtime");
+  assert.equal(content.includes('src: "./vendor/phaser-3.90.0.min.js"'), false);
+});
+
 test("app bootstrap preloads campaign authority before scenes and restores before tutorial", async () => {
   const content = await source("phaser/src/app-bootstrap.js");
   const preloadIndex = content.indexOf('import("./campaign/preload.js")');
