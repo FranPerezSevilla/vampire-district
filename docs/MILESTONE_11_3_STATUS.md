@@ -4,9 +4,17 @@ _Last updated: 2026-07-20_
 
 ## Status
 
-**🟡 Milestone 11.3B implemented on a stacked branch; automated and live-browser acceptance pending.**
+**🟡 Milestone 11.3A is merged; 11.3B is rebased onto `main` with final automated acceptance pending.**
 
 Milestone 11.3 exposes persistent campaign state to the player and then turns the rooftop refuge into the first reusable contract hub. It does not add vehicles or replace `MissionRunner` as campaign authority.
+
+Acceptance history:
+
+```text
+11.3A final head   f1dbec9ab6393159026891d17e8453d288a5126c
+11.3A squash merge 8b5a96f80837c88d4831e83e6c735b4698865bdb
+11.3B pull request #13
+```
 
 ## 11.3A — Campaign entry
 
@@ -21,6 +29,8 @@ completed opening contract  → Continue free roam / New Game
 ```
 
 A successful New Game or Retry action writes one session-only automatic-entry token, reloads the page and lets the existing checkpoint/tutorial boot order restore one coherent world. A normal later visit presents Continue again.
+
+The final 11.3A head passed unit tests, the complete Chromium suite and its Netlify deploy preview before merge.
 
 ## 11.3B — Refuge contract board
 
@@ -76,9 +86,11 @@ CampaignCheckpointSystem    ← safe objective and completion restoration
 - The board is a modal dialog with one accessible title.
 - Tab and Shift+Tab remain inside enabled board actions.
 - Escape closes the board without mutating campaign state.
+- Enter and Space activate focused campaign and result actions explicitly.
 - The native game modal is hidden and inert while the board owns focus.
 - Narrow layouts stack contract actions vertically.
 - The mission drawer reads the active campaign snapshot for the five-step cleanup checklist while retaining the opening mission's validated four-task presentation.
+- Dismissing a board-contract result cannot erase the opening mission's accepted compatibility state.
 
 ## Automated boundary
 
@@ -88,17 +100,20 @@ Coverage includes:
 - complete `Clean the Scene` typed-event progression and reward idempotency;
 - bootstrap ordering for campaign entry then mission board;
 - both playable routes rendering the accessible board;
-- keyboard focus loop, Escape close and narrow layout;
+- keyboard focus loop, Escape close, focused result activation and narrow layout;
 - world camera-roll collection, body hiding, police-attention loss and refuge completion;
-- completion checkpoint reload without duplicate money or reputation.
+- completion checkpoint reload without duplicate money or reputation;
+- opening-mission armed free roam after `REPORT ACCEPTED` while the board is installed.
 
-## Acceptance still required
+## Final acceptance gate
 
-- Unit tests green on the final branch head.
-- Complete Chromium suite green on the same head.
-- Normal-browser board interaction verified on `/` and `/phaser/`.
-- Physical drag/hide flow checked with mouse and keyboard interaction rather than the browser harness.
-- Replay and failed-run Retry verified once in a live preview.
+Before PR #13 can merge:
+
+```text
+unit-tests              must be green on the final rebased head
+browser-smoke           must be green on the same head
+Netlify deploy preview  must be green on the same head
+```
 
 ## Next milestone
 
