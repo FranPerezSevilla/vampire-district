@@ -2,16 +2,6 @@ import { installCampaignBrowserApi } from "./CampaignBrowserApi.js";
 import { CampaignCheckpointSystem } from "./CampaignCheckpointSystem.js";
 import { campaign } from "./preload.js";
 
-function releaseRestoredIntro(game, checkpoints) {
-  if (!checkpoints.restored) return;
-  const uiScene = game.scene?.getScene?.("UIScene");
-  if (!uiScene?.dom) {
-    window.requestAnimationFrame(() => releaseRestoredIntro(game, checkpoints));
-    return;
-  }
-  if (uiScene.introOpen) uiScene.closeIntro?.();
-}
-
 function publishCampaign(scene, checkpoints) {
   const snapshot = campaign.snapshot();
   const values = {
@@ -52,7 +42,6 @@ function attachCampaignRuntime() {
   const disposePublish = campaign.events.on("*", publish);
   const uninstallApi = installCampaignBrowserApi(scene, campaign, checkpoints);
   publish();
-  releaseRestoredIntro(game, checkpoints);
 
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
     scene.events.off(Phaser.Scenes.Events.POST_UPDATE, updateCheckpoint);
