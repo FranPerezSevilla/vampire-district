@@ -113,14 +113,14 @@ function sceneFixture() {
   return { scene, published, reportWrites, journalist, thug, informant, uiScene };
 }
 
-function withPhaser(callback) {
+async function withPhaser(callback) {
   const previous = globalThis.Phaser;
   globalThis.Phaser = {
     Scenes: { Events: { SHUTDOWN: "shutdown" } },
     Math: { Distance: { Between: (ax, ay, bx, by) => Math.hypot(bx - ax, by - ay) } }
   };
   try {
-    return callback();
+    return await callback();
   } finally {
     if (previous === undefined) delete globalThis.Phaser;
     else globalThis.Phaser = previous;
@@ -184,7 +184,7 @@ test("completed standalone missions replay without duplicating rewards", async (
   secondAuthority.destroy();
 }));
 
-test("stable objective checkpoint restores tutorial-complete police-roof state", () => withPhaser(() => {
+test("stable objective checkpoint restores tutorial-complete police-roof state", async () => withPhaser(async () => {
   const storage = memoryStorage();
   const campaign = new CampaignSystem({ storage, autoSave: true, now: () => 400 });
   campaign.startMission(SILENCE_THE_JOURNALIST_ID);
