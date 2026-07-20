@@ -63,7 +63,6 @@ export class DrainSystem {
       && !this.scene.combatSystem?.isBusy()
       && !this.scene.playerDamageSystem?.isHitStunned()
       && !this.scene.missionSystem?.failed
-      && !this.scene.missionSystem?.completed
     );
   }
 

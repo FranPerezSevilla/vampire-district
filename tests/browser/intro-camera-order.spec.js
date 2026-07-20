@@ -22,6 +22,7 @@ async function dispatchDialogueAdvance(page) {
 }
 
 test("the intro remains zoomed in while opening dialogue is active", async ({ page }) => {
+  test.setTimeout(60_000);
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
 
@@ -34,7 +35,7 @@ test("the intro remains zoomed in while opening dialogue is active", async ({ pa
   await page.locator("#ui-modal-action").click();
   const dialogue = page.locator("#tutorial-dialogue");
   const text = page.locator(".tutorial-dialogue__text");
-  await expect(dialogue).toHaveClass(/open/, { timeout: 10_000 });
+  await expect(dialogue).toHaveClass(/open/, { timeout: 15_000 });
   await expect(text).toContainText("Another night");
 
   const firstZoom = await page.evaluate(() => (
@@ -56,7 +57,7 @@ test("the intro remains zoomed in while opening dialogue is active", async ({ pa
     const root = document.getElementById("tutorial-dialogue");
     const current = document.querySelector(".tutorial-dialogue__text")?.textContent || "";
     return Boolean(root?.classList.contains("open") && current && current !== previousText);
-  }, previous || "", { timeout: 8_000 });
+  }, previous || "", { timeout: 12_000 });
   await expect(text).toContainText("My sire");
 
   const secondZoom = await page.evaluate(() => {

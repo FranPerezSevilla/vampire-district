@@ -540,7 +540,7 @@ export class TutorialDirector {
     const camera = this.scene.cameras.main;
     const targetZoom = normalZoomFor(this.scene);
     const startZoom = camera.zoom;
-    camera.setBounds(0, 0, WORLD.width, WORLD.height);
+    this.scene.outskirtsSystem?.updatePresentation?.();
     await new Promise(resolve => {
       this.scene.tweens.addCounter({
         from: 0,

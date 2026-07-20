@@ -83,7 +83,6 @@ export class PlayerDamageSystem {
       && !this.scene.transitionSystem?.active
       && !this.scene.interactionSystem?.isOpen
       && !this.scene.missionSystem?.failed
-      && !this.scene.missionSystem?.completed
     );
   }
 
