@@ -79,6 +79,8 @@ test("REPORT ACCEPTED returns to armed free roam with working unarmed impacts", 
 
     scene.combatSystem.attack = null;
     scene.combatSystem.aimDirection = { x: 1, y: 0 };
+    const canAttack = scene.combatSystem.canStartAttack(frame);
+    const canDrain = scene.drainSystem.canStart(frame);
     const beforeImpact = target.combat.resilience;
     const attackFrame = {
       ...frame,
@@ -100,8 +102,8 @@ test("REPORT ACCEPTED returns to armed free roam with working unarmed impacts", 
       cycled,
       weaponAfterCycle,
       currentWeapon: scene.weaponSystem.currentWeapon().id,
-      canAttack: scene.combatSystem.canStartAttack(frame),
-      canDrain: scene.drainSystem.canStart(frame),
+      canAttack,
+      canDrain,
       beforeImpact,
       afterImpact: target.combat.resilience,
       attackStarted: Boolean(scene.combatSystem.attack)
