@@ -4,6 +4,7 @@ import {
   CAMPAIGN_SCHEMA_VERSION,
   MISSION_STATUS
 } from "./constants.js";
+import { sanitizeCampaignCheckpoint } from "./CampaignCheckpoint.js";
 
 function finiteNumber(value, fallback = 0) {
   const number = Number(value);
@@ -87,7 +88,8 @@ export function createCampaignState({ now = 0 } = {}) {
     sequences: {
       transaction: 0,
       event: 0,
-      save: 0
+      save: 0,
+      checkpoint: 0
     },
     player: {
       cash: 0,
@@ -98,6 +100,9 @@ export function createCampaignState({ now = 0 } = {}) {
       records: {},
       completed: [],
       failed: []
+    },
+    checkpoints: {
+      latest: null
     },
     reputation: {
       factions: {
@@ -194,7 +199,8 @@ export function sanitizeCampaignState(candidate, { now = 0 } = {}) {
     sequences: {
       transaction: Math.max(0, integer(plainRecord(source.sequences).transaction, ledger.length)),
       event: Math.max(0, integer(plainRecord(source.sequences).event, eventLog.length)),
-      save: Math.max(0, integer(plainRecord(source.sequences).save, 0))
+      save: Math.max(0, integer(plainRecord(source.sequences).save, 0)),
+      checkpoint: Math.max(0, integer(plainRecord(source.sequences).checkpoint, 0))
     },
     player: {
       cash: Math.max(0, finiteNumber(plainRecord(source.player).cash, 0)),
@@ -205,6 +211,9 @@ export function sanitizeCampaignState(candidate, { now = 0 } = {}) {
       records: missionRecords,
       completed: uniqueStrings(missionSource.completed),
       failed: uniqueStrings(missionSource.failed)
+    },
+    checkpoints: {
+      latest: sanitizeCampaignCheckpoint(plainRecord(source.checkpoints).latest || source.checkpoint || null)
     },
     reputation: {
       factions: {
@@ -254,8 +263,10 @@ export function migrateCampaignState(candidate, { now = 0 } = {}) {
     throw new RangeError(`Campaign save version ${version} is newer than supported version ${CAMPAIGN_SCHEMA_VERSION}.`);
   }
 
-  // Version zero was the pre-schema prototype shape. Sanitisation supplies all
-  // version-one fields while preserving recognised money, mission and inventory data.
+  // Versions zero and one did not persist a world checkpoint. Sanitisation keeps
+  // their money, mission, reputation and inventory data and supplies the new
+  // checkpoint collection. CampaignCheckpointSystem can synthesize a safe world
+  // snapshot from an existing opening-mission record on first boot.
   return sanitizeCampaignState(source, { now });
 }
 
