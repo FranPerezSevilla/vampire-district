@@ -2,10 +2,19 @@ import { expect, test } from "@playwright/test";
 
 const ROUTES = ["/", "/phaser/"];
 const STORAGE_KEY = "vampire-district-campaign-v1";
+const RESET_SENTINEL = "vampire-district-foundation-test-reset";
+
+async function clearCampaignOnce(page) {
+  await page.addInitScript(({ storageKey, sentinel }) => {
+    if (window.sessionStorage.getItem(sentinel) === "done") return;
+    window.localStorage.removeItem(storageKey);
+    window.sessionStorage.setItem(sentinel, "done");
+  }, { storageKey: STORAGE_KEY, sentinel: RESET_SENTINEL });
+}
 
 for (const route of ROUTES) {
   test(`${route} boots one authoritative campaign and checkpoint runtime`, async ({ page }) => {
-    await page.addInitScript(key => window.localStorage.removeItem(key), STORAGE_KEY);
+    await clearCampaignOnce(page);
     await page.goto(`${route}?rcTest=1`, { waitUntil: "domcontentloaded" });
     await page.waitForFunction(() => Boolean(
       window.NBD_APP_READY
@@ -39,7 +48,7 @@ for (const route of ROUTES) {
 }
 
 test("direct opening-mission rewards and completion checkpoint cannot duplicate after reload", async ({ page }) => {
-  await page.addInitScript(key => window.localStorage.removeItem(key), STORAGE_KEY);
+  await clearCampaignOnce(page);
   await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => Boolean(
     window.NBD_APP_READY
@@ -84,7 +93,7 @@ test("direct opening-mission rewards and completion checkpoint cannot duplicate 
 });
 
 test("campaign export and import use plain versioned checkpoint JSON", async ({ page }) => {
-  await page.addInitScript(key => window.localStorage.removeItem(key), STORAGE_KEY);
+  await clearCampaignOnce(page);
   await page.goto("/phaser/?rcTest=1", { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_CAMPAIGN_READY));
 
