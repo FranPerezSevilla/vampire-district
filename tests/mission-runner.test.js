@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { CampaignCheckpointSystem } from "../phaser/src/campaign/CampaignCheckpointSystem.js";
 import { CampaignEventBus } from "../phaser/src/campaign/CampaignEventBus.js";
 import { createCampaignState } from "../phaser/src/campaign/CampaignState.js";
 import { MissionRunner } from "../phaser/src/campaign/MissionRunner.js";
@@ -18,14 +19,16 @@ function fixture(definitions = [silenceTheJournalistMission, cleanTheSceneMissio
   const events = new CampaignEventBus(state, { now: () => now++ });
   const wallet = new WalletSystem(state, { events, now: () => now++ });
   const reputation = new ReputationSystem(state, { events });
+  const checkpoints = new CampaignCheckpointSystem(state, { events, now: () => now++ });
   const runner = new MissionRunner(state, {
     definitions,
     events,
     wallet,
     reputation,
+    checkpoints,
     now: () => now++
   });
-  return { state, events, wallet, reputation, runner };
+  return { state, events, wallet, reputation, checkpoints, runner };
 }
 
 function completeJournalistMission(runner, outcome = "killed") {
@@ -49,9 +52,32 @@ test("journalist mission progresses only through matching typed events", () => {
   assert.equal(runner.currentObjective().id, "speak_to_informant");
 });
 
+test("objective activation captures authored stable checkpoints", () => {
+  const { checkpoints, runner } = fixture();
+  runner.start(SILENCE_THE_JOURNALIST_ID);
+  assert.equal(checkpoints.snapshot().id, "journalist_mission_start");
+  assert.equal(checkpoints.snapshot().locationId, "rooftop_refuge");
+
+  runner.handle(CAMPAIGN_EVENT_TYPES.REACHED, { targetId: "police_roof" });
+  // Informant dialogue is intentionally not a safe checkpoint. Reloading here
+  // restarts the compact tutorial rather than reconstructing a half-open scene.
+  assert.equal(checkpoints.snapshot().id, "journalist_mission_start");
+
+  runner.handle(CAMPAIGN_EVENT_TYPES.TALKED, { targetId: "police_roof_informant" });
+  assert.equal(checkpoints.snapshot().id, "journalist_tip_acquired");
+  assert.equal(checkpoints.snapshot().objectiveId, "reach_nightclub");
+  assert.equal(checkpoints.snapshot().locationId, "police_roof");
+
+  runner.handle(CAMPAIGN_EVENT_TYPES.REACHED, { targetId: "nightclub_district" });
+  assert.equal(checkpoints.snapshot().id, "journalist_target_reached");
+  runner.handle(CAMPAIGN_EVENT_TYPES.NEUTRALIZED, { targetId: "journalist", outcome: "drained" });
+  assert.equal(checkpoints.snapshot().id, "journalist_handled");
+  assert.equal(checkpoints.snapshot().payload.previousOutcome, "drained");
+});
+
 test("killed and drained outcomes both complete the journalist mission", () => {
   for (const outcome of ["killed", "drained"]) {
-    const { state, wallet, reputation, runner } = fixture();
+    const { state, wallet, reputation, checkpoints, runner } = fixture();
     runner.start(SILENCE_THE_JOURNALIST_ID);
     completeJournalistMission(runner, outcome);
 
@@ -64,6 +90,8 @@ test("killed and drained outcomes both complete the journalist mission", () => {
     assert.equal(reputation.faction("blackglass_directorate"), 5);
     assert.equal(reputation.contact("your_sire"), 1);
     assert.equal(state.world.flags.journalist_silenced, true);
+    assert.equal(checkpoints.snapshot().id, "journalist_report_accepted");
+    assert.equal(checkpoints.snapshot().locationId, "rooftop_refuge");
   }
 });
 
@@ -81,7 +109,7 @@ test("invalid neutralization outcome cannot advance the mission", () => {
   assert.equal(runner.currentObjective().id, "neutralize_journalist");
 });
 
-test("mission rewards are idempotent and non-replayable missions reject replay", () => {
+test("mission rewards remain idempotent across standalone replay", () => {
   const { state, wallet, runner } = fixture();
   runner.start(SILENCE_THE_JOURNALIST_ID);
   completeJournalistMission(runner);
@@ -90,6 +118,13 @@ test("mission rewards are idempotent and non-replayable missions reject replay",
   assert.equal(wallet.balance(), 500);
   assert.equal(state.ledger.length, 1);
   assert.throws(() => runner.start(SILENCE_THE_JOURNALIST_ID), /not replayable/);
+
+  const replay = runner.start(SILENCE_THE_JOURNALIST_ID, { replay: true });
+  assert.equal(replay.rewardsGranted, true);
+  completeJournalistMission(runner, "drained");
+  assert.equal(wallet.balance(), 500);
+  assert.equal(state.ledger.length, 1);
+  assert.equal(state.missions.records[SILENCE_THE_JOURNALIST_ID].completionCount, 2);
 });
 
 test("failing a mission records reason without granting rewards", () => {
@@ -105,8 +140,9 @@ test("failing a mission records reason without granting rewards", () => {
 });
 
 test("Clean the Scene is authored entirely through the same generic runner", () => {
-  const { state, wallet, reputation, runner } = fixture();
+  const { state, wallet, reputation, checkpoints, runner } = fixture();
   runner.start("clean_the_scene");
+  assert.equal(checkpoints.snapshot().id, "clean_scene_start");
   assert.equal(runner.handle(CAMPAIGN_EVENT_TYPES.REACHED, { targetId: "club_service_alley" }), true);
   assert.equal(runner.handle(CAMPAIGN_EVENT_TYPES.COLLECTED, { itemId: "compromised_camera_roll" }), true);
   assert.equal(runner.handle(CAMPAIGN_EVENT_TYPES.DESTROYED, { entityId: "exposed_body" }), true);
@@ -118,4 +154,5 @@ test("Clean the Scene is authored entirely through the same generic runner", () 
   assert.equal(wallet.balance(), 275);
   assert.equal(reputation.contact("directorate_cleaner"), 3);
   assert.equal(state.world.flags.cleaner_contact_unlocked, true);
+  assert.equal(checkpoints.snapshot().id, "clean_scene_complete");
 });
