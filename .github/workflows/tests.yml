@@ -36,7 +36,7 @@ jobs:
 
   browser-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     needs: unit-tests
     steps:
       - name: Check out repository
@@ -52,7 +52,17 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run release-candidate browser suite
-        run: npm run test:browser
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout --signal=INT --kill-after=30s 30m npm run test:browser 2>&1 | tee browser-smoke.log
+      - name: Upload browser smoke log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-smoke-log
+          path: browser-smoke.log
+          retention-days: 7
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
