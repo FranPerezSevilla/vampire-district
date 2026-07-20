@@ -9,11 +9,13 @@ const CHECKPOINT_LOCATIONS = Object.freeze({
   nightclub_district: Object.freeze({ layer: LAYERS.STREET, x: 642, y: 404 })
 });
 
-const RESTORABLE_OBJECTIVES = new Set([
-  "reach_nightclub",
-  "neutralize_journalist",
-  "return_to_refuge"
-]);
+const OBJECTIVE_FALLBACK_LOCATIONS = Object.freeze({
+  reach_nightclub: "police_roof",
+  neutralize_journalist: "nightclub_district",
+  return_to_refuge: "nightclub_district"
+});
+
+const RESTORABLE_OBJECTIVES = new Set(Object.keys(OBJECTIVE_FALLBACK_LOCATIONS));
 
 export class CampaignMissionAuthority {
   constructor(scene, campaign) {
@@ -67,8 +69,12 @@ export class CampaignMissionAuthority {
     if (!objective || !RESTORABLE_OBJECTIVES.has(objective.id)) return false;
 
     const checkpoint = this.campaign.checkpoints.snapshot();
-    const location = CHECKPOINT_LOCATIONS[checkpoint?.locationId]
-      || CHECKPOINT_LOCATIONS[objective.id === "reach_nightclub" ? "police_roof" : "nightclub_district"];
+    const checkpointBelongsToMission = checkpoint?.missionId === SILENCE_THE_JOURNALIST_ID
+      && checkpoint?.objectiveId === objective.id;
+    const locationId = checkpointBelongsToMission
+      ? checkpoint.locationId
+      : OBJECTIVE_FALLBACK_LOCATIONS[objective.id];
+    const location = CHECKPOINT_LOCATIONS[locationId];
     if (!location) return false;
 
     this.restoreCompletedTutorialState();
@@ -87,10 +93,10 @@ export class CampaignMissionAuthority {
     this.scene.npcSystem?.refreshVisibility?.();
     this.restoredCheckpoint = true;
     this.scene.events?.emit?.("campaign:checkpoint-restored", {
-      checkpointId: checkpoint?.id || null,
+      checkpointId: checkpointBelongsToMission ? checkpoint.id : null,
       missionId: SILENCE_THE_JOURNALIST_ID,
       objectiveId: objective.id,
-      locationId: checkpoint?.locationId || null
+      locationId
     });
     return true;
   }
