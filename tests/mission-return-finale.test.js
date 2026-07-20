@@ -6,9 +6,13 @@ const distanceBetween = (ax, ay, bx, by) => Math.hypot(bx - ax, by - ay);
 globalThis.Phaser = {
   Math: {
     Distance: { Between: distanceBetween }
+  },
+  Scenes: {
+    Events: { SHUTDOWN: "shutdown" }
   }
 };
 
+const { CampaignSystem } = await import("../phaser/src/campaign/CampaignSystem.js");
 const { LAYERS } = await import("../phaser/src/data/district.js");
 const { MissionSystem, RETURN_FINALE_COPY } = await import("../phaser/src/systems/MissionSystem.js");
 
@@ -43,7 +47,19 @@ function makeScene() {
     }
   };
 
+  const journalist = {
+    id: "journalist",
+    x: 588,
+    y: 360,
+    layer: LAYERS.STREET,
+    inactive: true,
+    dead: false,
+    intercepted: false,
+    deathKind: null,
+    container: { setVisible() { return this; } }
+  };
   const scene = {
+    map: null,
     currentLayer: LAYERS.ROOF_HIGH,
     player: { x: 150, y: 146 },
     lastActionText: "",
@@ -53,13 +69,13 @@ function makeScene() {
       resetWorldEdges() { this.resets++; }
     },
     npcSystem: {
-      npcs: [],
+      npcs: [journalist],
       rebuildSpatialIndex() {},
       refreshVisibility() {},
       summary: () => "NPC summary"
     },
     feedingSystem: {
-      stats: { targetHandled: true },
+      stats: { targetHandled: false, targetFed: false },
       summary: () => "Hunger summary"
     },
     exposureSystem: { summary: () => "Exposure summary" },
@@ -69,6 +85,12 @@ function makeScene() {
     propDamageSystem: { summary: () => "Prop summary" },
     weaponSystem: { summary: () => "Weapon summary" },
     aiStateSystem: { summary: () => "AI summary" },
+    campaignCheckpointSystem: {
+      saveCompletionNow() {
+        order.push("checkpoint-saved");
+        return { id: "cp-complete" };
+      }
+    },
     events,
     redrawLayer() {},
     statePublisher: {
@@ -79,9 +101,19 @@ function makeScene() {
     },
     registry: { set() {} }
   };
+  const campaign = new CampaignSystem({
+    autoLoad: false,
+    autoSave: false,
+    now: () => 1000
+  });
+  scene.campaignSystem = campaign;
+  const mission = new MissionSystem(scene, campaign);
 
   return {
     scene,
+    campaign,
+    mission,
+    journalist,
     director,
     dialogue,
     order,
@@ -91,24 +123,50 @@ function makeScene() {
   };
 }
 
+function advanceToJournalist(context) {
+  const { mission, scene } = context;
+  mission.rooftopJumps = 3;
+  assert.equal(mission.collectPoliceRoofTip(), true);
+  assert.equal(mission.step, 1);
+
+  scene.currentLayer = LAYERS.STREET;
+  scene.player.x = 642;
+  scene.player.y = 404;
+  mission.update();
+  assert.equal(mission.step, 2);
+}
+
+function advanceToReturn(context, outcome) {
+  advanceToJournalist(context);
+  context.journalist.dead = true;
+  context.journalist.deathKind = outcome;
+  context.scene.feedingSystem.stats.targetHandled = true;
+  context.scene.feedingSystem.stats.targetFed = outcome === "drained";
+  context.scene.events.emit("combat:entity-neutralized", {
+    targetId: "journalist",
+    type: "target",
+    kind: outcome,
+    weaponId: outcome === "drained" ? "drain" : "unarmed"
+  });
+  assert.equal(context.mission.step, 3);
+  assert.equal(context.mission.completed, false);
+}
+
 for (const outcome of ["killed", "drained"]) {
   test(`${outcome} journalist still requires sire dialogue before REPORT ACCEPTED`, async () => {
     const context = makeScene();
-    const mission = new MissionSystem(context.scene);
-    mission.step = 2;
+    advanceToReturn(context, outcome);
 
-    mission.resolveJournalistPlaceholder(`Journalist ${outcome}. Return to the refuge.`);
-    assert.equal(mission.step, 3);
-    assert.equal(mission.completed, false);
-    assert.equal(context.resultWrites.length, 0);
-
-    mission.update();
-    const finalePromise = mission.returnFinalePromise;
-    mission.update();
+    context.scene.currentLayer = LAYERS.ROOF_HIGH;
+    context.scene.player.x = 150;
+    context.scene.player.y = 146;
+    context.mission.update();
+    const finalePromise = context.mission.returnFinalePromise;
+    context.mission.update();
 
     assert.ok(finalePromise);
-    assert.equal(mission.returnFinalePending, true);
-    assert.equal(mission.completed, false);
+    assert.equal(context.mission.returnFinalePending, true);
+    assert.equal(context.mission.completed, false);
     assert.equal(context.resultWrites.length, 0);
     assert.deepEqual(context.order, ["dialogue-opened"]);
     assert.equal(context.director.lastDialogue.speaker, RETURN_FINALE_COPY.speaker);
@@ -119,10 +177,17 @@ for (const outcome of ["killed", "drained"]) {
     context.dialogue.resolve();
     await finalePromise;
 
-    assert.equal(mission.completed, true);
-    assert.equal(mission.step, 4);
-    assert.equal(mission.resultPublished, true);
-    assert.deepEqual(context.order, ["dialogue-opened", "dialogue-dismissed", "report-published"]);
+    assert.equal(context.mission.completed, true);
+    assert.equal(context.mission.step, 4);
+    assert.equal(context.mission.resultPublished, true);
+    assert.equal(context.campaign.wallet.balance(), 500);
+    assert.equal(context.campaign.reputation.factionValue("blackglass_directorate"), 5);
+    assert.deepEqual(context.order, [
+      "dialogue-opened",
+      "dialogue-dismissed",
+      "checkpoint-saved",
+      "report-published"
+    ]);
     assert.equal(context.resultWrites.length, 1);
     assert.equal(context.resultWrites[0].key, "missionResult");
     assert.equal(context.resultWrites[0].value.status, "complete");
@@ -135,26 +200,30 @@ for (const outcome of ["killed", "drained"]) {
 
 test("reaching the refuge before handling the journalist cannot start the finale", () => {
   const context = makeScene();
-  const mission = new MissionSystem(context.scene);
-  mission.step = 2;
-  mission.update();
+  advanceToJournalist(context);
+  context.scene.currentLayer = LAYERS.ROOF_HIGH;
+  context.scene.player.x = 150;
+  context.scene.player.y = 146;
+  context.mission.update();
 
-  assert.equal(mission.returnFinalePending, false);
-  assert.equal(mission.returnFinalePromise, null);
-  assert.equal(mission.completed, false);
+  assert.equal(context.mission.returnFinalePending, false);
+  assert.equal(context.mission.returnFinalePromise, null);
+  assert.equal(context.mission.completed, false);
   assert.equal(context.order.length, 0);
   assert.equal(context.resultWrites.length, 0);
 });
 
 test("repeated refuge updates start one finale sequence only", () => {
   const context = makeScene();
-  const mission = new MissionSystem(context.scene);
-  mission.step = 3;
+  advanceToReturn(context, "killed");
+  context.scene.currentLayer = LAYERS.ROOF_HIGH;
+  context.scene.player.x = 150;
+  context.scene.player.y = 146;
 
-  mission.update();
-  mission.update();
-  mission.update();
+  context.mission.update();
+  context.mission.update();
+  context.mission.update();
 
   assert.equal(context.order.filter(value => value === "dialogue-opened").length, 1);
-  assert.equal(mission.returnFinalePending, true);
+  assert.equal(context.mission.returnFinalePending, true);
 });
