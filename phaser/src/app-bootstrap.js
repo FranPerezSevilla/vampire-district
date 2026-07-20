@@ -1,89 +1,76 @@
 const PHASER_VERSION = "3.90.0";
-const query = new URLSearchParams(window.location.search);
+const PHASER_SCRIPT_SOURCES = Object.freeze([
+  Object.freeze({
+    kind: "local",
+    src: "./vendor/phaser-3.90.0.min.js"
+  }),
+  Object.freeze({
+    kind: "jsdelivr",
+    src: `https://cdn.jsdelivr.net/npm/phaser@${PHASER_VERSION}/dist/phaser.min.js`
+  }),
+  Object.freeze({
+    kind: "unpkg",
+    src: `https://unpkg.com/phaser@${PHASER_VERSION}/dist/phaser.min.js`
+  })
+]);
 
-window.NBD_RC_TEST_MODE = query.get("rcTest") === "1";
-window.NBD_APP_READY = false;
-
-function scriptSourceCandidates() {
-  return [
-    {
-      id: "local",
-      url: new URL("../../node_modules/phaser/dist/phaser.min.js", import.meta.url).href
-    },
-    {
-      id: "jsdelivr",
-      url: `https://cdn.jsdelivr.net/npm/phaser@${PHASER_VERSION}/dist/phaser.min.js`
-    },
-    {
-      id: "cdnjs",
-      url: `https://cdnjs.cloudflare.com/ajax/libs/phaser/${PHASER_VERSION}/phaser.min.js`
-    }
-  ];
-}
-
-function loadScript(candidate, timeoutMs = 12_000) {
+function loadScript(source) {
   return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    let settled = false;
-    const timeout = window.setTimeout(() => finish(new Error(`Timed out loading ${candidate.id}`)), timeoutMs);
-
-    const finish = error => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timeout);
-      script.onload = null;
-      script.onerror = null;
-      if (error) {
-        script.remove();
-        reject(error);
-      } else {
-        resolve();
-      }
-    };
-
-    script.src = candidate.url;
-    script.async = true;
-    script.dataset.nbdPhaserSource = candidate.id;
-    script.onload = () => {
-      if (!window.Phaser) {
-        finish(new Error(`${candidate.id} loaded without exposing Phaser`));
+    const existing = document.querySelector(`script[data-nbd-phaser="${source.kind}"]`);
+    if (existing) {
+      if (window.Phaser) {
+        resolve(source);
         return;
       }
-      window.NBD_PHASER_SOURCE = candidate.id;
-      finish();
-    };
-    script.onerror = () => finish(new Error(`Failed to load ${candidate.id}`));
+      existing.addEventListener("load", () => resolve(source), { once: true });
+      existing.addEventListener("error", () => reject(new Error(`Unable to load ${source.src}`)), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = source.src;
+    script.async = false;
+    script.dataset.nbdPhaser = source.kind;
+    script.addEventListener("load", () => resolve(source), { once: true });
+    script.addEventListener("error", () => reject(new Error(`Unable to load ${source.src}`)), { once: true });
     document.head.appendChild(script);
   });
 }
 
 async function ensurePhaser() {
-  if (window.Phaser) {
-    window.NBD_PHASER_SOURCE ||= "preloaded";
-    return;
-  }
+  if (window.Phaser) return { kind: "existing", version: window.Phaser.VERSION || "unknown" };
 
-  const errors = [];
-  for (const candidate of scriptSourceCandidates()) {
+  let lastError = null;
+  for (const source of PHASER_SCRIPT_SOURCES) {
     try {
-      await loadScript(candidate);
-      return;
+      await loadScript(source);
+      if (window.Phaser) {
+        window.NBD_PHASER_SOURCE = Object.freeze({
+          kind: source.kind,
+          src: source.src,
+          version: window.Phaser.VERSION || PHASER_VERSION
+        });
+        return window.NBD_PHASER_SOURCE;
+      }
     } catch (error) {
-      errors.push(`${candidate.id}: ${error.message}`);
+      lastError = error;
     }
   }
-
-  throw new Error(`Unable to load Phaser ${PHASER_VERSION}. ${errors.join(" · ")}`);
+  throw lastError || new Error("Phaser could not be loaded.");
 }
 
-function showFatalError(error) {
-  console.error(error);
-  const root = document.getElementById("game-root") || document.body;
-  const message = document.createElement("div");
-  message.setAttribute("role", "alert");
-  message.style.cssText = "padding:24px;background:#210813;color:#ffe4eb;font:700 16px/1.45 system-ui,sans-serif;border:1px solid #ff526b";
-  message.textContent = `Vampire District could not start: ${error.message}`;
-  root.replaceChildren(message);
+function renderBootFailure(error) {
+  console.error("Vampire District failed to boot", error);
+  const root = document.getElementById("game-root");
+  if (!root) return;
+  root.innerHTML = `
+    <div style="display:grid;place-items:center;min-height:320px;padding:32px;text-align:center;background:#090a12;color:#f4ecff;border:1px solid #513c65">
+      <div>
+        <strong style="display:block;margin-bottom:10px;color:#ffb02e">Vampire District could not start</strong>
+        <span style="font-size:13px;line-height:1.5;color:#c9bfd7">${String(error?.message || error || "Unknown boot error")}</span>
+      </div>
+    </div>
+  `;
 }
 
 try {
@@ -92,16 +79,22 @@ try {
   await import("./ui/AccessibilityKeyboardBridge.js");
   await import("./responsive-layout.js");
   await import("./tutorial/bootstrap.js");
-  if (window.NBD_RC_TEST_MODE) await import("./testing/bootstrap.js");
+  await import("./campaign/bootstrap.js");
+  if (new URLSearchParams(window.location.search).has("rcTest")) {
+    await import("./testing/ReleaseCandidateHarness.js");
+  }
   window.NBD_APP_READY = true;
   window.dispatchEvent(new CustomEvent("nbd:app-ready", {
     detail: {
-      phaserVersion: PHASER_VERSION,
-      source: window.NBD_PHASER_SOURCE,
-      rcTestMode: window.NBD_RC_TEST_MODE
+      phaser: window.NBD_PHASER_SOURCE || {
+        kind: "existing",
+        version: window.Phaser?.VERSION || PHASER_VERSION
+      },
+      campaign: true
     }
   }));
 } catch (error) {
-  showFatalError(error);
-  throw error;
+  window.NBD_APP_READY = false;
+  window.NBD_APP_ERROR = error;
+  renderBootFailure(error);
 }
