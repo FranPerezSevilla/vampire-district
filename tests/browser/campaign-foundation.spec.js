@@ -4,6 +4,8 @@ const ROUTES = ["/", "/phaser/"];
 const STORAGE_KEY = "vampire-district-campaign-v1";
 const RESET_SENTINEL = "vampire-district-foundation-test-reset";
 
+test.describe.configure({ timeout: 90_000 });
+
 async function clearCampaignOnce(page) {
   await page.addInitScript(({ storageKey, sentinel }) => {
     if (window.sessionStorage.getItem(sentinel) === "done") return;

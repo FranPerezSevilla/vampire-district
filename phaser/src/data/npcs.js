@@ -21,8 +21,11 @@ export const npcDefinitions = [
   { id: "civ_south_1", type: NPC_TYPES.CIVILIAN, x: 206, y: 524, layer: LAYERS.STREET, behavior: "wander", speed: 9 },
   { id: "civ_south_2", type: NPC_TYPES.CIVILIAN, x: 420, y: 526, layer: LAYERS.STREET, behavior: "wander", speed: 9 },
 
-  // Mission target: hidden until the rooftop tip is collected.
+  // Opening mission target: hidden until the rooftop tip is collected.
   { id: "journalist", type: NPC_TYPES.TARGET, x: 588, y: 360, layer: LAYERS.STREET, behavior: "loiter", speed: 5, dirX: -1, dirY: 0 },
+
+  // Reusable cleanup-contract body. It remains inactive until Clean the Scene is accepted.
+  { id: "exposed_body", type: NPC_TYPES.CIVILIAN, x: 704, y: 506, layer: LAYERS.STREET, behavior: "hidden", speed: 0, inactive: true },
 
   // Rooftop blocker: must be neutralized before the police roof jump opens.
   { id: "rooftop_thug", type: NPC_TYPES.THUG, x: 646, y: 162, layer: LAYERS.ROOF_LOW, behavior: "guard", speed: 0, dirX: 1, dirY: 0 },

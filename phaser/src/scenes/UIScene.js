@@ -185,8 +185,10 @@ export class UIScene extends Phaser.Scene {
 
   readState() {
     const get = (key, fallback = "") => this.registry.get(key) ?? fallback;
+    const result = this.registry.get("missionResult") || null;
     return {
       mission: get("missionText", "Objective unavailable"),
+      campaignMission: this.registry.get("campaignMission") || result?.mission || null,
       visibility: get("visibilityText", "Visibility unknown"),
       exposureText: get("exposureText", "Exposure unavailable"),
       policeText: get("policeText", "Police unavailable"),
@@ -204,7 +206,7 @@ export class UIScene extends Phaser.Scene {
       prompt: get("interactionPrompt", ""),
       lastAction: get("lastActionText", ""),
       menu: this.registry.get("interactionMenu") || null,
-      result: this.registry.get("missionResult") || null,
+      result,
       weapon: this.registry.get("weaponState") || {
         id: "unarmed",
         name: "Unarmed",
@@ -288,7 +290,7 @@ export class UIScene extends Phaser.Scene {
     this.dom.root?.classList.toggle("wanted-air", wantedLevel >= 3);
     this.dom.missionButton?.classList.toggle("active", this.missionOpen);
     this.dom.menuButton?.classList.toggle("active", this.pauseOpen);
-    this.setText(this.dom.missionStep, this.missionProgressLabel(data.mission));
+    this.setText(this.dom.missionStep, this.missionProgressLabel(data.mission, data.campaignMission));
 
     const weapon = data.weapon || {};
     this.setText(this.dom.weaponName, weapon.name || "Unarmed");
@@ -316,7 +318,7 @@ export class UIScene extends Phaser.Scene {
     this.setText(this.dom.missionLast, data.lastAction && data.lastAction !== data.mission ? `Last: ${data.lastAction}` : "");
 
     if (!this.dom.missionChecklist) return;
-    const markup = this.missionChecklist(data.mission, data.lastAction)
+    const markup = this.missionChecklist(data.mission, data.lastAction, data.campaignMission)
       .map(item => `<li class="${item.state}">${this.escapeHtml(item.icon)} ${this.escapeHtml(item.text)}</li>`)
       .join("");
     if (markup !== this.lastMissionMarkup) {
@@ -409,11 +411,13 @@ export class UIScene extends Phaser.Scene {
       const intro = failure
         ? (data.result?.subtitle || "The run is over and control is locked.")
         : (data.result?.subtitle || "Your sire accepts the night's work.");
-      const reportHeading = failure ? "Run report" : "Night report";
+      const reportHeading = data.result?.reportHeading || (failure ? "Run report" : "Night report");
+      const actionLabel = data.result?.actionLabel
+        || (failure ? "Reload page to restart" : "Continue free roam · Enter/Esc");
       this.setModal(
         title,
-        `<p>${this.escapeHtml(intro)}</p><p><strong>${reportHeading}</strong></p><pre>${this.escapeHtml(this.statsText(data))}</pre>`,
-        failure ? "Reload page to restart" : "Continue free roam · Enter/Esc"
+        `<p>${this.escapeHtml(intro)}</p><p><strong>${this.escapeHtml(reportHeading)}</strong></p><pre>${this.escapeHtml(this.statsText(data))}</pre>`,
+        actionLabel
       );
       return;
     }
@@ -469,6 +473,7 @@ export class UIScene extends Phaser.Scene {
   updateMissionResult(data) {
     const result = data.result;
     const mission = String(data.mission || "");
+    if (data.campaignMission?.status === "active" && !result) this.resultDismissed = false;
     if (result?.status === "failed" || mission.startsWith("FAILED")) {
       if (!this.resultOpen || this.resultType !== "failure") this.openResult("failure");
       return;
@@ -522,10 +527,12 @@ export class UIScene extends Phaser.Scene {
 
   closeResult() {
     if (this.resultType === "failure") return;
+    const result = this.registry.get("missionResult") || null;
     this.resultOpen = false;
     this.resultType = null;
     this.resultDismissed = true;
     this.updateUiPause();
+    this.events.emit("ui:mission-result-dismissed", result || {});
   }
 
   toggleMissionDrawer() {
@@ -560,12 +567,19 @@ export class UIScene extends Phaser.Scene {
     return Phaser.Math.Clamp(Number.parseInt(match?.[1] || "0", 10) || 0, 0, 3);
   }
 
-  missionProgressLabel(text) {
+  missionProgressLabel(text, campaignMission = null) {
+    if (campaignMission?.id === "clean_the_scene") {
+      const total = Math.max(1, campaignMission.objectives?.length || 1);
+      if (campaignMission.status === "completed") return "DONE";
+      if (campaignMission.status === "failed") return "FAIL";
+      return `${Math.min(total, Math.max(1, Number(campaignMission.objectiveIndex) + 1))}/${total}`;
+    }
     const value = String(text || "");
     const match = value.match(/^(\d\/4)/);
     if (match) return match[1];
     if (value.startsWith("COMPLETE")) return "DONE";
     if (value.startsWith("FAILED")) return "FAIL";
+    if (value.startsWith("No active contract")) return "BOARD";
     return "1/4";
   }
 
@@ -575,8 +589,23 @@ export class UIScene extends Phaser.Scene {
     return Number.parseFloat(match[1]) || 0;
   }
 
-  missionChecklist(missionText, lastAction) {
+  missionChecklist(missionText, lastAction, campaignMission = null) {
+    if (campaignMission?.id === "clean_the_scene" && Array.isArray(campaignMission.objectives)) {
+      return campaignMission.objectives.map(objective => {
+        const status = objective.state?.status;
+        const state = status === "completed" ? "done" : status === "active" ? "active" : "todo";
+        return {
+          text: objective.label,
+          state,
+          icon: state === "done" ? "✓" : state === "active" ? "▸" : "○"
+        };
+      });
+    }
+
     const text = String(missionText || "");
+    if (text.startsWith("No active contract")) {
+      return [{ text: "Open the rooftop refuge contract board", state: "active", icon: "▸" }];
+    }
     const last = String(lastAction || "");
     const step = this.missionStep(text);
     return [

@@ -28,18 +28,20 @@ test("app bootstrap enables deterministic RC timing before scene composition", a
   assert.equal(content.includes('if (window.NBD_RC_TEST_MODE) await import("./testing/bootstrap.js")'), true);
 });
 
-test("app bootstrap preloads campaign authority before scenes and attaches entry after tutorial", async () => {
+test("app bootstrap preloads campaign authority and attaches entry then board after tutorial", async () => {
   const content = await source("phaser/src/app-bootstrap.js");
   const preloadIndex = content.indexOf('import("./campaign/preload.js")');
   const mainIndex = content.indexOf('import("./main.js")');
   const campaignIndex = content.indexOf('import("./campaign/bootstrap.js")');
   const tutorialIndex = content.indexOf('import("./tutorial/bootstrap.js")');
   const entryIndex = content.indexOf('import("./campaign/entry-bootstrap.js")');
+  const boardIndex = content.indexOf('import("./campaign/board-bootstrap.js")');
   assert.ok(preloadIndex >= 0, "campaign preload is required");
   assert.ok(mainIndex > preloadIndex, "campaign state must exist before GameScene creates MissionSystem");
   assert.ok(campaignIndex > mainIndex, "checkpoint runtime attaches after core systems");
   assert.ok(tutorialIndex > campaignIndex, "checkpoint restoration must happen before tutorial attachment");
   assert.ok(entryIndex > tutorialIndex, "campaign entry must attach after tutorial restoration");
+  assert.ok(boardIndex > entryIndex, "the refuge board attaches after the campaign-entry decision owner");
   assert.equal(content.includes("campaign: true"), true);
 });
 
@@ -70,6 +72,15 @@ test("campaign entry bootstrap waits for checkpoint and tutorial ownership", asy
   assert.equal(content.includes("NBD_CAMPAIGN_ENTRY_READY = true"), true);
 });
 
+test("mission board bootstrap waits for campaign entry and exposes its browser API", async () => {
+  const content = await source("phaser/src/campaign/board-bootstrap.js");
+  assert.equal(content.includes("campaignEntrySystem"), true);
+  assert.equal(content.includes("campaignCheckpointSystem"), true);
+  assert.equal(content.includes("MissionBoardSystem"), true);
+  assert.equal(content.includes("window.NBD_MISSION_BOARD"), true);
+  assert.equal(content.includes("NBD_MISSION_BOARD_READY = true"), true);
+});
+
 test("campaign entry presentation owns actions, focus and the only accessible modal", async () => {
   const content = await source("phaser/src/campaign/CampaignEntrySystem.js");
   for (const action of ["CONTINUE", "NEW_GAME", "RETRY_CHECKPOINT", "RETRY_MISSION"]) {
@@ -84,6 +95,22 @@ test("campaign entry presentation owns actions, focus and the only accessible mo
   assert.equal(content.includes('modal.setAttribute("aria-hidden", "true")'), true);
   assert.equal(content.includes("modal.inert = true"), true);
   assert.equal(content.includes("restoreUnderlyingModal"), true);
+});
+
+test("keyboard accessibility owns focused modal actions without duplicate clicks", async () => {
+  const content = await source("phaser/src/ui/AccessibilityKeyboardBridge.js");
+  assert.equal(content.includes("#ui-modal-action"), true);
+  assert.equal(content.includes("activateModalAction"), true);
+  assert.equal(content.includes('ui.resultOpen && ui.resultType === "success"'), true);
+  assert.equal(content.includes("event.stopImmediatePropagation()"), true);
+});
+
+test("mission presentation falls back to the accepted opening contract after board reports", async () => {
+  const missionContent = await source("phaser/src/systems/MissionSystem.js");
+  const boardContent = await source("phaser/src/campaign/MissionBoardSystem.js");
+  assert.equal(missionContent.includes("activeMissionId || this.presentationMissionId || SILENCE_THE_JOURNALIST_ID"), true);
+  assert.equal(boardContent.includes("result?.missionId === CLEAN_THE_SCENE_ID"), true);
+  assert.equal(boardContent.includes('result?.status === "complete"'), true);
 });
 
 test("campaign browser API exposes persistence and checkpoint entry points", async () => {
