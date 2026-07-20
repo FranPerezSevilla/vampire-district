@@ -34,19 +34,20 @@ const RETIRED_RUNTIME_FILES = Object.freeze([
   "phaser/src/objective-marker.js",
   "phaser/src/objective-marker-guard.js",
   "phaser/src/district-outskirts.js",
-  "phaser/src/sensory-awareness.js"
+  "phaser/src/sensory-awareness.js",
+  "phaser/src/campaign/CampaignRuntimeBridge.js"
 ]);
 
 async function source(path) {
   return readFile(new URL(path, ROOT), "utf8");
 }
 
-test("retired runtime adapters and feature patches are physically removed", async () => {
+test("retired runtime adapters, patches and campaign bridge are physically removed", async () => {
   for (const path of RETIRED_RUNTIME_FILES) {
     await assert.rejects(
       access(new URL(path, ROOT)),
       error => error?.code === "ENOENT",
-      `${path} should not exist after release-candidate cleanup`
+      `${path} should not exist after consolidation cleanup`
     );
   }
 });
@@ -73,6 +74,25 @@ test("task, objective, outskirts and sensory ownership comes from first-class sy
   assert.equal(runtime.includes("new SensoryAwarenessSystem(scene)"), true);
 });
 
+test("campaign is preloaded before scenes and MissionSystem owns runner presentation directly", async () => {
+  const bootstrap = await source("phaser/src/app-bootstrap.js");
+  const preloadIndex = bootstrap.indexOf('await import("./campaign/preload.js")');
+  const mainIndex = bootstrap.indexOf('await import("./main.js")');
+  const campaignIndex = bootstrap.indexOf('await import("./campaign/bootstrap.js")');
+  const tutorialIndex = bootstrap.indexOf('await import("./tutorial/bootstrap.js")');
+  assert.ok(preloadIndex >= 0 && preloadIndex < mainIndex);
+  assert.ok(campaignIndex > mainIndex && campaignIndex < tutorialIndex);
+
+  const campaignBootstrap = await source("phaser/src/campaign/bootstrap.js");
+  assert.equal(campaignBootstrap.includes("CampaignRuntimeBridge"), false);
+  assert.equal(campaignBootstrap.includes("CampaignCheckpointSystem"), true);
+
+  const mission = await source("phaser/src/systems/MissionSystem.js");
+  assert.equal(mission.includes("CampaignRuntimeBridge"), false);
+  assert.equal(mission.includes("this.campaign.handle"), true);
+  assert.equal(mission.includes("globalThis.NBD_CAMPAIGN_SYSTEM"), true);
+});
+
 test("both playable routes use one pinned Phaser bootstrap", async () => {
   for (const path of ["index.html", "phaser/index.html"]) {
     const content = await source(path);
@@ -84,9 +104,10 @@ test("both playable routes use one pinned Phaser bootstrap", async () => {
   }
 
   const bootstrap = await source("phaser/src/app-bootstrap.js");
-  assert.match(bootstrap, /node_modules\/phaser\/dist\/phaser\.min\.js/);
+  assert.match(bootstrap, /vendor\/phaser-3\.90\.0\.min\.js/);
   assert.match(bootstrap, /await import\("\.\/main\.js"\)/);
   assert.match(bootstrap, /await import\("\.\/responsive-layout\.js"\)/);
+  assert.match(bootstrap, /await import\("\.\/testing\/bootstrap\.js"\)/);
   assert.equal(bootstrap.includes("task-reveal-camera.js"), false);
   assert.match(bootstrap, /NBD_PHASER_SOURCE/);
 
