@@ -10,6 +10,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Original setting, factions, retainers and economy](ORIGINAL_SETTING_FACTIONS_RETAINERS_ECONOMY.md) — original-IP guardrails, working factions, enhanced mortal Retainers, weapon slots, safehouses, ammunition and cash economy.
 - [Mission flow](MISSION_FLOW.md) — journalist handling, return-to-refuge completion rule and sire-dialogue-to-report ordering.
 - [Campaign foundation](CAMPAIGN_FOUNDATION.md) — versioned state, MissionRunner authority, cash, reputation, save migration and safe world checkpoints.
+- [Milestone 11.2 status](MILESTONE_11_2_STATUS.md) — accepted direct mission authority, checkpoint policy, merge and validation record.
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — architecture and engineering constraints.
 - [Runtime consolidation](RUNTIME_CONSOLIDATION.md) — Milestone 10 system ownership, spatial queries, diagnostics and browser smoke tests.
 - [Milestone 10 status](MILESTONE_10_STATUS.md) — current implementation and validation boundary.
