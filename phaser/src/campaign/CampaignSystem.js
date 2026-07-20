@@ -94,7 +94,37 @@ export class CampaignSystem {
   }
 
   startMission(id, options = {}) {
-    const result = this.missions.start(id, options);
+    const missionId = String(id || "");
+    const previousCheckpoint = this.state.checkpoints.latest;
+    const previousRecord = this.missions.record(missionId);
+    const preserveRetryCheckpoint = Boolean(
+      previousCheckpoint
+      && previousCheckpoint.missionId === missionId
+      && previousRecord?.status === "failed"
+      && previousCheckpoint.mission?.status === "active"
+    );
+
+    // CampaignCheckpointSystem listens to mission:started and clears stale
+    // checkpoints. During a same-mission retry we temporarily remove the safe
+    // checkpoint so that listener cannot discard the rollback point, then put
+    // it back synchronously for the boot-time restore pass.
+    if (preserveRetryCheckpoint) this.state.checkpoints.latest = null;
+
+    let result;
+    try {
+      result = this.missions.start(missionId, options);
+    } catch (error) {
+      if (preserveRetryCheckpoint) this.state.checkpoints.latest = previousCheckpoint;
+      throw error;
+    }
+
+    if (preserveRetryCheckpoint) {
+      this.state.checkpoints.latest = previousCheckpoint;
+      this.touch();
+      if (this.autoSave) this.save();
+      return result;
+    }
+
     if (this.state.checkpoints.latest) this.clearCheckpoint({ emit: false });
     return result;
   }
