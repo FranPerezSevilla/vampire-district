@@ -13,6 +13,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Milestone 11 status](MILESTONE_11_STATUS.md) — completed campaign-foundation scope, acceptance record and transition to vehicles.
 - [Milestone 11.2 status](MILESTONE_11_2_STATUS.md) — accepted direct mission authority, checkpoint policy, merge and validation record.
 - [Milestone 11.3 status](MILESTONE_11_3_STATUS.md) — accepted player-facing campaign entry, refuge contract board and playable `Clean the Scene` flow.
+- [Milestone 12 status](MILESTONE_12_STATUS.md) — vehicle-runtime ownership, driving controls, collisions, theft, trunks, persistence and remaining acceptance work.
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — architecture and engineering constraints.
 - [Runtime consolidation](RUNTIME_CONSOLIDATION.md) — Milestone 10 system ownership, spatial queries, diagnostics and browser smoke tests.
 - [Milestone 10 status](MILESTONE_10_STATUS.md) — current implementation and validation boundary.
