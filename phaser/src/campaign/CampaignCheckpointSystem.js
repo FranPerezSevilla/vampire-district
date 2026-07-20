@@ -124,6 +124,22 @@ export class CampaignCheckpointSystem {
     return true;
   }
 
+  saveCompletionNow(missionId) {
+    const definition = this.campaign.missions.definition(missionId);
+    const record = this.campaign.missions.record(missionId);
+    const policy = definition?.metadata?.completionCheckpoint;
+    if (!definition || !record || record.status !== MISSION_STATUS.COMPLETED || !policy) return null;
+    const checkpoint = this.buildCheckpoint({
+      missionId,
+      objectiveId: null,
+      kind: CHECKPOINT_KINDS.MISSION_COMPLETE,
+      policy,
+      missionRecord: record,
+      synthesized: false
+    });
+    return this.storeCheckpoint(checkpoint);
+  }
+
   update() {
     if (!this.pending) return false;
     const safety = this.safetySnapshot();
@@ -144,6 +160,13 @@ export class CampaignCheckpointSystem {
       missionRecord: record,
       synthesized: false
     });
+    this.storeCheckpoint(checkpoint);
+    return true;
+  }
+
+  storeCheckpoint(candidate) {
+    const checkpoint = sanitizeCampaignCheckpoint(candidate);
+    if (!checkpoint) return null;
     this.campaign.setCheckpoint(checkpoint);
     this.pending = null;
     this.scene.statePublisher?.set?.("checkpointText", `Checkpoint saved · ${checkpoint.objectiveId || "mission complete"}`);
@@ -153,7 +176,7 @@ export class CampaignCheckpointSystem {
       objectiveId: checkpoint.objectiveId,
       kind: checkpoint.kind
     });
-    return true;
+    return checkpoint;
   }
 
   safetySnapshot() {
@@ -348,12 +371,8 @@ export class CampaignCheckpointSystem {
       .filter(id => id !== checkpoint.missionId);
     this.campaign.state.missions.failed = this.campaign.state.missions.failed
       .filter(id => id !== checkpoint.missionId);
-    if (mission.status === MISSION_STATUS.COMPLETED) {
-      this.campaign.state.missions.completed.push(checkpoint.missionId);
-    }
-    if (mission.status === MISSION_STATUS.FAILED) {
-      this.campaign.state.missions.failed.push(checkpoint.missionId);
-    }
+    if (mission.status === MISSION_STATUS.COMPLETED) this.campaign.state.missions.completed.push(checkpoint.missionId);
+    if (mission.status === MISSION_STATUS.FAILED) this.campaign.state.missions.failed.push(checkpoint.missionId);
     this.campaign.touch();
     if (this.campaign.autoSave) this.campaign.save();
   }
