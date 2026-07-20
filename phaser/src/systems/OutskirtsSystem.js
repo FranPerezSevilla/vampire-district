@@ -76,13 +76,16 @@ export class OutskirtsSystem {
         : 0.52;
     this.graphics.setAlpha(alpha);
 
-    if (this.scene.registry?.get?.("taskRevealActive") || this.scene.tutorialDirector?.busy) return;
-    this.scene.cameras?.main?.setBounds(
+    const camera = this.scene.cameras?.main;
+    camera?.setBounds(
       OUTER_BOUNDS.x,
       OUTER_BOUNDS.y,
       OUTER_BOUNDS.width,
       OUTER_BOUNDS.height
     );
+    if (this.scene.registry?.get?.("taskRevealActive") || this.scene.tutorialDirector?.busy) {
+      camera?.centerOn(this.scene.player.x, this.scene.player.y);
+    }
   }
 
   isTryingToLeave(frame = this.scene.currentInputFrame) {

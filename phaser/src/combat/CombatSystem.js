@@ -117,7 +117,6 @@ export class CombatSystem {
       && !this.scene.interactionSystem?.isOpen
       && !this.scene.feedingSystem?.isActive()
       && !this.scene.missionSystem?.failed
-      && !this.scene.missionSystem?.completed
     );
   }
 
