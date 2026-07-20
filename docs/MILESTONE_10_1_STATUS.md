@@ -1,27 +1,25 @@
 # Milestone 10.1 — Vertical Slice Release Candidate
 
-_Last updated: 2026-07-19_
+_Last updated: 2026-07-20_
 
 ## Status
 
-**🟡 Automated release candidate green; final manual browser acceptance, dead-code cleanup and release tag pending.**
+**🟡 Automated release candidate and physical dead-code cleanup green; final manual acceptance and release tag pending.**
 
-Validated gameplay source commit:
+Cleanup validation source:
 
 ```text
-f64837e6eab2ec58397593ec8033afb3b8a70eb1
+7e311aa1119603c5b7cdca5040ee8a90699dd0a5
 ```
 
-Validation run 3 completed successfully on GitHub Actions:
+GitHub Actions run `348` completed successfully:
 
 ```text
 unit-tests    ✅
 browser-smoke ✅
 ```
 
-The validation branch differed from the source commit only by a pull-request note and was closed without merging. The tested gameplay source already lives on `main`.
-
-The release-candidate pass remains feature-frozen. Campaign, vehicle, faction and economy work begins only after the remaining manual acceptance pass.
+The release-candidate pass remains feature-frozen. Campaign, vehicle, faction and economy work may be developed on separate branches, but `v0.1.0-rc.1` is not tagged until the remaining physical-device and manual acceptance checks are recorded.
 
 ## Delivered
 
@@ -38,6 +36,7 @@ journalist killed or drained
 → player dismisses the final bubble
 → mission completes
 → REPORT ACCEPTED opens
+→ closing the report restores full free roam
 ```
 
 `returnFinalePending` and `returnFinalePromise` prevent duplicate starts. The result cannot be published while the dialogue promise is unresolved. The finale emits:
@@ -45,21 +44,19 @@ journalist killed or drained
 - `mission:return-finale-started`
 - `mission:return-finale-completed`
 
-Unit and browser coverage verify killed and drained outcomes, premature refuge entry, repeated update calls, input clearing and dialogue-before-report ordering.
+Unit and browser coverage verify killed and drained outcomes, premature refuge entry, repeated update calls, input clearing, dialogue-before-report ordering and working weapons after the report closes.
 
 ### Deterministic Phaser bootstrap
 
-Both playable routes load `phaser/src/app-bootstrap.js` rather than a collection of independent scripts.
+Both playable routes load `phaser/src/app-bootstrap.js`.
 
-The bootstrap attempts sources in this order:
+The bootstrap attempts Phaser sources in this order:
 
 1. pinned local npm dependency: `phaser@3.90.0`;
 2. pinned jsDelivr fallback;
 3. pinned cdnjs fallback.
 
-CI installs the npm dependency and browser tests require `window.NBD_PHASER_SOURCE === "local"`. Static hosting can still use a pinned fallback when `node_modules` is not deployed.
-
-Runtime readiness is exposed through:
+CI installs the npm dependency and browser tests require `window.NBD_PHASER_SOURCE === "local"`. Runtime readiness is exposed through:
 
 ```js
 window.NBD_APP_READY
@@ -85,8 +82,9 @@ Covered scenarios:
 - drain the journalist;
 - return to the refuge;
 - verify the sire-first result order;
+- verify armed and unarmed free roam after `REPORT ACCEPTED`;
 - police violence escalation 1 → 2 → 3;
-- duplicate police neutralization protection;
+- duplicate police-neutralization protection;
 - police recovery with restored resilience;
 - visible witness versus heard-only `WTF`;
 - level-three police/helicopter stress;
@@ -105,6 +103,7 @@ Playwright passes for:
 - killed-journalist golden path;
 - drained-journalist golden path;
 - sire dialogue before `REPORT ACCEPTED`;
+- post-report weapon cycling and unarmed impacts;
 - police alert progression 1 → 2 → 3;
 - duplicate neutralization protection;
 - helicopter activation;
@@ -117,18 +116,31 @@ Playwright passes for:
 - high-contrast aim persistence and keyboard activation;
 - semantic HUD state and narrow-layout separation.
 
-### Regressions found and fixed by CI
+### Physical dead-code deletion
 
-The first two browser runs were deliberately retained as diagnostic passes. They exposed and led to fixes for:
+Thirty superseded source files were physically removed rather than merely left unloaded. The deletion covers the previous:
 
-- continuous pause-modal DOM replacement and unstable focus;
-- unreliable Phaser-frame polling for H/M/Escape/Enter UI commands;
-- missing first-class weapon-HUD positioning after retiring its legacy module;
-- native Enter activation being suppressed by Phaser's global keyboard manager;
-- slow software-WebGL timing assumptions in task reveals and stress samples;
-- uninitialized combat state in the police-recovery scenario.
+- input and movement runtime adapters;
+- combat and police-alert compatibility patches;
+- Milestone 8 AI guards;
+- weapon and Milestone 9 UI patches;
+- old tutorial, copy and dialogue patch stack;
+- old objective-marker, outskirts and sensory-awareness implementations;
+- compatibility/no-op bootstraps.
 
-The third run passed after those corrections.
+The active bootstrap imports `responsive-layout.js` directly. `tests/source-ownership.test.js` now fails if any retired file reappears.
+
+Obsolete tests that existed only to exercise deleted wrappers were removed or replaced with tests against the first-class `PoliceSystem`, `InputSystem` and `MissionSystem` implementations.
+
+### Regressions found during cleanup
+
+The cleanup CI initially exposed tests that still imported deleted adapters. Those tests were migrated or removed before the green run:
+
+- movement input is now tested directly through `InputSystem`;
+- police leader hold and containment facing are tested against `PoliceSystem`;
+- the redundant old finale helper test was removed because `mission-return-finale.test.js` covers the first-class mission path.
+
+CI now preserves `unit-test.log` as a seven-day artifact whenever the unit job fails, making future source-cleanup failures diagnosable without relying on truncated console output.
 
 ### Input cleanup
 
@@ -143,34 +155,20 @@ E   → non-combat interaction
 ### UI and accessibility stabilization
 
 - H, M, Escape and Enter UI commands are owned by deterministic DOM keyboard events.
-- Dialogue capture still has priority and prevents Escape/click leakage.
+- Dialogue capture has priority and prevents Escape/click leakage.
 - Pause content uses a frozen snapshot, avoiding continuously changing diagnostic markup.
 - Modal HTML is replaced only when its source content changes.
 - High-contrast aim has explicit Enter/Space keyboard activation.
-- Weapon HUD layout is defined in static first-class CSS and remains lower-right on narrow viewports.
-
-### CI
-
-The workflow is split into:
-
-```text
-unit-tests
-→ browser-smoke
-```
-
-The browser job:
-
-- installs exact top-level package versions;
-- verifies `node_modules/phaser/dist/phaser.min.js` exists;
-- installs Chromium;
-- runs the complete RC browser suite;
-- uploads Playwright reports and traces only on failure.
+- Weapon HUD layout is first-class CSS and remains lower-right on narrow viewports.
 
 ## Automated files
 
 - `tests/mission-return-finale.test.js`
+- `tests/ai-police-formation-runtime.test.js`
+- `tests/input-system.test.js`
 - `tests/browser/runtime-smoke.spec.js`
 - `tests/browser/mission-golden-path.spec.js`
+- `tests/browser/post-mission-free-roam.spec.js`
 - `tests/browser/police-stress.spec.js`
 - `tests/browser/perception-recovery.spec.js`
 - `tests/browser/input-locks.spec.js`
@@ -179,16 +177,14 @@ The browser job:
 - `tests/source-ownership.test.js`
 - `tests/no-legacy-e-combat.test.js`
 
-## Pending before ✅
+## Pending before ✅ and `v0.1.0-rc.1`
 
-1. Perform one manual full mission on `/` and one on `/phaser/`.
-2. Manually inspect normal-speed intro and task-reveal camera movement.
-3. Validate mouse-wheel behaviour with a physical mouse and trackpad.
+1. Complete one normal-timing manual mission on `/` and one on `/phaser/`.
+2. Inspect normal-speed intro and task-reveal camera movement.
+3. Validate wheel behaviour with a physical mouse and a trackpad.
 4. Run a longer manual level-three encounter and inspect memory in browser developer tools.
-5. Confirm keyboard and screen-reader behaviour in at least one supported desktop browser.
-6. Delete superseded unloaded prototype files after the manual pass.
-7. Run CI once more after physical dead-code deletion.
-8. Tag `v0.1.0-rc.1` only after that final cleanup commit is green.
+5. Confirm keyboard and screen-reader behaviour in at least one supported desktop-browser combination.
+6. Create the `v0.1.0-rc.1` tag after those checks are recorded.
 
 ## Non-goals
 
@@ -202,4 +198,4 @@ Milestone 10.1 does not add:
 - Retainers;
 - new weapons.
 
-Those begin after this release candidate is manually accepted and tagged.
+Those begin in Milestone 11 and later branches after the release-candidate runtime is protected by the green cleanup suite.
