@@ -75,11 +75,12 @@ function renderBootFailure(error) {
 
 try {
   await ensurePhaser();
+  await import("./campaign/preload.js");
   await import("./main.js");
   await import("./ui/AccessibilityKeyboardBridge.js");
   await import("./responsive-layout.js");
-  await import("./tutorial/bootstrap.js");
   await import("./campaign/bootstrap.js");
+  await import("./tutorial/bootstrap.js");
   if (new URLSearchParams(window.location.search).has("rcTest")) {
     await import("./testing/ReleaseCandidateHarness.js");
   }
