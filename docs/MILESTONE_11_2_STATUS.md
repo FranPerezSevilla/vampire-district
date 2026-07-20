@@ -4,7 +4,7 @@ _Last updated: 2026-07-20_
 
 ## Status
 
-**✅ Functional acceptance complete and merged into `main`; automated browser timing is hardened by follow-up PR #11.**
+**✅ Functional and automated acceptance complete; implementation and CI hardening are merged into `main`.**
 
 Implementation pull request:
 
@@ -12,16 +12,24 @@ Implementation pull request:
 #9 Make campaign missions authoritative and add safe checkpoints
 ```
 
-Actual final PR head:
+Final implementation head and squash merge:
 
 ```text
-88d90ef5467526d43f8cc11ae6e7f76632383930
+head   88d90ef5467526d43f8cc11ae6e7f76632383930
+merge  b14520b37b525cb10796f5b448cfb9ec434e27f7
 ```
 
-Actual squash merge commit:
+Automated-validation follow-up:
 
 ```text
-b14520b37b525cb10796f5b448cfb9ec434e27f7
+#11 Harden browser CI timing and correct Milestone 11.2 record
+```
+
+Final validation head and squash merge:
+
+```text
+head   1f0bedc02514efbf57c96a200fe4d7bc5b9caa40
+merge  dc4210eba60eb752202e5b323e10f91ab2c32713
 ```
 
 Acceptance evidence on 2026-07-20:
@@ -29,12 +37,11 @@ Acceptance evidence on 2026-07-20:
 ```text
 manual browser acceptance   ✅
 unit-tests                  ✅
-browser-smoke               follow-up #11
+browser-smoke               ✅
+Netlify deploy preview      ✅
 ```
 
-The visible final-head browser attempts were stopped by the previous 20-minute GitHub Actions job budget after setup completed; they did not report a failed Playwright assertion and the job-level timeout prevented the failure artifacts from uploading. PR #11 raises the job budget, adds an internal command timeout and preserves the complete browser log so the automated result is observable rather than silently cancelled.
-
-This section corrects the non-existent source and merge SHAs that were written in the first acceptance note. PR #11 is the authoritative automated browser-validation follow-up and must not be treated as a gameplay change.
+PR #11 made the automated result observable and deterministic without changing player-facing rules. It raised the browser budget, retained logs/reports/traces on failure, loaded the pinned local Phaser build, enabled RC timings before scene construction, protected synchronous mission startup, corrected persistence coverage and removed timing-sensitive test assumptions.
 
 ## Accepted ownership model
 
@@ -75,6 +82,7 @@ Dynamic police/hunter reinforcements, chase intent, local heat, route blocks, he
 - The completion checkpoint is captured before `REPORT ACCEPTED` opens.
 - Killed and drained journalist outcomes grant rewards once.
 - Reloading a completed checkpoint does not replay the intro, tutorial or rewards.
+- Browser restoration accepts the first simulation-frame drift in Hunger without weakening the stored checkpoint assertion.
 
 ## Browser API
 
@@ -91,14 +99,14 @@ window.NBD_CAMPAIGN.import(serialized)
 window.NBD_CAMPAIGN.safety()
 ```
 
-## Next campaign slice
+## Continuation delivered
 
-Milestone 11.3 will expose campaign content to the player:
+Milestone 11.3 now exposes this accepted foundation to the player through:
 
-- refuge mission board;
-- Continue, New Game and Retry-from-checkpoint presentation;
-- selectable `Clean the Scene` contract;
-- data-driven world placement for mission items and bodies;
-- mission completion/return to board flow.
+- New Game, Continue and explicit Retry decisions;
+- the rooftop-refuge contract board;
+- selectable and replayable `Clean the Scene`;
+- data-driven mission item and body placement;
+- completion and return-to-board flow.
 
-Vehicle work remains Milestone 12 and begins after that mission-selection slice is accepted.
+Vehicle work begins in Milestone 12.

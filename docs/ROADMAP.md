@@ -186,7 +186,7 @@ See `MILESTONE_10_1_STATUS.md` for the validation record.
 
 ## Milestone 11 — Campaign foundation
 
-**Status: 🟡 Milestone 11.2 implemented; final CI and browser acceptance pending**
+**Status: ✅ Complete**
 
 ### 11.1 delivered
 
@@ -213,22 +213,45 @@ See `MILESTONE_10_1_STATUS.md` for the validation record.
 - Failed retries preserve their latest safe checkpoint; starting another mission clears it.
 - Completed missions require a completion checkpoint, protecting idempotent rewards from stale rollback.
 - Browser API for save, checkpoint inspection, reload, discard, import and reset.
-- Unit and Chromium coverage for direct authority and checkpoint reload.
+- Deterministic local Phaser and observable unit/Chromium validation.
 
-Acceptance pending on the branch:
+### 11.3 delivered
 
-- final unit and Chromium jobs green on the same head;
-- both journalist outcomes still complete through the sire-first finale;
-- active objective checkpoint reload verified on both boot paths;
-- completed checkpoint reload preserves rewards and free roam;
-- no retired campaign bridge or duplicate authority remains.
+- Player-facing New Game, Continue, Retry-from-checkpoint, Retry-mission and completed free-roam entry decisions.
+- Campaign-entry keyboard focus ownership, Escape protection, native-modal isolation and narrow-layout support.
+- Refuge contract-board interaction driven from campaign definitions and availability rules.
+- Selectable and replayable `Clean the Scene` contract.
+- Data-authored placement for the service alley, compromised camera roll, exposed body and refuge report.
+- World adapter for reach, collect, body removal, police-attention loss and return events without a parallel objective index.
+- Five-step board-contract presentation while preserving the opening mission's validated four-task and sire-first flow.
+- Objective and completion checkpoints, atomic reload and idempotent money/reputation rewards.
+- Explicit Enter/Space activation before Phaser can consume focused modal input.
+- Chromium coverage on `/` and `/phaser/`, including the complete cleanup flow and post-report armed free roam.
 
-Next campaign slice after acceptance:
+Acceptance record:
 
-- selectable mission board/safehouse UI;
-- activate `Clean the Scene` in the world;
-- explicit Continue, New Game and Retry-from-checkpoint presentation;
-- mission-specific world placement adapters that remain data-driven.
+```text
+PR #9   direct authority and safe checkpoints
+PR #11  deterministic automated browser validation
+PR #12  player-facing campaign entry
+PR #13  refuge board and playable Clean the Scene
+
+manual opening-mission acceptance  ✅
+unit-tests                         ✅
+browser-smoke                      ✅
+Netlify deploy previews            ✅
+```
+
+Final Milestone 11 merge chain:
+
+```text
+11.2 implementation  b14520b37b525cb10796f5b448cfb9ec434e27f7
+11.2 CI hardening    dc4210eba60eb752202e5b323e10f91ab2c32713
+11.3A entry          8b5a96f80837c88d4831e83e6c735b4698865bdb
+11.3B board          7eefb061a05d2066929b7a2d61017d3fed0687be
+```
+
+No retired campaign bridge or duplicate progression authority remains. Milestone 12 is now the active production milestone.
 
 ## Milestone 12 — Vehicle core
 
