@@ -42,6 +42,35 @@ function numericRecord(value) {
   return result;
 }
 
+function optionalString(value) {
+  const text = String(value || "").trim();
+  return text || null;
+}
+
+function plainJson(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch {
+    return {};
+  }
+}
+
+function sanitizeCheckpoint(value, now, fallback) {
+  const source = plainRecord(value);
+  const id = optionalString(source.id);
+  if (!id) return { ...fallback, payload: { ...fallback.payload } };
+  return {
+    id,
+    kind: String(source.kind || "objective"),
+    missionId: optionalString(source.missionId),
+    objectiveId: optionalString(source.objectiveId),
+    locationId: optionalString(source.locationId),
+    capturedAt: Math.max(0, integer(source.capturedAt, now)),
+    payload: plainJson(source.payload)
+  };
+}
+
 function sanitizeMissionRecord(id, value, now) {
   const source = plainRecord(value);
   const objectiveStates = plainRecord(source.objectives);
@@ -127,6 +156,15 @@ export function createCampaignState({ now = 0 } = {}) {
       ownedVehicles: [],
       unlockedRefuges: [CAMPAIGN_REFUGES.ROOFTOP_REFUGE],
       flags: {}
+    },
+    checkpoint: {
+      id: "campaign_start",
+      kind: "campaign",
+      missionId: null,
+      objectiveId: null,
+      locationId: CAMPAIGN_REFUGES.ROOFTOP_REFUGE,
+      capturedAt: timestamp,
+      payload: {}
     },
     ledger: [],
     eventLog: []
@@ -233,6 +271,7 @@ export function sanitizeCampaignState(candidate, { now = 0 } = {}) {
       unlockedRefuges: uniqueStrings(plainRecord(source.world).unlockedRefuges),
       flags: stringRecord(plainRecord(source.world).flags)
     },
+    checkpoint: sanitizeCheckpoint(source.checkpoint, timestamp, defaults.checkpoint),
     ledger,
     eventLog
   };
