@@ -89,7 +89,7 @@ test("sanitisation strips functions, invalid arrays and non-finite values", () =
   assert.deepEqual(state.world.flags, { okay: true });
   assert.deepEqual(state.world.ownedVehicles, ["sedan_1"]);
   assert.equal(state.checkpoint.id, "safe");
-  assert.deepEqual(state.checkpoint.payload, {});
+  assert.deepEqual(state.checkpoint.payload, { okay: true });
   assert.equal(campaignStateIsSerializable(state), true);
 });
 
