@@ -176,3 +176,31 @@ test("a completed checkpoint is resumable after mission rewards are granted", ()
   assert.equal(campaign.wallet.balance(), 500);
   assert.equal(checkpointCanResume(campaign.checkpoint(), campaign.state), true);
 });
+
+test("completed campaign state rejects a stale active checkpoint to protect reward idempotency", () => {
+  const campaign = campaignAtNightclub();
+  const activeCheckpoint = checkpointFor(campaign);
+  campaign.setCheckpoint(activeCheckpoint, { emit: false });
+  campaign.handle(CAMPAIGN_EVENT_TYPES.NEUTRALIZED, {
+    targetId: "journalist",
+    outcome: "drained"
+  });
+  campaign.handle(CAMPAIGN_EVENT_TYPES.RETURNED, {
+    refugeId: "rooftop_refuge"
+  });
+
+  assert.equal(campaign.wallet.balance(), 500);
+  assert.equal(campaign.missions.record(SILENCE_THE_JOURNALIST_ID).status, "completed");
+  assert.equal(campaign.checkpoint().mission.status, "active");
+  assert.equal(checkpointCanResume(campaign.checkpoint(), campaign.state), false);
+});
+
+test("starting another mission run clears the previous mission checkpoint", () => {
+  const campaign = campaignAtNightclub();
+  campaign.setCheckpoint(checkpointFor(campaign), { emit: false });
+  campaign.failActiveMission("Test restart.");
+  campaign.startMission("clean_the_scene");
+
+  assert.equal(campaign.state.missions.activeMissionId, "clean_the_scene");
+  assert.equal(campaign.checkpoint(), null);
+});
