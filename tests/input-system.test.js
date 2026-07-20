@@ -70,7 +70,6 @@ globalThis.Phaser = {
 };
 
 const { InputSystem } = await import("../phaser/src/input/InputSystem.js");
-await import("../phaser/src/input/movement-input-adapter.js");
 const { CONTROL_MODES } = await import("../phaser/src/input/actions.js");
 
 function makeScene() {
