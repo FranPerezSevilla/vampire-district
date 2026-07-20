@@ -19,6 +19,16 @@ function activateModalAction() {
   return true;
 }
 
+function globalEnterConfirms(ui) {
+  return Boolean(
+    ui
+    && (
+      ui.introOpen
+      || (ui.resultOpen && ui.resultType === "success")
+    )
+  );
+}
+
 function toggleAimContrast(button) {
   const ui = uiScene();
   if (!ui?.registry) return false;
@@ -36,24 +46,30 @@ function toggleAimContrast(button) {
   return true;
 }
 
+function ownEvent(event) {
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}
+
 function onKeyDown(event) {
   if (event.repeat || !["Enter", "Space"].includes(event.code)) return;
 
-  const modalAction = event.target?.closest?.("#ui-modal-action");
-  if (modalAction && activateModalAction()) {
-    // Phaser's global keyboard manager may suppress native button activation.
-    // Own the focused modal action explicitly and prevent a duplicate click.
-    event.preventDefault();
-    event.stopImmediatePropagation();
+  const contrastButton = event.target?.closest?.("[data-aim-contrast-toggle]");
+  if (contrastButton && toggleAimContrast(contrastButton)) {
+    // Own the action explicitly and prevent a later synthetic click from toggling twice.
+    ownEvent(event);
     return;
   }
 
-  const contrastButton = event.target?.closest?.("[data-aim-contrast-toggle]");
-  if (!contrastButton || !toggleAimContrast(contrastButton)) return;
-
-  // Own the action explicitly and prevent a later synthetic click from toggling twice.
-  event.preventDefault();
-  event.stopImmediatePropagation();
+  const ui = uiScene();
+  const modalAction = event.target?.closest?.("#ui-modal-action");
+  const globalConfirmation = event.code === "Enter" && globalEnterConfirms(ui);
+  if ((modalAction || globalConfirmation) && activateModalAction()) {
+    // Phaser's global keyboard manager may consume Enter before the UIScene
+    // listener. Capture both a focused modal button and the documented global
+    // Enter shortcut before that happens, then prevent duplicate activation.
+    ownEvent(event);
+  }
 }
 
 document.addEventListener("keydown", onKeyDown, true);
