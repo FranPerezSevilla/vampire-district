@@ -210,7 +210,15 @@ export function checkpointCanResume(checkpoint, campaignState) {
   const current = campaignState?.missions?.records?.[value.missionId];
   if (!current) return false;
   if (campaignState.missions.activeMissionId && campaignState.missions.activeMissionId !== value.missionId) return false;
-  if (value.mission.status === MISSION_STATUS.ACTIVE) return true;
-  return value.mission.status === MISSION_STATUS.COMPLETED
-    && value.kind === CHECKPOINT_KINDS.MISSION_COMPLETE;
+
+  if (current.status === MISSION_STATUS.COMPLETED) {
+    return value.mission.status === MISSION_STATUS.COMPLETED
+      && value.kind === CHECKPOINT_KINDS.MISSION_COMPLETE;
+  }
+  if (current.status === MISSION_STATUS.ACTIVE) {
+    return value.mission.status === MISSION_STATUS.ACTIVE;
+  }
+  // Failed runs may be retried from their last active safe checkpoint.
+  return current.status === MISSION_STATUS.FAILED
+    && value.mission.status === MISSION_STATUS.ACTIVE;
 }
