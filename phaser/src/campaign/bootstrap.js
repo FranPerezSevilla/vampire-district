@@ -1,12 +1,13 @@
 import { installCampaignBrowserApi } from "./CampaignBrowserApi.js";
 import { CampaignCheckpointSystem } from "./CampaignCheckpointSystem.js";
-import { campaign } from "./preload.js";
+import { campaign, campaignEntry } from "./preload.js";
 
 function publishCampaign(scene, checkpoints) {
   const snapshot = campaign.snapshot();
   const values = {
     campaignState: snapshot.state,
     campaignMission: snapshot.activeMission,
+    campaignEntry,
     cashText: `Cash $${snapshot.wallet.balance.toFixed(0)}`,
     campaignText: campaign.summary(),
     checkpointText: checkpoints.summary(),
@@ -34,7 +35,18 @@ function attachCampaignRuntime() {
   if (scene.campaignCheckpointSystem) return;
 
   scene.campaignSystem = campaign;
-  const checkpoints = new CampaignCheckpointSystem(scene, campaign);
+  const deferredCheckpoint = campaignEntry.deferCheckpointRestore
+    ? campaign.state.checkpoints.latest
+    : null;
+  if (deferredCheckpoint) campaign.state.checkpoints.latest = null;
+
+  let checkpoints;
+  try {
+    checkpoints = new CampaignCheckpointSystem(scene, campaign);
+  } finally {
+    if (deferredCheckpoint) campaign.state.checkpoints.latest = deferredCheckpoint;
+  }
+
   scene.campaignCheckpointSystem = checkpoints;
   const updateCheckpoint = () => checkpoints.update();
   scene.events.on(Phaser.Scenes.Events.POST_UPDATE, updateCheckpoint);

@@ -95,6 +95,7 @@ try {
   await import("./responsive-layout.js");
   await import("./campaign/bootstrap.js");
   await import("./tutorial/bootstrap.js");
+  await import("./campaign/entry-bootstrap.js");
   if (window.NBD_RC_TEST_MODE) await import("./testing/bootstrap.js");
   window.NBD_APP_READY = true;
   window.dispatchEvent(new CustomEvent("nbd:app-ready", {
