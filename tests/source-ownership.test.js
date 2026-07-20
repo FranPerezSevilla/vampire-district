@@ -104,7 +104,8 @@ test("both playable routes use one pinned Phaser bootstrap", async () => {
   }
 
   const bootstrap = await source("phaser/src/app-bootstrap.js");
-  assert.match(bootstrap, /vendor\/phaser-3\.90\.0\.min\.js/);
+  assert.match(bootstrap, /node_modules\/phaser\/dist\/phaser\.min\.js/);
+  assert.match(bootstrap, /new URL\([^\n]+import\.meta\.url\)\.href/);
   assert.match(bootstrap, /await import\("\.\/main\.js"\)/);
   assert.match(bootstrap, /await import\("\.\/responsive-layout\.js"\)/);
   assert.match(bootstrap, /await import\("\.\/testing\/bootstrap\.js"\)/);
