@@ -4,32 +4,37 @@ _Last updated: 2026-07-20_
 
 ## Status
 
-**✅ Automated acceptance complete and merged into `main`.**
+**✅ Functional acceptance complete and merged into `main`; automated browser timing is hardened by follow-up PR #11.**
 
-Pull request:
+Implementation pull request:
 
 ```text
 #9 Make campaign missions authoritative and add safe checkpoints
 ```
 
-Validated final PR head:
+Actual final PR head:
 
 ```text
-88d90a0188753530893ad9ac7f2cb260d125ed51
+88d90ef5467526d43f8cc11ae6e7f76632383930
 ```
 
-Merged squash commit:
+Actual squash merge commit:
 
 ```text
-b14520fe81780e78c62c405a8d0bd2f40bd2a692
+b14520b37b525cb10796f5b448cfb9ec434e27f7
 ```
 
-Validation recorded on the final head:
+Acceptance evidence on 2026-07-20:
 
 ```text
-unit-tests    ✅
-browser-smoke ✅
+manual browser acceptance   ✅
+unit-tests                  ✅
+browser-smoke               follow-up #11
 ```
+
+The visible final-head browser attempts were stopped by the previous 20-minute GitHub Actions job budget after setup completed; they did not report a failed Playwright assertion and the job-level timeout prevented the failure artifacts from uploading. PR #11 raises the job budget, adds an internal command timeout and preserves the complete browser log so the automated result is observable rather than silently cancelled.
+
+This section corrects the non-existent source and merge SHAs that were written in the first acceptance note. PR #11 is the authoritative automated browser-validation follow-up and must not be treated as a gameplay change.
 
 ## Accepted ownership model
 
