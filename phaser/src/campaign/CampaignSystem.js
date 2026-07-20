@@ -1,3 +1,4 @@
+import { CampaignCheckpointSystem } from "./CampaignCheckpointSystem.js";
 import { CampaignEventBus } from "./CampaignEventBus.js";
 import { CampaignStorage } from "./CampaignStorage.js";
 import { cloneCampaignState, createCampaignState, sanitizeCampaignState } from "./CampaignState.js";
@@ -36,11 +37,17 @@ export class CampaignSystem {
     this.events = new CampaignEventBus(this.state, { now: this.now });
     this.wallet = new WalletSystem(this.state, { events: this.events, now: this.now });
     this.reputation = new ReputationSystem(this.state, { events: this.events });
+    this.checkpoints = new CampaignCheckpointSystem(this.state, {
+      events: this.events,
+      now: this.now,
+      onDirty: () => this.touch()
+    });
     this.missions = new MissionRunner(this.state, {
       definitions: this.definitions,
       events: this.events,
       wallet: this.wallet,
       reputation: this.reputation,
+      checkpoints: this.checkpoints,
       now: this.now,
       onDirty: () => this.touch()
     });
@@ -108,6 +115,7 @@ export class CampaignSystem {
     return {
       state: cloneCampaignState(this.state),
       activeMission: this.missions.snapshot(),
+      checkpoint: this.checkpoints.snapshot(),
       wallet: {
         balance: this.wallet.balance(),
         recent: this.wallet.recent(10)
