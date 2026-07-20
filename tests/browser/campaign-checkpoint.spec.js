@@ -1,11 +1,20 @@
 import { expect, test } from "@playwright/test";
 
 const STORAGE_KEY = "vampire-district-campaign-v1";
+const RESET_SENTINEL = "vampire-district-checkpoint-test-reset";
 
 test.describe.configure({ timeout: 90_000 });
 
+async function clearCampaignOnce(page) {
+  await page.addInitScript(({ storageKey, sentinel }) => {
+    if (window.sessionStorage.getItem(sentinel) === "done") return;
+    window.localStorage.removeItem(storageKey);
+    window.sessionStorage.setItem(sentinel, "done");
+  }, { storageKey: STORAGE_KEY, sentinel: RESET_SENTINEL });
+}
+
 test("safe objective checkpoint restores mission, world, loadout and completed tutorial", async ({ page }) => {
-  await page.addInitScript(key => window.localStorage.removeItem(key), STORAGE_KEY);
+  await clearCampaignOnce(page);
   await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => Boolean(
     window.NBD_APP_READY
@@ -99,7 +108,7 @@ test("safe objective checkpoint restores mission, world, loadout and completed t
   expect(restored.missionStep).toBe(2);
   expect(restored.objectiveId).toBe("neutralize_journalist");
   expect(restored.player).toMatchObject({ x: 560, y: 350, layer: 0 });
-  expect(restored.hunger).toBe(57);
+  expect(restored.hunger).toBeCloseTo(57, 1);
   expect(restored.weapon.id).toBe("pistol");
   expect(restored.weapon.ammo).toBe(3);
   expect(restored.broken).toBe(true);

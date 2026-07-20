@@ -8,6 +8,26 @@ async function source(path) {
   return readFile(new URL(path, ROOT), "utf8");
 }
 
+test("app bootstrap loads pinned Phaser relative to its module before CDN fallback", async () => {
+  const content = await source("phaser/src/app-bootstrap.js");
+  const localIndex = content.indexOf('new URL("../../node_modules/phaser/dist/phaser.min.js", import.meta.url).href');
+  const jsdelivrIndex = content.indexOf('kind: "jsdelivr"');
+  assert.ok(localIndex >= 0, "the npm-pinned Phaser build must be addressable from both playable routes");
+  assert.ok(jsdelivrIndex > localIndex, "CDNs must remain fallbacks after the pinned local runtime");
+  assert.equal(content.includes('src: "./vendor/phaser-3.90.0.min.js"'), false);
+  assert.equal(content.includes('window.NBD_PHASER_SOURCE = kind === "local-node-modules" ? "local" : kind'), true);
+  assert.equal(content.includes("window.NBD_PHASER_SOURCE_DETAIL = detail"), true);
+});
+
+test("app bootstrap enables deterministic RC timing before scene composition", async () => {
+  const content = await source("phaser/src/app-bootstrap.js");
+  const modeIndex = content.indexOf('window.NBD_RC_TEST_MODE = BOOT_QUERY.has("rcTest")');
+  const mainIndex = content.indexOf('import("./main.js")');
+  assert.ok(modeIndex >= 0, "RC mode must be derived from the URL");
+  assert.ok(mainIndex > modeIndex, "RC timing must exist before gameplay systems are constructed");
+  assert.equal(content.includes('if (window.NBD_RC_TEST_MODE) await import("./testing/bootstrap.js")'), true);
+});
+
 test("app bootstrap preloads campaign authority before scenes and restores before tutorial", async () => {
   const content = await source("phaser/src/app-bootstrap.js");
   const preloadIndex = content.indexOf('import("./campaign/preload.js")');
