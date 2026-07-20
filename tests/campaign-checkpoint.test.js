@@ -204,3 +204,19 @@ test("starting another mission run clears the previous mission checkpoint", () =
   assert.equal(campaign.state.missions.activeMissionId, "clean_the_scene");
   assert.equal(campaign.checkpoint(), null);
 });
+
+test("retrying the same failed mission preserves its last safe checkpoint for boot restoration", () => {
+  const campaign = campaignAtNightclub();
+  const checkpoint = checkpointFor(campaign);
+  campaign.setCheckpoint(checkpoint, { emit: false });
+  campaign.failActiveMission("Caught during the nightclub approach.");
+
+  campaign.startMission(SILENCE_THE_JOURNALIST_ID, { replay: true });
+
+  assert.equal(campaign.state.missions.activeMissionId, SILENCE_THE_JOURNALIST_ID);
+  assert.equal(campaign.missions.currentObjective().id, "reach_police_roof");
+  assert.equal(campaign.checkpoint().id, checkpoint.id);
+  assert.equal(campaign.checkpoint().objectiveId, "neutralize_journalist");
+  assert.equal(campaign.checkpoint().mission.status, "active");
+  assert.equal(checkpointCanResume(campaign.checkpoint(), campaign.state), true);
+});
