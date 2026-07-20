@@ -9,6 +9,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Functional specification](FUNCTIONAL_SPEC.md) — intended player experience and gameplay rules.
 - [Original setting, factions, retainers and economy](ORIGINAL_SETTING_FACTIONS_RETAINERS_ECONOMY.md) — original-IP guardrails, working factions, enhanced mortal Retainers, weapon slots, safehouses, ammunition and cash economy.
 - [Mission flow](MISSION_FLOW.md) — journalist handling, return-to-refuge completion rule and sire-dialogue-to-report ordering.
+- [Campaign foundation](CAMPAIGN_FOUNDATION.md) — versioned state, MissionRunner authority, cash, reputation, save migration and safe world checkpoints.
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — architecture and engineering constraints.
 - [Runtime consolidation](RUNTIME_CONSOLIDATION.md) — Milestone 10 system ownership, spatial queries, diagnostics and browser smoke tests.
 - [Milestone 10 status](MILESTONE_10_STATUS.md) — current implementation and validation boundary.
@@ -22,7 +23,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Weapon system](WEAPON_SYSTEM.md) — prototype inventory, wheel cycling, melee/hitscan attacks, ammo, HUD and noise.
 - [Tutorial UX and accessibility](UX_ACCESSIBILITY.md) — first-use weapon teaching, recovery countdowns, HUD layout, semantic labels and high-contrast aim.
 - [Control scheme](CONTROL_SCHEME.md) — target keyboard-and-mouse controls and interaction priority rules.
-- [Roadmap](ROADMAP.md) — release-candidate stabilization followed by mission framework, vehicles, traffic, original factions, economy, Retainers and campaign content.
+- [Roadmap](ROADMAP.md) — release-candidate stabilization, campaign authority, vehicles, traffic, original factions, economy, Retainers and campaign content.
 
 ## Regression checklists
 
@@ -36,6 +37,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Milestone 8](MILESTONE_8_REGRESSION.md)
 - [Milestone 9](MILESTONE_9_REGRESSION.md)
 - [Milestone 10](MILESTONE_10_REGRESSION.md)
+- [Milestone 11.2](MILESTONE_11_2_REGRESSION.md)
 
 ## Status language
 
@@ -47,4 +49,4 @@ This directory is the project source of truth for design, implementation and pla
 
 ## Maintenance rule
 
-Any gameplay change that alters controls, mission flow, AI behaviour, combat rules, UI behaviour, setting terminology, economy or architecture should update the relevant document in the same commit series.
+Any gameplay change that alters controls, mission flow, save/checkpoint behaviour, AI behaviour, combat rules, UI behaviour, setting terminology, economy or architecture should update the relevant document in the same commit series.

@@ -5,7 +5,7 @@ export const SILENCE_THE_JOURNALIST_ID = "silence_the_journalist";
 
 export const silenceTheJournalistMission = defineMission({
   id: SILENCE_THE_JOURNALIST_ID,
-  version: 1,
+  version: 2,
   title: "Silence the Journalist",
   factionId: CAMPAIGN_FACTIONS.BLACKGLASS_DIRECTORATE,
   contactId: "your_sire",
@@ -19,9 +19,11 @@ export const silenceTheJournalistMission = defineMission({
       label: "Reach the police roof",
       description: "Cross the rooftop route and clear the blocker.",
       metadata: {
+        legacyStep: 0,
         tutorial: true,
         minimumRooftopJumps: 3,
-        blockerTargetId: "rooftop_thug"
+        blockerTargetId: "rooftop_thug",
+        marker: { x: 775, y: 150, layer: 1, radius: 34, label: "TIP" }
       }
     },
     {
@@ -29,27 +31,63 @@ export const silenceTheJournalistMission = defineMission({
       type: OBJECTIVE_TYPES.TALK,
       targetId: "police_roof_informant",
       label: "Speak to the police informant",
-      description: "Collect the journalist's location and description."
+      description: "Collect the journalist's location and description.",
+      metadata: {
+        legacyStep: 0,
+        marker: { x: 775, y: 150, layer: 1, radius: 34, label: "TIP" }
+      }
     },
     {
       id: "reach_nightclub",
       type: OBJECTIVE_TYPES.REACH,
       targetId: "nightclub_district",
-      label: "Reach the nightclub district"
+      label: "Reach the nightclub district",
+      description: "Travel to the pink-lit nightclub district.",
+      metadata: {
+        legacyStep: 1,
+        marker: { x: 642, y: 404, layer: 0, radius: 96, label: "CLUB" },
+        checkpoint: {
+          id: "after_informant",
+          spawn: { x: 775, y: 150, layer: 1 },
+          tutorialState: "complete",
+          actorPreset: "post_informant"
+        }
+      }
     },
     {
       id: "neutralize_journalist",
       type: OBJECTIVE_TYPES.NEUTRALIZE,
       targetId: "journalist",
       label: "Silence the journalist",
-      acceptedOutcomes: ["killed", "drained"]
+      description: "Kill or drain the journalist without allowing the Veil to collapse.",
+      acceptedOutcomes: ["killed", "drained"],
+      metadata: {
+        legacyStep: 2,
+        marker: { x: 588, y: 360, layer: 0, radius: 34, label: "TARGET" },
+        checkpoint: {
+          id: "at_nightclub",
+          spawn: { x: 560, y: 350, layer: 0 },
+          tutorialState: "complete",
+          actorPreset: "post_informant"
+        }
+      }
     },
     {
       id: "return_to_refuge",
       type: OBJECTIVE_TYPES.RETURN,
       targetId: CAMPAIGN_REFUGES.ROOFTOP_REFUGE,
       label: "Return to the rooftop refuge",
-      description: "Report to your sire after the journalist has been handled."
+      description: "Report to your sire after the journalist has been handled.",
+      metadata: {
+        legacyStep: 3,
+        marker: { x: 150, y: 146, layer: 2, radius: 58, label: "REPORT" },
+        checkpoint: {
+          id: "journalist_handled",
+          spawn: { x: 560, y: 350, layer: 0 },
+          tutorialState: "complete",
+          actorPreset: "journalist_handled"
+        }
+      }
     }
   ],
   rewards: {
@@ -71,6 +109,12 @@ export const silenceTheJournalistMission = defineMission({
   },
   metadata: {
     openingMission: true,
-    legacyMissionSteps: 4
+    legacyMissionSteps: 4,
+    completionCheckpoint: {
+      id: "report_accepted",
+      spawn: { x: 150, y: 146, layer: 2 },
+      tutorialState: "complete",
+      actorPreset: "mission_complete"
+    }
   }
 });

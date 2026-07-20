@@ -44,6 +44,28 @@ export class WeaponSystem {
     return Math.max(0, Number(this.ammo[id]) || 0);
   }
 
+  restoreState(snapshot = {}) {
+    const inventory = [...new Set((Array.isArray(snapshot.inventory) ? snapshot.inventory : [])
+      .map(String)
+      .filter(id => weaponById(id)))];
+    this.inventory = inventory.length ? inventory : [...DEFAULT_WEAPON_INVENTORY];
+    if (!this.inventory.includes(WEAPON_IDS.UNARMED)) this.inventory.unshift(WEAPON_IDS.UNARMED);
+    const selectedId = weaponById(snapshot.selectedWeaponId) ? snapshot.selectedWeaponId : WEAPON_IDS.UNARMED;
+    this.index = Math.max(0, this.inventory.indexOf(selectedId));
+    if (this.index < 0) this.index = 0;
+    this.ammo = Object.create(null);
+    for (const id of this.inventory) {
+      const weapon = weaponById(id);
+      if (weapon.ammoCapacity == null) continue;
+      const saved = Number(snapshot.ammo?.[id]);
+      this.ammo[id] = Number.isFinite(saved)
+        ? Math.max(0, Math.min(weapon.ammoCapacity, saved))
+        : weapon.ammoCapacity;
+    }
+    this.publish();
+    return this.state();
+  }
+
   update(frame) {
     if (frame?.weaponStep && this.canCycle(frame)) this.cycle(frame.weaponStep);
     this.publish();

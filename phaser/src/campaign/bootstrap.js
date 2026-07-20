@@ -1,37 +1,53 @@
-import { CampaignRuntimeBridge } from "./CampaignRuntimeBridge.js";
-import { CampaignSystem } from "./CampaignSystem.js";
+import { installCampaignBrowserApi } from "./CampaignBrowserApi.js";
+import { CampaignCheckpointSystem } from "./CampaignCheckpointSystem.js";
+import { campaign } from "./preload.js";
 
-function attachCampaignFoundation() {
+function publishCampaign(scene, checkpoints) {
+  const snapshot = campaign.snapshot();
+  const values = {
+    campaignState: snapshot.state,
+    campaignMission: snapshot.activeMission,
+    cashText: `Cash $${snapshot.wallet.balance.toFixed(0)}`,
+    campaignText: campaign.summary(),
+    checkpointText: checkpoints.summary(),
+    factionReputation: snapshot.reputation.factions,
+    contactReputation: snapshot.reputation.contacts
+  };
+  scene.statePublisher?.setMany?.(values);
+  if (!scene.statePublisher) {
+    for (const [key, value] of Object.entries(values)) scene.registry?.set?.(key, value);
+  }
+}
+
+function attachCampaignRuntime() {
   const game = window.NBD_PHASER_GAME;
   const scene = game?.scene?.getScene?.("GameScene");
-  if (!scene?.missionSystem || !scene?.npcSystem || !scene?.statePublisher) {
-    window.requestAnimationFrame(attachCampaignFoundation);
+  if (!scene?.missionSystem
+    || !scene?.npcSystem
+    || !scene?.weaponSystem
+    || !scene?.propDamageSystem
+    || !scene?.evidenceSystem
+    || !scene?.statePublisher) {
+    window.requestAnimationFrame(attachCampaignRuntime);
     return;
   }
-  if (scene.campaignSystem) return;
+  if (scene.campaignCheckpointSystem) return;
 
-  const campaign = new CampaignSystem({
-    storage: window.localStorage,
-    autoLoad: true,
-    autoSave: true
-  });
   scene.campaignSystem = campaign;
-  scene.campaignRuntimeBridge = new CampaignRuntimeBridge(scene, campaign);
+  const checkpoints = new CampaignCheckpointSystem(scene, campaign);
+  scene.campaignCheckpointSystem = checkpoints;
+  const updateCheckpoint = () => checkpoints.update();
+  scene.events.on(Phaser.Scenes.Events.POST_UPDATE, updateCheckpoint);
+  const publish = () => publishCampaign(scene, checkpoints);
+  const disposePublish = campaign.events.on("*", publish);
+  const uninstallApi = installCampaignBrowserApi(scene, campaign, checkpoints);
+  publish();
 
-  window.NBD_CAMPAIGN = Object.freeze({
-    snapshot: () => campaign.snapshot(),
-    export: () => campaign.export(),
-    reset: () => {
-      const result = campaign.reset({ persist: true });
-      window.location.reload();
-      return result;
-    },
-    import: serialized => {
-      const result = campaign.import(serialized, { persist: true });
-      window.location.reload();
-      return result;
-    }
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    scene.events.off(Phaser.Scenes.Events.POST_UPDATE, updateCheckpoint);
+    disposePublish?.();
+    uninstallApi?.();
   });
 }
 
-attachCampaignFoundation();
+attachCampaignRuntime();

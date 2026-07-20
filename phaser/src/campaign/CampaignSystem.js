@@ -1,4 +1,5 @@
 import { CampaignEventBus } from "./CampaignEventBus.js";
+import { cloneCampaignCheckpoint, sanitizeCampaignCheckpoint } from "./CampaignCheckpoint.js";
 import { CampaignStorage } from "./CampaignStorage.js";
 import { cloneCampaignState, createCampaignState, sanitizeCampaignState } from "./CampaignState.js";
 import { MissionRunner } from "./MissionRunner.js";
@@ -93,7 +94,39 @@ export class CampaignSystem {
   }
 
   startMission(id, options = {}) {
-    return this.missions.start(id, options);
+    const missionId = String(id || "");
+    const previousCheckpoint = this.state.checkpoints.latest;
+    const previousRecord = this.missions.record(missionId);
+    const preserveRetryCheckpoint = Boolean(
+      previousCheckpoint
+      && previousCheckpoint.missionId === missionId
+      && previousRecord?.status === "failed"
+      && previousCheckpoint.mission?.status === "active"
+    );
+
+    // CampaignCheckpointSystem listens to mission:started and clears stale
+    // checkpoints. During a same-mission retry we temporarily remove the safe
+    // checkpoint so that listener cannot discard the rollback point, then put
+    // it back synchronously for the boot-time restore pass.
+    if (preserveRetryCheckpoint) this.state.checkpoints.latest = null;
+
+    let result;
+    try {
+      result = this.missions.start(missionId, options);
+    } catch (error) {
+      if (preserveRetryCheckpoint) this.state.checkpoints.latest = previousCheckpoint;
+      throw error;
+    }
+
+    if (preserveRetryCheckpoint) {
+      this.state.checkpoints.latest = previousCheckpoint;
+      this.touch();
+      if (this.autoSave) this.save();
+      return result;
+    }
+
+    if (this.state.checkpoints.latest) this.clearCheckpoint({ emit: false });
+    return result;
   }
 
   handle(type, payload = {}) {
@@ -104,10 +137,58 @@ export class CampaignSystem {
     return this.missions.fail(reason, metadata);
   }
 
+  checkpoint() {
+    return cloneCampaignCheckpoint(this.state.checkpoints.latest);
+  }
+
+  setCheckpoint(candidate, { emit = true } = {}) {
+    const checkpoint = sanitizeCampaignCheckpoint(candidate);
+    if (!checkpoint) throw new TypeError("Campaign checkpoint is invalid.");
+    this.state.checkpoints.latest = checkpoint;
+    this.state.sequences.checkpoint = Math.max(
+      Number(this.state.sequences.checkpoint) || 0,
+      Number(String(checkpoint.id).match(/(\d+)$/)?.[1]) || 0
+    );
+    if (emit) {
+      this.events.emit("checkpoint:saved", {
+        checkpointId: checkpoint.id,
+        missionId: checkpoint.missionId,
+        objectiveId: checkpoint.objectiveId,
+        kind: checkpoint.kind
+      });
+    } else {
+      this.touch();
+      if (this.autoSave) this.save();
+    }
+    return this.checkpoint();
+  }
+
+  clearCheckpoint({ emit = true } = {}) {
+    const previous = this.state.checkpoints.latest;
+    if (!previous) return false;
+    this.state.checkpoints.latest = null;
+    if (emit) {
+      this.events.emit("checkpoint:cleared", {
+        checkpointId: previous.id,
+        missionId: previous.missionId
+      });
+    } else {
+      this.touch();
+      if (this.autoSave) this.save();
+    }
+    return true;
+  }
+
+  nextCheckpointId() {
+    this.state.sequences.checkpoint = Math.max(0, Number(this.state.sequences.checkpoint) || 0) + 1;
+    return `cp-${String(this.state.sequences.checkpoint).padStart(6, "0")}`;
+  }
+
   snapshot() {
     return {
       state: cloneCampaignState(this.state),
       activeMission: this.missions.snapshot(),
+      checkpoint: this.checkpoint(),
       wallet: {
         balance: this.wallet.balance(),
         recent: this.wallet.recent(10)
@@ -131,7 +212,10 @@ export class CampaignSystem {
     const mission = active
       ? `${active.title} · ${active.currentObjective?.label || active.status}`
       : "No active campaign mission";
-    return `Cash $${this.wallet.balance().toFixed(0)} · ${mission}`;
+    const checkpoint = this.state.checkpoints.latest
+      ? ` · checkpoint ${this.state.checkpoints.latest.objectiveId || this.state.checkpoints.latest.kind}`
+      : "";
+    return `Cash $${this.wallet.balance().toFixed(0)} · ${mission}${checkpoint}`;
   }
 
   destroy() {

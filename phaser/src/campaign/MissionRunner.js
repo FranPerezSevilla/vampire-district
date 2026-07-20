@@ -77,13 +77,17 @@ export class MissionRunner {
     return this.definitions.get(String(id || "")) || null;
   }
 
+  record(id) {
+    const key = String(id || "");
+    return key ? this.state.missions.records[key] || null : null;
+  }
+
   activeDefinition() {
     return this.definition(this.state.missions.activeMissionId);
   }
 
   activeRecord() {
-    const id = this.state.missions.activeMissionId;
-    return id ? this.state.missions.records[id] || null : null;
+    return this.record(this.state.missions.activeMissionId);
   }
 
   currentObjective() {
@@ -115,6 +119,26 @@ export class MissionRunner {
       objectiveType: definition.objectives[0].type
     });
     return this.snapshot(definition.id);
+  }
+
+  updateActiveMetadata(patch = {}) {
+    const definition = this.activeDefinition();
+    const record = this.activeRecord();
+    if (!definition || !record || record.status !== MISSION_STATUS.ACTIVE) return false;
+    const next = this.plainMetadata(patch);
+    let changed = false;
+    for (const [key, value] of Object.entries(next)) {
+      if (Object.is(record.metadata[key], value)) continue;
+      record.metadata[key] = value;
+      changed = true;
+    }
+    if (!changed) return false;
+    record.updatedAt = timestamp(this.now);
+    this.markDirty("mission:metadata-changed", {
+      missionId: definition.id,
+      objectiveId: this.currentObjective()?.id || null
+    });
+    return true;
   }
 
   handle(type, payload = {}) {
@@ -182,8 +206,6 @@ export class MissionRunner {
   }
 
   nextRequiredObjectiveIndex(definition, startIndex) {
-    // Optional objectives remain available to authored integrations, but the
-    // linear campaign runner does not block progression on them.
     let index = startIndex;
     while (index < definition.objectives.length && definition.objectives[index].optional) index++;
     return index;
@@ -294,7 +316,8 @@ export class MissionRunner {
       failedAt: record.failedAt,
       failureReason: record.failureReason,
       completionCount: record.completionCount,
-      rewardsGranted: record.rewardsGranted
+      rewardsGranted: record.rewardsGranted,
+      metadata: { ...record.metadata }
     };
   }
 

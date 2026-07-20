@@ -25,8 +25,16 @@ export class ReputationSystem {
     return Number(this.state.reputation.factions[identifier(id, "Faction")]) || 0;
   }
 
+  factionValue(id) {
+    return this.faction(id);
+  }
+
   contact(id) {
     return Number(this.state.reputation.contacts[identifier(id, "Contact")]) || 0;
+  }
+
+  contactValue(id) {
+    return this.contact(id);
   }
 
   setFaction(id, value, metadata = {}) {
