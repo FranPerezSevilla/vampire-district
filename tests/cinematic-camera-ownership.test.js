@@ -142,28 +142,40 @@ test("normal gameplay keeps expanded bounds without forcing a recenter", () => {
 });
 
 test("intro zoom-out installs expanded bounds before tweening and never stops centring the player", async () => {
-  const fixture = tutorialZoomFixture();
-  const counter = fixture.counter();
+  const previousPhaser = globalThis.Phaser;
+  globalThis.Phaser = {
+    Math: {
+      Linear: (from, to, progress) => from + (to - from) * progress
+    }
+  };
 
-  assert.ok(counter, "zoom-out tween should be registered");
-  assert.deepEqual(fixture.calls.slice(0, 2), [["expanded-bounds"], ["tween"]]);
+  try {
+    const fixture = tutorialZoomFixture();
+    const counter = fixture.counter();
 
-  counter.onUpdate({ getValue: () => 0 });
-  counter.onUpdate({ getValue: () => 0.5 });
-  counter.onUpdate({ getValue: () => 1 });
-  assert.deepEqual(fixture.centers, [
-    [fixture.player.x, fixture.player.y],
-    [fixture.player.x, fixture.player.y],
-    [fixture.player.x, fixture.player.y]
-  ]);
-  assert.equal(fixture.zooms[0], 6);
-  assert.ok(fixture.zooms[1] < 6 && fixture.zooms[1] > CAMERA.roofHighZoom);
-  assert.equal(fixture.zooms[2], CAMERA.roofHighZoom);
+    assert.ok(counter, "zoom-out tween should be registered");
+    assert.deepEqual(fixture.calls.slice(0, 2), [["expanded-bounds"], ["tween"]]);
 
-  counter.onComplete();
-  await fixture.completion;
+    counter.onUpdate({ getValue: () => 0 });
+    counter.onUpdate({ getValue: () => 0.5 });
+    counter.onUpdate({ getValue: () => 1 });
+    assert.deepEqual(fixture.centers, [
+      [fixture.player.x, fixture.player.y],
+      [fixture.player.x, fixture.player.y],
+      [fixture.player.x, fixture.player.y]
+    ]);
+    assert.equal(fixture.zooms[0], 6);
+    assert.ok(fixture.zooms[1] < 6 && fixture.zooms[1] > CAMERA.roofHighZoom);
+    assert.equal(fixture.zooms[2], CAMERA.roofHighZoom);
 
-  assert.equal(fixture.camera.zoom, CAMERA.roofHighZoom);
-  assert.deepEqual(fixture.centers.at(-1), [fixture.player.x, fixture.player.y]);
-  assert.deepEqual(fixture.calls.at(-1), ["follow", fixture.player, true, 0.12, 0.12]);
+    counter.onComplete();
+    await fixture.completion;
+
+    assert.equal(fixture.camera.zoom, CAMERA.roofHighZoom);
+    assert.deepEqual(fixture.centers.at(-1), [fixture.player.x, fixture.player.y]);
+    assert.deepEqual(fixture.calls.at(-1), ["follow", fixture.player, true, 0.12, 0.12]);
+  } finally {
+    if (previousPhaser === undefined) delete globalThis.Phaser;
+    else globalThis.Phaser = previousPhaser;
+  }
 });
