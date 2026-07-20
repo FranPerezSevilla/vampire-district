@@ -1,4 +1,7 @@
 const PHASER_VERSION = "3.90.0";
+const BOOT_QUERY = new URLSearchParams(window.location.search);
+window.NBD_RC_TEST_MODE = BOOT_QUERY.has("rcTest");
+
 const PHASER_SCRIPT_SOURCES = Object.freeze([
   Object.freeze({
     kind: "local-node-modules",
@@ -13,6 +16,13 @@ const PHASER_SCRIPT_SOURCES = Object.freeze([
     src: `https://unpkg.com/phaser@${PHASER_VERSION}/dist/phaser.min.js`
   })
 ]);
+
+function publishPhaserSource({ kind, src = null, version = PHASER_VERSION }) {
+  const detail = Object.freeze({ kind, src, version });
+  window.NBD_PHASER_SOURCE_DETAIL = detail;
+  window.NBD_PHASER_SOURCE = kind === "local-node-modules" ? "local" : kind;
+  return detail;
+}
 
 function loadScript(source) {
   return new Promise((resolve, reject) => {
@@ -38,19 +48,23 @@ function loadScript(source) {
 }
 
 async function ensurePhaser() {
-  if (window.Phaser) return { kind: "existing", version: window.Phaser.VERSION || "unknown" };
+  if (window.Phaser) {
+    return publishPhaserSource({
+      kind: "existing",
+      version: window.Phaser.VERSION || "unknown"
+    });
+  }
 
   let lastError = null;
   for (const source of PHASER_SCRIPT_SOURCES) {
     try {
       await loadScript(source);
       if (window.Phaser) {
-        window.NBD_PHASER_SOURCE = Object.freeze({
+        return publishPhaserSource({
           kind: source.kind,
           src: source.src,
           version: window.Phaser.VERSION || PHASER_VERSION
         });
-        return window.NBD_PHASER_SOURCE;
       }
     } catch (error) {
       lastError = error;
@@ -74,24 +88,20 @@ function renderBootFailure(error) {
 }
 
 try {
-  await ensurePhaser();
+  const phaser = await ensurePhaser();
   await import("./campaign/preload.js");
   await import("./main.js");
   await import("./ui/AccessibilityKeyboardBridge.js");
   await import("./responsive-layout.js");
   await import("./campaign/bootstrap.js");
   await import("./tutorial/bootstrap.js");
-  if (new URLSearchParams(window.location.search).has("rcTest")) {
-    await import("./testing/bootstrap.js");
-  }
+  if (window.NBD_RC_TEST_MODE) await import("./testing/bootstrap.js");
   window.NBD_APP_READY = true;
   window.dispatchEvent(new CustomEvent("nbd:app-ready", {
     detail: {
-      phaser: window.NBD_PHASER_SOURCE || {
-        kind: "existing",
-        version: window.Phaser?.VERSION || PHASER_VERSION
-      },
-      campaign: true
+      phaser,
+      campaign: true,
+      rcTest: window.NBD_RC_TEST_MODE
     }
   }));
 } catch (error) {
