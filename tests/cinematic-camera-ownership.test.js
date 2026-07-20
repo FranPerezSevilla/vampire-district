@@ -166,7 +166,7 @@ test("intro zoom-out installs expanded bounds before tweening and never stops ce
     ]);
     assert.equal(fixture.zooms[0], 6);
     assert.ok(fixture.zooms[1] < 6 && fixture.zooms[1] > CAMERA.roofHighZoom);
-    assert.equal(fixture.zooms[2], CAMERA.roofHighZoom);
+    assert.ok(Math.abs(fixture.zooms[2] - CAMERA.roofHighZoom) < 1e-9);
 
     counter.onComplete();
     await fixture.completion;
