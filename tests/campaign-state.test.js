@@ -10,26 +10,19 @@ import {
 } from "../phaser/src/campaign/CampaignState.js";
 import { CAMPAIGN_REFUGES, CAMPAIGN_SCHEMA_VERSION } from "../phaser/src/campaign/constants.js";
 
-function memoryStorage() {
-  const values = new Map();
-  return {
-    getItem(key) { return values.has(key) ? values.get(key) : null; },
-    setItem(key, value) { values.set(key, String(value)); },
-    removeItem(key) { values.delete(key); }
-  };
-}
-
-test("fresh campaign state is JSON-only and contains the starting refuge", () => {
+test("fresh campaign state is JSON-only and contains the starting refuge checkpoint", () => {
   const state = createCampaignState({ now: 1234 });
   assert.equal(state.version, CAMPAIGN_SCHEMA_VERSION);
   assert.equal(state.player.cash, 0);
   assert.equal(state.player.currentRefugeId, CAMPAIGN_REFUGES.ROOFTOP_REFUGE);
   assert.deepEqual(state.world.unlockedRefuges, [CAMPAIGN_REFUGES.ROOFTOP_REFUGE]);
   assert.ok(state.inventory.refuges[CAMPAIGN_REFUGES.ROOFTOP_REFUGE]);
+  assert.equal(state.checkpoint.id, "campaign_start");
+  assert.equal(state.checkpoint.locationId, CAMPAIGN_REFUGES.ROOFTOP_REFUGE);
   assert.equal(campaignStateIsSerializable(state), true);
 });
 
-test("campaign state serializes and restores deterministic mission, inventory and reputation data", () => {
+test("campaign state serializes and restores deterministic mission, checkpoint, inventory and reputation data", () => {
   const state = createCampaignState({ now: 10 });
   state.player.cash = 725;
   state.reputation.factions.blackglass_directorate = 12;
@@ -38,6 +31,15 @@ test("campaign state serializes and restores deterministic mission, inventory an
   state.inventory.carried.ammoByType.pistol = 24;
   state.world.flags.journalist_silenced = true;
   state.missions.completed.push("silence_the_journalist");
+  state.checkpoint = {
+    id: "journalist_handled",
+    kind: "objective",
+    missionId: "silence_the_journalist",
+    objectiveId: "return_to_refuge",
+    locationId: "nightclub_district",
+    capturedAt: 88,
+    payload: { previousOutcome: "drained" }
+  };
 
   const restored = deserializeCampaignState(serializeCampaignState(state), { now: 99 });
   assert.equal(restored.player.cash, 725);
@@ -47,19 +49,23 @@ test("campaign state serializes and restores deterministic mission, inventory an
   assert.equal(restored.inventory.carried.ammoByType.pistol, 24);
   assert.equal(restored.world.flags.journalist_silenced, true);
   assert.deepEqual(restored.missions.completed, ["silence_the_journalist"]);
+  assert.equal(restored.checkpoint.id, "journalist_handled");
+  assert.equal(restored.checkpoint.objectiveId, "return_to_refuge");
+  assert.equal(restored.checkpoint.payload.previousOutcome, "drained");
 });
 
-test("pre-schema and partial saves migrate to version one defaults", () => {
+test("pre-schema and partial saves migrate to current defaults", () => {
   const migrated = migrateCampaignState({
     player: { cash: 90 },
     reputation: { contacts: { fixer_anna: 8 } },
     world: { unlockedRefuges: [] }
   }, { now: 200 });
 
-  assert.equal(migrated.version, 1);
+  assert.equal(migrated.version, CAMPAIGN_SCHEMA_VERSION);
   assert.equal(migrated.player.cash, 90);
   assert.equal(migrated.reputation.contacts.fixer_anna, 8);
   assert.ok(migrated.world.unlockedRefuges.includes(CAMPAIGN_REFUGES.ROOFTOP_REFUGE));
+  assert.equal(migrated.checkpoint.id, "campaign_start");
 });
 
 test("sanitisation strips functions, invalid arrays and non-finite values", () => {
@@ -70,6 +76,11 @@ test("sanitisation strips functions, invalid arrays and non-finite values", () =
       flags: { okay: true, bad: () => false },
       ownedVehicles: ["sedan_1", "sedan_1", ""]
     },
+    checkpoint: {
+      id: "safe",
+      locationId: "police_roof",
+      payload: { okay: true, bad: () => false }
+    },
     inventory: { refuges: [] }
   });
 
@@ -77,6 +88,8 @@ test("sanitisation strips functions, invalid arrays and non-finite values", () =
   assert.equal(state.reputation.factions.blackglass_directorate, 0);
   assert.deepEqual(state.world.flags, { okay: true });
   assert.deepEqual(state.world.ownedVehicles, ["sedan_1"]);
+  assert.equal(state.checkpoint.id, "safe");
+  assert.deepEqual(state.checkpoint.payload, {});
   assert.equal(campaignStateIsSerializable(state), true);
 });
 
