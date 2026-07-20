@@ -50,6 +50,7 @@ export class MissionRunner {
     events = null,
     wallet = null,
     reputation = null,
+    checkpoints = null,
     now = () => Date.now(),
     onDirty = null
   } = {}) {
@@ -58,6 +59,7 @@ export class MissionRunner {
     this.events = events;
     this.wallet = wallet;
     this.reputation = reputation;
+    this.checkpoints = checkpoints;
     this.now = now;
     this.onDirty = typeof onDirty === "function" ? onDirty : null;
     this.definitions = new Map();
@@ -105,15 +107,21 @@ export class MissionRunner {
     const now = timestamp(this.now);
     const record = missionRecord(definition, now);
     record.completionCount = Math.max(0, Number(existing?.completionCount) || 0);
-    record.metadata = this.plainMetadata(metadata);
+    record.rewardsGranted = Boolean(existing?.rewardsGranted);
+    record.metadata = {
+      ...this.plainMetadata(metadata),
+      replay: Boolean(replay)
+    };
     this.state.missions.records[definition.id] = record;
     this.state.missions.activeMissionId = definition.id;
     this.removeFromList(this.state.missions.failed, definition.id);
     this.markDirty("mission:started", {
       missionId: definition.id,
       objectiveId: definition.objectives[0].id,
-      objectiveType: definition.objectives[0].type
+      objectiveType: definition.objectives[0].type,
+      replay: Boolean(replay)
     });
+    this.captureCheckpoint(definition, record, definition.objectives[0], "mission-start");
     return this.snapshot(definition.id);
   }
 
@@ -179,6 +187,10 @@ export class MissionRunner {
       objectiveType: next.type,
       objectiveIndex: nextIndex
     });
+    this.captureCheckpoint(definition, record, next, "objective", {
+      previousObjectiveId: objective.id,
+      previousOutcome: objectiveState.outcome
+    });
   }
 
   nextRequiredObjectiveIndex(definition, startIndex) {
@@ -205,6 +217,7 @@ export class MissionRunner {
       completionCount: record.completionCount,
       cashReward: definition.rewards.cash
     });
+    this.captureCompletionCheckpoint(definition, record);
     return true;
   }
 
@@ -226,6 +239,26 @@ export class MissionRunner {
       objectiveId: objective?.id || null,
       reason: record.failureReason,
       source: metadata.source || "system"
+    });
+    return true;
+  }
+
+  updateMetadata(values = {}) {
+    const record = this.activeRecord();
+    const definition = this.activeDefinition();
+    if (!record || !definition || record.status !== MISSION_STATUS.ACTIVE) return false;
+    const changes = this.plainMetadata(values);
+    let changed = false;
+    for (const [key, value] of Object.entries(changes)) {
+      if (record.metadata[key] === value) continue;
+      record.metadata[key] = value;
+      changed = true;
+    }
+    if (!changed) return false;
+    record.updatedAt = timestamp(this.now);
+    this.markDirty("mission:metadata-changed", {
+      missionId: definition.id,
+      objectiveId: this.currentObjective()?.id || null
     });
     return true;
   }
@@ -255,6 +288,41 @@ export class MissionRunner {
     }
     for (const [flag, value] of Object.entries(definition.rewards.flags)) this.state.world.flags[flag] = value;
     record.rewardsGranted = true;
+    return true;
+  }
+
+  captureCheckpoint(definition, record, objective, kind = "objective", extraPayload = {}) {
+    const authored = objective?.metadata?.checkpoint;
+    if (!authored?.id) return false;
+    this.checkpoints?.capture?.({
+      id: authored.id,
+      kind: authored.kind || kind,
+      missionId: definition.id,
+      objectiveId: objective.id,
+      locationId: authored.locationId || objective.targetId,
+      payload: {
+        objectiveIndex: record.objectiveIndex,
+        ...extraPayload,
+        ...(authored.payload || {})
+      }
+    });
+    return true;
+  }
+
+  captureCompletionCheckpoint(definition, record) {
+    const authored = definition.metadata?.completionCheckpoint;
+    if (!authored?.id) return false;
+    this.checkpoints?.capture?.({
+      id: authored.id,
+      kind: authored.kind || "mission-complete",
+      missionId: definition.id,
+      objectiveId: null,
+      locationId: authored.locationId || null,
+      payload: {
+        completionCount: record.completionCount,
+        ...(authored.payload || {})
+      }
+    });
     return true;
   }
 
@@ -294,7 +362,8 @@ export class MissionRunner {
       failedAt: record.failedAt,
       failureReason: record.failureReason,
       completionCount: record.completionCount,
-      rewardsGranted: record.rewardsGranted
+      rewardsGranted: record.rewardsGranted,
+      metadata: { ...record.metadata }
     };
   }
 
