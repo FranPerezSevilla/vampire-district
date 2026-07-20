@@ -82,7 +82,7 @@ try {
   await import("./campaign/bootstrap.js");
   await import("./tutorial/bootstrap.js");
   if (new URLSearchParams(window.location.search).has("rcTest")) {
-    await import("./testing/ReleaseCandidateHarness.js");
+    await import("./testing/bootstrap.js");
   }
   window.NBD_APP_READY = true;
   window.dispatchEvent(new CustomEvent("nbd:app-ready", {
