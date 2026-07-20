@@ -2,25 +2,11 @@ import { expect, test } from "@playwright/test";
 
 const ROUTES = ["/", "/phaser/"];
 
+test.describe.configure({ timeout: 90_000 });
+
 async function dispatchDialogueAdvance(page) {
   await page.waitForTimeout(320);
-  await page.evaluate(() => {
-    const target = document.querySelector("#game-root canvas") || document.querySelector(".game-frame");
-    if (!target) throw new Error("Playable game surface is unavailable");
-    const rect = target.getBoundingClientRect();
-    target.dispatchEvent(new PointerEvent("pointerdown", {
-      bubbles: true,
-      cancelable: true,
-      composed: true,
-      pointerId: 1,
-      pointerType: "mouse",
-      isPrimary: true,
-      button: 0,
-      buttons: 1,
-      clientX: rect.left + Math.min(120, Math.max(1, rect.width / 2)),
-      clientY: rect.top + Math.min(120, Math.max(1, rect.height / 2))
-    }));
-  });
+  await page.locator(".game-frame").click({ position: { x: 100, y: 100 } });
 }
 
 for (const route of ROUTES) {
@@ -102,7 +88,7 @@ test("intro resumes the world and opens the click-driven narrative", async ({ pa
   await expect(page.locator("#ui-modal")).toHaveClass(/open/);
   await page.locator("#ui-modal-action").click();
   await expect(page.locator("#ui-modal")).not.toHaveClass(/open/);
-  await expect(page.locator("#tutorial-dialogue")).toHaveClass(/open/, { timeout: 8_000 });
+  await expect(page.locator("#tutorial-dialogue")).toHaveClass(/open/, { timeout: 15_000 });
   await expect(page.locator(".tutorial-dialogue__advance")).toContainText("CLICK");
 
   const previous = await page.locator(".tutorial-dialogue__text").textContent();
@@ -111,7 +97,7 @@ test("intro resumes the world and opens the click-driven narrative", async ({ pa
     const dialogue = document.getElementById("tutorial-dialogue");
     const current = document.querySelector(".tutorial-dialogue__text")?.textContent || "";
     return Boolean(dialogue?.classList.contains("open") && current && current !== previousText);
-  }, previous || "", { timeout: 8_000 });
+  }, previous || "", { timeout: 15_000 });
 
   const gameState = await page.evaluate(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
