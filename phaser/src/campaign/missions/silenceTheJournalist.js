@@ -66,7 +66,7 @@ export const silenceTheJournalistMission = defineMission({
         marker: { x: 588, y: 360, layer: 0, radius: 34, label: "TARGET" },
         checkpoint: {
           id: "at_nightclub",
-          spawn: { x: 642, y: 404, layer: 0 },
+          spawn: { x: 560, y: 350, layer: 0 },
           tutorialState: "complete",
           actorPreset: "post_informant"
         }
@@ -83,7 +83,7 @@ export const silenceTheJournalistMission = defineMission({
         marker: { x: 150, y: 146, layer: 2, radius: 58, label: "REPORT" },
         checkpoint: {
           id: "journalist_handled",
-          spawn: { x: 588, y: 384, layer: 0 },
+          spawn: { x: 560, y: 350, layer: 0 },
           tutorialState: "complete",
           actorPreset: "journalist_handled"
         }
