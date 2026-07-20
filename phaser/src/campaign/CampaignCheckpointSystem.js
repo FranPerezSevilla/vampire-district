@@ -42,17 +42,27 @@ export class CampaignCheckpointSystem {
     this.disposers.push(campaign.events.on("mission:completed", event => {
       this.requestCompletion(event.payload.missionId);
     }));
-    this.disposers.push(campaign.events.on("mission:started", event => {
-      if (campaign.checkpoint()?.missionId !== event.payload.missionId) campaign.clearCheckpoint();
+    this.disposers.push(campaign.events.on("mission:started", () => {
+      if (campaign.checkpoint()) campaign.clearCheckpoint();
     }));
 
-    this.restoreInitialCheckpoint();
-    this.queueCurrentObjective();
+    const restored = this.restoreInitialCheckpoint();
+    if (!restored) this.queueCurrentObjective();
     scene.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, this.destroy, this);
   }
 
   restoreInitialCheckpoint() {
     let checkpoint = this.campaign.checkpoint();
+    if (checkpoint && !checkpointCanResume(checkpoint, this.campaign.state)) {
+      const synthesized = this.synthesizeFromCampaign();
+      if (synthesized) {
+        checkpoint = synthesized;
+        this.campaign.setCheckpoint(checkpoint, { emit: false });
+      } else {
+        this.campaign.clearCheckpoint({ emit: false });
+        return false;
+      }
+    }
     if (!checkpoint) {
       checkpoint = this.synthesizeFromCampaign();
       if (checkpoint) this.campaign.setCheckpoint(checkpoint, { emit: false });
