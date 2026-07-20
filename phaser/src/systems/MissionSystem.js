@@ -31,6 +31,9 @@ export class MissionSystem {
     if (!scene || !campaign) throw new TypeError("MissionSystem requires the scene and CampaignSystem.");
     this.scene = scene;
     this.campaign = campaign;
+    // Opening-mission start events are synchronous. Publish ownership before
+    // registering or starting so an event-driven redraw can safely query us.
+    scene.missionSystem = this;
     scene.campaignSystem = campaign;
     this.resultPublished = false;
     this.returnFinalePending = false;
