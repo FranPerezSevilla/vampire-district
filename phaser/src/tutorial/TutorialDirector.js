@@ -362,10 +362,10 @@ export class TutorialDirector {
         targetId: INFORMANT_ID
       });
 
-      this.scene.missionSystem.collectPoliceRoofTip();
       await this.runFinalSireAdvice();
       await this.departInformant();
       this.finishTutorial();
+      this.scene.missionSystem.collectPoliceRoofTip();
     } catch (error) {
       console.error("Tutorial informant sequence failed", error);
       this.finishTutorial();
