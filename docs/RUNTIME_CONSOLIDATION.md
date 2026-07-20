@@ -1,12 +1,12 @@
 # Runtime consolidation
 
-_Status: Milestone 10 core implementation complete; full browser and mission regression remain pending._
+_Status: Milestone 10 runtime consolidation and physical patch cleanup complete; final manual release-candidate acceptance remains pending._
 
 ## Purpose
 
-Milestones 1–9 were implemented quickly through a mixture of first-class systems and prototype adapters. That approach was useful for iteration, but it allowed several files to replace the same scene/system methods depending on import order.
+Milestones 1–9 were implemented rapidly through a mixture of first-class systems and prototype adapters. That approach supported iteration, but it allowed several files to replace the same scene or system methods depending on import order.
 
-Milestone 10 moves the playable build to explicit composition:
+The playable build now uses explicit composition:
 
 ```text
 GameScene.create()
@@ -31,7 +31,7 @@ GameScene.update()
   → GameplayRuntime.update()
 ```
 
-The HTML routes no longer load the previous combat, movement, AI, perception, weapon-UI or task-camera patch stacks.
+The old combat, movement, AI, perception, tutorial, objective, weapon-UI and task-camera patch stacks have been physically removed from the repository's active source tree.
 
 ## Authoritative files
 
@@ -48,6 +48,7 @@ The HTML routes no longer load the previous combat, movement, AI, perception, we
 - `phaser/src/systems/OutskirtsSystem.js` — surrounding city and sire boundary warning.
 - `phaser/src/systems/SensoryAwarenessSystem.js` — break-light and roof-drop visual/heard-only reactions.
 - `phaser/src/systems/PoliceViolenceSystem.js` — progressive police-violence wanted escalation.
+- `phaser/src/app-bootstrap.js` — deterministic Phaser, layout, tutorial and RC-test bootstrap.
 
 ## Single-owner update loop
 
@@ -95,23 +96,23 @@ Current claims include:
 - `OutskirtsSystem.updatePresentation` → `OutskirtsSystem`
 - `TutorialDirector.filterActions` → `TutorialDirector`
 
-The current browser exposes:
+The browser exposes:
 
 ```js
 window.NBD_RUNTIME_DIAGNOSTICS.snapshot()
 ```
 
-The snapshot contains owners, registered systems, conflicts and recent frame timing statistics.
+The snapshot contains owners, registered systems, conflicts and recent frame-timing statistics.
 
 ## Input remapping groundwork
 
-`phaser/src/input/bindings.js` defines the keyboard binding contract and local-storage format:
+`phaser/src/input/bindings.js` defines the keyboard-binding contract and local-storage format:
 
 ```text
 nbd-input-bindings-v1
 ```
 
-`InputSystem` consumes the normalized bindings at construction and publishes its binding snapshot. The current UI still presents the default bindings; a complete in-game rebinding screen is intentionally deferred. Pure helpers already support:
+`InputSystem` consumes normalized bindings at construction and publishes its binding snapshot. Pure helpers support:
 
 - normalization;
 - readable labels;
@@ -119,31 +120,31 @@ nbd-input-bindings-v1
 - save/load/reset;
 - custom movement, quiet, traversal, interaction and power keys.
 
-Mouse buttons and wheel remain fixed actions in the current slice.
+Mouse buttons and wheel remain fixed actions in the current slice. A full player-facing rebinding screen is deferred.
 
 ## Spatial and rendering performance
 
 ### NPC spatial hash
 
-`NpcSystem` rebuilds one layer-aware `SpatialHash` after world movement. Radius and rectangle queries replace repeated full-list scans in:
+`NpcSystem` rebuilds one layer-aware `SpatialHash` after world movement. Radius and rectangle queries reduce repeated full-list scans in:
 
 - melee and hitscan candidate gathering;
 - drain targeting and drain-hearing reactions;
 - footsteps;
-- weapon impact and gunshot hearing;
+- weapon-impact and gunshot hearing;
 - witness visibility candidate selection;
 - police separation and surrounding checks;
 - nearby interactions.
 
-The implementation keeps exact distance checks after bucket lookup, so the index changes candidate cost rather than gameplay rules.
+Exact distance checks still run after bucket lookup, so the index changes candidate cost rather than gameplay rules.
 
 ### Camera culling
 
-NPC containers and high-frequency combat/perception markers are hidden outside a camera margin. The surrounding-city backdrop remains one cached graphics object rather than being rebuilt each frame.
+NPC containers and high-frequency combat/perception markers hide outside a camera margin. The surrounding-city backdrop remains one cached graphics object rather than being rebuilt each frame.
 
 ### Change-aware registry and DOM
 
-`RegistryPublisher` skips registry writes whose primitive or JSON-stable value has not changed. `UIScene` similarly avoids replacing mission and interaction markup when the generated HTML is unchanged.
+`RegistryPublisher` skips registry writes whose primitive or JSON-stable value has not changed. `UIScene` avoids replacing mission and interaction markup when generated HTML is unchanged.
 
 This reduces data-change events, DOM work and assistive-technology announcements without changing visible state.
 
@@ -156,17 +157,17 @@ This reduces data-change events, DOM work and assistive-technology announcements
 - introduction zoom and dialogue;
 - speaker-anchored click/Escape bubbles;
 - tutorial control modes;
-- rooftop thug encounter;
-- Hunger/veil lesson;
-- police informant conversation and departure;
+- rooftop-thug encounter;
+- Hunger/Veil lesson;
+- police-informant conversation and departure;
 - final sire advice;
 - tutorial-only action filtering.
 
-The mission still owns objective progression. The tutorial calls public mission/system methods rather than replacing them.
+The mission owns objective progression. The tutorial calls public mission and system methods rather than replacing them.
 
 ### Task reveals
 
-`TaskRevealSystem` listens to `mission:step-changed`. If the informant/tutorial sequence is still active, Task 2 waits until full control returns. This preserves the required narrative order without patching `MissionSystem.setStep`.
+`TaskRevealSystem` listens to `mission:step-changed`. If the informant/tutorial sequence remains active, Task 2 waits until full control returns. This preserves narrative order without patching `MissionSystem.setStep`.
 
 ### Mission finale
 
@@ -180,63 +181,80 @@ journalist handled
 → dialogue dismissed
 → mission complete
 → REPORT ACCEPTED
+→ report dismissed
+→ armed free roam resumes
 ```
 
 ### Objective arrow and outskirts
 
-`ObjectiveMarkerSystem` owns the player-origin directional arrow until the informant tip is collected. `OutskirtsSystem` owns the extended city backdrop and the sire warning when the player pushes against the district boundary.
+`ObjectiveMarkerSystem` owns the player-origin directional arrow until the informant tip is collected. `OutskirtsSystem` owns the extended city backdrop, cinematic camera bounds and the sire warning when the player pushes against the district boundary.
 
-## Browser smoke tests
+## Automated browser coverage
 
-Playwright Chromium tests cover both `/` and `/phaser/`:
+The Playwright Chromium release-candidate suite covers both `/` and `/phaser/`:
 
 - Phaser boot and canvas visibility;
 - one runtime with no owner conflicts;
-- required system composition;
-- absence of the old runtime prototype markers;
+- required first-class system composition;
 - spatial index and published binding snapshot;
-- responsive canvas resize;
 - intro release and click-driven dialogue ownership;
+- stable intro camera zoom-in/dialogue/zoom-out order;
+- killed and drained journalist golden paths;
+- sire dialogue before `REPORT ACCEPTED`;
+- post-report weapon cycling, drain availability and unarmed impacts;
+- police alert 1 → 2 → 3, helicopter and duplicate-neutralization protection;
+- police recovery;
+- visual witness versus heard-only response;
+- input locks during pause, dialogue and task reveals;
+- Low and Ultra render-quality presets;
+- wide, narrow and resized viewports;
+- high-contrast aim and semantic HUD state;
+- sustained level-three structural/performance smoke;
 - uncaught browser errors.
 
-The GitHub Actions workflow runs unit tests first, then installs Chromium and runs browser smoke tests. Failure artifacts retain the Playwright report for seven days.
+GitHub Actions runs unit tests first and then the browser suite. Playwright reports and traces are retained on browser failure. Unit failures retain `unit-test.log` for seven days.
 
-## Automated source ownership guards
+## Source ownership and physical cleanup
 
-`tests/source-ownership.test.js` prevents accidental reintroduction of the old bootstrap paths. It verifies that:
+`tests/source-ownership.test.js` prevents accidental reintroduction of the prototype stack. It verifies that:
 
-- the legacy movement entry does not import core adapters;
+- all retired patch and compatibility files are absent;
 - `main.js` does not replace scene prototypes;
 - `GameScene` delegates one update loop to `GameplayRuntime`;
-- task reveal, sensory awareness, objective marker and outskirts are runtime systems;
-- both playable HTML routes load the first-class tutorial bootstrap rather than the old tutorial stack.
+- task reveal, sensory awareness, objective marker and outskirts are first-class runtime systems;
+- both playable routes use one pinned `app-bootstrap.js` path;
+- `app-bootstrap.js` imports the active responsive layout directly.
 
-## Compatibility and removed ownership
+The cleanup removed the former:
 
-The playable HTML no longer loads:
+- input runtime and movement/tutorial adapters;
+- Milestone 5 and 6 runtime patches;
+- combat compatibility and police-alert patches;
+- Milestone 8 AI runtime and guards;
+- Milestone 7 weapon UI and Milestone 9 UX runtime;
+- tutorial-flow, tutorial-copy and dialogue-order patch files;
+- old final-report and mission-finale wrappers;
+- old objective-marker, district-outskirts and sensory-awareness files;
+- no-op compatibility bootstraps.
 
-- `input/input-runtime.js`
-- `input/movement-input-adapter.js`
-- `movement/milestone5-runtime.js`
-- `world/milestone6-runtime.js`
-- `combat/combat-compatibility.js`
-- `combat/police-alert-runtime.js`
-- `ai/milestone8-runtime.js`
-- `ai/police-turn-guard.js`
-- `ai/sensory-priority-guard.js`
-- `weapons/milestone7-ui.js`
-- `ux/milestone9-runtime.js`
-- the old sensory/objective/outskirts feature patches
-- the old tutorial-flow and task-reveal timing patches
+Tests that existed only to exercise deleted wrappers were removed or rewritten against the first-class systems.
 
-Some retired files may remain in repository history or as temporarily unloaded source until the cleanup commit is verified by CI. They have no ownership in the playable runtime.
+## Validation state
+
+The physical cleanup passed together on GitHub Actions source `7e311aa1119603c5b7cdca5040ee8a90699dd0a5`:
+
+```text
+unit-tests    ✅
+browser-smoke ✅
+```
+
+Manual release-candidate acceptance still covers physical mouse/trackpad behaviour, normal-timing runs on both routes, a longer level-three memory inspection and one screen-reader/browser combination.
 
 ## Known limitations
 
-- Full end-to-end mission automation is not yet implemented; the current browser suite is a smoke layer.
 - The spatial hash is rebuilt once per simulation frame rather than incrementally updated.
 - Hitscan world obstruction still uses the navigation line-clear query.
 - The current rebinding work is storage/API groundwork, not a complete player-facing remapping screen.
 - Dense downed-enemy labels can still overlap.
 - Performance timing in `RuntimeDiagnostics` is an in-browser sample, not a full profiler.
-- Manual validation is still required for all viewport/render-quality combinations, assistive technology and the complete mission.
+- Physical-device and assistive-technology validation remains manual.
