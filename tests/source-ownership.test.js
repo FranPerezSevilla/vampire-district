@@ -34,7 +34,8 @@ const RETIRED_RUNTIME_FILES = Object.freeze([
   "phaser/src/objective-marker.js",
   "phaser/src/objective-marker-guard.js",
   "phaser/src/district-outskirts.js",
-  "phaser/src/sensory-awareness.js"
+  "phaser/src/sensory-awareness.js",
+  "phaser/src/campaign/CampaignRuntimeBridge.js"
 ]);
 
 async function source(path) {
@@ -46,7 +47,7 @@ test("retired runtime adapters and feature patches are physically removed", asyn
     await assert.rejects(
       access(new URL(path, ROOT)),
       error => error?.code === "ENOENT",
-      `${path} should not exist after release-candidate cleanup`
+      `${path} should not exist after consolidation`
     );
   }
 });
@@ -73,6 +74,15 @@ test("task, objective, outskirts and sensory ownership comes from first-class sy
   assert.equal(runtime.includes("new SensoryAwarenessSystem(scene)"), true);
 });
 
+test("campaign progression is owned by CampaignMissionAuthority and CampaignRunner", async () => {
+  const bootstrap = await source("phaser/src/campaign/bootstrap.js");
+  const mission = await source("phaser/src/systems/MissionSystem.js");
+  assert.equal(bootstrap.includes("new CampaignMissionAuthority"), true);
+  assert.equal(bootstrap.includes("CampaignRuntimeBridge"), false);
+  assert.equal(mission.includes("this.campaign.handle"), true);
+  assert.equal(mission.includes("attachCampaign(campaign)"), true);
+});
+
 test("both playable routes use one pinned Phaser bootstrap", async () => {
   for (const path of ["index.html", "phaser/index.html"]) {
     const content = await source(path);
@@ -84,7 +94,7 @@ test("both playable routes use one pinned Phaser bootstrap", async () => {
   }
 
   const bootstrap = await source("phaser/src/app-bootstrap.js");
-  assert.match(bootstrap, /node_modules\/phaser\/dist\/phaser\.min\.js/);
+  assert.match(bootstrap, /vendor\/phaser-3\.90\.0\.min\.js/);
   assert.match(bootstrap, /await import\("\.\/main\.js"\)/);
   assert.match(bootstrap, /await import\("\.\/responsive-layout\.js"\)/);
   assert.equal(bootstrap.includes("task-reveal-camera.js"), false);
