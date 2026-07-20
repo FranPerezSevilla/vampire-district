@@ -13,7 +13,7 @@ const { CAMPAIGN_EVENT_TYPES, MISSION_STATUS } = await import("../phaser/src/cam
 const { LAYERS } = await import("../phaser/src/data/district.js");
 const { MissionSystem } = await import("../phaser/src/systems/MissionSystem.js");
 
-function fixture() {
+function fixture({ map = null, onRedraw = null } = {}) {
   const events = new EventEmitter();
   const journalist = {
     id: "journalist",
@@ -27,7 +27,7 @@ function fixture() {
     container: { setVisible() { return this; } }
   };
   const scene = {
-    map: null,
+    map,
     currentLayer: LAYERS.ROOF_HIGH,
     player: { x: 150, y: 146 },
     events,
@@ -51,12 +51,23 @@ function fixture() {
     propDamageSystem: { summary: () => "Prop summary" },
     weaponSystem: { summary: () => "Weapon summary" },
     aiStateSystem: { summary: () => "AI summary" },
-    redrawLayer() {}
+    redrawLayer() { onRedraw?.(scene); }
   };
   const campaign = new CampaignSystem({ autoLoad: false, autoSave: false, now: () => 100 });
   const mission = new MissionSystem(scene, campaign);
   return { scene, campaign, mission, journalist };
 }
+
+test("MissionSystem publishes scene ownership before synchronous mission-start redraw", () => {
+  let observedDuringRedraw = null;
+  const { scene, mission } = fixture({
+    map: {},
+    onRedraw: current => { observedDuringRedraw = current.missionSystem; }
+  });
+
+  assert.equal(scene.missionSystem, mission);
+  assert.equal(observedDuringRedraw, mission);
+});
 
 test("MissionSystem derives legacy presentation from the authoritative current objective", () => {
   const { scene, campaign, mission } = fixture();
