@@ -5,7 +5,7 @@ export const SILENCE_THE_JOURNALIST_ID = "silence_the_journalist";
 
 export const silenceTheJournalistMission = defineMission({
   id: SILENCE_THE_JOURNALIST_ID,
-  version: 1,
+  version: 2,
   title: "Silence the Journalist",
   factionId: CAMPAIGN_FACTIONS.BLACKGLASS_DIRECTORATE,
   contactId: "your_sire",
@@ -21,7 +21,12 @@ export const silenceTheJournalistMission = defineMission({
       metadata: {
         tutorial: true,
         minimumRooftopJumps: 3,
-        blockerTargetId: "rooftop_thug"
+        blockerTargetId: "rooftop_thug",
+        checkpoint: {
+          id: "journalist_mission_start",
+          kind: "mission-start",
+          locationId: CAMPAIGN_REFUGES.ROOFTOP_REFUGE
+        }
       }
     },
     {
@@ -35,21 +40,52 @@ export const silenceTheJournalistMission = defineMission({
       id: "reach_nightclub",
       type: OBJECTIVE_TYPES.REACH,
       targetId: "nightclub_district",
-      label: "Reach the nightclub district"
+      label: "Reach the nightclub district",
+      metadata: {
+        checkpoint: {
+          id: "journalist_tip_acquired",
+          locationId: "police_roof",
+          payload: {
+            tutorialComplete: true,
+            informantDeparted: true,
+            rooftopBlockerResolved: true
+          }
+        }
+      }
     },
     {
       id: "neutralize_journalist",
       type: OBJECTIVE_TYPES.NEUTRALIZE,
       targetId: "journalist",
       label: "Silence the journalist",
-      acceptedOutcomes: ["killed", "drained"]
+      acceptedOutcomes: ["killed", "drained"],
+      metadata: {
+        checkpoint: {
+          id: "journalist_target_reached",
+          locationId: "nightclub_district",
+          payload: {
+            tutorialComplete: true,
+            journalistVisible: true
+          }
+        }
+      }
     },
     {
       id: "return_to_refuge",
       type: OBJECTIVE_TYPES.RETURN,
       targetId: CAMPAIGN_REFUGES.ROOFTOP_REFUGE,
       label: "Return to the rooftop refuge",
-      description: "Report to your sire after the journalist has been handled."
+      description: "Report to your sire after the journalist has been handled.",
+      metadata: {
+        checkpoint: {
+          id: "journalist_handled",
+          locationId: "nightclub_district",
+          payload: {
+            tutorialComplete: true,
+            journalistResolved: true
+          }
+        }
+      }
     }
   ],
   rewards: {
@@ -71,6 +107,14 @@ export const silenceTheJournalistMission = defineMission({
   },
   metadata: {
     openingMission: true,
-    legacyMissionSteps: 4
+    legacyMissionSteps: 4,
+    completionCheckpoint: {
+      id: "journalist_report_accepted",
+      locationId: CAMPAIGN_REFUGES.ROOFTOP_REFUGE,
+      payload: {
+        tutorialComplete: true,
+        reportAccepted: true
+      }
+    }
   }
 });
