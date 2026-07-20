@@ -71,7 +71,7 @@ export class CampaignMissionAuthority {
       || CHECKPOINT_LOCATIONS[objective.id === "reach_nightclub" ? "police_roof" : "nightclub_district"];
     if (!location) return false;
 
-    this.scene.tutorialDirector?.restoreCompletedCampaignTutorial?.();
+    this.restoreCompletedTutorialState();
     this.scene.missionSystem.rooftopJumps = Math.max(3, this.scene.missionSystem.rooftopJumps || 0);
     this.scene.missionSystem.tipCollected = true;
     this.restoreResolvedRooftopBlocker();
@@ -93,6 +93,17 @@ export class CampaignMissionAuthority {
       locationId: checkpoint?.locationId || null
     });
     return true;
+  }
+
+  restoreCompletedTutorialState() {
+    const director = this.scene.tutorialDirector;
+    if (!director) return;
+    director.started = true;
+    director.introPromise ||= Promise.resolve();
+    director.finalAdviceShown = true;
+    director.busy = false;
+    director.finishTutorial?.();
+    director.uiScene?.closeIntro?.();
   }
 
   restoreResolvedRooftopBlocker() {
