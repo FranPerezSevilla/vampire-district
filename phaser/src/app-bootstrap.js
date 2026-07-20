@@ -1,8 +1,8 @@
 const PHASER_VERSION = "3.90.0";
 const PHASER_SCRIPT_SOURCES = Object.freeze([
   Object.freeze({
-    kind: "local",
-    src: "./vendor/phaser-3.90.0.min.js"
+    kind: "local-node-modules",
+    src: new URL("../../node_modules/phaser/dist/phaser.min.js", import.meta.url).href
   }),
   Object.freeze({
     kind: "jsdelivr",
