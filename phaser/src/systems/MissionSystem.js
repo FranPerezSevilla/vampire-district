@@ -27,10 +27,11 @@ const LEGACY_STEP_BY_OBJECTIVE = Object.freeze({
 });
 
 export class MissionSystem {
-  constructor(scene, campaign = scene?.campaignSystem) {
+  constructor(scene, campaign = scene?.campaignSystem || globalThis.NBD_CAMPAIGN_SYSTEM) {
     if (!scene || !campaign) throw new TypeError("MissionSystem requires the scene and CampaignSystem.");
     this.scene = scene;
     this.campaign = campaign;
+    scene.campaignSystem = campaign;
     this.resultPublished = false;
     this.returnFinalePending = false;
     this.returnFinalePromise = null;
