@@ -95,6 +95,11 @@ export class CampaignSystem {
 
   startMission(id, options = {}) {
     const missionId = String(id || "");
+    const automaticOpeningStart = options?.metadata?.integration === "direct_mission_authority";
+    if (automaticOpeningStart && globalThis.NBD_CAMPAIGN_ENTRY?.blocksAutomaticOpeningStart) {
+      return this.missions.snapshot(missionId);
+    }
+
     const previousCheckpoint = this.state.checkpoints.latest;
     const previousRecord = this.missions.record(missionId);
     const preserveRetryCheckpoint = Boolean(
