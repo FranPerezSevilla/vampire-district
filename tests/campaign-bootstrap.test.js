@@ -17,12 +17,13 @@ test("app bootstrap loads campaign foundation after the core runtime", async () 
   assert.equal(content.includes("campaign: true"), true);
 });
 
-test("campaign bootstrap exposes snapshot, export, reset and import entry points", async () => {
+test("campaign bootstrap attaches direct authority and checkpoint APIs", async () => {
   const content = await source("phaser/src/campaign/bootstrap.js");
   assert.equal(content.includes("new CampaignSystem"), true);
-  assert.equal(content.includes("new CampaignRuntimeBridge"), true);
+  assert.equal(content.includes("new CampaignMissionAuthority"), true);
+  assert.equal(content.includes("CampaignRuntimeBridge"), false);
   assert.equal(content.includes("window.NBD_CAMPAIGN"), true);
-  for (const action of ["snapshot", "export", "reset", "import"]) {
+  for (const action of ["snapshot", "checkpoint", "export", "save", "reset", "import"]) {
     assert.equal(content.includes(`${action}:`), true, action);
   }
 });
