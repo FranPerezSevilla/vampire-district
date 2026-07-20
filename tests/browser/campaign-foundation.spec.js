@@ -92,12 +92,13 @@ test("direct opening-mission rewards and completion checkpoint cannot duplicate 
   expect(restored.directorState).toBe("complete");
 });
 
-test("campaign export and import use plain versioned checkpoint JSON", async ({ page }) => {
+test("campaign save and export use identical plain versioned checkpoint JSON", async ({ page }) => {
   await clearCampaignOnce(page);
   await page.goto("/phaser/?rcTest=1", { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_CAMPAIGN_READY));
 
   const result = await page.evaluate(() => {
+    window.NBD_CAMPAIGN.save();
     const serialized = window.NBD_CAMPAIGN.export();
     const parsed = JSON.parse(serialized);
     return {
