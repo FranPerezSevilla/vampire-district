@@ -59,19 +59,28 @@ test("main creates Phaser without patching scene prototypes", async () => {
   assert.equal(content.includes("new Phaser.Game(config)"), true);
 });
 
-test("GameScene delegates one update loop to GameplayRuntime", async () => {
-  const content = await source("phaser/src/scenes/GameScene.js");
-  assert.match(content, /this\.gameplayRuntime\s*=\s*new GameplayRuntime\(this\)/);
-  assert.match(content, /update\(time, deltaMs\)\s*\{\s*this\.gameplayRuntime\?\.update/);
-  assert.equal(content.includes("Phaser.Input.Keyboard.JustDown"), false);
+test("GameScene facade preserves one GameplayRuntime update owner", async () => {
+  const facade = await source("phaser/src/scenes/GameScene.js");
+  const core = await source("phaser/src/scenes/GameSceneCore.js");
+  assert.match(facade, /extends GameSceneCore/);
+  assert.match(core, /this\.gameplayRuntime\s*=\s*new GameplayRuntime\(this\)/);
+  assert.match(core, /update\(time, deltaMs\)\s*\{\s*this\.gameplayRuntime\?\.update/);
+  assert.equal(facade.includes("Phaser.Input.Keyboard.JustDown"), false);
+  assert.equal(core.includes("Phaser.Input.Keyboard.JustDown"), false);
+  assert.equal(facade.includes("prototype.__nbd"), false);
 });
 
-test("task, objective, outskirts and sensory ownership comes from first-class systems", async () => {
-  const runtime = await source("phaser/src/runtime/GameplayRuntime.js");
-  assert.equal(runtime.includes("new TaskRevealSystem(scene)"), true);
-  assert.equal(runtime.includes("new ObjectiveMarkerSystem(scene)"), true);
-  assert.equal(runtime.includes("new OutskirtsSystem(scene)"), true);
-  assert.equal(runtime.includes("new SensoryAwarenessSystem(scene)"), true);
+test("task, objective, outskirts, sensory and vehicle ownership comes from first-class systems", async () => {
+  const facade = await source("phaser/src/runtime/GameplayRuntime.js");
+  const core = await source("phaser/src/runtime/GameplayRuntimeCore.js");
+  assert.match(facade, /extends GameplayRuntimeCore/);
+  assert.equal(core.includes("new TaskRevealSystem(scene)"), true);
+  assert.equal(core.includes("new ObjectiveMarkerSystem(scene)"), true);
+  assert.equal(core.includes("new OutskirtsSystem(scene)"), true);
+  assert.equal(core.includes("new SensoryAwarenessSystem(scene)"), true);
+  assert.equal(facade.includes("new VehicleSystem(scene"), true);
+  assert.equal(facade.includes('registerSystem("VehicleSystem")'), true);
+  assert.equal(facade.includes("prototype.__nbd"), false);
 });
 
 test("campaign is preloaded before scenes and MissionSystem owns runner presentation directly", async () => {
