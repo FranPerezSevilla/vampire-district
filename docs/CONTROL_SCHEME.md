@@ -16,7 +16,7 @@ The implemented scheme keeps GTA2-style immediacy and contextual city traversal 
 | Left mouse | Use equipped weapon. During dialogue, advances the bubble instead. |
 | Right mouse | Hold to drain a valid downed, rear-approached or rat target. |
 | Wheel | Previous/next owned weapon. |
-| Space | On foot: execute one contextual traversal route. In a vehicle: hold the handbrake. |
+| Space | On foot: execute one contextual traversal route. In a vehicle: hold the handbrake to initiate or sustain a drift. |
 | Enter | Enter or exit a nearby/current vehicle. |
 | E | Talk, collect, inspect and use non-traversal interactions. |
 | Q | Shadow Dash. |
@@ -52,14 +52,12 @@ Holding Shift applies a lower movement multiplier and substantially reduces foot
 
 ## Vehicle controls
 
-Vehicle actions deliberately do not reuse the traversal input:
-
 ```text
 Enter      enter or exit
 W          accelerate
 S          brake, then reverse
 A / D      steer
-Space      handbrake
+Space      handbrake / drift
 E          inspect a nearby trunk while on foot
 ```
 
@@ -67,12 +65,15 @@ Rules:
 
 - Enter only selects `vehicleEnter` or `vehicleExit`; it cannot trigger jumps, sewers or fire escapes.
 - Space cannot enter or exit a vehicle.
-- The handbrake applies stronger deceleration and increased steering authority for quick turns.
+- Low-speed acceleration receives a smooth launch boost which fades near maximum speed.
+- The vehicle body heading and actual travel heading are modeled independently.
+- Holding Space reduces grip, preserves part of the throttle and increases steering authority, allowing the nose to rotate while lateral momentum continues.
+- Releasing Space restores normal grip and progressively aligns the travel direction with the body.
 - Normal exit requires low speed.
 - A destroyed occupied vehicle stops but does not eject the player automatically.
 - Enter remains available inside a destroyed vehicle and exits through the first safe side/rear point.
-- Vehicle collisions first try to preserve one free movement axis, allowing the car to slide along walls instead of stopping dead.
-- A fully blocked collision produces only a small rebound, making correction easier.
+- Building contact advances to the furthest safe point, then tries long-to-short wall slides before treating the car as fully blocked.
+- Fully blocked contact retains a small forward speed rather than producing a reverse bounce.
 - Combat, drain, powers and weapon cycling remain disabled while driving.
 
 ## Primary attack
@@ -147,7 +148,7 @@ Examples:
 - Space beside a rooftop gap: jump.
 - Space beside a manhole: enter sewer.
 - Space at a fire escape: climb or descend.
-- Space beside a parked car: handbrake/traversal has no vehicle action.
+- Space beside a parked car: no vehicle action.
 - Enter beside a parked car: enter it.
 - Space with no route: no action.
 
@@ -218,9 +219,11 @@ Implemented in code, browser validation still pending unless noted:
 - [ ] Right-click never opens the browser menu over the game.
 - [ ] Space never activates vehicle entry or exit.
 - [ ] Enter never selects an on-foot traversal route.
-- [ ] Space handbrake slows a moving vehicle and increases turning authority.
+- [ ] Space handbrake creates sustained lateral slip while preserving useful speed.
+- [ ] Releasing Space progressively restores grip.
 - [ ] A destroyed occupied vehicle retains its occupant until Enter.
-- [ ] Wall collisions permit lateral sliding when one axis remains free.
+- [ ] Oblique wall collisions permit long-to-short sliding.
+- [ ] Head-on contact does not force a reverse bounce.
 - [ ] Shift produces slower, quieter movement.
 - [ ] E never selects a traversal route.
 - [ ] Two nearby traversal points resolve deterministically.
