@@ -12,6 +12,8 @@
     "test:browser:campaign": "playwright test tests/browser/campaign-entry.spec.js tests/browser/campaign-foundation.spec.js tests/browser/campaign-checkpoint.spec.js tests/browser/mission-board.spec.js",
     "test:browser:golden": "playwright test tests/browser/intro-camera-order.spec.js tests/browser/mission-golden-path.spec.js tests/browser/post-mission-free-roam.spec.js",
     "test:rc": "npm run test:unit && npm run test:browser:boot && npm run test:browser:systems && npm run test:browser:campaign",
+    "city:validate": "node tools/city-compiler/compile.js --validate-only",
+    "city:compile": "node tools/city-compiler/compile.js",
     "serve:test": "python3 -m http.server 4173 --bind 127.0.0.1"
   },
   "dependencies": {

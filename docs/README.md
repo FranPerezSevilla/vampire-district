@@ -15,6 +15,8 @@ This directory is the project source of truth for design, implementation and pla
 - [Milestone 11.3 status](MILESTONE_11_3_STATUS.md) — accepted player-facing campaign entry, refuge contract board and playable `Clean the Scene` flow.
 - [Milestone 12 status](MILESTONE_12_STATUS.md) — vehicle runtime, five-times-larger district, sidewalk population, destructible street furniture, evidence and remaining acceptance work.
 - [Testing strategy](TESTING_STRATEGY.md) — normal/explore/scenario boot profiles, focused browser loops, parallel PR checks and deferred golden paths.
+- [City Compiler](CITY_COMPILER.md) — deterministic city blueprints, district recipes, semantic block templates, hard validation, scoring and the Foundry pilot plan.
+- [City Compiler baseline](CITY_COMPILER_BASELINE.md) — measured score for the current city, legacy geometry debt and acceptance targets for the Foundry pilot.
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — architecture and engineering constraints.
 - [Runtime consolidation](RUNTIME_CONSOLIDATION.md) — Milestone 10 system ownership, spatial queries, diagnostics and browser smoke tests.
 - [Milestone 10 status](MILESTONE_10_STATUS.md) — current implementation and validation boundary.
