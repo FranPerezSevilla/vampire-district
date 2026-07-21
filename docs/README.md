@@ -18,6 +18,7 @@ This directory is the project source of truth for design, implementation and pla
 - [City Compiler](CITY_COMPILER.md) — deterministic city blueprints, district recipes, semantic block templates, hard validation, scoring and the Foundry pilot plan.
 - [City Compiler baseline](CITY_COMPILER_BASELINE.md) — measured score for the current city, legacy geometry debt and acceptance targets for the Foundry pilot.
 - [Foundry pilot](CITY_COMPILER_FOUNDRY_PILOT.md) — seeded Foundry generation, stable semantic IDs, candidate ranking, review artifacts and integration boundary.
+- [Foundry selection](CITY_COMPILER_FOUNDRY_SELECTION.md) — decision record selecting `foundry-pilot-04` and its production-integration requirements.
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — architecture and engineering constraints.
 - [Runtime consolidation](RUNTIME_CONSOLIDATION.md) — Milestone 10 system ownership, spatial queries, diagnostics and browser smoke tests.
 - [Milestone 10 status](MILESTONE_10_STATUS.md) — current implementation and validation boundary.
