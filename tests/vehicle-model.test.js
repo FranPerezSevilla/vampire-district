@@ -32,12 +32,12 @@ const archetype = {
   brake: 296,
   handbrakeBrake: 176,
   handbrakeThrottleFactor: 0.20,
-  handbrakeSteerMultiplier: 1.34,
+  handbrakeSteerMultiplier: 1.42,
   handbrakeDriftKick: 0.58,
   grip: 9.4,
   handbrakeGrip: 1.45,
   drag: 45,
-  steerRate: 2.66,
+  steerRate: 3.20,
   maxHealth: 70,
   cameraZoomFactor: 0.69
 };
@@ -75,6 +75,20 @@ test("steering alone changes heading but never adds speed", () => {
   assert.ok(moving.speed < startingSpeed, "coasting drag may reduce speed, but steering must never accelerate");
 });
 
+test("full steering closes a compact arc instead of tracing a wide boulevard turn", () => {
+  let state = {
+    ...createVehicleState(definition, archetype),
+    speed: 150,
+    travelAngle: 0,
+    angle: 0
+  };
+  for (let index = 0; index < 20; index++) {
+    state = stepVehicleKinematics(state, { move: { x: 1, y: -1 } }, 0.05, archetype);
+  }
+  assert.ok(state.angle > 2, "one second at full lock should rotate the compact by more than 114 degrees");
+  assert.ok(state.y > definition.y + 180, "the trajectory should bend decisively instead of forming a long shallow arc");
+});
+
 test("braking reaches zero before reverse acceleration", () => {
   let state = { ...createVehicleState(definition, archetype), speed: 120 };
   state = stepVehicleKinematics(state, { move: { x: 0, y: 1 } }, 0.2, archetype);
@@ -103,8 +117,8 @@ test("handbrake creates a controlled slide and normal grip recovers it", () => {
 
   const driftAtRelease = Math.abs(state.driftAngle);
   assert.equal(state.handbrake, true);
-  assert.ok(driftAtRelease > 0.24, "the rear should step out visibly");
-  assert.ok(driftAtRelease < 0.48, "the handbrake should not make the car spin wildly");
+  assert.ok(driftAtRelease > 0.35, "the rear should step out visibly while the tighter steering rotates the nose");
+  assert.ok(driftAtRelease < 0.72, "the handbrake should remain recoverable rather than becoming an uncontrolled spin");
   assert.ok(Math.abs(state.y - definition.y) > 5);
   assert.ok(Math.abs(state.speed) > 180, "the slide should preserve useful momentum");
 
