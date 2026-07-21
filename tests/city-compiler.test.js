@@ -1,5 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 import { blockTemplates, districtRecipes } from "../tools/city-compiler/catalog.js";
 import { currentCityBlueprint, currentCityManifest } from "../tools/city-compiler/current-city.js";
@@ -39,6 +43,7 @@ test("the authored district imports as a valid compiler blueprint", () => {
   assert.equal(validation.errors.length, 0);
   assert.equal(validation.metrics.roadComponents, 1);
   assert.ok(validation.metrics.roadCycleSurplus >= 1);
+  assert.equal(validation.metrics.legacyBuildingRoadOverlapCount, 10);
   assert.equal(currentCityBlueprint.protectedZones.includes("old-quarter"), true);
 });
 
@@ -78,6 +83,33 @@ test("debug renderer emits a self-contained SVG with city layers and score", () 
   assert.match(svg, /id="buildings"/);
   assert.match(svg, /City Compiler/);
   assert.match(svg, new RegExp(`Score ${score.total}`));
+});
+
+test("compiler CLI writes manifest, report and layered SVG", () => {
+  const outputDir = mkdtempSync(path.join(tmpdir(), "bloodnight-city-compiler-"));
+  try {
+    const result = spawnSync(process.execPath, [
+      "tools/city-compiler/compile.js",
+      `--output-dir=${outputDir}`
+    ], {
+      cwd: path.resolve("."),
+      encoding: "utf8"
+    });
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+
+    for (const filename of ["city-blueprint.json", "city-report.json", "city-debug.svg"]) {
+      assert.equal(existsSync(path.join(outputDir, filename)), true, `${filename} was not generated`);
+    }
+
+    const report = JSON.parse(readFileSync(path.join(outputDir, "city-report.json"), "utf8"));
+    const svg = readFileSync(path.join(outputDir, "city-debug.svg"), "utf8");
+    assert.equal(report.validation.valid, true);
+    assert.equal(report.validation.metrics.legacyBuildingRoadOverlapCount, 10);
+    assert.ok(report.score.total > 0);
+    assert.match(svg, /City Compiler/);
+  } finally {
+    rmSync(outputDir, { recursive: true, force: true });
+  }
 });
 
 test("validator rejects a building placed across an authored road", () => {
