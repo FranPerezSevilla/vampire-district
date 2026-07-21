@@ -41,6 +41,19 @@ const neighbours = Object.freeze({
   "harbor-south": ["harbor-north", "canal-east", "blackwater"]
 });
 
+const legacyBuildingRoadOverlaps = Object.freeze([
+  "club:eastWestAvenue",
+  "church:southServiceAlley",
+  "warehouse:southServiceAlley",
+  "warehouse:warehouseAlley",
+  "shops:northSouthAvenue",
+  "shops:southServiceAlley",
+  "oldBlock:southServiceAlley",
+  "canalMarketWest:eastBackLane",
+  "glassSouth:eastBackLane",
+  "blackwaterExchange:eastBackLane"
+]);
+
 function findBuilding(id) {
   const building = buildings.find(candidate => candidate.id === id);
   if (!building) throw new Error(`Current city landmark building is missing: ${id}`);
@@ -109,7 +122,11 @@ export const currentCityBlueprint = defineCityBlueprint({
     source: "phaser/src/data/district.js",
     mode: "imported-authored-city",
     generatedAtRuntime: false,
-    compilerStage: "foundation"
+    compilerStage: "foundation",
+    validationExceptions: {
+      allowedBuildingRoadOverlaps: legacyBuildingRoadOverlaps,
+      policy: "Legacy overlaps are warnings for the imported control city and hard errors for every generated candidate."
+    }
   }
 });
 
