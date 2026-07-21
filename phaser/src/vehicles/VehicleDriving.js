@@ -9,6 +9,15 @@ const PERSIST_INTERVAL_SECONDS = 1.8;
 
 function pointInRect(point, rect) { return point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h; }
 
+function applyKinematicState(vehicle, next) {
+  vehicle.x = next.x;
+  vehicle.y = next.y;
+  vehicle.angle = next.angle;
+  vehicle.speed = next.speed;
+  vehicle.parked = next.parked;
+  return vehicle;
+}
+
 export function filterVehicleInputFrame(system, frame) {
   if (!system.isDriving()) return frame;
   return { ...frame, quietHeld: false, sprintHeld: false, primaryHeld: false, primaryPressed: false, drainHeld: false, drainPressed: false, interactPressed: false, weaponStep: 0, dashPressed: false, whisperPressed: false, bloodSensePressed: false, vehicleActive: true };
@@ -56,7 +65,7 @@ export function updateVehicleDriving(system, dt, frame) {
   const furniture = system.scene.streetFurnitureSystem?.resolveVehicleMove?.(vehicle, next) || { blocked: false, impacts: [] };
   if (vehicle.disabled) { system.updateHud(); system.publish(); return false; }
   if (furniture.blocked) handleVehicleWorldCollision(system, vehicle, next.speed);
-  else if (canVehicleOccupy(system, vehicle, next.x, next.y, next.angle)) Object.assign(vehicle, next);
+  else if (canVehicleOccupy(system, vehicle, next.x, next.y, next.angle)) applyKinematicState(vehicle, next);
   else handleVehicleWorldCollision(system, vehicle, next.speed);
   vehicle.container.setPosition(vehicle.x, vehicle.y).setRotation(vehicle.angle);
   vehicle.visual.label.setRotation(-vehicle.angle);
