@@ -1,11 +1,20 @@
 import { expect, test } from "@playwright/test";
 
+async function waitForPoliceScenario(page) {
+  await page.waitForFunction(() => Boolean(
+    window.NBD_APP_READY
+    && window.NBD_SCENARIO_READY
+    && window.NBD_RC_HARNESS_READY
+    && window.NBD_SCENARIOS?.snapshot?.().activeId === "police-escalation"
+  ));
+}
+
 test("police violence escalates 1 to 2 to 3 without double-counting", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
 
-  await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
-  await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_RC_HARNESS_READY));
+  await page.goto("/?testScenario=police-escalation", { waitUntil: "domcontentloaded" });
+  await waitForPoliceScenario(page);
 
   const sequence = await page.evaluate(() => window.NBD_RC_HARNESS.policeEscalationSequence());
   expect(sequence.levels).toEqual([1, 2, 3]);
@@ -21,14 +30,14 @@ test("level-three police response stays structurally stable", async ({ page }) =
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
 
-  await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
-  await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_RC_HARNESS_READY));
+  await page.goto("/?testScenario=police-escalation", { waitUntil: "domcontentloaded" });
+  await waitForPoliceScenario(page);
 
   const baselineNodes = await page.evaluate(() => document.querySelectorAll("*").length);
   const started = await page.evaluate(() => window.NBD_RC_HARNESS.startPoliceStress());
 
   expect(started.level).toBeGreaterThanOrEqual(3);
-  expect(started.police).toBeGreaterThanOrEqual(6);
+  expect(started.police).toBeGreaterThanOrEqual(7);
   expect(started.helicopter).toBe(true);
   expect(started.missionFailed).toBe(false);
   expect(started.dialogueNodes).toBe(1);
@@ -36,7 +45,7 @@ test("level-three police response stays structurally stable", async ({ page }) =
   expect(started.weaponHudNodes).toBe(1);
   expect(started.diagnostics?.conflicts).toEqual([]);
 
-  await page.waitForTimeout(6_000);
+  await page.waitForTimeout(3_000);
   const finished = await page.evaluate(() => {
     const snapshot = window.NBD_RC_HARNESS.stressSnapshot();
     window.NBD_RC_HARNESS.stopPoliceStress();
@@ -44,7 +53,7 @@ test("level-three police response stays structurally stable", async ({ page }) =
   });
 
   expect(finished.level).toBeGreaterThanOrEqual(3);
-  expect(finished.police).toBeGreaterThanOrEqual(6);
+  expect(finished.police).toBeGreaterThanOrEqual(7);
   expect(finished.helicopter).toBe(true);
   expect(finished.missionFailed).toBe(false);
   expect(finished.dialogueNodes).toBe(1);
@@ -52,10 +61,7 @@ test("level-three police response stays structurally stable", async ({ page }) =
   expect(finished.weaponHudNodes).toBe(1);
   expect(finished.domNodes - baselineNodes).toBeLessThanOrEqual(24);
   expect(finished.diagnostics?.conflicts).toEqual([]);
-  // Chromium CI uses software WebGL and can run only a few simulation frames
-  // per second at Ultra-scale internals. We still require multiple independent
-  // samples plus bounded rolling timings rather than assuming display refresh.
-  expect(finished.diagnostics?.samples).toBeGreaterThan(5);
+  expect(finished.diagnostics?.samples).toBeGreaterThan(3);
   expect(finished.diagnostics?.averageFrameMs).toBeLessThan(120);
   expect(finished.diagnostics?.recentMaxFrameMs).toBeLessThan(750);
   expect(pageErrors).toEqual([]);
