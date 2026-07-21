@@ -82,16 +82,11 @@ export class GameScene extends GameSceneCore {
 
   calculateUrbanRenderBounds() {
     const focus = this.renderFocus();
-    const left = clamp(focus.x - URBAN_RENDER_HALF_WIDTH, 0, WORLD.width);
-    const top = clamp(focus.y - URBAN_RENDER_HALF_HEIGHT, 0, WORLD.height);
-    const right = clamp(focus.x + URBAN_RENDER_HALF_WIDTH, 0, WORLD.width);
-    const bottom = clamp(focus.y + URBAN_RENDER_HALF_HEIGHT, 0, WORLD.height);
-    return {
-      x: left,
-      y: top,
-      w: Math.max(1, right - left),
-      h: Math.max(1, bottom - top)
-    };
+    const width = Math.min(WORLD.width, URBAN_RENDER_HALF_WIDTH * 2);
+    const height = Math.min(WORLD.height, URBAN_RENDER_HALF_HEIGHT * 2);
+    const left = clamp(focus.x - URBAN_RENDER_HALF_WIDTH, 0, Math.max(0, WORLD.width - width));
+    const top = clamp(focus.y - URBAN_RENDER_HALF_HEIGHT, 0, Math.max(0, WORLD.height - height));
+    return { x: left, y: top, w: width, h: height };
   }
 
   prepareUrbanRenderWindow() {
