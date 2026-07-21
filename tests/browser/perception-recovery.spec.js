@@ -1,11 +1,20 @@
 import { expect, test } from "@playwright/test";
 
+async function waitForScenario(page, id) {
+  await page.waitForFunction(expected => Boolean(
+    window.NBD_APP_READY
+    && window.NBD_SCENARIO_READY
+    && window.NBD_RC_HARNESS_READY
+    && window.NBD_SCENARIOS?.snapshot?.().activeId === expected
+  ), id);
+}
+
 test("a visible incident creates a witness while heard-only NPC stays in WTF", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
 
-  await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
-  await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_RC_HARNESS_READY));
+  await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
+  await waitForScenario(page, "urban-explore");
 
   const result = await page.evaluate(() => window.NBD_RC_HARNESS.perceptionSplitSequence());
 
@@ -28,8 +37,8 @@ test("a downed police officer recovers once with two resilience", async ({ page 
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
 
-  await page.goto("/phaser/?rcTest=1", { waitUntil: "domcontentloaded" });
-  await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_RC_HARNESS_READY));
+  await page.goto("/phaser/?testScenario=police-escalation", { waitUntil: "domcontentloaded" });
+  await waitForScenario(page, "police-escalation");
 
   const result = await page.evaluate(() => window.NBD_RC_HARNESS.policeRecoverySequence());
 
