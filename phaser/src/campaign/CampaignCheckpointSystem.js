@@ -6,10 +6,27 @@ export class CampaignCheckpointSystem extends CampaignCheckpointSystemCore {
     if (!this.scene.vehicleSystem?.isDriving?.()) return snapshot;
     return {
       ...snapshot,
-      // Milestone 12.1 restores authored on-foot checkpoints only. Treat active
-      // vehicle occupancy like a world transition until vehicle snapshots are
-      // added to the checkpoint schema in the next vehicle slice.
+      // Vehicle occupancy remains an unsafe transition until the checkpoint
+      // payload owns an atomic occupied-vehicle snapshot.
       transitionActive: true
     };
+  }
+
+  captureNpcState(npc) {
+    return {
+      ...super.captureNpcState(npc),
+      hiddenSpotId: npc?.hiddenSpotId || null,
+      hiddenSpotName: npc?.hiddenSpotName || null
+    };
+  }
+
+  applyPendingNpcState(npc) {
+    const state = this.pendingNpcStates.get(npc?.id);
+    const applied = super.applyPendingNpcState(npc);
+    if (applied && state) {
+      npc.hiddenSpotId = state.hiddenSpotId || null;
+      npc.hiddenSpotName = state.hiddenSpotName || null;
+    }
+    return applied;
   }
 }

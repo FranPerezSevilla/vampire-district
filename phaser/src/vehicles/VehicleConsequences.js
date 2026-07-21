@@ -76,6 +76,23 @@ export function registerVehicleTheft(system, vehicle, previousStatus) {
   });
 }
 
+function createVehicleImpactBlood(system, npc, vehicle, lethal) {
+  const evidence = system.scene.evidenceSystem;
+  if (!evidence || npc.type === NPC_TYPES.RAT) return 0;
+  const count = lethal ? 8 : 3;
+  const direction = Math.sign(vehicle.speed || 1);
+  for (let index = 0; index < count; index++) {
+    const trail = index * (lethal ? 7 : 4);
+    evidence.createBloodStain(
+      npc.x - Math.cos(vehicle.angle) * trail * direction,
+      npc.y - Math.sin(vehicle.angle) * trail * direction,
+      LAYERS.STREET,
+      lethal ? "vehicle-fatal" : "vehicle-impact"
+    );
+  }
+  return count;
+}
+
 export function collideVehicleWithPedestrians(system, vehicle) {
   const impactSpeed = Math.abs(vehicle.speed);
   if (impactSpeed < 18) return;
@@ -112,6 +129,7 @@ export function collideVehicleWithPedestrians(system, vehicle) {
       npc.container?.setPosition?.(npc.x, npc.y);
     }
 
+    const bloodStains = createVehicleImpactBlood(system, npc, vehicle, lethal);
     const severity = lethal ? 20 : 10;
     system.scene.witnessSystem?.onMundaneViolence?.(
       npc,
@@ -120,7 +138,7 @@ export function collideVehicleWithPedestrians(system, vehicle) {
     );
     system.scene.exposureSystem?.add?.(
       lethal ? 15 : 8,
-      lethal ? "A pedestrian is killed by the vehicle." : "A pedestrian is struck by the vehicle."
+      lethal ? "A pedestrian is crushed by the vehicle." : "A pedestrian is struck by the vehicle."
     );
     system.scene.policeSystem?.addHeat?.(vehicle.x, vehicle.y, lethal ? 32 : 18, "vehicle-pedestrian collision");
     system.damageVehicle(vehicle.id, lethal ? 5 : 2, { reason: "pedestrian-impact", persist: false });
@@ -129,10 +147,11 @@ export function collideVehicleWithPedestrians(system, vehicle) {
       vehicleId: vehicle.id,
       npcId: npc.id,
       lethal,
-      speed: impactSpeed
+      speed: impactSpeed,
+      bloodStains
     });
     system.scene.lastActionText = lethal
-      ? `VEHICLE HOMICIDE: ${vehicle.name} kills ${npc.id}. Police pressure rises.`
-      : `${vehicle.name} strikes ${npc.id}. Witnesses react.`;
+      ? `VEHICLE HOMICIDE: ${vehicle.name} crushes ${npc.id}. Blood marks the road and police pressure rises.`
+      : `${vehicle.name} strikes ${npc.id}. Blood and witnesses mark the impact.`;
   }
 }
