@@ -1,3 +1,20 @@
+import {
+  SELECTED_FOUNDRY_SEED,
+  foundryBuildings,
+  foundryCrosswalks,
+  foundryDumpsters,
+  foundryExtraSidewalks,
+  foundryFireEscapes,
+  foundryLights,
+  foundryNavigationPoints,
+  foundryPedestrianRoutes,
+  foundryRoads,
+  foundryRoofs,
+  foundryRooftopRoutes,
+  foundrySewerAccesses,
+  foundryShadows
+} from "./generated/foundry-04.js";
+
 export const LAYERS = Object.freeze({
   SEWER: -1,
   STREET: 0,
@@ -12,10 +29,13 @@ export const LAYER_NAMES = Object.freeze({
   [2]: "High rooftop refuge"
 });
 
+export const SELECTED_CITY_CANDIDATE = SELECTED_FOUNDRY_SEED;
+
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1440;
 const SIDEWALK_DEPTH = 22;
 const ALLEY_WALK_DEPTH = 8;
+const FOUNDRY_BOUNDS = Object.freeze({ x: 1640, y: 0, w: 544, h: 704 });
 
 function rect(id, x, y, w, h, extra = {}) {
   return Object.freeze({ id, x, y, w, h, ...extra });
@@ -33,6 +53,14 @@ function sidewalkBands(road) {
   if (road.x > 0) bands.push(rect(`${road.id}-west-walk`, Math.max(0, road.x - depth), road.y, depth, road.h, { roadId: road.id }));
   if (road.x + road.w < WORLD_WIDTH) bands.push(rect(`${road.id}-east-walk`, road.x + road.w, road.y, Math.min(depth, WORLD_WIDTH - road.x - road.w), road.h, { roadId: road.id }));
   return bands;
+}
+
+function generatedSidewalkBands(road) {
+  return sidewalkBands(road).map(band => Object.freeze({
+    ...band,
+    id: band.id.replace(`${road.id}-`, `${road.id}:`),
+    generated: true
+  }));
 }
 
 function zebraPair(id, x, y, verticalRoadWidth = 112, horizontalRoadHeight = 112) {
@@ -61,7 +89,16 @@ function dumpster(id, name, x, y, extra = {}) {
   });
 }
 
-export const roads = Object.freeze([
+function pointInsideBounds(point, bounds) {
+  return point.x >= bounds.x && point.x <= bounds.x + bounds.w
+    && point.y >= bounds.y && point.y <= bounds.y + bounds.h;
+}
+
+function centerInsideBounds(item, bounds) {
+  return pointInsideBounds({ x: item.x + item.w / 2, y: item.y + item.h / 2 }, bounds);
+}
+
+const authoredRoads = Object.freeze([
   rect("eastWestAvenue", 0, 292, 960, 92, { label: "East-West Avenue", kind: "road" }),
   rect("northSouthAvenue", 426, 0, 92, 640, { label: "North-South Avenue", kind: "road" }),
   rect("southServiceAlley", 90, 502, 790, 44, { label: "South service alley", kind: "alley" }),
@@ -81,7 +118,13 @@ export const roads = Object.freeze([
   rect("harborBackLane", 1920, 226, 56, 910, { label: "Harbor back lane", kind: "alley" })
 ]);
 
-export const sidewalks = Object.freeze(roads.flatMap(sidewalkBands));
+export const roads = Object.freeze([...authoredRoads, ...foundryRoads]);
+
+export const sidewalks = Object.freeze([
+  ...authoredRoads.flatMap(sidewalkBands),
+  ...foundryRoads.flatMap(generatedSidewalkBands),
+  ...foundryExtraSidewalks
+]);
 
 export const crosswalks = Object.freeze([
   ...zebraPair("cross-core", 472, 338, 92, 92),
@@ -96,10 +139,11 @@ export const crosswalks = Object.freeze([
   ...zebraPair("cross-mourning-blackwater", 482, 1192, 112, 112),
   ...zebraPair("cross-glass-blackwater", 1088, 1192, 112, 112),
   ...zebraPair("cross-foundry-blackwater", 1688, 1192, 112, 112),
-  ...zebraPair("cross-harbor-blackwater", 2240, 1192, 112, 112)
+  ...zebraPair("cross-harbor-blackwater", 2240, 1192, 112, 112),
+  ...foundryCrosswalks
 ]);
 
-export const buildings = Object.freeze([
+const authoredBuildings = Object.freeze([
   building("refugeTower", "ROOFTOP REFUGE", 86, 86, 150, 128, 0x20122f, 0xd7c8ff, "REFUGE"),
   building("club", "CLUB", 590, 374, 170, 112, 0x241126, 0xd11fb9, "CLUB"),
   building("church", "CHURCH", 800, 418, 124, 126, 0x1b1824, 0x8b6f9e, "CHURCH"),
@@ -138,6 +182,11 @@ export const buildings = Object.freeze([
   building("harborWarehouses", "HARBOR WAREHOUSES", 1992, 1282, 160, 118, 0x172028, 0x5f8192, "WARE")
 ]);
 
+export const buildings = Object.freeze([
+  ...authoredBuildings.filter(item => item.id === "harborRegistry" || !centerInsideBounds(item, FOUNDRY_BOUNDS)),
+  ...foundryBuildings
+]);
+
 export const roofAreas = Object.freeze({
   [LAYERS.ROOF_LOW]: Object.freeze([
     rect("refugeLowerRoof", 92, 176, 148, 62, { color: 0x2d3045, label: "REFUGE LOW" }),
@@ -148,7 +197,8 @@ export const roofAreas = Object.freeze({
     rect("shopsRoof", 300, 420, 128, 98, { color: 0x2e233d, label: "SHOPS" }),
     rect("oldBlockRoof", 538, 510, 118, 74, { color: 0x292538, label: "OLD" }),
     rect("clubRoof", 596, 380, 158, 98, { color: 0x30263e, label: "CLUB" }),
-    rect("churchRoof", 806, 424, 112, 114, { color: 0x2a2538, label: "CHURCH" })
+    rect("churchRoof", 806, 424, 112, 114, { color: 0x2a2538, label: "CHURCH" }),
+    ...foundryRoofs
   ]),
   [LAYERS.ROOF_HIGH]: Object.freeze([
     rect("refugeHighRoof", 96, 92, 140, 112, { color: 0x3a3a52, label: "HIGH REFUGE" })
@@ -187,7 +237,7 @@ const generatedVerticalLights = [1016, 1160, 1616, 1760, 2168, 2312].flatMap((x,
   ))
 ));
 
-export const lights = Object.freeze([
+const authoredLights = Object.freeze([
   lamp("lampCrossA", 390, 280, "crossroad west sidewalk light"),
   lamp("lampCrossB", 550, 396, "crossroad east sidewalk light"),
   lamp("lampPolice", 668, 280, "police avenue sidewalk light"),
@@ -199,7 +249,12 @@ export const lights = Object.freeze([
   ...generatedVerticalLights
 ]);
 
-export const dumpsters = Object.freeze([
+export const lights = Object.freeze([
+  ...authoredLights.filter(item => !pointInsideBounds(item, FOUNDRY_BOUNDS)),
+  ...foundryLights
+]);
+
+const authoredDumpsters = Object.freeze([
   dumpster("dumpsterNorthAlley", "north alley dumpster", 318, 262),
   dumpster("dumpsterWarehouse", "warehouse dumpster", 176, 392),
   dumpster("dumpsterClubRear", "club rear dumpster", 676, 502),
@@ -214,6 +269,11 @@ export const dumpsters = Object.freeze([
   dumpster("dumpsterBlackwater", "blackwater exchange dumpster", 1480, 1122),
   dumpster("dumpsterFoundryFreight", "foundry freight dumpster", 1888, 1260),
   dumpster("dumpsterHarborTerminal", "harbor terminal dumpster", 2140, 1260)
+]);
+
+export const dumpsters = Object.freeze([
+  ...authoredDumpsters.filter(item => !pointInsideBounds(item, FOUNDRY_BOUNDS)),
+  ...foundryDumpsters
 ]);
 
 export const bodyHideSpots = Object.freeze(dumpsters.map(item => Object.freeze({
@@ -239,7 +299,8 @@ export const shadowZones = Object.freeze([
   rect("southServiceLongShadow", 120, 920, 2040, 56, { name: "south service-lane shadow", strength: 0.78 }),
   rect("eastBackShadow", 1320, 404, 56, 732, { name: "east back-lane shadow", strength: 0.80 }),
   rect("harborBackShadow", 1920, 226, 56, 910, { name: "harbor back-lane shadow", strength: 0.82 }),
-  rect("districtDarkness", 0, 0, WORLD_WIDTH, WORLD_HEIGHT, { name: "district darkness", strength: 0.18 })
+  rect("districtDarkness", 0, 0, WORLD_WIDTH, WORLD_HEIGHT, { name: "district darkness", strength: 0.18 }),
+  ...foundryShadows
 ]);
 
 export const pedestrianRoutes = Object.freeze([
@@ -307,7 +368,8 @@ export const pedestrianRoutes = Object.freeze([
       Object.freeze({ x: 2240, y: 832, crosswalk: true }),
       Object.freeze({ x: 2168, y: 832 })
     ])
-  })
+  }),
+  ...foundryPedestrianRoutes
 ]);
 
 export const streetNavigationPoints = Object.freeze([
@@ -324,7 +386,8 @@ export const streetNavigationPoints = Object.freeze([
   { x: 1088, y: 1192 },
   { x: 1688, y: 1192 },
   { x: 2240, y: 1192 },
-  ...pedestrianRoutes.flatMap(route => route.points.map(point => ({ x: point.x, y: point.y })))
+  ...pedestrianRoutes.flatMap(route => route.points.map(point => ({ x: point.x, y: point.y }))),
+  ...foundryNavigationPoints
 ]);
 
 export const districtZones = Object.freeze([
@@ -345,7 +408,8 @@ export const rooftopRoutes = Object.freeze([
   Object.freeze({ id: "jumpTenementPolice", ax: 650, ay: 166, bx: 696, by: 154, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW, aToB: "jump to police roof", bToA: "jump to tenement" }),
   Object.freeze({ id: "jumpShopsWarehouse", ax: 300, ay: 468, bx: 254, by: 456, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW, aToB: "jump to warehouse", bToA: "jump to shops" }),
   Object.freeze({ id: "jumpShopsOldBlock", ax: 428, ay: 468, bx: 538, by: 548, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW, aToB: "jump to old block", bToA: "jump to shops" }),
-  Object.freeze({ id: "jumpClubChurch", ax: 754, ay: 430, bx: 806, by: 480, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW, aToB: "jump to church", bToA: "jump to club" })
+  Object.freeze({ id: "jumpClubChurch", ax: 754, ay: 430, bx: 806, by: 480, aLayer: LAYERS.ROOF_LOW, bLayer: LAYERS.ROOF_LOW, aToB: "jump to church", bToA: "jump to club" }),
+  ...foundryRooftopRoutes
 ]);
 
 export const fireEscapes = Object.freeze([
@@ -356,7 +420,8 @@ export const fireEscapes = Object.freeze([
   Object.freeze({ id: "shopsFireEscape", name: "shops fire escape", street: { x: 438, y: 470 }, roof: { layer: LAYERS.ROOF_LOW, x: 360, y: 468 } }),
   Object.freeze({ id: "oldBlockFireEscape", name: "old block fire escape", street: { x: 520, y: 540 }, roof: { layer: LAYERS.ROOF_LOW, x: 596, y: 540 } }),
   Object.freeze({ id: "clubFireEscape", name: "club fire escape", street: { x: 578, y: 430 }, roof: { layer: LAYERS.ROOF_LOW, x: 675, y: 430 } }),
-  Object.freeze({ id: "churchFireEscape", name: "church fire escape", street: { x: 782, y: 500 }, roof: { layer: LAYERS.ROOF_LOW, x: 860, y: 490 } })
+  Object.freeze({ id: "churchFireEscape", name: "church fire escape", street: { x: 782, y: 500 }, roof: { layer: LAYERS.ROOF_LOW, x: 860, y: 490 } }),
+  ...foundryFireEscapes
 ]);
 
 export const sewerAccesses = Object.freeze([
@@ -366,7 +431,8 @@ export const sewerAccesses = Object.freeze([
   Object.freeze({ id: "glassManhole", name: "glasshouse manhole", street: { x: 1088, y: 760 }, sewer: { x: 1088, y: 760 } }),
   Object.freeze({ id: "foundryManhole", name: "foundry manhole", street: { x: 1688, y: 1192 }, sewer: { x: 1688, y: 1192 } }),
   Object.freeze({ id: "harborManhole", name: "harbor manhole", street: { x: 2240, y: 760 }, sewer: { x: 2240, y: 760 } }),
-  Object.freeze({ id: "refugePrivateShaft", name: "private shaft to refuge", street: null, sewer: { x: 176, y: 180 }, roof: { layer: LAYERS.ROOF_HIGH, x: 150, y: 146 } })
+  Object.freeze({ id: "refugePrivateShaft", name: "private shaft to refuge", street: null, sewer: { x: 176, y: 180 }, roof: { layer: LAYERS.ROOF_HIGH, x: 150, y: 146 } }),
+  ...foundrySewerAccesses
 ]);
 
 function pointInRect(x, y, area) {

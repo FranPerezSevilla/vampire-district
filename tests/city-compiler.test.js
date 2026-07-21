@@ -69,7 +69,7 @@ test("current city manifest is serializable and omits runtime geometry payloads"
   assert.ok(serialized.includes("bloodnight-current-city"));
   assert.equal(Object.hasOwn(manifest, "runtime"), false);
   assert.equal(manifest.counts.districts, currentCityBlueprint.districts.length);
-  assert.equal(manifest.counts.vehicles, 4);
+  assert.equal(manifest.counts.vehicles, 5);
 });
 
 test("debug renderer emits a self-contained SVG with city layers and score", () => {
