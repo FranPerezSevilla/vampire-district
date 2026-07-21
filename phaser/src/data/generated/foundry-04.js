@@ -74,16 +74,20 @@ export const foundryShadows = Object.freeze([
 export const foundryPedestrianRoutes = Object.freeze([
   Object.freeze({ id: "foundry:pedestrian-route:works-loop", name: "Foundry works sidewalk loop", generated: true, points: Object.freeze([
     Object.freeze({ x: 1754, y: 270 }),
+    Object.freeze({ x: 1830, y: 270 }),
     Object.freeze({ x: 1908, y: 270 }),
+    Object.freeze({ x: 1908, y: 334 }),
     Object.freeze({ x: 1908, y: 398 }),
-    Object.freeze({ x: 1754, y: 398 })
+    Object.freeze({ x: 1830, y: 398 }),
+    Object.freeze({ x: 1754, y: 398 }),
+    Object.freeze({ x: 1754, y: 334 })
   ]) })
 ]);
 
 export const foundryNavigationPoints = Object.freeze([
-  Object.freeze({ x: 1860, y: 123 }),
-  Object.freeze({ x: 2080, y: 265 }),
-  Object.freeze({ x: 1850, y: 338 })
+  Object.freeze({ id: "foundry:navigation:north-yard", x: 1860, y: 123, generated: true }),
+  Object.freeze({ id: "foundry:navigation:east-link", x: 2080, y: 265, generated: true }),
+  Object.freeze({ id: "foundry:navigation:avenue", x: 1850, y: 338, generated: true })
 ]);
 
 export const foundryVehicle = Object.freeze({
