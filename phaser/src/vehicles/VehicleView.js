@@ -77,6 +77,7 @@ function plainVehicle(vehicle) {
     maxHealth: archetype.maxHealth,
     disabled: vehicle.disabled,
     parked: vehicle.parked,
+    handbrake: Boolean(vehicle.handbrake),
     trunkCapacity: archetype.trunkCapacity
   };
 }
@@ -88,8 +89,11 @@ export function updateVehicleHud(system) {
     return;
   }
   const trunk = system.campaign.vehicles.trunkSnapshot(vehicle.id, vehicle.archetype.trunkCapacity);
+  const state = vehicle.disabled
+    ? "WRECKED · ENTER exit"
+    : `${system.handbrakeActive ? "HANDBRAKE · " : ""}SPACE handbrake · ENTER exit`;
   system.hud.setText(
-    `${vehicle.name.toUpperCase()} · ${vehicleSpeedKph(vehicle.speed)} km/h · hull ${vehicleHealthPercent(vehicle.health, vehicle.archetype.maxHealth)}% · trunk ${trunk.used}/${trunk.capacity} · SPACE exit`
+    `${vehicle.name.toUpperCase()} · ${vehicleSpeedKph(vehicle.speed)} km/h · hull ${vehicleHealthPercent(vehicle.health, vehicle.archetype.maxHealth)}% · trunk ${trunk.used}/${trunk.capacity} · ${state}`
   ).setVisible(true);
 }
 
@@ -103,6 +107,7 @@ export function vehicleSystemSnapshot(system) {
   return {
     occupiedVehicleId: system.currentVehicleId,
     driving: system.isDriving(),
+    handbrakeActive: Boolean(system.handbrakeActive),
     vehicles: system.vehicles.map(vehicle => ({
       ...plainVehicle(vehicle),
       trunk: system.campaign.vehicles.trunkSnapshot(vehicle.id, vehicle.archetype.trunkCapacity)
