@@ -125,6 +125,7 @@ test("Explore district starts a missionless non-persistent street session", asyn
   await clearCampaign(page);
   await page.goto("/?campaignEntryTest=1", { waitUntil: "domcontentloaded" });
   await waitForEntryRuntime(page);
+  const persistedBefore = await page.evaluate(storageKey => window.localStorage.getItem(storageKey), STORAGE_KEY);
 
   await Promise.all([
     page.waitForNavigation({ waitUntil: "domcontentloaded" }),
@@ -132,7 +133,7 @@ test("Explore district starts a missionless non-persistent street session", asyn
   ]);
   await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_EXPLORE_READY));
 
-  const state = await page.evaluate(() => {
+  const state = await page.evaluate(storageKey => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     return {
       profile: window.NBD_BOOT_PROFILE,
@@ -140,16 +141,16 @@ test("Explore district starts a missionless non-persistent street session", asyn
       tutorialState: scene.tutorialDirector.state,
       layer: scene.currentLayer,
       introOpen: window.NBD_PHASER_GAME.scene.getScene("UIScene").introOpen,
-      persisted: window.localStorage.getItem("vampire-district-campaign-v1")
+      persistedAfter: window.localStorage.getItem(storageKey)
     };
-  });
+  }, STORAGE_KEY);
   expect(state.profile.mode).toBe("explore");
   expect(state.profile.persistentCampaign).toBe(false);
   expect(state.activeMissionId).toBeNull();
   expect(state.tutorialState).toBe("complete");
   expect(state.layer).toBe(0);
   expect(state.introOpen).toBe(false);
-  expect(state.persisted).toBeNull();
+  expect(state.persistedAfter).toBe(persistedBefore);
 });
 
 test("a failed run waits for Retry before restoring its safe checkpoint", async ({ page }) => {
