@@ -7,9 +7,11 @@ import path from "node:path";
 
 import { currentCityBlueprint } from "../tools/city-compiler/current-city.js";
 import {
+  foundryCandidateDistance,
   generateFoundryCandidate,
   generateFoundryCandidates,
-  rankFoundryCandidates
+  rankFoundryCandidates,
+  selectDiverseFoundryCandidates
 } from "../tools/city-compiler/foundry-pilot.js";
 import { renderFoundryComparisonSvg } from "../tools/city-compiler/render-foundry-comparison.js";
 import { scoreCityBlueprint } from "../tools/city-compiler/score.js";
@@ -89,11 +91,23 @@ test("ranking prefers accepted candidates that meet or improve the city baseline
   assert.ok(best.foundryScore.total >= 75);
 });
 
+test("comparison selection keeps the best candidate and adds structurally distinct alternatives", () => {
+  const ranked = rankFoundryCandidates(generateFoundryCandidates({ seedPrefix: "foundry-diversity", count: 24 }));
+  const selected = selectDiverseFoundryCandidates(ranked, 3);
+  assert.equal(selected.length, 3);
+  assert.equal(selected[0], ranked[0]);
+  assert.equal(new Set(selected.map(result => result.blueprint.seed)).size, 3);
+  assert.ok(selected.every(result => result.foundryScore.accepted));
+  assert.ok(selected.every(result => result.foundryScore.total >= ranked[0].foundryScore.total - 4));
+  assert.ok(foundryCandidateDistance(selected[0], selected[1]) > 0.5);
+  assert.ok(foundryCandidateDistance(selected[0], selected[2]) > 0.5);
+});
+
 test("Foundry comparison renderer emits three ranked panels", () => {
-  const ranked = rankFoundryCandidates(generateFoundryCandidates({ seedPrefix: "foundry-render", count: 6 }));
-  const accepted = ranked.filter(result => result.foundryScore.accepted).slice(0, 3);
-  assert.equal(accepted.length, 3);
-  const svg = renderFoundryComparisonSvg(accepted);
+  const ranked = rankFoundryCandidates(generateFoundryCandidates({ seedPrefix: "foundry-render", count: 12 }));
+  const selected = selectDiverseFoundryCandidates(ranked, 3);
+  assert.equal(selected.length, 3);
+  const svg = renderFoundryComparisonSvg(selected);
   assert.match(svg, /^<\?xml/);
   assert.match(svg, /#1/);
   assert.match(svg, /#2/);
@@ -108,7 +122,7 @@ test("Foundry compiler CLI writes rankings, comparison and candidate reports", (
       "tools/city-compiler/compile-foundry.js",
       `--output-dir=${outputDir}`,
       "--seed-prefix=foundry-cli",
-      "--count=8",
+      "--count=12",
       "--top=3"
     ], { cwd: path.resolve("."), encoding: "utf8" });
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
@@ -119,6 +133,8 @@ test("Foundry compiler CLI writes rankings, comparison and candidate reports", (
     const summary = JSON.parse(readFileSync(path.join(outputDir, "foundry-summary.json"), "utf8"));
     assert.ok(summary.acceptedCandidates >= 3);
     assert.equal(summary.rankings[0].foundryScore.accepted, true);
+    assert.equal(summary.selectedSeeds.length, 3);
+    assert.ok(summary.selectionPolicy.remaining.includes("structural distance"));
     for (const directory of candidateDirs) {
       assert.equal(existsSync(path.join(outputDir, directory, "city-report.json")), true);
       assert.equal(existsSync(path.join(outputDir, directory, "city-debug.svg")), true);
