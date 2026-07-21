@@ -1,24 +1,15 @@
 import { expect, test } from "@playwright/test";
 
 const ROUTES = ["/", "/phaser/"];
-const STORAGE_KEY = "vampire-district-campaign-v1";
-const RESET_SENTINEL = "vampire-district-vehicle-core-reset";
 
-test.describe.configure({ timeout: 120_000 });
-
-async function clearCampaignOnce(page) {
-  await page.addInitScript(({ storageKey, sentinel }) => {
-    if (window.sessionStorage.getItem(sentinel) === "done") return;
-    window.localStorage.removeItem(storageKey);
-    window.sessionStorage.setItem(sentinel, "done");
-  }, { storageKey: STORAGE_KEY, sentinel: RESET_SENTINEL });
-}
+test.describe.configure({ timeout: 75_000 });
 
 async function waitForVehicleRuntime(page) {
   await page.waitForFunction(() => Boolean(
     window.NBD_APP_READY
-    && window.NBD_RC_HARNESS_READY
+    && window.NBD_SCENARIO_READY
     && window.NBD_VEHICLES_READY
+    && window.NBD_SCENARIOS?.snapshot?.().activeId === "vehicle-core"
     && window.NBD_PHASER_GAME?.scene?.getScene?.("GameScene")?.vehicleSystem
   ));
 }
@@ -31,17 +22,17 @@ async function pressGameplayKey(page, key, holdMs = 240) {
 
 async function prepareStreetVehicle(page, vehicleId = "refuge_compact") {
   await page.evaluate(id => {
-    window.NBD_RC_HARNESS.unlockPostTutorialWorld();
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const vehicle = scene.vehicleSystem.vehicle(id);
+    scene.vehicleSystem.exitVehicle({ force: true });
     scene.switchLayer(0, { x: vehicle.x - 18, y: vehicle.y }, `Vehicle test: approach ${id}.`);
+    scene.inputSystem.reset();
   }, vehicleId);
 }
 
 for (const route of ROUTES) {
   test(`${route} enters, drives and exits the owned compact through contextual Space`, async ({ page }) => {
-    await clearCampaignOnce(page);
-    await page.goto(`${route}?rcTest=1`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${route}?testScenario=vehicle-core`, { waitUntil: "domcontentloaded" });
     await waitForVehicleRuntime(page);
     await prepareStreetVehicle(page);
 
@@ -65,11 +56,7 @@ for (const route of ROUTES) {
     expect(before.option).toEqual({ type: "vehicleEnter", label: "Enter Refuge compact" });
     expect(before.owned).toBe(true);
 
-    // Focus without a trusted pointer click: left-click is a real primary attack
-    // and traversal is intentionally blocked while that combat commitment is active.
     await page.locator("#game-root canvas").focus();
-    // Playwright's instant press can complete between two software-WebGL frames.
-    // Hold the key across several frames, matching a real keyboard tap.
     await pressGameplayKey(page, "Space");
     await page.waitForFunction(() => window.NBD_VEHICLES.snapshot().occupiedVehicleId === "refuge_compact");
 
@@ -140,8 +127,7 @@ for (const route of ROUTES) {
 }
 
 test("stealing a parked sedan persists ownership consequences and alarms witnesses", async ({ page }) => {
-  await clearCampaignOnce(page);
-  await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
+  await page.goto("/?testScenario=vehicle-core", { waitUntil: "domcontentloaded" });
   await waitForVehicleRuntime(page);
   await prepareStreetVehicle(page, "market_sedan");
 
@@ -160,15 +146,13 @@ test("stealing a parked sedan persists ownership consequences and alarms witness
       scene.npcSystem.rebuildSpatialIndex();
     }
     const entered = scene.vehicleSystem.enterVehicle("market_sedan");
-    const witnessCount = scene.witnessSystem.alarmedWitnesses().length;
-    const snapshot = window.NBD_VEHICLES.snapshot();
     return {
       entered,
-      status: snapshot.vehicles.find(vehicle => vehicle.id === "market_sedan")?.status,
+      status: window.NBD_VEHICLES.snapshot().vehicles.find(vehicle => vehicle.id === "market_sedan")?.status,
       persistedStatus: scene.campaignSystem.state.world.flags["vehicle.market_sedan.status"],
       exposureBefore: beforeExposure,
       exposureAfter: scene.exposureSystem.value,
-      witnessCount,
+      witnessCount: scene.witnessSystem.alarmedWitnesses().length,
       eventLogged: scene.campaignSystem.state.eventLog.some(event => event.type === "vehicle:ownership-changed")
     };
   });
@@ -182,8 +166,7 @@ test("stealing a parked sedan persists ownership consequences and alarms witness
 });
 
 test("vehicle trunks remain bounded mobile storage and never expose the refuge stash", async ({ page }) => {
-  await clearCampaignOnce(page);
-  await page.goto("/phaser/?rcTest=1", { waitUntil: "domcontentloaded" });
+  await page.goto("/phaser/?testScenario=vehicle-core", { waitUntil: "domcontentloaded" });
   await waitForVehicleRuntime(page);
 
   const result = await page.evaluate(() => {
