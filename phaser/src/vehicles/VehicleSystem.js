@@ -14,6 +14,7 @@ export class VehicleSystem {
     this.currentVehicleId = null;
     this.persistTimer = 0;
     this.crashCooldown = 0;
+    this.handbrakeActive = false;
     this.pedestrianCooldowns = new Map();
     this.destroyed = false;
     this.vehicles = vehicleDefinitions.map(definition => this.createVehicle(definition));
@@ -113,13 +114,22 @@ export class VehicleSystem {
     if (vehicle.health <= 0) {
       vehicle.disabled = true;
       vehicle.speed = 0;
+      vehicle.handbrake = false;
       vehicle.parked = true;
+      this.handbrakeActive = false;
       vehicle.container.setAlpha(0.52);
       vehicle.visual.hood.setFillStyle(0x3f2027, 0.92);
-      this.scene.lastActionText = `${vehicle.name} disabled by ${reason}.`;
-      if (this.currentVehicleId === vehicle.id) this.exitVehicle({ force: true });
+      this.scene.lastActionText = this.currentVehicleId === vehicle.id
+        ? `${vehicle.name} is disabled. You remain inside; press Enter to get out.`
+        : `${vehicle.name} disabled by ${reason}.`;
+      this.scene.events?.emit?.("vehicle:disabled", {
+        vehicleId: vehicle.id,
+        occupied: this.currentVehicleId === vehicle.id,
+        reason
+      });
     }
     if (persist) this.persistVehicle(vehicle);
+    this.updateHud();
     this.publish();
     return true;
   }
