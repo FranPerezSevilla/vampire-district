@@ -59,7 +59,9 @@ for (const route of ROUTES) {
     expect(before.option).toEqual({ type: "vehicleEnter", label: "Enter Refuge compact" });
     expect(before.owned).toBe(true);
 
-    await page.locator("#game-root canvas").click({ position: { x: 100, y: 100 } });
+    // Focus without a trusted pointer click: left-click is a real primary attack
+    // and traversal is intentionally blocked while that combat commitment is active.
+    await page.locator("#game-root canvas").focus();
     await page.keyboard.press("Space");
     await page.waitForFunction(() => window.NBD_VEHICLES.snapshot().occupiedVehicleId === "refuge_compact");
 
