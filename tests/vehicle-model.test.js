@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   createVehicleState,
+  interpolateVehicleState,
   stepVehicleKinematics,
   vehicleCameraZoom,
   vehicleExitOffsets,
@@ -23,40 +24,37 @@ const archetype = {
   id: "compact",
   width: 28,
   height: 14,
-  maxSpeed: 245,
-  reverseSpeed: 78,
-  acceleration: 158,
-  reverseAcceleration: 94,
-  brake: 232,
-  handbrakeBrake: 310,
-  handbrakeSteerMultiplier: 1.72,
-  drag: 58,
-  steerRate: 2.62,
+  maxSpeed: 325,
+  reverseSpeed: 96,
+  acceleration: 285,
+  reverseAcceleration: 122,
+  launchBoost: 0.62,
+  brake: 292,
+  handbrakeBrake: 172,
+  handbrakeThrottleFactor: 0.34,
+  handbrakeSteerMultiplier: 2.28,
+  grip: 8.8,
+  handbrakeGrip: 0.92,
+  drag: 46,
+  steerRate: 2.72,
   maxHealth: 70,
-  cameraZoomFactor: 0.72
+  cameraZoomFactor: 0.68
 };
 
-test("vehicle kinematics accelerate, steer and respect higher speed limits", () => {
+test("vehicle launch is immediate and still respects the higher top speed", () => {
   let state = createVehicleState(definition, archetype);
-  for (let index = 0; index < 40; index++) {
+  for (let index = 0; index < 20; index++) {
     state = stepVehicleKinematics(state, { move: { x: 0, y: -1 } }, 0.05, archetype);
   }
-  assert.ok(state.speed > 180, "the compact should now exceed the previous top speed");
+  assert.ok(state.speed > 250, "the compact should feel lively within its first second");
   assert.ok(state.speed <= archetype.maxSpeed);
-  assert.ok(state.x > definition.x);
+  assert.ok(state.x > definition.x + 100);
   assert.equal(state.y, definition.y);
-
-  const beforeAngle = state.angle;
-  for (let index = 0; index < 10; index++) {
-    state = stepVehicleKinematics(state, { move: { x: -1, y: -1 } }, 0.05, archetype);
-  }
-  assert.ok(state.angle < beforeAngle);
-  assert.ok(state.y < definition.y);
-  assert.ok(vehicleSpeedKph(state.speed) > 0);
+  assert.ok(vehicleSpeedKph(state.speed) >= 118);
 });
 
 test("braking reaches zero before reverse acceleration", () => {
-  let state = { ...createVehicleState(definition, archetype), speed: 90 };
+  let state = { ...createVehicleState(definition, archetype), speed: 120 };
   state = stepVehicleKinematics(state, { move: { x: 0, y: 1 } }, 0.2, archetype);
   assert.ok(state.speed >= 0, "the first reverse input brakes a moving car");
   for (let index = 0; index < 10; index++) {
@@ -66,30 +64,54 @@ test("braking reaches zero before reverse acceleration", () => {
   assert.ok(state.speed >= -archetype.reverseSpeed);
 });
 
-test("Space-style handbrake decelerates and increases steering authority", () => {
-  const starting = { ...createVehicleState(definition, archetype), speed: 150 };
-  const normal = stepVehicleKinematics(starting, { move: { x: 1, y: 0 } }, 0.1, archetype);
-  const handbrake = stepVehicleKinematics(starting, {
-    move: { x: 1, y: 0 },
-    handbrakeHeld: true
-  }, 0.1, archetype);
+test("handbrake creates sustained slip and normal grip recovers it", () => {
+  let state = {
+    ...createVehicleState(definition, archetype),
+    speed: 230,
+    travelAngle: 0,
+    angle: 0
+  };
 
-  assert.equal(handbrake.handbrake, true);
-  assert.ok(handbrake.speed < normal.speed);
-  assert.ok(Math.abs(handbrake.angle) > Math.abs(normal.angle));
+  for (let index = 0; index < 8; index++) {
+    state = stepVehicleKinematics(state, {
+      move: { x: 1, y: -1 },
+      handbrakeHeld: true
+    }, 0.05, archetype);
+  }
+
+  const driftAtRelease = Math.abs(state.driftAngle);
+  assert.equal(state.handbrake, true);
+  assert.ok(driftAtRelease > 0.22, "body heading and travel direction should visibly separate");
+  assert.ok(state.y > definition.y, "the car should carry lateral momentum while its nose rotates");
+  assert.ok(Math.abs(state.speed) > 100, "the handbrake should slide rather than stop the car dead");
+
+  for (let index = 0; index < 12; index++) {
+    state = stepVehicleKinematics(state, { move: { x: 0, y: -1 } }, 0.05, archetype);
+  }
+  assert.ok(Math.abs(state.driftAngle) < driftAtRelease, "normal tyre grip should progressively align the velocity vector");
 });
 
-test("collision slide candidates preserve one movement axis and lose speed", () => {
-  const state = { ...createVehicleState(definition, archetype), speed: 120 };
-  const next = { ...state, x: 112, y: 108, speed: 120 };
+test("collision slide candidates offer long and short recovery distances", () => {
+  const state = { ...createVehicleState(definition, archetype), speed: 150 };
+  const next = { ...state, x: 116, y: 110, speed: 150, angle: 0.2, travelAngle: 0.1 };
   const candidates = vehicleSlideCandidates(state, next);
 
-  assert.equal(candidates.length, 2);
-  assert.deepEqual(
-    candidates.map(candidate => [candidate.x, candidate.y]),
-    [[112, 100], [100, 108]]
-  );
+  assert.equal(candidates.length, 12);
+  assert.deepEqual([candidates[0].x, candidates[0].y], [116, 100]);
+  assert.deepEqual([candidates[1].x, candidates[1].y], [100, 110]);
+  assert.ok(candidates.some(candidate => candidate.x > 100 && candidate.x < 116));
+  assert.ok(candidates.some(candidate => candidate.y > 100 && candidate.y < 110));
   assert.ok(candidates.every(candidate => candidate.speed > 0 && candidate.speed < next.speed));
+});
+
+test("contact interpolation advances without snapping through a collision", () => {
+  const state = { ...createVehicleState(definition, archetype), speed: 100 };
+  const next = { ...state, x: 140, y: 120, angle: 0.5, travelAngle: 0.2, speed: 160 };
+  const halfway = interpolateVehicleState(state, next, 0.5);
+  assert.equal(halfway.x, 120);
+  assert.equal(halfway.y, 110);
+  assert.ok(halfway.angle > 0 && halfway.angle < next.angle);
+  assert.ok(halfway.speed > state.speed && halfway.speed < next.speed);
 });
 
 test("impact, camera and exit helpers remain bounded", () => {
