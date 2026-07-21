@@ -101,7 +101,7 @@ test("a moving vehicle breaks a sidewalk streetlight and persists the damage", a
   expect(result.healthAfter).toBeLessThan(result.healthBefore);
 });
 
-test("rupturing a dumpster ejects its hidden corpse and survives mission-world synchronization", async ({ page }) => {
+test("a dumpster corpse stays exposed, can be dragged, and can be recontained", async ({ page }) => {
   await clearCampaignOnce(page);
   await page.goto("/phaser/?rcTest=1", { waitUntil: "domcontentloaded" });
   await waitForUrbanRuntime(page);
@@ -123,17 +123,48 @@ test("rupturing a dumpster ejects its hidden corpse and survives mission-world s
     );
 
     // The mission adapter reconstructs world state each frame. A systemic
-    // dumpster rupture must remain authoritative after that synchronization.
+    // rupture must remain authoritative after that synchronization.
     scene.missionSystem.cleanTheSceneSystem.syncWorld();
-    const released = scene.streetFurnitureSystem.releasedBodyState(body.id);
+    const exposedAfterSync = {
+      hidden: body.hiddenBody,
+      visible: body.container.visible,
+      spot: body.hiddenSpotId,
+      persistedProp: scene.campaignSystem.state.world.flags["body.exposed_body.exposedByStreetProp"]
+    };
+
+    scene.evidenceSystem.grabBody(body);
+    scene.player.setPosition(body.x + 48, body.y + 18);
+    scene.evidenceSystem.updateDraggedBody(0);
+    const draggedPosition = { x: body.x, y: body.y, layer: body.layer };
+    scene.missionSystem.cleanTheSceneSystem.syncWorld();
+    const draggingAfterSync = {
+      active: scene.evidenceSystem.draggingBody === body && body.dragged,
+      x: body.x,
+      y: body.y,
+      layer: body.layer
+    };
+
+    const replacement = scene.streetFurnitureSystem.dumpster("dumpsterChurchRear");
+    scene.player.setPosition(replacement.x, replacement.y);
+    scene.evidenceSystem.updateDraggedBody(0);
+    scene.evidenceSystem.hideDraggedBody({
+      ...replacement,
+      streetPropId: replacement.id,
+      cleanRadius: replacement.cleanRadius || 90
+    });
+    scene.missionSystem.cleanTheSceneSystem.syncWorld();
+
     return {
       broken,
-      bodyHidden: body.hiddenBody,
-      bodyVisible: body.container.visible,
-      bodySpot: body.hiddenSpotId,
-      exposedAfterContainment: body.exposedAfterContainment,
-      released,
-      persistedProp: scene.campaignSystem.state.world.flags["body.exposed_body.exposedByStreetProp"],
+      exposedAfterSync,
+      draggedPosition,
+      draggingAfterSync,
+      recontained: {
+        hidden: body.hiddenBody,
+        spot: body.hiddenSpotId,
+        releasedState: scene.streetFurnitureSystem.releasedBodyState(body.id),
+        persistedProp: scene.campaignSystem.state.world.flags["body.exposed_body.exposedByStreetProp"] || null
+      },
       ruptureBlood: scene.evidenceSystem.bloodStains
         .filter(stain => stain.kind === "dumpster-rupture").length,
       exposureBefore,
@@ -142,15 +173,18 @@ test("rupturing a dumpster ejects its hidden corpse and survives mission-world s
   });
 
   expect(result.broken).toBe(true);
-  expect(result.bodyHidden).toBe(false);
-  expect(result.bodyVisible).toBe(true);
-  expect(result.bodySpot).toBeNull();
-  expect(result.exposedAfterContainment).toBe(true);
-  expect(result.released).toMatchObject({
-    bodyId: "exposed_body",
-    streetPropId: "dumpsterClubRear"
+  expect(result.exposedAfterSync).toEqual({
+    hidden: false,
+    visible: true,
+    spot: null,
+    persistedProp: "dumpsterClubRear"
   });
-  expect(result.persistedProp).toBe("dumpsterClubRear");
+  expect(result.draggingAfterSync.active).toBe(true);
+  expect(result.draggingAfterSync).toMatchObject(result.draggedPosition);
+  expect(result.recontained.hidden).toBe(true);
+  expect(result.recontained.spot).toBe("dumpsterChurchRear");
+  expect(result.recontained.releasedState).toBeNull();
+  expect(result.recontained.persistedProp).toBeNull();
   expect(result.ruptureBlood).toBeGreaterThanOrEqual(7);
   expect(result.exposureAfter).toBeGreaterThan(result.exposureBefore);
 });
