@@ -11,6 +11,7 @@ import { defineCityBlueprint } from "./model.js";
 
 const PEDESTRIAN_CONNECTOR_ID = "foundry:sidewalk:back-lane-route";
 const GENERATED_PREFIX = "foundry:";
+const NAVIGATION_PREFIX = "foundry:navigation:";
 
 function slug(value) {
   return String(value || "candidate")
@@ -44,6 +45,24 @@ function normalizePlan(plan, buildings) {
   };
 }
 
+function normalizeNavigationPoints(draft) {
+  const northRoad = draft.runtime.roads.find(item => item.id === "foundry:road:north-yard");
+  const eastRoad = draft.runtime.roads.find(item => item.id === "foundry:road:east-link");
+  if (!northRoad || !eastRoad) return draft.runtime.streetNavigationPoints || [];
+
+  const points = [
+    { id: `${NAVIGATION_PREFIX}north-yard`, x: 1860, y: northRoad.y + northRoad.h / 2, generated: true },
+    { id: `${NAVIGATION_PREFIX}east-link`, x: 2080, y: eastRoad.y + eastRoad.h / 2, generated: true },
+    { id: `${NAVIGATION_PREFIX}avenue`, x: 1850, y: 338, generated: true }
+  ];
+  const generatedCoordinates = new Set(points.map(point => `${point.x}:${point.y}`));
+  const existing = (draft.runtime.streetNavigationPoints || []).filter(point => {
+    if (String(point?.id || "").startsWith(NAVIGATION_PREFIX)) return false;
+    return !generatedCoordinates.has(`${Number(point?.x) || 0}:${Number(point?.y) || 0}`);
+  });
+  return [...existing, ...points];
+}
+
 export function normalizeFoundryCandidate(draft) {
   const buildings = draft.runtime.buildings.map(normalizeBuilding);
   const sidewalks = draft.runtime.sidewalks.some(item => item.id === PEDESTRIAN_CONNECTOR_ID)
@@ -61,16 +80,18 @@ export function normalizeFoundryCandidate(draft) {
           purpose: "continuous Foundry pedestrian loop"
         }
       ];
+  const streetNavigationPoints = normalizeNavigationPoints(draft);
   const plan = normalizePlan(draft.metadata?.foundryPilot || {}, buildings);
   return defineCityBlueprint({
     ...draft,
-    runtime: { ...draft.runtime, buildings, sidewalks },
+    runtime: { ...draft.runtime, buildings, sidewalks, streetNavigationPoints },
     metadata: {
       ...draft.metadata,
       foundryPilot: plan,
       normalization: {
         templateFootprints: true,
-        pedestrianSurfaceContinuity: true
+        pedestrianSurfaceContinuity: true,
+        stableNavigationIds: true
       }
     }
   });
