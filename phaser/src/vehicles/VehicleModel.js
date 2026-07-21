@@ -116,9 +116,11 @@ export function stepVehicleKinematics(state, frame, dt, archetype) {
   const movementAuthority = Math.max(speedRatio, contactAuthority);
   if (!state?.disabled && steeringIntent > 0.01 && (Math.abs(speed) > 0.25 || Math.abs(input.throttle) > 0.05)) {
     const reverseSign = speed < 0 ? -1 : 1;
-    const steeringAuthority = (0.20 + Math.sqrt(movementAuthority) * 0.80) * (input.handbrake ? handbrakeSteer : 1);
+    const steeringAuthority = (0.24 + Math.sqrt(movementAuthority) * 0.76) * (input.handbrake ? handbrakeSteer : 1);
     const requestedTurnRate = input.steer * steerRate * steeringAuthority * reverseSign;
-    const maximumTurnRate = input.handbrake ? 1.55 : 1.35;
+    const maximumTurnRate = input.handbrake
+      ? 2.30 - speedRatio * 0.25
+      : 2.55 - speedRatio * 0.45;
     angle = normalizeAngle(angle + clamp(requestedTurnRate, -maximumTurnRate, maximumTurnRate) * seconds);
   }
 
