@@ -42,7 +42,8 @@ export function normalizeVehicleInput(frame = {}) {
   const move = frame?.move || {};
   return {
     throttle: clamp(-(Number(move.y) || 0), -1, 1),
-    steer: clamp(Number(move.x) || 0, -1, 1)
+    steer: clamp(Number(move.x) || 0, -1, 1),
+    handbrake: Boolean(frame?.handbrakeHeld)
   };
 }
 
@@ -56,10 +57,15 @@ export function stepVehicleKinematics(state, frame, dt, archetype) {
   const brake = Math.max(0, Number(archetype?.brake) || acceleration * 1.5);
   const drag = Math.max(0, Number(archetype?.drag) || acceleration * 0.35);
   const steerRate = Math.max(0, Number(archetype?.steerRate) || 0);
+  const handbrakeBrake = Math.max(brake, Number(archetype?.handbrakeBrake) || brake * 1.35);
+  const handbrakeSteer = Math.max(1, Number(archetype?.handbrakeSteerMultiplier) || 1.65);
 
   let speed = Number(state?.speed) || 0;
-  if (state?.disabled) speed = approach(speed, 0, brake * seconds);
-  else if (input.throttle > 0) {
+  if (state?.disabled) {
+    speed = approach(speed, 0, brake * seconds);
+  } else if (input.handbrake) {
+    speed = approach(speed, 0, handbrakeBrake * seconds);
+  } else if (input.throttle > 0) {
     speed = speed < 0
       ? approach(speed, 0, brake * input.throttle * seconds)
       : speed + acceleration * input.throttle * seconds;
@@ -77,7 +83,7 @@ export function stepVehicleKinematics(state, frame, dt, archetype) {
   let angle = normalizeAngle(state?.angle);
   if (!state?.disabled && Math.abs(speed) > 1 && Math.abs(input.steer) > 0.01) {
     const reverseSign = speed < 0 ? -1 : 1;
-    const steeringAuthority = 0.22 + speedRatio * 0.78;
+    const steeringAuthority = (0.22 + speedRatio * 0.78) * (input.handbrake ? handbrakeSteer : 1);
     angle = normalizeAngle(angle + input.steer * steerRate * steeringAuthority * reverseSign * seconds);
   }
 
@@ -87,8 +93,17 @@ export function stepVehicleKinematics(state, frame, dt, archetype) {
     y: (Number(state?.y) || 0) + Math.sin(angle) * speed * seconds,
     angle,
     speed,
-    parked: Math.abs(speed) < 0.5
+    parked: Math.abs(speed) < 0.5,
+    handbrake: input.handbrake
   };
+}
+
+export function vehicleSlideCandidates(state, next, speedRetention = 0.72) {
+  const retainedSpeed = (Number(next?.speed) || 0) * clamp(speedRetention, 0, 1);
+  return [
+    { ...next, x: Number(next?.x) || 0, y: Number(state?.y) || 0, speed: retainedSpeed },
+    { ...next, x: Number(state?.x) || 0, y: Number(next?.y) || 0, speed: retainedSpeed }
+  ];
 }
 
 export function vehicleSpeedKph(speed) {
