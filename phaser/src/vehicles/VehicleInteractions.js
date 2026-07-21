@@ -25,14 +25,15 @@ export function vehicleTrunkLabel(system, vehicle) {
 export function collectVehicleInteractions(system) {
   const current = system.currentVehicle();
   if (current) {
+    const mayExit = current.disabled || Math.abs(current.speed) <= EXIT_SPEED_LIMIT;
     return [{
       id: `exit_${current.id}`,
       type: "vehicleExit",
-      label: Math.abs(current.speed) <= EXIT_SPEED_LIMIT
-        ? `Exit ${current.name}`
+      label: mayExit
+        ? `Exit ${current.disabled ? "wreck" : current.name}`
         : `Slow down to exit ${current.name}`,
-      detail: Math.abs(current.speed) <= EXIT_SPEED_LIMIT
-        ? "vehicle → street"
+      detail: mayExit
+        ? "ENTER · vehicle → street"
         : `${vehicleSpeedKph(current.speed)} km/h · exit below ${vehicleSpeedKph(EXIT_SPEED_LIMIT)} km/h`,
       priority: 240,
       distance: 0,
@@ -58,7 +59,7 @@ export function collectVehicleInteractions(system) {
       id: `enter_${vehicle.id}`,
       type: "vehicleEnter",
       label: `Enter ${vehicle.name}`,
-      detail: `${vehicleStatusLabel(vehicle)} · ${vehicle.archetype.label}`,
+      detail: `ENTER · ${vehicleStatusLabel(vehicle)} · ${vehicle.archetype.label}`,
       priority: 96,
       distance,
       x: vehicle.x,
@@ -118,7 +119,7 @@ export function enterVehicle(system, vehicleId, { force = false } = {}) {
     registerVehicleTheft(system, vehicle, previousStatus);
   } else {
     vehicle.status = previousStatus;
-    system.scene.lastActionText = `You enter ${vehicle.name}. W/S accelerate and brake · A/D steer · Space exits when stopped.`;
+    system.scene.lastActionText = `You enter ${vehicle.name}. W/S accelerate and brake · A/D steer · Space handbrake · Enter exits.`;
   }
 
   RawAudio.play("confirm");
@@ -131,7 +132,7 @@ export function enterVehicle(system, vehicleId, { force = false } = {}) {
 export function exitVehicle(system, { force = false } = {}) {
   const vehicle = system.currentVehicle();
   if (!vehicle) return false;
-  if (!force && Math.abs(vehicle.speed) > EXIT_SPEED_LIMIT) {
+  if (!force && !vehicle.disabled && Math.abs(vehicle.speed) > EXIT_SPEED_LIMIT) {
     system.scene.lastActionText = `Slow ${vehicle.name} below ${vehicleSpeedKph(EXIT_SPEED_LIMIT)} km/h before exiting.`;
     RawAudio.play("cancel");
     return false;
@@ -147,6 +148,8 @@ export function exitVehicle(system, { force = false } = {}) {
 
   vehicle.speed = 0;
   vehicle.parked = true;
+  vehicle.handbrake = false;
+  system.handbrakeActive = false;
   system.currentVehicleId = null;
   system.scene.player.setVisible(true).setPosition(exit?.x ?? vehicle.x, exit?.y ?? vehicle.y);
   system.scene.cameras.main.startFollow(system.scene.player, true, 0.12, 0.12);
@@ -154,10 +157,12 @@ export function exitVehicle(system, { force = false } = {}) {
   system.scene.inputSystem?.resetWorldEdges?.();
   system.persistVehicle(vehicle);
   system.hud.setVisible(false);
-  system.scene.lastActionText = `${vehicle.name} parked. You return to street movement.`;
+  system.scene.lastActionText = vehicle.disabled
+    ? `You climb out of the disabled ${vehicle.name}.`
+    : `${vehicle.name} parked. You return to street movement.`;
   RawAudio.play("confirm");
   system.publish();
-  system.scene.events?.emit?.("vehicle:exited", { vehicleId: vehicle.id });
+  system.scene.events?.emit?.("vehicle:exited", { vehicleId: vehicle.id, disabled: vehicle.disabled });
   return true;
 }
 
