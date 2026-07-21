@@ -1,4 +1,38 @@
+import { BOOT_MODES, bootProfile } from "../boot/BootProfile.js";
 import { TutorialDirector } from "./TutorialDirector.js";
+
+function completeTutorial(scene, uiScene, director, { moveToExploreSpawn = false } = {}) {
+  director.started = true;
+  director.introPromise = Promise.resolve();
+  director.busy = false;
+  director.state = "complete";
+  director.finalAdviceShown = true;
+  director.freezeWorld(false);
+  director.setControlMode("full");
+  director.setTip("", "");
+  director.hideDialogue();
+
+  if (director.informant) {
+    director.informant.inactive = true;
+    director.informant.vx = 0;
+    director.informant.vy = 0;
+    director.informant.container?.setAlpha?.(0).setVisible?.(false);
+  }
+  if (uiScene.introOpen) uiScene.closeIntro?.();
+  scene.registry?.set?.("campaignResumeApplied", true);
+  scene.registry?.set?.("bootMode", bootProfile.mode);
+  scene.inputSystem?.resetWorldEdges?.();
+
+  if (moveToExploreSpawn) {
+    scene.switchLayer?.(
+      bootProfile.spawn.layer,
+      { x: bootProfile.spawn.x, y: bootProfile.spawn.y },
+      "EXPLORATION MODE: no tutorial, mission or persistent campaign changes."
+    );
+    scene.lastActionText = "EXPLORATION MODE: drive, fight and test the district freely. Progress is not saved.";
+  }
+  return true;
+}
 
 function applyRestoredTutorial(scene, uiScene, director) {
   scene.campaignCheckpointSystem?.applyPendingNpcState?.(director.informant);
@@ -6,25 +40,12 @@ function applyRestoredTutorial(scene, uiScene, director) {
     || scene.pendingTutorialCheckpoint;
   if (!checkpoint?.completed) return false;
 
-  director.started = true;
-  director.introPromise = Promise.resolve();
-  director.busy = false;
-  director.state = "complete";
+  completeTutorial(scene, uiScene, director);
   director.finalAdviceShown = checkpoint.finalAdviceShown !== false;
-  director.freezeWorld(false);
-  director.setControlMode("full");
-  director.setTip("", "");
-  director.hideDialogue();
-
-  if (checkpoint.informantGone && director.informant) {
-    director.informant.inactive = true;
-    director.informant.vx = 0;
-    director.informant.vy = 0;
-    director.informant.container?.setAlpha?.(0).setVisible?.(false);
+  if (!checkpoint.informantGone && director.informant) {
+    director.informant.inactive = false;
+    director.informant.container?.setAlpha?.(1).setVisible?.(true);
   }
-  scene.registry?.set?.("campaignResumeApplied", true);
-  scene.inputSystem?.resetWorldEdges?.();
-  if (uiScene.introOpen) uiScene.closeIntro?.();
   return true;
 }
 
@@ -43,8 +64,16 @@ function attachTutorialDirector() {
 
   const director = new TutorialDirector(scene, uiScene);
   scene.tutorialDirector = director;
-  applyRestoredTutorial(scene, uiScene, director);
 
+  if (bootProfile.skipTutorial) {
+    completeTutorial(scene, uiScene, director, {
+      moveToExploreSpawn: bootProfile.mode === BOOT_MODES.EXPLORE
+    });
+    window.NBD_EXPLORE_READY = bootProfile.mode === BOOT_MODES.EXPLORE;
+    return;
+  }
+
+  applyRestoredTutorial(scene, uiScene, director);
   const startIfReady = () => {
     if (!uiScene.introOpen && !director.started) void director.startIntro();
   };

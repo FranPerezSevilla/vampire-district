@@ -17,7 +17,8 @@ export const CAMPAIGN_ENTRY_ACTIONS = Object.freeze({
   CONTINUE: "continue",
   NEW_GAME: "new-game",
   RETRY_CHECKPOINT: "retry-checkpoint",
-  RETRY_MISSION: "retry-mission"
+  RETRY_MISSION: "retry-mission",
+  EXPLORE: "explore"
 });
 
 function plainObject(value) {
@@ -62,6 +63,10 @@ function activeObjectiveLabel(snapshot, record) {
   const objectiveId = Object.values(plainObject(record?.objectives))
     .find(objective => objective?.status === "active")?.id;
   return titleCaseId(objectiveId) || "Current objective";
+}
+
+function exploreAction() {
+  return { action: CAMPAIGN_ENTRY_ACTIONS.EXPLORE, label: "Explore district" };
 }
 
 function freezeEntry(entry) {
@@ -121,7 +126,10 @@ export function createCampaignEntry(snapshotCandidate, { autoEnter = false } = {
         `Resume at: ${objectiveLabel}.`
       ],
       primary: { action: CAMPAIGN_ENTRY_ACTIONS.CONTINUE, label: "Continue" },
-      secondary: [{ action: CAMPAIGN_ENTRY_ACTIONS.NEW_GAME, label: "Start new game" }],
+      secondary: [
+        { action: CAMPAIGN_ENTRY_ACTIONS.NEW_GAME, label: "Start new game" },
+        exploreAction()
+      ],
       details: [
         { label: "Cash", value: `$${cash.toFixed(0)}` },
         { label: "Contract", value: missionTitle },
@@ -158,7 +166,10 @@ export function createCampaignEntry(snapshotCandidate, { autoEnter = false } = {
         action: resumable ? CAMPAIGN_ENTRY_ACTIONS.RETRY_CHECKPOINT : CAMPAIGN_ENTRY_ACTIONS.RETRY_MISSION,
         label: resumable ? "Retry from checkpoint" : "Retry mission"
       },
-      secondary: [{ action: CAMPAIGN_ENTRY_ACTIONS.NEW_GAME, label: "Start new game" }],
+      secondary: [
+        { action: CAMPAIGN_ENTRY_ACTIONS.NEW_GAME, label: "Start new game" },
+        exploreAction()
+      ],
       details: [
         { label: "Contract", value: missionTitle },
         { label: "Cash", value: `$${cash.toFixed(0)}` },
@@ -182,10 +193,13 @@ export function createCampaignEntry(snapshotCandidate, { autoEnter = false } = {
       title: "The district remembers",
       body: [
         `${missionTitle} is complete and its rewards are already recorded.`,
-        "Continue in free roam or erase the campaign and begin again."
+        "Continue in free roam, explore without campaign state, or erase the campaign and begin again."
       ],
       primary: { action: CAMPAIGN_ENTRY_ACTIONS.CONTINUE, label: "Continue free roam" },
-      secondary: [{ action: CAMPAIGN_ENTRY_ACTIONS.NEW_GAME, label: "Start new game" }],
+      secondary: [
+        { action: CAMPAIGN_ENTRY_ACTIONS.NEW_GAME, label: "Start new game" },
+        exploreAction()
+      ],
       details: [
         { label: "Cash", value: `$${cash.toFixed(0)}` },
         { label: "Completed", value: missionTitle }
@@ -202,10 +216,10 @@ export function createCampaignEntry(snapshotCandidate, { autoEnter = false } = {
     title: "Vampire District",
     body: [
       "You were turned several decades ago. Among vampires, you are still little more than a clumsy fledgling with much to learn.",
-      "Your sire has another errand: cross the district, protect the veil and silence a journalist before the story escapes."
+      "Begin the campaign, or enter a non-persistent exploration session to test the district without tutorial or missions."
     ],
     primary: { action: CAMPAIGN_ENTRY_ACTIONS.NEW_GAME, label: "Begin the night" },
-    secondary: [],
+    secondary: [exploreAction()],
     details: [
       { label: "Opening contract", value: openingTitle },
       { label: "Campaign cash", value: `$${cash.toFixed(0)}` }

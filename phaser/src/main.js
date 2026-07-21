@@ -24,10 +24,12 @@ const resolutionKey = savedResolutionKey();
 const resolutionPreset = RESOLUTION_PRESETS[resolutionKey];
 const renderScale = resolutionPreset.renderScale;
 const deviceResolution = Math.min(Math.max(window.devicePixelRatio || 1, 1), 1.25);
+const viewportWidth = Number(WORLD.viewportWidth) || 960;
+const viewportHeight = Number(WORLD.viewportHeight) || 640;
 
 window.NBD_RESOLUTION_PRESET = { key: resolutionKey, ...resolutionPreset };
 document.documentElement.style.setProperty("--game-width", `${resolutionPreset.displayWidth}px`);
-document.documentElement.style.setProperty("--game-height", `${Math.round(resolutionPreset.displayWidth * 2 / 3)}px`);
+document.documentElement.style.setProperty("--game-height", `${Math.round(resolutionPreset.displayWidth * viewportHeight / viewportWidth)}px`);
 
 function bindResolutionSelector() {
   const select = document.getElementById("resolution-select");
@@ -35,11 +37,7 @@ function bindResolutionSelector() {
   select.value = resolutionKey;
   select.addEventListener("change", () => {
     const nextKey = RESOLUTION_PRESETS[select.value] ? select.value : "qhd";
-    try {
-      window.localStorage.setItem(RESOLUTION_STORAGE_KEY, nextKey);
-    } catch {
-      // The selection still applies after a normal reload when storage is available.
-    }
+    try { window.localStorage.setItem(RESOLUTION_STORAGE_KEY, nextKey); } catch {}
     window.location.reload();
   });
 }
@@ -52,9 +50,7 @@ function patchReadableCanvasText() {
     const nextStyle = { ...(style || {}) };
     const fontSize = Number.parseFloat(String(nextStyle.fontSize || "")) || 0;
     if (fontSize && fontSize < 12) nextStyle.fontSize = "12px";
-    if (!nextStyle.fontFamily || nextStyle.fontFamily === "monospace") {
-      nextStyle.fontFamily = "Arial, Helvetica, sans-serif";
-    }
+    if (!nextStyle.fontFamily || nextStyle.fontFamily === "monospace") nextStyle.fontFamily = "Arial, Helvetica, sans-serif";
     nextStyle.fontStyle ||= "700";
     const textObject = originalText.call(this, x, y, value, nextStyle);
     textObject.setResolution?.(3);
@@ -70,26 +66,15 @@ patchReadableCanvasText();
 const config = {
   type: Phaser.AUTO,
   parent: "game-root",
-  width: Math.round(WORLD.width * renderScale),
-  height: Math.round(WORLD.height * renderScale),
+  width: Math.round(viewportWidth * renderScale),
+  height: Math.round(viewportHeight * renderScale),
   resolution: deviceResolution,
   backgroundColor: "#05060b",
   pixelArt: false,
   roundPixels: false,
-  render: {
-    antialias: true,
-    antialiasGL: true,
-    pixelArt: false,
-    roundPixels: false
-  },
-  physics: {
-    default: "arcade",
-    arcade: { debug: false }
-  },
-  scale: {
-    mode: Phaser.Scale.NONE,
-    autoCenter: Phaser.Scale.CENTER_BOTH
-  },
+  render: { antialias: true, antialiasGL: true, pixelArt: false, roundPixels: false },
+  physics: { default: "arcade", arcade: { debug: false } },
+  scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH },
   scene: [BootScene, GameScene, UIScene]
 };
 

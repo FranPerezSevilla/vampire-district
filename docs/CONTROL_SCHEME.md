@@ -4,19 +4,20 @@
 
 Use a modern top-down keyboard-and-mouse layout rather than copying GTA2's keyboard-centric turning and attack controls.
 
-The implemented scheme keeps GTA2-style immediacy and contextual city traversal while using mouse-directed combat, weapon selection, world destruction and a dedicated vampire drain action.
+The implemented scheme keeps GTA2-style immediacy and contextual city traversal while using mouse-directed combat, weapon selection, world destruction, dedicated vampire actions and arcade vehicle controls.
 
 ## Current bindings
 
 | Input | World action |
 |---|---|
-| WASD / arrows | Run at the normal movement speed. |
+| WASD / arrows | Run on foot. While driving: accelerate/brake/reverse and steer. |
 | Hold Shift | Move slowly and generate much quieter footsteps. |
 | Mouse | Aim and face. |
 | Left mouse | Use equipped weapon. During dialogue, advances the bubble instead. |
 | Right mouse | Hold to drain a valid downed, rear-approached or rat target. |
 | Wheel | Previous/next owned weapon. |
-| Space | Execute one contextual traversal route. |
+| Space | On foot: execute one contextual traversal route. In a vehicle: hold the handbrake to initiate or sustain a drift. |
+| Enter | Enter or exit a nearby/current vehicle. |
 | E | Talk, collect, inspect and use non-traversal interactions. |
 | Q | Shadow Dash. |
 | R | Vampiric Whisper. |
@@ -36,7 +37,7 @@ The implemented scheme keeps GTA2-style immediacy and contextual city traversal 
 
 ### Default run
 
-WASD/arrows use the fast movement baseline without another key. Space has no speed effect.
+WASD/arrows use the fast movement baseline without another key. On foot, Space has no speed effect.
 
 ### Quiet movement
 
@@ -48,6 +49,32 @@ Holding Shift applies a lower movement multiplier and substantially reduces foot
 - The last valid direction is retained inside the aim dead zone.
 - Movement direction does not override aim.
 - Attacks store their direction at start.
+
+## Vehicle controls
+
+```text
+Enter      enter or exit
+W          accelerate
+S          brake, then reverse
+A / D      steer
+Space      handbrake / drift
+E          inspect a nearby trunk while on foot
+```
+
+Rules:
+
+- Enter only selects `vehicleEnter` or `vehicleExit`; it cannot trigger jumps, sewers or fire escapes.
+- Space cannot enter or exit a vehicle.
+- Low-speed acceleration receives a smooth launch boost which fades near maximum speed.
+- The vehicle body heading and actual travel heading are modeled independently.
+- Holding Space reduces grip, preserves part of the throttle and increases steering authority, allowing the nose to rotate while lateral momentum continues.
+- Releasing Space restores normal grip and progressively aligns the travel direction with the body.
+- Normal exit requires low speed.
+- A destroyed occupied vehicle stops but does not eject the player automatically.
+- Enter remains available inside a destroyed vehicle and exits through the first safe side/rear point.
+- Building contact advances to the furthest safe point, then tries long-to-short wall slides before treating the car as fully blocked.
+- Fully blocked contact retains a small forward speed rather than producing a reverse bounce.
+- Combat, drain, powers and weapon cycling remain disabled while driving.
 
 ## Primary attack
 
@@ -95,7 +122,7 @@ E does not drain.
 
 ## Traversal rules
 
-Space selects exactly one valid traversal candidate.
+Space selects exactly one valid on-foot traversal candidate.
 
 Candidate requirements:
 
@@ -103,7 +130,8 @@ Candidate requirements:
 - enabled world/mission state;
 - within activation radius;
 - valid destination;
-- no active transition, combat lock, dialogue or drain.
+- no active transition, combat lock, dialogue or drain;
+- player is not occupying a vehicle.
 
 Selection order:
 
@@ -113,13 +141,15 @@ Selection order:
 4. Existing route priority.
 5. Stable candidate ID.
 
-The same selection drives the world `SPACE` marker, HUD prompt and actual execution.
+The same selection drives the world `SPACE` marker, HUD prompt and actual execution. Vehicle prompts use `ENTER` instead.
 
 Examples:
 
 - Space beside a rooftop gap: jump.
 - Space beside a manhole: enter sewer.
 - Space at a fire escape: climb or descend.
+- Space beside a parked car: no vehicle action.
+- Enter beside a parked car: enter it.
 - Space with no route: no action.
 
 ## E interaction rules
@@ -129,6 +159,7 @@ E can:
 - speak to NPCs;
 - collect mission clues;
 - inspect/use mission objects;
+- inspect a nearby vehicle trunk;
 - manipulate evidence or bodies where supported;
 - confirm contextual non-movement interactions.
 
@@ -137,6 +168,7 @@ E does not:
 - run;
 - jump or climb;
 - use sewers;
+- enter or exit vehicles;
 - attack;
 - drain;
 - break streetlights;
@@ -149,6 +181,7 @@ E does not:
 - Pointer-held actions clear on blur and pointer leave.
 - Dialogue clicks never leak into combat or prop damage.
 - Space/Shift/wheel state clears across pause, task reveal and focus loss.
+- Enter remains a UI confirmation key while a modal owns focus; vehicle handling only applies to the enabled world.
 
 ## Accessibility
 
@@ -157,7 +190,7 @@ Implemented:
 - Pause Menu button for `High-contrast aim: On / Off`.
 - The high-contrast reticle uses black outline, white core, larger ring and cross mark rather than weapon colour alone.
 - The preference is stored locally under `nbd-aim-high-contrast`.
-- Hunger exposes progress values; wanted and weapon HUDs expose textual live state.
+- Hunger exposes progress values; wanted, weapon and vehicle HUDs expose textual live state.
 - Mission/Menu expose `aria-expanded`; the aim toggle exposes `aria-pressed`.
 - Visible keyboard focus outlines.
 - Reduced-motion preference removes non-essential HUD/tutorial animation.
@@ -184,7 +217,13 @@ Implemented in code, browser validation still pending unless noted:
 - [ ] E never exposes streetlight destruction.
 - [ ] Right-click cannot front-drain an alert standing target.
 - [ ] Right-click never opens the browser menu over the game.
-- [ ] Space never changes speed or activates Dash.
+- [ ] Space never activates vehicle entry or exit.
+- [ ] Enter never selects an on-foot traversal route.
+- [ ] Space handbrake creates sustained lateral slip while preserving useful speed.
+- [ ] Releasing Space progressively restores grip.
+- [ ] A destroyed occupied vehicle retains its occupant until Enter.
+- [ ] Oblique wall collisions permit long-to-short sliding.
+- [ ] Head-on contact does not force a reverse bounce.
 - [ ] Shift produces slower, quieter movement.
 - [ ] E never selects a traversal route.
 - [ ] Two nearby traversal points resolve deterministically.

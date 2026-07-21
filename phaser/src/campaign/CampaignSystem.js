@@ -1,240 +1,33 @@
-import { CampaignEventBus } from "./CampaignEventBus.js";
-import { cloneCampaignCheckpoint, sanitizeCampaignCheckpoint } from "./CampaignCheckpoint.js";
-import { CampaignStorage } from "./CampaignStorage.js";
-import { cloneCampaignState, createCampaignState, sanitizeCampaignState } from "./CampaignState.js";
-import { MissionRunner } from "./MissionRunner.js";
-import { ReputationSystem } from "./ReputationSystem.js";
-import { WalletSystem } from "./WalletSystem.js";
-import { cleanTheSceneMission } from "./missions/cleanTheScene.js";
-import { silenceTheJournalistMission } from "./missions/silenceTheJournalist.js";
+import { vehicleDefinitions } from "../data/vehicles.js";
+import { CampaignVehicleSystem } from "../vehicles/CampaignVehicleSystem.js";
+import {
+  CampaignSystem as CampaignSystemCore,
+  DEFAULT_DEFINITIONS
+} from "./CampaignSystemCore.js";
 
-const DEFAULT_DEFINITIONS = Object.freeze([
-  silenceTheJournalistMission,
-  cleanTheSceneMission
-]);
-
-function cloneSerializable(value, fallback) {
-  if (value == null) return fallback;
-  return JSON.parse(JSON.stringify(value));
-}
-
-export class CampaignSystem {
-  constructor({
-    storage = globalThis?.localStorage,
-    storageKey,
-    now = () => Date.now(),
-    autoLoad = true,
-    autoSave = true,
-    definitions = DEFAULT_DEFINITIONS
-  } = {}) {
-    this.now = now;
-    this.autoSave = Boolean(autoSave);
-    this.storage = new CampaignStorage({ storage, key: storageKey, now });
-    this.state = autoLoad
-      ? this.storage.load({ fallbackToFresh: true })
-      : createCampaignState({ now: now() });
-    this.definitions = [...definitions];
-    this.buildServices();
-  }
-
+export class CampaignSystem extends CampaignSystemCore {
   buildServices() {
-    this.events?.clear?.();
-    this.events = new CampaignEventBus(this.state, { now: this.now });
-    this.wallet = new WalletSystem(this.state, { events: this.events, now: this.now });
-    this.reputation = new ReputationSystem(this.state, { events: this.events });
-    this.missions = new MissionRunner(this.state, {
-      definitions: this.definitions,
+    super.buildServices();
+    this.vehicles = new CampaignVehicleSystem(this.state, {
       events: this.events,
-      wallet: this.wallet,
-      reputation: this.reputation,
       now: this.now,
-      onDirty: () => this.touch()
+      onDirty: () => {
+        this.touch();
+        if (this.autoSave) this.save();
+      }
     });
-    this.disposeAutosave = this.events.on("*", event => {
-      if (event.type === "campaign:saved" || event.type === "campaign:loaded") return;
-      this.touch();
-      if (this.autoSave) this.save();
-    });
-  }
-
-  touch() {
-    this.state.revision = Math.max(0, Number(this.state.revision) || 0) + 1;
-    this.state.updatedAt = Math.max(0, Math.trunc(Number(this.now()) || 0));
-  }
-
-  save() {
-    return this.storage.save(this.state);
-  }
-
-  reset({ persist = true } = {}) {
-    this.disposeAutosave?.();
-    this.state = createCampaignState({ now: this.now() });
-    this.buildServices();
-    if (persist) this.save();
-    return this.snapshot();
-  }
-
-  export() {
-    return this.storage.export(this.state);
-  }
-
-  import(serialized, { persist = true } = {}) {
-    this.disposeAutosave?.();
-    this.state = this.storage.import(serialized, { persist: false });
-    this.buildServices();
-    if (persist) this.save();
-    this.events.emit("campaign:loaded", {
-      version: this.state.version,
-      revision: this.state.revision
-    }, { record: false });
-    return this.snapshot();
-  }
-
-  replaceState(candidate, { persist = false } = {}) {
-    this.disposeAutosave?.();
-    this.state = sanitizeCampaignState(candidate, { now: this.now() });
-    this.buildServices();
-    if (persist) this.save();
-    return this.snapshot();
-  }
-
-  startMission(id, options = {}) {
-    const missionId = String(id || "");
-    const automaticOpeningStart = options?.metadata?.integration === "direct_mission_authority";
-    if (automaticOpeningStart && globalThis.NBD_CAMPAIGN_ENTRY?.blocksAutomaticOpeningStart) {
-      return this.missions.snapshot(missionId);
-    }
-
-    const previousCheckpoint = this.state.checkpoints.latest;
-    const previousRecord = this.missions.record(missionId);
-    const preserveRetryCheckpoint = Boolean(
-      previousCheckpoint
-      && previousCheckpoint.missionId === missionId
-      && previousRecord?.status === "failed"
-      && previousCheckpoint.mission?.status === "active"
-    );
-
-    // CampaignCheckpointSystem listens to mission:started and clears stale
-    // checkpoints. During a same-mission retry we temporarily remove the safe
-    // checkpoint so that listener cannot discard the rollback point, then put
-    // it back synchronously for the boot-time restore pass.
-    if (preserveRetryCheckpoint) this.state.checkpoints.latest = null;
-
-    let result;
-    try {
-      result = this.missions.start(missionId, options);
-    } catch (error) {
-      if (preserveRetryCheckpoint) this.state.checkpoints.latest = previousCheckpoint;
-      throw error;
-    }
-
-    if (preserveRetryCheckpoint) {
-      this.state.checkpoints.latest = previousCheckpoint;
-      this.touch();
-      if (this.autoSave) this.save();
-      return result;
-    }
-
-    if (this.state.checkpoints.latest) this.clearCheckpoint({ emit: false });
-    return result;
-  }
-
-  handle(type, payload = {}) {
-    return this.missions.handle(type, payload);
-  }
-
-  failActiveMission(reason, metadata = {}) {
-    return this.missions.fail(reason, metadata);
-  }
-
-  checkpoint() {
-    return cloneCampaignCheckpoint(this.state.checkpoints.latest);
-  }
-
-  setCheckpoint(candidate, { emit = true } = {}) {
-    const checkpoint = sanitizeCampaignCheckpoint(candidate);
-    if (!checkpoint) throw new TypeError("Campaign checkpoint is invalid.");
-    this.state.checkpoints.latest = checkpoint;
-    this.state.sequences.checkpoint = Math.max(
-      Number(this.state.sequences.checkpoint) || 0,
-      Number(String(checkpoint.id).match(/(\d+)$/)?.[1]) || 0
-    );
-    if (emit) {
-      this.events.emit("checkpoint:saved", {
-        checkpointId: checkpoint.id,
-        missionId: checkpoint.missionId,
-        objectiveId: checkpoint.objectiveId,
-        kind: checkpoint.kind
-      });
-    } else {
-      this.touch();
-      if (this.autoSave) this.save();
-    }
-    return this.checkpoint();
-  }
-
-  clearCheckpoint({ emit = true } = {}) {
-    const previous = this.state.checkpoints.latest;
-    if (!previous) return false;
-    this.state.checkpoints.latest = null;
-    if (emit) {
-      this.events.emit("checkpoint:cleared", {
-        checkpointId: previous.id,
-        missionId: previous.missionId
-      });
-    } else {
-      this.touch();
-      if (this.autoSave) this.save();
-    }
-    return true;
-  }
-
-  nextCheckpointId() {
-    this.state.sequences.checkpoint = Math.max(0, Number(this.state.sequences.checkpoint) || 0) + 1;
-    return `cp-${String(this.state.sequences.checkpoint).padStart(6, "0")}`;
+    this.vehicles.ensureStartingOwnership(vehicleDefinitions);
   }
 
   snapshot() {
     return {
-      state: cloneCampaignState(this.state),
-      activeMission: this.missions.snapshot(),
-      checkpoint: this.checkpoint(),
-      wallet: {
-        balance: this.wallet.balance(),
-        recent: this.wallet.recent(10)
-      },
-      reputation: {
-        factions: this.reputation.factionSnapshot(),
-        contacts: this.reputation.contactSnapshot()
-      },
-      definitions: this.definitions.map(definition => ({
-        id: definition.id,
-        title: definition.title,
-        description: definition.description,
-        factionId: definition.factionId,
-        contactId: definition.contactId,
-        objectiveCount: definition.objectives.length,
-        replayable: definition.replayable,
-        rewards: cloneSerializable(definition.rewards, {}),
-        metadata: cloneSerializable(definition.metadata, {})
-      }))
+      ...super.snapshot(),
+      vehicles: this.vehicles.snapshot(vehicleDefinitions)
     };
   }
 
   summary() {
-    const active = this.missions.snapshot();
-    const mission = active
-      ? `${active.title} · ${active.currentObjective?.label || active.status}`
-      : "No active campaign mission";
-    const checkpoint = this.state.checkpoints.latest
-      ? ` · checkpoint ${this.state.checkpoints.latest.objectiveId || this.state.checkpoints.latest.kind}`
-      : "";
-    return `Cash $${this.wallet.balance().toFixed(0)} · ${mission}${checkpoint}`;
-  }
-
-  destroy() {
-    this.disposeAutosave?.();
-    this.events?.clear?.();
+    return `${super.summary()} · ${this.vehicles.summary(vehicleDefinitions)}`;
   }
 }
 

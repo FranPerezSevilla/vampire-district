@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
 
 permissions:
   contents: read
@@ -34,15 +37,13 @@ jobs:
           path: unit-test.log
           retention-days: 7
 
-  browser-smoke:
+  browser-boot:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 14
     needs: unit-tests
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Install exact browser dependencies
@@ -51,29 +52,112 @@ jobs:
         run: test -f node_modules/phaser/dist/phaser.min.js
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Run release-candidate browser suite
+      - name: Run boot and presentation loops
         shell: bash
         run: |
           set -o pipefail
-          timeout --signal=INT --kill-after=30s 30m npm run test:browser 2>&1 | tee browser-smoke.log
-      - name: Upload browser smoke log on failure
+          timeout --signal=INT --kill-after=30s 10m npm run test:browser:boot 2>&1 | tee browser-boot.log
+      - name: Upload boot diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: browser-smoke-log
-          path: browser-smoke.log
+          name: browser-boot-diagnostics
+          path: |
+            browser-boot.log
+            playwright-report/
+            test-results/
           retention-days: 7
-      - name: Upload Playwright report on failure
+
+  browser-systems:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install exact browser dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+      - name: Verify pinned local Phaser
+        run: test -f node_modules/phaser/dist/phaser.min.js
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run focused system loops
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout --signal=INT --kill-after=30s 14m npm run test:browser:systems 2>&1 | tee browser-systems.log
+      - name: Upload system diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
-          path: playwright-report/
+          name: browser-systems-diagnostics
+          path: |
+            browser-systems.log
+            playwright-report/
+            test-results/
           retention-days: 7
-      - name: Upload browser traces on failure
+
+  browser-campaign:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install exact browser dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+      - name: Verify pinned local Phaser
+        run: test -f node_modules/phaser/dist/phaser.min.js
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run campaign state loops
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout --signal=INT --kill-after=30s 14m npm run test:browser:campaign 2>&1 | tee browser-campaign.log
+      - name: Upload campaign diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-test-results
-          path: test-results/
+          name: browser-campaign-diagnostics
+          path: |
+            browser-campaign.log
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  browser-golden:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install exact browser dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+      - name: Verify pinned local Phaser
+        run: test -f node_modules/phaser/dist/phaser.min.js
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run complete campaign golden paths
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout --signal=INT --kill-after=30s 18m npm run test:browser:golden 2>&1 | tee browser-golden.log
+      - name: Upload golden-path diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-golden-diagnostics
+          path: |
+            browser-golden.log
+            playwright-report/
+            test-results/
           retention-days: 7

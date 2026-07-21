@@ -1,6 +1,8 @@
 export const WORLD = Object.freeze({
-  width: 960,
-  height: 640,
+  width: 2400,
+  height: 1440,
+  viewportWidth: 960,
+  viewportHeight: 640,
   tile: 16,
   renderScale: 1.35
 });
@@ -47,6 +49,9 @@ export const COLORS = Object.freeze({
   road: 0x25293b,
   roadTrim: 0x171924,
   roadStripe: 0x34384d,
+  sidewalk: 0x3a3941,
+  sidewalkTrim: 0x55525e,
+  crosswalk: 0xd8d2dc,
   sewerBase: 0x06100d,
   sewerTunnel: 0x0b2a22,
   sewerTrim: 0x15483b,

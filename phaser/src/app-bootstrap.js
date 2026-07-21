@@ -1,6 +1,7 @@
+import { BOOT_MODES, bootProfile } from "./boot/BootProfile.js";
+
 const PHASER_VERSION = "3.90.0";
-const BOOT_QUERY = new URLSearchParams(window.location.search);
-window.NBD_RC_TEST_MODE = BOOT_QUERY.has("rcTest");
+window.NBD_RC_TEST_MODE = bootProfile.enableHarness;
 
 const PHASER_SCRIPT_SOURCES = Object.freeze([
   Object.freeze({
@@ -97,13 +98,15 @@ try {
   await import("./tutorial/bootstrap.js");
   await import("./campaign/entry-bootstrap.js");
   await import("./campaign/board-bootstrap.js");
-  if (window.NBD_RC_TEST_MODE) await import("./testing/bootstrap.js");
+  if (bootProfile.enableHarness) await import("./testing/bootstrap.js");
+  if (bootProfile.mode === BOOT_MODES.SCENARIO) await import("./testing/scenario-bootstrap.js");
   window.NBD_APP_READY = true;
   window.dispatchEvent(new CustomEvent("nbd:app-ready", {
     detail: {
       phaser,
       campaign: true,
-      rcTest: window.NBD_RC_TEST_MODE
+      rcTest: bootProfile.rcTest,
+      bootProfile
     }
   }));
 } catch (error) {
