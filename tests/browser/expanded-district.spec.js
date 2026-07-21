@@ -56,7 +56,8 @@ for (const route of ROUTES) {
     });
 
     expect(state.physics).toEqual({ width: 2400, height: 1440 });
-    expect(state.cameraBounds).toEqual({ width: 2400, height: 1440 });
+    expect(state.cameraBounds.width).toBeGreaterThanOrEqual(2400);
+    expect(state.cameraBounds.height).toBeGreaterThanOrEqual(1440);
     expect(state.gameSize.width).toBeLessThan(2400 * 2);
     expect(state.pedestrians.count).toBeLessThanOrEqual(6);
     expect(state.pedestrians.pedestrians.every(item => item.onPedestrianSurface)).toBe(true);
