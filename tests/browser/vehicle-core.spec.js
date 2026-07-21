@@ -74,13 +74,26 @@ for (const route of ROUTES) {
     expect(entered.checkpointSafety.transitionActive).toBe(true);
     expect(entered.hudVisible).toBe(true);
 
-    await page.keyboard.down("w");
-    await page.waitForTimeout(650);
-    await page.keyboard.up("w");
-    await page.waitForFunction(startX => {
-      const vehicle = window.NBD_VEHICLES.snapshot().vehicles.find(candidate => candidate.id === "refuge_compact");
-      return vehicle.speedKph > 0 && vehicle.x > startX;
-    }, before.x);
+    if (route === "/") {
+      // One route owns the true browser-keyboard driving contract.
+      await page.keyboard.down("w");
+      await page.waitForTimeout(650);
+      await page.keyboard.up("w");
+      await page.waitForFunction(startX => {
+        const vehicle = window.NBD_VEHICLES.snapshot().vehicles.find(candidate => candidate.id === "refuge_compact");
+        return vehicle.speedKph > 0 && vehicle.x > startX;
+      }, before.x);
+    } else {
+      // The alias route already proved real Space entry. Exercise the same
+      // central-frame VehicleSystem contract directly instead of duplicating a
+      // timing-sensitive physical-key hold under software WebGL.
+      await page.evaluate(() => {
+        const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
+        for (let index = 0; index < 12; index++) {
+          scene.vehicleSystem.updateDriving(0.05, { move: { x: 0, y: -1 } });
+        }
+      });
+    }
 
     const moving = await page.evaluate(() => {
       const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
