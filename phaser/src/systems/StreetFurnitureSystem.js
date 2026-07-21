@@ -59,6 +59,21 @@ export class StreetFurnitureSystem extends StreetFurnitureSystemCore {
     return body;
   }
 
+  updateReleasedBodyPosition(body) {
+    const state = this.releasedBodyState(body?.id);
+    if (!state || !body) return false;
+    const flags = this.campaign.state.world.flags;
+    flags[bodyFlag(body.id, "x")] = Number(body.x) || 0;
+    flags[bodyFlag(body.id, "y")] = Number(body.y) || 0;
+    this.campaign.events?.emit?.("world:body-exposure-position", {
+      bodyId: body.id,
+      streetPropId: state.streetPropId,
+      x: body.x,
+      y: body.y
+    });
+    return true;
+  }
+
   clearReleasedBody(body) {
     if (!body?.id) return false;
     const flags = this.campaign.state.world.flags;
@@ -99,16 +114,19 @@ export class StreetFurnitureSystem extends StreetFurnitureSystemCore {
       const prop = this.dumpster(state.streetPropId);
       if (!prop?.broken) continue;
       if (!body.dead) this.scene.npcSystem?.markDead?.(body, "killed");
+      const beingDragged = this.scene.evidenceSystem?.draggingBody === body;
       body.inactive = false;
       body.hiddenBody = false;
-      body.dragged = false;
+      body.dragged = beingDragged;
       body.exposedAfterContainment = true;
       body.exposedByStreetPropId = state.streetPropId;
       body.hiddenSpotId = null;
       body.hiddenSpotName = null;
-      body.x = Number.isFinite(state.x) ? state.x : prop.x;
-      body.y = Number.isFinite(state.y) ? state.y : prop.y;
-      body.layer = prop.layer;
+      if (!beingDragged) {
+        body.x = Number.isFinite(state.x) ? state.x : prop.x;
+        body.y = Number.isFinite(state.y) ? state.y : prop.y;
+        body.layer = prop.layer;
+      }
       body.container?.setPosition?.(body.x, body.y).setVisible?.(
         body.layer === this.scene.currentLayer
       );
