@@ -4,47 +4,67 @@ _Last updated: 2026-07-21_
 
 ## Status
 
-**🟡 Runtime, city expansion, regression infrastructure and second driving-feedback pass are automated-green on PR #16. Final manual acceptance and merge remain.**
+**🟡 Vehicle runtime, expanded district, scalable regression infrastructure and the third driving-feel pass are implemented on PR #16. Final Chromium systems validation, manual acceptance and merge remain.**
 
-Milestone 12 combines a first-class arcade vehicle runtime with a 5.625-times-larger street/sewer district, sparse sidewalk-routed population, destructible street furniture and scalable system-loop regression testing.
+Milestone 12 combines a first-class arcade vehicle runtime with a 5.625-times-larger street/sewer district, sparse sidewalk-routed population, destructible street furniture and focused system-loop regression testing.
 
-## 12.1 — Vehicle runtime
-
-Delivered:
-
-- compact, sedan, van and police-cruiser archetypes;
-- Enter for contextual vehicle entry/exit;
-- W/S acceleration, braking and reverse;
-- A/D arcade steering;
-- Space handbrake with stronger deceleration and increased steering authority;
-- higher maximum speed and acceleration across all four archetypes;
-- player occupant state and vehicle-follow camera;
-- speed-sensitive zoom;
-- vehicle health, world collisions and disabled state;
-- occupied wrecks retain the player until an explicit Enter exit;
-- collision resolution first attempts one-axis wall sliding before a small rebound;
-- theft ownership, witness, Exposure and police consequences;
-- bounded per-vehicle trunks that never expose the refuge stash;
-- campaign persistence for ownership, health, position, angle and trunk contents;
-- on-foot checkpoint safety while a vehicle is occupied;
-- vehicle browser diagnostics and focused Chromium coverage.
-
-Current vehicle controls:
+## Vehicle controls
 
 ```text
 Enter      enter / exit
 W          accelerate
 S          brake, then reverse
 A / D      steer
-Space      handbrake
+Space      handbrake / drift
 E          inspect nearby trunk while on foot
 ```
 
 Enter is filtered exclusively to `vehicleEnter` and `vehicleExit`; it cannot activate jumps, fire escapes or sewers. Space no longer enters/exits vehicles.
 
-## 12.2 — Expanded urban playground
+## Driving feel — third manual-feedback pass
 
-### World scale
+### Livelier acceleration
+
+All vehicle archetypes now use a low-speed launch boost in addition to higher acceleration and maximum speed:
+
+```text
+Compact          325 max internal speed · 285 acceleration
+Sedan            352 max internal speed · 268 acceleration
+Van              286 max internal speed · 214 acceleration
+Police cruiser   388 max internal speed · 312 acceleration
+```
+
+The boost is strongest while nearly stopped and fades smoothly as the vehicle approaches top speed. The compact exceeds the previous top speed inside its first second under deterministic simulation.
+
+### Actual arcade drift
+
+The vehicle now stores two separate headings:
+
+```text
+angle         direction the vehicle body/nose faces
+travelAngle   direction the vehicle is actually moving
+```
+
+Holding Space reduces tyre grip, increases steering authority and preserves part of the throttle. The body rotates more quickly than the velocity vector, producing real lateral slip instead of only rotating while braking. Releasing Space restores normal grip and progressively aligns `travelAngle` with the vehicle body.
+
+The HUD exposes `DRIFT N°` while meaningful slip is active. The vehicle snapshot also exposes `travelAngle`, `driftDegrees`, `velocityX` and `velocityY` for regression diagnostics.
+
+### Much softer building contact
+
+A blocked movement no longer discards the whole frame:
+
+1. binary contact search advances the vehicle to the furthest safe point immediately before the obstacle;
+2. the system tries twelve long-to-short slide candidates along each free axis;
+3. it then attempts rotation at the contact point so steering can free the nose;
+4. if fully trapped, the vehicle retains a small forward speed rather than bouncing backwards.
+
+Oblique impacts therefore continue along the wall, while head-on contact is easier to correct with steering or reverse. Collision damage and police/evidence consequences remain active.
+
+### Destroyed vehicles
+
+An occupied wreck remains occupied and immobile. The player exits explicitly with Enter through the first valid side/rear position. The HUD displays `WRECKED · ENTER exit`.
+
+## Expanded urban playground
 
 The playable world grows from:
 
@@ -69,7 +89,7 @@ The original mission quarter keeps its coordinates and is extended east and sout
 - more than thirty building blocks;
 - Glasshouse, Foundry, Canal, Blackwater and Harbor wards.
 
-### Pedestrians and police
+## Pedestrians and police
 
 Baseline street population:
 
@@ -91,33 +111,15 @@ wanted 3  → 7 officers
 
 Reinforcements enter from separated district approaches.
 
+## Systemic street damage
+
 ### Sidewalk streetlights
 
-All authored streetlights stand on sidewalks or crossings.
-
-A vehicle impact:
-
-- blocks at very low speed;
-- breaks the light above the authored threshold;
-- applies hull damage;
-- creates darkness through `PropDamageSystem`;
-- emits noise, Exposure and police consequences;
-- persists through campaign flags and broken-light checkpoint state.
-
-Melee and vehicle damage share the same broken-light authority.
+A sufficiently fast vehicle breaks a light through `PropDamageSystem`, applies hull damage, creates darkness, emits noise/Exposure/police pressure and persists the broken state. Low-speed impacts remain solid.
 
 ### Destructible dumpsters
 
-Dumpsters are first-class street objects and valid body hiding spots.
-
-A hard impact:
-
-- ruptures the dumpster;
-- damages the vehicle;
-- persists the broken state;
-- emits noise, local heat and Exposure.
-
-When the dumpster contains a corpse:
+A hard impact ruptures a dumpster, damages the vehicle, persists the broken state and raises local pressure. When it contains a corpse:
 
 1. the corpse becomes visible in the street;
 2. its hiding-spot identity is cleared;
@@ -129,14 +131,14 @@ The hidden container id is included in static NPC checkpoint state.
 
 ### Vehicle-impact blood
 
-- Non-lethal impacts leave a small pattern.
+- Non-lethal pedestrian impacts leave a small pattern.
 - Lethal impacts leave a longer directional trail.
 - Blood uses the existing evidence lifetime, discovery and checkpoint systems.
 - Lethal vehicle hits still emit the normal mission-neutralization event.
 
 Moving civilian traffic and driver occupants remain Milestone 13.
 
-## 12.3 — Scalable boot and regression profiles
+## Scalable boot and regression profiles
 
 Boot profiles are selected before campaign or scene composition:
 
@@ -174,13 +176,14 @@ Complete narrative golden paths run on `main`, nightly schedule or manual workfl
 ```text
 district data             ← roads, alleys, sidewalks, crossings, wards and props
 PedestrianSystem          ← authored sidewalk/crosswalk civilian loops
-NpcSystem                 ← combat, witnesses and expanded navigation fallback
+NpcSystem                 ← combat, witnesses and navigation fallback
 PoliceSystem              ← sparse baseline and distributed reinforcements
 StreetFurnitureSystem     ← dumpster state and vehicle/prop impacts
 PropDamageSystem          ← streetlight durability and darkness authority
 EvidenceSystem            ← corpse-container identity and blood evidence
 VehicleSystem             ← occupancy and public vehicle facade
-VehicleDriving            ← kinematics, handbrake, collision ordering and wall sliding
+VehicleModel              ← acceleration, grip, body/travel headings and pure kinematics
+VehicleDriving            ← collision ordering, contact search and wall sliding
 GameplayRuntime           ← single frame/input owner
 ```
 
@@ -199,48 +202,38 @@ window.NBD_STREET_PROPS.breakDumpster(id)
 window.NBD_STREET_PROPS.impact(vehicleId, dumpsterId, speed)
 ```
 
-## Automated acceptance
+## Automated boundary
 
 Pure coverage verifies:
 
 - world area and bounded viewport;
 - pedestrian routes and population limits;
-- vehicle speed limits and acceleration;
+- fast launch and maximum speed;
 - normal braking before reverse;
-- Space-style handbrake deceleration and steering authority;
-- one-axis collision slide candidates;
+- sustained handbrake slip and progressive grip recovery;
+- contact interpolation and long/short collision slide candidates;
 - streetlight/dumpster impact thresholds;
 - hidden dumpster identity in checkpoints;
 - ownership, trunks and source ownership.
 
 Chromium coverage verifies:
 
-- both playable routes boot the expanded district;
-- Enter enters and exits vehicles;
-- Space does not own entry/exit and applies the handbrake;
-- cars accelerate and camera zoom responds;
-- an occupied destroyed car retains the player until Enter;
-- vehicle-system, police, pedestrian, street-damage and evidence loops;
-- campaign entry/checkpoint flows remain unaffected.
+- both routes boot the expanded world;
+- Enter vehicle entry/exit;
+- W is bound to vehicle acceleration;
+- fixed real `VehicleSystem` frames reach the authored launch target independently of runner FPS;
+- handbrake drift preserves speed, creates lateral displacement and separates body/travel headings;
+- occupied wreck exit;
+- pedestrian routing and sparse police baseline;
+- light/dumpster/body/blood consequences;
+- campaign entry and checkpoint loops remain valid.
 
-Accepted code head before this documentation-only commit:
+## Acceptance still required
 
-```text
-cbf936450afd7fd504763980e2c7db35e444cadb
-unit-tests        ✅
-browser-boot      ✅
-browser-systems   ✅
-browser-campaign  ✅
-Netlify preview   ✅
-```
-
-## Manual acceptance still required
-
-- confirm Enter entry/exit feels natural;
-- tune the new higher speeds if any archetype feels excessive;
-- test Space handbrake through several corners;
-- collide obliquely with walls and verify recovery feels fluid;
-- destroy an occupied vehicle and confirm Enter exit;
-- recheck urban density, street furniture destruction and evidence pressure.
+- complete the final `browser-systems` job on the current head;
+- manually judge launch, top speed, controllability and drift recovery;
+- scrape walls and corners at several angles;
+- confirm a car can steer free without excessive reverse;
+- tune grip or collision retention only from the manual feel pass.
 
 Traffic, moving civilian drivers, motorized police pursuit, roadblocks and officers exiting vehicles remain Milestone 13.
