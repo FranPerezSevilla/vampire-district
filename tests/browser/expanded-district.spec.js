@@ -101,7 +101,7 @@ test("a moving vehicle breaks a sidewalk streetlight and persists the damage", a
   expect(result.healthAfter).toBeLessThan(result.healthBefore);
 });
 
-test("rupturing a dumpster ejects its hidden corpse and creates a blood trail", async ({ page }) => {
+test("rupturing a dumpster ejects its hidden corpse and survives mission-world synchronization", async ({ page }) => {
   await clearCampaignOnce(page);
   await page.goto("/phaser/?rcTest=1", { waitUntil: "domcontentloaded" });
   await waitForUrbanRuntime(page);
@@ -121,11 +121,19 @@ test("rupturing a dumpster ejects its hidden corpse and creates a blood trail", 
       "dumpsterClubRear",
       70
     );
+
+    // The mission adapter reconstructs world state each frame. A systemic
+    // dumpster rupture must remain authoritative after that synchronization.
+    scene.missionSystem.cleanTheSceneSystem.syncWorld();
+    const released = scene.streetFurnitureSystem.releasedBodyState(body.id);
     return {
       broken,
       bodyHidden: body.hiddenBody,
       bodyVisible: body.container.visible,
       bodySpot: body.hiddenSpotId,
+      exposedAfterContainment: body.exposedAfterContainment,
+      released,
+      persistedProp: scene.campaignSystem.state.world.flags["body.exposed_body.exposedByStreetProp"],
       ruptureBlood: scene.evidenceSystem.bloodStains
         .filter(stain => stain.kind === "dumpster-rupture").length,
       exposureBefore,
@@ -137,6 +145,12 @@ test("rupturing a dumpster ejects its hidden corpse and creates a blood trail", 
   expect(result.bodyHidden).toBe(false);
   expect(result.bodyVisible).toBe(true);
   expect(result.bodySpot).toBeNull();
+  expect(result.exposedAfterContainment).toBe(true);
+  expect(result.released).toMatchObject({
+    bodyId: "exposed_body",
+    streetPropId: "dumpsterClubRear"
+  });
+  expect(result.persistedProp).toBe("dumpsterClubRear");
   expect(result.ruptureBlood).toBeGreaterThanOrEqual(7);
   expect(result.exposureAfter).toBeGreaterThan(result.exposureBefore);
 });
