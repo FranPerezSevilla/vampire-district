@@ -34,11 +34,13 @@ test("vehicle movement resolves breakable street furniture before solid world ge
 test("hidden-body container identity survives checkpoints and can be exposed by a ruptured dumpster", async () => {
   const evidence = await source("phaser/src/systems/EvidenceSystem.js");
   const checkpoint = await source("phaser/src/campaign/CampaignCheckpointSystem.js");
-  const furniture = await source("phaser/src/systems/StreetFurnitureSystem.js");
+  const furnitureFacade = await source("phaser/src/systems/StreetFurnitureSystem.js");
+  const furnitureCore = await source("phaser/src/systems/StreetFurnitureSystemCore.js");
   assert.equal(evidence.includes("hiddenSpotId"), true);
   assert.equal(checkpoint.includes("hiddenSpotId"), true);
-  assert.equal(furniture.includes("releaseHiddenBody"), true);
-  assert.equal(furniture.includes("dumpster-rupture"), true);
+  assert.equal(furnitureFacade.includes("StreetFurnitureSystemCore"), true);
+  assert.equal(furnitureCore.includes("releaseHiddenBody"), true);
+  assert.equal(furnitureCore.includes("dumpster-rupture"), true);
 });
 
 test("expanded police baseline is sparse and reinforcements use separated district approaches", async () => {
