@@ -13,7 +13,7 @@ test("expanded district composes first-class pedestrian and street-furniture sys
   assert.equal(runtime.includes(".prototype"), false);
 });
 
-test("GameScene separates world size from viewport and renders sidewalks before buildings", async () => {
+test("GameScene separates world size from viewport and renders the expanded city by sectors", async () => {
   const main = await source("phaser/src/main.js");
   const scene = await source("phaser/src/scenes/GameScene.js");
   assert.equal(main.includes("WORLD.viewportWidth"), true);
@@ -21,6 +21,11 @@ test("GameScene separates world size from viewport and renders sidewalks before 
   assert.equal(main.includes("WORLD.width * renderScale"), false);
   assert.ok(scene.indexOf("this.drawSidewalkNetwork()") < scene.indexOf("for (const item of buildings)"));
   assert.equal(scene.includes("this.drawCrosswalkNetwork()"), true);
+  assert.equal(scene.includes("URBAN_RENDER_SECTOR_WIDTH"), true);
+  assert.equal(scene.includes("calculateUrbanRenderBounds"), true);
+  assert.equal(scene.includes("clippedRect"), true);
+  assert.equal(scene.includes("LIGHT_GLOW_LIMIT"), true);
+  assert.equal(scene.includes("fillRect(0, 0, WORLD.width, WORLD.height)"), false);
 });
 
 test("vehicle movement resolves breakable street furniture before solid world geometry", async () => {
@@ -39,8 +44,10 @@ test("hidden-body container identity survives checkpoints and can be exposed by 
   const furnitureCore = await source("phaser/src/systems/StreetFurnitureSystemCore.js");
   assert.equal(evidence.includes("hiddenSpotId"), true);
   assert.equal(evidence.includes("clearReleasedBody"), true);
+  assert.equal(evidence.includes("updateReleasedBodyPosition"), true);
   assert.equal(checkpoint.includes("hiddenSpotId"), true);
   assert.equal(cleanup.includes("restoreReleasedBodies"), true);
+  assert.equal(cleanup.includes("wasDragging"), true);
   assert.equal(furnitureFacade.includes("StreetFurnitureSystemCore"), true);
   assert.equal(furnitureFacade.includes("exposedByStreetProp"), true);
   assert.equal(furnitureCore.includes("releaseHiddenBody"), true);
