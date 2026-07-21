@@ -1,7 +1,7 @@
 import { CAMERA, WORLD } from "../data/balance.js";
 import { buildings } from "../data/district.js";
 import { RawAudio } from "../systems/RawAudioSystem.js";
-import { stepVehicleKinematics, vehicleCameraZoom, vehicleFootprintPoints, vehicleHealthPercent, vehicleImpactDamage } from "./VehicleModel.js";
+import { stepVehicleKinematics, vehicleCameraZoom, vehicleFootprintPoints, vehicleHealthPercent, vehicleImpactDamage, vehicleSlideCandidates } from "./VehicleModel.js";
 import { collideVehicleWithPedestrians } from "./VehicleConsequences.js";
 
 const VEHICLE_COLLISION_RADIUS_PADDING = 3;
@@ -15,12 +15,42 @@ function applyKinematicState(vehicle, next) {
   vehicle.angle = next.angle;
   vehicle.speed = next.speed;
   vehicle.parked = next.parked;
+  vehicle.handbrake = Boolean(next.handbrake);
   return vehicle;
+}
+
+function slideAlongWorld(system, vehicle, next) {
+  const candidates = vehicleSlideCandidates(vehicle, next)
+    .filter(candidate => system.canOccupy(vehicle, candidate.x, candidate.y, candidate.angle))
+    .sort((left, right) => {
+      const leftTravel = Phaser.Math.Distance.Between(vehicle.x, vehicle.y, left.x, left.y);
+      const rightTravel = Phaser.Math.Distance.Between(vehicle.x, vehicle.y, right.x, right.y);
+      return rightTravel - leftTravel;
+    });
+  if (!candidates.length) return false;
+  applyKinematicState(vehicle, candidates[0]);
+  return true;
 }
 
 export function filterVehicleInputFrame(system, frame) {
   if (!system.isDriving()) return frame;
-  return { ...frame, quietHeld: false, sprintHeld: false, primaryHeld: false, primaryPressed: false, drainHeld: false, drainPressed: false, interactPressed: false, weaponStep: 0, dashPressed: false, whisperPressed: false, bloodSensePressed: false, vehicleActive: true };
+  return {
+    ...frame,
+    quietHeld: false,
+    sprintHeld: false,
+    primaryHeld: false,
+    primaryPressed: false,
+    drainHeld: false,
+    drainPressed: false,
+    interactPressed: false,
+    traversePressed: Boolean(frame.vehicleActionPressed),
+    handbrakeHeld: Boolean(frame.handbrakeHeld),
+    weaponStep: 0,
+    dashPressed: false,
+    whisperPressed: false,
+    bloodSensePressed: false,
+    vehicleActive: true
+  };
 }
 
 export function canVehicleOccupy(system, vehicle, x, y, angle) {
@@ -41,7 +71,7 @@ export function canVehicleOccupy(system, vehicle, x, y, angle) {
 
 export function handleVehicleWorldCollision(system, vehicle, impactSpeed) {
   const impact = Math.abs(Number(impactSpeed) || 0);
-  vehicle.speed = -Math.sign(impactSpeed || vehicle.speed || 1) * Math.min(18, impact * 0.16);
+  vehicle.speed = -Math.sign(impactSpeed || vehicle.speed || 1) * Math.min(8, impact * 0.08);
   const damage = vehicleImpactDamage(impact, { threshold: 28, scale: 0.16 });
   if (damage > 0) system.damageVehicle(vehicle.id, damage, { reason: "collision", persist: false });
   if (impact >= 36 && system.crashCooldown <= 0) {
@@ -61,18 +91,34 @@ export function updateVehicleDriving(system, dt, frame) {
     const next = remaining - dt;
     if (next <= 0) system.pedestrianCooldowns.delete(npcId); else system.pedestrianCooldowns.set(npcId, next);
   }
+
+  system.handbrakeActive = Boolean(frame?.handbrakeHeld && !vehicle.disabled);
   const next = stepVehicleKinematics(vehicle, frame, dt, vehicle.archetype);
   const furniture = system.scene.streetFurnitureSystem?.resolveVehicleMove?.(vehicle, next) || { blocked: false, impacts: [] };
-  if (vehicle.disabled) { system.updateHud(); system.publish(); return false; }
-  if (furniture.blocked) handleVehicleWorldCollision(system, vehicle, next.speed);
-  else if (canVehicleOccupy(system, vehicle, next.x, next.y, next.angle)) applyKinematicState(vehicle, next);
-  else handleVehicleWorldCollision(system, vehicle, next.speed);
+  if (vehicle.disabled) {
+    vehicle.handbrake = false;
+    system.updateHud();
+    system.publish();
+    return false;
+  }
+
+  if (furniture.blocked) {
+    handleVehicleWorldCollision(system, vehicle, next.speed);
+  } else if (canVehicleOccupy(system, vehicle, next.x, next.y, next.angle)) {
+    applyKinematicState(vehicle, next);
+  } else if (!slideAlongWorld(system, vehicle, next)) {
+    handleVehicleWorldCollision(system, vehicle, next.speed);
+  }
+
   vehicle.container.setPosition(vehicle.x, vehicle.y).setRotation(vehicle.angle);
   vehicle.visual.label.setRotation(-vehicle.angle);
   system.scene.player.setPosition(vehicle.x, vehicle.y);
   collideVehicleWithPedestrians(system, vehicle);
   system.persistTimer += dt;
-  if (system.persistTimer >= PERSIST_INTERVAL_SECONDS) { system.persistTimer %= PERSIST_INTERVAL_SECONDS; system.persistVehicle(vehicle, { emit: false }); }
+  if (system.persistTimer >= PERSIST_INTERVAL_SECONDS) {
+    system.persistTimer %= PERSIST_INTERVAL_SECONDS;
+    system.persistVehicle(vehicle, { emit: false });
+  }
   system.updateHud();
   system.publish();
   return true;
