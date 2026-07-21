@@ -29,6 +29,14 @@ jobs:
         run: |
           set -o pipefail
           npm test 2>&1 | tee unit-test.log
+      - name: Compile city analysis artifacts
+        run: npm run city:compile -- --output-dir=city-compiler-output
+      - name: Upload current-city compiler report
+        uses: actions/upload-artifact@v4
+        with:
+          name: city-compiler-current-city
+          path: city-compiler-output/
+          retention-days: 14
       - name: Upload unit test log on failure
         if: failure()
         uses: actions/upload-artifact@v4
