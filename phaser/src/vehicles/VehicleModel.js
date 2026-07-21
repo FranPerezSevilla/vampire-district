@@ -75,16 +75,16 @@ export function stepVehicleKinematics(state, frame, dt, archetype) {
   const drag = Math.max(0, Number(archetype?.drag) || acceleration * 0.35);
   const steerRate = Math.max(0, Number(archetype?.steerRate) || 0);
   const launchBoost = Math.max(0, Number(archetype?.launchBoost) || 0);
-  const handbrakeBrake = Math.max(0, Number(archetype?.handbrakeBrake) || brake * 0.55);
-  const handbrakeThrottleFactor = clamp(Number(archetype?.handbrakeThrottleFactor) || 0.45, 0, 1);
-  const handbrakeSteer = Math.max(1, Number(archetype?.handbrakeSteerMultiplier) || 2.5);
-  const handbrakeDriftKick = Math.max(0, Number(archetype?.handbrakeDriftKick) || 2);
+  const handbrakeBrake = Math.max(0, Number(archetype?.handbrakeBrake) || brake * 0.65);
+  const handbrakeThrottleFactor = clamp(Number(archetype?.handbrakeThrottleFactor) || 0.2, 0, 1);
+  const handbrakeSteer = Math.max(1, Number(archetype?.handbrakeSteerMultiplier) || 1.3);
+  const handbrakeDriftKick = Math.max(0, Number(archetype?.handbrakeDriftKick) || 0.55);
   const normalGrip = Math.max(0.1, Number(archetype?.grip) || 8);
-  const handbrakeGrip = Math.max(0.05, Number(archetype?.handbrakeGrip) || 0.3);
+  const handbrakeGrip = Math.max(0.1, Number(archetype?.handbrakeGrip) || 1.4);
 
   let speed = Number(state?.speed) || 0;
   const incomingRatio = clamp(Math.abs(speed) / maxSpeed, 0, 1);
-  const launchMultiplier = 1 + launchBoost * Math.pow(1 - incomingRatio, 2.25);
+  const launchMultiplier = 1 + launchBoost * Math.pow(1 - incomingRatio, 2.1);
 
   if (state?.disabled) {
     speed = approach(speed, 0, brake * seconds);
@@ -112,24 +112,26 @@ export function stepVehicleKinematics(state, frame, dt, archetype) {
   const speedRatio = clamp(Math.abs(speed) / maxSpeed, 0, 1);
   let angle = normalizeAngle(state?.angle);
   const steeringIntent = Math.abs(input.steer);
-  const contactAuthority = Math.abs(input.throttle) * 0.18;
+  const contactAuthority = Math.abs(input.throttle) * 0.16;
   const movementAuthority = Math.max(speedRatio, contactAuthority);
   if (!state?.disabled && steeringIntent > 0.01 && (Math.abs(speed) > 0.25 || Math.abs(input.throttle) > 0.05)) {
     const reverseSign = speed < 0 ? -1 : 1;
     const steeringAuthority = (0.20 + Math.sqrt(movementAuthority) * 0.80) * (input.handbrake ? handbrakeSteer : 1);
-    angle = normalizeAngle(angle + input.steer * steerRate * steeringAuthority * reverseSign * seconds);
+    const requestedTurnRate = input.steer * steerRate * steeringAuthority * reverseSign;
+    const maximumTurnRate = input.handbrake ? 1.55 : 1.35;
+    angle = normalizeAngle(angle + clamp(requestedTurnRate, -maximumTurnRate, maximumTurnRate) * seconds);
   }
 
   let travelAngle = normalizeAngle(Number.isFinite(Number(state?.travelAngle)) ? state.travelAngle : state?.angle);
   if (Math.abs(speed) < 1) {
     travelAngle = rotateTowardAngle(travelAngle, angle, 14 * seconds);
   } else if (input.handbrake) {
-    const driftRatio = clamp((speedRatio - 0.08) / 0.92, 0, 1);
+    const driftRatio = clamp((speedRatio - 0.12) / 0.88, 0, 1);
     const kick = input.steer * handbrakeDriftKick * driftRatio * seconds;
     travelAngle = normalizeAngle(travelAngle - kick);
-    travelAngle = rotateTowardAngle(travelAngle, angle, handbrakeGrip * (0.34 + speedRatio * 0.16) * seconds);
+    travelAngle = rotateTowardAngle(travelAngle, angle, handbrakeGrip * (0.52 + speedRatio * 0.20) * seconds);
   } else {
-    const gripScale = 1.22 - speedRatio * 0.36;
+    const gripScale = 1.22 - speedRatio * 0.34;
     travelAngle = rotateTowardAngle(travelAngle, angle, normalGrip * gripScale * seconds);
   }
 
