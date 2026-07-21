@@ -20,17 +20,34 @@ export function normalizeAngle(angle) {
   return value;
 }
 
+export function angleDelta(from, to) {
+  return normalizeAngle((Number(to) || 0) - (Number(from) || 0));
+}
+
+export function rotateTowardAngle(current, target, maximumDelta) {
+  const delta = angleDelta(current, target);
+  const step = Math.max(0, Number(maximumDelta) || 0);
+  if (Math.abs(delta) <= step) return normalizeAngle(target);
+  return normalizeAngle((Number(current) || 0) + Math.sign(delta) * step);
+}
+
 export function createVehicleState(definition, archetype, condition = {}) {
   if (!definition?.id || !archetype?.id) {
     throw new TypeError("createVehicleState requires a vehicle definition and archetype.");
   }
   const maxHealth = Math.max(1, Number(archetype.maxHealth) || 1);
+  const angle = normalizeAngle(Number.isFinite(Number(condition.angle)) ? Number(condition.angle) : definition.angle);
+  const travelAngle = normalizeAngle(Number.isFinite(Number(condition.travelAngle)) ? Number(condition.travelAngle) : angle);
   return {
     id: String(definition.id),
     archetypeId: String(archetype.id),
     x: Number.isFinite(Number(condition.x)) ? Number(condition.x) : Number(definition.x) || 0,
     y: Number.isFinite(Number(condition.y)) ? Number(condition.y) : Number(definition.y) || 0,
-    angle: normalizeAngle(Number.isFinite(Number(condition.angle)) ? Number(condition.angle) : definition.angle),
+    angle,
+    travelAngle,
+    driftAngle: angleDelta(travelAngle, angle),
+    velocityX: 0,
+    velocityY: 0,
     speed: 0,
     health: clamp(Number.isFinite(Number(condition.health)) ? Number(condition.health) : maxHealth, 0, maxHealth),
     disabled: Boolean(condition.disabled) || Number(condition.health) <= 0,
@@ -57,18 +74,30 @@ export function stepVehicleKinematics(state, frame, dt, archetype) {
   const brake = Math.max(0, Number(archetype?.brake) || acceleration * 1.5);
   const drag = Math.max(0, Number(archetype?.drag) || acceleration * 0.35);
   const steerRate = Math.max(0, Number(archetype?.steerRate) || 0);
-  const handbrakeBrake = Math.max(brake, Number(archetype?.handbrakeBrake) || brake * 1.35);
-  const handbrakeSteer = Math.max(1, Number(archetype?.handbrakeSteerMultiplier) || 1.65);
+  const launchBoost = Math.max(0, Number(archetype?.launchBoost) || 0);
+  const handbrakeBrake = Math.max(0, Number(archetype?.handbrakeBrake) || brake * 0.75);
+  const handbrakeThrottleFactor = clamp(Number(archetype?.handbrakeThrottleFactor) || 0.3, 0, 1);
+  const handbrakeSteer = Math.max(1, Number(archetype?.handbrakeSteerMultiplier) || 2);
+  const normalGrip = Math.max(0.1, Number(archetype?.grip) || 8);
+  const handbrakeGrip = Math.max(0.1, Number(archetype?.handbrakeGrip) || 1);
 
   let speed = Number(state?.speed) || 0;
+  const incomingRatio = clamp(Math.abs(speed) / maxSpeed, 0, 1);
+  const launchMultiplier = 1 + launchBoost * Math.pow(1 - incomingRatio, 2);
+
   if (state?.disabled) {
     speed = approach(speed, 0, brake * seconds);
   } else if (input.handbrake) {
+    if (input.throttle > 0 && speed >= 0) {
+      speed += acceleration * launchMultiplier * handbrakeThrottleFactor * input.throttle * seconds;
+    } else if (input.throttle < 0 && speed <= 0) {
+      speed -= reverseAcceleration * handbrakeThrottleFactor * Math.abs(input.throttle) * seconds;
+    }
     speed = approach(speed, 0, handbrakeBrake * seconds);
   } else if (input.throttle > 0) {
     speed = speed < 0
       ? approach(speed, 0, brake * input.throttle * seconds)
-      : speed + acceleration * input.throttle * seconds;
+      : speed + acceleration * launchMultiplier * input.throttle * seconds;
   } else if (input.throttle < 0) {
     const pressure = Math.abs(input.throttle);
     speed = speed > 0
@@ -81,29 +110,86 @@ export function stepVehicleKinematics(state, frame, dt, archetype) {
 
   const speedRatio = clamp(Math.abs(speed) / maxSpeed, 0, 1);
   let angle = normalizeAngle(state?.angle);
-  if (!state?.disabled && Math.abs(speed) > 1 && Math.abs(input.steer) > 0.01) {
+  const steeringIntent = Math.abs(input.steer);
+  const contactAuthority = Math.abs(input.throttle) * 0.14;
+  const movementAuthority = Math.max(speedRatio, contactAuthority);
+  if (!state?.disabled && steeringIntent > 0.01 && (Math.abs(speed) > 0.35 || Math.abs(input.throttle) > 0.05)) {
     const reverseSign = speed < 0 ? -1 : 1;
-    const steeringAuthority = (0.22 + speedRatio * 0.78) * (input.handbrake ? handbrakeSteer : 1);
+    const steeringAuthority = (0.18 + Math.sqrt(movementAuthority) * 0.82) * (input.handbrake ? handbrakeSteer : 1);
     angle = normalizeAngle(angle + input.steer * steerRate * steeringAuthority * reverseSign * seconds);
   }
 
+  let travelAngle = normalizeAngle(Number.isFinite(Number(state?.travelAngle)) ? state.travelAngle : state?.angle);
+  if (Math.abs(speed) < 1.2) {
+    travelAngle = rotateTowardAngle(travelAngle, angle, 12 * seconds);
+  } else {
+    const grip = input.handbrake ? handbrakeGrip : normalGrip;
+    const gripScale = input.handbrake
+      ? 0.62 + speedRatio * 0.18
+      : 1.18 - speedRatio * 0.32;
+    travelAngle = rotateTowardAngle(travelAngle, angle, grip * gripScale * seconds);
+  }
+
+  const driftAngle = angleDelta(travelAngle, angle);
+  const velocityX = Math.cos(travelAngle) * speed;
+  const velocityY = Math.sin(travelAngle) * speed;
+
   return {
     ...state,
-    x: (Number(state?.x) || 0) + Math.cos(angle) * speed * seconds,
-    y: (Number(state?.y) || 0) + Math.sin(angle) * speed * seconds,
+    x: (Number(state?.x) || 0) + velocityX * seconds,
+    y: (Number(state?.y) || 0) + velocityY * seconds,
     angle,
+    travelAngle,
+    driftAngle,
+    velocityX,
+    velocityY,
     speed,
     parked: Math.abs(speed) < 0.5,
     handbrake: input.handbrake
   };
 }
 
-export function vehicleSlideCandidates(state, next, speedRetention = 0.72) {
-  const retainedSpeed = (Number(next?.speed) || 0) * clamp(speedRetention, 0, 1);
-  return [
-    { ...next, x: Number(next?.x) || 0, y: Number(state?.y) || 0, speed: retainedSpeed },
-    { ...next, x: Number(state?.x) || 0, y: Number(next?.y) || 0, speed: retainedSpeed }
-  ];
+export function interpolateVehicleState(state, next, progress) {
+  const t = clamp(progress, 0, 1);
+  const angle = normalizeAngle((Number(state?.angle) || 0) + angleDelta(state?.angle, next?.angle) * t);
+  const travelAngle = normalizeAngle((Number(state?.travelAngle) || Number(state?.angle) || 0) + angleDelta(state?.travelAngle ?? state?.angle, next?.travelAngle ?? next?.angle) * t);
+  const speed = (Number(state?.speed) || 0) + ((Number(next?.speed) || 0) - (Number(state?.speed) || 0)) * t;
+  return {
+    ...next,
+    x: (Number(state?.x) || 0) + ((Number(next?.x) || 0) - (Number(state?.x) || 0)) * t,
+    y: (Number(state?.y) || 0) + ((Number(next?.y) || 0) - (Number(state?.y) || 0)) * t,
+    angle,
+    travelAngle,
+    driftAngle: angleDelta(travelAngle, angle),
+    velocityX: Math.cos(travelAngle) * speed,
+    velocityY: Math.sin(travelAngle) * speed,
+    speed
+  };
+}
+
+export function vehicleSlideCandidates(state, next, speedRetention = 0.92) {
+  const deltaX = (Number(next?.x) || 0) - (Number(state?.x) || 0);
+  const deltaY = (Number(next?.y) || 0) - (Number(state?.y) || 0);
+  const fractions = [1, 0.82, 0.64, 0.48, 0.34, 0.22];
+  const candidates = [];
+  for (let index = 0; index < fractions.length; index++) {
+    const fraction = fractions[index];
+    const retention = clamp(speedRetention - index * 0.035, 0.68, 1);
+    const speed = (Number(next?.speed) || 0) * retention;
+    candidates.push({
+      ...next,
+      x: (Number(state?.x) || 0) + deltaX * fraction,
+      y: Number(state?.y) || 0,
+      speed
+    });
+    candidates.push({
+      ...next,
+      x: Number(state?.x) || 0,
+      y: (Number(state?.y) || 0) + deltaY * fraction,
+      speed
+    });
+  }
+  return candidates;
 }
 
 export function vehicleSpeedKph(speed) {
