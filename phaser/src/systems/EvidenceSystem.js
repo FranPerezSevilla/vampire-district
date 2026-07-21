@@ -57,6 +57,7 @@ export class EvidenceSystem extends EvidenceSystemCore {
     if (body?.hiddenBody) {
       body.hiddenSpotId = String(spot?.streetPropId || spot?.id || "");
       body.hiddenSpotName = String(spot?.name || "");
+      this.scene.streetFurnitureSystem?.clearReleasedBody?.(body);
     }
     return result;
   }
