@@ -16,6 +16,7 @@ export class EvidenceSystem extends EvidenceSystemCore {
     if (body) {
       body.hiddenSpotId = null;
       body.hiddenSpotName = null;
+      this.scene.streetFurnitureSystem?.updateReleasedBodyPosition?.(body);
     }
     return result;
   }
