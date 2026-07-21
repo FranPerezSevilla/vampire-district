@@ -3,6 +3,7 @@ import { buildings } from "../data/district.js";
 import { RawAudio } from "../systems/RawAudioSystem.js";
 import {
   interpolateVehicleState,
+  normalizeAngle,
   rotateTowardAngle,
   stepVehicleKinematics,
   vehicleCameraZoom,
@@ -13,9 +14,9 @@ import {
 } from "./VehicleModel.js";
 import { collideVehicleWithPedestrians } from "./VehicleConsequences.js";
 
-const VEHICLE_COLLISION_RADIUS_PADDING = 3;
+const VEHICLE_COLLISION_RADIUS_PADDING = 1;
 const PERSIST_INTERVAL_SECONDS = 1.8;
-const CONTACT_SEARCH_STEPS = 8;
+const CONTACT_SEARCH_STEPS = 10;
 
 function pointInRect(point, rect) {
   return point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h;
@@ -51,13 +52,36 @@ function furthestSafeContact(system, vehicle, next) {
   }
   if (!best) return null;
   const travel = Phaser.Math.Distance.Between(vehicle.x, vehicle.y, best.x, best.y);
-  return travel > 0.08 ? best : null;
+  return travel > 0.025 ? best : null;
+}
+
+function escapeNudges(system, vehicle, next) {
+  const forward = { x: Math.cos(vehicle.angle), y: Math.sin(vehicle.angle) };
+  const side = { x: -forward.y, y: forward.x };
+  const direction = Math.sign(next.speed || vehicle.speed || 1);
+  const candidates = [];
+  for (const sideSign of [-1, 1]) {
+    for (const sideDistance of [1.5, 3, 5, 7, 10]) {
+      for (const rearDistance of [0, 1.5, 3.5, 6]) {
+        const angle = normalizeAngle(next.angle + sideSign * 0.05);
+        candidates.push({
+          ...next,
+          x: vehicle.x + side.x * sideSign * sideDistance - forward.x * direction * rearDistance,
+          y: vehicle.y + side.y * sideSign * sideDistance - forward.y * direction * rearDistance,
+          angle,
+          travelAngle: rotateTowardAngle(vehicle.travelAngle ?? vehicle.angle, angle, 0.08),
+          speed: (Number(next.speed) || 0) * 0.84
+        });
+      }
+    }
+  }
+  return candidates.find(candidate => system.canOccupy(vehicle, candidate.x, candidate.y, candidate.angle)) || null;
 }
 
 function slideAlongWorld(system, vehicle, next) {
   const contact = furthestSafeContact(system, vehicle, next);
   const origin = contact || vehicle;
-  const candidates = vehicleSlideCandidates(origin, next, 0.96)
+  const candidates = vehicleSlideCandidates(origin, next, 0.985)
     .filter(candidate => system.canOccupy(vehicle, candidate.x, candidate.y, candidate.angle))
     .sort((left, right) => {
       const leftTravel = Phaser.Math.Distance.Between(vehicle.x, vehicle.y, left.x, left.y);
@@ -66,7 +90,19 @@ function slideAlongWorld(system, vehicle, next) {
     });
 
   if (candidates.length) {
-    applyKinematicState(vehicle, candidates[0]);
+    const chosen = candidates[0];
+    chosen.travelAngle = rotateTowardAngle(chosen.travelAngle ?? chosen.angle, chosen.angle, 0.06);
+    chosen.velocityX = Math.cos(chosen.travelAngle) * chosen.speed;
+    chosen.velocityY = Math.sin(chosen.travelAngle) * chosen.speed;
+    applyKinematicState(vehicle, chosen);
+    return true;
+  }
+
+  const escape = escapeNudges(system, vehicle, next);
+  if (escape) {
+    escape.velocityX = Math.cos(escape.travelAngle) * escape.speed;
+    escape.velocityY = Math.sin(escape.travelAngle) * escape.speed;
+    applyKinematicState(vehicle, escape);
     return true;
   }
 
@@ -75,15 +111,17 @@ function slideAlongWorld(system, vehicle, next) {
   const rotationOnly = {
     ...contact,
     angle: next.angle,
-    travelAngle: rotateTowardAngle(contact.travelAngle ?? contact.angle, next.angle, 0.16),
-    speed: (Number(next.speed) || 0) * 0.58
+    travelAngle: rotateTowardAngle(contact.travelAngle ?? contact.angle, next.angle, 0.10),
+    speed: (Number(next.speed) || 0) * 0.76
   };
   if (system.canOccupy(vehicle, rotationOnly.x, rotationOnly.y, rotationOnly.angle)) {
+    rotationOnly.velocityX = Math.cos(rotationOnly.travelAngle) * rotationOnly.speed;
+    rotationOnly.velocityY = Math.sin(rotationOnly.travelAngle) * rotationOnly.speed;
     applyKinematicState(vehicle, rotationOnly);
     return true;
   }
 
-  contact.speed = (Number(next.speed) || 0) * 0.42;
+  contact.speed = (Number(next.speed) || 0) * 0.64;
   contact.velocityX = Math.cos(contact.travelAngle ?? contact.angle) * contact.speed;
   contact.velocityY = Math.sin(contact.travelAngle ?? contact.angle) * contact.speed;
   applyKinematicState(vehicle, contact);
@@ -118,10 +156,10 @@ export function canVehicleOccupy(system, vehicle, x, y, angle) {
     if (point.x < 5 || point.y < 5 || point.x > WORLD.width - 5 || point.y > WORLD.height - 5) return false;
     if (buildings.some(building => pointInRect(point, building))) return false;
   }
-  const ownRadius = Math.max(vehicle.archetype.width, vehicle.archetype.height) * 0.46;
+  const ownRadius = Math.max(vehicle.archetype.width, vehicle.archetype.height) * 0.43;
   for (const other of system.vehicles) {
     if (other === vehicle) continue;
-    const otherRadius = Math.max(other.archetype.width, other.archetype.height) * 0.46;
+    const otherRadius = Math.max(other.archetype.width, other.archetype.height) * 0.43;
     if (Phaser.Math.Distance.Between(x, y, other.x, other.y) < ownRadius + otherRadius) return false;
   }
   return true;
@@ -130,19 +168,19 @@ export function canVehicleOccupy(system, vehicle, x, y, angle) {
 export function handleVehicleWorldCollision(system, vehicle, impactSpeed) {
   const impact = Math.abs(Number(impactSpeed) || 0);
   const direction = Math.sign(vehicle.speed || impactSpeed || 1);
-  vehicle.speed = direction * Math.min(10, impact * 0.07);
-  vehicle.travelAngle = rotateTowardAngle(vehicle.travelAngle ?? vehicle.angle, vehicle.angle, 0.22);
+  vehicle.speed = direction * Math.min(5, impact * 0.025);
+  vehicle.travelAngle = rotateTowardAngle(vehicle.travelAngle ?? vehicle.angle, vehicle.angle, 0.12);
   vehicle.driftAngle = 0;
   vehicle.velocityX = Math.cos(vehicle.travelAngle) * vehicle.speed;
   vehicle.velocityY = Math.sin(vehicle.travelAngle) * vehicle.speed;
 
-  const damage = vehicleImpactDamage(impact, { threshold: 32, scale: 0.13 });
+  const damage = vehicleImpactDamage(impact, { threshold: 36, scale: 0.11 });
   if (damage > 0) system.damageVehicle(vehicle.id, damage, { reason: "collision", persist: false });
-  if (impact >= 40 && system.crashCooldown <= 0) {
+  if (impact >= 44 && system.crashCooldown <= 0) {
     system.crashCooldown = 0.48;
     RawAudio.play("bodyDrop", { cooldown: 0.4 });
-    system.scene.exposureSystem?.add?.(Math.min(7, Math.max(2, Math.ceil(impact / 42))), `${vehicle.name} crashes into the streetscape. The impact carries through the district.`);
-    system.scene.policeSystem?.addHeat?.(vehicle.x, vehicle.y, Math.min(20, impact * 0.10), "vehicle crash");
+    system.scene.exposureSystem?.add?.(Math.min(7, Math.max(2, Math.ceil(impact / 46))), `${vehicle.name} crashes into the streetscape. The impact carries through the district.`);
+    system.scene.policeSystem?.addHeat?.(vehicle.x, vehicle.y, Math.min(20, impact * 0.09), "vehicle crash");
     system.scene.lastActionText = `${vehicle.name} collision · hull ${vehicleHealthPercent(vehicle.health, vehicle.archetype.maxHealth)}%.`;
   }
 }
@@ -168,7 +206,7 @@ export function updateVehicleDriving(system, dt, frame) {
   }
 
   if (furniture.blocked) {
-    handleVehicleWorldCollision(system, vehicle, next.speed);
+    if (!slideAlongWorld(system, vehicle, next)) handleVehicleWorldCollision(system, vehicle, next.speed);
   } else if (canVehicleOccupy(system, vehicle, next.x, next.y, next.angle)) {
     applyKinematicState(vehicle, next);
   } else if (!slideAlongWorld(system, vehicle, next)) {
@@ -196,6 +234,6 @@ export function updateVehicleCamera(system) {
   const baseZoom = CAMERA.streetZoom * renderScale;
   const targetZoom = vehicleCameraZoom(baseZoom, vehicle.speed, vehicle.archetype);
   const camera = system.scene.cameras.main;
-  camera.setZoom(Phaser.Math.Linear(camera.zoom, targetZoom, 0.09));
+  camera.setZoom(Phaser.Math.Linear(camera.zoom, targetZoom, 0.10));
   return true;
 }
