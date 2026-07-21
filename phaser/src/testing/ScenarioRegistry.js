@@ -8,6 +8,8 @@ const SCENARIO_IDS = Object.freeze([
   "urban-explore"
 ]);
 
+const VEHICLE_CORE_LANE = Object.freeze({ x: 330, y: 350, angle: 0 });
+
 function clearTransientThreats(scene) {
   scene.campaignCheckpointSystem?.resetTransientThreats?.();
   if (scene.exposureSystem) {
@@ -61,7 +63,7 @@ export class ScenarioRegistry {
 
     switch (scenarioId) {
       case "vehicle-core":
-        this.placeNearVehicle("refuge_compact");
+        this.placeNearVehicle("refuge_compact", VEHICLE_CORE_LANE);
         break;
       case "street-damage":
         this.placeNearVehicle("refuge_compact");
@@ -87,9 +89,16 @@ export class ScenarioRegistry {
     return this.snapshot();
   }
 
-  placeNearVehicle(vehicleId) {
+  placeNearVehicle(vehicleId, placement = null) {
     const vehicle = this.scene.vehicleSystem?.vehicle?.(vehicleId);
     if (!vehicle) throw new Error(`Scenario vehicle unavailable: ${vehicleId}`);
+    if (placement) {
+      vehicle.x = placement.x;
+      vehicle.y = placement.y;
+      vehicle.angle = placement.angle;
+      vehicle.container?.setPosition?.(vehicle.x, vehicle.y).setRotation?.(vehicle.angle);
+      vehicle.visual?.label?.setRotation?.(-vehicle.angle);
+    }
     vehicle.speed = 0;
     vehicle.disabled = false;
     this.scene.switchLayer(
