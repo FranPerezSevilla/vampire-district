@@ -43,6 +43,9 @@ export function validateCityBlueprint(blueprint) {
   const warnings = [];
   const runtime = blueprint?.runtime || {};
   const world = blueprint?.world || { width: 0, height: 0 };
+  const allowedBuildingRoadOverlaps = new Set(
+    blueprint?.metadata?.validationExceptions?.allowedBuildingRoadOverlaps || []
+  );
   const collections = {
     districts: blueprint?.districts || [],
     recipes: blueprint?.recipes || [],
@@ -93,7 +96,15 @@ export function validateCityBlueprint(blueprint) {
   for (const building of collections.buildings) {
     for (const road of collections.roads) {
       const overlap = rectOverlapArea(building, road);
-      if (overlap > 0.01) errors.push(issue("BUILDING_OVER_ROAD", `${building.id} overlaps road ${road.id}.`, { buildingId: building.id, roadId: road.id, overlap }));
+      if (overlap <= 0.01) continue;
+      const key = `${building.id}:${road.id}`;
+      const entry = issue(
+        allowedBuildingRoadOverlaps.has(key) ? "LEGACY_BUILDING_ROAD_OVERLAP" : "BUILDING_OVER_ROAD",
+        `${building.id} overlaps road ${road.id}.`,
+        { buildingId: building.id, roadId: road.id, overlap, exceptionKey: key }
+      );
+      if (allowedBuildingRoadOverlaps.has(key)) warnings.push(entry);
+      else errors.push(entry);
     }
   }
 
@@ -218,6 +229,7 @@ export function validateCityBlueprint(blueprint) {
       lightCount: collections.lights.length,
       dumpsterCount: collections.dumpsters.length,
       vehicleCount: collections.vehicles.length,
+      legacyBuildingRoadOverlapCount: warnings.filter(item => item.code === "LEGACY_BUILDING_ROAD_OVERLAP").length,
       errorCount: errors.length,
       warningCount: warnings.length
     }
