@@ -58,6 +58,7 @@ for (const route of ROUTES) {
     await expect(entry).toBeVisible();
     await expect(entry).toHaveAttribute("data-campaign-entry-mode", "new-game");
     await expect(page.locator('[data-campaign-entry-action="new-game"]')).toContainText("Begin the night");
+    await expect(page.locator('[data-campaign-entry-action="explore"]')).toContainText("Explore district");
     await expect(page.locator("#ui-modal")).toHaveAttribute("aria-hidden", "true");
     await expect(page.locator("#ui-modal")).toHaveCSS("display", "none");
     expect(await page.locator('[role="dialog"]:not([aria-hidden="true"])').count()).toBe(1);
@@ -82,15 +83,20 @@ for (const route of ROUTES) {
     await expect(page.locator(".campaign-entry")).toHaveAttribute("data-campaign-entry-mode", "continue");
     const continueButton = page.locator('[data-campaign-entry-action="continue"]');
     const newGameButton = page.locator('[data-campaign-entry-action="new-game"]');
+    const exploreButton = page.locator('[data-campaign-entry-action="explore"]');
     await expect(continueButton).toContainText("Continue");
     await expect(newGameButton).toContainText("Start new game");
+    await expect(exploreButton).toContainText("Explore district");
     await expect(continueButton).toBeFocused();
     if (route === "/phaser/") {
       await expect(continueButton).toBeInViewport();
       await expect(newGameButton).toBeInViewport();
+      await expect(exploreButton).toBeInViewport();
     }
     await page.keyboard.press("Tab");
     await expect(newGameButton).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(exploreButton).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(continueButton).toBeFocused();
     await page.keyboard.press("Escape");
@@ -114,6 +120,37 @@ for (const route of ROUTES) {
     expect(continued.nativeModalInert).toBe(false);
   });
 }
+
+test("Explore district starts a missionless non-persistent street session", async ({ page }) => {
+  await clearCampaign(page);
+  await page.goto("/?campaignEntryTest=1", { waitUntil: "domcontentloaded" });
+  await waitForEntryRuntime(page);
+
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+    page.locator('[data-campaign-entry-action="explore"]').click()
+  ]);
+  await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_EXPLORE_READY));
+
+  const state = await page.evaluate(() => {
+    const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
+    return {
+      profile: window.NBD_BOOT_PROFILE,
+      activeMissionId: scene.campaignSystem.state.missions.activeMissionId,
+      tutorialState: scene.tutorialDirector.state,
+      layer: scene.currentLayer,
+      introOpen: window.NBD_PHASER_GAME.scene.getScene("UIScene").introOpen,
+      persisted: window.localStorage.getItem("vampire-district-campaign-v1")
+    };
+  });
+  expect(state.profile.mode).toBe("explore");
+  expect(state.profile.persistentCampaign).toBe(false);
+  expect(state.activeMissionId).toBeNull();
+  expect(state.tutorialState).toBe("complete");
+  expect(state.layer).toBe(0);
+  expect(state.introOpen).toBe(false);
+  expect(state.persisted).toBeNull();
+});
 
 test("a failed run waits for Retry before restoring its safe checkpoint", async ({ page }) => {
   await clearCampaign(page);
