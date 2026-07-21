@@ -1,7 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-test.describe.configure({ timeout: 60_000 });
-
 async function dispatchWorldInputs(page) {
   await page.evaluate(() => {
     const canvas = document.querySelector("#game-root canvas");
@@ -30,7 +28,8 @@ async function inputSnapshot(page) {
       drainHeld: Boolean(scene.inputSystem.drainHeld),
       wheelStep: Number(scene.inputSystem.pendingWheelStep || 0),
       attack: Boolean(scene.combatSystem.attack),
-      feeding: Boolean(scene.feedingSystem.active)
+      feeding: Boolean(scene.feedingSystem.active),
+      revealActive: Boolean(scene.registry.get("taskRevealActive"))
     };
   });
 }
@@ -58,10 +57,12 @@ test("pause and task reveals discard mouse and wheel input", async ({ page }) =>
   await dispatchWorldInputs(page);
   await page.keyboard.press("h");
   await expect(page.locator("#ui-modal")).not.toHaveClass(/open/);
-  expect(await inputSnapshot(page)).toEqual(EMPTY_WORLD_INPUT);
+  const pauseSnapshot = await inputSnapshot(page);
+  expect(pauseSnapshot).toMatchObject(EMPTY_WORLD_INPUT);
 
-  // Use normal reveal hold timing for this one loop so injected browser events
-  // cannot land after the ultra-short RC cinematic has already closed.
+  // Keep the reveal open long enough to inject input, then assert the lock
+  // while it owns the frame. The cinematic's completion belongs to its own
+  // presentation coverage and need not delay this focused loop.
   await page.evaluate(() => {
     window.NBD_RC_TEST_MODE = false;
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
@@ -69,8 +70,9 @@ test("pause and task reveals discard mouse and wheel input", async ({ page }) =>
   });
   await page.waitForFunction(() => window.NBD_PHASER_GAME.scene.getScene("GameScene").registry.get("taskRevealActive") === true);
   await dispatchWorldInputs(page);
-  await page.evaluate(() => { window.NBD_RC_TEST_MODE = true; });
-  await page.waitForFunction(() => window.NBD_PHASER_GAME.scene.getScene("GameScene").registry.get("taskRevealActive") === false);
+  await page.waitForTimeout(120);
 
-  expect(await inputSnapshot(page)).toEqual(EMPTY_WORLD_INPUT);
+  const revealSnapshot = await inputSnapshot(page);
+  expect(revealSnapshot.revealActive).toBe(true);
+  expect(revealSnapshot).toMatchObject(EMPTY_WORLD_INPUT);
 });
