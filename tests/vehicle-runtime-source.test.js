@@ -43,6 +43,8 @@ test("campaign vehicle ownership and checkpoint safety remain explicit services"
   assert.equal(consequences.includes("alarmWitness"), true);
   assert.equal(consequences.includes('"combat:entity-neutralized"'), true);
   assert.equal(driving.includes("other.disabled"), false, "disabled vehicles remain solid collision obstacles");
+  assert.equal(driving.includes("applyKinematicState(vehicle, next)"), true);
+  assert.equal(driving.includes("Object.assign(vehicle, next)"), false, "kinematics must not restore pre-impact health or disabled state");
   assert.equal(vehicle.includes("TRUNK_FULL"), false, "capacity errors are owned by CampaignVehicleSystem");
   assert.equal(view.includes("window.NBD_VEHICLES"), true);
 });
