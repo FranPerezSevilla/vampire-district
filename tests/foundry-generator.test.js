@@ -10,7 +10,7 @@ import {
   generateFoundryCandidate,
   generateFoundryCandidates,
   rankFoundryCandidates
-} from "../tools/city-compiler/foundry-generator.js";
+} from "../tools/city-compiler/foundry-pilot.js";
 import { renderFoundryComparisonSvg } from "../tools/city-compiler/render-foundry-comparison.js";
 import { scoreCityBlueprint } from "../tools/city-compiler/score.js";
 import { validateCityBlueprint } from "../tools/city-compiler/validate.js";
