@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+test.describe.configure({ timeout: 60_000 });
+
 async function dispatchWorldInputs(page) {
   await page.evaluate(() => {
     const canvas = document.querySelector("#game-root canvas");
@@ -33,6 +35,16 @@ async function inputSnapshot(page) {
   });
 }
 
+const EMPTY_WORLD_INPUT = Object.freeze({
+  primaryPressed: false,
+  primaryHeld: false,
+  drainPressed: false,
+  drainHeld: false,
+  wheelStep: 0,
+  attack: false,
+  feeding: false
+});
+
 test("pause and task reveals discard mouse and wheel input", async ({ page }) => {
   await page.goto("/?testScenario=input-locks", { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => Boolean(
@@ -46,31 +58,19 @@ test("pause and task reveals discard mouse and wheel input", async ({ page }) =>
   await dispatchWorldInputs(page);
   await page.keyboard.press("h");
   await expect(page.locator("#ui-modal")).not.toHaveClass(/open/);
-  expect(await inputSnapshot(page)).toEqual({
-    primaryPressed: false,
-    primaryHeld: false,
-    drainPressed: false,
-    drainHeld: false,
-    wheelStep: 0,
-    attack: false,
-    feeding: false
-  });
+  expect(await inputSnapshot(page)).toEqual(EMPTY_WORLD_INPUT);
 
+  // Use normal reveal hold timing for this one loop so injected browser events
+  // cannot land after the ultra-short RC cinematic has already closed.
   await page.evaluate(() => {
+    window.NBD_RC_TEST_MODE = false;
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     scene.playTaskReveal({ step: "RC LOCK", text: "Input lock regression test." });
   });
   await page.waitForFunction(() => window.NBD_PHASER_GAME.scene.getScene("GameScene").registry.get("taskRevealActive") === true);
   await dispatchWorldInputs(page);
+  await page.evaluate(() => { window.NBD_RC_TEST_MODE = true; });
   await page.waitForFunction(() => window.NBD_PHASER_GAME.scene.getScene("GameScene").registry.get("taskRevealActive") === false);
 
-  expect(await inputSnapshot(page)).toEqual({
-    primaryPressed: false,
-    primaryHeld: false,
-    drainPressed: false,
-    drainHeld: false,
-    wheelStep: 0,
-    attack: false,
-    feeding: false
-  });
+  expect(await inputSnapshot(page)).toEqual(EMPTY_WORLD_INPUT);
 });
