@@ -23,6 +23,12 @@ async function waitForVehicleRuntime(page) {
   ));
 }
 
+async function pressGameplayKey(page, key, holdMs = 240) {
+  await page.keyboard.down(key);
+  await page.waitForTimeout(holdMs);
+  await page.keyboard.up(key);
+}
+
 async function prepareStreetVehicle(page, vehicleId = "refuge_compact") {
   await page.evaluate(id => {
     window.NBD_RC_HARNESS.unlockPostTutorialWorld();
@@ -62,7 +68,9 @@ for (const route of ROUTES) {
     // Focus without a trusted pointer click: left-click is a real primary attack
     // and traversal is intentionally blocked while that combat commitment is active.
     await page.locator("#game-root canvas").focus();
-    await page.keyboard.press("Space");
+    // Playwright's instant press can complete between two software-WebGL frames.
+    // Hold the key across several frames, matching a real keyboard tap.
+    await pressGameplayKey(page, "Space");
     await page.waitForFunction(() => window.NBD_VEHICLES.snapshot().occupiedVehicleId === "refuge_compact");
 
     const entered = await page.evaluate(() => {
@@ -110,7 +118,7 @@ for (const route of ROUTES) {
       }
       vehicle.speed = 0;
     });
-    await page.keyboard.press("Space");
+    await pressGameplayKey(page, "Space");
     await page.waitForFunction(() => window.NBD_VEHICLES.snapshot().occupiedVehicleId === null);
 
     const exited = await page.evaluate(() => {
