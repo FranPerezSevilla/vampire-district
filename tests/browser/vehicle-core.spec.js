@@ -31,7 +31,7 @@ async function prepareStreetVehicle(page, vehicleId = "refuge_compact") {
 }
 
 for (const route of ROUTES) {
-  test(`${route} uses Enter for vehicle entry and exit`, async ({ page }) => {
+  test(`${route} uses Enter for a lively vehicle entry, launch and exit`, async ({ page }) => {
     await page.goto(`${route}?testScenario=vehicle-core`, { waitUntil: "domcontentloaded" });
     await waitForVehicleRuntime(page);
     await prepareStreetVehicle(page);
@@ -74,7 +74,7 @@ for (const route of ROUTES) {
       await page.keyboard.up("w");
       await page.waitForFunction(startX => {
         const vehicle = window.NBD_VEHICLES.snapshot().vehicles.find(candidate => candidate.id === "refuge_compact");
-        return vehicle.speedKph > 0 && vehicle.x > startX;
+        return vehicle.speedKph > 75 && vehicle.x > startX;
       }, before.x);
     } else {
       await page.evaluate(() => {
@@ -89,7 +89,7 @@ for (const route of ROUTES) {
       const vehicle = window.NBD_VEHICLES.snapshot().vehicles.find(candidate => candidate.id === "refuge_compact");
       return { speed: vehicle.speed, speedKph: vehicle.speedKph, x: vehicle.x };
     });
-    expect(moving.speedKph).toBeGreaterThan(0);
+    expect(moving.speedKph).toBeGreaterThan(route === "/" ? 75 : 45);
     expect(moving.x).toBeGreaterThan(before.x);
 
     await page.evaluate(() => {
@@ -106,7 +106,7 @@ for (const route of ROUTES) {
   });
 }
 
-test("Space applies a handbrake with stronger deceleration and turning", async ({ page }) => {
+test("Space produces a fast sustained drift instead of a dull stop", async ({ page }) => {
   await page.goto("/?testScenario=vehicle-core", { waitUntil: "domcontentloaded" });
   await waitForVehicleRuntime(page);
   await prepareStreetVehicle(page);
@@ -117,25 +117,44 @@ test("Space applies a handbrake with stronger deceleration and turning", async (
   const before = await page.evaluate(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const vehicle = scene.vehicleSystem.currentVehicle();
-    vehicle.speed = 150;
+    vehicle.speed = 240;
     vehicle.angle = 0;
-    return { speed: vehicle.speed, angle: vehicle.angle };
+    vehicle.travelAngle = 0;
+    vehicle.driftAngle = 0;
+    return { speed: vehicle.speed, angle: vehicle.angle, x: vehicle.x, y: vehicle.y };
   });
 
+  await page.keyboard.down("w");
   await page.keyboard.down("d");
   await page.keyboard.down("Space");
-  await page.waitForTimeout(320);
+  await page.waitForTimeout(420);
   const during = await page.evaluate(() => {
+    const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const snapshot = window.NBD_VEHICLES.snapshot();
     const vehicle = snapshot.vehicles.find(candidate => candidate.id === "refuge_compact");
-    return { speed: vehicle.speed, angle: vehicle.angle, handbrake: snapshot.handbrakeActive };
+    return {
+      speed: vehicle.speed,
+      speedKph: vehicle.speedKph,
+      angle: vehicle.angle,
+      travelAngle: vehicle.travelAngle,
+      driftDegrees: vehicle.driftDegrees,
+      x: vehicle.x,
+      y: vehicle.y,
+      handbrake: snapshot.handbrakeActive,
+      hud: scene.vehicleSystem.hud.text
+    };
   });
   await page.keyboard.up("Space");
   await page.keyboard.up("d");
+  await page.keyboard.up("w");
 
   expect(during.handbrake).toBe(true);
-  expect(Math.abs(during.speed)).toBeLessThan(Math.abs(before.speed));
-  expect(Math.abs(during.angle - before.angle)).toBeGreaterThan(0.01);
+  expect(during.speedKph).toBeGreaterThan(55);
+  expect(Math.abs(during.angle - before.angle)).toBeGreaterThan(0.15);
+  expect(during.driftDegrees).toBeGreaterThan(8);
+  expect(Math.abs(during.angle - during.travelAngle)).toBeGreaterThan(0.12);
+  expect(Math.abs(during.y - before.y)).toBeGreaterThan(2);
+  expect(during.hud).toContain("DRIFT");
 });
 
 test("a destroyed occupied vehicle keeps the player inside until Enter", async ({ page }) => {
