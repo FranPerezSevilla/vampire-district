@@ -6,7 +6,8 @@ import { currentCityBlueprint, currentCityManifest } from "./current-city.js";
 import {
   foundryCandidateSummary,
   generateFoundryCandidates,
-  rankFoundryCandidates
+  rankFoundryCandidates,
+  selectDiverseFoundryCandidates
 } from "./foundry-pilot.js";
 import { renderFoundryComparisonSvg } from "./render-foundry-comparison.js";
 import { renderCityDebugSvg } from "./render-svg.js";
@@ -31,10 +32,11 @@ const baselineValidation = validateCityBlueprint(currentCityBlueprint);
 const baselineScore = scoreCityBlueprint(currentCityBlueprint, baselineValidation);
 const ranked = rankFoundryCandidates(generateFoundryCandidates({ seedPrefix, count }));
 const accepted = ranked.filter(result => result.foundryScore.accepted);
-const selected = accepted.slice(0, topCount);
+const selected = selectDiverseFoundryCandidates(ranked, topCount);
 
 await mkdir(outputDir, { recursive: true });
 
+const selectedSeeds = selected.map(result => result.blueprint.seed);
 const summary = {
   generatedAt: new Date().toISOString(),
   compilerVersion: 2,
@@ -43,6 +45,12 @@ const summary = {
   generatedCandidates: ranked.length,
   acceptedCandidates: accepted.length,
   rejectedCandidates: ranked.length - accepted.length,
+  selectedSeeds,
+  selectionPolicy: {
+    first: "highest Foundry score",
+    remaining: "maximum structural distance within four score points of the best candidate",
+    dimensions: ["block templates", "building geometry", "local road geometry", "roof count", "vehicle archetype"]
+  },
   baseline: {
     id: currentCityBlueprint.id,
     seed: currentCityBlueprint.seed,
@@ -65,7 +73,10 @@ const summary = {
     parkedVehicles: 1,
     minimumCityScore: baselineScore.total
   },
-  rankings: ranked.map((result, index) => foundryCandidateSummary(result, index + 1))
+  rankings: ranked.map((result, index) => ({
+    ...foundryCandidateSummary(result, index + 1),
+    selectedForComparison: selectedSeeds.includes(result.blueprint.seed)
+  }))
 };
 
 await writeFile(path.join(outputDir, "foundry-summary.json"), `${JSON.stringify(summary, null, 2)}\n`, "utf8");
@@ -77,7 +88,8 @@ for (let index = 0; index < selected.length; index++) {
   const report = {
     generatedAt: summary.generatedAt,
     compilerVersion: 2,
-    rank: index + 1,
+    comparisonSlot: index + 1,
+    ranking: ranked.indexOf(result) + 1,
     blueprint: currentCityManifest(result.blueprint),
     validation: result.validation,
     cityScore: result.cityScore,
@@ -101,7 +113,7 @@ console.log(`Generated ${ranked.length} · accepted ${accepted.length} · reject
 console.log(`Baseline city score ${baselineScore.total}`);
 for (let index = 0; index < selected.length; index++) {
   const result = selected[index];
-  console.log(`#${index + 1} ${result.blueprint.seed} · Foundry ${result.foundryScore.total} · City ${result.cityScore.total}`);
+  console.log(`#${index + 1} ${result.blueprint.seed} · rank ${ranked.indexOf(result) + 1} · Foundry ${result.foundryScore.total} · City ${result.cityScore.total}`);
 }
 console.log(`Artifacts ${outputDir}`);
 
