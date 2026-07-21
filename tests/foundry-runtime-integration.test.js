@@ -28,14 +28,18 @@ const GENERATED_PREFIX = "foundry:";
 function generated(items = []) {
   return items
     .filter(item => String(item?.id || "").startsWith(GENERATED_PREFIX))
-    .map(item => structuredClone(item))
+    .map(item => {
+      const copy = structuredClone(item);
+      delete copy.generated;
+      return copy;
+    })
     .sort((left, right) => left.id.localeCompare(right.id));
 }
 
 function coordinates(items = []) {
   return items
-    .map(item => ({ x: Number(item.x), y: Number(item.y) }))
-    .sort((left, right) => left.x - right.x || left.y - right.y);
+    .map(item => ({ id: item.id || null, x: Number(item.x), y: Number(item.y) }))
+    .sort((left, right) => String(left.id).localeCompare(String(right.id)) || left.x - right.x || left.y - right.y);
 }
 
 test("the playable district is locked to foundry-pilot-04", () => {
@@ -75,8 +79,8 @@ test("static Foundry runtime data cannot drift from the selected compiler seed",
     "roof areas drifted from foundry-pilot-04"
   );
   assert.deepEqual(
-    coordinates(playable.streetNavigationPoints.filter(item => item.generated || String(item.id || "").startsWith("foundry:navigation:"))),
-    coordinates(compiled.streetNavigationPoints.filter(item => item.generated || String(item.id || "").startsWith("foundry:navigation:"))),
+    coordinates(playable.streetNavigationPoints.filter(item => String(item.id || "").startsWith("foundry:navigation:"))),
+    coordinates(compiled.streetNavigationPoints.filter(item => String(item.id || "").startsWith("foundry:navigation:"))),
     "navigation points drifted from foundry-pilot-04"
   );
 });
@@ -84,6 +88,7 @@ test("static Foundry runtime data cannot drift from the selected compiler seed",
 test("integrated Foundry pedestrian and traversal surfaces remain valid", () => {
   const route = pedestrianRoutes.find(item => item.id === "foundry:pedestrian-route:works-loop");
   assert.ok(route);
+  assert.equal(route.points.length, 8);
   assert.ok(route.points.every(point => pointOnPedestrianSurface(point.x, point.y)));
   assert.equal(generated(Object.values(roofAreas).flat()).length, 4);
   assert.equal(generated(rooftopRoutes).length, 3);
