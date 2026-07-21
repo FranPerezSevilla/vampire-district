@@ -1,34 +1,24 @@
 import { expect, test } from "@playwright/test";
 
 const ROUTES = ["/", "/phaser/"];
-const STORAGE_KEY = "vampire-district-campaign-v1";
-const RESET_SENTINEL = "vampire-district-expanded-urban-reset";
 
-test.describe.configure({ timeout: 120_000 });
+test.describe.configure({ timeout: 75_000 });
 
-async function clearCampaignOnce(page) {
-  await page.addInitScript(({ storageKey, sentinel }) => {
-    if (window.sessionStorage.getItem(sentinel) === "done") return;
-    window.localStorage.removeItem(storageKey);
-    window.sessionStorage.setItem(sentinel, "done");
-  }, { storageKey: STORAGE_KEY, sentinel: RESET_SENTINEL });
-}
-
-async function waitForUrbanRuntime(page) {
-  await page.waitForFunction(() => Boolean(
+async function waitForUrbanRuntime(page, scenarioId) {
+  await page.waitForFunction(expected => Boolean(
     window.NBD_APP_READY
-    && window.NBD_RC_HARNESS_READY
+    && window.NBD_SCENARIO_READY
     && window.NBD_VEHICLES_READY
     && window.NBD_PEDESTRIANS_READY
     && window.NBD_STREET_PROPS_READY
-  ));
+    && window.NBD_SCENARIOS?.snapshot?.().activeId === expected
+  ), scenarioId);
 }
 
 for (const route of ROUTES) {
   test(`${route} boots the five-times-larger district with sparse sidewalk-routed population`, async ({ page }) => {
-    await clearCampaignOnce(page);
-    await page.goto(`${route}?rcTest=1`, { waitUntil: "domcontentloaded" });
-    await waitForUrbanRuntime(page);
+    await page.goto(`${route}?testScenario=urban-explore`, { waitUntil: "domcontentloaded" });
+    await waitForUrbanRuntime(page, "urban-explore");
 
     const state = await page.evaluate(() => {
       const game = window.NBD_PHASER_GAME;
@@ -51,7 +41,9 @@ for (const route of ROUTES) {
         pedestrians,
         police: scene.policeSystem.police().length,
         lights: scene.propDamageSystem.props.length,
-        dumpsters: window.NBD_STREET_PROPS.snapshot().dumpsters.length
+        dumpsters: window.NBD_STREET_PROPS.snapshot().dumpsters.length,
+        activeMissionId: scene.campaignSystem.state.missions.activeMissionId,
+        tutorialState: scene.tutorialDirector.state
       };
     });
 
@@ -64,16 +56,16 @@ for (const route of ROUTES) {
     expect(state.police).toBe(2);
     expect(state.lights).toBeGreaterThanOrEqual(60);
     expect(state.dumpsters).toBeGreaterThanOrEqual(12);
+    expect(state.activeMissionId).toBeNull();
+    expect(state.tutorialState).toBe("complete");
   });
 }
 
 test("a moving vehicle breaks a sidewalk streetlight and persists the damage", async ({ page }) => {
-  await clearCampaignOnce(page);
-  await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
-  await waitForUrbanRuntime(page);
+  await page.goto("/?testScenario=street-damage", { waitUntil: "domcontentloaded" });
+  await waitForUrbanRuntime(page, "street-damage");
 
   const result = await page.evaluate(() => {
-    window.NBD_RC_HARNESS.unlockPostTutorialWorld();
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const vehicle = scene.vehicleSystem.vehicle("refuge_compact");
     const light = scene.propDamageSystem.props.find(prop => prop.id === "lampCrossA");
@@ -102,15 +94,14 @@ test("a moving vehicle breaks a sidewalk streetlight and persists the damage", a
 });
 
 test("a dumpster corpse stays exposed, can be dragged, and can be recontained", async ({ page }) => {
-  await clearCampaignOnce(page);
-  await page.goto("/phaser/?rcTest=1", { waitUntil: "domcontentloaded" });
-  await waitForUrbanRuntime(page);
+  await page.goto("/phaser/?testScenario=street-damage", { waitUntil: "domcontentloaded" });
+  await waitForUrbanRuntime(page, "street-damage");
 
   const result = await page.evaluate(() => {
-    window.NBD_RC_HARNESS.unlockPostTutorialWorld();
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const body = scene.npcSystem.npcs.find(npc => npc.id === "exposed_body");
     if (!body.dead) scene.npcSystem.markDead(body, "killed");
+    body.inactive = false;
     body.hiddenBody = true;
     body.hiddenSpotId = "dumpsterClubRear";
     body.hiddenSpotName = "club rear dumpster";
@@ -122,8 +113,6 @@ test("a dumpster corpse stays exposed, can be dragged, and can be recontained", 
       70
     );
 
-    // The mission adapter reconstructs world state each frame. A systemic
-    // rupture must remain authoritative after that synchronization.
     scene.missionSystem.cleanTheSceneSystem.syncWorld();
     const exposedAfterSync = {
       hidden: body.hiddenBody,
@@ -190,12 +179,10 @@ test("a dumpster corpse stays exposed, can be dragged, and can be recontained", 
 });
 
 test("a lethal vehicle impact leaves persistent visible blood evidence", async ({ page }) => {
-  await clearCampaignOnce(page);
-  await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
-  await waitForUrbanRuntime(page);
+  await page.goto("/?testScenario=street-damage", { waitUntil: "domcontentloaded" });
+  await waitForUrbanRuntime(page, "street-damage");
 
   const result = await page.evaluate(() => {
-    window.NBD_RC_HARNESS.unlockPostTutorialWorld();
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const npc = scene.npcSystem.npcs.find(candidate => candidate.id === "civ_cross_1");
     const vehicle = scene.vehicleSystem.vehicle("refuge_compact");
