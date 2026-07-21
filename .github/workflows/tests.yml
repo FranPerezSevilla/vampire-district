@@ -37,6 +37,14 @@ jobs:
           name: city-compiler-current-city
           path: city-compiler-output/
           retention-days: 14
+      - name: Compile Foundry pilot candidates
+        run: npm run city:foundry -- --output-dir=city-compiler-foundry-output
+      - name: Upload Foundry candidate comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: city-compiler-foundry-pilot
+          path: city-compiler-foundry-output/
+          retention-days: 14
       - name: Upload unit test log on failure
         if: failure()
         uses: actions/upload-artifact@v4

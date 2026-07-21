@@ -30,7 +30,7 @@ export const districtRecipes = Object.freeze([
     roadWidths: { major: [104, 138], local: [60, 88], alley: [34, 58] },
     blockSize: [190, 430],
     density: { buildings: 0.64, alleys: 0.46, pedestrians: 0.18, lighting: 0.38, shadows: 0.62 },
-    buildingWeights: { warehouse: 4, factory: 3, workerHousing: 2, office: 1, commercial: 0.4 },
+    buildingWeights: { warehouse: 4, factory: 3, machineShop: 3, loadingBay: 2, workerHousing: 2, office: 1, commercial: 0.4 },
     gameplay: { chaseLoops: [2, 4], hidingSpots: [5, 9], roofNetworks: [1, 3], sewerEntrances: [2, 4], darkRoutes: [3, 5] },
     tags: ["industrial", "vehicle-friendly", "yards"]
   }),
@@ -91,6 +91,28 @@ export const blockTemplates = Object.freeze([
     passages: ["rear-service"],
     roof: { height: "low", entrySockets: ["south"], jumpSockets: ["east", "west"] },
     sockets: { dumpsters: 1, lights: 2, parkedVehicles: 2, missionTargets: 1, hiddenBodies: 1 }
+  }),
+  defineBlockTemplate({
+    id: "machine-shop-row-a",
+    label: "Compact machine-shop row",
+    family: "machine-shop",
+    footprint: { minWidth: 132, maxWidth: 190, minHeight: 64, maxHeight: 118 },
+    frontages: ["north", "west"],
+    serviceAccess: ["south", "east"],
+    passages: ["rear-service"],
+    roof: { height: "low", entrySockets: ["west"], jumpSockets: ["east"] },
+    sockets: { dumpsters: 2, lights: 2, parkedVehicles: 1, missionTargets: 1, hiddenBodies: 1 }
+  }),
+  defineBlockTemplate({
+    id: "loading-bay-a",
+    label: "Compact industrial loading bay",
+    family: "loading-bay",
+    footprint: { minWidth: 142, maxWidth: 220, minHeight: 76, maxHeight: 150 },
+    frontages: ["north", "south"],
+    serviceAccess: ["east", "west"],
+    passages: ["loading-apron"],
+    roof: { height: "low", entrySockets: ["service-side"], jumpSockets: ["east", "west"] },
+    sockets: { dumpsters: 2, lights: 2, parkedVehicles: 2, missionTargets: 1, hiddenBodies: 2 }
   }),
   defineBlockTemplate({
     id: "warehouse-yard-a",
