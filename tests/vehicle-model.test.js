@@ -24,34 +24,55 @@ const archetype = {
   id: "compact",
   width: 28,
   height: 14,
-  maxSpeed: 348,
-  reverseSpeed: 104,
-  acceleration: 430,
-  reverseAcceleration: 158,
-  launchBoost: 0.92,
-  brake: 318,
-  handbrakeBrake: 128,
-  handbrakeThrottleFactor: 0.48,
-  handbrakeSteerMultiplier: 2.92,
-  handbrakeDriftKick: 2.35,
+  maxSpeed: 310,
+  reverseSpeed: 92,
+  acceleration: 330,
+  reverseAcceleration: 126,
+  launchBoost: 0.55,
+  brake: 296,
+  handbrakeBrake: 176,
+  handbrakeThrottleFactor: 0.20,
+  handbrakeSteerMultiplier: 1.34,
+  handbrakeDriftKick: 0.58,
   grip: 9.4,
-  handbrakeGrip: 0.28,
-  drag: 40,
-  steerRate: 2.82,
+  handbrakeGrip: 1.45,
+  drag: 45,
+  steerRate: 2.66,
   maxHealth: 70,
-  cameraZoomFactor: 0.65
+  cameraZoomFactor: 0.69
 };
 
-test("vehicle launch is explosive and still respects the higher top speed", () => {
+test("vehicle launch is lively without reaching an exaggerated speed immediately", () => {
   let state = createVehicleState(definition, archetype);
   for (let index = 0; index < 10; index++) {
     state = stepVehicleKinematics(state, { move: { x: 0, y: -1 } }, 0.05, archetype);
   }
-  assert.ok(state.speed > 230, "the compact should feel lively within its first half second");
+  assert.ok(state.speed > 190, "the compact should feel responsive within its first half second");
+  assert.ok(state.speed < 235, "the initial launch should remain controllable");
   assert.ok(state.speed <= archetype.maxSpeed);
   assert.ok(state.x > definition.x + 55);
   assert.equal(state.y, definition.y);
-  assert.ok(vehicleSpeedKph(state.speed) >= 108);
+  assert.ok(vehicleSpeedKph(state.speed) >= 90);
+  assert.ok(vehicleSpeedKph(state.speed) < 115);
+});
+
+test("steering alone changes heading but never adds speed", () => {
+  let stationary = createVehicleState(definition, archetype);
+  for (let index = 0; index < 12; index++) {
+    stationary = stepVehicleKinematics(stationary, { move: { x: 1, y: 0 } }, 0.05, archetype);
+  }
+  assert.equal(stationary.speed, 0);
+  assert.equal(stationary.x, definition.x);
+  assert.equal(stationary.y, definition.y);
+
+  let moving = { ...createVehicleState(definition, archetype), speed: 150 };
+  const startingSpeed = moving.speed;
+  const startingAngle = moving.angle;
+  for (let index = 0; index < 8; index++) {
+    moving = stepVehicleKinematics(moving, { move: { x: 1, y: 0 } }, 0.05, archetype);
+  }
+  assert.ok(moving.angle > startingAngle);
+  assert.ok(moving.speed < startingSpeed, "coasting drag may reduce speed, but steering must never accelerate");
 });
 
 test("braking reaches zero before reverse acceleration", () => {
@@ -65,7 +86,7 @@ test("braking reaches zero before reverse acceleration", () => {
   assert.ok(state.speed >= -archetype.reverseSpeed);
 });
 
-test("handbrake kicks the rear out and normal grip progressively recovers it", () => {
+test("handbrake creates a controlled slide and normal grip recovers it", () => {
   let state = {
     ...createVehicleState(definition, archetype),
     speed: 260,
@@ -82,11 +103,12 @@ test("handbrake kicks the rear out and normal grip progressively recovers it", (
 
   const driftAtRelease = Math.abs(state.driftAngle);
   assert.equal(state.handbrake, true);
-  assert.ok(driftAtRelease > 0.5, "body heading and travel direction should separate into a visible arcade slide");
-  assert.ok(Math.abs(state.y - definition.y) > 10, "the car should carry obvious lateral momentum while its nose rotates");
-  assert.ok(Math.abs(state.speed) > 150, "the handbrake should preserve momentum rather than stop the car dead");
+  assert.ok(driftAtRelease > 0.24, "the rear should step out visibly");
+  assert.ok(driftAtRelease < 0.48, "the handbrake should not make the car spin wildly");
+  assert.ok(Math.abs(state.y - definition.y) > 5);
+  assert.ok(Math.abs(state.speed) > 180, "the slide should preserve useful momentum");
 
-  for (let index = 0; index < 16; index++) {
+  for (let index = 0; index < 12; index++) {
     state = stepVehicleKinematics(state, { move: { x: 0, y: -1 } }, 0.05, archetype);
   }
   assert.ok(Math.abs(state.driftAngle) < driftAtRelease, "normal tyre grip should progressively align the velocity vector");
