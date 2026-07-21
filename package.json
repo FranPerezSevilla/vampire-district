@@ -7,7 +7,11 @@
     "test:unit": "node --test tests/*.test.js",
     "test:input": "node --test tests/input-actions.test.js tests/geometry.test.js tests/input-system.test.js",
     "test:browser": "playwright test",
-    "test:rc": "npm run test:unit && npm run test:browser",
+    "test:browser:boot": "playwright test tests/browser/runtime-smoke.spec.js tests/browser/render-quality.spec.js tests/browser/ui-accessibility.spec.js",
+    "test:browser:systems": "playwright test tests/browser/vehicle-core.spec.js tests/browser/expanded-district.spec.js tests/browser/perception-recovery.spec.js tests/browser/police-stress.spec.js tests/browser/input-locks.spec.js",
+    "test:browser:campaign": "playwright test tests/browser/campaign-entry.spec.js tests/browser/campaign-foundation.spec.js tests/browser/campaign-checkpoint.spec.js tests/browser/mission-board.spec.js",
+    "test:browser:golden": "playwright test tests/browser/intro-camera-order.spec.js tests/browser/mission-golden-path.spec.js tests/browser/post-mission-free-roam.spec.js",
+    "test:rc": "npm run test:unit && npm run test:browser:boot && npm run test:browser:systems && npm run test:browser:campaign",
     "serve:test": "python3 -m http.server 4173 --bind 127.0.0.1"
   },
   "dependencies": {
