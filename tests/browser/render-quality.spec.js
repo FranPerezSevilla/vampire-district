@@ -5,15 +5,23 @@ const CASES = [
   { route: "/phaser/", preset: "ultra", width: 2880, height: 1920 }
 ];
 
+test.describe.configure({ timeout: 75_000 });
+
 for (const entry of CASES) {
   test(`${entry.preset} render quality boots and survives resize on ${entry.route}`, async ({ page }) => {
     await page.addInitScript(preset => {
       window.localStorage.setItem("nbd-resolution-preset", preset);
     }, entry.preset);
     await page.setViewportSize({ width: 1500, height: 920 });
-    await page.goto(`${entry.route}?rcTest=1`, { waitUntil: "domcontentloaded" });
-    await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_RC_HARNESS_READY));
+    await page.goto(`${entry.route}?testScenario=urban-explore`, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => Boolean(
+      window.NBD_APP_READY
+      && window.NBD_SCENARIO_READY
+      && window.NBD_SCENARIOS?.snapshot?.().activeId === "urban-explore"
+    ));
 
+    const canvasLocator = page.locator("#game-root canvas");
+    await expect(canvasLocator).toBeVisible({ timeout: 30_000 });
     const initial = await page.evaluate(() => {
       const canvas = document.querySelector("#game-root canvas");
       const rect = canvas.getBoundingClientRect();
@@ -27,12 +35,14 @@ for (const entry of CASES) {
         canvasHeight: canvas.height,
         cssWidth: rect.width,
         cssHeight: rect.height,
-        aim: scene.inputSystem.pointerWorldPoint()
+        aim: scene.inputSystem.pointerWorldPoint(),
+        bootMode: window.NBD_BOOT_PROFILE.mode
       };
     });
 
     expect(initial.preset.key).toBe(entry.preset);
     expect(initial.phaserSource).toBe("local");
+    expect(initial.bootMode).toBe("scenario");
     expect(initial.gameWidth).toBe(entry.width);
     expect(initial.gameHeight).toBe(entry.height);
     expect(initial.canvasWidth).toBeGreaterThanOrEqual(entry.width);
@@ -61,6 +71,6 @@ for (const entry of CASES) {
     expect(Number.isFinite(resized.aim.x)).toBe(true);
     expect(Number.isFinite(resized.aim.y)).toBe(true);
     expect(resized.conflicts).toEqual([]);
-    await expect(page.locator("#game-root canvas")).toBeVisible();
+    await expect(canvasLocator).toBeVisible();
   });
 }
