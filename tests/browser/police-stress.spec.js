@@ -37,7 +37,8 @@ test("level-three police response stays structurally stable", async ({ page }) =
   const started = await page.evaluate(() => window.NBD_RC_HARNESS.startPoliceStress());
 
   expect(started.level).toBeGreaterThanOrEqual(3);
-  expect(started.police).toBeGreaterThanOrEqual(7);
+  expect(started.desiredPolice).toBe(7);
+  expect(started.police).toBeGreaterThanOrEqual(started.desiredPolice);
   expect(started.helicopter).toBe(true);
   expect(started.missionFailed).toBe(false);
   expect(started.dialogueNodes).toBe(1);
@@ -53,7 +54,7 @@ test("level-three police response stays structurally stable", async ({ page }) =
   });
 
   expect(finished.level).toBeGreaterThanOrEqual(3);
-  expect(finished.police).toBeGreaterThanOrEqual(7);
+  expect(finished.police).toBeGreaterThanOrEqual(started.desiredPolice);
   expect(finished.helicopter).toBe(true);
   expect(finished.missionFailed).toBe(false);
   expect(finished.dialogueNodes).toBe(1);
