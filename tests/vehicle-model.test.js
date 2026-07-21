@@ -8,6 +8,7 @@ import {
   vehicleExitOffsets,
   vehicleFootprintPoints,
   vehicleImpactDamage,
+  vehicleSlideCandidates,
   vehicleSpeedKph
 } from "../phaser/src/vehicles/VehicleModel.js";
 
@@ -22,23 +23,25 @@ const archetype = {
   id: "compact",
   width: 28,
   height: 14,
-  maxSpeed: 180,
-  reverseSpeed: 60,
-  acceleration: 120,
-  reverseAcceleration: 72,
-  brake: 200,
-  drag: 50,
-  steerRate: 2.5,
+  maxSpeed: 245,
+  reverseSpeed: 78,
+  acceleration: 158,
+  reverseAcceleration: 94,
+  brake: 232,
+  handbrakeBrake: 310,
+  handbrakeSteerMultiplier: 1.72,
+  drag: 58,
+  steerRate: 2.62,
   maxHealth: 70,
-  cameraZoomFactor: 0.75
+  cameraZoomFactor: 0.72
 };
 
-test("vehicle kinematics accelerate, steer and respect speed limits", () => {
+test("vehicle kinematics accelerate, steer and respect higher speed limits", () => {
   let state = createVehicleState(definition, archetype);
   for (let index = 0; index < 40; index++) {
     state = stepVehicleKinematics(state, { move: { x: 0, y: -1 } }, 0.05, archetype);
   }
-  assert.ok(state.speed > 0);
+  assert.ok(state.speed > 180, "the compact should now exceed the previous top speed");
   assert.ok(state.speed <= archetype.maxSpeed);
   assert.ok(state.x > definition.x);
   assert.equal(state.y, definition.y);
@@ -61,6 +64,32 @@ test("braking reaches zero before reverse acceleration", () => {
   }
   assert.ok(state.speed < 0);
   assert.ok(state.speed >= -archetype.reverseSpeed);
+});
+
+test("Space-style handbrake decelerates and increases steering authority", () => {
+  const starting = { ...createVehicleState(definition, archetype), speed: 150 };
+  const normal = stepVehicleKinematics(starting, { move: { x: 1, y: 0 } }, 0.1, archetype);
+  const handbrake = stepVehicleKinematics(starting, {
+    move: { x: 1, y: 0 },
+    handbrakeHeld: true
+  }, 0.1, archetype);
+
+  assert.equal(handbrake.handbrake, true);
+  assert.ok(handbrake.speed < normal.speed);
+  assert.ok(Math.abs(handbrake.angle) > Math.abs(normal.angle));
+});
+
+test("collision slide candidates preserve one movement axis and lose speed", () => {
+  const state = { ...createVehicleState(definition, archetype), speed: 120 };
+  const next = { ...state, x: 112, y: 108, speed: 120 };
+  const candidates = vehicleSlideCandidates(state, next);
+
+  assert.equal(candidates.length, 2);
+  assert.deepEqual(
+    candidates.map(candidate => [candidate.x, candidate.y]),
+    [[112, 100], [100, 108]]
+  );
+  assert.ok(candidates.every(candidate => candidate.speed > 0 && candidate.speed < next.speed));
 });
 
 test("impact, camera and exit helpers remain bounded", () => {
