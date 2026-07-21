@@ -15,10 +15,14 @@ const DISTRICT_ENTRY_POINTS = Object.freeze([
 function clampLevel(level) { return Math.max(0, Math.min(3, Math.floor(Number(level) || 0))); }
 
 export class PoliceSystem extends PoliceSystemCore {
+  desiredCount(level = this.scene.exposureSystem.level()) {
+    return DESIRED_POLICE_BY_LEVEL[clampLevel(level)];
+  }
+
   spawnForExposure(level = this.scene.exposureSystem.level()) {
     const clamped = clampLevel(level);
     if (clamped < 1) return;
-    const desired = DESIRED_POLICE_BY_LEVEL[clamped];
+    const desired = this.desiredCount(clamped);
     const activePolice = this.police().length;
     this.spawnedThisTick = 0;
     while (activePolice + this.spawnedThisTick < desired) this.spawnPolice(clamped);
