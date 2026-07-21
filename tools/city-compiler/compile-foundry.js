@@ -7,7 +7,7 @@ import {
   foundryCandidateSummary,
   generateFoundryCandidates,
   rankFoundryCandidates
-} from "./foundry-generator.js";
+} from "./foundry-pilot.js";
 import { renderFoundryComparisonSvg } from "./render-foundry-comparison.js";
 import { renderCityDebugSvg } from "./render-svg.js";
 import { scoreCityBlueprint } from "./score.js";
