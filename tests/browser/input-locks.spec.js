@@ -34,12 +34,12 @@ async function inputSnapshot(page) {
 }
 
 test("pause and task reveals discard mouse and wheel input", async ({ page }) => {
-  await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
-  await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_RC_HARNESS_READY));
-  await page.evaluate(() => {
-    window.NBD_RC_HARNESS.unlockPostTutorialWorld();
-    return true;
-  });
+  await page.goto("/?testScenario=input-locks", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => Boolean(
+    window.NBD_APP_READY
+    && window.NBD_SCENARIO_READY
+    && window.NBD_SCENARIOS?.snapshot?.().activeId === "input-locks"
+  ));
 
   await page.keyboard.press("h");
   await expect(page.locator("#ui-modal")).toHaveClass(/open/);
