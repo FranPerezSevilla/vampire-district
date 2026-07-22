@@ -160,7 +160,7 @@ export class ChunkStreamSystem {
       : new Set(this.activeChunkIds);
   }
 
-  query(category, bounds, { includePrefetched = false, margin = 0, predicate = null } = {}) {
+  query(category, bounds, { includePrefetched = true, margin = 0, predicate = null } = {}) {
     const available = this.availableChunkIds(includePrefetched);
     const ids = chunkIdsForBounds(bounds, this.manifest.world, this.manifest.chunkSize)
       .filter(id => available.has(id));
