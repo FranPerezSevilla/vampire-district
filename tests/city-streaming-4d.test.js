@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { installTrafficLocalAssignmentPolicy } from "../phaser/src/streaming/TrafficLocalAssignmentPolicy.js";
 import {
   forwardPhaseDistance,
   nearestPointOnPolyline,
@@ -112,14 +113,22 @@ async function install(scene, lanes) {
   });
   scene.trafficMaterializationSystem = materializer;
   await materializer.initialization;
+  const assignmentPolicy = installTrafficLocalAssignmentPolicy(scene);
+  scene.trafficLocalAssignmentPolicy = assignmentPolicy;
   const behavior = new TrafficLocalBehaviorSystem(scene);
   scene.trafficLocalBehaviorSystem = behavior;
   await behavior.initialization;
-  return { materializer, behavior };
+  return { materializer, assignmentPolicy, behavior };
+}
+
+function destroyInstalled({ materializer, assignmentPolicy, behavior }) {
+  behavior.destroy();
+  assignmentPolicy.destroy();
+  materializer.destroy();
 }
 
 test("traffic phase and polyline helpers keep deterministic forward geometry", () => {
-  assert.equal(forwardPhaseDistance(0.9, 0.1), 0.2);
+  assert.ok(Math.abs(forwardPhaseDistance(0.9, 0.1) - 0.2) < 1e-9);
   const projection = nearestPointOnPolyline([
     { x: 0, y: 0 },
     { x: 100, y: 0 },
@@ -133,11 +142,17 @@ test("traffic phase and polyline helpers keep deterministic forward geometry", (
 
 test("rear local traffic brakes for a same-lane lead and accelerates when the gap clears", async () => {
   const flows = {
-    "west:east": { edgeId: "west:east", tokenCount: 3, phases: [0.2, 0.5, 0.25], completedTrips: 0 }
+    "west:east": { edgeId: "west:east", tokenCount: 3, phases: [0.2, 0.5, 0.6], completedTrips: 0 }
   };
   const scene = fakeScene({ graph: singleEdgeGraph(), flows });
-  const { materializer, behavior } = await install(scene, singleEdgeLanes());
+  const installed = await install(scene, singleEdgeLanes());
+  const { materializer, behavior } = installed;
 
+  const leadState = behavior.states.get("west:east#2");
+  leadState.visualTravel = 0.25;
+  leadState.authorityTravel = 0.6;
+  leadState.lastAuthorityPhase = 0.6;
+  behavior.update(0, { force: true });
   behavior.update(0.4, { force: true });
   const first = behavior.snapshot();
   const rear = first.vehicles.find(vehicle => vehicle.tokenId === "west:east#0");
@@ -146,18 +161,21 @@ test("rear local traffic brakes for a same-lane lead and accelerates when the ga
   assert.equal(materializer.snapshot().materializedCount, 3);
   assert.equal(rear.reason, "traffic");
   assert.ok(rear.speedFactor < 1);
-  assert.equal(lead.reason, "cruise");
+  assert.equal(lead.reason, "catch-up");
 
   flows["west:east"].phases[0] = 0.24;
   flows["west:east"].phases[2] = 0.8;
+  leadState.visualTravel = 0.75;
+  leadState.authorityTravel = 0.8;
+  leadState.lastAuthorityPhase = 0.8;
   materializer.reconcile(true);
   behavior.update(0.8, { force: true });
   const recovered = behavior.snapshot().vehicles.find(vehicle => vehicle.tokenId === "west:east#0");
 
   assert.ok(recovered.speedFactor > rear.speedFactor);
   assert.ok(["cruise", "catch-up"].includes(recovered.reason));
-  behavior.destroy();
-  materializer.destroy();
+  assert.equal(materializer.snapshot().materialized.find(vehicle => vehicle.tokenId === "west:east#0").slotIndex, rear.slotIndex);
+  destroyInstalled(installed);
 });
 
 test("local traffic reacts to the player vehicle without losing its pooled assignment", async () => {
@@ -165,7 +183,8 @@ test("local traffic reacts to the player vehicle without losing its pooled assig
     "west:east": { edgeId: "west:east", tokenCount: 1, phases: [0.2], completedTrips: 0 }
   };
   const scene = fakeScene({ graph: singleEdgeGraph(), flows, focus: { x: 220, y: 100 } });
-  const { materializer, behavior } = await install(scene, singleEdgeLanes());
+  const installed = await install(scene, singleEdgeLanes());
+  const { materializer, behavior } = installed;
   const slotBefore = materializer.snapshot().materialized[0];
   const playerVehicle = {
     id: "player-car",
@@ -184,7 +203,7 @@ test("local traffic reacts to the player vehicle without losing its pooled assig
   assert.ok(braking.speedFactor < 1);
   assert.equal(materializer.snapshot().materialized[0].slotIndex, slotBefore.slotIndex);
 
-  playerVehicle.x = 900;
+  playerVehicle.x = 50;
   flows["west:east"].phases[0] = 0.26;
   materializer.reconcile(true);
   behavior.update(0.8, { force: true });
@@ -192,8 +211,7 @@ test("local traffic reacts to the player vehicle without losing its pooled assig
 
   assert.ok(recovered.speedFactor > braking.speedFactor);
   assert.equal(materializer.snapshot().materialized[0].slotIndex, slotBefore.slotIndex);
-  behavior.destroy();
-  materializer.destroy();
+  destroyInstalled(installed);
 });
 
 test("crossing traffic yields deterministically to the closer or stable-priority approach", async () => {
@@ -227,7 +245,8 @@ test("crossing traffic yields deterministically to the closer or stable-priority
     }
   };
   const scene = fakeScene({ graph, flows, focus: { x: 470, y: 70 } });
-  const { materializer, behavior } = await install(scene, lanes);
+  const installed = await install(scene, lanes);
+  const { materializer, behavior } = installed;
 
   behavior.update(0.25, { force: true });
   const snapshot = behavior.snapshot();
@@ -239,6 +258,5 @@ test("crossing traffic yields deterministically to the closer or stable-priority
   assert.equal(vertical.reason, "junction-yield");
   assert.equal(vertical.junctionId, "cross");
   assert.ok(vertical.speedFactor < horizontal.speedFactor);
-  behavior.destroy();
-  materializer.destroy();
+  destroyInstalled(installed);
 });
