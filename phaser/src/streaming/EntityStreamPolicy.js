@@ -22,7 +22,7 @@ export function npcCriticalReason(npc, context = {}) {
   if (npc.thugHostile) return "hostile-thug";
   if (npc.intercepted) return "mission-intercept";
   if (npc.combat?.state === COMBAT_STATES.STAGGERED) return "combat-staggered";
-  if (npc.type === NPC_TYPES.HUNTER && (npc.hunterStreamPinned || context.hunterRevealed || Number(context.exposureLevel) >= 4)) return "hunter-alert";
+  if (npc.type === NPC_TYPES.HUNTER && (npc.hunterIntent || context.hunterRevealed || Number(context.exposureLevel) >= 4)) return "hunter-alert";
   return null;
 }
 
