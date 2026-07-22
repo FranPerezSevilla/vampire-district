@@ -55,6 +55,7 @@ export class PedestrianSystem {
   canMove(npc) {
     return Boolean(
       npc
+      && (this.scene.entityStreamSystem?.shouldSimulateNpc?.(npc) ?? true)
       && !npc.dead
       && !npc.inactive
       && !npc.hiddenBody
@@ -134,6 +135,8 @@ export class PedestrianSystem {
   snapshot() {
     return {
       count: this.pedestrians.filter(npc => !npc.dead && !npc.inactive).length,
+      simulated: this.pedestrians.filter(npc => this.scene.entityStreamSystem?.shouldSimulateNpc?.(npc) ?? true).length,
+      dormant: this.pedestrians.filter(npc => !(this.scene.entityStreamSystem?.shouldSimulateNpc?.(npc) ?? true)).length,
       total: this.pedestrians.length,
       routes: pedestrianRoutes.map(route => ({ id: route.id, points: route.points.length })),
       pedestrians: this.pedestrians.map(npc => ({
@@ -142,6 +145,7 @@ export class PedestrianSystem {
         pointIndex: npc.pedestrian?.pointIndex || 0,
         x: npc.x,
         y: npc.y,
+        streamState: npc.streamState || "active",
         onPedestrianSurface: pointOnPedestrianSurface(npc.x, npc.y)
       }))
     };
@@ -150,7 +154,7 @@ export class PedestrianSystem {
   publish() {
     const snapshot = this.snapshot();
     this.scene.statePublisher?.setMany?.({
-      pedestrianText: `Pedestrians ${snapshot.count} · sidewalk routed`,
+      pedestrianText: `Pedestrians ${snapshot.simulated}/${snapshot.count} simulated · ${snapshot.dormant} dormant`,
       pedestrianState: snapshot
     });
     if (typeof window !== "undefined") {
