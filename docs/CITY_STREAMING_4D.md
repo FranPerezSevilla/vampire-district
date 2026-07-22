@@ -4,7 +4,7 @@ _Last updated: 2026-07-22_
 
 ## Status
 
-**Implementation candidate.**
+**Accepted and implemented.**
 
 City Streaming 4D adds bounded local driving behaviour to the pooled traffic proxies introduced in 4C. Nearby traffic can now follow another car, brake for the player vehicle and yield at shared junctions without changing the city-wide macro traffic simulation.
 
@@ -128,13 +128,16 @@ This is yield-based crossing control, not a traffic-light system. There are no r
 
 ## Materialization interaction
 
-4C still owns assignment and release.
+4C remains the spawn authority. Its anti-overlap rules apply when a token first requests a pool slot.
+
+Once assigned, a reversible local assignment policy retains the proxy according to its visual local position, resident streamed space, street layer and despawn radius. Raw macro overlap no longer removes a vehicle that is waiting in a local queue. This is required because 4D, rather than the macro phase, owns the visible following gap after materialization.
 
 Local behaviour runs after materialization on every frame:
 
 ```text
 MacroTrafficPoliceSystem
 TrafficMaterializationSystem
+TrafficLocalAssignmentPolicy
 TrafficLocalBehaviorSystem
 VehicleSystem driving frame
 ```
@@ -207,3 +210,20 @@ junction-yield
 - traffic remains outside campaign ownership and persistence;
 - unit, boot, system and campaign browser domains remain green;
 - the save schema remains unchanged.
+
+## Acceptance record
+
+City Streaming 4D was accepted on 2026-07-22 through PR #26.
+
+Validated on implementation head `30aee2f6f467c6fad7b5c1dcc72735c0e2ad4dff`:
+
+```text
+unit-tests         success
+browser-boot       success
+browser-systems    success
+browser-campaign   success
+```
+
+Validation exposed one architectural mismatch between 4C and 4D: the 4C assigned-vehicle eligibility check still used raw macro positions and spawn anti-overlap rules. That could remove a local proxy precisely when 4D needed it to form a queue. The accepted implementation installs a reversible local assignment policy: spawn safety remains in 4C, while assigned retention follows visual local position and streaming boundaries.
+
+Earlier unit failures were fixture-only: exact floating-point comparison and an assertion tied to a transient behaviour label. Final tests assert observable outcomes—braking, bounded recovery, deterministic yielding and stable slot identity.
