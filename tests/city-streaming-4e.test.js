@@ -205,7 +205,9 @@ function destroyInstalled(scene, installed) {
 test("traffic physics helpers keep impulses bounded and offsets decay without reversing", () => {
   assert.equal(softTrafficImpulse(3, 200, { maximum: 7 }), 7);
   assert.equal(softTrafficImpulse(0, 0, { minimum: 2, maximum: 16 }), 2);
-  assert.deepEqual(decayTrafficOffset(3, 4, 2), { x: 1.8, y: 2.4 });
+  const decayed = decayTrafficOffset(3, 4, 2);
+  assert.ok(Math.abs(decayed.x - 1.8) < 1e-9);
+  assert.ok(Math.abs(decayed.y - 2.4) < 1e-9);
   assert.deepEqual(decayTrafficOffset(3, 4, 5), { x: 0, y: 0 });
 });
 
