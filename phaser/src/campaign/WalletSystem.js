@@ -30,11 +30,11 @@ export class WalletSystem {
     return Number.isFinite(value) && value >= 0 && this.balance() >= value;
   }
 
-  credit(amount, metadata = {}) {
-    return this.record("credit", amountValue(amount), metadata);
+  credit(amount, metadata = {}, options = {}) {
+    return this.record("credit", amountValue(amount), metadata, options);
   }
 
-  debit(amount, metadata = {}) {
+  debit(amount, metadata = {}, options = {}) {
     const value = amountValue(amount);
     if (!this.canAfford(value)) {
       const error = new RangeError(`Insufficient cash: need ${value}, have ${this.balance()}.`);
@@ -43,10 +43,10 @@ export class WalletSystem {
       error.balance = this.balance();
       throw error;
     }
-    return this.record("debit", value, metadata);
+    return this.record("debit", value, metadata, options);
   }
 
-  record(type, amount, metadata) {
+  record(type, amount, metadata, { emit = true } = {}) {
     const before = this.balance();
     const after = type === "debit" ? before - amount : before + amount;
     const timestamp = Math.max(0, Math.trunc(Number(this.now()) || 0));
@@ -68,15 +68,17 @@ export class WalletSystem {
     if (this.state.ledger.length > this.maxLedgerEntries) {
       this.state.ledger.splice(0, this.state.ledger.length - this.maxLedgerEntries);
     }
-    this.events?.emit?.("wallet:changed", {
-      transactionId: entry.id,
-      type,
-      amount,
-      before,
-      after,
-      source: entry.source,
-      referenceId: entry.referenceId
-    });
+    if (emit) {
+      this.events?.emit?.("wallet:changed", {
+        transactionId: entry.id,
+        type,
+        amount,
+        before,
+        after,
+        source: entry.source,
+        referenceId: entry.referenceId
+      });
+    }
     return { ...entry, metadata: { ...entry.metadata } };
   }
 
