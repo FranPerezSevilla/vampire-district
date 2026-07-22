@@ -4,7 +4,7 @@ _Last updated: 2026-07-22_
 
 ## Status
 
-**Implementation candidate.**
+**Accepted and implemented.**
 
 City Streaming 4E adds bounded physical consequences when the player-driven vehicle reaches a pooled ambient traffic proxy. It extends the materialization and local-behaviour stages introduced in 4C and 4D without converting ambient traffic into persistent campaign vehicles.
 
@@ -197,3 +197,18 @@ The snapshot exposes:
 - ambient traffic remains outside ownership, trunks and persistence;
 - unit, boot, system and campaign browser domains remain green;
 - the save schema remains unchanged.
+
+## Acceptance record
+
+City Streaming 4E was accepted on 2026-07-22 through PR #27.
+
+Validated on implementation head `13aa6e891f39daa4756b9ea00d701ce885d9612f`:
+
+```text
+unit-tests         success
+browser-boot       success
+browser-systems    success
+browser-campaign   success
+```
+
+The first unit attempt exposed only a test precision issue: vector decay returned the expected floating-point value with normal binary rounding, while the test used strict structural equality. The accepted regression uses an epsilon comparison; product behaviour was unchanged.
