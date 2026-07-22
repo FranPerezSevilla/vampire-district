@@ -5,6 +5,7 @@ import { DistrictPackSystem } from "../streaming/DistrictPackSystem.js";
 import { DistantSimulationSystem } from "../streaming/DistantSimulationSystem.js";
 import { EntityStreamSystem } from "../streaming/EntityStreamSystem.js";
 import { MacroTrafficPoliceSystem } from "../streaming/MacroTrafficPoliceSystem.js";
+import { installTrafficLocalAssignmentPolicy } from "../streaming/TrafficLocalAssignmentPolicy.js";
 import { TrafficLocalBehaviorSystem } from "../streaming/TrafficLocalBehaviorSystem.js";
 import { TrafficMaterializationSystem } from "../streaming/TrafficMaterializationSystem.js";
 import { VehicleSystem } from "../vehicles/VehicleSystem.js";
@@ -53,6 +54,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.distantSimulationSystem = new DistantSimulationSystem(scene);
     scene.macroTrafficPoliceSystem = new MacroTrafficPoliceSystem(scene);
     scene.trafficMaterializationSystem = new TrafficMaterializationSystem(scene);
+    scene.trafficLocalAssignmentPolicy = installTrafficLocalAssignmentPolicy(scene);
     scene.trafficLocalBehaviorSystem = new TrafficLocalBehaviorSystem(scene);
     scene.npcSystem?.refreshVisibility?.();
     scene.vehicleSystem?.refreshVisibility?.();
@@ -119,6 +121,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
   destroy() {
     this.scene.trafficLocalBehaviorSystem?.destroy?.();
     this.scene.trafficLocalBehaviorSystem = null;
+    this.scene.trafficLocalAssignmentPolicy?.destroy?.();
+    this.scene.trafficLocalAssignmentPolicy = null;
     this.scene.trafficMaterializationSystem?.destroy?.();
     this.scene.trafficMaterializationSystem = null;
     this.scene.macroTrafficPoliceSystem?.destroy?.();
