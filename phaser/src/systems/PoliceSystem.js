@@ -15,6 +15,16 @@ const DISTRICT_ENTRY_POINTS = Object.freeze([
 function clampLevel(level) { return Math.max(0, Math.min(3, Math.floor(Number(level) || 0))); }
 
 export class PoliceSystem extends PoliceSystemCore {
+  allPolice() {
+    return super.police();
+  }
+
+  police() {
+    const stream = this.scene.entityStreamSystem;
+    const all = this.allPolice();
+    return stream ? all.filter(cop => stream.shouldSimulateNpc(cop)) : all;
+  }
+
   desiredCount(level = this.scene.exposureSystem.level()) {
     return DESIRED_POLICE_BY_LEVEL[clampLevel(level)];
   }
@@ -23,9 +33,9 @@ export class PoliceSystem extends PoliceSystemCore {
     const clamped = clampLevel(level);
     if (clamped < 1) return;
     const desired = this.desiredCount(clamped);
-    const activePolice = this.police().length;
+    const existingPolice = this.allPolice().length;
     this.spawnedThisTick = 0;
-    while (activePolice + this.spawnedThisTick < desired) this.spawnPolice(clamped);
+    while (existingPolice + this.spawnedThisTick < desired) this.spawnPolice(clamped);
     this.spawnedThisTick = 0;
   }
 
@@ -58,6 +68,7 @@ export class PoliceSystem extends PoliceSystemCore {
       zoneId: this.zoneAt(this.scene.player.x, this.scene.player.y).id
     } : null;
     this.scene.npcSystem.npcs.push(cop);
+    this.scene.entityStreamSystem?.applyNpcState?.(cop, 0);
     this.scene.npcSystem.rebuildSpatialIndex?.();
     this.scene.lastActionText = clamped >= 2
       ? "Police reinforcements enter from separated district approaches."
@@ -74,5 +85,12 @@ export class PoliceSystem extends PoliceSystemCore {
       if (value > heat) { best = zone; heat = value; }
     }
     return best;
+  }
+
+  summary() {
+    const active = this.police();
+    const total = this.allPolice();
+    const base = super.summary();
+    return total.length === active.length ? base : `${base} · streamed ${active.length}/${total.length}`;
   }
 }
