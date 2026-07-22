@@ -4,7 +4,7 @@ _Last updated: 2026-07-22_
 
 ## Status
 
-**Implementation candidate.**
+**Accepted and implemented.**
 
 City Streaming 4C converts a bounded subset of the abstract traffic tokens introduced in 4B into pooled Phaser vehicles near the player. The macro simulation remains the authority for traffic quantity and progress; the local system owns only presentation and nearby collision occupancy.
 
@@ -87,6 +87,8 @@ This keeps the local proxy moving every render frame without changing macro stat
 
 The original world, building and authored-vehicle checks run first. A candidate driven-vehicle position is then rejected when its radius overlaps a materialized traffic proxy. The original method is restored when the local traffic system is destroyed.
 
+A proxy that is already materialized ignores the currently driven persistent vehicle only for retention checks. This prevents the proxy from vanishing immediately before contact while still allowing the decorated occupancy check to block the actual overlap.
+
 Traffic proxies do not yet:
 
 - push or damage one another;
@@ -157,3 +159,20 @@ The snapshot exposes:
 - traffic proxies never enter campaign vehicle persistence;
 - unit, boot, system and campaign browser domains remain green;
 - the campaign and save schema remain unchanged.
+
+## Acceptance record
+
+City Streaming 4C was accepted on 2026-07-22 through PR #25.
+
+The complete implementation was validated on head `8123c355eadaa1fe6deb46ba940b330a6ff67eae`:
+
+```text
+unit-tests         success
+browser-boot       success
+browser-systems    success
+browser-campaign   success
+```
+
+The acceptance follow-up at `18ebe2798d461a346662f55bc15013c6aee675bb` adds a focused assertion that a materialized proxy remains present as the currently driven car approaches it. The final PR-head matrix validates that assertion together with this decision record.
+
+The first unit attempt exposed that absent nullable constructor options were being coerced to zero, reducing the configured pool to one vehicle. The accepted implementation treats absent values as lane-manifest defaults. Review also exposed a collision-authority edge case where a proxy could disappear before contact with the driven car; assigned proxies now retain their local authority until the collision query resolves movement.
