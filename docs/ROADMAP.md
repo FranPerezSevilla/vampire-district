@@ -182,32 +182,38 @@ Reference: `MILESTONE_12_STATUS.md`.
 
 ## Milestone 12.1 — Vehicle repair and recovery
 
-**Status: 🔵 Active next phase**
+**Status: ✅ Complete**
 
-Purpose: close the damage loop introduced by vehicle/world collisions and Traffic 4F.
+Delivered:
 
-Planned implementation:
+- refuge-garage interaction and accessible maintenance dialog;
+- owned-vehicle hull quotes using archetype-specific rates;
+- full repair for damaged, parked vehicles inside the garage radius;
+- campaign cash debit and immutable ledger entry;
+- atomic wallet/condition composition with rollback on failure;
+- repeated repair/recovery no-op without a second charge;
+- insufficient-funds and non-owned rejection before mutation;
+- remote tow recovery for owned disabled vehicles;
+- deterministic refuge parking slots and `35%` recovery hull;
+- wanted-level, driving, location and layer safety gates;
+- immediate synchronization of campaign condition, live container, wreck visuals and HUD;
+- checkpoint-safe persistence without a schema change;
+- browser diagnostics, unit coverage and real Chromium regression.
 
-- inspect current hull condition and repair quote;
-- refuge/garage repair service;
-- cash charge through the existing wallet and ledger;
-- partial/full repair rules;
-- recover, relocate or replace disabled campaign-critical vehicles;
-- no repair if funds are insufficient;
-- idempotent persistence through save/load/checkpoints;
-- diagnostic/browser API and focused tests.
+Accepted compact baseline:
 
-Acceptance:
+```text
+minimum repair charge  $25
+repair rate             $3 per missing hull
+recovery fee            $120
+recovery hull           26 / 72
+```
 
-- hull damage is reversible through an explicit costed action;
-- repair cannot duplicate charges or health on repeated activation;
-- a disabled vehicle cannot permanently soft-lock campaign progression;
-- ambient traffic proxies remain outside repair/persistence;
-- unit, boot, systems and campaign domains remain green.
+Reference: `VEHICLE_MAINTENANCE.md`.
 
 ## Milestone 13 — Traffic and motorized police
 
-**Status: 🟡 Civilian traffic foundation complete; motorized police remains**
+**Status: 🔵 Civilian traffic complete; motorized police active next phase**
 
 ### 13.1 Large-city streaming foundation — ✅ Complete
 
@@ -250,22 +256,27 @@ Acceptance:
 
 Detailed records: `CITY_STREAMING.md` and `CITY_STREAMING_4A.md` through `CITY_STREAMING_4F.md`.
 
-### 13.6 Motorized police — ⬜ Planned after repair/recovery
+### 13.6 Motorized police — 🔵 Active next phase
 
-- police cruisers use macro/local road infrastructure;
-- pursuit and interception;
-- deterministic roadblocks;
-- officers exit blocked or disabled vehicles;
-- abandoned stolen-car search memory;
-- player can abandon a car and escape by rooftops/sewers;
-- motorized response complements rather than replaces foot pursuit.
+Planned scope:
+
+- police cruisers use existing macro/local road infrastructure;
+- wanted-level deployment, pursuit and interception;
+- deterministic roadblocks with preserved escape lanes;
+- officers exit blocked or disabled cruisers;
+- abandoned suspect-car search memory;
+- player can leave the car and escape by rooftops/sewers;
+- motorized response complements rather than replaces foot pursuit;
+- explicit authority boundary for police cruiser state and materialization.
 
 Acceptance:
 
-- wanted levels 2–3 can deploy vehicles without invalidating existing foot AI;
+- wanted levels 2–3 can deploy cruisers without invalidating existing foot AI;
 - local traffic remains readable and pool-bounded;
-- roadblocks have escape routes and cannot hard-lock the player;
-- police vehicle state uses an explicit persistence/authority boundary.
+- roadblocks expose at least one viable non-vehicle escape route;
+- a disabled cruiser does not trap the player or corrupt ordinary traffic;
+- officers can transition from motorized response to existing foot roles;
+- unit, boot, systems and campaign domains remain green.
 
 ## Milestone 14 — Original factions and territory
 
@@ -360,7 +371,7 @@ Acceptance:
 ## Later expansion candidates
 
 - second district;
-- interiors and garages;
+- interiors and additional garages;
 - player-facing key remapping;
 - larger vehicle/weapon catalogues;
 - additional original supernatural rivals;

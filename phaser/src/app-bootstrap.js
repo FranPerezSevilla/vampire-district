@@ -37,7 +37,6 @@ function loadScript(source) {
       existing.addEventListener("error", () => reject(new Error(`Unable to load ${source.src}`)), { once: true });
       return;
     }
-
     const script = document.createElement("script");
     script.src = source.src;
     script.async = false;
@@ -55,7 +54,6 @@ async function ensurePhaser() {
       version: window.Phaser.VERSION || "unknown"
     });
   }
-
   let lastError = null;
   for (const source of PHASER_SCRIPT_SOURCES) {
     try {
@@ -98,6 +96,7 @@ try {
   await import("./tutorial/bootstrap.js");
   await import("./campaign/entry-bootstrap.js");
   await import("./campaign/board-bootstrap.js");
+  await import("./vehicles/maintenance-bootstrap.js");
   if (bootProfile.enableHarness) await import("./testing/bootstrap.js");
   if (bootProfile.mode === BOOT_MODES.SCENARIO) await import("./testing/scenario-bootstrap.js");
   window.NBD_APP_READY = true;

@@ -115,7 +115,7 @@ export class CampaignVehicleSystem {
     return this.status(id);
   }
 
-  updateCondition(vehicleId, condition = {}, { emit = true } = {}) {
+  updateCondition(vehicleId, condition = {}, { emit = true, dirty = true } = {}) {
     const id = String(vehicleId || "").trim();
     if (!id) throw new TypeError("Vehicle id is required.");
     const fields = ["x", "y", "angle", "health"];
@@ -138,7 +138,7 @@ export class CampaignVehicleSystem {
     }
     if (changed) {
       if (emit) this.commit("vehicle:condition-changed", { vehicleId: id });
-      else this.onDirty?.();
+      else if (dirty) this.onDirty?.();
     }
     return changed;
   }

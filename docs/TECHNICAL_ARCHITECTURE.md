@@ -2,19 +2,19 @@
 
 _Last updated: 2026-07-22_
 
-Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) for the project-wide map. This document defines current runtime ownership, update ordering, persistence boundaries and testing contracts.
+Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) for the project-wide map. This document defines runtime ownership, event-driven campaign services, update ordering, persistence boundaries and testing contracts.
 
 ## 1. Runtime and stack
 
 - Phaser 3 browser runtime.
 - Native ES modules.
-- DOM/CSS overlay for HUD, dialogue, entry screens, mission drawer and result modals.
-- Data-driven campaign, city, movement, combat, vehicles, traffic and AI definitions.
+- DOM/CSS overlays for HUD, dialogue, campaign entry, mission board, garage and result modals.
+- Data-driven campaign, city, movement, combat, vehicle, maintenance, traffic and AI definitions.
 - Node built-in test runner for pure/unit coverage.
 - Playwright Chromium for boot, systems and campaign regressions.
-- No backend dependency for the current build.
+- No backend dependency.
 
-The logical viewport is `960 × 640`; the world is `2400 × 1440`. The game does not allocate a full-world render canvas.
+Logical viewport: `960 × 640`. World: `2400 × 1440`. No full-world render canvas is allocated.
 
 ## 2. Top-level ownership
 
@@ -23,49 +23,41 @@ GameScene.update
   → GameplayRuntime.update
 ```
 
-`GameScene` owns scene objects and delegates frame coordination. `GameplayRuntime` owns specialist update ordering and temporary input/interaction adaptation.
+`GameScene` owns scene objects and delegates frame coordination. `GameplayRuntime` owns deterministic specialist ordering and temporary foot/vehicle input adaptation.
 
-No feature may introduce a second world frame loop or retain a parallel gameplay authority.
-
-### `GameScene`
-
-Coordinates:
-
-- player/world rendering and layers;
-- camera and current layer;
-- one gameplay input-frame consumption point;
-- specialist system composition;
-- interaction collection;
-- world/UI registry publication.
+No feature may add a second world frame loop or parallel gameplay authority.
 
 ### `UIScene`
 
-Owns:
+Owns HUD and modal presentation. World input remains locked while campaign entry, mission board, garage, pause, failure or success UI is open.
 
-- Hunger, exposure, powers, weapon/ammo and vehicle HUD;
-- mission drawer and prompts;
-- campaign entry, pause, failure and success presentation;
-- UI-only keyboard handling while world input is locked.
+### Event-driven campaign services
 
-### `GameplayRuntime`
+Campaign mutations that do not need per-frame simulation live outside `GameplayRuntime`:
 
-Owns:
+- mission activation/rewards;
+- cash wallet and ledger;
+- reputation;
+- authored vehicle condition/trunks;
+- vehicle repair/recovery.
 
-- deterministic specialist update order;
-- input-frame adaptation for foot/vehicle modes;
-- interaction filtering for Enter/Space/E;
-- diagnostics system registration;
-- reverse-order system destruction.
+These services emit plain campaign events. The campaign wildcard listener touches and autosaves state.
 
 ## 3. Current system map
 
 ### Campaign and state
 
 - `CampaignState`
+- `CampaignEventBus`
+- `CampaignSystem`
 - `MissionRunner`
 - `MissionSystem`
+- `WalletSystem`
+- `CampaignVehicleSystem`
+- `VehicleMaintenanceService`
 - campaign entry controller
 - refuge contract board
+- `VehicleMaintenanceUiSystem`
 - `StatePublisher`
 
 ### Player and combat
@@ -124,7 +116,7 @@ Owns:
 
 ## 4. Authoritative frame order
 
-The large-city pre-frame order is:
+Large-city pre-frame:
 
 ```text
 ChunkStreamSystem.update
@@ -139,34 +131,36 @@ TrafficImpactConsequencesSystem.update
 PedestrianSystem.update
 ```
 
-The normal gameplay frame then runs:
+Normal gameplay frame:
 
 ```text
 InputSystem.beginFrame
 → mode/world-lock gating
-→ vehicle-aware input adaptation
+→ vehicle-aware adaptation
 → WeaponSystem selection
 → AiStateSystem pre-resolution
 → movement / traversal / interactions / powers
 → VehicleSystem.updateDriving when occupied
-→ CombatSystem attack resolution
-→ DrainSystem channel resolution
+→ CombatSystem
+→ DrainSystem
 → NPC / witness / police / hunter specialists
-→ PlayerDamageSystem enemy attacks
-→ MovementNoiseSystem actual displacement
+→ PlayerDamageSystem
+→ MovementNoiseSystem
 → AiStateSystem final resolution
-→ UI/state publication
+→ state/UI publication
 ```
 
-The ordering guarantees:
+Ordering guarantees:
 
 1. city resources are resident before local queries;
-2. dormant state progresses before local activation;
-3. macro traffic is authoritative before visual materialization;
-4. local traffic behaviour samples the latest lane state;
-5. physical offsets exist before player collision checks;
-6. impact consequences observe a completed 4E contact once;
-7. the normal frame consumes final local positions.
+2. dormant state advances before activation;
+3. macro traffic precedes visual materialization;
+4. local behaviour samples current lane state;
+5. physical offsets exist before collision checks;
+6. impact consequences observe one completed contact;
+7. the normal frame consumes final positions.
+
+Vehicle maintenance is event-driven and deliberately absent from this frame order.
 
 ## 5. Input architecture
 
@@ -174,9 +168,9 @@ Authoritative files:
 
 - `phaser/src/input/actions.js`
 - `phaser/src/input/InputSystem.js`
-- input adapters under `phaser/src/input/`
+- adapters under `phaser/src/input/`
 
-Important frame fields include:
+Important frame fields:
 
 ```js
 {
@@ -203,249 +197,244 @@ Control ownership:
 
 - Enter: vehicle entry/exit only;
 - Space: traversal on foot, handbrake while driving;
-- E: non-traversal interaction and trunk inspection;
+- E: non-traversal interaction, trunk or garage;
 - Shift: quiet movement on foot;
 - wheel: weapon selection while gameplay is active.
 
-No active gameplay feature reads raw world-action keys independently of `InputSystem`.
+No active gameplay feature reads raw world-action keys independently.
 
 ## 6. Campaign and persistence architecture
 
-`CampaignState` is versioned and serializable. `MissionRunner` is the single mission/objective authority.
+`CampaignState` is versioned and serializable. `MissionRunner` is the single objective authority.
 
 Persistent domains:
 
-- active, available and completed missions;
-- latest safe checkpoint;
+- mission records and checkpoint;
 - cash and transaction ledger;
-- faction/contact reputation;
+- reputation;
 - player position/layer, Hunger and loadout;
-- authored vehicle position, heading, health, parked/disabled state and trunk;
-- broken world props;
-- static NPC outcomes, corpses and evidence;
-- tutorial and informant state.
+- authored vehicle position, angle, hull, parked state and trunk;
+- broken props;
+- static NPC outcomes, bodies and evidence;
+- tutorial/informant state.
 
 Checkpoint rules:
 
-- definitions author checkpoint policy;
-- unsafe progress rolls back to latest safe objective checkpoint;
+- objective definitions author safety policy;
+- unsafe progress rolls back to latest safe checkpoint;
 - failed retry preserves the latest safe checkpoint;
 - completion requires a completion checkpoint;
-- rewards remain idempotent;
-- starting another mission clears stale mission checkpoint authority.
+- rewards remain idempotent.
 
-Ambient traffic state is deliberately excluded from campaign persistence.
+Authored vehicle condition is campaign state but not checkpoint payload. A checkpoint rollback cannot revert a later paid repair/recovery.
 
-## 7. Combat and AI contracts
+Ambient traffic state is excluded from campaign persistence.
 
-### Attack lifecycle
+## 7. Wallet architecture
 
-```text
-primaryPressed
-→ snapshot weapon and aim
-→ validate/consume ammunition
-→ windup
-→ active resolution
-→ recovery
-```
+`WalletSystem` owns cash and immutable ledger entries.
 
-Combat and props share attack geometry where appropriate. A valid target/prop can be hit once per active window.
+Default public operations emit `wallet:changed` and therefore autosave through `CampaignSystem`.
 
-### Damage-to-Hunger
+Milestone 12.1 adds an explicit `{ emit: false }` option to `credit`, `debit` and `record`. It is used only when a higher-level transaction owns final commit/rollback.
 
-`PlayerDamageSystem` owns enemy attack timing, confirmation, hit stun, invulnerability and Hunger damage. Specialist AI only decides whether an attack may begin.
+A silent wallet mutation still:
 
-### AI priority
+- validates amount/funds;
+- changes cash;
+- increments transaction sequence;
+- writes the complete ledger row.
 
-```text
-inactive/dead
-→ downed
-→ being drained
-→ staggered
-→ attacking
-→ chasing
-→ fleeing/reporting
-→ lured
-→ investigating
-→ searching
-→ patrol
-→ idle
-```
+It simply defers the campaign event until the composing service has also updated its other authority.
 
-A higher state suppresses contradictory lower-state effects.
-
-### Perception
-
-- confirmed sight promotes type-specific action;
-- sight overrides heard-only state;
-- hearing alone produces orientation/`WTF`;
-- hearing alone does not automatically pursue or report.
-
-## 8. Vehicle architecture
-
-### Persistent vehicle model
+## 8. Persistent vehicle architecture
 
 `VehicleSystem.vehicles` contains authored/campaign vehicles.
 
-Persistent state includes:
+Persistent state:
 
-- vehicle ID and archetype;
+- ID and archetype;
 - ownership/status;
-- position, body angle and parked state;
-- hull health and disabled state;
+- position, angle and parked state;
+- hull and disabled state;
 - limited trunk contents.
 
-`VehicleModel` owns pure kinematics:
+`VehicleModel` owns pure kinematics and impact damage. `VehicleDriving` owns occupancy checks, furthest-safe contact search, sliding and world-collision consequences.
 
-- acceleration and launch boost;
-- braking/reverse;
-- body angle and travel angle;
-- grip and handbrake drift;
-- velocity and drag;
-- impact-damage helper.
+`VehicleSystem.damageVehicle()` is the public runtime hull-damage route. `VehicleSystem.persistVehicle()` commits live condition through `CampaignVehicleSystem`.
 
-`VehicleDriving` owns:
+### Silent condition updates
 
-- world occupancy checks;
-- furthest-safe contact search;
-- wall/corner slide candidates;
-- rotation-at-contact recovery;
-- world-collision consequences.
+`CampaignVehicleSystem.updateCondition()` defaults to normal emitting behaviour. Milestone 12.1 adds:
 
-`VehicleSystem.damageVehicle()` is the public hull-damage/persistence route.
+```js
+{ emit: false, dirty: false }
+```
 
-### Ambient traffic model
+This lets `VehicleMaintenanceService` update condition without an intermediate autosave.
+
+### Runtime synchronization
+
+`VehicleSystem` listens for `vehicle:maintenance-completed` and runs `syncFromCampaign(vehicleId)`.
+
+It updates:
+
+- position and body/travel angle;
+- zero speed, velocity and drift;
+- hull and disabled state;
+- parked/handbrake state;
+- normal/wreck alpha and hood colour;
+- label rotation, visibility, HUD and browser snapshot;
+- `lastPersisted` so normal persistence cannot overwrite the result.
+
+## 9. Vehicle maintenance transaction
+
+Authority:
+
+```text
+VehicleMaintenanceService
+  → WalletSystem silent debit
+  → CampaignVehicleSystem silent condition update
+  → vehicle:maintenance-completed
+  → CampaignSystem wildcard save
+  → VehicleSystem live synchronization
+```
+
+Before mutation the service snapshots:
+
+- cash and ledger;
+- world flags;
+- event log;
+- transaction/event sequences;
+- revision and timestamp.
+
+On failure it restores these values and persists rollback.
+
+### Repair
+
+Requires:
+
+- owned vehicle;
+- positive but incomplete hull;
+- parked state;
+- condition position inside refuge-garage service radius;
+- sufficient cash.
+
+Restores full hull without moving the vehicle.
+
+### Recovery
+
+Requires:
+
+- owned disabled vehicle;
+- sufficient cash;
+- player-facing request from the refuge garage;
+- no wanted level.
+
+Moves the wreck to a deterministic garage slot and restores `35%` hull.
+
+### UI boundary
+
+`VehicleMaintenanceUiSystem` wraps `scene.collectInteractions` without adding a frame loop. Near the garage it adds one E interaction. Its dialog pauses the scene, owns keyboard focus and calls only the campaign maintenance service.
+
+It blocks service while:
+
+- driving;
+- away from garage or not on street;
+- wanted;
+- campaign entry unresolved;
+- another operation active.
+
+## 10. Ambient traffic architecture
 
 Traffic proxies are not authored vehicles:
 
-- not present in `VehicleSystem.vehicles`;
-- not enterable, stealable or searchable;
-- no ownership, trunk, health or save state;
+- absent from `VehicleSystem.vehicles`;
+- not enterable, searchable, repairable or recoverable;
+- no ownership, trunk, hull or save state;
 - fixed pooled presentation only.
 
-This separation must remain explicit.
+This boundary is enforced by maintenance ownership/definition checks.
 
-## 9. Chunk and district streaming
+## 11. Chunk and district streaming
 
 ### `ChunkStreamSystem`
 
-Owns:
-
-- asynchronous chunk loading;
-- retry and cancellation;
-- activation budget;
-- resident/active states;
-- LRU retention;
-- spatial static queries;
-- chunk-local deltas and diagnostics.
+Owns asynchronous load, retry/cancel, activation budget, resident/active state, LRU retention, static spatial queries, deltas and diagnostics.
 
 ### `DistrictPackSystem`
 
-Owns district resource profiles and road-aware prefetch.
+Owns district resources and road-aware prefetch.
 
 ### `EntityStreamSystem`
 
-Moves persistent entities between active and dormant simulation without deleting campaign authority.
+Switches persistent entities between active and dormant simulation without deleting campaign truth.
 
 ### `DistantSimulationSystem`
 
-Advances dormant pedestrians and other low-frequency state.
+Advances low-frequency dormant state.
 
 ### `MacroTrafficPoliceSystem`
 
-Owns:
+Owns district graph, traffic token count/phase, trips, dormant police travel and patrol recovery.
 
-- district macro graph;
-- abstract traffic token count and phase;
-- completed trips;
-- dormant police travel;
-- district-local patrol recovery.
+## 12. Local traffic architecture
 
-## 10. Local traffic architecture
+### 4C
 
-### 4C — materialization
+`TrafficMaterializationSystem` maps nearby macro tokens to ten pooled containers, samples explicit lane polylines, interpolates macro ticks and applies eligibility/hysteresis.
 
-`TrafficMaterializationSystem`:
+### 4D
 
-- maps nearby macro tokens to a fixed pool of ten containers;
-- samples explicit lane polylines;
-- interpolates between macro ticks;
-- applies street/chunk eligibility and despawn hysteresis;
-- keeps stable token-to-slot identity while local;
-- adds occupancy blocking without adding proxies to `VehicleSystem.vehicles`.
+`TrafficLocalBehaviorSystem` owns local lane phase, following, queues, braking, junction priority and bounded catch-up.
 
-### Assignment policy
+### 4E
 
-`TrafficLocalAssignmentPolicy` separates safe appearance checks from already-assigned retention. A queued or physically displaced proxy must not disappear merely because it is temporarily close to another local vehicle.
+`TrafficPhysicalConsequencesSystem` owns soft push/block geometry, player damping and temporary lane offsets/recovery.
 
-### 4D — behaviour
+### 4F
 
-`TrafficLocalBehaviorSystem` owns:
+`TrafficImpactConsequencesSystem` owns hard/severe player-vehicle damage, crash audio, exposure, local heat, severe stalls and per-token cooldown.
 
-- local lane phase;
-- following distance and queues;
-- braking for player/authored vehicles;
-- deterministic junction priority;
-- bounded lag and catch-up;
-- no macro phase advancement.
+Local traffic never gains campaign hull or maintenance eligibility.
 
-### 4E — physical contact
+## 13. Authority table
 
-`TrafficPhysicalConsequencesSystem` wraps the public driving operation after 4D:
+| Domain | Authoritative owner | Not authoritative |
+|---|---|---|
+| mission progress | `MissionRunner` | UI step |
+| campaign save | campaign services | runtime proxies |
+| player input | `InputSystem` | raw-key feature reads |
+| cash/ledger | `WalletSystem` | garage UI |
+| authored vehicle condition | `CampaignVehicleSystem` / live `VehicleSystem` | traffic proxies |
+| maintenance composition | `VehicleMaintenanceService` | wallet or UI alone |
+| maintenance presentation | `VehicleMaintenanceUiSystem` | campaign truth |
+| macro traffic phase | `MacroTrafficPoliceSystem` | local traffic systems |
+| traffic slot | `TrafficMaterializationSystem` | macro system |
+| lane behaviour | `TrafficLocalBehaviorSystem` | persistent vehicle model |
+| temporary offset | `TrafficPhysicalConsequencesSystem` | macro token |
+| impact alerts | `TrafficImpactConsequencesSystem` | 4E geometry |
+| police heat | `PoliceSystem` | traffic/garage storage |
+| evidence | `EvidenceSystem` | rendering effects |
 
-- predicts the player vehicle candidate;
-- detects contact with local proxies;
-- applies a bounded safe proxy offset when possible;
-- blocks both vehicles when no safe displacement exists;
-- damps player speed;
-- recovers the proxy offset toward its lane;
-- applies no damage, exposure or police heat for soft contact.
+## 14. Events and diagnostics
 
-### 4F — graduated impacts
+Events carry identifiers and primitive values, never service instances.
 
-`TrafficImpactConsequencesSystem` wraps the 4E driving wrapper:
+Maintenance event:
 
 ```text
-soft      < 125
-hard      125–209
-severe    ≥ 210
+vehicle:maintenance-completed
 ```
 
-Hard/severe impacts:
+Payload includes vehicle, action, cost, health before/after, balances, transaction ID, garage and timestamp.
 
-- damage the persistent player vehicle through `VehicleSystem`;
-- add crash audio, exposure and local police heat;
-- apply additional speed loss;
-- hold or severely stall the proxy;
-- use a per-token cooldown to prevent repeated frame damage.
-
-Local cooldown/stall state is discarded on dematerialization.
-
-## 11. Authority table
-
-| Domain | Authoritative owner | Explicitly not authoritative |
-|---|---|---|
-| mission progress | `MissionRunner` | UI compatibility step |
-| campaign save | `CampaignState` services | runtime proxy objects |
-| player input | `InputSystem` | feature raw-key reads |
-| authored vehicle health | `VehicleSystem` | traffic proxies |
-| macro traffic phase | `MacroTrafficPoliceSystem` | local behaviour/physics |
-| traffic slot assignment | `TrafficMaterializationSystem` | macro system |
-| traffic lane behaviour | `TrafficLocalBehaviorSystem` | persistent vehicle model |
-| temporary traffic offset | `TrafficPhysicalConsequencesSystem` | macro token |
-| impact damage/alerts | `TrafficImpactConsequencesSystem` | 4E geometry |
-| police local heat | `PoliceSystem` | traffic system storage |
-| evidence | `EvidenceSystem` | rendering-only effects |
-
-## 12. Events and diagnostics
-
-Events carry plain identifiers/values rather than system instances. Existing event families include weapon, combat, player damage, AI state, Hunger/feeding, movement/noise, props and vehicle disablement.
-
-Browser diagnostics include:
+Browser diagnostics:
 
 ```js
 window.NBD_CAMPAIGN
 window.NBD_VEHICLES
+window.NBD_VEHICLE_MAINTENANCE
 window.NBD_CITY_STREAM
 window.NBD_TRAFFIC
 window.NBD_TRAFFIC_BEHAVIOR
@@ -453,9 +442,9 @@ window.NBD_TRAFFIC_PHYSICS
 window.NBD_TRAFFIC_IMPACTS
 ```
 
-These APIs are diagnostic/test surfaces, not additional state authorities.
+These are test/diagnostic surfaces, not additional authorities.
 
-## 13. Testing architecture
+## 15. Testing architecture
 
 PR domains:
 
@@ -466,43 +455,40 @@ browser-systems
 browser-campaign
 ```
 
-Golden narrative paths may run on main/nightly/manual workflows.
-
 Pure/unit coverage includes:
 
 - input and geometry;
 - combat, drain and AI priority;
 - campaign definitions/checkpoints/rewards;
-- vehicle kinematics and damage;
-- prop/evidence consequences;
-- chunk state, macro graph and dormant simulation;
-- lane sampling, traffic assignment, behaviour and junctions;
-- contact impulse/recovery;
-- impact tiers, damage and cooldown.
+- wallet and vehicle condition;
+- vehicle kinematics/damage;
+- maintenance quote, ownership, pricing and idempotence;
+- atomic rollback after condition failure;
+- chunk/macro/dormant simulation;
+- traffic lane/assignment/behaviour/contact/impact.
 
 Chromium systems coverage includes:
 
-- both boot routes and quality/layout profiles;
-- vehicle entry/exit, driving and drift;
-- wreck exit and persistent vehicle damage;
-- pedestrians, police and street damage;
-- city streaming and entity dormancy;
-- traffic materialization and behaviour;
-- soft contact with no damage;
-- hard impact with damage/heat/exposure;
-- cooldown suppression and stable slot identity.
+- vehicle entry, driving, drift and wreck exit;
+- city/traffic regressions;
+- refuge-garage interaction and dialog;
+- full repair and exact ledger debit;
+- repeated repair without second charge;
+- wanted recovery block without mutation;
+- remote wreck recovery and live/campaign synchronization.
 
 A feature is complete only when code, tests and documentation agree.
 
-## 14. Current constraints and next extension
+## 16. Current constraints and next extension
 
 Current constraints:
 
+- one refuge garage;
+- full repair only, no partial slider;
+- owned authored vehicles only;
+- no insurance, impound or mechanic discount;
+- no motorized police pursuit/roadblocks;
 - traffic remains bounded to ten local containers;
-- ambient proxies have no persistent damage or driver identity;
-- no motorized police pursuit/roadblocks yet;
-- no repair economy or disabled-vehicle recovery service yet;
-- no rigid-body traffic spin/debris trajectory;
-- browser systems suite duration is increasing.
+- browser systems duration is increasing.
 
-Next architectural extension: a first-class vehicle repair/recovery service using existing campaign cash, ledger and vehicle persistence. It must not store repair truth in UI state or create a second vehicle-condition model.
+Next extension after Milestone 12.1 acceptance: motorized police using existing macro/local roads without replacing foot pursuit or vertical escape routes.

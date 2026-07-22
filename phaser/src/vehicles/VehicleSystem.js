@@ -19,6 +19,9 @@ export class VehicleSystem {
     this.destroyed = false;
     this.vehicles = vehicleDefinitions.map(definition => this.createVehicle(definition));
     this.hud = createVehicleHud(scene);
+    this.disposeMaintenance = campaign.events?.on?.("vehicle:maintenance-completed", event => {
+      this.syncFromCampaign(event.payload.vehicleId);
+    }) || null;
     installVehicleBrowserApi(this);
     this.publish();
     scene.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, this.destroy, this);
@@ -134,6 +137,46 @@ export class VehicleSystem {
     return true;
   }
 
+  syncFromCampaign(vehicleId) {
+    const vehicle = this.vehicle(vehicleId);
+    if (!vehicle) return false;
+    const condition = this.campaign.vehicles.condition(vehicle);
+    vehicle.x = condition.x;
+    vehicle.y = condition.y;
+    vehicle.angle = condition.angle;
+    vehicle.travelAngle = condition.angle;
+    vehicle.driftAngle = 0;
+    vehicle.velocityX = 0;
+    vehicle.velocityY = 0;
+    vehicle.speed = 0;
+    vehicle.health = condition.health;
+    vehicle.disabled = condition.disabled;
+    vehicle.parked = condition.parked;
+    vehicle.handbrake = false;
+    vehicle.status = this.campaign.vehicles.status(vehicle);
+    vehicle.container
+      .setPosition(vehicle.x, vehicle.y)
+      .setRotation(vehicle.angle)
+      .setAlpha(vehicle.disabled ? 0.52 : 1);
+    vehicle.visual.hood.setFillStyle(
+      vehicle.disabled ? 0x3f2027 : vehicle.archetype.trim,
+      vehicle.disabled ? 0.92 : 0.38
+    );
+    vehicle.visual.label.setRotation(-vehicle.angle);
+    vehicle.lastPersisted = {
+      x: vehicle.x,
+      y: vehicle.y,
+      angle: vehicle.angle,
+      health: vehicle.health,
+      parked: vehicle.parked
+    };
+    this.handbrakeActive = false;
+    this.refreshVisibility();
+    this.updateHud();
+    this.publish();
+    return true;
+  }
+
   inspectTrunk(vehicleId) {
     return inspectVehicleTrunk(this, vehicleId);
   }
@@ -194,6 +237,8 @@ export class VehicleSystem {
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.disposeMaintenance?.();
+    this.disposeMaintenance = null;
     const current = this.currentVehicle();
     if (current) this.persistVehicle(current);
     for (const vehicle of this.vehicles) vehicle.container?.destroy?.();

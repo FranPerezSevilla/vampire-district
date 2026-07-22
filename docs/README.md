@@ -23,6 +23,7 @@ This directory is the project source of truth for design, implementation and pla
 ## Vehicles, city and traffic
 
 - [Milestone 12 status](MILESTONE_12_STATUS.md) — vehicle runtime, expanded district, pedestrians, destructible street furniture and evidence integration.
+- [Vehicle maintenance](VEHICLE_MAINTENANCE.md) — costed refuge-garage repair, atomic wallet/condition updates and owned-wreck recovery.
 - [Testing strategy](TESTING_STRATEGY.md) — normal/explore/scenario profiles, focused browser loops and parallel PR checks.
 - [City Compiler](CITY_COMPILER.md) — deterministic city blueprints, district recipes, validation and scoring.
 - [City Compiler baseline](CITY_COMPILER_BASELINE.md) — current-city score and legacy geometry debt.

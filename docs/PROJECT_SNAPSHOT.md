@@ -2,7 +2,7 @@
 
 _Last updated: 2026-07-22_
 
-For the canonical project-wide map, read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) first. This snapshot summarizes the current playable state and immediate decisions; detailed implementation and acceptance records live in the linked subsystem documents.
+Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) first for the canonical project-wide map. This snapshot summarizes the playable state, accepted extensions and immediate priorities.
 
 ## Product vision
 
@@ -10,54 +10,67 @@ For the canonical project-wide map, read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPR
 
 > GTA2-like city structure; Vampire District consequences.
 
-The project must not collapse into a conventional stealth game using a top-down camera. Streets, traffic, vehicles, weapons, factions, territory and money remain core. Rooftops, sewers, Hunger, feeding, the Veil, powers, Retainers and supernatural politics differentiate it.
+The project must not collapse into a conventional stealth game using a top-down camera. Streets, traffic, vehicles, weapons, factions, territory and cash remain core. Rooftops, sewers, Hunger, feeding, the Veil, powers, Retainers and supernatural politics differentiate it.
 
 ## Original-IP decision
 
-The project does not use names, lore, ranks, symbols, factions or mechanical terminology from an existing licensed vampire property.
+The project does not use names, lore, ranks, symbols, factions or terminology from an existing licensed vampire property.
 
-Working faction structure:
+Working factions:
 
-- **Blackglass Directorate** — institutional and secretive;
-- **Red Assembly** — violent and territorial;
-- **Unaligned Houses** — independent operators, tracked separately.
+- **Blackglass Directorate**;
+- **Red Assembly**;
+- separate **Unaligned Houses**.
 
-Working enhanced-mortal terminology:
+Working enhanced-mortal terms:
 
 - neutral: **Retainer**;
 - Directorate: **Proxy**;
 - Assembly: **Marked**;
 - Unaligned: **Hand**.
 
-These names remain subject to commercial trademark clearance. The detailed design is in `ORIGINAL_SETTING_FACTIONS_RETAINERS_ECONOMY.md`.
+Commercial-facing names remain subject to trademark clearance.
 
-## Current accepted baseline
-
-Current accepted main baseline after City Streaming 4F:
+## Current accepted foundation
 
 ```text
-a8fc076ac46d5da86bd80d3c09be1a8a8bbfcedc
+a424e0f6e1c2e52d9851bdbff129276c470478c6
 ```
 
-The build currently provides:
+The accepted foundation provides:
 
-- Phaser 3 browser runtime with responsive rendering and quality presets;
+- Phaser 3 browser runtime and responsive quality presets;
 - street, low-rooftop, high-rooftop and sewer layers;
 - opening journalist mission and `Clean the Scene` contract;
-- data-driven campaign state, objective definitions, rewards and checkpoints;
-- New Game, Continue, retry and Explore District entry flows;
-- mouse-directed combat, weapons, draining, Hunger and powers;
+- campaign entry, save/load, safe checkpoints and idempotent rewards;
+- mouse combat, weapons, draining, Hunger and powers;
 - witnesses, evidence, police escalation and helicopter pressure;
-- damageable lights, dumpsters, bodies and persistent blood evidence;
-- a `2400 × 1440` multi-ward district;
+- damageable lights, dumpsters, bodies and blood evidence;
+- `2400 × 1440` multi-ward district;
 - arcade vehicles, health, trunks and persistent condition;
-- pedestrians and authored sidewalk/crossing loops;
+- sidewalk/crossing pedestrians;
 - chunk streaming, district packs and dormant simulation;
-- macro traffic and police travel;
-- pooled local traffic with behaviour and collision consequences;
-- unit, boot, system and campaign Chromium validation.
+- macro traffic/police and pooled local civilian traffic;
+- soft contact and graduated high-speed traffic impacts;
+- consolidated canonical project blueprint;
+- unit, boot, systems and campaign Chromium validation.
 
-## Current mission flow
+## Accepted Milestone 12.1 extension
+
+PR #30 adds the refuge vehicle garage:
+
+- full repair for owned, parked vehicles at the garage;
+- tow recovery for owned wrecks from anywhere;
+- campaign cash and ledger charge;
+- atomic debit plus condition update with rollback;
+- immediate synchronization of persistent and live vehicle state;
+- repeat-operation idempotence;
+- no service while wanted, driving or away from the garage;
+- accessible modal and diagnostic API.
+
+The feature passed unit, boot, systems and campaign CI together. Detailed document: `VEHICLE_MAINTENANCE.md`.
+
+## Missions
 
 Opening mission:
 
@@ -65,7 +78,7 @@ Opening mission:
 2. the sire orders the journalist silenced;
 3. rooftop traversal and the blocking thug are introduced;
 4. the player downs and drains the thug;
-5. Hunger and witness rules are explained;
+5. Hunger and witnesses are explained;
 6. the police informant reveals the journalist location;
 7. full controls and weapon selection unlock;
 8. the player handles the journalist;
@@ -73,7 +86,7 @@ Opening mission:
 10. the sire acknowledges the result;
 11. only after dismissing the dialogue does `REPORT ACCEPTED` open.
 
-The refuge contract board also exposes the replayable `Clean the Scene` mission through campaign definitions rather than a parallel scripted progression.
+The refuge contract board also exposes `Clean the Scene` through campaign definitions rather than parallel scripted progression.
 
 ## Controls
 
@@ -81,10 +94,10 @@ The refuge contract board also exposes the replayable `Clean the Scene` mission 
 WASD / arrows   run or control vehicle
 Shift           quiet movement on foot
 Enter           vehicle enter / exit only
-Space           contextual traversal on foot; handbrake while driving
-E               non-traversal interaction / trunk inspection
+Space           traversal on foot; handbrake while driving
+E               interaction, trunk or refuge garage
 Mouse           aim and face
-Left mouse      use equipped weapon
+Left mouse      equipped attack
 Right mouse     drain valid target
 Wheel           cycle owned weapons
 Q               Dash
@@ -94,18 +107,18 @@ M               mission panel
 H               pause/help/accessibility
 ```
 
-`InputSystem.beginFrame()` remains authoritative. Gameplay systems do not read raw keys independently.
+`InputSystem.beginFrame()` remains authoritative. Features do not read raw world-action keys independently.
 
-## Player, combat and perception snapshot
+## Combat and perception
 
 Movement:
 
 - run multiplier `1.55`;
 - quiet multiplier `0.72`;
-- ordinary NPC run-hearing range `42`;
-- enhanced listener run radius `120`;
+- ordinary run-hearing range `42`;
+- enhanced listener range `120`;
 - ordinary NPCs ignore quiet footsteps;
-- hearing creates attention/`WTF`, never automatic pursuit or reporting;
+- hearing creates attention/`WTF`, never automatic pursuit/reporting;
 - confirmed sight overrides heard-only investigation.
 
 Prototype weapons:
@@ -116,105 +129,96 @@ Prototype weapons:
 | Iron Pipe | melee | 2 | 42 | unlimited |
 | Pistol | hitscan | 3 | 260 | 8 |
 
-Player pressure:
-
-- police baton: `Hunger +12`;
-- hunter heavy strike: `Hunger +20`;
-- rooftop thug swing: `Hunger +8`;
-- hit stun: `260 ms`;
-- invulnerability: `720 ms`;
-- critical Hunger: `85`;
-- frenzy failure: `100`.
-
-Resolved AI priority:
+AI priority:
 
 ```text
 inactive/dead → downed → being drained → staggered → attacking
 → chasing → fleeing/reporting → lured → investigating → searching → patrol/idle
 ```
 
-Police use one stable attacker and deterministic containment roles. Police and hunters recover after type-specific delays; ordinary victims generally remain down.
+Police use one stable attacker and deterministic containment. Police/hunters recover after type-specific delays; ordinary victims generally remain down.
 
-## Campaign and persistence snapshot
+## Campaign and persistence
 
 `CampaignState` and `MissionRunner` own persistent truth:
 
 - active/available/completed missions;
 - latest safe checkpoint;
 - player position/layer and Hunger;
-- selected weapon, inventory and ammunition;
+- loadout and ammunition;
 - cash and immutable ledger;
-- faction/contact reputation;
-- persistent authored vehicle condition and trunks;
-- broken props, static NPC outcomes, bodies and evidence;
-- tutorial and informant completion state.
+- reputation;
+- authored vehicle condition/trunks;
+- broken props, NPC outcomes, bodies and evidence;
+- tutorial/informant state.
 
-Unsafe progress rolls back to the latest safe objective checkpoint. Rewards and completion checkpoints are idempotent.
+Vehicle maintenance composes `WalletSystem` and `CampaignVehicleSystem`. It performs silent intermediate mutations and emits one `vehicle:maintenance-completed` event for autosave. A failed update restores wallet, ledger, flags and sequences.
 
-## City and streaming snapshot
+Campaign checkpoints do not restore authored vehicle condition, so an older checkpoint cannot undo maintenance.
+
+## City and streaming
 
 ```text
-viewport      960 × 640 logical units
+viewport      960 × 640
 world         2400 × 1440
 area          3,456,000 units²
-expansion     5.625× original area
+expansion     5.625× original
 ```
 
-Wards include the original quarter, Glasshouse, Foundry, Canal, Blackwater and Harbor.
+Wards: original quarter, Glasshouse, Foundry, Canal, Blackwater and Harbor.
 
 Accepted streaming stack:
 
-1. asynchronous chunks, activation budgets, LRU retention and local deltas;
-2. district packs, road-aware prefetch and dormant pedestrians;
-3. macro district graph, traffic tokens and dormant police travel;
-4. ten pooled nearby traffic proxies on authored lane polylines;
-5. local following, braking and deterministic junction priority;
-6. soft physical pushes, blocking and lane-offset recovery;
-7. hard/severe impact damage, exposure, police heat and cooldown protection.
+1. asynchronous chunks, activation budgets, LRU and local deltas;
+2. district packs, road prefetch and dormant pedestrians;
+3. macro graph, traffic tokens and dormant police;
+4. ten pooled traffic proxies on authored lanes;
+5. following, braking and deterministic junction priority;
+6. soft physical contact and lane recovery;
+7. hard/severe impact damage, heat, exposure and cooldown.
 
 Detailed documents: `CITY_STREAMING.md` and `CITY_STREAMING_4A.md` through `CITY_STREAMING_4F.md`.
 
-## Vehicle and traffic snapshot
-
-Vehicle controls:
-
-```text
-Enter      enter / exit
-W          accelerate
-S          brake, then reverse
-A / D      steer
-Space      handbrake / drift
-E          inspect nearby trunk while on foot
-```
+## Vehicles and maintenance
 
 Persistent authored vehicles have:
 
 - archetype and identity;
 - ownership/status;
-- health and disabled state;
-- position and heading;
-- limited trunk storage;
-- campaign persistence.
+- hull and disabled state;
+- position, heading and parked state;
+- limited trunk;
+- campaign persistence;
+- maintenance eligibility.
 
 Ambient traffic proxies remain separate:
 
 - fixed pool of ten;
-- stable macro token-to-slot identity while local;
-- following and junction behaviour;
-- temporary physical offset and recovery;
-- no entry, theft, ownership, trunk, health or save data.
+- stable token-to-slot identity while local;
+- no entry, theft, ownership, trunk, health, repair or save data.
 
 Impact tiers:
 
 ```text
-soft      below 125 speed units
+soft      below 125
 hard      125–209
 severe    210+
 ```
 
-Soft contact stays damage-free. Hard and severe impacts damage the persistent player vehicle, create exposure/local heat and use a per-token cooldown to prevent frame-stacked consequences. Severe impacts temporarily stall the ambient proxy.
+Maintenance baseline:
 
-## Runtime architecture snapshot
+```text
+garage                 street 304, 326
+repair radius          96
+minimum repair         $25
+compact repair         $3 per missing hull
+compact recovery       $120
+recovery condition     35% hull / 26 of 72
+```
+
+Full repair requires an owned, damaged, non-disabled, parked vehicle at the garage. Tow recovery requires an owned wreck and returns it to a deterministic refuge slot. Player-facing service is blocked while wanted.
+
+## Runtime architecture
 
 ```text
 GameScene.update
@@ -237,79 +241,71 @@ PedestrianSystem
 normal gameplay frame
 ```
 
-The complete ownership map is in `PROJECT_BLUEPRINT.md` and `TECHNICAL_ARCHITECTURE.md`.
+Maintenance is event-driven, outside the frame loop. `VehicleSystem` listens for its final campaign event and synchronizes health, position, wreck visuals, HUD and `lastPersisted` state.
 
-## Faction, economy and Retainer direction
+## Economy and Retainer direction
 
-Locked campaign direction:
+Locked direction:
 
-- faction and contact reputation, not one morality score;
+- faction/contact reputation rather than one morality score;
 - one melee, one sidearm and one long/special slot;
 - paid ammunition with carried caps;
 - separate carried inventory and refuge stash;
 - finite supplier stock and authored caches;
-- trunks provide limited mobile storage, never the full stash;
-- Retainers are named characters with loyalty, dependence, condition, upkeep and possible loss.
+- trunks provide limited mobile storage;
+- Retainers have loyalty, dependence, condition, upkeep and possible loss.
 
-Initial Retainer roles:
+Initial Retainer roles: Quartermaster, Driver, Cleaner, Mechanic, Fixer, Scout, Guard and Medic.
 
-- Quartermaster;
-- Driver;
-- Cleaner;
-- Mechanic;
-- Fixer;
-- Scout;
-- Guard;
-- Medic.
-
-## Locked design decisions
+## Locked decisions
 
 - original setting and terminology;
 - pure top-down readability;
-- GTA2-like streets, vehicles, traffic, factions and urban chaos remain core;
-- sight and hearing remain separate;
-- hearing alone does not pursue or report;
+- streets, vehicles, traffic, factions and urban chaos remain core;
+- sight and hearing stay separate;
 - Enter owns vehicle entry/exit;
-- Space owns traversal on foot and handbrake while driving;
-- Hunger is combat attrition and feeding is recovery;
-- NPC resilience leads to downed state;
-- persistent authored vehicles and ambient traffic are separate models;
-- large-city scale uses streaming and dormancy;
+- Space owns traversal/handbrake;
+- persistent authored vehicles and ambient traffic stay separate;
+- large-city scale uses streaming/dormancy;
 - mission progression has one campaign authority;
-- ammunition is finite, paid and refuge/safehouse-managed;
+- maintenance uses existing wallet and vehicle-condition authorities;
+- paid maintenance is idempotent and checkpoint-safe;
+- ammunition is finite and refuge/safehouse-managed;
 - Retainers have agency, upkeep and failure states;
-- accessibility presentation cannot change hit geometry or gameplay state.
+- accessibility cannot alter hit geometry or gameplay state.
 
-## Open design decisions
+## Open decisions
 
 - final commercial names and faction histories;
-- final vehicle/traffic tuning and density;
-- exact repair pricing and disabled-vehicle recovery rules;
+- final vehicle/traffic density tuning;
+- final repair/recovery economy tuning;
 - motorized police pursuit/interception behaviour;
-- ammunition prices, restock cadence and detention losses;
-- Retainer blood-cost model and maximum active count;
-- long-term perception visualization and reduced-camera-shake options.
+- ammunition prices and detention losses;
+- Retainer blood-cost model and maximum count;
+- long-term perception visualization and camera accessibility.
 
 ## Active risks
 
-1. Traffic wrapper ownership must remain explicit as behaviour grows.
-2. Browser-system regression time is increasing with the city feature stack.
-3. Vehicle damage currently needs a complete repair/recovery loop.
-4. Motorized police must complement, not invalidate, foot pursuit and vertical escapes.
-5. Traffic density must remain readable and bounded.
-6. Economy can become irrelevant or punitive without careful tuning.
-7. Retainers can become menu-only bonuses unless missions expose their risks.
-8. Commercial-facing names need trademark clearance.
+1. Browser-system regression time is increasing.
+2. Repair prices can be irrelevant or punitive without playtesting.
+3. Motorized police must complement foot pursuit and vertical escape.
+4. Traffic density must remain readable and bounded.
+5. Future multiple garages need deterministic slots and ownership rules.
+6. Economy/ammunition can become punitive without competing rewards.
+7. Retainers can become menu-only bonuses.
+8. Commercial names need trademark clearance.
 
-## Immediate project priority
+## Immediate priority
 
-Implement the **vehicle repair and recovery loop**:
+Continue Milestone 13 with **motorized police pursuit, interception, roadblocks and officer dismount behaviour**.
 
-- inspect condition;
-- repair through a refuge/garage service;
-- charge cash through the existing wallet/ledger;
-- recover or replace disabled vehicles without campaign soft-locks;
-- preserve idempotence across save/load;
-- add focused unit and Chromium coverage.
+The implementation must:
 
-After that, continue Milestone 13 with motorized police pursuit, interception, roadblocks and officer dismount behaviour.
+- reuse the macro/local road infrastructure;
+- preserve existing foot pursuit and containment roles;
+- retain rooftop/sewer escape routes;
+- prevent roadblocks from hard-locking the player;
+- define explicit police-cruiser authority and persistence boundaries;
+- keep civilian traffic readable and pool-bounded;
+- add focused unit and Chromium coverage;
+- update the blueprint and detailed architecture in the same PR.
