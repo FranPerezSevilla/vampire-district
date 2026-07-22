@@ -70,6 +70,7 @@ test("abstract traffic advances and dormant police wake onto district-local patr
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const original = scene.npcSystem.npcs.find(item => item.id === "police_patrol_2");
     const destination = { x: original.x, y: original.y };
+    scene.switchLayer(0, destination, "Macro police wake test.");
     await window.NBD_CITY_STREAM.forceFocus(destination.x, destination.y);
     window.NBD_ENTITY_STREAM.resync();
     scene.npcSystem.refreshVisibility();
