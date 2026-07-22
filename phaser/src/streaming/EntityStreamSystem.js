@@ -142,7 +142,8 @@ export class EntityStreamSystem {
     vehicle.streamState = decision.state;
     vehicle.streamReason = decision.reason;
     vehicle.streamChunkId = decision.chunkId;
-    vehicle.container?.setActive?.(decision.state !== ENTITY_STREAM_STATES.DORMANT);
+    const awake = decision.state !== ENTITY_STREAM_STATES.DORMANT;
+    vehicle.container?.setActive?.(awake).setVisible?.(awake && this.scene.currentLayer === vehicle.layer);
     return decision;
   }
 
