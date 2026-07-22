@@ -9,7 +9,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Functional specification](FUNCTIONAL_SPEC.md) — intended player experience and gameplay rules.
 - [Original setting, factions, retainers and economy](ORIGINAL_SETTING_FACTIONS_RETAINERS_ECONOMY.md) — original-IP guardrails, working factions, enhanced mortal Retainers, weapon slots, safehouses, ammunition and cash economy.
 - [Mission flow](MISSION_FLOW.md) — journalist handling, return-to-refuge completion rule and sire-dialogue-to-report ordering.
-- [Campaign foundation](CAMPAIGN_FOUNDATION.md) — versioned state, MissionRunner authority, campaign entry, refuge board, cash, reputation and safe world checkpoints.
+- [Campaign foundation](CAMPAIGN_FOUNDATION.md) — versioned state, MissionRunner authority, campaign entry, refuge contract board, cash, reputation and safe world checkpoints.
 - [Milestone 11 status](MILESTONE_11_STATUS.md) — completed campaign-foundation scope, acceptance record and transition to vehicles.
 - [Milestone 11.2 status](MILESTONE_11_2_STATUS.md) — accepted direct mission authority, checkpoint policy, merge and validation record.
 - [Milestone 11.3 status](MILESTONE_11_3_STATUS.md) — accepted player-facing campaign entry, refuge contract board and playable `Clean the Scene` flow.
@@ -19,6 +19,7 @@ This directory is the project source of truth for design, implementation and pla
 - [City Compiler baseline](CITY_COMPILER_BASELINE.md) — measured score for the current city, legacy geometry debt and acceptance targets for the Foundry pilot.
 - [Foundry pilot](CITY_COMPILER_FOUNDRY_PILOT.md) — seeded Foundry generation, stable semantic IDs, candidate ranking, review artifacts and integration boundary.
 - [Foundry selection](CITY_COMPILER_FOUNDRY_SELECTION.md) — decision record selecting `foundry-pilot-04` and its production-integration requirements.
+- [City streaming](CITY_STREAMING.md) — chunk manifest, active/prefetched/dormant states, local static queries and the path to asynchronous world streaming.
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — architecture and engineering constraints.
 - [Runtime consolidation](RUNTIME_CONSOLIDATION.md) — Milestone 10 system ownership, spatial queries, diagnostics and browser smoke tests.
 - [Milestone 10 status](MILESTONE_10_STATUS.md) — current implementation and validation boundary.
