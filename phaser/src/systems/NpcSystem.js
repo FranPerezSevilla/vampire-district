@@ -2,12 +2,64 @@ import { LAYERS, streetNavigationPoints } from "../data/district.js";
 import { NpcSystem as NpcSystemCore } from "./NpcSystemCore.js";
 
 export class NpcSystem extends NpcSystemCore {
+  createNpc(definition) {
+    const npc = super.createNpc(definition);
+    this.scene.entityStreamSystem?.applyNpcState?.(npc, 0);
+    return npc;
+  }
+
+  update(dt) {
+    const stream = this.scene.entityStreamSystem;
+    if (!stream) {
+      super.update(dt);
+      return;
+    }
+
+    for (const npc of this.npcs) {
+      if (stream.shouldSimulateNpc(npc)) {
+        if (npc.lureFlash > 0) npc.lureFlash = Math.max(0, npc.lureFlash - dt);
+        if (npc.stunnedTimer > 0 && Number.isFinite(npc.stunnedTimer)) {
+          npc.stunnedTimer = Math.max(0, npc.stunnedTimer - dt);
+        }
+        this.updateNpc(npc, dt);
+        npc.container?.setPosition?.(npc.x, npc.y);
+      }
+      npc.container?.setVisible?.(this.isRenderable(npc));
+    }
+    this.rebuildSpatialIndex();
+  }
+
+  rebuildSpatialIndex() {
+    const stream = this.scene.entityStreamSystem;
+    this.spatial.rebuild(stream
+      ? this.npcs.filter(npc => stream.shouldIndexNpc(npc))
+      : this.npcs);
+  }
+
+  isRenderable(npc) {
+    if (this.scene.entityStreamSystem && !this.scene.entityStreamSystem.shouldRenderNpc(npc)) return false;
+    return super.isRenderable(npc);
+  }
+
+  refreshVisibility() {
+    this.rebuildSpatialIndex();
+    for (const npc of this.npcs) npc.container?.setVisible?.(this.isRenderable(npc));
+  }
+
   bestVisibleNavNode(npc, targetX, targetY) {
     if (npc?.layer !== LAYERS.STREET) return super.bestVisibleNavNode(npc, targetX, targetY);
 
     let best = null;
     let bestScore = Infinity;
-    for (const node of streetNavigationPoints) {
+    const localNodes = this.scene.cityStreamSystem?.queryPoint?.(
+      "navigationPoints",
+      npc.x,
+      npc.y,
+      760,
+      { includePrefetched: true }
+    ) || streetNavigationPoints;
+
+    for (const node of localNodes) {
       if (!this.canNpcStandAt(npc, node.x, node.y)) continue;
       if (!this.lineClear(npc, npc.x, npc.y, node.x, node.y)) continue;
       const nodeSeesTarget = this.lineClear(npc, node.x, node.y, targetX, targetY);
