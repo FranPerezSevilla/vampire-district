@@ -4,7 +4,7 @@ _Last updated: 2026-07-22_
 
 ## Status
 
-**Implementation candidate.**
+**Accepted and implemented.**
 
 City Streaming 4B extends the low-frequency distant simulation introduced in 4A. It adds a district macro-navigation graph, abstract traffic flow and identity-preserving travel for ordinary dormant police patrols.
 
@@ -194,3 +194,18 @@ The snapshot exposes:
 - pursuit, search and heat targets still override ordinary patrol routing;
 - all unit, boot, system and campaign browser domains remain green;
 - the visible city, campaign and save schema remain unchanged.
+
+## Acceptance record
+
+City Streaming 4B was accepted on 2026-07-22 through PR #24.
+
+Validated on implementation head `ace0b35228220766ea7417d4511b6fe303015fb7`:
+
+```text
+unit-tests         success
+browser-boot       success
+browser-systems    success
+browser-campaign   success
+```
+
+The first browser attempt exposed a test-only authority mismatch: diagnostic `forceFocus()` was used without moving the real scene focus, so the next frame correctly restored chunk authority around the player. The accepted regression moves the real scene focus to the travelling patrol before verifying wake-up.
