@@ -15,6 +15,7 @@
     "city:validate": "node tools/city-compiler/compile.js --validate-only",
     "city:compile": "node tools/city-compiler/compile.js",
     "city:foundry": "node tools/city-compiler/compile-foundry.js",
+    "city:streaming": "node tools/city-compiler/compile-streaming.js",
     "serve:test": "python3 -m http.server 4173 --bind 127.0.0.1"
   },
   "dependencies": {

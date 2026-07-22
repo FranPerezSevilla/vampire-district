@@ -34,6 +34,9 @@ export class EntityStreamSystem {
 
   chunkStateAt(x, y) {
     const city = this.scene.cityStreamSystem;
+    if (!city.manifest) {
+      return { id: null, active: true, prefetched: false, chunkState: "manifest-loading" };
+    }
     const id = chunkIdAt(x, y, city.manifest.chunkSize);
     return {
       id,
@@ -46,10 +49,7 @@ export class EntityStreamSystem {
   npcDecision(npc) {
     const chunk = this.chunkStateAt(npc?.x, npc?.y);
     return {
-      ...npcStreamDecision(npc, {
-        ...chunk,
-        exposureLevel: this.scene.exposureSystem?.level?.() || 0
-      }),
+      ...npcStreamDecision(npc, { ...chunk, exposureLevel: this.scene.exposureSystem?.level?.() || 0 }),
       chunkId: chunk.id,
       chunkState: chunk.chunkState
     };
@@ -58,10 +58,7 @@ export class EntityStreamSystem {
   vehicleDecision(vehicle) {
     const chunk = this.chunkStateAt(vehicle?.x, vehicle?.y);
     return {
-      ...vehicleStreamDecision(vehicle, {
-        ...chunk,
-        currentVehicleId: this.scene.vehicleSystem?.currentVehicleId || null
-      }),
+      ...vehicleStreamDecision(vehicle, { ...chunk, currentVehicleId: this.scene.vehicleSystem?.currentVehicleId || null }),
       chunkId: chunk.id,
       chunkState: chunk.chunkState
     };
@@ -87,9 +84,7 @@ export class EntityStreamSystem {
       records.set(id, record);
       return record;
     }
-    const changed = record.state !== decision.state
-      || record.reason !== decision.reason
-      || record.chunkId !== decision.chunkId;
+    const changed = record.state !== decision.state || record.reason !== decision.reason || record.chunkId !== decision.chunkId;
     if (changed) {
       this.transitionLog.push({
         tick: this.tick,
@@ -128,11 +123,8 @@ export class EntityStreamSystem {
     npc.streamState = decision.state;
     npc.streamReason = decision.reason;
     npc.streamChunkId = decision.chunkId;
-    if (decision.state === ENTITY_STREAM_STATES.DORMANT) {
-      this.advanceDormantNpc(npc, dt, record);
-    } else {
-      npc.container?.setActive?.(true);
-    }
+    if (decision.state === ENTITY_STREAM_STATES.DORMANT) this.advanceDormantNpc(npc, dt, record);
+    else npc.container?.setActive?.(true);
     return decision;
   }
 
@@ -161,13 +153,8 @@ export class EntityStreamSystem {
     return state !== ENTITY_STREAM_STATES.DORMANT;
   }
 
-  shouldIndexNpc(npc) {
-    return this.shouldSimulateNpc(npc);
-  }
-
-  shouldRenderNpc(npc) {
-    return this.shouldSimulateNpc(npc);
-  }
+  shouldIndexNpc(npc) { return this.shouldSimulateNpc(npc); }
+  shouldRenderNpc(npc) { return this.shouldSimulateNpc(npc); }
 
   shouldRenderVehicle(vehicle) {
     const state = vehicle?.streamState || this.applyVehicleState(vehicle).state;
@@ -184,6 +171,7 @@ export class EntityStreamSystem {
     const npcCounts = sortedCounts(this.npcRecords);
     const vehicleCounts = sortedCounts(this.vehicleRecords);
     return {
+      ready: Boolean(this.scene.cityStreamSystem?.manifest),
       tick: this.tick,
       npcCounts,
       vehicleCounts,
@@ -201,7 +189,7 @@ export class EntityStreamSystem {
 
   publish(force = false) {
     const snapshot = this.snapshot();
-    const key = JSON.stringify([snapshot.npcCounts, snapshot.vehicleCounts, snapshot.pinned]);
+    const key = JSON.stringify([snapshot.ready, snapshot.npcCounts, snapshot.vehicleCounts, snapshot.pinned]);
     if (!force && key === this.lastPublishedKey) return snapshot;
     this.lastPublishedKey = key;
     this.scene.statePublisher?.setMany?.({
