@@ -64,6 +64,7 @@ export class HunterSystem {
     hunter.hunterMemoryUntil = 0;
     hunter.hunterLastKnown = null;
     this.scene.npcSystem.npcs.push(hunter);
+    this.scene.entityStreamSystem?.applyNpcState?.(hunter, 0);
     this.scene.npcSystem.rebuildSpatialIndex?.();
   }
 
@@ -174,7 +175,6 @@ export class HunterSystem {
       this.scene.player.y,
       LAYERS.STREET
     ));
-    // WitnessSystem applies the shared 0.62 shadow attenuation internally.
     const queryRadius = shadowed ? 306 : 285;
     return Boolean(this.scene.witnessSystem?.canWitnessSee?.(hunter, this.scene.player, queryRadius));
   }
@@ -212,12 +212,14 @@ export class HunterSystem {
   }
 
   hunters() {
+    const stream = this.scene.entityStreamSystem;
     return this.scene.npcSystem.npcs.filter(npc => Boolean(
       npc.type === NPC_TYPES.HUNTER
       && !npc.inactive
       && !npc.dead
       && npc.combat?.state !== COMBAT_STATES.DOWNED
       && !npc.drainVictim
+      && (!stream || stream.shouldSimulateNpc(npc))
     ));
   }
 
