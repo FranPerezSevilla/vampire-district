@@ -1,8 +1,9 @@
-import { districtZones, districtZoneAt, LAYERS } from "../data/district.js";
+import { districtZones, districtZoneAt, LAYERS, streetNavigationPoints } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 import { PoliceSystem as PoliceSystemCore } from "./PoliceSystemCore.js";
 
 const DESIRED_POLICE_BY_LEVEL = Object.freeze({ 0: 2, 1: 3, 2: 5, 3: 7 });
+const OLD_QUARTER_ID = "old-quarter";
 
 const DISTRICT_ENTRY_POINTS = Object.freeze([
   Object.freeze({ x: 780, y: 178, patrolRoute: "northEast" }),
@@ -13,6 +14,19 @@ const DISTRICT_ENTRY_POINTS = Object.freeze([
 ]);
 
 function clampLevel(level) { return Math.max(0, Math.min(3, Math.floor(Number(level) || 0))); }
+
+function nearestPointIndex(points, x, y) {
+  let bestIndex = 0;
+  let bestDistance = Infinity;
+  points.forEach((point, index) => {
+    const distance = Math.hypot((Number(point.x) || 0) - x, (Number(point.y) || 0) - y);
+    if (distance < bestDistance) {
+      bestIndex = index;
+      bestDistance = distance;
+    }
+  });
+  return bestIndex;
+}
 
 export class PoliceSystem extends PoliceSystemCore {
   allPolice() {
@@ -73,6 +87,46 @@ export class PoliceSystem extends PoliceSystemCore {
     this.scene.lastActionText = clamped >= 2
       ? "Police reinforcements enter from separated district approaches."
       : "One additional patrol joins the active search.";
+  }
+
+  districtPatrolPoints(zoneId) {
+    return streetNavigationPoints.filter(point => districtZoneAt(point.x, point.y).id === zoneId);
+  }
+
+  targetForCop(cop, level, cfg) {
+    const target = super.targetForCop(cop, level, cfg);
+    if (!target || target.kind !== "patrol") return target;
+    const zone = this.zoneAt(cop.x, cop.y);
+    if (!zone || zone.id === OLD_QUARTER_ID) return target;
+    const points = this.districtPatrolPoints(zone.id);
+    if (!points.length) return target;
+    if (cop.districtPatrolZoneId !== zone.id) {
+      cop.districtPatrolZoneId = zone.id;
+      cop.districtPatrolIndex = nearestPointIndex(points, cop.x, cop.y);
+    }
+    const point = points[(cop.districtPatrolIndex || 0) % points.length];
+    return {
+      x: point.x,
+      y: point.y,
+      kind: "patrol",
+      districtPatrol: true,
+      zoneId: zone.id
+    };
+  }
+
+  resolveTargetArrival(cop, target, level) {
+    if (target?.districtPatrol) {
+      const distance = Phaser.Math.Distance.Between(cop.x, cop.y, target.x, target.y);
+      if (distance < 18) {
+        const points = this.districtPatrolPoints(target.zoneId);
+        cop.districtPatrolIndex = points.length
+          ? ((cop.districtPatrolIndex || 0) + 1) % points.length
+          : 0;
+        cop.patrolPause = 0.35 + Math.random() * 0.55;
+      }
+      return;
+    }
+    super.resolveTargetArrival(cop, target, level);
   }
 
   zoneAt(x, y) { return districtZoneAt(x, y); }
