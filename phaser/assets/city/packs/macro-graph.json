@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "id": "bloodnight-macro-navigation",
+  "nodeIds": [
+    "old-quarter",
+    "glasshouse",
+    "foundry",
+    "harbor-north",
+    "canal-west",
+    "canal-east",
+    "blackwater",
+    "harbor-south"
+  ],
+  "nodes": {
+    "old-quarter": {
+      "id": "old-quarter",
+      "bounds": { "x": 0, "y": 0, "w": 960, "h": 640 },
+      "center": { "x": 480, "y": 320 },
+      "trafficDensity": 0.42,
+      "policePresence": 0.88,
+      "neighbours": ["glasshouse", "canal-west"]
+    },
+    "glasshouse": {
+      "id": "glasshouse",
+      "bounds": { "x": 960, "y": 0, "w": 680, "h": 704 },
+      "center": { "x": 1300, "y": 352 },
+      "trafficDensity": 0.82,
+      "policePresence": 0.52,
+      "neighbours": ["old-quarter", "foundry", "canal-east"]
+    },
+    "foundry": {
+      "id": "foundry",
+      "bounds": { "x": 1640, "y": 0, "w": 544, "h": 704 },
+      "center": { "x": 1912, "y": 352 },
+      "trafficDensity": 0.66,
+      "policePresence": 0.34,
+      "neighbours": ["glasshouse", "harbor-north", "canal-east"]
+    },
+    "harbor-north": {
+      "id": "harbor-north",
+      "bounds": { "x": 2184, "y": 0, "w": 216, "h": 704 },
+      "center": { "x": 2292, "y": 352 },
+      "trafficDensity": 0.74,
+      "policePresence": 0.64,
+      "neighbours": ["foundry", "harbor-south"]
+    },
+    "canal-west": {
+      "id": "canal-west",
+      "bounds": { "x": 0, "y": 640, "w": 1032, "h": 496 },
+      "center": { "x": 516, "y": 888 },
+      "trafficDensity": 0.38,
+      "policePresence": 0.28,
+      "neighbours": ["old-quarter", "canal-east", "blackwater"]
+    },
+    "canal-east": {
+      "id": "canal-east",
+      "bounds": { "x": 1032, "y": 704, "w": 1152, "h": 432 },
+      "center": { "x": 1608, "y": 920 },
+      "trafficDensity": 0.62,
+      "policePresence": 0.4,
+      "neighbours": ["glasshouse", "foundry", "canal-west", "harbor-south", "blackwater"]
+    },
+    "blackwater": {
+      "id": "blackwater",
+      "bounds": { "x": 0, "y": 1136, "w": 2184, "h": 304 },
+      "center": { "x": 1092, "y": 1288 },
+      "trafficDensity": 0.78,
+      "policePresence": 0.46,
+      "neighbours": ["canal-west", "canal-east", "harbor-south"]
+    },
+    "harbor-south": {
+      "id": "harbor-south",
+      "bounds": { "x": 2184, "y": 704, "w": 216, "h": 736 },
+      "center": { "x": 2292, "y": 1072 },
+      "trafficDensity": 0.86,
+      "policePresence": 0.38,
+      "neighbours": ["harbor-north", "canal-east", "blackwater"]
+    }
+  },
+  "edgeIds": [
+    "old-quarter:glasshouse",
+    "old-quarter:canal-west",
+    "glasshouse:foundry",
+    "glasshouse:canal-east",
+    "foundry:harbor-north",
+    "foundry:canal-east",
+    "harbor-north:harbor-south",
+    "canal-west:canal-east",
+    "canal-west:blackwater",
+    "canal-east:harbor-south",
+    "canal-east:blackwater",
+    "blackwater:harbor-south"
+  ],
+  "edges": {
+    "old-quarter:glasshouse": { "id": "old-quarter:glasshouse", "a": "old-quarter", "b": "glasshouse", "travelSeconds": 7 },
+    "old-quarter:canal-west": { "id": "old-quarter:canal-west", "a": "old-quarter", "b": "canal-west", "travelSeconds": 6 },
+    "glasshouse:foundry": { "id": "glasshouse:foundry", "a": "glasshouse", "b": "foundry", "travelSeconds": 6 },
+    "glasshouse:canal-east": { "id": "glasshouse:canal-east", "a": "glasshouse", "b": "canal-east", "travelSeconds": 7 },
+    "foundry:harbor-north": { "id": "foundry:harbor-north", "a": "foundry", "b": "harbor-north", "travelSeconds": 4 },
+    "foundry:canal-east": { "id": "foundry:canal-east", "a": "foundry", "b": "canal-east", "travelSeconds": 6 },
+    "harbor-north:harbor-south": { "id": "harbor-north:harbor-south", "a": "harbor-north", "b": "harbor-south", "travelSeconds": 8 },
+    "canal-west:canal-east": { "id": "canal-west:canal-east", "a": "canal-west", "b": "canal-east", "travelSeconds": 8 },
+    "canal-west:blackwater": { "id": "canal-west:blackwater", "a": "canal-west", "b": "blackwater", "travelSeconds": 5 },
+    "canal-east:harbor-south": { "id": "canal-east:harbor-south", "a": "canal-east", "b": "harbor-south", "travelSeconds": 6 },
+    "canal-east:blackwater": { "id": "canal-east:blackwater", "a": "canal-east", "b": "blackwater", "travelSeconds": 5 },
+    "blackwater:harbor-south": { "id": "blackwater:harbor-south", "a": "blackwater", "b": "harbor-south", "travelSeconds": 8 }
+  }
+}
