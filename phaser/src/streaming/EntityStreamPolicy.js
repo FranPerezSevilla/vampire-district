@@ -7,12 +7,6 @@ export const ENTITY_STREAM_STATES = Object.freeze({
   DORMANT: "dormant"
 });
 
-const ENGAGED_COMBAT_STATES = new Set([
-  COMBAT_STATES.ATTACKING,
-  COMBAT_STATES.DRAINING,
-  COMBAT_STATES.STAGGERED
-]);
-
 export function npcCriticalReason(npc, context = {}) {
   if (!npc) return null;
   if (npc.missionInformant) return "mission-informant";
@@ -27,7 +21,7 @@ export function npcCriticalReason(npc, context = {}) {
   if (npc.investigateTarget) return "investigation";
   if (npc.thugHostile) return "hostile-thug";
   if (npc.intercepted) return "mission-intercept";
-  if (ENGAGED_COMBAT_STATES.has(npc.combat?.state)) return `combat-${npc.combat.state}`;
+  if (npc.combat?.state === COMBAT_STATES.STAGGERED) return "combat-staggered";
   if (npc.type === NPC_TYPES.HUNTER && Number(context.exposureLevel) >= 4) return "hunter-alert";
   return null;
 }
