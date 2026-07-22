@@ -4,11 +4,11 @@ _Last updated: 2026-07-22_
 
 ## Status
 
-**✅ Accepted and complete.**
+**✅ Accepted and complete, including the accepted Milestone 12.1 maintenance extension.**
 
 Milestone 12 delivered the first-class arcade vehicle runtime, persistent authored vehicle condition, a `2400 × 1440` district, sidewalk-routed pedestrians, destructible street furniture, evidence consequences and focused browser-system regression infrastructure.
 
-Traffic materialization and local civilian traffic behaviour continue under Milestone 13 and `CITY_STREAMING_4A.md` through `CITY_STREAMING_4F.md`.
+Milestone 12.1 completes the hull-damage loop with a costed refuge garage and owned-wreck recovery. Traffic materialization and motorized response remain under Milestone 13.
 
 ## Vehicle controls
 
@@ -18,7 +18,7 @@ W          accelerate
 S          brake, then reverse
 A / D      steer
 Space      handbrake / drift
-E          inspect nearby trunk while on foot
+E          trunk or refuge-garage interaction while on foot
 ```
 
 Enter is filtered exclusively to vehicle entry/exit. It cannot trigger traversal, fire escapes or sewers. Space remains contextual traversal on foot and becomes the handbrake while driving.
@@ -74,6 +74,29 @@ Authored vehicles persist:
 - limited trunk contents.
 
 An occupied wreck remains occupied and immobile until the player exits explicitly with Enter through a valid side/rear position.
+
+### Accepted repair and recovery extension
+
+Owned vehicles can use the refuge garage at street position `304, 326`.
+
+Repair:
+
+- requires positive but incomplete hull;
+- requires parked state inside a `96`-unit service radius;
+- restores full archetype hull;
+- charges campaign cash using a minimum `$25` and archetype-specific missing-hull rate.
+
+Recovery:
+
+- accepts an owned disabled vehicle from anywhere in the district;
+- costs `$120` for the starting compact;
+- returns it to a deterministic refuge slot;
+- restores `35%` hull, or `26 / 72` for the compact;
+- is blocked while the player is wanted.
+
+The debit and vehicle-condition change form one atomic campaign transaction. Repeating an already-satisfied operation creates no second debit. Ambient traffic remains excluded.
+
+Reference: `VEHICLE_MAINTENANCE.md`.
 
 ## Expanded district
 
@@ -141,20 +164,23 @@ Hard impact can rupture a dumpster. If it contains a corpse:
 ## Runtime ownership
 
 ```text
-district data             roads, alleys, sidewalks, crossings and wards
-PedestrianSystem          authored civilian loops
-NpcSystem                 combat, witnesses and fallback navigation
-PoliceSystem              baseline, reinforcements and local heat
-StreetFurnitureSystem     dumpster and vehicle/prop consequences
-PropDamageSystem          streetlight durability and darkness
-EvidenceSystem            bodies, container identity and blood
-VehicleSystem             persistent vehicle facade and occupancy
-VehicleModel              pure kinematics and impact helpers
-VehicleDriving            collision ordering, contact search and sliding
-GameplayRuntime           single frame/input owner
+district data                 roads, alleys, sidewalks, crossings and wards
+PedestrianSystem              authored civilian loops
+NpcSystem                     combat, witnesses and fallback navigation
+PoliceSystem                  baseline, reinforcements and local heat
+StreetFurnitureSystem         dumpster and vehicle/prop consequences
+PropDamageSystem              streetlight durability and darkness
+EvidenceSystem                bodies, container identity and blood
+VehicleSystem                 live persistent vehicle facade and occupancy
+CampaignVehicleSystem         persistent authored vehicle condition/trunks
+VehicleMaintenanceService     atomic repair/recovery composition
+VehicleMaintenanceUiSystem   garage interaction and presentation only
+VehicleModel                  pure kinematics and impact helpers
+VehicleDriving                collision ordering, contact search and sliding
+GameplayRuntime               single frame/input owner
 ```
 
-No prototype patch or second frame loop remains.
+No prototype patch or second frame loop remains. Maintenance is event-driven outside the world frame.
 
 ## Boot and regression profiles
 
@@ -164,7 +190,7 @@ explore   isolated in-memory free roam
 scenario  isolated deterministic test loop
 ```
 
-Focused scenarios include vehicle core, street damage, police escalation, input locks and urban exploration.
+Focused scenarios include vehicle core, maintenance, street damage, police escalation, input locks and urban exploration.
 
 PR CI domains:
 
@@ -177,7 +203,16 @@ browser-campaign
 
 ## Acceptance record
 
-Validated through the Milestone 12 vehicle/expanded-city PR chain and all subsequent City Streaming 4A–4F matrices.
+The vehicle/expanded-city foundation was validated through the Milestone 12 PR chain and City Streaming 4A–4F matrices.
+
+Milestone 12.1 was accepted through PR #30 after the following domains passed together:
+
+```text
+unit-tests         success
+browser-boot       success
+browser-systems    success
+browser-campaign   success
+```
 
 Accepted boundary:
 
@@ -188,16 +223,19 @@ Accepted boundary:
 - expanded-world boot on both routes;
 - pedestrians and distributed police;
 - streetlight, dumpster, corpse and blood consequences;
-- campaign/checkpoint compatibility;
+- full repair and remote owned-wreck recovery;
+- atomic debit/condition update and rollback;
+- repeated-operation idempotence;
+- wanted-level maintenance blocking;
+- live/campaign synchronization;
+- checkpoint compatibility;
 - unit, boot, systems and campaign domains green.
 
 ## Follow-on work
 
-Active next phase: vehicle repair and disabled-vehicle recovery (`ROADMAP.md`, Milestone 12.1).
+Milestone 13 is now the active phase and owns:
 
-Milestone 13 owns:
-
-- city streaming and dormancy;
-- macro and local civilian traffic;
-- physical traffic contact and impact consequences;
-- future motorized police pursuit, interception and roadblocks.
+- completed city streaming and dormancy;
+- completed macro/local civilian traffic;
+- completed physical traffic contact and impact consequences;
+- next: motorized police pursuit, interception, roadblocks and officer dismount behaviour.
