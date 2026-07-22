@@ -202,7 +202,7 @@ The projection is stored under versioned `cityChunkDelta.<chunkId>` world flags 
 
 ## Incremental spatial index
 
-`ChunkSpatialIndex` now supports:
+`ChunkSpatialIndex` supports:
 
 ```text
 hydrateChunk(id, collections)
@@ -280,3 +280,16 @@ City Streaming must not change the visible layout or campaign flow. Required che
 - local building collision, light and shadow queries after opposite-edge traversal;
 - body, evidence, prop and vehicle deltas are indexed by chunk without replacing campaign authority;
 - all existing boot, system and campaign browser domains remain green.
+
+## Acceptance record
+
+City Streaming 3 was accepted on 2026-07-22 through PR #22 after correcting manifest resolution for both `/` and `/phaser/` entry paths.
+
+Validated on final head `ad8c7ff3817014eee17129a36180dce630922080`:
+
+```text
+unit-tests         success
+browser-boot       success
+browser-systems    success
+browser-campaign   success
+```
