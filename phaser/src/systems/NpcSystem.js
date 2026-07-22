@@ -51,12 +51,11 @@ export class NpcSystem extends NpcSystemCore {
 
     let best = null;
     let bestScore = Infinity;
-    const localNodes = this.scene.cityStreamSystem?.queryPoint?.(
+    const localNodes = this.scene.cityStreamSystem?.index?.queryPoint?.(
       "navigationPoints",
       npc.x,
       npc.y,
-      760,
-      { includePrefetched: true }
+      760
     ) || streetNavigationPoints;
 
     for (const node of localNodes) {
