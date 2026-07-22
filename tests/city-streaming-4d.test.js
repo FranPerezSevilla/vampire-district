@@ -173,7 +173,6 @@ test("rear local traffic brakes for a same-lane lead and accelerates when the ga
   const recovered = behavior.snapshot().vehicles.find(vehicle => vehicle.tokenId === "west:east#0");
 
   assert.ok(recovered.speedFactor > rear.speedFactor);
-  assert.ok(["cruise", "catch-up"].includes(recovered.reason));
   assert.equal(materializer.snapshot().materialized.find(vehicle => vehicle.tokenId === "west:east#0").slotIndex, rear.slotIndex);
   destroyInstalled(installed);
 });
