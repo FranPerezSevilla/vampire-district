@@ -1,5 +1,6 @@
 import { PedestrianSystem } from "../systems/PedestrianSystem.js";
 import { StreetFurnitureSystem } from "../systems/StreetFurnitureSystem.js";
+import { ChunkStreamSystem } from "../streaming/ChunkStreamSystem.js";
 import { VehicleSystem } from "../vehicles/VehicleSystem.js";
 import { GameplayRuntime as GameplayRuntimeCore } from "./GameplayRuntimeCore.js";
 
@@ -12,10 +13,12 @@ function isVehicleAction(option) {
 export class GameplayRuntime extends GameplayRuntimeCore {
   installDiagnostics() {
     super.installDiagnostics();
+    this.diagnostics.claim("ChunkStreamSystem.update", "ChunkStreamSystem");
     this.diagnostics.claim("VehicleSystem.updateDriving", "VehicleSystem");
     this.diagnostics.claim("VehicleSystem.enterVehicle", "VehicleSystem");
     this.diagnostics.claim("PedestrianSystem.update", "PedestrianSystem");
     this.diagnostics.claim("StreetFurnitureSystem.resolveVehicleMove", "StreetFurnitureSystem");
+    this.diagnostics.registerSystem("ChunkStreamSystem");
     this.diagnostics.registerSystem("VehicleSystem");
     this.diagnostics.registerSystem("PedestrianSystem");
     this.diagnostics.registerSystem("StreetFurnitureSystem");
@@ -23,6 +26,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
 
   constructor(scene) {
     super(scene);
+    scene.cityStreamSystem = new ChunkStreamSystem(scene);
     scene.pedestrianSystem = new PedestrianSystem(scene);
     scene.streetFurnitureSystem = new StreetFurnitureSystem(scene, scene.campaignSystem);
     scene.vehicleSystem = new VehicleSystem(scene, scene.campaignSystem);
@@ -36,6 +40,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     const originalCollectInteractions = scene.collectInteractions;
     const dt = Math.min(Math.max(0, Number(deltaMs) || 0) / 1000, 0.05);
 
+    scene.cityStreamSystem?.update?.();
     scene.pedestrianSystem?.update?.(dt);
 
     if (input && originalBeginFrame) {
@@ -86,6 +91,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.scene.streetFurnitureSystem = null;
     this.scene.pedestrianSystem?.destroy?.();
     this.scene.pedestrianSystem = null;
+    this.scene.cityStreamSystem?.destroy?.();
+    this.scene.cityStreamSystem = null;
     super.destroy();
   }
 }

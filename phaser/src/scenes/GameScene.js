@@ -66,6 +66,7 @@ export class GameScene extends GameSceneCore {
 
   switchLayer(layer, position, status) {
     if (this.vehicleSystem?.isDriving?.()) this.vehicleSystem.exitVehicle({ force: true });
+    this.cityStreamSystem?.updateFocus?.(position.x, position.y, { force: true });
     super.switchLayer(layer, position, status);
     this.vehicleSystem?.refreshVisibility?.();
     this.streetFurnitureSystem?.refreshVisibility?.();
@@ -112,20 +113,46 @@ export class GameScene extends GameSceneCore {
     return this.visibleRect({ x: point.x, y: point.y, w: 0, h: 0 }, radius);
   }
 
+  chunkItems(category, bounds, fallback, options = {}) {
+    if (this.cityStreamSystem) return this.cityStreamSystem.query(category, bounds, options);
+    return (fallback || []).filter(item => this.visibleRect(item, options.margin || 0));
+  }
+
+  canStandAt(x, y) {
+    if (this.currentLayer !== LAYERS.STREET || !this.cityStreamSystem) return super.canStandAt(x, y);
+    if (x < 8 || y < 8 || x > WORLD.width - 8 || y > WORLD.height - 8) return false;
+    const body = { x: x - 5, y: y - 7, w: 10, h: 14 };
+    return !this.cityStreamSystem.query("buildings", body, { margin: 1 })
+      .some(building => this.rectsOverlap(body, building));
+  }
+
+  currentLight() {
+    if (this.currentLayer !== LAYERS.STREET || !this.cityStreamSystem) return super.currentLight();
+    return this.cityStreamSystem.queryPoint("lights", this.player.x, this.player.y, 128)
+      .find(light => !this.brokenLights.has(light.id)
+        && Phaser.Math.Distance.Between(this.player.x, this.player.y, light.x, light.y) < light.radius) || null;
+  }
+
+  currentShadowAt(x, y, layer = this.currentLayer) {
+    if (layer !== LAYERS.STREET || !this.cityStreamSystem) return super.currentShadowAt(x, y, layer);
+    const brokenLamp = this.cityStreamSystem.queryPoint("lights", x, y, 128)
+      .find(light => this.brokenLights.has(light.id)
+        && Phaser.Math.Distance.Between(x, y, light.x, light.y) < light.radius * 0.72);
+    if (brokenLamp) return { id: `broken-${brokenLamp.id}`, name: "broken light shadow" };
+    return this.cityStreamSystem.queryPoint("shadowZones", x, y, 1)
+      .find(zone => this.pointInRect(x, y, zone)) || null;
+  }
+
   drawDistrictStreet() {
     const bounds = this.urbanRenderBounds || this.prepareUrbanRenderWindow();
     this.map.fillStyle(COLORS.streetBase, 1).fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
-    for (const road of roads) {
-      if (this.visibleRect(road, 12)) this.drawRoadWindow(road);
-    }
+    for (const road of this.chunkItems("roads", bounds, roads, { margin: 12 })) this.drawRoadWindow(road);
     this.drawSidewalkNetwork();
     this.drawCrosswalkNetwork();
     this.drawShadowZones();
     this.drawLights();
     this.drawSewerManholes();
-    for (const item of buildings) {
-      if (this.visibleRect(item, 80)) this.drawBuilding(item);
-    }
+    for (const item of this.chunkItems("buildings", bounds, buildings, { margin: 80 })) this.drawBuilding(item);
     if (this.currentLayer > LAYERS.STREET) {
       this.map.fillStyle(0x000000, 0.46).fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
     }
@@ -159,8 +186,7 @@ export class GameScene extends GameSceneCore {
   drawSidewalkNetwork() {
     this.map.fillStyle(COLORS.sidewalk, 1);
     this.map.lineStyle(1, COLORS.sidewalkTrim, 0.72);
-    for (const walk of sidewalks) {
-      if (!this.visibleRect(walk, 4)) continue;
+    for (const walk of this.chunkItems("sidewalks", this.urbanRenderBounds, sidewalks, { margin: 4 })) {
       const fragment = clippedRect(walk, this.urbanRenderBounds);
       if (!fragment) continue;
       this.map.fillRect(fragment.x, fragment.y, fragment.w, fragment.h);
@@ -170,8 +196,7 @@ export class GameScene extends GameSceneCore {
 
   drawCrosswalkNetwork() {
     this.map.fillStyle(COLORS.crosswalk, 0.68);
-    for (const crossing of crosswalks) {
-      if (!this.visibleRect(crossing, 6)) continue;
+    for (const crossing of this.chunkItems("crosswalks", this.urbanRenderBounds, crosswalks, { margin: 6 })) {
       const stripe = 5;
       const gap = 5;
       if (crossing.orientation === "horizontal") {
@@ -187,8 +212,7 @@ export class GameScene extends GameSceneCore {
   }
 
   drawShadowZones() {
-    for (const zone of shadowZones) {
-      if (!this.visibleRect(zone, 32)) continue;
+    for (const zone of this.chunkItems("shadowZones", this.urbanRenderBounds, shadowZones, { margin: 32 })) {
       const fragment = clippedRect(zone, this.urbanRenderBounds);
       if (!fragment) continue;
       const alpha = zone.id === "districtDarkness" ? 0.20 : 0.44 + zone.strength * 0.18;
@@ -198,7 +222,7 @@ export class GameScene extends GameSceneCore {
       }
     }
 
-    for (const light of lights) {
+    for (const light of this.chunkItems("lights", this.urbanRenderBounds, lights, { margin: 128 })) {
       if (!this.brokenLights.has(light.id) || !this.visiblePoint(light, light.radius)) continue;
       const radius = light.radius * 0.72;
       this.map.fillStyle(0x05030a, 0.50).fillCircle(light.x, light.y, radius);
@@ -208,7 +232,8 @@ export class GameScene extends GameSceneCore {
 
   drawLights() {
     const focus = this.renderFocus();
-    const visible = lights.filter(light => this.visiblePoint(light, light.radius + 20));
+    const visible = this.chunkItems("lights", this.urbanRenderBounds, lights, { margin: 128 })
+      .filter(light => this.visiblePoint(light, light.radius + 20));
     const glowIds = new Set(
       visible
         .filter(light => !this.brokenLights.has(light.id))
@@ -237,7 +262,7 @@ export class GameScene extends GameSceneCore {
   }
 
   drawSewerManholes() {
-    for (const access of sewerAccesses) {
+    for (const access of this.chunkItems("sewerAccesses", this.urbanRenderBounds, sewerAccesses, { margin: 16 })) {
       if (!access.street || !this.visiblePoint(access.street, 16)) continue;
       this.map.fillStyle(0x0b2a22, 1).fillCircle(access.street.x, access.street.y, 8);
       this.map.lineStyle(1, 0x78c7a3, 0.65).strokeCircle(access.street.x, access.street.y, 8);
@@ -270,8 +295,7 @@ export class GameScene extends GameSceneCore {
   drawSewers() {
     const bounds = this.urbanRenderBounds || this.prepareUrbanRenderWindow();
     this.map.fillStyle(COLORS.sewerBase, 1).fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
-    for (const tunnel of sewerTunnels) {
-      if (!this.visibleRect(tunnel, 20)) continue;
+    for (const tunnel of this.chunkItems("sewerTunnels", bounds, sewerTunnels, { margin: 20 })) {
       const fragment = clippedRect(tunnel, bounds);
       if (!fragment) continue;
       this.map.fillStyle(COLORS.sewerTunnel, 1).fillRect(fragment.x, fragment.y, fragment.w, fragment.h);

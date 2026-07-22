@@ -5,35 +5,40 @@ import { readFile } from "node:fs/promises";
 const ROOT = new URL("../", import.meta.url);
 async function source(path) { return readFile(new URL(path, ROOT), "utf8"); }
 
-test("expanded district composes first-class pedestrian and street-furniture systems", async () => {
+test("expanded district composes first-class pedestrian, furniture, vehicle and streaming systems", async () => {
   const runtime = await source("phaser/src/runtime/GameplayRuntime.js");
+  assert.equal(runtime.includes("new ChunkStreamSystem(scene)"), true);
   assert.equal(runtime.includes("new PedestrianSystem(scene)"), true);
   assert.equal(runtime.includes("new StreetFurnitureSystem(scene, scene.campaignSystem)"), true);
   assert.equal(runtime.includes("new VehicleSystem(scene, scene.campaignSystem)"), true);
   assert.equal(runtime.includes(".prototype"), false);
 });
 
-test("GameScene separates world size from viewport and renders the expanded city by sectors", async () => {
+test("GameScene separates world size from viewport and renders active city chunks by sectors", async () => {
   const main = await source("phaser/src/main.js");
   const scene = await source("phaser/src/scenes/GameScene.js");
   assert.equal(main.includes("WORLD.viewportWidth"), true);
   assert.equal(main.includes("WORLD.viewportHeight"), true);
   assert.equal(main.includes("WORLD.width * renderScale"), false);
-  assert.ok(scene.indexOf("this.drawSidewalkNetwork()") < scene.indexOf("for (const item of buildings)"));
+  assert.ok(scene.indexOf("this.drawSidewalkNetwork()") < scene.indexOf('this.chunkItems("buildings"'));
   assert.equal(scene.includes("this.drawCrosswalkNetwork()"), true);
   assert.equal(scene.includes("URBAN_RENDER_SECTOR_WIDTH"), true);
   assert.equal(scene.includes("calculateUrbanRenderBounds"), true);
   assert.equal(scene.includes("clippedRect"), true);
   assert.equal(scene.includes("LIGHT_GLOW_LIMIT"), true);
+  assert.equal(scene.includes('this.cityStreamSystem.query("buildings"'), true);
+  assert.equal(scene.includes('this.chunkItems("roads"'), true);
   assert.equal(scene.includes("fillRect(0, 0, WORLD.width, WORLD.height)"), false);
 });
 
-test("vehicle movement resolves breakable street furniture before solid world geometry", async () => {
+test("vehicle movement resolves furniture first and queries local buildings through city streaming", async () => {
   const driving = await source("phaser/src/vehicles/VehicleDriving.js");
   const furnitureIndex = driving.indexOf("const furniture =");
   const buildingIndex = driving.indexOf("else if (canVehicleOccupy", furnitureIndex);
   assert.ok(furnitureIndex >= 0);
   assert.ok(buildingIndex > furnitureIndex);
+  assert.equal(driving.includes('cityStreamSystem?.query?.("buildings"'), true);
+  assert.equal(driving.includes("const nearbyBuildings ="), true);
 });
 
 test("hidden-body container identity survives checkpoints and can be exposed by a ruptured dumpster", async () => {

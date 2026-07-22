@@ -22,6 +22,16 @@ function pointInRect(point, rect) {
   return point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h;
 }
 
+function boundsForPoints(points) {
+  const xs = points.map(point => Number(point.x) || 0);
+  const ys = points.map(point => Number(point.y) || 0);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  return { x: minX, y: minY, w: Math.max(1, maxX - minX), h: Math.max(1, maxY - minY) };
+}
+
 function applyKinematicState(vehicle, next) {
   vehicle.x = next.x;
   vehicle.y = next.y;
@@ -152,9 +162,11 @@ export function filterVehicleInputFrame(system, frame) {
 export function canVehicleOccupy(system, vehicle, x, y, angle) {
   const candidate = { ...vehicle, x, y, angle };
   const points = vehicleFootprintPoints(candidate, vehicle.archetype, VEHICLE_COLLISION_RADIUS_PADDING);
+  const footprintBounds = boundsForPoints(points);
+  const nearbyBuildings = system.scene.cityStreamSystem?.query?.("buildings", footprintBounds) || buildings;
   for (const point of points) {
     if (point.x < 5 || point.y < 5 || point.x > WORLD.width - 5 || point.y > WORLD.height - 5) return false;
-    if (buildings.some(building => pointInRect(point, building))) return false;
+    if (nearbyBuildings.some(building => pointInRect(point, building))) return false;
   }
   const ownRadius = Math.max(vehicle.archetype.width, vehicle.archetype.height) * 0.43;
   for (const other of system.vehicles) {
