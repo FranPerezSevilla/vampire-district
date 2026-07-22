@@ -3,21 +3,13 @@ import { vehicleArchetype } from "../data/vehicles.js";
 import { paintVehicle } from "../vehicles/VehicleView.js";
 
 function finite(value, fallback = 0) {
+  if (value === null || value === undefined || value === "") return fallback;
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
 }
 
 function clamp01(value) {
   return Math.max(0, Math.min(1, finite(value)));
-}
-
-function hashText(value) {
-  let hash = 2166136261;
-  for (const character of String(value || "")) {
-    hash ^= character.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
 }
 
 function distanceSquared(a, b) {
@@ -251,8 +243,10 @@ export class TrafficMaterializationSystem {
     return assigned ? true : Boolean(city.isPointActive?.(token.x, token.y) ?? true);
   }
 
-  safeFromPersistentVehicles(token, radius) {
+  safeFromPersistentVehicles(token, radius, { allowCurrentVehicle = false } = {}) {
+    const currentVehicleId = this.scene.vehicleSystem?.currentVehicleId || null;
     for (const vehicle of this.scene.vehicleSystem?.vehicles || []) {
+      if (allowCurrentVehicle && currentVehicleId && vehicle.id === currentVehicleId) continue;
       const otherRadius = vehicleRadius(vehicle.archetype);
       if (Math.hypot(finite(vehicle.x) - token.x, finite(vehicle.y) - token.y) < radius + otherRadius + 8) {
         return false;
@@ -282,7 +276,7 @@ export class TrafficMaterializationSystem {
     if (!this.pointReady(token, assigned)) return false;
     const slot = assigned ? this.assignments.get(token.tokenId) : null;
     const radius = slot?.radius || 16;
-    return this.safeFromPersistentVehicles(token, radius)
+    return this.safeFromPersistentVehicles(token, radius, { allowCurrentVehicle: assigned })
       && this.safeFromTraffic(token, radius, token.tokenId);
   }
 
