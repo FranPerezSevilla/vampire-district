@@ -25,6 +25,7 @@ This directory is the project source of truth for design, implementation and pla
 - [City Streaming 4C](CITY_STREAMING_4C.md) — pooled local traffic materialization, explicit road lanes, smooth macro interpolation and nearby vehicle occupancy.
 - [City Streaming 4D](CITY_STREAMING_4D.md) — local following distance, player-vehicle braking, bounded catch-up and deterministic junction yielding.
 - [City Streaming 4E](CITY_STREAMING_4E.md) — soft player-to-traffic contact, bounded proxy displacement, blocked vehicles and safe lane recovery.
+- [City Streaming 4F](CITY_STREAMING_4F.md) — graduated high-speed impact damage, crash alerts, cooldown protection and severe traffic stalls.
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — architecture and engineering constraints.
 - [Runtime consolidation](RUNTIME_CONSOLIDATION.md) — Milestone 10 system ownership, spatial queries, diagnostics and browser smoke tests.
 - [Milestone 10 status](MILESTONE_10_STATUS.md) — current implementation and validation boundary.

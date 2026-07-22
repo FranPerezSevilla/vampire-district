@@ -6,6 +6,7 @@ import { DistantSimulationSystem } from "../streaming/DistantSimulationSystem.js
 import { EntityStreamSystem } from "../streaming/EntityStreamSystem.js";
 import { MacroTrafficPoliceSystem } from "../streaming/MacroTrafficPoliceSystem.js";
 import { installTrafficLocalAssignmentPolicy } from "../streaming/TrafficLocalAssignmentPolicy.js";
+import { TrafficImpactConsequencesSystem } from "../streaming/TrafficImpactConsequencesSystem.js";
 import { TrafficLocalBehaviorSystem } from "../streaming/TrafficLocalBehaviorSystem.js";
 import { TrafficMaterializationSystem } from "../streaming/TrafficMaterializationSystem.js";
 import { TrafficPhysicalConsequencesSystem } from "../streaming/TrafficPhysicalConsequencesSystem.js";
@@ -29,6 +30,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.diagnostics.claim("TrafficMaterializationSystem.update", "TrafficMaterializationSystem");
     this.diagnostics.claim("TrafficLocalBehaviorSystem.update", "TrafficLocalBehaviorSystem");
     this.diagnostics.claim("TrafficPhysicalConsequencesSystem.update", "TrafficPhysicalConsequencesSystem");
+    this.diagnostics.claim("TrafficImpactConsequencesSystem.update", "TrafficImpactConsequencesSystem");
     this.diagnostics.claim("VehicleSystem.updateDriving", "VehicleSystem");
     this.diagnostics.claim("VehicleSystem.enterVehicle", "VehicleSystem");
     this.diagnostics.claim("PedestrianSystem.update", "PedestrianSystem");
@@ -41,6 +43,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.diagnostics.registerSystem("TrafficMaterializationSystem");
     this.diagnostics.registerSystem("TrafficLocalBehaviorSystem");
     this.diagnostics.registerSystem("TrafficPhysicalConsequencesSystem");
+    this.diagnostics.registerSystem("TrafficImpactConsequencesSystem");
     this.diagnostics.registerSystem("VehicleSystem");
     this.diagnostics.registerSystem("PedestrianSystem");
     this.diagnostics.registerSystem("StreetFurnitureSystem");
@@ -60,6 +63,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.trafficLocalAssignmentPolicy = installTrafficLocalAssignmentPolicy(scene);
     scene.trafficLocalBehaviorSystem = new TrafficLocalBehaviorSystem(scene);
     scene.trafficPhysicalConsequencesSystem = new TrafficPhysicalConsequencesSystem(scene);
+    scene.trafficImpactConsequencesSystem = new TrafficImpactConsequencesSystem(scene);
     scene.npcSystem?.refreshVisibility?.();
     scene.vehicleSystem?.refreshVisibility?.();
   }
@@ -80,6 +84,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.trafficMaterializationSystem?.update?.(dt);
     scene.trafficLocalBehaviorSystem?.update?.(dt);
     scene.trafficPhysicalConsequencesSystem?.update?.(dt);
+    scene.trafficImpactConsequencesSystem?.update?.(dt);
     scene.pedestrianSystem?.update?.(dt);
 
     if (input && originalBeginFrame) {
@@ -124,6 +129,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
   }
 
   destroy() {
+    this.scene.trafficImpactConsequencesSystem?.destroy?.();
+    this.scene.trafficImpactConsequencesSystem = null;
     this.scene.trafficPhysicalConsequencesSystem?.destroy?.();
     this.scene.trafficPhysicalConsequencesSystem = null;
     this.scene.trafficLocalBehaviorSystem?.destroy?.();

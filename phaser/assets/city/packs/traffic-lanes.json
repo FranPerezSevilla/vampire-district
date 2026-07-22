@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 3,
-  "version": 3,
+  "schemaVersion": 4,
+  "version": 4,
   "id": "bloodnight-local-traffic-lanes",
   "defaults": {
     "maxActiveVehicles": 10,
@@ -26,6 +26,26 @@
     "blockedHoldSeconds": 0.55,
     "playerSpeedRetention": 0.78,
     "collisionPadding": 2
+  },
+  "impacts": {
+    "hardThreshold": 125,
+    "severeThreshold": 210,
+    "damageThreshold": 105,
+    "damageScale": 0.018,
+    "hardMinimumDamage": 4,
+    "severeMinimumDamage": 16,
+    "severeDamageMultiplier": 1.35,
+    "hardExposure": 2,
+    "severeExposure": 5,
+    "maximumExposure": 7,
+    "hardHeatMinimum": 7,
+    "severeHeatMinimum": 15,
+    "maximumHeat": 24,
+    "impactCooldownSeconds": 0.9,
+    "hardHoldSeconds": 0.42,
+    "severeStallSeconds": 2.2,
+    "hardSpeedRetention": 0.68,
+    "severeSpeedRetention": 0.35
   },
   "junctions": [
     { "id": "core", "x": 472, "y": 338, "radius": 30, "approachDistance": 82 },
