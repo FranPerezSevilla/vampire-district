@@ -95,7 +95,25 @@ test("vehicle velocity adds forward chunks to the prefetch set", () => {
   system.destroy();
 });
 
-test("active chunk queries return local city data instead of global collections", () => {
+test("loaded queries include the prefetch ring while active-only queries remain strict", () => {
+  const building = { id: "prefetch-edge", x: 1600, y: 100, w: 40, h: 40 };
+  const collections = { buildings: [building] };
+  const manifest = buildCityChunkManifest({
+    id: "render-safety-test",
+    world: { width: 2560, height: 512 },
+    collections,
+    chunkSize: 512
+  });
+  const index = new ChunkSpatialIndex(manifest, collections);
+  const system = new ChunkStreamSystem(fakeScene(1023, 100), { manifest, index });
+  const cameraLikeBounds = { x: 343, y: 0, w: 1360, h: 512 };
+
+  assert.deepEqual(system.query("buildings", cameraLikeBounds), [building]);
+  assert.equal(system.query("buildings", cameraLikeBounds, { includePrefetched: false }).length, 0);
+  system.destroy();
+});
+
+test("loaded chunk queries return local city data instead of global collections", () => {
   const scene = fakeScene(100, 100);
   const system = new ChunkStreamSystem(scene, { index: createCurrentCityChunkIndex() });
   const bounds = { x: 0, y: 0, w: 500, h: 500 };
