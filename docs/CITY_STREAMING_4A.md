@@ -4,7 +4,7 @@ _Last updated: 2026-07-22_
 
 ## Status
 
-**Implementation candidate.**
+**Accepted and implemented.**
 
 City Streaming 4A builds on the accepted asynchronous chunk runtime without enlarging the visible city or changing campaign authority. It introduces two new boundaries:
 
@@ -214,3 +214,18 @@ Snapshots expose active and predictive pack IDs, load states, cache/request stat
 - returning to an active chunk reuses the existing NPC object;
 - all unit, boot, system and campaign browser domains remain green;
 - the visible city, campaign and save schema remain unchanged.
+
+## Acceptance record
+
+City Streaming 4A was accepted on 2026-07-22 through PR #23.
+
+Validated on implementation head `4579c95a0a664a2ecf64a794feefff104988edd5`:
+
+```text
+unit-tests         success
+browser-boot       success
+browser-systems    success
+browser-campaign   success
+```
+
+The accepted scope includes metadata-only district profiles, road-aware prediction and low-frequency ordinary pedestrian progression. Real texture/audio bundles, distant vehicle travel and macro police simulation remain deferred.
