@@ -20,7 +20,7 @@ The project does not use licensed vampire factions, terminology, lore, symbols o
 
 ## Current production baseline
 
-The accepted `main` baseline before Milestone 12.1 is:
+The consolidated foundation baseline before Milestone 12.1 is:
 
 ```text
 a424e0f6e1c2e52d9851bdbff129276c470478c6
@@ -42,7 +42,7 @@ It includes:
 - canonical project documentation consolidated in `PROJECT_BLUEPRINT.md`;
 - unit, boot, systems and campaign Chromium validation.
 
-### Active implementation candidate — Milestone 12.1
+### Accepted extension — Milestone 12.1
 
 PR #30 adds:
 
@@ -55,7 +55,7 @@ PR #30 adds:
 - wanted-level and location safety gates;
 - accessible dialog and browser diagnostics.
 
-Detailed record: `VEHICLE_MAINTENANCE.md`.
+The implementation was accepted after unit, boot, systems and campaign CI passed together. Detailed record: `VEHICLE_MAINTENANCE.md`.
 
 ## World structure
 
@@ -413,11 +413,11 @@ A feature is complete only when implementation, tests and documentation agree.
 
 ## Active production sequence
 
-### Active: vehicle repair and recovery
+### Complete: vehicle repair and recovery
 
-PR #30 must satisfy:
+Milestone 12.1 delivered:
 
-- one costed repair/recovery transaction;
+- one atomic costed repair/recovery transaction;
 - no duplicate charge on repeated activation;
 - rollback on partial failure;
 - owned-vehicle-only service;
