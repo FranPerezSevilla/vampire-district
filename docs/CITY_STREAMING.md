@@ -70,7 +70,7 @@ City Streaming 1 moves these operations to chunk-local indexes:
 - player collision against buildings;
 - current-light and current-shadow lookup.
 
-The render window remains approximately `1360 × 960`; it now requests only indexed elements belonging to active chunks.
+The render window remains approximately `1360 × 960`. It reads the active and prefetched loaded rings so a camera edge can safely cross a fourth chunk, while gameplay simulation authority remains limited to active chunks.
 
 ## Data model
 
@@ -163,5 +163,6 @@ City Streaming 1 must not change the visible layout or campaign flow. Required c
 - no duplicate cross-chunk query results;
 - correct state transitions at opposite world edges;
 - forward prefetch while driving;
+- render safety across the active/prefetched boundary;
 - local building collision, light and shadow queries;
 - all existing boot, system and campaign browser domains remain green.
