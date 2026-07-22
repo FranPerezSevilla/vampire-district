@@ -34,7 +34,7 @@ function sleep(ms, signal) {
   });
 }
 
-export const DEFAULT_CITY_MANIFEST_URL = "phaser/assets/city/current/manifest.json";
+export const DEFAULT_CITY_MANIFEST_URL = new URL("../../assets/city/current/manifest.json", import.meta.url).toString();
 
 export class ChunkFileStore {
   constructor({
