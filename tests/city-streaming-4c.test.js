@@ -52,8 +52,9 @@ function fakeScene() {
   };
   const vehicleSystem = {
     vehicles: [],
+    currentVehicleId: null,
     canOccupy() { return true; },
-    isDriving() { return false; }
+    isDriving() { return Boolean(this.currentVehicleId); }
   };
   return {
     currentLayer: 0,
@@ -131,6 +132,17 @@ test("local traffic materializes from macro tokens, blocks driven cars and reuse
   assert.notEqual(slot.x, beforeX);
   assert.equal(slot.tokenId, first.tokenId);
 
+  scene.vehicleSystem.currentVehicleId = "driven-car";
+  scene.vehicleSystem.vehicles = [{
+    id: "driven-car",
+    x: slot.x + 26,
+    y: slot.y,
+    archetype: { width: 28, height: 14 }
+  }];
+  system.update();
+  assert.equal(slot.tokenId, first.tokenId);
+  assert.equal(scene.vehicleSystem.canOccupy(scene.vehicleSystem.vehicles[0], slot.x, slot.y, slot.angle), false);
+
   scene.currentLayer = 1;
   system.update();
   const hidden = system.snapshot();
@@ -138,6 +150,8 @@ test("local traffic materializes from macro tokens, blocks driven cars and reuse
   assert.equal(hidden.poolSize, 2);
   assert.equal(system.pool.every(item => item.container.active === false), true);
 
+  scene.vehicleSystem.currentVehicleId = null;
+  scene.vehicleSystem.vehicles = [];
   scene.currentLayer = 0;
   system.update();
   assert.equal(system.snapshot().materializedCount, 2);
