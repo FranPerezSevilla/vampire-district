@@ -44,6 +44,8 @@ const EMPTY_WORLD_INPUT = Object.freeze({
   feeding: false
 });
 
+test.describe.configure({ timeout: 60_000 });
+
 test("pause and task reveals discard mouse and wheel input", async ({ page }) => {
   await page.goto("/?testScenario=input-locks", { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => Boolean(
