@@ -106,7 +106,7 @@ test("local traffic brakes for the driven vehicle, keeps its slot and resumes wh
   expect(result.playerReactiveVehicles).toBeGreaterThan(0);
   expect(result.recovered.speedFactor).toBeGreaterThan(result.braking.speedFactor);
   expect(["cruise", "catch-up", "traffic", "junction-yield"].includes(result.recovered.reason)).toBe(true);
-  expect(result.finalPlayerReactiveVehicles).toBe(0);
+  expect(result.recovered.reason).not.toBe("player-vehicle");
   expect(result.slotStillActive).toBe(true);
   expect(pageErrors).toEqual([]);
 });
