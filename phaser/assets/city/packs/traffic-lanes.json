@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "id": "bloodnight-local-traffic-lanes",
+  "defaults": {
+    "maxActiveVehicles": 10,
+    "materializeRadius": 620,
+    "despawnRadius": 760
+  },
+  "edges": {
+    "old-quarter:glasshouse": {
+      "forward": [{ "x": 472, "y": 354 }, { "x": 1088, "y": 354 }],
+      "reverse": [{ "x": 1088, "y": 322 }, { "x": 472, "y": 322 }]
+    },
+    "old-quarter:canal-west": {
+      "forward": [{ "x": 488, "y": 338 }, { "x": 488, "y": 760 }],
+      "reverse": [{ "x": 456, "y": 760 }, { "x": 456, "y": 338 }]
+    },
+    "glasshouse:foundry": {
+      "forward": [{ "x": 1088, "y": 354 }, { "x": 1688, "y": 354 }],
+      "reverse": [{ "x": 1688, "y": 322 }, { "x": 1088, "y": 322 }]
+    },
+    "glasshouse:canal-east": {
+      "forward": [{ "x": 1104, "y": 338 }, { "x": 1104, "y": 760 }],
+      "reverse": [{ "x": 1072, "y": 760 }, { "x": 1072, "y": 338 }]
+    },
+    "foundry:harbor-north": {
+      "forward": [{ "x": 1688, "y": 354 }, { "x": 2240, "y": 354 }],
+      "reverse": [{ "x": 2240, "y": 322 }, { "x": 1688, "y": 322 }]
+    },
+    "foundry:canal-east": {
+      "forward": [{ "x": 1704, "y": 338 }, { "x": 1704, "y": 760 }],
+      "reverse": [{ "x": 1672, "y": 760 }, { "x": 1672, "y": 338 }]
+    },
+    "harbor-north:harbor-south": {
+      "forward": [{ "x": 2256, "y": 338 }, { "x": 2256, "y": 760 }],
+      "reverse": [{ "x": 2224, "y": 760 }, { "x": 2224, "y": 338 }]
+    },
+    "canal-west:canal-east": {
+      "forward": [{ "x": 482, "y": 776 }, { "x": 1688, "y": 776 }],
+      "reverse": [{ "x": 1688, "y": 744 }, { "x": 482, "y": 744 }]
+    },
+    "canal-west:blackwater": {
+      "forward": [{ "x": 488, "y": 760 }, { "x": 488, "y": 1192 }],
+      "reverse": [{ "x": 456, "y": 1192 }, { "x": 456, "y": 760 }]
+    },
+    "canal-east:harbor-south": {
+      "forward": [{ "x": 1688, "y": 776 }, { "x": 2240, "y": 776 }],
+      "reverse": [{ "x": 2240, "y": 744 }, { "x": 1688, "y": 744 }]
+    },
+    "canal-east:blackwater": {
+      "forward": [{ "x": 1704, "y": 760 }, { "x": 1704, "y": 1192 }],
+      "reverse": [{ "x": 1672, "y": 1192 }, { "x": 1672, "y": 760 }]
+    },
+    "blackwater:harbor-south": {
+      "forward": [{ "x": 1688, "y": 1208 }, { "x": 2240, "y": 1208 }],
+      "reverse": [{ "x": 2240, "y": 1176 }, { "x": 1688, "y": 1176 }]
+    }
+  }
+}

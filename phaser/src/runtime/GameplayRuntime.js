@@ -5,6 +5,7 @@ import { DistrictPackSystem } from "../streaming/DistrictPackSystem.js";
 import { DistantSimulationSystem } from "../streaming/DistantSimulationSystem.js";
 import { EntityStreamSystem } from "../streaming/EntityStreamSystem.js";
 import { MacroTrafficPoliceSystem } from "../streaming/MacroTrafficPoliceSystem.js";
+import { TrafficMaterializationSystem } from "../streaming/TrafficMaterializationSystem.js";
 import { VehicleSystem } from "../vehicles/VehicleSystem.js";
 import { GameplayRuntime as GameplayRuntimeCore } from "./GameplayRuntimeCore.js";
 
@@ -22,6 +23,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.diagnostics.claim("EntityStreamSystem.update", "EntityStreamSystem");
     this.diagnostics.claim("DistantSimulationSystem.update", "DistantSimulationSystem");
     this.diagnostics.claim("MacroTrafficPoliceSystem.update", "MacroTrafficPoliceSystem");
+    this.diagnostics.claim("TrafficMaterializationSystem.update", "TrafficMaterializationSystem");
     this.diagnostics.claim("VehicleSystem.updateDriving", "VehicleSystem");
     this.diagnostics.claim("VehicleSystem.enterVehicle", "VehicleSystem");
     this.diagnostics.claim("PedestrianSystem.update", "PedestrianSystem");
@@ -31,6 +33,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.diagnostics.registerSystem("EntityStreamSystem");
     this.diagnostics.registerSystem("DistantSimulationSystem");
     this.diagnostics.registerSystem("MacroTrafficPoliceSystem");
+    this.diagnostics.registerSystem("TrafficMaterializationSystem");
     this.diagnostics.registerSystem("VehicleSystem");
     this.diagnostics.registerSystem("PedestrianSystem");
     this.diagnostics.registerSystem("StreetFurnitureSystem");
@@ -46,6 +49,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.districtPackSystem = new DistrictPackSystem(scene);
     scene.distantSimulationSystem = new DistantSimulationSystem(scene);
     scene.macroTrafficPoliceSystem = new MacroTrafficPoliceSystem(scene);
+    scene.trafficMaterializationSystem = new TrafficMaterializationSystem(scene);
     scene.npcSystem?.refreshVisibility?.();
     scene.vehicleSystem?.refreshVisibility?.();
   }
@@ -63,6 +67,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.entityStreamSystem?.update?.(dt);
     scene.distantSimulationSystem?.update?.(dt);
     scene.macroTrafficPoliceSystem?.update?.(dt);
+    scene.trafficMaterializationSystem?.update?.(dt);
     scene.pedestrianSystem?.update?.(dt);
 
     if (input && originalBeginFrame) {
@@ -107,6 +112,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
   }
 
   destroy() {
+    this.scene.trafficMaterializationSystem?.destroy?.();
+    this.scene.trafficMaterializationSystem = null;
     this.scene.macroTrafficPoliceSystem?.destroy?.();
     this.scene.macroTrafficPoliceSystem = null;
     this.scene.distantSimulationSystem?.destroy?.();
