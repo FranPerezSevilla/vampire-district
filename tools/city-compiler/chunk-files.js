@@ -49,7 +49,7 @@ export function buildCityChunkFileSet({
   for (const [category, items] of Object.entries(collections)) {
     (items || []).forEach((item, index) => {
       const streamId = stableItemId(category, item, index);
-      const normalized = { ...item, streamId };
+      const normalized = item?.id ? item : { ...item, streamId };
       const bounds = itemBounds(category, item);
       for (const chunkId of chunkIdsForBounds(bounds, sourceManifest.world, sourceManifest.chunkSize)) {
         (payloads[chunkId].collections[category] ||= []).push(normalized);
@@ -65,8 +65,6 @@ export function buildCityChunkFileSet({
       row: source.row,
       bounds: source.bounds,
       neighbours: source.neighbours,
-      counts: source.counts,
-      itemIds: source.itemIds,
       file: `chunks/${source.column}-${source.row}.json`
     }];
   }));
