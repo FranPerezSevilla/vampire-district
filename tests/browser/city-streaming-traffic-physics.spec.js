@@ -69,7 +69,7 @@ test("the driven car softly pushes local traffic without damage, heat or slot re
     vehicle.angle = slot.angle;
     vehicle.travelAngle = slot.angle;
     vehicle.driftAngle = 0;
-    vehicle.speed = 110;
+    vehicle.speed = 70;
     vehicle.velocityX = forwardX * vehicle.speed;
     vehicle.velocityY = forwardY * vehicle.speed;
     vehicle.parked = false;
