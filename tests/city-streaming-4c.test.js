@@ -85,7 +85,7 @@ function laneManifest() {
     edges: {
       "west:east": {
         forward: [{ x: 0, y: 100 }, { x: 1000, y: 100 }],
-        reverse: [{ x: 1000, y: 130 }, { x: 0, y: 130 }]
+        reverse: [{ x: 1000, y: 150 }, { x: 0, y: 150 }]
       }
     }
   };
