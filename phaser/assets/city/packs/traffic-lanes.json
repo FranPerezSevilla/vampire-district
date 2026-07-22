@@ -1,12 +1,36 @@
 {
-  "schemaVersion": 1,
-  "version": 1,
+  "schemaVersion": 2,
+  "version": 2,
   "id": "bloodnight-local-traffic-lanes",
   "defaults": {
     "maxActiveVehicles": 10,
     "materializeRadius": 620,
     "despawnRadius": 760
   },
+  "behavior": {
+    "followDistance": 78,
+    "hardStopDistance": 34,
+    "playerLookAhead": 132,
+    "laneTolerance": 38,
+    "accelerationRate": 1.35,
+    "brakingRate": 5.8,
+    "catchUpSpeed": 1.24,
+    "junctionApproachDistance": 82,
+    "junctionRadius": 30
+  },
+  "junctions": [
+    { "id": "core", "x": 472, "y": 338, "radius": 30, "approachDistance": 82 },
+    { "id": "glass-north", "x": 1088, "y": 338, "radius": 30, "approachDistance": 82 },
+    { "id": "foundry-north", "x": 1688, "y": 338, "radius": 30, "approachDistance": 82 },
+    { "id": "harbor-north", "x": 2240, "y": 338, "radius": 30, "approachDistance": 82 },
+    { "id": "mourning-canal", "x": 482, "y": 760, "radius": 32, "approachDistance": 88 },
+    { "id": "glass-canal", "x": 1088, "y": 760, "radius": 32, "approachDistance": 88 },
+    { "id": "foundry-canal", "x": 1688, "y": 760, "radius": 32, "approachDistance": 88 },
+    { "id": "harbor-canal", "x": 2240, "y": 760, "radius": 32, "approachDistance": 88 },
+    { "id": "mourning-blackwater", "x": 482, "y": 1192, "radius": 32, "approachDistance": 88 },
+    { "id": "foundry-blackwater", "x": 1688, "y": 1192, "radius": 32, "approachDistance": 88 },
+    { "id": "harbor-blackwater", "x": 2240, "y": 1192, "radius": 32, "approachDistance": 88 }
+  ],
   "edges": {
     "old-quarter:glasshouse": {
       "forward": [{ "x": 472, "y": 354 }, { "x": 1088, "y": 354 }],
