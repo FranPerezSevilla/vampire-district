@@ -127,7 +127,7 @@ export class ChunkStreamSystem {
       } else if ([CHUNK_STREAM_STATES.ACTIVE, CHUNK_STREAM_STATES.PREFETCHED].includes(record.state)) {
         this.transition(id, CHUNK_STREAM_STATES.DORMANT);
       } else if (record.state === CHUNK_STREAM_STATES.DORMANT
-        && this.tick - record.lastTouchedTick > this.dormantRetention) {
+        && this.tick - record.lastTouchedTick >= this.dormantRetention) {
         this.transition(id, CHUNK_STREAM_STATES.UNLOADED);
       }
     }
