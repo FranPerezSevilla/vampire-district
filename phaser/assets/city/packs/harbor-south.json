@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "harbor-south",
+  "name": "South Harbor",
+  "bounds": { "x": 2184, "y": 704, "w": 216, "h": 736 },
+  "visual": {
+    "paletteFamily": "deep-cyan",
+    "fog": 0.42,
+    "lightWarmth": 0.18,
+    "signage": "warehouse-numbers",
+    "wetStreetReflection": 0.52
+  },
+  "audio": {
+    "ambientId": "south-harbor-logistics",
+    "gain": 0.7,
+    "layers": ["container-cranes", "ship-horns", "heavy-trucks"]
+  },
+  "simulation": {
+    "pedestrianDensity": 0.3,
+    "trafficDensity": 0.86,
+    "policePresence": 0.38,
+    "nightlife": 0.06
+  },
+  "identityTags": ["harbor", "logistics", "warehouses", "remote"],
+  "assets": { "textures": [], "audio": [] }
+}

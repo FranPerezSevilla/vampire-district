@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "glasshouse",
+  "name": "Glasshouse Ward",
+  "bounds": { "x": 960, "y": 0, "w": 680, "h": 704 },
+  "visual": {
+    "paletteFamily": "neon-plum",
+    "fog": 0.12,
+    "lightWarmth": 0.38,
+    "signage": "commercial-neon",
+    "wetStreetReflection": 0.72
+  },
+  "audio": {
+    "ambientId": "glasshouse-after-hours",
+    "gain": 0.62,
+    "layers": ["club-bass", "electric-hum", "dense-traffic"]
+  },
+  "simulation": {
+    "pedestrianDensity": 1.18,
+    "trafficDensity": 0.82,
+    "policePresence": 0.52,
+    "nightlife": 1.0
+  },
+  "identityTags": ["nightlife", "commercial", "neon", "crowded"],
+  "assets": { "textures": [], "audio": [] }
+}

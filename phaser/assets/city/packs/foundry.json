@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "foundry",
+  "name": "Foundry Ward",
+  "bounds": { "x": 1640, "y": 0, "w": 544, "h": 704 },
+  "visual": {
+    "paletteFamily": "iron-amber",
+    "fog": 0.3,
+    "lightWarmth": 0.76,
+    "signage": "industrial-stencil",
+    "wetStreetReflection": 0.24
+  },
+  "audio": {
+    "ambientId": "foundry-night-shift",
+    "gain": 0.68,
+    "layers": ["machinery-rumble", "steam-release", "freight-metal"]
+  },
+  "simulation": {
+    "pedestrianDensity": 0.58,
+    "trafficDensity": 0.66,
+    "policePresence": 0.34,
+    "nightlife": 0.16
+  },
+  "identityTags": ["industrial", "maze", "rooftops", "service-lanes"],
+  "assets": { "textures": [], "audio": [] }
+}

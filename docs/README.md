@@ -19,7 +19,8 @@ This directory is the project source of truth for design, implementation and pla
 - [City Compiler baseline](CITY_COMPILER_BASELINE.md) — measured score for the current city, legacy geometry debt and acceptance targets for the Foundry pilot.
 - [Foundry pilot](CITY_COMPILER_FOUNDRY_PILOT.md) — seeded Foundry generation, stable semantic IDs, candidate ranking, review artifacts and integration boundary.
 - [Foundry selection](CITY_COMPILER_FOUNDRY_SELECTION.md) — decision record selecting `foundry-pilot-04` and its production-integration requirements.
-- [City streaming](CITY_STREAMING.md) — chunk manifest, active/prefetched/dormant states, local static queries and the path to asynchronous world streaming.
+- [City streaming](CITY_STREAMING.md) — asynchronous chunk files, entity dormancy, incremental static queries, LRU retention and chunk-local deltas.
+- [City Streaming 4A](CITY_STREAMING_4A.md) — district resource profiles, road-aware prefetch and low-frequency dormant pedestrian progression.
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — architecture and engineering constraints.
 - [Runtime consolidation](RUNTIME_CONSOLIDATION.md) — Milestone 10 system ownership, spatial queries, diagnostics and browser smoke tests.
 - [Milestone 10 status](MILESTONE_10_STATUS.md) — current implementation and validation boundary.
