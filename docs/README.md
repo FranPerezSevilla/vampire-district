@@ -23,6 +23,7 @@ This directory is the project source of truth for design, implementation and pla
 - [City Streaming 4A](CITY_STREAMING_4A.md) — district resource profiles, road-aware prefetch and low-frequency dormant pedestrian progression.
 - [City Streaming 4B](CITY_STREAMING_4B.md) — district macro graph, abstract traffic flow, dormant police travel and district-local patrol recovery.
 - [City Streaming 4C](CITY_STREAMING_4C.md) — pooled local traffic materialization, explicit road lanes, smooth macro interpolation and nearby vehicle occupancy.
+- [City Streaming 4D](CITY_STREAMING_4D.md) — local following distance, player-vehicle braking, bounded catch-up and deterministic junction yielding.
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — architecture and engineering constraints.
 - [Runtime consolidation](RUNTIME_CONSOLIDATION.md) — Milestone 10 system ownership, spatial queries, diagnostics and browser smoke tests.
 - [Milestone 10 status](MILESTONE_10_STATUS.md) — current implementation and validation boundary.
