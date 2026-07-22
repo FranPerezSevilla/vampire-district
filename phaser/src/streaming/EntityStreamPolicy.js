@@ -10,7 +10,7 @@ export const ENTITY_STREAM_STATES = Object.freeze({
 export function npcCriticalReason(npc, context = {}) {
   if (!npc) return null;
   if (npc.missionInformant) return "mission-informant";
-  if (npc.type === NPC_TYPES.TARGET && !npc.dead && !npc.inactive) return "mission-target";
+  if (npc.type === NPC_TYPES.TARGET) return "mission-target";
   if (npc.dragged) return "dragged-body";
   if (npc.drainVictim) return "drain-victim";
   if (npc.enemyAttack) return "combat-attack";
