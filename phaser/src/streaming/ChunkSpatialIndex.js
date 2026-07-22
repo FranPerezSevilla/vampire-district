@@ -78,7 +78,18 @@ export class ChunkSpatialIndex {
 
   evictChunk(id) {
     const chunkId = String(id);
-    for (const chunks of this.byCategory.values()) chunks.get(chunkId)?.clear?.();
+    for (const [category, chunks] of this.byCategory) {
+      const chunk = chunks.get(chunkId);
+      if (!chunk?.size) continue;
+      const keys = [...chunk.keys()];
+      chunk.clear();
+      for (const key of keys) {
+        const stillIndexed = [...chunks.entries()].some(([otherId, records]) => (
+          otherId !== chunkId && records.has(key)
+        ));
+        if (!stillIndexed) this.boundsByKey.delete(`${category}:${key}`);
+      }
+    }
     return this.resident.delete(chunkId);
   }
 

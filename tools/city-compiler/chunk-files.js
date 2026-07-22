@@ -90,11 +90,11 @@ export async function writeCityChunkFileSet(fileSet, outputDir) {
   const target = path.resolve(outputDir);
   await mkdir(path.join(target, "chunks"), { recursive: true });
   const writes = [
-    writeFile(path.join(target, "manifest.json"), `${JSON.stringify(fileSet.manifest, null, 2)}\n`, "utf8")
+    writeFile(path.join(target, "manifest.json"), `${JSON.stringify(fileSet.manifest)}\n`, "utf8")
   ];
   for (const [id, payload] of Object.entries(fileSet.payloads)) {
     const chunk = fileSet.manifest.chunks[id];
-    writes.push(writeFile(path.join(target, chunk.file), `${JSON.stringify(payload, null, 2)}\n`, "utf8"));
+    writes.push(writeFile(path.join(target, chunk.file), `${JSON.stringify(payload)}\n`, "utf8"));
   }
   await Promise.all(writes);
   return target;

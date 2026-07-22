@@ -129,6 +129,7 @@ export class ChunkFileStore {
     if (!this.manifest) return this.loadManifest().then(() => this.loadChunk(key));
 
     const controller = new AbortController();
+    const request = { controller, promise: null };
     this.stats.chunkRequests++;
     const promise = this.requestJson(this.chunkUrl(key), { signal: controller.signal })
       .then(payload => {
@@ -137,8 +138,11 @@ export class ChunkFileStore {
         }
         return this.touch(key, payload);
       })
-      .finally(() => this.inFlight.delete(key));
-    this.inFlight.set(key, { controller, promise });
+      .finally(() => {
+        if (this.inFlight.get(key) === request) this.inFlight.delete(key);
+      });
+    request.promise = promise;
+    this.inFlight.set(key, request);
     return promise;
   }
 

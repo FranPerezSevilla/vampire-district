@@ -1,130 +1,211 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import {
-  buildCityChunkManifest,
-  chunkIdAt,
-  chunkIdsForBounds,
-  DEFAULT_CITY_CHUNK_SIZE
-} from "../phaser/src/streaming/CityChunkManifest.js";
+import { currentCityBlueprint } from "../tools/city-compiler/current-city.js";
+import { buildCityChunkFileSet } from "../tools/city-compiler/chunk-files.js";
+import { ChunkDeltaStore } from "../phaser/src/streaming/ChunkDeltaStore.js";
+import { ChunkFileStore } from "../phaser/src/streaming/ChunkFileStore.js";
 import { ChunkSpatialIndex } from "../phaser/src/streaming/ChunkSpatialIndex.js";
-import { ChunkStreamSystem, CHUNK_STREAM_STATES } from "../phaser/src/streaming/ChunkStreamSystem.js";
 import {
-  createCurrentCityChunkIndex,
-  currentCityChunkCollections,
-  currentCityChunkManifest
-} from "../phaser/src/streaming/CurrentCityChunks.js";
+  ChunkStreamSystem,
+  CHUNK_LOAD_STATES,
+  CHUNK_STREAM_STATES
+} from "../phaser/src/streaming/ChunkStreamSystem.js";
+
+const fileSet = buildCityChunkFileSet({
+  id: "bloodnight-current-city-chunks",
+  world: currentCityBlueprint.world,
+  runtime: currentCityBlueprint.runtime
+});
 
 function fakeScene(x = 100, y = 100) {
   return {
     player: { x, y },
+    campaignSystem: { state: { world: { flags: {} } } },
     renderFocus() { return this.player; },
     statePublisher: { setMany() {} },
-    events: { once() {} }
+    events: { once() {} },
+    redrawLayer() {},
+    npcSystem: { npcs: [], rebuildSpatialIndex() {} },
+    evidenceSystem: { bloodStains: [] },
+    propDamageSystem: { props: [] },
+    streetFurnitureSystem: { dumpsters: [] },
+    vehicleSystem: { vehicles: [], currentVehicle() { return null; } }
   };
 }
 
-test("current city compiles into a deterministic five-by-three chunk grid", () => {
-  assert.equal(DEFAULT_CITY_CHUNK_SIZE, 512);
-  assert.equal(currentCityChunkManifest.columns, 5);
-  assert.equal(currentCityChunkManifest.rows, 3);
-  assert.equal(currentCityChunkManifest.chunkIds.length, 15);
-  assert.equal(currentCityChunkManifest.chunks["4:2"].bounds.w, 352);
-  assert.equal(currentCityChunkManifest.chunks["4:2"].bounds.h, 416);
-  assert.equal(chunkIdAt(1688, 338), "3:0");
-  assert.deepEqual(
-    chunkIdsForBounds({ x: 500, y: 500, w: 40, h: 40 }, currentCityChunkManifest.world),
-    ["0:0", "1:0", "0:1", "1:1"]
-  );
+class MemoryChunkFileStore {
+  constructor(set, cacheLimit = 12) {
+    this.manifest = set.manifest;
+    this.payloads = set.payloads;
+    this.cache = new Map();
+    this.inFlight = new Map();
+    this.cacheLimit = cacheLimit;
+    this.requests = [];
+    this.stats = { manifestRequests: 0, chunkRequests: 0, cacheHits: 0, retries: 0, cancellations: 0, failures: 0, evictions: 0 };
+  }
+
+  loadManifest() { return Promise.resolve(this.manifest); }
+  has(id) { return this.cache.has(String(id)); }
+  peek(id) { return this.cache.get(String(id)) || null; }
+  loadChunk(id) {
+    const key = String(id);
+    if (this.cache.has(key)) {
+      this.stats.cacheHits++;
+      return Promise.resolve(this.cache.get(key));
+    }
+    this.stats.chunkRequests++;
+    this.requests.push(key);
+    const payload = this.payloads[key];
+    this.cache.set(key, payload);
+    return Promise.resolve(payload);
+  }
+  cancelExcept() { return []; }
+  trim(retainedIds = []) {
+    const retained = new Set(retainedIds);
+    const evicted = [];
+    while (this.cache.size > this.cacheLimit) {
+      const id = [...this.cache.keys()].find(candidate => !retained.has(candidate));
+      if (!id) break;
+      this.cache.delete(id);
+      this.stats.evictions++;
+      evicted.push(id);
+    }
+    return evicted;
+  }
+  snapshot() { return { cached: [...this.cache.keys()], inFlight: [], stats: { ...this.stats } }; }
+  destroy() { this.cache.clear(); }
+}
+
+test("City Compiler emits a deterministic five-by-three asynchronous chunk set", () => {
+  const manifest = fileSet.manifest;
+  assert.equal(manifest.version, 3);
+  assert.equal(manifest.columns, 5);
+  assert.equal(manifest.rows, 3);
+  assert.equal(manifest.chunkIds.length, 15);
+  assert.equal(manifest.chunks["4:2"].bounds.w, 352);
+  assert.equal(manifest.chunks["4:2"].bounds.h, 416);
+  assert.equal(manifest.chunks["3:0"].file, "chunks/3-0.json");
+  assert.equal(Object.keys(fileSet.payloads).length, 15);
+  assert.ok(fileSet.payloads["0:0"].collections.buildings.some(item => item.id === "refugeTower"));
+  assert.ok(fileSet.payloads["3:0"].collections.buildings.some(item => item.id === "foundry:block-02:west-works"));
 });
 
-test("manifest records long geometry in every touched chunk", () => {
-  const darkness = currentCityChunkManifest.chunkIds.filter(id => (
-    currentCityChunkManifest.chunks[id].itemIds.shadowZones || []
-  ).includes("districtDarkness"));
-  assert.equal(darkness.length, currentCityChunkManifest.chunkIds.length);
+test("incremental chunk index deduplicates cloned cross-boundary records by stable stream id", () => {
+  const manifest = fileSet.manifest;
+  const index = new ChunkSpatialIndex(manifest);
+  const longRoad = { id: "long", streamId: "long", x: 480, y: 200, w: 100, h: 40 };
+  index.hydrateChunk("0:0", { roads: [{ ...longRoad }] });
+  index.hydrateChunk("1:0", { roads: [{ ...longRoad }] });
 
-  const foundry = currentCityChunkManifest.chunkIds.filter(id => (
-    currentCityChunkManifest.chunks[id].itemIds.buildings || []
-  ).includes("foundry:block-02:west-works"));
-  assert.deepEqual(foundry, ["3:0"]);
+  assert.equal(index.query("roads", { x: 450, y: 150, w: 180, h: 120 }).length, 1);
+  assert.equal(index.count("roads", ["0:0", "1:0"]), 1);
+  index.evictChunk("0:0");
+  assert.equal(index.query("roads", { x: 450, y: 150, w: 180, h: 120 }).length, 1);
 });
 
-test("chunk spatial index deduplicates cross-chunk geometry", () => {
-  const world = { width: 1200, height: 600 };
-  const road = { id: "long-road", x: 100, y: 200, w: 1000, h: 80 };
-  const building = { id: "building", x: 700, y: 100, w: 100, h: 100 };
-  const collections = { roads: [road], buildings: [building] };
-  const manifest = buildCityChunkManifest({ world, collections, chunkSize: 512 });
-  const index = new ChunkSpatialIndex(manifest, collections);
+test("asynchronous stream activates only the configured number of payloads per frame", async () => {
+  const store = new MemoryChunkFileStore(fileSet, 15);
+  const system = new ChunkStreamSystem(fakeScene(), {
+    manifest: fileSet.manifest,
+    fileStore: store,
+    activationBudget: 1
+  });
+  await system.initialization;
+  await Promise.all([...system.desiredChunkIds()].map(id => system.requestChunk(id)));
 
-  assert.equal(index.query("roads", { x: 0, y: 0, w: 1200, h: 600 }).length, 1);
-  assert.deepEqual(index.query("buildings", { x: 650, y: 50, w: 200, h: 200 }), [building]);
-  assert.equal(index.query("buildings", { x: 0, y: 0, w: 200, h: 200 }).length, 0);
+  assert.equal(system.snapshot().residentChunkIds.length, 0);
+  assert.ok(system.snapshot().activationQueue.length >= 9);
+  system.processActivationQueue();
+  assert.equal(system.snapshot().residentChunkIds.length, 1);
+  system.processActivationQueue();
+  assert.equal(system.snapshot().residentChunkIds.length, 2);
+  assert.equal(system.snapshot().activationBudget, 1);
+  system.destroy();
 });
 
-test("stream authority maintains active, prefetched, dormant and unloaded states", () => {
-  const system = new ChunkStreamSystem(fakeScene(), { dormantRetention: 1 });
-  let snapshot = system.snapshot();
-  assert.equal(snapshot.centerChunkId, "0:0");
-  assert.equal(snapshot.counts.active, 4);
-  assert.equal(snapshot.counts.prefetched, 5);
-  assert.equal(snapshot.counts.unloaded, 6);
+test("focus changes cancel stale authority, use LRU payloads and preserve state transitions", async () => {
+  const store = new MemoryChunkFileStore(fileSet, 10);
+  const system = new ChunkStreamSystem(fakeScene(), {
+    manifest: fileSet.manifest,
+    fileStore: store,
+    dormantRetention: 1,
+    activationBudget: 3
+  });
+  await system.forceFocus(100, 100);
+  assert.equal(system.stateOf("0:0"), CHUNK_STREAM_STATES.ACTIVE);
+  assert.equal(system.loadStateOf("0:0"), CHUNK_LOAD_STATES.RESIDENT);
 
-  system.updateFocus(2390, 1400, { force: true });
-  snapshot = system.snapshot();
-  assert.equal(snapshot.centerChunkId, "4:2");
-  assert.equal(snapshot.counts.active, 4);
-  assert.equal(snapshot.counts.prefetched, 5);
-  assert.ok(snapshot.counts.dormant >= 2);
+  await system.forceFocus(2390, 1400, 900, 0);
   assert.equal(system.stateOf("4:2"), CHUNK_STREAM_STATES.ACTIVE);
-  assert.equal(system.isPointActive(2390, 1400), true);
-  assert.equal(system.isPointActive(100, 100), false);
-
+  assert.equal(system.isPointReady(2390, 1400), true);
   system.updateFocus(2390, 1400, { force: true });
   assert.equal(system.stateOf("0:0"), CHUNK_STREAM_STATES.UNLOADED);
+  assert.ok(store.stats.evictions > 0);
   system.destroy();
 });
 
-test("vehicle velocity adds forward chunks to the prefetch set", () => {
-  const system = new ChunkStreamSystem(fakeScene());
-  system.updateFocus(100, 100, { velocityX: 1000, velocityY: 0, force: true });
-  const snapshot = system.snapshot();
-  assert.ok(snapshot.states.prefetched.includes("3:0"));
-  assert.equal(snapshot.states.active.includes("3:0"), false);
-  system.destroy();
-});
-
-test("loaded queries include the prefetch ring while active-only queries remain strict", () => {
-  const building = { id: "prefetch-edge", x: 1600, y: 100, w: 40, h: 40 };
-  const collections = { buildings: [building] };
-  const manifest = buildCityChunkManifest({
-    id: "render-safety-test",
-    world: { width: 2560, height: 512 },
-    collections,
-    chunkSize: 512
+test("HTTP chunk store retries transient failures, cancels stale requests and trims LRU entries", async () => {
+  const manifest = {
+    id: "test",
+    chunkIds: ["0:0"],
+    chunks: { "0:0": { file: "chunks/0-0.json" } }
+  };
+  let attempts = 0;
+  const fetchImpl = async url => {
+    if (String(url).endsWith("manifest.json")) return { ok: true, json: async () => manifest };
+    attempts++;
+    if (attempts === 1) return { ok: false, status: 503, json: async () => ({}) };
+    return { ok: true, json: async () => ({ id: "0:0", collections: { roads: [] } }) };
+  };
+  const store = new ChunkFileStore({
+    manifestUrl: "https://example.test/city/manifest.json",
+    fetchImpl,
+    retryDelayMs: 0,
+    maxRetries: 1,
+    cacheLimit: 2
   });
-  const index = new ChunkSpatialIndex(manifest, collections);
-  const system = new ChunkStreamSystem(fakeScene(1023, 100), { manifest, index });
-  const cameraLikeBounds = { x: 343, y: 0, w: 1360, h: 512 };
+  await store.loadManifest();
+  await store.loadChunk("0:0");
+  assert.equal(store.stats.retries, 1);
+  assert.equal(store.has("0:0"), true);
+  store.touch("1:0", { id: "1:0" });
+  store.touch("2:0", { id: "2:0" });
+  assert.deepEqual(store.trim(new Set(["2:0"])), ["0:0"]);
 
-  assert.deepEqual(system.query("buildings", cameraLikeBounds), [building]);
-  assert.equal(system.query("buildings", cameraLikeBounds, { includePrefetched: false }).length, 0);
-  system.destroy();
+  const aborting = new ChunkFileStore({
+    manifestUrl: "https://example.test/city/manifest.json",
+    fetchImpl: (url, { signal } = {}) => {
+      if (String(url).endsWith("manifest.json")) return Promise.resolve({ ok: true, json: async () => manifest });
+      return new Promise((resolve, reject) => signal.addEventListener("abort", () => {
+        const error = new Error("aborted");
+        error.name = "AbortError";
+        reject(error);
+      }, { once: true }));
+    }
+  });
+  await aborting.loadManifest();
+  const pending = aborting.loadChunk("0:0");
+  assert.deepEqual(aborting.cancelExcept(new Set()), ["0:0"]);
+  await assert.rejects(pending, error => error.name === "AbortError");
+  assert.equal(aborting.stats.cancellations, 1);
+  aborting.destroy();
 });
 
-test("loaded chunk queries return local city data instead of global collections", () => {
-  const scene = fakeScene(100, 100);
-  const system = new ChunkStreamSystem(scene, { index: createCurrentCityChunkIndex() });
-  const bounds = { x: 0, y: 0, w: 500, h: 500 };
-  const localBuildings = system.query("buildings", bounds);
-  assert.ok(localBuildings.length > 0);
-  assert.ok(localBuildings.length < currentCityChunkCollections.buildings.length);
-  assert.ok(localBuildings.some(item => item.id === "refugeTower"));
-  assert.equal(localBuildings.some(item => item.id === "harborRegistry"), false);
+test("chunk delta serialization indexes bodies, evidence, broken props and vehicles without a second save authority", () => {
+  const scene = fakeScene();
+  scene.npcSystem.npcs = [{ id: "body", x: 100, y: 100, layer: 0, dead: true, hiddenBody: false }];
+  scene.evidenceSystem.bloodStains = [{ id: 1, x: 120, y: 110, layer: 0, kind: "blood", age: 2, life: 70 }];
+  scene.streetFurnitureSystem.dumpsters = [{ id: "dump", x: 140, y: 120, broken: true }];
+  scene.vehicleSystem.vehicles = [{ id: "car", x: 160, y: 130, angle: 0.2, health: 50, parked: true }];
+  const store = new ChunkDeltaStore(scene, fileSet.manifest);
+  const delta = store.captureChunk("0:0");
 
-  const inspected = system.inspectBounds(bounds);
-  assert.equal(inspected.buildings, localBuildings.length);
-  assert.ok(inspected.roads > 0);
-  system.destroy();
+  assert.equal(delta.bodies.length, 1);
+  assert.equal(delta.evidence.length, 1);
+  assert.equal(delta.streetProps.length, 1);
+  assert.equal(delta.vehicles.length, 1);
+  assert.deepEqual(store.snapshot().domains, { bodies: 1, evidence: 1, streetProps: 1, vehicles: 1 });
+  assert.equal(scene.campaignSystem.state.world.flags["cityChunkDelta.0:0"].chunkId, "0:0");
+  store.destroy();
 });
