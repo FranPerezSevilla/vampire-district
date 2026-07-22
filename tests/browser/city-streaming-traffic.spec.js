@@ -29,8 +29,9 @@ test("macro traffic materializes into a fixed local pool and dematerializes off 
     const seed = before.materialized[0];
     if (!seed) return { before, missing: true };
 
-    scene.switchLayer(0, { x: seed.x, y: seed.y }, "Focus a materialized traffic token.");
-    await window.NBD_CITY_STREAM.forceFocus(seed.x, seed.y);
+    const nearbyFocus = { x: seed.x, y: seed.y + 80 };
+    scene.switchLayer(0, nearbyFocus, "Focus near a materialized traffic token.");
+    await window.NBD_CITY_STREAM.forceFocus(nearbyFocus.x, nearbyFocus.y);
     window.NBD_TRAFFIC.resync();
     before = window.NBD_TRAFFIC.snapshot();
     const focused = before.materialized.find(item => item.tokenId === seed.tokenId) || before.materialized[0];
