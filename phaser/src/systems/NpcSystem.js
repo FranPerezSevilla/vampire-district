@@ -31,9 +31,16 @@ export class NpcSystem extends NpcSystemCore {
 
   rebuildSpatialIndex() {
     const stream = this.scene.entityStreamSystem;
-    this.spatial.rebuild(stream
-      ? this.npcs.filter(npc => stream.shouldIndexNpc(npc))
-      : this.npcs);
+    if (!stream) {
+      this.spatial.rebuild(this.npcs);
+      return;
+    }
+    const indexed = [];
+    for (const npc of this.npcs) {
+      stream.applyNpcState(npc, 0);
+      if (stream.shouldIndexNpc(npc)) indexed.push(npc);
+    }
+    this.spatial.rebuild(indexed);
   }
 
   isRenderable(npc) {
