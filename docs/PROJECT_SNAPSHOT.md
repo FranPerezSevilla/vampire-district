@@ -2,7 +2,7 @@
 
 _Last updated: 2026-07-22_
 
-Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) first for the canonical project-wide map. This snapshot summarizes the playable state, current candidate and immediate decisions.
+Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) first for the canonical project-wide map. This snapshot summarizes the playable state, accepted extensions and immediate priorities.
 
 ## Product vision
 
@@ -31,13 +31,13 @@ Working enhanced-mortal terms:
 
 Commercial-facing names remain subject to trademark clearance.
 
-## Current accepted baseline
+## Current accepted foundation
 
 ```text
 a424e0f6e1c2e52d9851bdbff129276c470478c6
 ```
 
-The accepted build provides:
+The accepted foundation provides:
 
 - Phaser 3 browser runtime and responsive quality presets;
 - street, low-rooftop, high-rooftop and sewer layers;
@@ -55,9 +55,9 @@ The accepted build provides:
 - consolidated canonical project blueprint;
 - unit, boot, systems and campaign Chromium validation.
 
-## Active implementation candidate
+## Accepted Milestone 12.1 extension
 
-Milestone 12.1 / PR #30 adds the refuge vehicle garage:
+PR #30 adds the refuge vehicle garage:
 
 - full repair for owned, parked vehicles at the garage;
 - tow recovery for owned wrecks from anywhere;
@@ -68,7 +68,7 @@ Milestone 12.1 / PR #30 adds the refuge vehicle garage:
 - no service while wanted, driving or away from the garage;
 - accessible modal and diagnostic API.
 
-Detailed document: `VEHICLE_MAINTENANCE.md`.
+The feature passed unit, boot, systems and campaign CI together. Detailed document: `VEHICLE_MAINTENANCE.md`.
 
 ## Missions
 
@@ -205,7 +205,7 @@ hard      125–209
 severe    210+
 ```
 
-Maintenance candidate baseline:
+Maintenance baseline:
 
 ```text
 garage                 street 304, 326
@@ -297,13 +297,15 @@ Initial Retainer roles: Quartermaster, Driver, Cleaner, Mechanic, Fixer, Scout, 
 
 ## Immediate priority
 
-Accept Milestone 12.1 only after:
+Continue Milestone 13 with **motorized police pursuit, interception, roadblocks and officer dismount behaviour**.
 
-- full unit/boot/systems/campaign CI;
-- one debit and one vehicle update per operation;
-- repeat-action no-charge confirmation;
-- wanted block and remote wreck recovery;
-- live/persistent condition agreement;
-- documentation acceptance record.
+The implementation must:
 
-Then continue Milestone 13 with motorized police pursuit, interception, roadblocks and officer dismount behaviour.
+- reuse the macro/local road infrastructure;
+- preserve existing foot pursuit and containment roles;
+- retain rooftop/sewer escape routes;
+- prevent roadblocks from hard-locking the player;
+- define explicit police-cruiser authority and persistence boundaries;
+- keep civilian traffic readable and pool-bounded;
+- add focused unit and Chromium coverage;
+- update the blueprint and detailed architecture in the same PR.
