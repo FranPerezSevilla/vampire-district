@@ -10,7 +10,7 @@ export const ENTITY_STREAM_STATES = Object.freeze({
 export function npcCriticalReason(npc, context = {}) {
   if (!npc) return null;
   if (npc.missionInformant) return "mission-informant";
-  if (npc.type === NPC_TYPES.TARGET) return "mission-target";
+  if (npc.type === NPC_TYPES.TARGET && !npc.dead && !npc.inactive) return "mission-target";
   if (npc.dragged) return "dragged-body";
   if (npc.drainVictim) return "drain-victim";
   if (npc.enemyAttack) return "combat-attack";
@@ -22,7 +22,7 @@ export function npcCriticalReason(npc, context = {}) {
   if (npc.thugHostile) return "hostile-thug";
   if (npc.intercepted) return "mission-intercept";
   if (npc.combat?.state === COMBAT_STATES.STAGGERED) return "combat-staggered";
-  if (npc.type === NPC_TYPES.HUNTER && Number(context.exposureLevel) >= 4) return "hunter-alert";
+  if (npc.type === NPC_TYPES.HUNTER && (context.hunterRevealed || Number(context.exposureLevel) >= 4)) return "hunter-alert";
   return null;
 }
 
