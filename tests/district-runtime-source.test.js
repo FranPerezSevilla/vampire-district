@@ -31,12 +31,14 @@ test("GameScene separates world size from viewport and renders active city chunk
   assert.equal(scene.includes("fillRect(0, 0, WORLD.width, WORLD.height)"), false);
 });
 
-test("vehicle movement resolves breakable street furniture before solid world geometry", async () => {
+test("vehicle movement resolves furniture first and queries local buildings through city streaming", async () => {
   const driving = await source("phaser/src/vehicles/VehicleDriving.js");
   const furnitureIndex = driving.indexOf("const furniture =");
   const buildingIndex = driving.indexOf("else if (canVehicleOccupy", furnitureIndex);
   assert.ok(furnitureIndex >= 0);
   assert.ok(buildingIndex > furnitureIndex);
+  assert.equal(driving.includes('cityStreamSystem?.query?.("buildings"'), true);
+  assert.equal(driving.includes("const nearbyBuildings ="), true);
 });
 
 test("hidden-body container identity survives checkpoints and can be exposed by a ruptured dumpster", async () => {
