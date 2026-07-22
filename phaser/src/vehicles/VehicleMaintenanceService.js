@@ -243,6 +243,7 @@ export class VehicleMaintenanceService {
 
   repair(vehicleId) {
     const quote = this.quote(vehicleId);
+    if (!quote.owned) this.assertOperation(quote, "repair");
     if (quote.action === "none") {
       return {
         changed: false,
@@ -267,6 +268,7 @@ export class VehicleMaintenanceService {
 
   recover(vehicleId) {
     const quote = this.quote(vehicleId);
+    if (!quote.owned) this.assertOperation(quote, "recover");
     if (!quote.disabled) {
       return {
         changed: false,
