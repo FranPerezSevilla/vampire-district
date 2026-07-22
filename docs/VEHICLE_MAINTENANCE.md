@@ -4,7 +4,7 @@ _Last updated: 2026-07-22_
 
 ## Status
 
-**Implementation candidate.**
+**Accepted and implemented.**
 
 Milestone 12.1 closes the persistent vehicle-damage loop by adding a costed refuge garage for owned vehicles. Damaged vehicles can be repaired when parked at the garage; disabled vehicles can be recovered by tow from anywhere in the district.
 
@@ -86,7 +86,7 @@ van                       $5 per missing hull point
 police cruiser            $6 per missing hull point
 ```
 
-The higher rates are already data-driven even though only owned vehicles can currently use the service.
+The higher rates are data-driven even though only owned vehicles can currently use the service.
 
 ## Recovery rules
 
@@ -130,7 +130,7 @@ VehicleMaintenanceService
   → CampaignSystem wildcard touch/save
 ```
 
-`WalletSystem` and `CampaignVehicleSystem` retain their existing default emitting behaviour. Milestone 12.1 adds an explicit silent option used only by the maintenance transaction.
+`WalletSystem` and `CampaignVehicleSystem` retain their normal emitting behaviour by default. Milestone 12.1 adds an explicit silent option used only by the maintenance transaction.
 
 Before mutation, the service snapshots:
 
@@ -278,3 +278,18 @@ Chromium coverage verifies:
 - ambient traffic remains excluded;
 - no campaign schema change;
 - unit, boot, systems and campaign CI domains remain green.
+
+## Acceptance record
+
+Milestone 12.1 was accepted on 2026-07-22 through PR #30.
+
+Validated on implementation head `978a611417659eeca62850a939b59112435b225b`:
+
+```text
+unit-tests         success
+browser-boot       success
+browser-systems    success
+browser-campaign   success
+```
+
+The accepted browser loop repairs the owned compact from `50 / 72` to full hull for `$66`, proves that a repeated repair creates no second debit, blocks recovery during an active wanted level, and then recovers the same remote wreck to the refuge garage with `26 / 72` hull for `$120`.
