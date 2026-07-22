@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 2,
-  "version": 2,
+  "schemaVersion": 3,
+  "version": 3,
   "id": "bloodnight-local-traffic-lanes",
   "defaults": {
     "maxActiveVehicles": 10,
@@ -17,6 +17,15 @@
     "catchUpSpeed": 1.24,
     "junctionApproachDistance": 82,
     "junctionRadius": 30
+  },
+  "physics": {
+    "maxPushStep": 16,
+    "maxOffset": 44,
+    "offsetRecoveryRate": 24,
+    "pushHoldSeconds": 0.16,
+    "blockedHoldSeconds": 0.55,
+    "playerSpeedRetention": 0.78,
+    "collisionPadding": 2
   },
   "junctions": [
     { "id": "core", "x": 472, "y": 338, "radius": 30, "approachDistance": 82 },
