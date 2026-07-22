@@ -41,6 +41,7 @@ test("macro traffic materializes into a fixed local pool and dematerializes off 
     window.NBD_TRAFFIC.resync();
     const after = window.NBD_TRAFFIC.snapshot();
     const advanced = after.materialized.find(item => item.tokenId === focused.tokenId);
+    const collisionPoint = advanced || focused;
     const persistentVehicle = scene.vehicleSystem.vehicles[0];
 
     return {
@@ -56,12 +57,12 @@ test("macro traffic materializes into a fixed local pool and dematerializes off 
         scene.trafficMaterializationSystem.pool[advanced.slotIndex].container.x !== containerBefore.x
         || scene.trafficMaterializationSystem.pool[advanced.slotIndex].container.y !== containerBefore.y
       )),
-      blocksAtToken: window.NBD_TRAFFIC.blocks(focused.x, focused.y, 1),
+      blocksAtToken: window.NBD_TRAFFIC.blocks(collisionPoint.x, collisionPoint.y, 1),
       vehicleCanOccupyToken: scene.vehicleSystem.canOccupy(
         persistentVehicle,
-        focused.x,
-        focused.y,
-        focused.angle
+        collisionPoint.x,
+        collisionPoint.y,
+        collisionPoint.angle
       )
     };
   });
