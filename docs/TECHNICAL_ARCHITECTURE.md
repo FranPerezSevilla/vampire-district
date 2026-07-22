@@ -1,106 +1,188 @@
 # Technical architecture
 
-_Last updated: 2026-07-18_
+_Last updated: 2026-07-22_
+
+Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) for the project-wide map. This document defines current runtime ownership, update ordering, persistence boundaries and testing contracts.
 
 ## 1. Runtime and stack
 
-- Browser runtime with Phaser 3.
-- DOM/CSS overlay for HUD, dialogue, prompts and result screens.
+- Phaser 3 browser runtime.
 - Native ES modules.
-- Data-driven world, input, movement, traversal, combat, drain, prop, weapon and AI definitions.
-- Node's built-in test runner with no test dependencies.
-- No backend dependency for the current vertical slice.
+- DOM/CSS overlay for HUD, dialogue, entry screens, mission drawer and result modals.
+- Data-driven campaign, city, movement, combat, vehicles, traffic and AI definitions.
+- Node built-in test runner for pure/unit coverage.
+- Playwright Chromium for boot, systems and campaign regressions.
+- No backend dependency for the current build.
 
-## 2. Scene ownership
+The logical viewport is `960 × 640`; the world is `2400 × 1440`. The game does not allocate a full-world render canvas.
+
+## 2. Top-level ownership
+
+```text
+GameScene.update
+  → GameplayRuntime.update
+```
+
+`GameScene` owns scene objects and delegates frame coordination. `GameplayRuntime` owns specialist update ordering and temporary input/interaction adaptation.
+
+No feature may introduce a second world frame loop or retain a parallel gameplay authority.
 
 ### `GameScene`
 
 Coordinates:
 
-- player/world simulation and rendering;
-- camera and map layers;
+- player/world rendering and layers;
+- camera and current layer;
 - one gameplay input-frame consumption point;
-- movement, traversal, interactions and powers;
-- weapon selection, player combat, draining and enemy damage;
-- AI state pre/post resolution;
-- world-prop damage;
-- specialist system update order and UI registry publication.
+- specialist system composition;
+- interaction collection;
+- world/UI registry publication.
 
 ### `UIScene`
 
 Owns:
 
-- Hunger/exposure/power HUD;
-- weapon/ammo HUD;
-- mission drawer and interaction presentation;
-- intro, pause, failure and success modals;
-- UI-only keyboard handling while world input is paused.
+- Hunger, exposure, powers, weapon/ammo and vehicle HUD;
+- mission drawer and prompts;
+- campaign entry, pause, failure and success presentation;
+- UI-only keyboard handling while world input is locked.
 
-`InputSystem` remains authoritative for every world action.
+### `GameplayRuntime`
 
-## 3. Current systems
+Owns:
+
+- deterministic specialist update order;
+- input-frame adaptation for foot/vehicle modes;
+- interaction filtering for Enter/Space/E;
+- diagnostics system registration;
+- reverse-order system destruction.
+
+## 3. Current system map
+
+### Campaign and state
+
+- `CampaignState`
+- `MissionRunner`
+- `MissionSystem`
+- campaign entry controller
+- refuge contract board
+- `StatePublisher`
+
+### Player and combat
 
 - `InputSystem`
 - `WeaponSystem`
 - `CombatSystem`
-- `PlayerDamageSystem`
-- `AiStateSystem`
 - `DrainSystem`
+- `PlayerDamageSystem`
 - `MovementNoiseSystem`
-- `PropDamageSystem`
-- `NpcSystem`
-- `PoliceSystem`
-- `WitnessSystem`
-- `MissionSystem`
-- `FeedingSystem`
-- `ExposureSystem`
 - `PowersSystem`
-- `EvidenceSystem`
+- `FeedingSystem`
+
+### AI, perception and police
+
+- `NpcSystem`
+- `AiStateSystem`
+- `PedestrianSystem`
+- `WitnessSystem`
+- `SensoryAwarenessSystem`
+- `PoliceSystem`
+- `PoliceViolenceSystem`
 - `HunterSystem`
-- `InteractionSystem`
-- `TransitionSystem`
+- `ExposureSystem`
+- `EvidenceSystem`
 
-Feature modules also provide responsive layout, tutorial flow/copy, dialogue anchoring, objective guidance, city outskirts, police-informant behaviour, sensory-awareness bridges, weapon UI, police-alert escalation, AI integration and the refuge finale.
+### World and vehicles
 
-## 4. Input architecture
+- `PropDamageSystem`
+- `StreetFurnitureSystem`
+- `VehicleSystem`
+- `VehicleModel`
+- `VehicleDriving`
+
+### City streaming and traffic
+
+- `ChunkStreamSystem`
+- `DistrictPackSystem`
+- `EntityStreamSystem`
+- `DistantSimulationSystem`
+- `MacroTrafficPoliceSystem`
+- `TrafficMaterializationSystem`
+- `TrafficLocalAssignmentPolicy`
+- `TrafficLocalBehaviorSystem`
+- `TrafficPhysicalConsequencesSystem`
+- `TrafficImpactConsequencesSystem`
+
+### Guidance and presentation helpers
+
+- `TutorialDirector`
+- `TaskRevealSystem`
+- `ObjectiveMarkerSystem`
+- `OutskirtsSystem`
+- `UxGuidanceSystem`
+- interaction and transition systems
+
+## 4. Authoritative frame order
+
+The large-city pre-frame order is:
+
+```text
+ChunkStreamSystem.update
+DistrictPackSystem.update
+EntityStreamSystem.update
+DistantSimulationSystem.update
+MacroTrafficPoliceSystem.update
+TrafficMaterializationSystem.update
+TrafficLocalBehaviorSystem.update
+TrafficPhysicalConsequencesSystem.update
+TrafficImpactConsequencesSystem.update
+PedestrianSystem.update
+```
+
+The normal gameplay frame then runs:
+
+```text
+InputSystem.beginFrame
+→ mode/world-lock gating
+→ vehicle-aware input adaptation
+→ WeaponSystem selection
+→ AiStateSystem pre-resolution
+→ movement / traversal / interactions / powers
+→ VehicleSystem.updateDriving when occupied
+→ CombatSystem attack resolution
+→ DrainSystem channel resolution
+→ NPC / witness / police / hunter specialists
+→ PlayerDamageSystem enemy attacks
+→ MovementNoiseSystem actual displacement
+→ AiStateSystem final resolution
+→ UI/state publication
+```
+
+The ordering guarantees:
+
+1. city resources are resident before local queries;
+2. dormant state progresses before local activation;
+3. macro traffic is authoritative before visual materialization;
+4. local traffic behaviour samples the latest lane state;
+5. physical offsets exist before player collision checks;
+6. impact consequences observe a completed 4E contact once;
+7. the normal frame consumes final local positions.
+
+## 5. Input architecture
 
 Authoritative files:
 
 - `phaser/src/input/actions.js`
 - `phaser/src/input/InputSystem.js`
-- `phaser/src/input/movement-input-adapter.js`
-- `phaser/src/input/input-runtime.js`
-- `phaser/src/input/tutorial-input-adapter.js`
-- `phaser/src/utils/geometry.js`
+- input adapters under `phaser/src/input/`
 
-Frame lifecycle:
-
-```text
-browser / Phaser input
-  → InputSystem.beginFrame()
-  → control-mode and world-lock gating
-  → Shift quiet movement / obsolete sprint neutralization
-  → PlayerDamageSystem hit-stun filter
-  → WeaponSystem consumes weaponStep
-  → AiStateSystem resolves pre-frame priority/recovery
-  → GameScene dispatches movement/traversal/interactions/powers
-  → CombatSystem consumes equipped weapon + aim/primary attack
-  → DrainSystem consumes right-button state
-  → NPC / witness / police / hunter specialist simulation
-  → PlayerDamageSystem resolves role-approved enemy attacks
-  → MovementNoiseSystem measures actual displacement
-  → AiStateSystem resolves final state/role conflicts
-  → UI registry publication
-```
-
-Important fields:
+Important frame fields include:
 
 ```js
 {
   move,
   hasMovementIntent,
   quietHeld,
-  sprintHeld: false,
   aimWorld,
   primaryPressed,
   primaryHeld,
@@ -108,6 +190,8 @@ Important fields:
   drainHeld,
   traversePressed,
   interactPressed,
+  vehicleActionPressed,
+  handbrakeHeld,
   weaponStep,
   dashPressed,
   whisperPressed,
@@ -115,402 +199,310 @@ Important fields:
 }
 ```
 
-No active gameplay feature added after Milestone 1 reads raw Space/E/Q/R/F, mouse buttons or wheel input independently.
+Control ownership:
 
-### Wheel ownership
+- Enter: vehicle entry/exit only;
+- Space: traversal on foot, handbrake while driving;
+- E: non-traversal interaction and trunk inspection;
+- Shift: quiet movement on foot;
+- wheel: weapon selection while gameplay is active.
 
-`InputSystem` normalizes canvas wheel delta to one signed step. `WeaponSystem` enables wheel capture while the playable scene is active. The browser page scrolls normally outside the canvas. Tutorial modes and UI/combat locks suppress selection through the same frame gating.
+No active gameplay feature reads raw world-action keys independently of `InputSystem`.
 
-## 5. Movement and traversal
+## 6. Campaign and persistence architecture
 
-Authoritative files:
+`CampaignState` is versioned and serializable. `MissionRunner` is the single mission/objective authority.
 
-- `phaser/src/data/movement.js`
-- `phaser/src/data/traversal.js`
-- `phaser/src/systems/MovementNoiseSystem.js`
-- `phaser/src/movement/milestone5-runtime.js`
-- `tests/movement.test.js`
+Persistent domains:
 
-Speed contract:
+- active, available and completed missions;
+- latest safe checkpoint;
+- cash and transaction ledger;
+- faction/contact reputation;
+- player position/layer, Hunger and loadout;
+- authored vehicle position, heading, health, parked/disabled state and trunk;
+- broken world props;
+- static NPC outcomes, corpses and evidence;
+- tutorial and informant state.
 
-- normal run multiplier: `1.55`;
-- quiet multiplier: `0.72`;
-- Space does not affect speed.
+Checkpoint rules:
 
-Traversal candidate order:
+- definitions author checkpoint policy;
+- unsafe progress rolls back to latest safe objective checkpoint;
+- failed retry preserves the latest safe checkpoint;
+- completion requires a completion checkpoint;
+- rewards remain idempotent;
+- starting another mission clears stale mission checkpoint authority.
 
-1. close and forward committed route;
-2. distance;
-3. aim angle;
-4. route priority;
-5. stable ID.
+Ambient traffic state is deliberately excluded from campaign persistence.
 
-Footsteps follow actual displacement. Ordinary NPCs only hear running inside the short 42-unit range and ignore quiet footsteps. Police and hunters retain enhanced hearing. Heard-only footsteps produce orientation and `WTF`, not automatic pursuit/reporting.
+## 7. Combat and AI contracts
 
-## 6. Weapon architecture
-
-Authoritative files:
-
-- `phaser/src/data/weapons.js`
-- `phaser/src/systems/WeaponSystem.js`
-- `phaser/src/weapons/milestone7-ui.js`
-- `tests/weapons.test.js`
-
-`WeaponSystem` owns:
-
-- ordered owned-weapon IDs;
-- equipped index and wheel wraparound;
-- per-weapon ammunition;
-- empty-shot rejection;
-- weapon-change and firing events;
-- weapon-specific attack audio;
-- gunshot and melee-impact perception bridges;
-- registry publication for the weapon HUD/report.
-
-Starting inventory:
-
-```text
-Unarmed → Iron Pipe → Pistol → wrap
-```
-
-The opening tutorial blocks `weaponStep`, so it remains Unarmed until full control.
-
-| Weapon | Type | Damage | Range | Ammo |
-|---|---|---:|---:|---:|
-| Unarmed | melee | 1 | 32 | unlimited |
-| Iron Pipe | melee | 2 | 42 | unlimited |
-| Pistol | hitscan | 3 | 260 | 8 |
-
-Every attack snapshots its equipped weapon config at start. Cycling is blocked while an attack is active, and the snapshot prevents a later selection change from bending timing or damage already in progress.
-
-## 7. Player attack and NPC resilience
-
-Authoritative files:
-
-- `phaser/src/data/combat.js`
-- `phaser/src/data/weapons.js`
-- `phaser/src/combat/CombatSystem.js`
-- `phaser/src/combat/combat-compatibility.js`
-- `tests/combat.test.js`
-- `tests/weapons.test.js`
-
-`CombatSystem` owns the player attack lifecycle:
+### Attack lifecycle
 
 ```text
 primaryPressed
-  → snapshot equipped weapon + aim direction
-  → WeaponSystem validates/consumes ammo
-  → windup
-  → active resolution
-  → recovery
+→ snapshot weapon and aim
+→ validate/consume ammunition
+→ windup
+→ active resolution
+→ recovery
 ```
 
-### Melee
+Combat and props share attack geometry where appropriate. A valid target/prop can be hit once per active window.
 
-Unarmed and Iron Pipe share the forward arc query. The attack owns one `hitIds` set across NPCs and props. Each valid entity can be damaged once during the active window.
+### Damage-to-Hunger
 
-### Hitscan
+`PlayerDamageSystem` owns enemy attack timing, confirmation, hit stun, invulnerability and Hunger damage. Specialist AI only decides whether an attack may begin.
 
-Pistol resolution builds one candidate pool from active NPCs and unbroken props:
+### AI priority
 
 ```text
-candidate in front
-  → inside range
-  → inside shot-line width + entity radius
-  → line-clear validation
-  → nearest forward candidate wins
-```
-
-Perpendicular distance and stable ID break exact ties. The shot resolves once and stores a tracer endpoint.
-
-NPC resilience remains civilian/target 3, police/thug 4 and hunter 5. Combat state subset:
-
-```text
-active → staggered → downed → dead / drained
-```
-
-Combat state is one input to the higher-level AI priority resolver.
-
-## 8. Damageable world props
-
-Authoritative files:
-
-- `phaser/src/data/props.js`
-- `phaser/src/systems/PropDamageSystem.js`
-- `phaser/src/world/milestone6-runtime.js`
-- `tests/props.test.js`
-
-Each district light is a streetlight prop with one durability point and a seven-unit hit radius.
-
-Melee flow:
-
-```text
-CombatSystem melee active window
-  → NPC arc query
-  → PropDamageSystem arc query with the same weapon config
-  → shared attack hitIds
-  → durability damage
-```
-
-Hitscan flow:
-
-```text
-CombatSystem ordered NPC/prop ray
-  → closest valid prop candidate selected
-  → PropDamageSystem.damage()
-```
-
-Breaking updates `brokenLights`, redraws lighting/shadow state and emits prop/noise events. `GameScene.collectInteractions()` is filtered so E no longer exposes `breakLight`.
-
-## 9. Enemy attacks and damage-to-Hunger
-
-Authoritative files:
-
-- `phaser/src/data/player-combat.js`
-- `phaser/src/combat/PlayerDamageSystem.js`
-- `tests/player-damage.test.js`
-
-`PlayerDamageSystem` still owns timing, telegraphing, range/arc confirmation, player hit stun, invulnerability and Hunger damage. `AiStateSystem` and the specialist AI systems decide whether an enemy is allowed to request an attack.
-
-Attack permission:
-
-- police: only the current `attacker` role while chasing;
-- hunter: active hunt or valid remembered pursuit;
-- rooftop thug: hostile after the first confirmed player hit.
-
-Baselines:
-
-| Enemy | Hunger | Windup | Recovery |
-|---|---:|---:|---:|
-| Rooftop thug | +8 | 520 ms | 900 ms |
-| Police | +12 | 300 ms | 620 ms |
-| Hunter | +20 | 430 ms | 880 ms |
-
-Confirmed damage interrupts the current weapon attack or drain, applies 260 ms hit stun and 720 ms invulnerability, raises Hunger and causes frenzy failure at 100.
-
-## 10. AI state architecture
-
-Authoritative files:
-
-- `phaser/src/data/ai.js`
-- `phaser/src/systems/AiStateSystem.js`
-- `phaser/src/ai/milestone8-runtime.js`
-- `phaser/src/ai/police-turn-guard.js`
-- `phaser/src/ai/sensory-priority-guard.js`
-- `tests/ai.test.js`
-
-Every NPC receives a resolved `npc.ai` object:
-
-```js
-{
-  state,
-  previousState,
-  changedAt,
-  role,
-  intent,
-  downedAt,
-  recoverAt,
-  leaderUntil,
-  lastKnownX,
-  lastKnownY
-}
-```
-
-Priority:
-
-```text
-inactive / dead
+inactive/dead
 → downed
 → being drained
 → staggered
 → attacking
 → chasing
-→ fleeing / reporting
+→ fleeing/reporting
 → lured
-→ investigating sound
+→ investigating
 → searching
-→ patrolling
+→ patrol
 → idle
 ```
 
-A higher state suppresses incompatible lower state effects. `AiStateSystem` runs before and after the existing specialist update loop so legacy intent changes become one coherent final state.
+A higher state suppresses contradictory lower-state effects.
 
-### Police roles
+### Perception
 
-When officers have confirmed contact:
-
-- one stable officer is selected as `attacker`;
-- other visible officers use deterministic `contain` positions around the player;
-- only `attacker` may begin a baton telegraph;
-- leadership remains stable for a finite window and can hand off after attack/recovery;
-- existing soft separation still modifies movement targets;
-- search, heat investigation, patrol, reinforcements, arrest and helicopter remain owned by `PoliceSystem`.
-
-Containment radii are 43/49/55 world units for alert levels 1/2/3.
-
-### Witnesses
-
-`WitnessSystem` remains the owner of report-point selection and report completion. AI priority adds deterministic interruption:
-
-```text
-confirmed sight
-  → reaction
-  → flee/report
-  → stagger pauses
-  → resume after stagger
-  → downed/drained/dead/intercepted cancels
-```
-
-A sensory guard ensures confirmed police sight clears a heard-only reaction before normal chase selection.
-
-### Hunter memory
-
-A confirmed sighting stores a point predicted 54 units ahead of the current player movement. The hunter retains that point for 6200 ms after losing sight, including through shadow. Blood tracking, route blocking and church patrol resume after memory expires.
-
-### Downed recovery
-
-| Type | Delay | Restored resilience |
-|---|---:|---:|
-| Civilian | never | — |
-| Journalist | never | — |
-| Rooftop thug | never | — |
-| Police | 18 s | 2 / 4 |
-| Hunter | 24 s | 3 / 5 |
-
-Recovery begins with a short stagger. A drain in progress suppresses recovery; kill or completed drain resolves the NPC permanently.
-
-## 11. Drain architecture
-
-Authoritative files:
-
-- `phaser/src/data/drain.js`
-- `phaser/src/combat/DrainSystem.js`
-- `phaser/src/systems/FeedingSystem.js`
-- `tests/drain.test.js`
-
-Eligibility:
-
-- downed: any side;
-- rat: direct;
-- standing human: unaware rear arc;
-- all require range, aim and clear geometry.
-
-Right-button pressed state starts and held state maintains. Release, movement, damage or invalid geometry cancels. Drain state has priority over stagger/attack/chase/report, and a valid channel blocks timed recovery.
-
-## 12. Mission completion
-
-```text
-journalist handled
-  → return-to-refuge objective
-  → player reaches refuge
-  → world locked
-  → sire approval dialogue
-  → dialogue dismissed
-  → mission completed
-  → final report modal
-```
-
-Authoritative feature: `phaser/src/mission-return-finale.js`.
-
-## 13. Perception architecture
-
-Perception remains distributed between witness, sensory-awareness, weapon, drain, movement and prop systems.
-
-Shared rule:
-
-- confirmed sight promotes the type-specific response and overrides heard-only state;
-- hearing alone creates temporary orientation/`WTF`;
+- confirmed sight promotes type-specific action;
+- sight overrides heard-only state;
+- hearing alone produces orientation/`WTF`;
 - hearing alone does not automatically pursue or report.
 
-Gunshots emit even on misses. Police who see a shot pursue/add heat; civilians who see it enter witness behaviour; heard-only NPCs turn without pursuit. Melee impact noise only emits after a confirmed hit.
+## 8. Vehicle architecture
 
-Target consolidation remains a future `PerceptionSystem` with explicit `canSee()` and `canHear()` queries.
+### Persistent vehicle model
 
-## 14. Events
+`VehicleSystem.vehicles` contains authored/campaign vehicles.
 
-Implemented plain-data events include:
+Persistent state includes:
 
-- `weapon:changed`
-- `weapon:fired`
-- `weapon:empty`
-- `combat:attack-started`
-- `combat:hit`
-- `combat:entity-downed`
-- `combat:entity-recovered`
-- `combat:enemy-attack-started`
-- `player:damaged`
-- `police:violence-escalated`
-- `ai:state-changed`
-- `hunger:changed`
-- `feeding:started`
-- `feeding:cancelled`
-- `feeding:completed`
-- `feeding:right-click-started`
-- `movement:footstep`
-- `prop:damaged`
-- `prop:broken`
-- `noise:emitted`
+- vehicle ID and archetype;
+- ownership/status;
+- position, body angle and parked state;
+- hull health and disabled state;
+- limited trunk contents.
 
-Events carry identifiers and values rather than system instances.
+`VehicleModel` owns pure kinematics:
 
-## 15. Testing
+- acceleration and launch boost;
+- braking/reverse;
+- body angle and travel angle;
+- grip and handbrake drift;
+- velocity and drag;
+- impact-damage helper.
 
-Run:
+`VehicleDriving` owns:
 
-```bash
-npm test
+- world occupancy checks;
+- furthest-safe contact search;
+- wall/corner slide candidates;
+- rotation-at-contact recovery;
+- world-collision consequences.
+
+`VehicleSystem.damageVehicle()` is the public hull-damage/persistence route.
+
+### Ambient traffic model
+
+Traffic proxies are not authored vehicles:
+
+- not present in `VehicleSystem.vehicles`;
+- not enterable, stealable or searchable;
+- no ownership, trunk, health or save state;
+- fixed pooled presentation only.
+
+This separation must remain explicit.
+
+## 9. Chunk and district streaming
+
+### `ChunkStreamSystem`
+
+Owns:
+
+- asynchronous chunk loading;
+- retry and cancellation;
+- activation budget;
+- resident/active states;
+- LRU retention;
+- spatial static queries;
+- chunk-local deltas and diagnostics.
+
+### `DistrictPackSystem`
+
+Owns district resource profiles and road-aware prefetch.
+
+### `EntityStreamSystem`
+
+Moves persistent entities between active and dormant simulation without deleting campaign authority.
+
+### `DistantSimulationSystem`
+
+Advances dormant pedestrians and other low-frequency state.
+
+### `MacroTrafficPoliceSystem`
+
+Owns:
+
+- district macro graph;
+- abstract traffic token count and phase;
+- completed trips;
+- dormant police travel;
+- district-local patrol recovery.
+
+## 10. Local traffic architecture
+
+### 4C — materialization
+
+`TrafficMaterializationSystem`:
+
+- maps nearby macro tokens to a fixed pool of ten containers;
+- samples explicit lane polylines;
+- interpolates between macro ticks;
+- applies street/chunk eligibility and despawn hysteresis;
+- keeps stable token-to-slot identity while local;
+- adds occupancy blocking without adding proxies to `VehicleSystem.vehicles`.
+
+### Assignment policy
+
+`TrafficLocalAssignmentPolicy` separates safe appearance checks from already-assigned retention. A queued or physically displaced proxy must not disappear merely because it is temporarily close to another local vehicle.
+
+### 4D — behaviour
+
+`TrafficLocalBehaviorSystem` owns:
+
+- local lane phase;
+- following distance and queues;
+- braking for player/authored vehicles;
+- deterministic junction priority;
+- bounded lag and catch-up;
+- no macro phase advancement.
+
+### 4E — physical contact
+
+`TrafficPhysicalConsequencesSystem` wraps the public driving operation after 4D:
+
+- predicts the player vehicle candidate;
+- detects contact with local proxies;
+- applies a bounded safe proxy offset when possible;
+- blocks both vehicles when no safe displacement exists;
+- damps player speed;
+- recovers the proxy offset toward its lane;
+- applies no damage, exposure or police heat for soft contact.
+
+### 4F — graduated impacts
+
+`TrafficImpactConsequencesSystem` wraps the 4E driving wrapper:
+
+```text
+soft      < 125
+hard      125–209
+severe    ≥ 210
 ```
 
-Pure coverage includes:
+Hard/severe impacts:
 
-- input gating/reset and pointer conversion;
-- aim, melee geometry and resilience;
-- enemy attack phases, damage and invulnerability;
-- drain eligibility and priority;
-- movement speed/hearing tiers and traversal scoring;
-- prop hit/miss geometry, durability and repeated-damage protection;
-- weapon inventory order and wraparound;
-- ammo consumption and empty rejection;
-- hitscan range, width, obstruction and nearest-target ordering;
-- AI state priority;
-- report interruption;
-- police attack-leader and containment selection;
-- hunter pursuit prediction and bounds;
-- type-specific recovery;
-- rooftop-thug retaliation timing.
+- damage the persistent player vehicle through `VehicleSystem`;
+- add crash audio, exposure and local police heat;
+- apply additional speed loss;
+- hold or severely stall the proxy;
+- use a per-token cooldown to prevent repeated frame damage.
 
-Browser regression remains manual and is described in `docs/MILESTONE_1_REGRESSION.md` through `docs/MILESTONE_8_REGRESSION.md`.
+Local cooldown/stall state is discarded on dematerialization.
 
-## 16. Technical debt
+## 11. Authority table
 
-- `movement-input-adapter.js` should be folded into `InputSystem`.
-- `input-runtime.js`, `milestone5-runtime.js`, `milestone6-runtime.js` and `milestone8-runtime.js` adapt legacy scene/system methods.
-- `combat-compatibility.js` shields current damage/witness dispatch from older paths.
-- Weapon HUD is installed through a UI adapter rather than first-class scene markup.
-- Hitscan obstruction reuses navigation line-clear checks.
-- AI priority is resolved centrally, but specialist movement remains distributed across NPC, witness, police and hunter systems.
-- Perception is not yet consolidated.
-- Browser smoke tests are not automated.
+| Domain | Authoritative owner | Explicitly not authoritative |
+|---|---|---|
+| mission progress | `MissionRunner` | UI compatibility step |
+| campaign save | `CampaignState` services | runtime proxy objects |
+| player input | `InputSystem` | feature raw-key reads |
+| authored vehicle health | `VehicleSystem` | traffic proxies |
+| macro traffic phase | `MacroTrafficPoliceSystem` | local behaviour/physics |
+| traffic slot assignment | `TrafficMaterializationSystem` | macro system |
+| traffic lane behaviour | `TrafficLocalBehaviorSystem` | persistent vehicle model |
+| temporary traffic offset | `TrafficPhysicalConsequencesSystem` | macro token |
+| impact damage/alerts | `TrafficImpactConsequencesSystem` | 4E geometry |
+| police local heat | `PoliceSystem` | traffic system storage |
+| evidence | `EvidenceSystem` | rendering-only effects |
 
-Rules for new work:
+## 12. Events and diagnostics
 
-- no new raw-input path;
-- no duplicate NPC, player or prop damage implementations;
-- future weapons must reuse `WeaponSystem` + `CombatSystem` contracts;
-- specialist AI behaviour must respect `AiStateSystem` priority/role;
-- new geometry/state rules require pure tests;
-- cross-system behaviour should prefer plain-data events;
-- adapter debt must be removed in Milestone 10.
+Events carry plain identifiers/values rather than system instances. Existing event families include weapon, combat, player damage, AI state, Hunger/feeding, movement/noise, props and vehicle disablement.
 
-## 17. Migration plan
+Browser diagnostics include:
 
-1. ✅ Central input frame.
-2. ✅ Mouse aim, unarmed combat and resilience.
-3. ✅ Enemy attacks and damage-to-Hunger.
-4. ✅ Contextual right-click drain.
-5. ✅ Default run, Shift quiet movement and traversal-only Space.
-6. ✅ Damageable streetlights and reusable prop damage.
-7. ✅ Weapon inventory, wheel cycling, melee weapon and pistol hitscan.
-8. ✅ Explicit AI priority, type-specific combat roles and recovery.
-9. Validate Milestones 1–8 in-browser and complete tutorial/UX teaching.
-10. Consolidate adapters and add browser smoke tests.
+```js
+window.NBD_CAMPAIGN
+window.NBD_VEHICLES
+window.NBD_CITY_STREAM
+window.NBD_TRAFFIC
+window.NBD_TRAFFIC_BEHAVIOR
+window.NBD_TRAFFIC_PHYSICS
+window.NBD_TRAFFIC_IMPACTS
+```
+
+These APIs are diagnostic/test surfaces, not additional state authorities.
+
+## 13. Testing architecture
+
+PR domains:
+
+```text
+unit-tests
+browser-boot
+browser-systems
+browser-campaign
+```
+
+Golden narrative paths may run on main/nightly/manual workflows.
+
+Pure/unit coverage includes:
+
+- input and geometry;
+- combat, drain and AI priority;
+- campaign definitions/checkpoints/rewards;
+- vehicle kinematics and damage;
+- prop/evidence consequences;
+- chunk state, macro graph and dormant simulation;
+- lane sampling, traffic assignment, behaviour and junctions;
+- contact impulse/recovery;
+- impact tiers, damage and cooldown.
+
+Chromium systems coverage includes:
+
+- both boot routes and quality/layout profiles;
+- vehicle entry/exit, driving and drift;
+- wreck exit and persistent vehicle damage;
+- pedestrians, police and street damage;
+- city streaming and entity dormancy;
+- traffic materialization and behaviour;
+- soft contact with no damage;
+- hard impact with damage/heat/exposure;
+- cooldown suppression and stable slot identity.
+
+A feature is complete only when code, tests and documentation agree.
+
+## 14. Current constraints and next extension
+
+Current constraints:
+
+- traffic remains bounded to ten local containers;
+- ambient proxies have no persistent damage or driver identity;
+- no motorized police pursuit/roadblocks yet;
+- no repair economy or disabled-vehicle recovery service yet;
+- no rigid-body traffic spin/debris trajectory;
+- browser systems suite duration is increasing.
+
+Next architectural extension: a first-class vehicle repair/recovery service using existing campaign cash, ledger and vehicle persistence. It must not store repair truth in UI state or create a second vehicle-condition model.
