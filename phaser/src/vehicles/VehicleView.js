@@ -86,6 +86,7 @@ function plainVehicle(vehicle) {
     disabled: vehicle.disabled,
     parked: vehicle.parked,
     handbrake: Boolean(vehicle.handbrake),
+    streamState: vehicle.streamState || "active",
     trunkCapacity: archetype.trunkCapacity
   };
 }
@@ -109,7 +110,8 @@ export function updateVehicleHud(system) {
 
 export function refreshVehicleVisibility(system) {
   for (const vehicle of system.vehicles) {
-    vehicle.container.setVisible(system.scene.currentLayer === vehicle.layer);
+    const streamed = system.scene.entityStreamSystem?.shouldRenderVehicle?.(vehicle) ?? true;
+    vehicle.container.setVisible(streamed && system.scene.currentLayer === vehicle.layer);
   }
 }
 
@@ -129,7 +131,8 @@ export function vehicleSystemSummary(system) {
   const vehicle = system.currentVehicle();
   if (!vehicle) {
     const stolen = system.vehicles.filter(candidate => candidate.status === VEHICLE_OWNERSHIP.STOLEN).length;
-    return `On foot · vehicles ${system.vehicles.length} · stolen ${stolen}`;
+    const active = system.vehicles.filter(candidate => candidate.streamState !== "dormant").length;
+    return `On foot · vehicles ${active}/${system.vehicles.length} active · stolen ${stolen}`;
   }
   const drift = driftDegrees(vehicle);
   return `${vehicle.name} · ${vehicleSpeedKph(vehicle.speed)} km/h${drift >= 7 ? ` · drift ${drift}°` : ""} · hull ${vehicleHealthPercent(vehicle.health, vehicle.archetype.maxHealth)}%`;

@@ -1,6 +1,7 @@
 import { PedestrianSystem } from "../systems/PedestrianSystem.js";
 import { StreetFurnitureSystem } from "../systems/StreetFurnitureSystem.js";
 import { ChunkStreamSystem } from "../streaming/ChunkStreamSystem.js";
+import { EntityStreamSystem } from "../streaming/EntityStreamSystem.js";
 import { VehicleSystem } from "../vehicles/VehicleSystem.js";
 import { GameplayRuntime as GameplayRuntimeCore } from "./GameplayRuntimeCore.js";
 
@@ -14,11 +15,13 @@ export class GameplayRuntime extends GameplayRuntimeCore {
   installDiagnostics() {
     super.installDiagnostics();
     this.diagnostics.claim("ChunkStreamSystem.update", "ChunkStreamSystem");
+    this.diagnostics.claim("EntityStreamSystem.update", "EntityStreamSystem");
     this.diagnostics.claim("VehicleSystem.updateDriving", "VehicleSystem");
     this.diagnostics.claim("VehicleSystem.enterVehicle", "VehicleSystem");
     this.diagnostics.claim("PedestrianSystem.update", "PedestrianSystem");
     this.diagnostics.claim("StreetFurnitureSystem.resolveVehicleMove", "StreetFurnitureSystem");
     this.diagnostics.registerSystem("ChunkStreamSystem");
+    this.diagnostics.registerSystem("EntityStreamSystem");
     this.diagnostics.registerSystem("VehicleSystem");
     this.diagnostics.registerSystem("PedestrianSystem");
     this.diagnostics.registerSystem("StreetFurnitureSystem");
@@ -30,6 +33,9 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.pedestrianSystem = new PedestrianSystem(scene);
     scene.streetFurnitureSystem = new StreetFurnitureSystem(scene, scene.campaignSystem);
     scene.vehicleSystem = new VehicleSystem(scene, scene.campaignSystem);
+    scene.entityStreamSystem = new EntityStreamSystem(scene);
+    scene.npcSystem?.refreshVisibility?.();
+    scene.vehicleSystem?.refreshVisibility?.();
   }
 
   update(time, deltaMs) {
@@ -41,6 +47,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     const dt = Math.min(Math.max(0, Number(deltaMs) || 0) / 1000, 0.05);
 
     scene.cityStreamSystem?.update?.();
+    scene.entityStreamSystem?.update?.(dt);
     scene.pedestrianSystem?.update?.(dt);
 
     if (input && originalBeginFrame) {
@@ -85,6 +92,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
   }
 
   destroy() {
+    this.scene.entityStreamSystem?.destroy?.();
+    this.scene.entityStreamSystem = null;
     this.scene.vehicleSystem?.destroy?.();
     this.scene.vehicleSystem = null;
     this.scene.streetFurnitureSystem?.destroy?.();
