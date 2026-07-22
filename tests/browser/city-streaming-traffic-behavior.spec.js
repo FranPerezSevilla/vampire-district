@@ -29,7 +29,7 @@ test("local traffic brakes for the driven vehicle, keeps its slot and resumes wh
     window.NBD_TRAFFIC_BEHAVIOR.step(0.05);
 
     const initialBehavior = window.NBD_TRAFFIC_BEHAVIOR.snapshot();
-    const selected = initialBehavior.vehicles.find(vehicle => vehicle.phase < 0.72)
+    const selected = initialBehavior.vehicles.find(vehicle => vehicle.phase > 0.1 && vehicle.phase < 0.72)
       || initialBehavior.vehicles[0];
     if (!selected) return { missing: true, initialBehavior };
 
@@ -60,9 +60,11 @@ test("local traffic brakes for the driven vehicle, keeps its slot and resumes wh
     const braking = brakingSnapshot.vehicles.find(vehicle => vehicle.tokenId === selected.tokenId);
     const assignmentDuring = window.NBD_TRAFFIC.snapshot().materialized.find(item => item.tokenId === selected.tokenId);
 
-    playerVehicle.x = 2380;
-    playerVehicle.y = 1420;
-    playerVehicle.container.setPosition(playerVehicle.x, playerVehicle.y);
+    const clearPoint = window.NBD_TRAFFIC_BEHAVIOR.point(selected.tokenId, Math.max(0.01, braking.phase - 0.08));
+    playerVehicle.x = clearPoint.x;
+    playerVehicle.y = clearPoint.y;
+    playerVehicle.angle = clearPoint.angle;
+    playerVehicle.container.setPosition(playerVehicle.x, playerVehicle.y).setRotation(playerVehicle.angle);
     scene.player.setPosition(playerVehicle.x, playerVehicle.y);
     window.NBD_MACRO_CITY.forceTick(0.6);
     window.NBD_TRAFFIC.resync();
