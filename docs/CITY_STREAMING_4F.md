@@ -4,7 +4,7 @@ _Last updated: 2026-07-22_
 
 ## Status
 
-**Implementation candidate.**
+**Accepted and implemented.**
 
 City Streaming 4F separates ordinary soft traffic contact from genuinely dangerous high-speed impacts. It observes the contact already resolved by 4E and applies damage, noise, exposure and police heat only when configured impact-speed thresholds are exceeded.
 
@@ -214,3 +214,18 @@ The snapshot exposes:
 - 4C, 4D and 4E regressions remain green;
 - unit, boot, system and campaign browser domains remain green;
 - the save schema remains unchanged.
+
+## Acceptance record
+
+City Streaming 4F was accepted on 2026-07-22 through PR #28.
+
+Validated on implementation head `6f199077b145a24eebc4c1e3e765beac3144161d`:
+
+```text
+unit-tests         success
+browser-boot       success
+browser-systems    success
+browser-campaign   success
+```
+
+The first browser matrix exposed a regression-fixture boundary rather than a product defect. The existing 4E soft-contact browser test started at `110` speed units and accelerated during the contact frame, correctly crossing 4F's hard-impact threshold and receiving the configured minimum damage. The accepted fixture starts at `70`, keeping the entire contact below `125`; the dedicated 4F browser regression remains at `170` and validates damage, exposure, local heat and cooldown suppression.
