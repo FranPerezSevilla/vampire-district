@@ -37,14 +37,18 @@ test("catalog exposes distinct recipes and reusable block families", () => {
   assert.ok(blockTemplates.some(template => template.passages.length > 0));
 });
 
-test("the authored district imports as a valid compiler blueprint", () => {
+test("the imported city is valid but no longer protects the old narrative core", () => {
   const validation = validateCityBlueprint(currentCityBlueprint);
   assert.equal(validation.valid, true, JSON.stringify(validation.errors, null, 2));
   assert.equal(validation.errors.length, 0);
   assert.equal(validation.metrics.roadComponents, 1);
   assert.ok(validation.metrics.roadCycleSurplus >= 1);
   assert.equal(validation.metrics.legacyBuildingRoadOverlapCount, 10);
-  assert.equal(currentCityBlueprint.protectedZones.includes("old-quarter"), true);
+  assert.deepEqual(currentCityBlueprint.protectedZones, []);
+  assert.deepEqual(currentCityBlueprint.landmarks, []);
+  assert.equal(currentCityBlueprint.districts.every(district => district.protected === false), true);
+  assert.equal(currentCityBlueprint.metadata.compilerStage, "mission-constraints-retired");
+  assert.equal(currentCityBlueprint.metadata.futureLandmarkPolicy.mode, "site-first");
 });
 
 test("current city scoring is bounded and exposes actionable components", () => {
@@ -70,6 +74,8 @@ test("current city manifest is serializable and omits runtime geometry payloads"
   assert.equal(Object.hasOwn(manifest, "runtime"), false);
   assert.equal(manifest.counts.districts, currentCityBlueprint.districts.length);
   assert.equal(manifest.counts.vehicles, 5);
+  assert.deepEqual(manifest.protectedZones, []);
+  assert.deepEqual(manifest.landmarks, []);
 });
 
 test("debug renderer emits a self-contained SVG with city layers and score", () => {
@@ -105,6 +111,8 @@ test("compiler CLI writes manifest, report and layered SVG", () => {
     const svg = readFileSync(path.join(outputDir, "city-debug.svg"), "utf8");
     assert.equal(report.validation.valid, true);
     assert.equal(report.validation.metrics.legacyBuildingRoadOverlapCount, 10);
+    assert.deepEqual(report.blueprint.protectedZones, []);
+    assert.deepEqual(report.blueprint.landmarks, []);
     assert.ok(report.score.total > 0);
     assert.match(svg, /City Compiler/);
   } finally {

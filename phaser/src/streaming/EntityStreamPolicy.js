@@ -7,10 +7,20 @@ export const ENTITY_STREAM_STATES = Object.freeze({
   DORMANT: "dormant"
 });
 
+function missionContentActive(context = {}) {
+  if (typeof context.missionActive === "boolean") return context.missionActive;
+  const campaign = globalThis.NBD_CAMPAIGN_SYSTEM;
+  // Pure policy callers without a campaign keep the historical conservative
+  // default. The production runtime always exposes CampaignSystem.
+  if (!campaign) return true;
+  return Boolean(campaign.state?.missions?.activeMissionId);
+}
+
 export function npcCriticalReason(npc, context = {}) {
   if (!npc) return null;
-  if (npc.missionInformant) return "mission-informant";
-  if (npc.type === NPC_TYPES.TARGET) return "mission-target";
+  const missionActive = missionContentActive(context);
+  if (missionActive && npc.missionInformant) return "mission-informant";
+  if (missionActive && npc.type === NPC_TYPES.TARGET) return "mission-target";
   if (npc.dragged) return "dragged-body";
   if (npc.drainVictim) return "drain-victim";
   if (npc.enemyAttack) return "combat-attack";
@@ -20,7 +30,7 @@ export function npcCriticalReason(npc, context = {}) {
   if ((Number(npc.soundReactionTimer) || 0) > 0) return "sound-reaction";
   if (npc.investigateTarget) return "investigation";
   if (npc.thugHostile) return "hostile-thug";
-  if (npc.intercepted) return "mission-intercept";
+  if (missionActive && npc.intercepted) return "mission-intercept";
   if (npc.combat?.state === COMBAT_STATES.STAGGERED) return "combat-staggered";
   if (npc.type === NPC_TYPES.HUNTER && (npc.hunterIntent || context.hunterRevealed || Number(context.exposureLevel) >= 4)) return "hunter-alert";
   return null;

@@ -27,23 +27,24 @@ test("boot profile exists before campaign and scene composition", async () => {
   assert.ok(preloadIndex > profileIndex);
   assert.ok(mainIndex > preloadIndex);
   assert.equal(content.includes("window.NBD_RC_TEST_MODE = bootProfile.enableHarness"), true);
-  assert.equal(content.includes('BOOT_MODES.SCENARIO'), true);
+  assert.equal(content.includes("BOOT_MODES.SCENARIO"), true);
 });
 
-test("app bootstrap attaches campaign, tutorial, entry, board, harness and scenarios in order", async () => {
+test("production bootstrap attaches campaign and free roam without entry or mission board", async () => {
   const content = await source("phaser/src/app-bootstrap.js");
   const campaignIndex = content.indexOf('import("./campaign/bootstrap.js")');
   const tutorialIndex = content.indexOf('import("./tutorial/bootstrap.js")');
-  const entryIndex = content.indexOf('import("./campaign/entry-bootstrap.js")');
-  const boardIndex = content.indexOf('import("./campaign/board-bootstrap.js")');
+  const maintenanceIndex = content.indexOf('import("./vehicles/maintenance-bootstrap.js")');
   const harnessIndex = content.indexOf('import("./testing/bootstrap.js")');
   const scenarioIndex = content.indexOf('import("./testing/scenario-bootstrap.js")');
   assert.ok(campaignIndex >= 0);
   assert.ok(tutorialIndex > campaignIndex);
-  assert.ok(entryIndex > tutorialIndex);
-  assert.ok(boardIndex > entryIndex);
-  assert.ok(harnessIndex > boardIndex);
+  assert.ok(maintenanceIndex > tutorialIndex);
+  assert.ok(harnessIndex > maintenanceIndex);
   assert.ok(scenarioIndex > harnessIndex);
+  assert.equal(content.includes('import("./campaign/entry-bootstrap.js")'), false);
+  assert.equal(content.includes('import("./campaign/board-bootstrap.js")'), false);
+  assert.equal(content.includes("registeredMissions: 0"), true);
   assert.equal(content.includes("campaign: true"), true);
 });
 
@@ -53,6 +54,7 @@ test("campaign preload isolates explore and scenario storage", async () => {
   assert.equal(content.includes("bootProfile.persistentCampaign"), true);
   assert.equal(content.includes("blocksAutomaticOpeningStart: true"), true);
   assert.equal(content.includes("globalThis.NBD_CAMPAIGN_ENTRY = campaignEntry"), true);
+  assert.equal(content.includes("SILENCE_THE_JOURNALIST_ID"), false);
 });
 
 test("campaign bootstrap attaches checkpoints without the removed mirroring bridge", async () => {
@@ -64,7 +66,7 @@ test("campaign bootstrap attaches checkpoints without the removed mirroring brid
   assert.equal(content.includes("deferCheckpointRestore"), true);
 });
 
-test("campaign entry bootstrap waits for checkpoint and tutorial ownership", async () => {
+test("campaign entry bootstrap remains available for future registered content", async () => {
   const content = await source("phaser/src/campaign/entry-bootstrap.js");
   assert.equal(content.includes("campaignCheckpointSystem"), true);
   assert.equal(content.includes("tutorialDirector"), true);
@@ -72,7 +74,7 @@ test("campaign entry bootstrap waits for checkpoint and tutorial ownership", asy
   assert.equal(content.includes("NBD_CAMPAIGN_ENTRY_READY = true"), true);
 });
 
-test("mission board bootstrap waits for campaign entry and exposes its browser API", async () => {
+test("mission board bootstrap remains available but is no longer production-booted", async () => {
   const content = await source("phaser/src/campaign/board-bootstrap.js");
   assert.equal(content.includes("campaignEntrySystem"), true);
   assert.equal(content.includes("campaignCheckpointSystem"), true);
@@ -80,13 +82,14 @@ test("mission board bootstrap waits for campaign entry and exposes its browser A
   assert.equal(content.includes("window.NBD_MISSION_BOARD"), true);
 });
 
-test("campaign entry presentation retains accessible core and exploration facade", async () => {
+test("campaign entry presentation retains accessible generic and exploration facades", async () => {
   const facade = await source("phaser/src/campaign/CampaignEntrySystem.js");
   const core = await source("phaser/src/campaign/CampaignEntrySystemCore.js");
   assert.equal(facade.includes("CampaignEntrySystemCore"), true);
   assert.equal(facade.includes("CAMPAIGN_ENTRY_ACTIONS.EXPLORE"), true);
   assert.equal(facade.includes('url.searchParams.set("mode", "explore")'), true);
-  for (const action of ["CONTINUE", "NEW_GAME", "RETRY_CHECKPOINT", "RETRY_MISSION"]) {
+  assert.equal(facade.includes("this.campaign.definitions?.[0]?.id"), true);
+  for (const action of ["CONTINUE", "RETRY_CHECKPOINT", "RETRY_MISSION"]) {
     assert.equal(core.includes(`CAMPAIGN_ENTRY_ACTIONS.${action}`), true, action);
   }
   assert.equal(core.includes("data-campaign-entry-action"), true);
@@ -95,11 +98,12 @@ test("campaign entry presentation retains accessible core and exploration facade
   assert.equal(core.includes("modal.inert = true"), true);
 });
 
-test("tutorial bootstrap completes immediately for isolated profiles", async () => {
+test("tutorial bootstrap completes immediately for all missionless free-roam profiles", async () => {
   const content = await source("phaser/src/tutorial/bootstrap.js");
   assert.equal(content.includes("bootProfile.skipTutorial"), true);
-  assert.equal(content.includes("moveToExploreSpawn"), true);
+  assert.equal(content.includes("moveToFreeRoamSpawn"), true);
   assert.equal(content.includes("NBD_EXPLORE_READY"), true);
+  assert.equal(content.includes("NBD_FREE_ROAM_READY"), true);
 });
 
 test("scenario bootstrap exposes deterministic loop preparation", async () => {

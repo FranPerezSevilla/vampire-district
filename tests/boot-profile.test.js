@@ -2,14 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { BOOT_MODES, createBootProfile } from "../phaser/src/boot/BootProfile.js";
 
-test("normal boot keeps persistent campaign and tutorial flow", () => {
+test("normal boot keeps persistence but enters missionless street free roam", () => {
   const profile = createBootProfile("");
   assert.equal(profile.mode, BOOT_MODES.NORMAL);
   assert.equal(profile.persistentCampaign, true);
   assert.equal(profile.autoLoadCampaign, true);
   assert.equal(profile.autoSaveCampaign, true);
-  assert.equal(profile.showCampaignEntry, true);
-  assert.equal(profile.skipTutorial, false);
+  assert.equal(profile.autoStartOpeningMission, false);
+  assert.equal(profile.showCampaignEntry, false);
+  assert.equal(profile.skipTutorial, true);
+  assert.equal(profile.startOnStreet, true);
+  assert.deepEqual(profile.spawn, { x: 438, y: 326, layer: 0 });
   assert.equal(profile.enableHarness, false);
 });
 
@@ -32,4 +35,5 @@ test("a test scenario implies isolated RC harness mode", () => {
   assert.equal(profile.enableHarness, true);
   assert.equal(profile.rcTest, true);
   assert.equal(profile.skipTutorial, true);
+  assert.equal(profile.startOnStreet, false);
 });

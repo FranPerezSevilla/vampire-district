@@ -14,14 +14,15 @@ This directory is the project source of truth for design, implementation and pla
 - [Visual art bible](VISUAL_ART_BIBLE.md) — classic urban gothic-punk direction, palette, lighting and art-test criteria.
 - [Functional specification](FUNCTIONAL_SPEC.md) — intended player experience and gameplay rules.
 - [Original setting, factions, retainers and economy](ORIGINAL_SETTING_FACTIONS_RETAINERS_ECONOMY.md) — original-IP guardrails, factions, Retainers, weapon slots, safehouses, ammunition and cash economy.
-- [Mission flow](MISSION_FLOW.md) — journalist handling, return-to-refuge rule and sire-dialogue-to-report ordering.
-- [Campaign foundation](CAMPAIGN_FOUNDATION.md) — versioned state, MissionRunner authority, campaign entry, refuge board, cash, reputation and safe checkpoints.
-- [Milestone 11 status](MILESTONE_11_STATUS.md) — campaign-foundation scope and acceptance record.
+- [Campaign foundation](CAMPAIGN_FOUNDATION.md) — versioned state, MissionRunner authority, cash, reputation and safe checkpoints; authored contracts are currently unregistered.
+- [Historical mission flow](MISSION_FLOW.md) — archived journalist vertical-slice ordering; not registered in the production build.
+- [Milestone 11 status](MILESTONE_11_STATUS.md) — campaign-foundation acceptance record; mission content status is historical.
 - [Milestone 11.2 status](MILESTONE_11_2_STATUS.md) — direct mission authority and checkpoint policy.
-- [Milestone 11.3 status](MILESTONE_11_3_STATUS.md) — campaign entry, refuge board and playable `Clean the Scene` flow.
+- [Milestone 11.3 status](MILESTONE_11_3_STATUS.md) — archived campaign-entry, board and `Clean the Scene` implementation record.
 
 ## Vehicles, city and traffic
 
+- [City topology reset](CITY_TOPOLOGY_RESET.md) — zero production missions, old-save pruning, unconstrained Old Quarter and site-first landmark policy.
 - [Milestone 12 status](MILESTONE_12_STATUS.md) — vehicle runtime, expanded district, pedestrians, destructible street furniture and evidence integration.
 - [Vehicle maintenance](VEHICLE_MAINTENANCE.md) — costed refuge-garage repair, atomic wallet/condition updates and owned-wreck recovery.
 - [Motorized police](MOTORIZED_POLICE.md) — wanted-level cruiser routing, partial roadblocks, officer reservation and foot-AI transfer.
@@ -50,7 +51,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Movement system](MOVEMENT_SYSTEM.md) — running, quiet movement, footsteps and traversal.
 - [Damageable props](PROP_SYSTEM.md) — streetlights, darkness, reactions and events.
 - [Weapon system](WEAPON_SYSTEM.md) — prototype inventory, wheel selection, attacks, ammo and noise.
-- [Tutorial UX and accessibility](UX_ACCESSIBILITY.md) — teaching, HUD, semantic labels and accessibility.
+- [Tutorial UX and accessibility](UX_ACCESSIBILITY.md) — historical authored teaching plus current HUD/accessibility contracts.
 - [Control scheme](CONTROL_SCHEME.md) — keyboard/mouse controls and interaction priority.
 
 ## Regression checklists
@@ -73,8 +74,9 @@ This directory is the project source of truth for design, implementation and pla
 - **Planned**: agreed direction, not yet implemented.
 - **Proposed**: recommended direction that can still change.
 - **Deferred**: intentionally outside the current production horizon.
+- **Historical**: retained as an implementation record but not active production content.
 - **Working name**: terminology that still requires commercial trademark clearance.
 
 ## Maintenance rule
 
-Any change to controls, mission/save authority, AI/combat, vehicle/traffic persistence, city dimensions, streaming order, UI, setting terminology, economy or active production priority must update `PROJECT_BLUEPRINT.md` and the relevant detailed document in the same PR.
+Any change to controls, mission/save authority, AI/combat, vehicle/traffic persistence, city dimensions, streaming order, topology/landmark policy, UI, setting terminology, economy or active production priority must update `PROJECT_BLUEPRINT.md` and the relevant detailed document in the same PR.

@@ -12,7 +12,7 @@ async function waitForEntityStreaming(page) {
 
 test.describe.configure({ timeout: 75_000 });
 
-test("NPCs and parked vehicles sleep and wake across the city while critical actors remain pinned", async ({ page }) => {
+test("ordinary and retired actors sleep while live critical police state remains pinned", async ({ page }) => {
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
   await waitForEntityStreaming(page);
 
@@ -30,11 +30,12 @@ test("NPCs and parked vehicles sleep and wake across the city while critical act
       snapshot: window.NBD_ENTITY_STREAM.snapshot(),
       coreCivilian: window.NBD_ENTITY_STREAM.stateOf("civ_cross_1"),
       harborCivilian: window.NBD_ENTITY_STREAM.stateOf("civ_harbor_1"),
-      journalist: window.NBD_ENTITY_STREAM.stateOf("journalist"),
+      retiredJournalist: window.NBD_ENTITY_STREAM.stateOf("journalist"),
       refugeCar: window.NBD_ENTITY_STREAM.stateOf("refuge_compact"),
       foundryCar: window.NBD_ENTITY_STREAM.stateOf("foundry:vehicle:utility"),
       harborVisible: npc("civ_harbor_1").container.visible,
       harborActive: npc("civ_harbor_1").container.active,
+      journalistVisible: npc("journalist").container.visible,
       spatialCount: scene.npcSystem.spatial.size(),
       totalNpcCount: scene.npcSystem.npcs.length
     };
@@ -48,10 +49,11 @@ test("NPCs and parked vehicles sleep and wake across the city while critical act
       snapshot: window.NBD_ENTITY_STREAM.snapshot(),
       coreCivilian: window.NBD_ENTITY_STREAM.stateOf("civ_cross_1"),
       harborCivilian: window.NBD_ENTITY_STREAM.stateOf("civ_harbor_1"),
-      journalist: window.NBD_ENTITY_STREAM.stateOf("journalist"),
+      retiredJournalist: window.NBD_ENTITY_STREAM.stateOf("journalist"),
       refugeCar: window.NBD_ENTITY_STREAM.stateOf("refuge_compact"),
       foundryCar: window.NBD_ENTITY_STREAM.stateOf("foundry:vehicle:utility"),
       harborActive: npc("civ_harbor_1").container.active,
+      journalistVisible: npc("journalist").container.visible,
       refugeCarVisible: vehicle("refuge_compact").container.visible,
       foundryCarActive: vehicle("foundry:vehicle:utility").container.active,
       spatialCount: scene.npcSystem.spatial.size(),
@@ -73,7 +75,8 @@ test("NPCs and parked vehicles sleep and wake across the city while critical act
 
   expect(result.west.coreCivilian).toBe("active");
   expect(result.west.harborCivilian).toBe("dormant");
-  expect(result.west.journalist).toBe("pinned");
+  expect(result.west.retiredJournalist).toBe("active");
+  expect(result.west.journalistVisible).toBe(false);
   expect(result.west.refugeCar).toBe("active");
   expect(result.west.foundryCar).toBe("dormant");
   expect(result.west.harborVisible).toBe(false);
@@ -82,7 +85,8 @@ test("NPCs and parked vehicles sleep and wake across the city while critical act
 
   expect(result.east.coreCivilian).toBe("dormant");
   expect(result.east.harborCivilian).toBe("active");
-  expect(result.east.journalist).toBe("pinned");
+  expect(result.east.retiredJournalist).toBe("dormant");
+  expect(result.east.journalistVisible).toBe(false);
   expect(result.east.refugeCar).toBe("dormant");
   expect(result.east.foundryCar).toBe("active");
   expect(result.east.harborActive).toBe(true);

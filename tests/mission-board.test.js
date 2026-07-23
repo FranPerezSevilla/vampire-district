@@ -3,18 +3,32 @@ import assert from "node:assert/strict";
 
 import { CampaignSystem } from "../phaser/src/campaign/CampaignSystem.js";
 import { createMissionBoardModel } from "../phaser/src/campaign/MissionBoard.js";
-import { CLEAN_THE_SCENE_ID } from "../phaser/src/campaign/missions/cleanTheScene.js";
-import { SILENCE_THE_JOURNALIST_ID } from "../phaser/src/campaign/missions/silenceTheJournalist.js";
+import {
+  CLEAN_THE_SCENE_ID,
+  cleanTheSceneMission
+} from "../phaser/src/campaign/missions/cleanTheScene.js";
+import {
+  SILENCE_THE_JOURNALIST_ID,
+  silenceTheJournalistMission
+} from "../phaser/src/campaign/missions/silenceTheJournalist.js";
 
-function campaign() {
+function campaign({ authored = true } = {}) {
   return new CampaignSystem({
+    definitions: authored ? [silenceTheJournalistMission, cleanTheSceneMission] : [],
     autoLoad: false,
     autoSave: false,
     now: () => 1_000
   });
 }
 
-test("the refuge board unlocks after the opening contract and exposes Clean the Scene", () => {
+test("the production campaign exposes no mission-board contracts", () => {
+  const system = campaign({ authored: false });
+  const board = createMissionBoardModel(system.snapshot());
+  assert.equal(board.cards.length, 0);
+  assert.equal(board.activeMissionId, null);
+});
+
+test("an explicitly supplied board unlocks Clean the Scene after its opening prerequisite", () => {
   const system = campaign();
   system.startMission(SILENCE_THE_JOURNALIST_ID, { metadata: { integration: "test" } });
   system.missions.completeMission();
@@ -44,7 +58,7 @@ test("the refuge board unlocks after the opening contract and exposes Clean the 
   });
 });
 
-test("an active or failed contract keeps the board from starting a second mission", () => {
+test("an active or failed explicitly supplied contract blocks a second board mission", () => {
   const system = campaign();
   system.startMission(SILENCE_THE_JOURNALIST_ID, { metadata: { integration: "test" } });
   system.missions.completeMission();
@@ -57,7 +71,7 @@ test("an active or failed contract keeps the board from starting a second missio
   assert.equal(failed.unresolvedFailure, true);
 });
 
-test("a replayable completed contract returns to the board with a run-again action", () => {
+test("a replayable explicit contract returns to the board with a run-again action", () => {
   const system = campaign();
   system.startMission(SILENCE_THE_JOURNALIST_ID, { metadata: { integration: "test" } });
   system.missions.completeMission();

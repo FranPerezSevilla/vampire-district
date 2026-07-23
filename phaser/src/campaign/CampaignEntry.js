@@ -1,8 +1,7 @@
 import { checkpointCanResume } from "./CampaignCheckpoint.js";
 import { MISSION_STATUS } from "./constants.js";
-import { SILENCE_THE_JOURNALIST_ID } from "./missions/silenceTheJournalist.js";
 
-export const CAMPAIGN_ENTRY_VERSION = 1;
+export const CAMPAIGN_ENTRY_VERSION = 2;
 export const CAMPAIGN_ENTRY_SESSION_KEY = "vampire-district-campaign-entry-once-v1";
 
 export const CAMPAIGN_ENTRY_MODES = Object.freeze({
@@ -33,10 +32,22 @@ function titleCaseId(value) {
     .join(" ");
 }
 
+function definitions(snapshot) {
+  return Array.isArray(snapshot?.definitions) ? snapshot.definitions : [];
+}
+
+function definition(snapshot, missionId) {
+  return definitions(snapshot).find(item => item?.id === missionId) || null;
+}
+
 function definitionTitle(snapshot, missionId) {
-  const definition = (Array.isArray(snapshot?.definitions) ? snapshot.definitions : [])
-    .find(item => item?.id === missionId);
-  return definition?.title || titleCaseId(missionId) || "Campaign contract";
+  return definition(snapshot, missionId)?.title || titleCaseId(missionId) || "Campaign contract";
+}
+
+function openingDefinition(snapshot) {
+  return definitions(snapshot).find(item => item?.metadata?.openingMission)
+    || definitions(snapshot)[0]
+    || null;
 }
 
 function latestFailedMissionId(state) {
@@ -49,6 +60,18 @@ function latestFailedMissionId(state) {
   return [...candidates]
     .filter(id => records[id]?.status === MISSION_STATUS.FAILED)
     .sort((left, right) => (Number(records[right]?.failedAt) || 0) - (Number(records[left]?.failedAt) || 0))[0] || null;
+}
+
+function latestCompletedMissionId(state) {
+  const missions = plainObject(state?.missions);
+  const records = plainObject(missions.records);
+  const candidates = new Set(Array.isArray(missions.completed) ? missions.completed : []);
+  for (const [id, record] of Object.entries(records)) {
+    if (record?.status === MISSION_STATUS.COMPLETED) candidates.add(id);
+  }
+  return [...candidates]
+    .filter(id => records[id]?.status === MISSION_STATUS.COMPLETED || missions.completed?.includes?.(id))
+    .sort((left, right) => (Number(records[right]?.completedAt) || 0) - (Number(records[left]?.completedAt) || 0))[0] || null;
 }
 
 function campaignBalance(snapshot, state) {
@@ -66,7 +89,7 @@ function activeObjectiveLabel(snapshot, record) {
 }
 
 function exploreAction() {
-  return { action: CAMPAIGN_ENTRY_ACTIONS.EXPLORE, label: "Explore district" };
+  return { action: CAMPAIGN_ENTRY_ACTIONS.EXPLORE, label: "Open isolated exploration" };
 }
 
 function freezeEntry(entry) {
@@ -107,13 +130,12 @@ export function createCampaignEntry(snapshotCandidate, { autoEnter = false } = {
   const activeMissionId = String(missions.activeMissionId || "");
   const activeRecord = activeMissionId ? records[activeMissionId] : null;
 
-  if (activeRecord?.status === MISSION_STATUS.ACTIVE) {
+  if (activeRecord?.status === MISSION_STATUS.ACTIVE && definition(snapshot, activeMissionId)) {
     const missionTitle = snapshot.activeMission?.title || definitionTitle(snapshot, activeMissionId);
     const objectiveLabel = activeObjectiveLabel(snapshot, activeRecord);
-    const mayAutoEnter = Boolean(autoEnter);
     return baseEntry({
       mode: CAMPAIGN_ENTRY_MODES.CONTINUE,
-      autoEnter: mayAutoEnter,
+      autoEnter,
       blocksAutomaticOpeningStart: false,
       missionId: activeMissionId,
       missionTitle,
@@ -121,13 +143,10 @@ export function createCampaignEntry(snapshotCandidate, { autoEnter = false } = {
       checkpointObjectiveId: checkpoint?.missionId === activeMissionId ? checkpoint.objectiveId : null,
       eyebrow: "CAMPAIGN SAVE",
       title: "Continue the night",
-      body: [
-        `${missionTitle} is still active.`,
-        `Resume at: ${objectiveLabel}.`
-      ],
+      body: [`${missionTitle} is still active.`, `Resume at: ${objectiveLabel}.`],
       primary: { action: CAMPAIGN_ENTRY_ACTIONS.CONTINUE, label: "Continue" },
       secondary: [
-        { action: CAMPAIGN_ENTRY_ACTIONS.NEW_GAME, label: "Start new game" },
+        { action: CAMPAIGN_ENTRY_ACTIONS.NEW_GAME, label: "Reset campaign" },
         exploreAction()
       ],
       details: [
@@ -139,7 +158,7 @@ export function createCampaignEntry(snapshotCandidate, { autoEnter = false } = {
   }
 
   const failedMissionId = latestFailedMissionId(state);
-  if (failedMissionId) {
+  if (failedMissionId && definition(snapshot, failedMissionId)) {
     const record = records[failedMissionId];
     const missionTitle = definitionTitle(snapshot, failedMissionId);
     const resumable = Boolean(
@@ -167,7 +186,7 @@ export function createCampaignEntry(snapshotCandidate, { autoEnter = false } = {
         label: resumable ? "Retry from checkpoint" : "Retry mission"
       },
       secondary: [
-        { action: CAMPAIGN_ENTRY_ACTIONS.NEW_GAME, label: "Start new game" },
+        { action: CAMPAIGN_ENTRY_ACTIONS.NEW_GAME, label: "Reset campaign" },
         exploreAction()
       ],
       details: [
@@ -178,14 +197,13 @@ export function createCampaignEntry(snapshotCandidate, { autoEnter = false } = {
     });
   }
 
-  const openingRecord = records[SILENCE_THE_JOURNALIST_ID];
-  const openingComplete = openingRecord?.status === MISSION_STATUS.COMPLETED
-    || (Array.isArray(missions.completed) && missions.completed.includes(SILENCE_THE_JOURNALIST_ID));
-  if (openingComplete) {
-    const missionTitle = definitionTitle(snapshot, SILENCE_THE_JOURNALIST_ID);
+  const completedMissionId = latestCompletedMissionId(state);
+  if (completedMissionId && definition(snapshot, completedMissionId)) {
+    const missionTitle = definitionTitle(snapshot, completedMissionId);
     return baseEntry({
       mode: CAMPAIGN_ENTRY_MODES.FREE_ROAM,
-      missionId: SILENCE_THE_JOURNALIST_ID,
+      autoEnter,
+      missionId: completedMissionId,
       missionTitle,
       checkpointId: checkpoint?.id || null,
       checkpointObjectiveId: checkpoint?.objectiveId || null,
@@ -193,11 +211,11 @@ export function createCampaignEntry(snapshotCandidate, { autoEnter = false } = {
       title: "The district remembers",
       body: [
         `${missionTitle} is complete and its rewards are already recorded.`,
-        "Continue in free roam, explore without campaign state, or erase the campaign and begin again."
+        "Continue in persistent free roam or reset campaign state."
       ],
       primary: { action: CAMPAIGN_ENTRY_ACTIONS.CONTINUE, label: "Continue free roam" },
       secondary: [
-        { action: CAMPAIGN_ENTRY_ACTIONS.NEW_GAME, label: "Start new game" },
+        { action: CAMPAIGN_ENTRY_ACTIONS.NEW_GAME, label: "Reset campaign" },
         exploreAction()
       ],
       details: [
@@ -207,22 +225,45 @@ export function createCampaignEntry(snapshotCandidate, { autoEnter = false } = {
     });
   }
 
-  const openingTitle = definitionTitle(snapshot, SILENCE_THE_JOURNALIST_ID);
+  const opening = openingDefinition(snapshot);
+  if (opening) {
+    return baseEntry({
+      mode: CAMPAIGN_ENTRY_MODES.NEW_GAME,
+      autoEnter,
+      missionId: opening.id,
+      missionTitle: opening.title,
+      eyebrow: "NEW CAMPAIGN",
+      title: "Vampire District",
+      body: [
+        "Begin the campaign from its first registered contract, or open an isolated exploration session."
+      ],
+      primary: { action: CAMPAIGN_ENTRY_ACTIONS.NEW_GAME, label: "Begin the night" },
+      secondary: [exploreAction()],
+      details: [
+        { label: "Opening contract", value: opening.title },
+        { label: "Campaign cash", value: `$${cash.toFixed(0)}` }
+      ]
+    });
+  }
+
   return baseEntry({
-    mode: CAMPAIGN_ENTRY_MODES.NEW_GAME,
-    missionId: SILENCE_THE_JOURNALIST_ID,
-    missionTitle: openingTitle,
-    eyebrow: "NEW CAMPAIGN",
+    mode: CAMPAIGN_ENTRY_MODES.FREE_ROAM,
+    autoEnter,
+    blocksAutomaticOpeningStart: true,
+    eyebrow: "CITY SANDBOX",
     title: "Vampire District",
     body: [
-      "You were turned several decades ago. Among vampires, you are still little more than a clumsy fledgling with much to learn.",
-      "Begin the campaign, or enter a non-persistent exploration session to test the district without tutorial or missions."
+      "There are no registered campaign contracts in this build.",
+      "Enter persistent free roam while the city topology and landmark sites are redesigned."
     ],
-    primary: { action: CAMPAIGN_ENTRY_ACTIONS.NEW_GAME, label: "Begin the night" },
-    secondary: [exploreAction()],
+    primary: { action: CAMPAIGN_ENTRY_ACTIONS.CONTINUE, label: "Enter city" },
+    secondary: [
+      { action: CAMPAIGN_ENTRY_ACTIONS.NEW_GAME, label: "Reset persistent state" },
+      exploreAction()
+    ],
     details: [
-      { label: "Opening contract", value: openingTitle },
-      { label: "Campaign cash", value: `$${cash.toFixed(0)}` }
+      { label: "Cash", value: `$${cash.toFixed(0)}` },
+      { label: "Contracts", value: "0 registered" }
     ]
   });
 }

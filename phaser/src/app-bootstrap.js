@@ -94,8 +94,8 @@ try {
   await import("./responsive-layout.js");
   await import("./campaign/bootstrap.js");
   await import("./tutorial/bootstrap.js");
-  await import("./campaign/entry-bootstrap.js");
-  await import("./campaign/board-bootstrap.js");
+  // Campaign entry and the refuge mission board are intentionally not booted
+  // while the production mission registry is empty.
   await import("./vehicles/maintenance-bootstrap.js");
   if (bootProfile.enableHarness) await import("./testing/bootstrap.js");
   if (bootProfile.mode === BOOT_MODES.SCENARIO) await import("./testing/scenario-bootstrap.js");
@@ -104,6 +104,7 @@ try {
     detail: {
       phaser,
       campaign: true,
+      registeredMissions: 0,
       rcTest: bootProfile.rcTest,
       bootProfile
     }
