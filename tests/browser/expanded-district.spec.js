@@ -93,7 +93,7 @@ test("a moving vehicle breaks a sidewalk streetlight and persists the damage", a
   expect(result.healthAfter).toBeLessThan(result.healthBefore);
 });
 
-test("a dumpster corpse stays exposed, can be dragged, and can be recontained", async ({ page }) => {
+test("a dumpster corpse stays exposed, can be dragged, and can be recontained without a mission adapter", async ({ page }) => {
   await page.goto("/phaser/?testScenario=street-damage", { waitUntil: "domcontentloaded" });
   await waitForUrbanRuntime(page, "street-damage");
 
@@ -113,8 +113,7 @@ test("a dumpster corpse stays exposed, can be dragged, and can be recontained", 
       70
     );
 
-    scene.missionSystem.cleanTheSceneSystem.syncWorld();
-    const exposedAfterSync = {
+    const exposedAfterImpact = {
       hidden: body.hiddenBody,
       visible: body.container.visible,
       spot: body.hiddenSpotId,
@@ -125,8 +124,7 @@ test("a dumpster corpse stays exposed, can be dragged, and can be recontained", 
     scene.player.setPosition(body.x + 48, body.y + 18);
     scene.evidenceSystem.updateDraggedBody(0);
     const draggedPosition = { x: body.x, y: body.y, layer: body.layer };
-    scene.missionSystem.cleanTheSceneSystem.syncWorld();
-    const draggingAfterSync = {
+    const draggingState = {
       active: scene.evidenceSystem.draggingBody === body && body.dragged,
       x: body.x,
       y: body.y,
@@ -141,13 +139,12 @@ test("a dumpster corpse stays exposed, can be dragged, and can be recontained", 
       streetPropId: replacement.id,
       cleanRadius: replacement.cleanRadius || 90
     });
-    scene.missionSystem.cleanTheSceneSystem.syncWorld();
 
     return {
       broken,
-      exposedAfterSync,
+      exposedAfterImpact,
       draggedPosition,
-      draggingAfterSync,
+      draggingState,
       recontained: {
         hidden: body.hiddenBody,
         spot: body.hiddenSpotId,
@@ -162,14 +159,14 @@ test("a dumpster corpse stays exposed, can be dragged, and can be recontained", 
   });
 
   expect(result.broken).toBe(true);
-  expect(result.exposedAfterSync).toEqual({
+  expect(result.exposedAfterImpact).toEqual({
     hidden: false,
     visible: true,
     spot: null,
     persistedProp: "dumpsterClubRear"
   });
-  expect(result.draggingAfterSync.active).toBe(true);
-  expect(result.draggingAfterSync).toMatchObject(result.draggedPosition);
+  expect(result.draggingState.active).toBe(true);
+  expect(result.draggingState).toMatchObject(result.draggedPosition);
   expect(result.recontained.hidden).toBe(true);
   expect(result.recontained.spot).toBe("dumpsterChurchRear");
   expect(result.recontained.releasedState).toBeNull();
