@@ -1,4 +1,4 @@
-export const BOOT_PROFILE_VERSION = 1;
+export const BOOT_PROFILE_VERSION = 2;
 
 export const BOOT_MODES = Object.freeze({
   NORMAL: "normal",
@@ -44,10 +44,12 @@ export function createBootProfile(search = globalThis?.location?.search || "") {
     persistentCampaign: !isolated,
     autoLoadCampaign: !isolated,
     autoSaveCampaign: !isolated,
-    showCampaignEntry: mode === BOOT_MODES.NORMAL,
-    autoStartOpeningMission: mode === BOOT_MODES.NORMAL,
-    skipTutorial: isolated,
-    startOnStreet: mode === BOOT_MODES.EXPLORE,
+    // There are currently no registered contracts, so normal boot enters the
+    // persistent sandbox directly instead of presenting a mission decision.
+    showCampaignEntry: false,
+    autoStartOpeningMission: false,
+    skipTutorial: true,
+    startOnStreet: mode !== BOOT_MODES.SCENARIO,
     spawn: DEFAULT_EXPLORE_SPAWN
   });
 }
