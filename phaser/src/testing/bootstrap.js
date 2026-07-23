@@ -5,7 +5,7 @@ function attachHarness() {
   const gameScene = game?.scene?.getScene?.("GameScene");
   const uiScene = game?.scene?.getScene?.("UIScene");
   if (!gameScene?.inputSystem || !gameScene?.tutorialDirector || !uiScene?.dom) {
-    window.requestAnimationFrame(attachHarness);
+    window.setTimeout(attachHarness, 16);
     return;
   }
   if (window.NBD_RC_HARNESS) return;

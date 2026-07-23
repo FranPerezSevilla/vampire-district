@@ -140,7 +140,7 @@ test("awakened police outside the Old Quarter receive district-local patrol targ
 
   try {
     const scene = {
-      player: { x: 1800, y: 430 },
+      player: { x: 1800, y: 2430 },
       add: { graphics() { return { setDepth() { return this; } }; } },
       exposureSystem: { level() { return 0; } },
       entityStreamSystem: null,
@@ -151,7 +151,7 @@ test("awakened police outside the Old Quarter receive district-local patrol targ
       id: "foundry-patrol",
       type: NPC_TYPES.POLICE,
       x: 1850,
-      y: 338,
+      y: 2430,
       layer: 0,
       soundReactionTimer: 0,
       chasingPlayer: false,

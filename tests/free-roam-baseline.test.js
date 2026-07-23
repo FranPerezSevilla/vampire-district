@@ -75,10 +75,11 @@ test("normal boot is persistent street free roam without entry or tutorial", () 
 
 test("current compiler baseline no longer protects the old core or fixed mission landmarks", () => {
   assert.deepEqual(currentCityBlueprint.protectedZones, []);
-  assert.deepEqual(currentCityBlueprint.landmarks, []);
+  assert.equal(currentCityBlueprint.landmarks.length, 7);
+  assert.equal(currentCityBlueprint.landmarks.every(landmark => landmark.siteFirst && !landmark.fixed && landmark.movable), true);
   assert.equal(currentCityBlueprint.districts.every(district => district.protected === false), true);
-  assert.equal(currentCityBlueprint.metadata.compilerStage, "mission-constraints-retired");
-  assert.equal(currentCityBlueprint.metadata.futureLandmarkPolicy.mode, "site-first");
+  assert.equal(currentCityBlueprint.metadata.compilerStage, "topology-v2");
+  assert.match(currentCityBlueprint.metadata.landmarkPolicy, /site/i);
 });
 
 test("retired mission actors are hidden and no longer pinned in free roam", () => {

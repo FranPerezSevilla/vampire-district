@@ -29,7 +29,7 @@ function attachCampaignRuntime() {
     || !scene?.propDamageSystem
     || !scene?.evidenceSystem
     || !scene?.statePublisher) {
-    window.requestAnimationFrame(attachCampaignRuntime);
+    window.setTimeout(attachCampaignRuntime, 16);
     return;
   }
   if (scene.campaignCheckpointSystem) return;

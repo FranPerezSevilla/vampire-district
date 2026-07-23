@@ -43,12 +43,15 @@ test("the imported city is valid but no longer protects the old narrative core",
   assert.equal(validation.errors.length, 0);
   assert.equal(validation.metrics.roadComponents, 1);
   assert.ok(validation.metrics.roadCycleSurplus >= 1);
-  assert.equal(validation.metrics.legacyBuildingRoadOverlapCount, 10);
+  assert.equal(validation.metrics.legacyBuildingRoadOverlapCount, 0);
   assert.deepEqual(currentCityBlueprint.protectedZones, []);
-  assert.deepEqual(currentCityBlueprint.landmarks, []);
+  assert.equal(currentCityBlueprint.landmarks.length, 7);
+  assert.equal(currentCityBlueprint.landmarks.every(landmark => landmark.fixed === false), true);
+  assert.equal(currentCityBlueprint.landmarks.every(landmark => landmark.movable === true), true);
+  assert.equal(currentCityBlueprint.landmarks.every(landmark => landmark.siteFirst === true), true);
   assert.equal(currentCityBlueprint.districts.every(district => district.protected === false), true);
-  assert.equal(currentCityBlueprint.metadata.compilerStage, "mission-constraints-retired");
-  assert.equal(currentCityBlueprint.metadata.futureLandmarkPolicy.mode, "site-first");
+  assert.equal(currentCityBlueprint.metadata.compilerStage, "topology-v2");
+  assert.match(currentCityBlueprint.metadata.landmarkPolicy, /site/i);
 });
 
 test("current city scoring is bounded and exposes actionable components", () => {
@@ -70,12 +73,13 @@ test("current city scoring is bounded and exposes actionable components", () => 
 test("current city manifest is serializable and omits runtime geometry payloads", () => {
   const manifest = currentCityManifest();
   const serialized = JSON.stringify(manifest);
-  assert.ok(serialized.includes("bloodnight-current-city"));
+  assert.ok(serialized.includes("bloodnight-city-topology-v2"));
   assert.equal(Object.hasOwn(manifest, "runtime"), false);
   assert.equal(manifest.counts.districts, currentCityBlueprint.districts.length);
   assert.equal(manifest.counts.vehicles, 5);
   assert.deepEqual(manifest.protectedZones, []);
-  assert.deepEqual(manifest.landmarks, []);
+  assert.equal(manifest.landmarks.length, 7);
+  assert.equal(manifest.landmarks.every(landmark => landmark.siteFirst && !landmark.fixed), true);
 });
 
 test("debug renderer emits a self-contained SVG with city layers and score", () => {
@@ -110,9 +114,10 @@ test("compiler CLI writes manifest, report and layered SVG", () => {
     const report = JSON.parse(readFileSync(path.join(outputDir, "city-report.json"), "utf8"));
     const svg = readFileSync(path.join(outputDir, "city-debug.svg"), "utf8");
     assert.equal(report.validation.valid, true);
-    assert.equal(report.validation.metrics.legacyBuildingRoadOverlapCount, 10);
+    assert.equal(report.validation.metrics.legacyBuildingRoadOverlapCount, 0);
     assert.deepEqual(report.blueprint.protectedZones, []);
-    assert.deepEqual(report.blueprint.landmarks, []);
+    assert.equal(report.blueprint.landmarks.length, 7);
+    assert.equal(report.blueprint.landmarks.every(landmark => landmark.siteFirst && !landmark.fixed), true);
     assert.ok(report.score.total > 0);
     assert.match(svg, /City Compiler/);
   } finally {
@@ -121,13 +126,20 @@ test("compiler CLI writes manifest, report and layered SVG", () => {
 });
 
 test("validator rejects a building placed across an authored road", () => {
+  const road = currentCityBlueprint.runtime.roads[0];
   const invalid = {
     ...currentCityBlueprint,
     runtime: {
       ...currentCityBlueprint.runtime,
       buildings: [
         ...currentCityBlueprint.runtime.buildings,
-        { id: "invalid-road-building", x: 440, y: 310, w: 30, h: 30 }
+        {
+          id: "invalid-road-building",
+          x: road.x + road.w / 2 - 15,
+          y: road.y + road.h / 2 - 15,
+          w: 30,
+          h: 30
+        }
       ]
     }
   };

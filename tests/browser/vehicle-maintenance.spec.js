@@ -19,19 +19,21 @@ test("refuge garage repairs once, blocks wanted recovery and tows an owned wreck
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
   await waitForMaintenance(page);
 
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
+    const district = await import("/phaser/src/data/district.js");
+    const garage = district.CITY_ANCHORS.garage;
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const campaign = window.NBD_CAMPAIGN_SYSTEM;
     const api = window.NBD_VEHICLE_MAINTENANCE;
     const vehicle = scene.vehicleSystem.vehicle("refuge_compact");
     scene.vehicleSystem.exitVehicle({ force: true });
-    scene.switchLayer(0, { x: 280, y: 326 }, "Vehicle maintenance browser test.");
+    scene.switchLayer(0, { x: garage.x - 24, y: garage.y }, "Vehicle maintenance browser test.");
     scene.exposureSystem.value = 0;
     scene.policeSystem.localHeat = Object.create(null);
     campaign.wallet.credit(600, { source: "browser-test", reason: "maintenance-fixture" });
 
-    vehicle.x = 304;
-    vehicle.y = 326;
+    vehicle.x = garage.x;
+    vehicle.y = garage.y;
     vehicle.angle = 0;
     vehicle.travelAngle = 0;
     vehicle.driftAngle = 0;
@@ -122,7 +124,8 @@ test("refuge garage repairs once, blocks wanted recovery and tows an owned wreck
       campaignRecovered,
       maintenanceAfterRecovery,
       lastLedger,
-      overlayClosed: !document.querySelector(".vehicle-maintenance")
+      overlayClosed: !document.querySelector(".vehicle-maintenance"),
+      garage: { x: garage.x, y: garage.y }
     };
   });
 
@@ -178,15 +181,15 @@ test("refuge garage repairs once, blocks wanted recovery and tows an owned wreck
     health: 26,
     disabled: false,
     parked: true,
-    x: 304,
-    y: 326
+    x: result.garage.x,
+    y: result.garage.y
   });
   expect(result.campaignRecovered).toMatchObject({
     health: 26,
     disabled: false,
     parked: true,
-    x: 304,
-    y: 326,
+    x: result.garage.x,
+    y: result.garage.y,
     angle: 0
   });
   expect(result.maintenanceAfterRecovery.lastOperation).toMatchObject({

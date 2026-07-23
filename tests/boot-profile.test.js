@@ -12,7 +12,7 @@ test("normal boot keeps persistence but enters missionless street free roam", ()
   assert.equal(profile.showCampaignEntry, false);
   assert.equal(profile.skipTutorial, true);
   assert.equal(profile.startOnStreet, true);
-  assert.deepEqual(profile.spawn, { x: 438, y: 326, layer: 0 });
+  assert.deepEqual(profile.spawn, { x: 1540, y: 1515, layer: 0 });
   assert.equal(profile.enableHarness, false);
 });
 
@@ -24,7 +24,7 @@ test("explore boot is isolated, missionless and starts on the street", () => {
   assert.equal(profile.showCampaignEntry, false);
   assert.equal(profile.skipTutorial, true);
   assert.equal(profile.startOnStreet, true);
-  assert.deepEqual(profile.spawn, { x: 438, y: 326, layer: 0 });
+  assert.deepEqual(profile.spawn, { x: 1540, y: 1515, layer: 0 });
 });
 
 test("a test scenario implies isolated RC harness mode", () => {

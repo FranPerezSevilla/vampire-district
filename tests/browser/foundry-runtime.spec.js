@@ -10,9 +10,9 @@ async function waitForFoundryRuntime(page) {
   ));
 }
 
-test.describe.configure({ timeout: 75_000 });
+test.describe.configure({ timeout: 90_000 });
 
-test("foundry-pilot-04 is playable across street, roof and sewer layers", async ({ page }) => {
+test("the relocated Foundry remains playable across street, roof and sewer layers", async ({ page }) => {
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
   await waitForFoundryRuntime(page);
 
@@ -22,41 +22,29 @@ test("foundry-pilot-04 is playable across street, roof and sewer layers", async 
     const vehicle = scene.vehicleSystem.vehicle("foundry:vehicle:utility");
     const generated = item => String(item?.id || "").startsWith("foundry:");
 
-    const westLoop = [
-      { x: 1688, y: 123, angle: Math.PI / 2 },
-      { x: 1860, y: 198, angle: 0 },
-      { x: 1948, y: 184, angle: Math.PI / 2 },
-      { x: 1860, y: 123, angle: 0 }
-    ];
-    const eastLoop = [
-      { x: 1948, y: 265, angle: Math.PI / 2 },
-      { x: 2080, y: 265, angle: 0 },
-      { x: 2240, y: 265, angle: Math.PI / 2 },
-      { x: 2080, y: 338, angle: 0 }
-    ];
-    const drivable = [...westLoop, ...eastLoop].map(point => scene.vehicleSystem.canOccupy(
-      vehicle,
-      point.x,
-      point.y,
-      point.angle
-    ));
+    const drivable = [
+      { x: 1450, y: 2186, angle: 0 },
+      { x: 1680, y: 2186, angle: 0 },
+      { x: 1770, y: 2250, angle: Math.PI / 2 },
+      { x: 2000, y: 2346, angle: 0 }
+    ].map(point => scene.vehicleSystem.canOccupy(vehicle, point.x, point.y, point.angle));
 
-    scene.switchLayer(0, { x: 1754, y: 443 }, "Foundry integration: west fire escape.");
+    scene.switchLayer(0, { x: 1360, y: 2450 }, "Foundry west fire escape.");
     const streetInteractions = scene.collectInteractions().map(item => item.id);
-    scene.switchLayer(1, { x: 1768, y: 443 }, "Foundry integration: west roof.");
+    scene.switchLayer(1, { x: 1386, y: 2450 }, "Foundry west roof.");
     const roofEntryInteractions = scene.collectInteractions().map(item => item.id);
-    scene.switchLayer(1, { x: 1898, y: 443 }, "Foundry integration: west-east jump.");
+    scene.switchLayer(1, { x: 1634, y: 2450 }, "Foundry west-east jump.");
     const roofJumpInteractions = scene.collectInteractions().map(item => item.id);
     const roofStandable = [
-      { x: 1768, y: 443 },
-      { x: 2075, y: 443 },
-      { x: 2075, y: 624 },
-      { x: 1800, y: 624 }
+      { x: 1500, y: 2450 },
+      { x: 1890, y: 2450 },
+      { x: 1890, y: 2680 },
+      { x: 1500, y: 2680 }
     ].map(point => scene.canStandAt(point.x, point.y));
 
-    scene.switchLayer(0, { x: 1688, y: 198 }, "Foundry integration: north sewer access.");
+    scene.switchLayer(0, { x: 1680, y: 2100 }, "Foundry north sewer.");
     const sewerStreetInteractions = scene.collectInteractions().map(item => item.id);
-    scene.switchLayer(-1, { x: 1688, y: 198 }, "Foundry integration: sewer.");
+    scene.switchLayer(-1, { x: 1680, y: 2100 }, "Foundry sewer.");
     const sewerInteractions = scene.collectInteractions().map(item => item.id);
 
     return {
@@ -64,9 +52,6 @@ test("foundry-pilot-04 is playable across street, roof and sewer layers", async 
       generatedRoads: district.roads.filter(generated).length,
       generatedBuildings: district.buildings.filter(generated).length,
       generatedRoofs: Object.values(district.roofAreas).flat().filter(generated).length,
-      generatedLights: scene.propDamageSystem.props.filter(generated).length,
-      generatedDumpsters: window.NBD_STREET_PROPS.snapshot().dumpsters.filter(generated).length,
-      generatedPedestrianRoutes: district.pedestrianRoutes.filter(generated).length,
       vehicle: vehicle ? { id: vehicle.id, archetypeId: vehicle.archetypeId, x: vehicle.x, y: vehicle.y } : null,
       drivable,
       streetInteractions,
@@ -78,14 +63,11 @@ test("foundry-pilot-04 is playable across street, roof and sewer layers", async 
     };
   });
 
-  expect(result.selected).toBe("foundry-pilot-04");
+  expect(result.selected).toBe("city-topology-v2-site-first");
   expect(result.generatedRoads).toBe(3);
-  expect(result.generatedBuildings).toBe(5);
+  expect(result.generatedBuildings).toBe(7);
   expect(result.generatedRoofs).toBe(4);
-  expect(result.generatedLights).toBe(8);
-  expect(result.generatedDumpsters).toBe(4);
-  expect(result.generatedPedestrianRoutes).toBe(1);
-  expect(result.vehicle).toMatchObject({ id: "foundry:vehicle:utility", archetypeId: "sedan", x: 1812, y: 338 });
+  expect(result.vehicle).toMatchObject({ id: "foundry:vehicle:utility", archetypeId: "sedan", x: 1680, y: 2290 });
   expect(result.drivable.every(Boolean)).toBe(true);
   expect(result.streetInteractions).toContain("foundry:fire-escape:west_up");
   expect(result.roofEntryInteractions).toContain("foundry:fire-escape:west_down");

@@ -16,7 +16,7 @@ async function waitForUrbanRuntime(page, scenarioId) {
 }
 
 for (const route of ROUTES) {
-  test(`${route} boots the five-times-larger district with sparse sidewalk-routed population`, async ({ page }) => {
+  test(`${route} boots the five-times-area City Topology V2 district with sparse sidewalk-routed population`, async ({ page }) => {
     await page.goto(`${route}?testScenario=urban-explore`, { waitUntil: "domcontentloaded" });
     await waitForUrbanRuntime(page, "urban-explore");
 
@@ -47,10 +47,10 @@ for (const route of ROUTES) {
       };
     });
 
-    expect(state.physics).toEqual({ width: 2400, height: 1440 });
-    expect(state.cameraBounds.width).toBeGreaterThanOrEqual(2400);
-    expect(state.cameraBounds.height).toBeGreaterThanOrEqual(1440);
-    expect(state.gameSize.width).toBeLessThan(2400 * 2);
+    expect(state.physics).toEqual({ width: 4800, height: 3600 });
+    expect(state.cameraBounds.width).toBeGreaterThanOrEqual(4800);
+    expect(state.cameraBounds.height).toBeGreaterThanOrEqual(3600);
+    expect(state.gameSize.width).toBeLessThan(4800 * 2);
     expect(state.pedestrians.count).toBeLessThanOrEqual(6);
     expect(state.pedestrians.pedestrians.every(item => item.onPedestrianSurface)).toBe(true);
     expect(state.police).toBe(2);

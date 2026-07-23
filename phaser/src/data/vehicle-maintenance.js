@@ -1,19 +1,22 @@
+import { CITY_ANCHORS } from "./generated/city-topology-v2.js";
 import { LAYERS } from "./district.js";
+
+const GARAGE = CITY_ANCHORS.garage;
 
 export const REFUGE_GARAGE = Object.freeze({
   id: "rooftop_refuge_garage",
   label: "Refuge garage",
   refugeId: "rooftop_refuge",
   layer: LAYERS.STREET,
-  x: 304,
-  y: 326,
+  x: GARAGE.x,
+  y: GARAGE.y,
   interactionRadius: 58,
   serviceRadius: 96,
   recoverySlots: Object.freeze([
-    Object.freeze({ x: 304, y: 326, angle: 0 }),
-    Object.freeze({ x: 304, y: 354, angle: 0 }),
-    Object.freeze({ x: 340, y: 326, angle: 0 }),
-    Object.freeze({ x: 340, y: 354, angle: 0 })
+    Object.freeze({ x: GARAGE.x, y: GARAGE.y, angle: 0 }),
+    Object.freeze({ x: GARAGE.x + 38, y: GARAGE.y, angle: 0 }),
+    Object.freeze({ x: GARAGE.x, y: GARAGE.y + 28, angle: 0 }),
+    Object.freeze({ x: GARAGE.x + 38, y: GARAGE.y + 28, angle: 0 })
   ])
 });
 

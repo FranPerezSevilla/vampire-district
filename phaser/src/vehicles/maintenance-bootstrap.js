@@ -10,7 +10,7 @@ function attachVehicleMaintenance() {
     || !scene?.campaignCheckpointSystem
     || !uiScene?.dom?.root
     || !campaign?.vehicleMaintenance) {
-    window.requestAnimationFrame(attachVehicleMaintenance);
+    window.setTimeout(attachVehicleMaintenance, 16);
     return;
   }
   if (scene.vehicleMaintenanceUiSystem) return;

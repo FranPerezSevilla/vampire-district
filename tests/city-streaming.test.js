@@ -77,18 +77,18 @@ class MemoryChunkFileStore {
   destroy() { this.cache.clear(); }
 }
 
-test("City Compiler emits a deterministic five-by-three asynchronous chunk set", () => {
+test("City Compiler emits a deterministic ten-by-eight asynchronous chunk set", () => {
   const manifest = fileSet.manifest;
   assert.equal(manifest.version, 3);
-  assert.equal(manifest.columns, 5);
-  assert.equal(manifest.rows, 3);
-  assert.equal(manifest.chunkIds.length, 15);
-  assert.equal(manifest.chunks["4:2"].bounds.w, 352);
-  assert.equal(manifest.chunks["4:2"].bounds.h, 416);
-  assert.equal(manifest.chunks["3:0"].file, "chunks/3-0.json");
-  assert.equal(Object.keys(fileSet.payloads).length, 15);
-  assert.ok(fileSet.payloads["0:0"].collections.buildings.some(item => item.id === "refugeTower"));
-  assert.ok(fileSet.payloads["3:0"].collections.buildings.some(item => item.id === "foundry:block-02:west-works"));
+  assert.equal(manifest.columns, 10);
+  assert.equal(manifest.rows, 8);
+  assert.equal(manifest.chunkIds.length, 80);
+  assert.equal(manifest.chunks["9:7"].bounds.w, 192);
+  assert.equal(manifest.chunks["9:7"].bounds.h, 16);
+  assert.equal(manifest.chunks["7:0"].file, "chunks/7-0.json");
+  assert.equal(Object.keys(fileSet.payloads).length, 80);
+  assert.ok(fileSet.payloads["0:0"].collections.buildings.some(item => item.id === "hospital"));
+  assert.ok(fileSet.payloads["2:4"].collections.buildings.some(item => item.id === "foundry:block-02:west-works"));
 });
 
 test("incremental chunk index deduplicates cloned cross-boundary records by stable stream id", () => {
@@ -105,7 +105,7 @@ test("incremental chunk index deduplicates cloned cross-boundary records by stab
 });
 
 test("asynchronous stream activates only the configured number of payloads per frame", async () => {
-  const store = new MemoryChunkFileStore(fileSet, 15);
+  const store = new MemoryChunkFileStore(fileSet, 80);
   const system = new ChunkStreamSystem(fakeScene(), {
     manifest: fileSet.manifest,
     fileStore: store,
@@ -136,10 +136,10 @@ test("focus changes cancel stale authority, use LRU payloads and preserve state 
   assert.equal(system.stateOf("0:0"), CHUNK_STREAM_STATES.ACTIVE);
   assert.equal(system.loadStateOf("0:0"), CHUNK_LOAD_STATES.RESIDENT);
 
-  await system.forceFocus(2390, 1400, 900, 0);
-  assert.equal(system.stateOf("4:2"), CHUNK_STREAM_STATES.ACTIVE);
-  assert.equal(system.isPointReady(2390, 1400), true);
-  system.updateFocus(2390, 1400, { force: true });
+  await system.forceFocus(4790, 3590, 900, 0);
+  assert.equal(system.stateOf("9:7"), CHUNK_STREAM_STATES.ACTIVE);
+  assert.equal(system.isPointReady(4790, 3590), true);
+  system.updateFocus(4790, 3590, { force: true });
   assert.equal(system.stateOf("0:0"), CHUNK_STREAM_STATES.UNLOADED);
   assert.ok(store.stats.evictions > 0);
   system.destroy();

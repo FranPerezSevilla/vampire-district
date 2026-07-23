@@ -11,7 +11,7 @@ function attachScenario() {
     || !scene?.tutorialDirector
     || !uiScene?.dom
     || !harness) {
-    window.requestAnimationFrame(attachScenario);
+    window.setTimeout(attachScenario, 16);
     return;
   }
   if (window.NBD_SCENARIOS) return;

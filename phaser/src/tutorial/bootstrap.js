@@ -62,7 +62,7 @@ function attachTutorialDirector() {
     || !scene?.npcSystem
     || !scene?.campaignCheckpointSystem
     || !uiScene?.dom) {
-    window.requestAnimationFrame(attachTutorialDirector);
+    window.setTimeout(attachTutorialDirector, 16);
     return;
   }
   if (scene.tutorialDirector) return;

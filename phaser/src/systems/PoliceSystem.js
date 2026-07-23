@@ -1,17 +1,10 @@
-import { districtZones, districtZoneAt, LAYERS, streetNavigationPoints } from "../data/district.js";
+import { districtEntryPoints, districtZones, districtZoneAt, LAYERS, streetNavigationPoints } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 import { PoliceSystem as PoliceSystemCore } from "./PoliceSystemCore.js";
 
 const DESIRED_POLICE_BY_LEVEL = Object.freeze({ 0: 2, 1: 3, 2: 5, 3: 7 });
-const OLD_QUARTER_ID = "old-quarter";
 
-const DISTRICT_ENTRY_POINTS = Object.freeze([
-  Object.freeze({ x: 780, y: 178, patrolRoute: "northEast" }),
-  Object.freeze({ x: 1088, y: 338, patrolRoute: "northEast" }),
-  Object.freeze({ x: 1688, y: 760, patrolRoute: "southClub" }),
-  Object.freeze({ x: 2240, y: 1192, patrolRoute: "westCross" }),
-  Object.freeze({ x: 482, y: 1192, patrolRoute: "westCross" })
-]);
+const DISTRICT_ENTRY_POINTS = districtEntryPoints;
 
 const MOTORIZED_OFFICER_OFFSETS = Object.freeze([
   Object.freeze({ x: -15, y: -11 }),
@@ -189,7 +182,7 @@ export class PoliceSystem extends PoliceSystemCore {
     const target = super.targetForCop(cop, level, cfg);
     if (!target || target.kind !== "patrol") return target;
     const zone = this.zoneAt(cop.x, cop.y);
-    if (!zone || zone.id === OLD_QUARTER_ID) return target;
+    if (!zone) return target;
     const points = this.districtPatrolPoints(zone.id);
     if (!points.length) return target;
     if (cop.districtPatrolZoneId !== zone.id) {

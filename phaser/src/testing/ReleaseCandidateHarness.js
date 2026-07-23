@@ -1,4 +1,4 @@
-import { LAYERS } from "../data/district.js";
+import { CITY_ANCHORS, LAYERS } from "../data/district.js";
 import { ReleaseCandidateHarness as ReleaseCandidateHarnessCore } from "./ReleaseCandidateHarnessCore.js";
 
 export class ReleaseCandidateHarness extends ReleaseCandidateHarnessCore {
@@ -35,14 +35,14 @@ export class ReleaseCandidateHarness extends ReleaseCandidateHarnessCore {
       };
     }
 
-    this.scene.switchLayer(
-      LAYERS.STREET,
-      { x: 488, y: 326 },
-      "RC stress: central crossroad."
+    await this.focusStreet(
+      CITY_ANCHORS.policeEntrance,
+      "RC stress: central police response zone."
     );
     this.scene.exposureSystem.forceLevel(3, "RC stress scenario: maximum police response.");
     const desired = police.desiredCount?.(3) || 7;
     police.spawnForExposure(3);
+    this.preparePoliceOfficers(desired, CITY_ANCHORS.policeEntrance);
     // Stress setup is deterministic: activate the same real helicopter system
     // immediately instead of waiting for a slow software-WebGL frame to own it.
     police.updateHelicopter?.(0.016, 3);

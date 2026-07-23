@@ -6,34 +6,12 @@ import {
 } from "../data/ai.js";
 import { PLAYER } from "../data/balance.js";
 import { COMBAT_STATES } from "../data/combat.js";
-import { LAYERS } from "../data/district.js";
+import { LAYERS, policeLocalZones, policePatrolRoutes, policeStation } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 import { RawAudio } from "./RawAudioSystem.js";
 
-const POLICE_STATION = Object.freeze({ x: 780, y: 178 });
-const PATROL_ROUTES = Object.freeze({
-  northEast: [
-    { x: 780, y: 178 },
-    { x: 740, y: 248 },
-    { x: 604, y: 326 },
-    { x: 520, y: 244 },
-    { x: 780, y: 178 }
-  ],
-  westCross: [
-    { x: 250, y: 326 },
-    { x: 360, y: 326 },
-    { x: 488, y: 326 },
-    { x: 472, y: 242 },
-    { x: 250, y: 326 }
-  ],
-  southClub: [
-    { x: 676, y: 502 },
-    { x: 604, y: 326 },
-    { x: 740, y: 326 },
-    { x: 842, y: 500 },
-    { x: 676, y: 502 }
-  ]
-});
+const POLICE_STATION = policeStation;
+const PATROL_ROUTES = policePatrolRoutes;
 const ROUTE_KEYS = Object.freeze(Object.keys(PATROL_ROUTES));
 const FORMATION_OFFSETS = Object.freeze([
   { x: 0, y: 0 },
@@ -55,16 +33,7 @@ const INVESTIGATION_OFFSETS = Object.freeze([
   { x: 52, y: 0 },
   { x: 0, y: 46 }
 ]);
-const LOCAL_ZONES = Object.freeze([
-  { id: "cross", name: "Central crossroad", x: 392, y: 244, w: 170, h: 170 },
-  { id: "north", name: "North avenue", x: 400, y: 38, w: 150, h: 250 },
-  { id: "east", name: "East avenue", x: 520, y: 292, w: 374, h: 116 },
-  { id: "west", name: "West avenue", x: 64, y: 292, w: 360, h: 116 },
-  { id: "club", name: "Club", x: 574, y: 350, w: 208, h: 168 },
-  { id: "church", name: "Church", x: 786, y: 404, w: 150, h: 176 },
-  { id: "police", name: "Police station", x: 670, y: 70, w: 220, h: 204 },
-  { id: "alleys", name: "Alleys", x: 80, y: 232, w: 820, h: 330 }
-]);
+const LOCAL_ZONES = policeLocalZones;
 
 const PATROL_SPEED = PLAYER.baseSpeed * 0.36;
 const INVESTIGATE_SPEED = PLAYER.baseSpeed * 0.52;

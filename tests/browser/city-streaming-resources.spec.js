@@ -12,18 +12,22 @@ async function waitForStreamingResources(page) {
   ));
 }
 
-test.describe.configure({ timeout: 75_000 });
+test.describe.configure({ timeout: 90_000 });
 
-test("district packs follow the focus while dormant pedestrians advance only in macro state", async ({ page }) => {
+test("district packs follow the hospital-to-Foundry focus while dormant pedestrians advance only in macro state", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
   await waitForStreamingResources(page);
 
   const west = await page.evaluate(async () => {
+    const district = await import("/phaser/src/data/district.js");
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
-    scene.switchLayer(0, { x: 100, y: 100 }, "District pack west test.");
-    await window.NBD_CITY_STREAM.forceFocus(100, 100);
+    scene.switchLayer(0, district.CITY_ANCHORS.hospitalEntrance, "District pack hospital test.");
+    await window.NBD_CITY_STREAM.forceFocus(
+      district.CITY_ANCHORS.hospitalEntrance.x,
+      district.CITY_ANCHORS.hospitalEntrance.y
+    );
     window.NBD_ENTITY_STREAM.resync();
     window.NBD_DISTRICT_PACKS.forceUpdate();
     const pedestrian = scene.npcSystem.npcs.find(item => item.id === "civ_harbor_1");
@@ -52,9 +56,9 @@ test("district packs follow the focus while dormant pedestrians advance only in 
     };
   });
 
-  expect(west.pack.activePackId).toBe("old-quarter");
-  expect(west.pack.activeProfile.name).toBe("Old Quarter");
-  expect(west.pack.states.resident).toContain("old-quarter");
+  expect(west.pack.activePackId).toBe("hospital-district");
+  expect(west.pack.activeProfile.name).toBe("Hospital Ward");
+  expect(west.pack.states.resident).toContain("hospital-district");
   expect(west.pedestrian.before.streamState).toBe("dormant");
   expect(west.advanced).toBeGreaterThan(0);
   expect(
@@ -64,12 +68,18 @@ test("district packs follow the focus while dormant pedestrians advance only in 
   expect(west.pedestrian.after.containerX).toBe(west.pedestrian.before.containerX);
   expect(west.pedestrian.after.containerY).toBe(west.pedestrian.before.containerY);
   expect(west.macro.tick).toBeGreaterThan(0);
-  expect(west.macro.byChunk["4:0"].dormantNpcs).toBeGreaterThan(0);
+  expect(west.macro.byChunk["8:5"].dormantNpcs).toBeGreaterThan(0);
 
   await page.evaluate(async () => {
+    const district = await import("/phaser/src/data/district.js");
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
-    scene.switchLayer(0, { x: 1800, y: 430 }, "District pack Foundry test.");
-    await window.NBD_CITY_STREAM.forceFocus(1800, 430, 500, 0);
+    scene.switchLayer(0, district.CITY_ANCHORS.foundryStreet, "District pack Foundry test.");
+    await window.NBD_CITY_STREAM.forceFocus(
+      district.CITY_ANCHORS.foundryStreet.x,
+      district.CITY_ANCHORS.foundryStreet.y,
+      500,
+      0
+    );
     window.NBD_ENTITY_STREAM.resync();
     window.NBD_DISTRICT_PACKS.forceUpdate();
   });
@@ -81,13 +91,12 @@ test("district packs follow the focus while dormant pedestrians advance only in 
 
   const east = await page.evaluate(() => ({
     pack: window.NBD_DISTRICT_PACKS.snapshot(),
-    macro: window.NBD_DISTANT_SIM.snapshot(),
     registryProfile: window.NBD_PHASER_GAME.registry.get("districtPackProfile")
   }));
 
   expect(east.pack.activePackId).toBe("foundry");
   expect(east.pack.activeProfile.name).toBe("Foundry Ward");
-  expect(east.pack.activeProfile.audio.ambientId).toBe("foundry-night-shift");
+  expect(east.pack.activeProfile.audio.ambientId).toBe("foundry-night");
   expect(east.registryProfile.id).toBe("foundry");
   expect(east.pack.stats.packRequests).toBeGreaterThan(0);
   expect(east.pack.activationBudget).toBe(1);

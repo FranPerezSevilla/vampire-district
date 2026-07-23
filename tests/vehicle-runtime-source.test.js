@@ -55,6 +55,6 @@ test("vehicle definitions cover the Milestone 12 baseline archetypes", async () 
     assert.equal(definitions.includes(`${archetype}: Object.freeze`), true, archetype);
   }
   assert.equal(definitions.includes("trunkCapacity"), true);
-  assert.equal(definitions.includes("startOwned: true"), true);
-  assert.equal(definitions.includes("VEHICLE_OWNERSHIP.POLICE"), true);
+  assert.equal(definitions.includes('"startOwned":true'), true);
+  assert.equal(definitions.includes('"ownership":"police"'), true);
 });

@@ -21,8 +21,8 @@ test("macro traffic materializes into a fixed local pool and dematerializes off 
 
   const local = await page.evaluate(async () => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
-    scene.switchLayer(0, { x: 760, y: 338 }, "Local traffic materialization test.");
-    await window.NBD_CITY_STREAM.forceFocus(760, 338);
+    scene.switchLayer(0, { x: 1140, y: 960 }, "Local traffic materialization test.");
+    await window.NBD_CITY_STREAM.forceFocus(1140, 960);
     window.NBD_TRAFFIC.resync();
 
     let before = window.NBD_TRAFFIC.snapshot();

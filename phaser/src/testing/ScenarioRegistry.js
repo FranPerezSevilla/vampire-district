@@ -1,4 +1,4 @@
-import { LAYERS } from "../data/district.js";
+import { CITY_ANCHORS, LAYERS } from "../data/district.js";
 
 const SCENARIO_IDS = Object.freeze([
   "vehicle-core",
@@ -8,7 +8,11 @@ const SCENARIO_IDS = Object.freeze([
   "urban-explore"
 ]);
 
-const VEHICLE_CORE_LANE = Object.freeze({ x: 330, y: 350, angle: 0 });
+const VEHICLE_CORE_LANE = Object.freeze({
+  x: CITY_ANCHORS.garage.x,
+  y: CITY_ANCHORS.garage.y,
+  angle: 0
+});
 
 function clearTransientThreats(scene) {
   scene.campaignCheckpointSystem?.resetTransientThreats?.();
@@ -69,13 +73,13 @@ export class ScenarioRegistry {
         this.placeNearVehicle("refuge_compact");
         break;
       case "police-escalation":
-        this.scene.switchLayer(LAYERS.STREET, { x: 488, y: 326 }, "Scenario: police escalation loop.");
+        this.scene.switchLayer(LAYERS.STREET, CITY_ANCHORS.policeEntrance, "Scenario: police escalation loop.");
         break;
       case "input-locks":
-        this.scene.switchLayer(LAYERS.STREET, { x: 520, y: 326 }, "Scenario: input lock loop.");
+        this.scene.switchLayer(LAYERS.STREET, CITY_ANCHORS.streetSpawn, "Scenario: input lock loop.");
         break;
       case "urban-explore":
-        this.scene.switchLayer(LAYERS.STREET, { x: 438, y: 326 }, "Scenario: expanded district exploration.");
+        this.scene.switchLayer(LAYERS.STREET, CITY_ANCHORS.streetSpawn, "Scenario: City Topology V2 exploration.");
         break;
       default:
         break;

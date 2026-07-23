@@ -145,7 +145,7 @@ test("normal boot retires legacy missions and opens persistent street free roam"
   expect(result.storedMissions.activeMissionId).toBeNull();
   expect(result.storedMissions.records).toEqual({});
   expect(result.currentLayer).toBe(0);
-  expect(result.player).toEqual({ x: 438, y: 326 });
+  expect(result.player).toEqual({ x: 1540, y: 1515 });
   expect(result.taskText).toContain("No active contract");
   expect(result.objectiveText).toContain("explore the city freely");
   expect(result.marker).toBeNull();

@@ -1,7 +1,7 @@
 import { CombatSystem } from "../combat/CombatSystem.js";
 import { DrainSystem } from "../combat/DrainSystem.js";
 import { PlayerDamageSystem } from "../combat/PlayerDamageSystem.js";
-import { LAYERS } from "../data/district.js";
+import { CITY_ANCHORS, LAYERS } from "../data/district.js";
 import { InputSystem } from "../input/InputSystem.js";
 import { createEmptyInputFrame } from "../input/actions.js";
 import { isTraversalAction } from "../systems/InteractionSystem.js";
@@ -258,10 +258,10 @@ export class GameplayRuntime {
 
   handleLayerDebugInput(frame = this.scene.currentInputFrame) {
     const layer = Number(frame?.debugLayerPressed || 0);
-    if (layer === 1) this.scene.switchLayer(LAYERS.STREET, { x: 488, y: 326 }, "Debug: street layer.");
-    if (layer === 2) this.scene.switchLayer(LAYERS.ROOF_LOW, { x: 345, y: 168 }, "Debug: low rooftops.");
-    if (layer === 3) this.scene.switchLayer(LAYERS.ROOF_HIGH, { x: 150, y: 146 }, "Debug: high refuge rooftop.");
-    if (layer === 4) this.scene.switchLayer(LAYERS.SEWER, { x: 472, y: 326 }, "Debug: sewer layer.");
+    if (layer === 1) this.scene.switchLayer(LAYERS.STREET, CITY_ANCHORS.streetSpawn, "Debug: street layer.");
+    if (layer === 2) this.scene.switchLayer(LAYERS.ROOF_LOW, CITY_ANCHORS.roofLowSpawn, "Debug: low rooftops.");
+    if (layer === 3) this.scene.switchLayer(LAYERS.ROOF_HIGH, CITY_ANCHORS.roofHighSpawn, "Debug: high refuge rooftop.");
+    if (layer === 4) this.scene.switchLayer(LAYERS.SEWER, CITY_ANCHORS.sewerSpawn, "Debug: sewer layer.");
   }
 
   destroy() {
