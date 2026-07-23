@@ -3,18 +3,29 @@ import assert from "node:assert/strict";
 
 import { CampaignSystem } from "../phaser/src/campaign/CampaignSystem.js";
 import { CAMPAIGN_EVENT_TYPES } from "../phaser/src/campaign/constants.js";
-import { CLEAN_THE_SCENE_ID } from "../phaser/src/campaign/missions/cleanTheScene.js";
-import { SILENCE_THE_JOURNALIST_ID } from "../phaser/src/campaign/missions/silenceTheJournalist.js";
+import {
+  CLEAN_THE_SCENE_ID,
+  cleanTheSceneMission
+} from "../phaser/src/campaign/missions/cleanTheScene.js";
+import {
+  SILENCE_THE_JOURNALIST_ID,
+  silenceTheJournalistMission
+} from "../phaser/src/campaign/missions/silenceTheJournalist.js";
 
 function readyCampaign() {
-  const system = new CampaignSystem({ autoLoad: false, autoSave: false, now: () => 2_000 });
+  const system = new CampaignSystem({
+    definitions: [silenceTheJournalistMission, cleanTheSceneMission],
+    autoLoad: false,
+    autoSave: false,
+    now: () => 2_000
+  });
   system.startMission(SILENCE_THE_JOURNALIST_ID, { metadata: { integration: "test" } });
   system.missions.completeMission();
   system.startMission(CLEAN_THE_SCENE_ID, { metadata: { integration: "refuge_mission_board" } });
   return system;
 }
 
-test("Clean the Scene advances through reusable runner events and grants its rewards once", () => {
+test("an explicitly supplied Clean the Scene advances through reusable runner events", () => {
   const system = readyCampaign();
   const objective = () => system.missions.currentObjective()?.id;
 
@@ -44,10 +55,12 @@ test("Clean the Scene advances through reusable runner events and grants its rew
   assert.equal(system.state.ledger.length, 2);
 });
 
-test("Clean the Scene authors board placement and a completion checkpoint in data", () => {
+test("archived Clean the Scene data remains valid but is not production-registered", () => {
   const system = readyCampaign();
   const definition = system.missions.definition(CLEAN_THE_SCENE_ID);
+  const production = new CampaignSystem({ autoLoad: false, autoSave: false });
 
+  assert.equal(production.missions.definition(CLEAN_THE_SCENE_ID), null);
   assert.equal(definition.version, 2);
   assert.equal(definition.metadata.worldAdapter, CLEAN_THE_SCENE_ID);
   assert.equal(definition.metadata.missionBoard.order, 10);
