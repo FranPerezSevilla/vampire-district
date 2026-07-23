@@ -13,12 +13,15 @@ Read `PROJECT_BLUEPRINT.md` for the canonical architecture and production sequen
 - 🔵 Active
 - ⬜ Planned
 - ◇ Deferred or optional
+- ◈ Historical content retained as reference, not active production content
 
 ## Milestone 0 — Vertical slice foundation
 
-**Status: ✅ Complete / ongoing polish**
+**Status: ✅ Technical foundation complete · ◈ authored narrative retired**
 
-Phaser district with street, rooftop and sewer layers; narrative tutorial; Hunger, feeding, powers, witnesses, police escalation, informant/journalist mission and responsive presentation.
+Delivered the original Phaser district, street/rooftop/sewer traversal, Hunger, feeding, powers, witnesses, police escalation and journalist vertical slice.
+
+The journalist mission, informant flow and related map constraints are no longer registered in production. Their source records remain historical examples.
 
 ## Milestone 1 — Architecture stabilization
 
@@ -26,9 +29,9 @@ Phaser district with street, rooftop and sewer layers; narrative tutorial; Hunge
 
 - central action-based `InputSystem`;
 - one keyboard/pointer/aim/wheel frame;
-- tutorial/focus/reset protection;
+- focus/reset protection;
 - pure geometry/input coverage;
-- browser lock and dialogue-input coverage.
+- browser input-lock coverage.
 
 ## Milestone 2 — Mouse aim and unarmed combat
 
@@ -36,8 +39,9 @@ Phaser district with street, rooftop and sewer layers; narrative tutorial; Hunge
 
 - mouse facing and aim dead zone;
 - timed left-click attacks;
-- directional melee, resilience, stagger and downed state;
-- rooftop blocker tutorial.
+- directional melee, resilience, stagger and downed state.
+
+The old rooftop blocker teaching sequence is historical and no longer production-booted.
 
 ## Milestone 3 — Player damage and Hunger combat loop
 
@@ -100,68 +104,66 @@ inactive/dead → downed → being drained → staggered → attacking
 - hunter prediction/memory;
 - police/hunter recovery.
 
-## Milestone 9 — Tutorial, UX and accessibility
+## Milestone 9 — UX and accessibility
 
 **Status: 🟡 Automated coverage green; manual assistive-technology validation pending**
 
-- first-use weapon teaching;
 - recovery countdowns;
 - separated HUD regions;
 - high-contrast aim;
-- ARIA state, keyboard activation, narrow layouts and reduced-motion treatment.
+- ARIA state, keyboard activation, narrow layouts and reduced motion.
+
+The old authored tutorial text/sequence is historical and skipped in the current production sandbox.
 
 ## Milestone 10 — Runtime consolidation and testing
 
-**Status: ✅ Core consolidation complete; limited manual RC checks remain**
-
-Delivered:
+**Status: ✅ Core consolidation complete**
 
 - one `GameplayRuntime` update owner;
 - direct scene composition;
-- first-class tutorial/task/perception/guidance systems;
+- first-class task/perception/guidance systems;
 - runtime ownership diagnostics;
-- spatial NPC queries and culling;
+- spatial NPC queries/culling;
 - change-aware state publication;
 - deterministic pinned Phaser;
 - parallel unit/boot/systems/campaign CI;
-- physical deletion of retired patch files.
+- deletion of retired patch files.
 
 ## Milestone 10.1 — Vertical Slice Release Candidate
 
-**Status: 🟡 Automated RC green; release tag/manual hardware checks pending**
+**Status: ◈ Historical RC boundary**
 
-Remaining:
+The old mission-focused RC automation is retained as an implementation record. The associated browser golden paths were removed when those missions ceased being production content.
 
-- complete normal-speed mission on both routes;
-- physical wheel/trackpad validation;
-- longer wanted-level-three memory inspection;
-- one screen-reader/browser verification;
-- create `v0.1.0-rc.1` after those checks.
+Manual hardware/accessibility validation still applies to the reusable gameplay systems.
 
 ## Milestone 11 — Campaign foundation
 
-**Status: ✅ Complete**
+**Status: ✅ Framework complete · ◈ authored contracts unregistered**
 
-Delivered:
+Reusable foundation:
 
 - versioned `CampaignState`;
 - data-driven `MissionDefinition` and `MissionRunner`;
 - one mission/objective authority;
-- cash and immutable transaction ledger;
+- cash and immutable ledger;
 - faction/contact reputation;
-- safe checkpoints and conservative rollback;
+- safe checkpoints and rollback;
 - save/load/import/export/reset;
-- campaign entry decisions;
-- refuge contract board;
-- opening journalist mission and `Clean the Scene`;
-- idempotent rewards and completion checkpoints;
-- full unit and Chromium campaign coverage.
+- idempotent rewards.
+
+Historical content:
+
+- opening journalist contract;
+- campaign entry flow;
+- refuge mission board;
+- `Clean the Scene`.
+
+These definitions remain explicit fixtures/reference content but are no longer registered or booted by production.
 
 ## Milestone 12 — Vehicle core and expanded district
 
 **Status: ✅ Complete**
-
-Delivered:
 
 - Enter-only vehicle entry/exit;
 - arcade acceleration, braking, reverse and steering;
@@ -171,12 +173,11 @@ Delivered:
 - explicit occupied-wreck exit;
 - authored ownership/status and archetypes;
 - limited trunks integrated with campaign persistence;
-- pedestrian impacts and directional blood evidence;
-- destructible streetlights and dumpsters;
-- corpse exposure from ruptured containers;
-- expanded `2400 × 1440` district;
-- sidewalk/crossing pedestrians and distributed police;
-- Explore/scenario boot profiles and focused regression.
+- pedestrian impacts and blood evidence;
+- destructible streetlights/dumpsters;
+- expanded `2400 × 1440` imported district;
+- pedestrians and distributed police;
+- explore/scenario profiles and focused regression.
 
 Reference: `MILESTONE_12_STATUS.md`.
 
@@ -184,21 +185,15 @@ Reference: `MILESTONE_12_STATUS.md`.
 
 **Status: ✅ Complete**
 
-Delivered:
-
 - refuge-garage interaction and accessible dialog;
-- owned-vehicle hull quotes;
-- full repair for damaged parked vehicles at the garage;
-- campaign cash debit and immutable ledger entry;
-- atomic wallet/condition transaction with rollback;
+- full repair for owned parked vehicles;
+- atomic cash/condition transaction with rollback;
 - repeated no-op without second charge;
-- insufficient-funds/non-owned rejection;
 - remote tow recovery for owned wrecks;
 - deterministic parking slots and `35%` recovery hull;
-- wanted/driving/location/layer safety gates;
+- wanted/driving/location/layer gates;
 - immediate campaign/live synchronization;
-- checkpoint-safe persistence without schema change;
-- unit and Chromium coverage.
+- checkpoint-safe persistence.
 
 Accepted compact baseline:
 
@@ -213,152 +208,170 @@ Reference: `VEHICLE_MAINTENANCE.md`.
 
 ## Milestone 13 — Large-city traffic and motorized police
 
-**Status: ✅ Complete**
+**Status: ✅ Core streaming/traffic/response complete**
 
-### 13.1 Large-city streaming foundation — ✅ Complete
+### 13.1 Streaming foundation — ✅
 
-- asynchronous chunks, retry/cancel and activation budgets;
-- LRU resident retention and chunk-local deltas;
-- spatial static queries;
-- district resource packs and road-aware prefetch;
+- async chunks, retry/cancel and activation budgets;
+- LRU retention and chunk-local deltas;
+- spatial queries;
+- district packs/road prefetch;
 - dormant entity simulation.
 
-### 13.2 Macro traffic and dormant police — ✅ Complete
+### 13.2 Macro traffic and dormant police — ✅
 
 - district macro graph;
 - abstract civilian traffic tokens;
 - dormant foot-police travel;
 - district-local patrol recovery.
 
-### 13.3 Local civilian traffic materialization — ✅ Complete
+### 13.3 Local traffic materialization — ✅
 
-- fixed pool of ten local traffic containers;
-- explicit forward/reverse lane polylines;
+- fixed pool of ten traffic containers;
+- explicit lane polylines;
 - smooth macro interpolation;
 - stable token-to-slot identity;
-- street/chunk eligibility and hysteresis.
+- eligibility/hysteresis.
 
-### 13.4 Local traffic behaviour — ✅ Complete
+### 13.4 Local traffic behaviour — ✅
 
-- following distance and queues;
+- following/queues;
 - braking for player/authored vehicles;
 - bounded catch-up;
 - deterministic junction priority.
 
-### 13.5 Physical contact and impact consequences — ✅ Complete
+### 13.5 Contact and impact consequences — ✅
 
-- bounded soft push and blocked contact;
-- safe lane-offset recovery;
-- soft contacts without damage;
-- hard/severe hull damage, exposure and local heat;
-- severe temporary traffic stall;
-- cooldown preventing frame-stacked damage.
+- soft push/block and lane recovery;
+- hard/severe hull damage, exposure and heat;
+- severe temporary stalls;
+- contact cooldown.
 
 Detailed records: `CITY_STREAMING.md` and `CITY_STREAMING_4A.md` through `CITY_STREAMING_4F.md`.
 
-### 13.6 Motorized police — ✅ Complete
-
-Delivered:
+### 13.6 Motorized police — ✅
 
 - one pursuit cruiser at wanted level 2;
-- pursuit plus one partial roadblock at wanted level 3;
-- deterministic district paths on authored lane polylines;
-- fixed local pool of two police cruisers;
+- pursuit plus partial roadblock at level 3;
+- deterministic macro/lane routing;
+- pool of two cruisers;
 - public 5/7 police totals preserved;
-- `footDesiredCount()` subtracting crews reserved inside cruisers;
-- exact-once transfer into existing foot police AI;
-- local blocker boundary separating macro and materialized movement;
-- cross-lane roadblock at `72%` of its final leg;
-- trapped/disabled cruiser dismount;
-- player/cruiser collision consequences;
-- four-second abandoned suspect-car memory;
-- rooftop/sewer hiding without deleting macro response state;
-- effective stress diagnostics for foot plus reserved officers;
-- pure routing/reservation tests and focused Chromium regression.
-
-Accepted response baseline:
-
-```text
-wanted 2                  1 pursuit cruiser · 2 reserved officers
-wanted 3                  pursuit + partial roadblock · 4 reserved officers
-materialize radius        920
-pursuit dismount          150
-roadblock trigger         210
-roadblock final phase     0.72
-trapped dismount          1.15 s
-abandoned-car memory      4 s
-```
+- reserved crews subtracted from foot spawn target;
+- exact-once transfer to foot AI;
+- local collision/disablement;
+- four-second abandoned-car memory;
+- rooftop/sewer hiding without deleting response state.
 
 Reference: `MOTORIZED_POLICE.md`.
 
-## Milestone 14 — Original factions and territory foundation
+### 13.7 Narrative constraint retirement — 🔵 Implementation candidate
 
-**Status: 🔵 Active next phase**
+PR #32 scope:
 
-### 14.1 Canonical faction and territory data — 🔵 Active
-
-Planned first cut:
-
-- canonical original faction IDs and definitions;
-- Blackglass Directorate and Red Assembly as mechanically distinct factions;
-- separate Unaligned House/contact records rather than one combined faction score;
-- district/territory ownership stored in migration-safe campaign state;
-- stable ownership defaults for current wards;
-- faction links for safehouses, suppliers, authored vehicles and patrol profiles;
-- reputation/access/hostility gates exposed as pure services;
-- mission-definition conditions/effects for territory changes;
-- browser diagnostics and export/import coverage;
-- no parallel territory state in rendering or mission UI.
+- production mission registry becomes empty;
+- normal boot becomes persistent street free roam;
+- legacy mission state/checkpoint pruned without losing cash, reputation or vehicles;
+- campaign-entry, board and authored tutorial not booted;
+- journalist, exposed body and rooftop thug inactive;
+- mission-only actors no longer pin streaming;
+- `old-quarter` no longer protected;
+- City Compiler fixed landmarks removed;
+- archived mission definitions remain explicit framework fixtures;
+- mission-specific browser golden paths removed;
+- site-first future landmark policy recorded.
 
 Acceptance:
 
-- old saves migrate without losing missions, cash, checkpoints or vehicles;
-- every district has one explicit owner or neutral state;
-- faction/contact reputation remains separate;
-- access and hostility differ mechanically by faction/territory;
-- mission definitions can read/change territory without hard-coded scene progression;
-- ownership survives save/load/import/export;
-- unit, boot, systems and campaign domains remain green.
+- public build starts without contract, entry modal, board or objective marker;
+- old mission saves migrate safely;
+- persistent economy/vehicles/maintenance remain available;
+- no district/landmark is protected by retired content;
+- generic MissionRunner still works with explicit definitions;
+- unit, boot, systems and campaign domains are green.
 
-### 14.2 Territory consequences — ⬜ Planned after 14.1
+Reference: `CITY_TOPOLOGY_RESET.md`.
 
-- patrol composition and local hostility;
-- supplier/safehouse access;
-- faction vehicle availability;
-- debts, betrayal flags and alternate buyers;
-- visible but readable territory presentation.
+## Milestone 14 — City topology and readability
 
-### 14.3 Original faction identity — ⬜ Planned
+**Status: 🔵 Active next phase after 13.7 acceptance**
 
-- original symbols, ranks and histories;
-- art/audio language per faction;
-- commercial trademark review.
+### 14.1 Road/intersection authority
 
-## Milestone 15 — Safehouses, stash and ammunition economy
+- one road graph;
+- lines/polylines/curves with width/lane semantics;
+- unique T/cross/non-orthogonal/service/dead-end junction objects;
+- straight road bands terminate at junction boundaries;
+- no overlapping road/sidewalk strips inside intersections.
+
+### 14.2 Pedestrian and visual language
+
+- explicit carriageway, curb, sidewalk and furniture bands;
+- connected sidewalk graph;
+- crosswalks only between valid pedestrian nodes;
+- clear visual distinction between road and sidewalk;
+- semantic lamp/bin anchors.
+
+### 14.3 Parcels and site-first landmarks
+
+- polygonal ordinary parcels;
+- road/intersection/building setbacks;
+- compound/polygonal building footprints;
+- large landmark sites reserved before local roads/ordinary blocks;
+- police station, hospital, church, plant and similar campuses may shape curved roads.
+
+### 14.4 Regeneration and integration
+
+- regenerate or replace the Old Quarter;
+- update traffic lanes and macro edges;
+- update pedestrian routes/crossings;
+- update streaming chunks/prefetch;
+- update police response and garage/site bindings;
+- compiler hard errors for overlap and dead pedestrian geometry.
+
+Acceptance:
+
+- no building intersects or visually crowds a road corridor;
+- no crosswalk ends without pedestrian continuation;
+- intersections have no duplicated sidewalk bands;
+- lamps sit on valid sidewalk/frontage anchors;
+- road/curb/sidewalk are readable at a glance;
+- the entire old core can change;
+- large landmarks are not restricted to rectangular leftovers;
+- curved roads are supported;
+- unit, boot, systems and city validation remain green.
+
+## Milestone 15 — Original factions and territory
+
+**Status: ⬜ Planned after topology stabilizes**
+
+- canonical original faction IDs/data;
+- Blackglass Directorate and Red Assembly with distinct mechanics;
+- separate Unaligned House/contact records;
+- district ownership in migration-safe campaign state;
+- faction links for sites, suppliers, vehicles and patrols;
+- access/hostility gates;
+- mission hooks for territory changes;
+- original symbols, ranks and histories.
+
+Factions wait until the city exposes stable semantic districts/sites rather than temporary raw coordinates.
+
+## Milestone 16 — Safehouses, stash and ammunition economy
 
 **Status: ⬜ Planned**
-
-Locked direction:
 
 - no floating street-ammunition pickups;
 - one melee, one sidearm and one long/special slot;
 - carried ammunition caps;
 - separate carried loadout and refuge stash;
 - finite supplier stock;
-- paid resupply and authored mission caches;
-- trunks provide limited mobile storage, never the complete stash.
+- paid resupply and authored caches;
+- trunks provide limited mobile storage.
 
-Acceptance:
-
-- ammunition is not infinite or free;
-- cash has meaningful competing uses;
-- stash/loadout persist correctly.
-
-## Milestone 16 — Retainers
+## Milestone 17 — Retainers
 
 **Status: ⬜ Planned**
 
-First roles:
+Initial roles:
 
 - Quartermaster;
 - Driver;
@@ -371,14 +384,7 @@ First roles:
 
 Tracked state includes loyalty, dependence, exposure, condition, competence, upkeep, dose due and assignments.
 
-Acceptance:
-
-- Retainers are named characters with agency/loss states;
-- they require money and blood maintenance;
-- capture/exposure creates missions and refuge risk;
-- services integrate with vehicles, ammunition, evidence and police pressure.
-
-## Milestone 17 — Expanded arsenal and vehicle combat
+## Milestone 18 — Expanded arsenal and vehicle combat
 
 **Status: ⬜ Planned**
 
@@ -389,14 +395,13 @@ Acceptance:
 - authored weapon/mission loot;
 - enemy/faction loadouts.
 
-## Milestone 18 — District campaign
+## Milestone 19 — New district campaign
 
-**Status: ⬜ Planned**
+**Status: ⬜ Planned after city/factions/economy**
 
-- opening Directorate contract;
-- vehicle pursuit mission;
-- Red Assembly mission;
-- Unaligned multi-buyer contract;
+- new opening contract authored against semantic sites;
+- vehicle pursuit contract;
+- Directorate/Assembly/Unaligned alternatives;
 - territory consequences;
 - Retainer recruitment/rescue;
 - safehouse/supplier progression.
@@ -404,8 +409,9 @@ Acceptance:
 Acceptance:
 
 - missions support multiple solutions and persistent consequences;
-- vehicles, factions, economy and vampiric systems interact;
-- city structure feels like a systemic top-down crime game with original vampire consequences.
+- no mission protects raw city geometry;
+- vehicles, factions, economy and vampire systems interact;
+- city feels like a systemic top-down crime game with original vampire consequences.
 
 ## Later expansion candidates
 
@@ -421,11 +427,12 @@ Acceptance:
 ## Definition of done
 
 1. Feature works in the playable build.
-2. Existing tutorial and mission flows pass regression.
+2. Existing reusable gameplay flows pass regression.
 3. Relevant render/layout profiles pass.
 4. Input/UI conflicts are covered.
 5. Pure logic has automated coverage.
 6. Browser regression exists where appropriate.
 7. Documentation records ownership, tuning and limitations.
-8. `PROJECT_BLUEPRINT.md` and the detailed subsystem document agree.
-9. Commercial-facing names receive trademark clearance before release.
+8. `PROJECT_BLUEPRINT.md` and detailed subsystem docs agree.
+9. Mission content references semantic sites rather than accidentally protecting raw geometry.
+10. Commercial-facing names receive trademark clearance before release.
