@@ -41,6 +41,9 @@ const neighbours = Object.freeze({
   "harbor-south": ["harbor-north", "canal-east", "blackwater"]
 });
 
+// These are observations about the imported control map, not permissions for
+// future generation. The topology pass must remove them rather than preserving
+// the original geometry around them.
 const legacyBuildingRoadOverlaps = Object.freeze([
   "club:eastWestAvenue",
   "church:southServiceAlley",
@@ -54,51 +57,31 @@ const legacyBuildingRoadOverlaps = Object.freeze([
   "blackwaterExchange:eastBackLane"
 ]);
 
-function findBuilding(id) {
-  const building = buildings.find(candidate => candidate.id === id);
-  if (!building) throw new Error(`Current city landmark building is missing: ${id}`);
-  return building;
-}
-
-function landmark(id, buildingId, districtId, requiredAccess = ["street"]) {
-  const target = findBuilding(buildingId);
-  return Object.freeze({
-    id,
-    buildingId,
-    districtId,
-    fixed: true,
-    position: { x: target.x + target.w / 2, y: target.y + target.h / 2 },
-    requiredAccess
-  });
-}
-
 const world = Object.freeze({
   width: Math.max(...districtZones.map(zone => zone.x + zone.w)),
   height: Math.max(...districtZones.map(zone => zone.y + zone.h))
 });
 
 export const currentCityBlueprint = defineCityBlueprint({
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: "bloodnight-current-city",
-  seed: "bloodnight-current-city-v1",
+  seed: "bloodnight-current-city-v2-unconstrained",
   world,
-  protectedZones: ["old-quarter"],
+  // No district is protected because of retired mission coordinates. Future
+  // landmarks will reserve flexible urban sites before roads are generated.
+  protectedZones: [],
   districts: districtZones.map(zone => ({
     id: zone.id,
     name: zone.name,
     bounds: { x: zone.x, y: zone.y, w: zone.w, h: zone.h },
     recipeId: districtRecipeIds[zone.id],
     neighbours: [...(neighbours[zone.id] || [])],
-    protected: zone.id === "old-quarter"
+    protected: false
   })),
-  landmarks: [
-    landmark("refuge", "refugeTower", "old-quarter", ["street", "roof", "sewer"]),
-    landmark("police-station", "police", "old-quarter", ["street", "roof", "alley"]),
-    landmark("nightclub", "club", "old-quarter", ["street", "roof", "alley"]),
-    landmark("church", "church", "old-quarter", ["street", "roof", "sewer"]),
-    landmark("harbor-registry", "harborRegistry", "harbor-north", ["street"]),
-    landmark("blackwater-terminal", "blackwaterTerminal", "blackwater", ["street", "sewer"])
-  ],
+  // The current buildings still render as the imported comparison baseline,
+  // but none of them is a fixed compiler landmark. Police stations, hospitals,
+  // churches and other landmarks will be reintroduced later as flexible sites.
+  landmarks: [],
   recipes: districtRecipes,
   blockTemplates,
   runtime: {
@@ -120,12 +103,22 @@ export const currentCityBlueprint = defineCityBlueprint({
   },
   metadata: {
     source: "phaser/src/data/district.js",
-    mode: "imported-authored-city",
+    mode: "imported-authored-city-unconstrained",
     generatedAtRuntime: false,
-    compilerStage: "foundation",
+    compilerStage: "mission-constraints-retired",
+    retiredNarrativeConstraints: [
+      "silence_the_journalist",
+      "clean_the_scene",
+      "old-quarter-protection",
+      "fixed-refuge-police-club-church-landmarks"
+    ],
+    futureLandmarkPolicy: {
+      mode: "site-first",
+      summary: "Landmarks reserve flexible polygonal sites; roads and pedestrian space adapt around them."
+    },
     validationExceptions: {
       allowedBuildingRoadOverlaps: legacyBuildingRoadOverlaps,
-      policy: "Legacy overlaps are warnings for the imported control city and hard errors for every generated candidate."
+      policy: "Imported overlap warnings describe current debt only. Generated candidates fail on every overlap."
     }
   }
 });
