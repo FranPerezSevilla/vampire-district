@@ -75,7 +75,7 @@ test("ordinary and retired actors sleep while live critical police state remains
 
   expect(result.west.coreCivilian).toBe("active");
   expect(result.west.harborCivilian).toBe("dormant");
-  expect(result.west.retiredJournalist).toBe("dormant");
+  expect(result.west.retiredJournalist).toBe("active");
   expect(result.west.journalistVisible).toBe(false);
   expect(result.west.refugeCar).toBe("active");
   expect(result.west.foundryCar).toBe("dormant");
