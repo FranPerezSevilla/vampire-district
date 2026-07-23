@@ -1,10 +1,10 @@
 # Vampire District — project blueprint
 
-_Last updated: 2026-07-22_
+_Last updated: 2026-07-23_
 
 ## Purpose
 
-This is the canonical high-level blueprint for the project. It explains the playable product, campaign authority, runtime architecture, vehicles, city streaming, traffic and current production priorities.
+This is the canonical high-level blueprint for the project. It defines the playable product, campaign authority, runtime architecture, vehicle/city/traffic boundaries and current production sequence.
 
 Detailed subsystem documents remain authoritative for tuning values and acceptance records. This is the first document an AI, developer or reviewer should read before changing the project.
 
@@ -18,44 +18,44 @@ Streets, traffic, vehicles, weapons, factions, territory, cash and rapid navigat
 
 The project does not use licensed vampire factions, terminology, lore, symbols or ranks.
 
-## Current production baseline
+## Current accepted baseline
 
-The consolidated foundation baseline before Milestone 12.1 is:
+Accepted `main` before Milestone 13.6:
 
 ```text
-a424e0f6e1c2e52d9851bdbff129276c470478c6
+4ebece7045e173093d5e00d76362fe9610aa4596
 ```
 
-It includes:
+That baseline includes:
 
 - Phaser 3 browser runtime using native ES modules;
 - street, low-rooftop, high-rooftop and sewer layers;
 - opening journalist mission and `Clean the Scene` contract;
-- data-driven campaign state, objectives, rewards, checkpoints and save/load;
-- mouse-directed combat, draining, Hunger and powers;
-- witnesses, evidence, police search, wanted escalation and helicopter pressure;
+- data-driven campaign state, rewards, checkpoints and save/load;
+- combat, draining, Hunger, powers, witnesses, evidence and police escalation;
 - an expanded `2400 × 1440` multi-ward district;
-- arcade vehicles with Enter entry/exit and Space handbrake;
-- persistent hull condition, trunks, pedestrian impacts and destructible street furniture;
+- persistent authored vehicles with arcade driving, hull, trunks and repair/recovery;
 - chunk streaming, district packs, dormancy and macro traffic;
-- pooled local traffic with following, junction priority and impact consequences;
-- canonical project documentation consolidated in `PROJECT_BLUEPRINT.md`;
+- ten pooled civilian traffic proxies with following, junction priority and impact consequences;
+- consolidated blueprint, snapshot, architecture and roadmap;
 - unit, boot, systems and campaign Chromium validation.
 
-### Accepted extension — Milestone 12.1
+### Accepted extension — Milestone 13.6
 
-PR #30 adds:
+PR #31 adds bounded motorized police response:
 
-- a costed refuge vehicle garage;
-- full repair for owned, parked vehicles at the garage;
-- tow recovery for owned wrecks from anywhere in the district;
-- atomic wallet debit plus vehicle-condition update;
-- immediate synchronization of campaign and live Phaser vehicle state;
-- idempotent repeat operations and rollback on transaction failure;
-- wanted-level and location safety gates;
-- accessible dialog and browser diagnostics.
+- one pursuit cruiser at wanted level 2;
+- a second partial roadblock cruiser at wanted level 3;
+- deterministic district routing on authored lane polylines;
+- fixed local pool of two cruiser containers;
+- officer reservation while crews remain inside cruisers;
+- exact-once transfer into the existing foot `PoliceSystem`;
+- local collision, cruiser disablement and forced dismount;
+- four-second abandoned suspect-car memory;
+- rooftop/sewer hiding without deleting macro response state;
+- effective stress diagnostics that preserve total 5/7 police pressure.
 
-The implementation was accepted after unit, boot, systems and campaign CI passed together. Detailed record: `VEHICLE_MAINTENANCE.md`.
+Implementation head `f657785d234330311d7aa198a2f566471acff267` passed unit, boot, systems and campaign CI together. Detailed record: `MOTORIZED_POLICE.md`.
 
 ## World structure
 
@@ -77,22 +77,21 @@ high rooftop
 sewer
 ```
 
-Vehicles, garages and local traffic exist on the street layer. The player can abandon a vehicle and escape through rooftops or sewers.
+Vehicles, garages, civilian traffic and local police cruisers exist only on the street layer. The player can abandon a vehicle and escape vertically or through sewers.
 
 ## Campaign authority
 
 `CampaignState` and `MissionRunner` own persistent campaign truth.
 
-Campaign state includes:
+Persistent campaign state includes:
 
 - mission availability, active mission and completion;
 - latest safe checkpoint;
 - cash and immutable transaction ledger;
 - faction/contact reputation;
-- player loadout and ammunition;
+- loadout and ammunition;
 - persistent authored vehicle condition and trunks;
-- broken world props;
-- static NPC outcomes, bodies and evidence;
+- broken props, static NPC outcomes, bodies and evidence;
 - tutorial/informant state.
 
 `MissionSystem` presents the active definition but does not maintain a second objective index. Rewards and completion checkpoints are idempotent.
@@ -104,19 +103,28 @@ Current playable missions:
 
 ### Vehicle maintenance authority
 
-`VehicleMaintenanceService` belongs to the campaign service graph. It composes existing authorities rather than adding a new condition model:
-
 ```text
 VehicleMaintenanceService
   → WalletSystem
   → CampaignVehicleSystem
   → vehicle:maintenance-completed
   → CampaignSystem touch/save
+  → VehicleSystem live synchronization
 ```
 
-The operation uses silent wallet and condition mutations followed by one final event. If any step fails, cash, ledger, sequences, world flags and event log are restored.
+Silent intermediate mutations plus one final event prevent a saved debit without its vehicle result. Campaign checkpoints do not own authored vehicle condition, so an older checkpoint cannot undo a paid repair or tow recovery.
 
-Campaign checkpoints do not own authored vehicle condition, so restoring an older safe checkpoint cannot undo a paid repair or tow recovery.
+### Motorized police persistence boundary
+
+Motorized response cruisers are **transient wanted-response state**:
+
+- not in `CampaignState`;
+- not in `VehicleSystem.vehicles`;
+- not civilian traffic tokens;
+- no trunk, ownership or campaign repair eligibility;
+- discarded when the wanted response retires.
+
+Once officers dismount, they become normal police NPCs owned by `NpcSystem`/`PoliceSystem` for the remainder of that runtime response.
 
 ## Core gameplay loops
 
@@ -140,9 +148,9 @@ find vehicle
 → accelerate, brake, reverse and steer
 → drift with Space
 → collide, damage props or hit pedestrians
-→ accumulate hull damage / evidence / police pressure
+→ trigger civilian traffic and police response
+→ abandon the car or evade road interception
 → repair at the refuge garage or tow a wreck
-→ use trunk or abandon vehicle
 → continue on foot, rooftops or sewers
 ```
 
@@ -174,11 +182,13 @@ GameScene.update
   → GameplayRuntime.update
 ```
 
-`GameplayRuntime` owns system ordering and temporary input adaptation. Specialist systems own their domain state and public operations; no feature may add a second frame loop.
+`GameplayRuntime` owns deterministic system ordering and temporary input adaptation. Specialist systems own their domain state and public operations; no feature may add a second world frame loop.
 
 ### Campaign and presentation
 
 - `CampaignState`
+- `CampaignEventBus`
+- `CampaignSystem`
 - `MissionRunner`
 - `MissionSystem`
 - `WalletSystem`
@@ -209,11 +219,13 @@ GameScene.update
 - `SensoryAwarenessSystem`
 - `PoliceSystem`
 - `PoliceViolenceSystem`
+- `MotorizedPoliceSystem`
+- `MotorizedPoliceLocalPolicy`
 - `HunterSystem`
 - `ExposureSystem`
 - `EvidenceSystem`
 
-### World and vehicles
+### World and authored vehicles
 
 - `PropDamageSystem`
 - `StreetFurnitureSystem`
@@ -221,7 +233,7 @@ GameScene.update
 - `VehicleModel`
 - `VehicleDriving`
 
-### Large-city streaming and traffic
+### Large-city streaming and civilian traffic
 
 - `ChunkStreamSystem`
 - `DistrictPackSystem`
@@ -246,17 +258,26 @@ TrafficMaterializationSystem
 TrafficLocalBehaviorSystem
 TrafficPhysicalConsequencesSystem
 TrafficImpactConsequencesSystem
+MotorizedPoliceSystem
 PedestrianSystem
 normal GameplayRuntime frame
 ```
 
-This means resources and dormant state update before macro traffic; materialization follows macro authority; local behaviour precedes physical contact; high-speed consequences observe completed contact; the normal player/NPC frame consumes final local state.
+This order guarantees:
 
-Vehicle maintenance is event-driven and not part of the frame loop. Its dialog pauses the world and commits one explicit campaign transaction.
+1. city resources and dormancy are current;
+2. macro traffic/police graph state advances before local presentation;
+3. civilian proxies receive current lane state;
+4. local traffic behaviour and impacts resolve first;
+5. motorized police sample the final local road occupancy;
+6. newly dismounted officers enter the normal police/NPC frame;
+7. player and AI consume final positions only once.
 
-## City streaming phases
+Vehicle maintenance remains event-driven outside the frame loop.
 
-### Base
+## City streaming and traffic phases
+
+### Base streaming
 
 - asynchronous chunk files;
 - retry/cancellation and activation budgets;
@@ -264,81 +285,82 @@ Vehicle maintenance is event-driven and not part of the frame loop. Its dialog p
 - spatial static queries;
 - chunk-local deltas.
 
-### 4A
+### 4A–4B
 
-- district resource packs;
-- road-aware prefetch;
-- low-frequency dormant pedestrians.
-
-### 4B
-
+- district resource packs and road-aware prefetch;
+- low-frequency dormant pedestrians;
 - district macro graph;
-- abstract traffic tokens;
-- dormant police travel;
-- district-local patrol recovery.
+- abstract civilian traffic tokens;
+- dormant police travel and patrol recovery.
 
-### 4C
+### 4C–4F
 
-- fixed pool of ten traffic containers;
+- fixed pool of ten civilian traffic containers;
 - explicit forward/reverse lane polylines;
-- stable token-to-slot identity;
-- smooth macro interpolation and hysteresis.
-
-### 4D
-
-- following distance and queues;
-- braking for player/authored vehicles;
-- bounded catch-up;
-- deterministic junction priority.
-
-### 4E
-
-- bounded soft proxy push;
-- blocked contact when displacement is unsafe;
-- temporary physical offsets and lane recovery;
-- no damage or police response for soft contact.
-
-### 4F
-
-```text
-soft      < 125 speed units
-hard      125–209
-severe    ≥ 210
-```
-
-- hard/severe player-vehicle hull damage;
-- persistent condition;
-- crash audio, exposure and local heat;
-- severe `impact-stalled` traffic state;
-- per-token cooldown preventing frame-stacked damage;
-- ambient traffic remains non-persistent and has no health.
+- stable token-to-slot identity and interpolation;
+- following, queues, braking and junction priority;
+- bounded soft contact and lane recovery;
+- hard/severe impact damage, exposure, local heat and cooldown.
 
 Detailed records: `CITY_STREAMING.md` and `CITY_STREAMING_4A.md` through `CITY_STREAMING_4F.md`.
 
-## Vehicle persistence boundaries
+## Motorized police rules
+
+### Wanted-level deployment
+
+```text
+wanted 0–1   no cruisers
+wanted 2     pursuit cruiser · 2 reserved officers
+wanted 3     pursuit + partial roadblock · 4 reserved officers
+```
+
+Public total targets remain:
+
+```text
+wanted 0  → 2
+wanted 1  → 3
+wanted 2  → 5
+wanted 3  → 7
+```
+
+`PoliceSystem.desiredCount()` returns the total. `footDesiredCount()` subtracts crews still inside cruisers. Release-candidate diagnostics expose `footPolice`, `reservedPolice` and effective `police` pressure.
+
+### Macro/local split
+
+- distant cruiser travel is abstract and follows graph/lane routes;
+- local blockers apply when the candidate position enters the 920-unit materialization window;
+- one pursuit cruiser intercepts/dismounts;
+- one level-three cruiser stops at 72% of its final leg and rotates across one lane;
+- only one partial roadblock is allowed;
+- locally trapped or disabled cruisers deploy their crews;
+- rooftop/sewer transitions hide cruisers while retaining macro state.
+
+### Officer transfer
+
+`PoliceSystem.spawnMotorizedOfficers()` creates stable unit-derived police NPCs exactly once. After transfer, ordinary police search, containment, attack, recovery and patrol authority applies.
+
+## Vehicle authority boundaries
 
 ### Persistent authored vehicles
 
-Own:
+Own identity, archetype, ownership, hull, disabled state, position, angle, parked state, trunk, campaign persistence and maintenance eligibility.
 
-- identity and archetype;
-- ownership/status;
-- health and disabled state;
-- position and heading;
-- parked state and trunk;
-- campaign persistence;
-- repair/recovery eligibility.
+### Civilian traffic proxies
 
-`VehicleSystem.syncFromCampaign()` updates the live container, velocity, health, wreck visuals, HUD and last-persisted state after a maintenance event.
+- fixed pool of ten;
+- not enterable, stealable, repairable or persistent;
+- no health, trunk or ownership;
+- temporary macro/local traffic state only.
 
-### Ambient traffic proxies
+### Motorized police cruisers
 
-- are absent from `VehicleSystem.vehicles`;
-- cannot be entered, stolen, repaired or recovered;
-- have no health, trunk, ownership or save data;
-- retain only temporary token/slot/behaviour/contact state.
+- fixed pool of two;
+- transient wanted-response identity, route, health and local obstacle state;
+- not campaign vehicles and not civilian tokens;
+- can be damaged locally and force officer dismount;
+- disappear when the wanted response retires.
 
-### Refuge garage rules
+### Refuge garage baseline
 
 ```text
 location             304, 326 on street
@@ -348,10 +370,6 @@ compact repair       $3 per missing hull
 compact recovery     $120
 recovery condition   35% hull
 ```
-
-Repair requires an owned, damaged, non-disabled, parked vehicle inside the garage radius. Recovery requires an owned disabled vehicle and returns it to a deterministic refuge slot.
-
-The player-facing service is blocked while driving, away from the garage or wanted.
 
 ## Testing strategy
 
@@ -366,19 +384,18 @@ browser-campaign
 
 Automated coverage includes:
 
-- source ownership and removed legacy files;
-- input gating and UI locks;
+- input/UI ownership;
 - campaign entry, checkpoints and rewards;
-- vehicle acceleration, drift, collision and wreck exit;
-- streetlight, dumpster, body and blood consequences;
-- expanded-city streaming and dormant simulation;
-- traffic materialization, following and junction priority;
-- soft contact and hard-impact cooldown;
-- repair quote and ownership rules;
-- atomic debit/condition commit and rollback;
-- repeated-operation idempotence;
-- wanted-level service blocking;
-- live/campaign repair and wreck-recovery synchronization.
+- authored vehicle driving, damage, maintenance and recovery;
+- city streaming and civilian traffic 4A–4F;
+- motorized wanted-level counts and roles;
+- graph/lane routing and partial roadblock stop;
+- local blocker boundary;
+- officer reservation and exact-once dismount;
+- cruiser collision/disablement;
+- rooftop hiding and abandoned-car memory;
+- effective level-three police stress;
+- no runtime ownership conflicts.
 
 A feature is complete only when implementation, tests and documentation agree.
 
@@ -387,57 +404,66 @@ A feature is complete only when implementation, tests and documentation agree.
 - pure top-down readability;
 - original setting and terminology;
 - streets, vehicles, traffic, factions and urban chaos remain core;
-- vision and hearing remain separate;
+- sight and hearing remain separate;
 - Enter owns vehicle entry/exit;
 - Space owns traversal on foot and handbrake while driving;
-- Hunger is combat attrition and feeding is recovery;
 - campaign state has one objective authority;
-- persistent vehicles and ambient traffic remain separate;
+- persistent vehicles, civilian traffic and police cruisers remain separate models;
 - large-city scale uses streaming/dormancy;
-- vehicle maintenance uses existing wallet and vehicle-condition authorities;
-- paid maintenance is idempotent and cannot be reverted by a mission checkpoint;
-- accessibility presentation cannot alter gameplay geometry;
-- ammunition is finite, paid and refuge/safehouse-managed;
+- maintenance uses existing wallet/vehicle-condition authorities;
+- paid maintenance is idempotent and checkpoint-safe;
+- motorized police preserve total 5/7 officer pressure;
+- roadblocks remain partial and preserve vertical/sewer escape;
+- dismounted officers use existing police AI;
+- accessibility cannot alter gameplay geometry;
+- ammunition is finite and refuge/safehouse-managed;
 - Retainers have agency, upkeep and failure states.
 
 ## Active risks
 
-1. Browser-system regression time grows as city systems accumulate.
-2. Repair/recovery pricing must matter without making ordinary traffic damage punitive.
-3. Motorized police must complement foot pursuit and vertical escapes.
-4. Traffic density must remain readable and fixed-pool bounded.
-5. Multiple future garages need deterministic parking and ownership rules.
-6. Economy and ammunition can become punitive without competing rewards.
-7. Faction and Retainer systems risk becoming menu-only bonuses.
+1. Browser-system regression time continues to grow.
+2. Cruiser speed, dismount distance and roadblock placement need playtesting.
+3. Full intra-district vehicle pursuit remains deferred; current units deliver pressure at district boundaries.
+4. Traffic density and police response must remain readable and bounded.
+5. Repair/economy tuning may become irrelevant or punitive.
+6. Faction/territory design can become cosmetic unless it changes missions, patrols, suppliers and safehouses.
+7. Retainers can become menu-only bonuses.
 8. Commercial-facing names require trademark clearance.
 
 ## Active production sequence
 
 ### Complete: vehicle repair and recovery
 
-Milestone 12.1 delivered:
+Milestone 12.1 delivered atomic costed repair, tow recovery, idempotence, rollback and checkpoint-safe vehicle synchronization.
 
-- one atomic costed repair/recovery transaction;
-- no duplicate charge on repeated activation;
-- rollback on partial failure;
-- owned-vehicle-only service;
-- wanted/location safety gates;
-- live and persistent condition agreement;
-- unit, boot, systems and campaign validation.
+### Complete: civilian traffic and motorized police
 
-### Next: motorized police and traffic escalation
+Milestone 13 delivered:
 
-- police cruisers use macro/local road infrastructure;
-- pursuit, interception and roadblocks;
-- officers exit blocked/disabled vehicles;
-- abandoned-car search memory;
-- player can leave the car and escape vertically or through sewers.
+- large-city streaming and dormancy;
+- macro/local civilian traffic;
+- soft and hard traffic consequences;
+- pursuit cruiser at wanted 2;
+- partial roadblock at wanted 3;
+- bounded officer reservations and foot-AI transfer;
+- collision, disablement and vertical escape compatibility.
+
+### Next: original factions and territory foundation
+
+Milestone 14 should establish:
+
+- canonical original faction definitions and IDs;
+- district/territory ownership data;
+- faction/contact reputation gates;
+- safehouse, supplier and vehicle associations;
+- patrol/hostility consequences;
+- mission-definition hooks without hard-coded parallel progression;
+- browser diagnostics and migration-safe campaign state.
 
 ### Later
 
-- original factions and territory;
-- safehouses, stash and ammunition economy;
-- Retainers and Mechanic service modifiers;
+- stash and ammunition economy;
+- Retainers and role-specific services;
 - expanded arsenal and vehicle combat;
 - district campaign content.
 
@@ -449,7 +475,8 @@ Update this blueprint and the relevant detailed document in the same PR when cha
 - campaign/save authority;
 - controls;
 - city dimensions or streaming policy;
-- vehicle/traffic persistence boundaries;
+- vehicle/traffic/police persistence boundaries;
 - impact, maintenance, police or exposure consequences;
+- faction/territory authority;
 - active production priority;
 - locked design decisions.
