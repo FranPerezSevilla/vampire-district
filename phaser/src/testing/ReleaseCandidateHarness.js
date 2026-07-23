@@ -2,6 +2,28 @@ import { LAYERS } from "../data/district.js";
 import { ReleaseCandidateHarness as ReleaseCandidateHarnessCore } from "./ReleaseCandidateHarnessCore.js";
 
 export class ReleaseCandidateHarness extends ReleaseCandidateHarnessCore {
+  effectivePolicePressure(level = this.scene.exposureSystem.level()) {
+    const police = this.scene.policeSystem;
+    const footPolice = police.police().length;
+    const reservedPolice = this.scene.motorizedPoliceSystem?.reservedOfficerCount?.(level) || 0;
+    return {
+      footPolice,
+      reservedPolice,
+      total: footPolice + reservedPolice
+    };
+  }
+
+  stressSnapshot() {
+    const snapshot = super.stressSnapshot();
+    const pressure = this.effectivePolicePressure(snapshot.level);
+    return {
+      ...snapshot,
+      police: pressure.total,
+      footPolice: pressure.footPolice,
+      reservedPolice: pressure.reservedPolice
+    };
+  }
+
   async startPoliceStress() {
     this.unlockPostTutorialWorld();
 
@@ -27,7 +49,7 @@ export class ReleaseCandidateHarness extends ReleaseCandidateHarnessCore {
 
     await this.waitFor(
       () => this.scene.exposureSystem.level() >= 3
-        && police.police().length >= desired
+        && this.effectivePolicePressure(3).total >= desired
         && police.helicopter.active,
       { timeoutMs: 3_000, label: "level-three police response" }
     );

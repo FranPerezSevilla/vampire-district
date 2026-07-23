@@ -1,10 +1,10 @@
 # Roadmap
 
-_Last updated: 2026-07-22_
+_Last updated: 2026-07-23_
 
 This roadmap is ordered by dependency, not calendar date. A milestone is complete only when implementation, automated coverage, browser regression and documentation agree.
 
-Read `PROJECT_BLUEPRINT.md` for the canonical current architecture and production sequence.
+Read `PROJECT_BLUEPRINT.md` for the canonical architecture and production sequence.
 
 ## Status legend
 
@@ -22,7 +22,7 @@ Phaser district with street, rooftop and sewer layers; narrative tutorial; Hunge
 
 ## Milestone 1 — Architecture stabilization
 
-**Status: 🟡 Automated implementation complete; remaining manual input/accessibility checks**
+**Status: 🟡 Automated implementation complete; manual input/accessibility checks remain**
 
 - central action-based `InputSystem`;
 - one keyboard/pointer/aim/wheel frame;
@@ -165,7 +165,7 @@ Delivered:
 
 - Enter-only vehicle entry/exit;
 - arcade acceleration, braking, reverse and steering;
-- Space handbrake with actual body/travel-angle drift;
+- Space handbrake with body/travel-angle drift;
 - speed-sensitive camera;
 - persistent hull health and disabled/wreck state;
 - explicit occupied-wreck exit;
@@ -174,9 +174,9 @@ Delivered:
 - pedestrian impacts and directional blood evidence;
 - destructible streetlights and dumpsters;
 - corpse exposure from ruptured containers;
-- expanded `2400 × 1440` district with multiple wards;
-- sidewalk/crossing pedestrians and sparse distributed police;
-- Explore/scenario boot profiles and focused systems regression.
+- expanded `2400 × 1440` district;
+- sidewalk/crossing pedestrians and distributed police;
+- Explore/scenario boot profiles and focused regression.
 
 Reference: `MILESTONE_12_STATUS.md`.
 
@@ -186,19 +186,19 @@ Reference: `MILESTONE_12_STATUS.md`.
 
 Delivered:
 
-- refuge-garage interaction and accessible maintenance dialog;
-- owned-vehicle hull quotes using archetype-specific rates;
-- full repair for damaged, parked vehicles inside the garage radius;
+- refuge-garage interaction and accessible dialog;
+- owned-vehicle hull quotes;
+- full repair for damaged parked vehicles at the garage;
 - campaign cash debit and immutable ledger entry;
-- atomic wallet/condition composition with rollback on failure;
-- repeated repair/recovery no-op without a second charge;
-- insufficient-funds and non-owned rejection before mutation;
-- remote tow recovery for owned disabled vehicles;
-- deterministic refuge parking slots and `35%` recovery hull;
-- wanted-level, driving, location and layer safety gates;
-- immediate synchronization of campaign condition, live container, wreck visuals and HUD;
-- checkpoint-safe persistence without a schema change;
-- browser diagnostics, unit coverage and real Chromium regression.
+- atomic wallet/condition transaction with rollback;
+- repeated no-op without second charge;
+- insufficient-funds/non-owned rejection;
+- remote tow recovery for owned wrecks;
+- deterministic parking slots and `35%` recovery hull;
+- wanted/driving/location/layer safety gates;
+- immediate campaign/live synchronization;
+- checkpoint-safe persistence without schema change;
+- unit and Chromium coverage.
 
 Accepted compact baseline:
 
@@ -211,9 +211,9 @@ recovery hull           26 / 72
 
 Reference: `VEHICLE_MAINTENANCE.md`.
 
-## Milestone 13 — Traffic and motorized police
+## Milestone 13 — Large-city traffic and motorized police
 
-**Status: 🔵 Civilian traffic complete; motorized police active next phase**
+**Status: ✅ Complete**
 
 ### 13.1 Large-city streaming foundation — ✅ Complete
 
@@ -223,14 +223,14 @@ Reference: `VEHICLE_MAINTENANCE.md`.
 - district resource packs and road-aware prefetch;
 - dormant entity simulation.
 
-### 13.2 Macro traffic and police — ✅ Complete
+### 13.2 Macro traffic and dormant police — ✅ Complete
 
 - district macro graph;
-- abstract traffic tokens;
-- dormant police travel;
+- abstract civilian traffic tokens;
+- dormant foot-police travel;
 - district-local patrol recovery.
 
-### 13.3 Local traffic materialization — ✅ Complete
+### 13.3 Local civilian traffic materialization — ✅ Complete
 
 - fixed pool of ten local traffic containers;
 - explicit forward/reverse lane polylines;
@@ -242,7 +242,7 @@ Reference: `VEHICLE_MAINTENANCE.md`.
 
 - following distance and queues;
 - braking for player/authored vehicles;
-- bounded local catch-up;
+- bounded catch-up;
 - deterministic junction priority.
 
 ### 13.5 Physical contact and impact consequences — ✅ Complete
@@ -256,44 +256,83 @@ Reference: `VEHICLE_MAINTENANCE.md`.
 
 Detailed records: `CITY_STREAMING.md` and `CITY_STREAMING_4A.md` through `CITY_STREAMING_4F.md`.
 
-### 13.6 Motorized police — 🔵 Active next phase
+### 13.6 Motorized police — ✅ Complete
 
-Planned scope:
+Delivered:
 
-- police cruisers use existing macro/local road infrastructure;
-- wanted-level deployment, pursuit and interception;
-- deterministic roadblocks with preserved escape lanes;
-- officers exit blocked or disabled cruisers;
-- abandoned suspect-car search memory;
-- player can leave the car and escape by rooftops/sewers;
-- motorized response complements rather than replaces foot pursuit;
-- explicit authority boundary for police cruiser state and materialization.
+- one pursuit cruiser at wanted level 2;
+- pursuit plus one partial roadblock at wanted level 3;
+- deterministic district paths on authored lane polylines;
+- fixed local pool of two police cruisers;
+- public 5/7 police totals preserved;
+- `footDesiredCount()` subtracting crews reserved inside cruisers;
+- exact-once transfer into existing foot police AI;
+- local blocker boundary separating macro and materialized movement;
+- cross-lane roadblock at `72%` of its final leg;
+- trapped/disabled cruiser dismount;
+- player/cruiser collision consequences;
+- four-second abandoned suspect-car memory;
+- rooftop/sewer hiding without deleting macro response state;
+- effective stress diagnostics for foot plus reserved officers;
+- pure routing/reservation tests and focused Chromium regression.
+
+Accepted response baseline:
+
+```text
+wanted 2                  1 pursuit cruiser · 2 reserved officers
+wanted 3                  pursuit + partial roadblock · 4 reserved officers
+materialize radius        920
+pursuit dismount          150
+roadblock trigger         210
+roadblock final phase     0.72
+trapped dismount          1.15 s
+abandoned-car memory      4 s
+```
+
+Reference: `MOTORIZED_POLICE.md`.
+
+## Milestone 14 — Original factions and territory foundation
+
+**Status: 🔵 Active next phase**
+
+### 14.1 Canonical faction and territory data — 🔵 Active
+
+Planned first cut:
+
+- canonical original faction IDs and definitions;
+- Blackglass Directorate and Red Assembly as mechanically distinct factions;
+- separate Unaligned House/contact records rather than one combined faction score;
+- district/territory ownership stored in migration-safe campaign state;
+- stable ownership defaults for current wards;
+- faction links for safehouses, suppliers, authored vehicles and patrol profiles;
+- reputation/access/hostility gates exposed as pure services;
+- mission-definition conditions/effects for territory changes;
+- browser diagnostics and export/import coverage;
+- no parallel territory state in rendering or mission UI.
 
 Acceptance:
 
-- wanted levels 2–3 can deploy cruisers without invalidating existing foot AI;
-- local traffic remains readable and pool-bounded;
-- roadblocks expose at least one viable non-vehicle escape route;
-- a disabled cruiser does not trap the player or corrupt ordinary traffic;
-- officers can transition from motorized response to existing foot roles;
+- old saves migrate without losing missions, cash, checkpoints or vehicles;
+- every district has one explicit owner or neutral state;
+- faction/contact reputation remains separate;
+- access and hostility differ mechanically by faction/territory;
+- mission definitions can read/change territory without hard-coded scene progression;
+- ownership survives save/load/import/export;
 - unit, boot, systems and campaign domains remain green.
 
-## Milestone 14 — Original factions and territory
+### 14.2 Territory consequences — ⬜ Planned after 14.1
 
-**Status: ⬜ Planned**
+- patrol composition and local hostility;
+- supplier/safehouse access;
+- faction vehicle availability;
+- debts, betrayal flags and alternate buyers;
+- visible but readable territory presentation.
 
-- Blackglass Directorate, Red Assembly and separate Unaligned Houses;
-- faction/contact reputation;
-- territory and safehouse ownership;
-- faction vehicles, suppliers and mission pools;
-- hostility, debts, betrayal flags and alternate buyers;
-- original symbols, ranks, history and visual identities.
+### 14.3 Original faction identity — ⬜ Planned
 
-Acceptance:
-
-- factions differ mechanically;
-- Unaligned reputation is stored per House/contact;
-- decisions can improve one relationship and damage another.
+- original symbols, ranks and histories;
+- art/audio language per faction;
+- commercial trademark review.
 
 ## Milestone 15 — Safehouses, stash and ammunition economy
 
@@ -334,7 +373,7 @@ Tracked state includes loyalty, dependence, exposure, condition, competence, upk
 
 Acceptance:
 
-- Retainers are named characters with agency and loss states;
+- Retainers are named characters with agency/loss states;
 - they require money and blood maintenance;
 - capture/exposure creates missions and refuge risk;
 - services integrate with vehicles, ammunition, evidence and police pressure.
@@ -348,7 +387,7 @@ Acceptance:
 - drive-by compatible weapons;
 - firearm damage to vehicles;
 - authored weapon/mission loot;
-- enemy and faction loadouts.
+- enemy/faction loadouts.
 
 ## Milestone 18 — District campaign
 
@@ -388,5 +427,5 @@ Acceptance:
 5. Pure logic has automated coverage.
 6. Browser regression exists where appropriate.
 7. Documentation records ownership, tuning and limitations.
-8. `PROJECT_BLUEPRINT.md` and the relevant subsystem document agree.
+8. `PROJECT_BLUEPRINT.md` and the detailed subsystem document agree.
 9. Commercial-facing names receive trademark clearance before release.
