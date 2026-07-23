@@ -54,6 +54,10 @@ This directory is the project source of truth for design, implementation and pla
 - [Tutorial UX and accessibility](UX_ACCESSIBILITY.md) — historical authored teaching plus current HUD/accessibility contracts.
 - [Control scheme](CONTROL_SCHEME.md) — keyboard/mouse controls and interaction priority.
 
+## Build and distribution
+
+- [itch.io build workflow](ITCH_IO_BUILD.md) — generate a self-contained browser ZIP from any branch using GitHub Actions and upload it to itch.io.
+
 ## Regression checklists
 
 - [Milestone 1](MILESTONE_1_REGRESSION.md)
