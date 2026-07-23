@@ -8,10 +8,14 @@ import {
 } from "../phaser/src/campaign/CampaignEntry.js";
 import { CampaignSystem } from "../phaser/src/campaign/CampaignSystem.js";
 import { CHECKPOINT_KINDS } from "../phaser/src/campaign/constants.js";
-import { SILENCE_THE_JOURNALIST_ID } from "../phaser/src/campaign/missions/silenceTheJournalist.js";
+import {
+  SILENCE_THE_JOURNALIST_ID,
+  silenceTheJournalistMission
+} from "../phaser/src/campaign/missions/silenceTheJournalist.js";
 
-function campaign() {
+function campaign({ authored = true } = {}) {
   return new CampaignSystem({
+    definitions: authored ? [silenceTheJournalistMission] : [],
     autoLoad: false,
     autoSave: false,
     now: () => 1_000
@@ -60,18 +64,31 @@ afterEach(() => {
   delete globalThis.NBD_CAMPAIGN_ENTRY;
 });
 
-test("a fresh campaign requires an explicit new-game decision", () => {
+test("production with no registered definitions enters persistent free roam", () => {
+  const system = campaign({ authored: false });
+  const entry = createCampaignEntry(system.snapshot());
+
+  assert.equal(entry.mode, CAMPAIGN_ENTRY_MODES.FREE_ROAM);
+  assert.equal(entry.missionId, null);
+  assert.equal(entry.primary.action, CAMPAIGN_ENTRY_ACTIONS.CONTINUE);
+  assert.equal(entry.blocksAutomaticOpeningStart, true);
+  assert.equal(entry.deferCheckpointRestore, false);
+  assert.equal(entry.details.find(detail => detail.label === "Contracts")?.value, "0 registered");
+});
+
+test("an explicitly supplied opening definition offers a new-game decision", () => {
   const system = campaign();
   const entry = createCampaignEntry(system.snapshot());
 
   assert.equal(entry.mode, CAMPAIGN_ENTRY_MODES.NEW_GAME);
+  assert.equal(entry.missionId, SILENCE_THE_JOURNALIST_ID);
   assert.equal(entry.primary.action, CAMPAIGN_ENTRY_ACTIONS.NEW_GAME);
   assert.equal(entry.blocksAutomaticOpeningStart, true);
   assert.equal(entry.deferCheckpointRestore, false);
   assert.equal(entry.show, true);
 });
 
-test("an active campaign offers Continue and may consume one automatic entry", () => {
+test("an explicitly active campaign offers Continue and may auto-enter", () => {
   const system = campaign();
   system.startMission(SILENCE_THE_JOURNALIST_ID, {
     metadata: { integration: "campaign_entry" }
@@ -89,7 +106,7 @@ test("an active campaign offers Continue and may consume one automatic entry", (
   assert.equal(automatic.show, false);
 });
 
-test("a failed run preserves a safe checkpoint as an explicit retry choice", () => {
+test("a failed explicit run preserves a safe checkpoint as a retry choice", () => {
   const system = campaign();
   system.startMission(SILENCE_THE_JOURNALIST_ID, {
     metadata: { integration: "campaign_entry" }
@@ -106,7 +123,7 @@ test("a failed run preserves a safe checkpoint as an explicit retry choice", () 
   assert.equal(entry.missionId, SILENCE_THE_JOURNALIST_ID);
 });
 
-test("a failed run without a checkpoint restarts the mission", () => {
+test("a failed explicit run without a checkpoint restarts its mission", () => {
   const system = campaign();
   system.startMission(SILENCE_THE_JOURNALIST_ID, {
     metadata: { integration: "campaign_entry" }
@@ -120,7 +137,7 @@ test("a failed run without a checkpoint restarts the mission", () => {
   assert.equal(entry.deferCheckpointRestore, false);
 });
 
-test("a completed opening contract enters free roam without replaying rewards", () => {
+test("a completed explicit contract enters free roam without replaying rewards", () => {
   const system = campaign();
   system.startMission(SILENCE_THE_JOURNALIST_ID, {
     metadata: { integration: "campaign_entry" }
@@ -135,7 +152,7 @@ test("a completed opening contract enters free roam without replaying rewards", 
   assert.equal(system.wallet.balance(), 500);
 });
 
-test("MissionSystem's automatic opening start waits for the entry decision", () => {
+test("an explicitly supplied mission still waits for an entry decision", () => {
   const system = campaign();
   globalThis.NBD_CAMPAIGN_ENTRY = createCampaignEntry(system.snapshot());
 
