@@ -1,109 +1,760 @@
 {
-  "schemaVersion": 1,
-  "version": 1,
-  "id": "bloodnight-macro-navigation",
+  "schemaVersion": 2,
+  "version": 2,
+  "id": "bloodnight-macro-navigation-v2",
   "nodeIds": [
+    "hospital-district",
+    "civic-center",
+    "cathedral-hill",
+    "north-harbor",
+    "west-market",
     "old-quarter",
     "glasshouse",
-    "foundry",
-    "harbor-north",
+    "university-district",
     "canal-west",
+    "foundry",
     "canal-east",
+    "harbor-north",
     "blackwater",
     "harbor-south"
   ],
   "nodes": {
+    "hospital-district": {
+      "id": "hospital-district",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "w": 1200,
+        "h": 1020
+      },
+      "center": {
+        "x": 918,
+        "y": 466
+      },
+      "trafficDensity": 0.64,
+      "policePresence": 0.76,
+      "neighbours": [
+        "civic-center",
+        "west-market"
+      ]
+    },
+    "civic-center": {
+      "id": "civic-center",
+      "bounds": {
+        "x": 1200,
+        "y": 0,
+        "w": 1800,
+        "h": 1020
+      },
+      "center": {
+        "x": 2340,
+        "y": 740
+      },
+      "trafficDensity": 0.7,
+      "policePresence": 0.92,
+      "neighbours": [
+        "cathedral-hill",
+        "glasshouse",
+        "hospital-district",
+        "old-quarter"
+      ]
+    },
+    "cathedral-hill": {
+      "id": "cathedral-hill",
+      "bounds": {
+        "x": 3000,
+        "y": 0,
+        "w": 1320,
+        "h": 1020
+      },
+      "center": {
+        "x": 3540,
+        "y": 740
+      },
+      "trafficDensity": 0.44,
+      "policePresence": 0.58,
+      "neighbours": [
+        "civic-center",
+        "north-harbor",
+        "university-district"
+      ]
+    },
+    "north-harbor": {
+      "id": "north-harbor",
+      "bounds": {
+        "x": 4320,
+        "y": 0,
+        "w": 480,
+        "h": 1020
+      },
+      "center": {
+        "x": 4500,
+        "y": 960
+      },
+      "trafficDensity": 0.74,
+      "policePresence": 0.64,
+      "neighbours": [
+        "cathedral-hill",
+        "university-district"
+      ]
+    },
+    "west-market": {
+      "id": "west-market",
+      "bounds": {
+        "x": 0,
+        "y": 1020,
+        "w": 1200,
+        "h": 960
+      },
+      "center": {
+        "x": 554,
+        "y": 1920
+      },
+      "trafficDensity": 0.5,
+      "policePresence": 0.4,
+      "neighbours": [
+        "canal-west",
+        "hospital-district",
+        "old-quarter"
+      ]
+    },
     "old-quarter": {
       "id": "old-quarter",
-      "bounds": { "x": 0, "y": 0, "w": 960, "h": 640 },
-      "center": { "x": 480, "y": 320 },
+      "bounds": {
+        "x": 1200,
+        "y": 1020,
+        "w": 1200,
+        "h": 960
+      },
+      "center": {
+        "x": 1754,
+        "y": 1574
+      },
       "trafficDensity": 0.42,
-      "policePresence": 0.88,
-      "neighbours": ["glasshouse", "canal-west"]
+      "policePresence": 0.68,
+      "neighbours": [
+        "civic-center",
+        "foundry",
+        "glasshouse",
+        "west-market"
+      ]
     },
     "glasshouse": {
       "id": "glasshouse",
-      "bounds": { "x": 960, "y": 0, "w": 680, "h": 704 },
-      "center": { "x": 1300, "y": 352 },
+      "bounds": {
+        "x": 2400,
+        "y": 1020,
+        "w": 1080,
+        "h": 960
+      },
+      "center": {
+        "x": 2954,
+        "y": 1920
+      },
       "trafficDensity": 0.82,
       "policePresence": 0.52,
-      "neighbours": ["old-quarter", "foundry", "canal-east"]
+      "neighbours": [
+        "canal-east",
+        "civic-center",
+        "old-quarter",
+        "university-district"
+      ]
     },
-    "foundry": {
-      "id": "foundry",
-      "bounds": { "x": 1640, "y": 0, "w": 544, "h": 704 },
-      "center": { "x": 1912, "y": 352 },
-      "trafficDensity": 0.66,
-      "policePresence": 0.34,
-      "neighbours": ["glasshouse", "harbor-north", "canal-east"]
-    },
-    "harbor-north": {
-      "id": "harbor-north",
-      "bounds": { "x": 2184, "y": 0, "w": 216, "h": 704 },
-      "center": { "x": 2292, "y": 352 },
-      "trafficDensity": 0.74,
-      "policePresence": 0.64,
-      "neighbours": ["foundry", "harbor-south"]
+    "university-district": {
+      "id": "university-district",
+      "bounds": {
+        "x": 3480,
+        "y": 1020,
+        "w": 1320,
+        "h": 960
+      },
+      "center": {
+        "x": 4284,
+        "y": 1636
+      },
+      "trafficDensity": 0.48,
+      "policePresence": 0.42,
+      "neighbours": [
+        "canal-east",
+        "cathedral-hill",
+        "glasshouse",
+        "harbor-north",
+        "north-harbor"
+      ]
     },
     "canal-west": {
       "id": "canal-west",
-      "bounds": { "x": 0, "y": 640, "w": 1032, "h": 496 },
-      "center": { "x": 516, "y": 888 },
+      "bounds": {
+        "x": 0,
+        "y": 1980,
+        "w": 1200,
+        "h": 900
+      },
+      "center": {
+        "x": 752,
+        "y": 2820
+      },
       "trafficDensity": 0.38,
       "policePresence": 0.28,
-      "neighbours": ["old-quarter", "canal-east", "blackwater"]
+      "neighbours": [
+        "blackwater",
+        "foundry",
+        "west-market"
+      ]
+    },
+    "foundry": {
+      "id": "foundry",
+      "bounds": {
+        "x": 1200,
+        "y": 1980,
+        "w": 1200,
+        "h": 900
+      },
+      "center": {
+        "x": 1770,
+        "y": 2346
+      },
+      "trafficDensity": 0.66,
+      "policePresence": 0.34,
+      "neighbours": [
+        "blackwater",
+        "canal-east",
+        "canal-west",
+        "old-quarter"
+      ]
     },
     "canal-east": {
       "id": "canal-east",
-      "bounds": { "x": 1032, "y": 704, "w": 1152, "h": 432 },
-      "center": { "x": 1608, "y": 920 },
+      "bounds": {
+        "x": 2400,
+        "y": 1980,
+        "w": 1200,
+        "h": 900
+      },
+      "center": {
+        "x": 3000,
+        "y": 2572
+      },
       "trafficDensity": 0.62,
       "policePresence": 0.4,
-      "neighbours": ["glasshouse", "foundry", "canal-west", "harbor-south", "blackwater"]
+      "neighbours": [
+        "blackwater",
+        "foundry",
+        "glasshouse",
+        "harbor-north",
+        "university-district"
+      ]
+    },
+    "harbor-north": {
+      "id": "harbor-north",
+      "bounds": {
+        "x": 3600,
+        "y": 1980,
+        "w": 1200,
+        "h": 900
+      },
+      "center": {
+        "x": 4500,
+        "y": 2390
+      },
+      "trafficDensity": 0.76,
+      "policePresence": 0.48,
+      "neighbours": [
+        "canal-east",
+        "harbor-south",
+        "university-district"
+      ]
     },
     "blackwater": {
       "id": "blackwater",
-      "bounds": { "x": 0, "y": 1136, "w": 2184, "h": 304 },
-      "center": { "x": 1092, "y": 1288 },
+      "bounds": {
+        "x": 0,
+        "y": 2880,
+        "w": 3600,
+        "h": 720
+      },
+      "center": {
+        "x": 2340,
+        "y": 3340
+      },
       "trafficDensity": 0.78,
       "policePresence": 0.46,
-      "neighbours": ["canal-west", "canal-east", "harbor-south"]
+      "neighbours": [
+        "canal-east",
+        "canal-west",
+        "foundry",
+        "harbor-south"
+      ]
     },
     "harbor-south": {
       "id": "harbor-south",
-      "bounds": { "x": 2184, "y": 704, "w": 216, "h": 736 },
-      "center": { "x": 2292, "y": 1072 },
+      "bounds": {
+        "x": 3600,
+        "y": 2880,
+        "w": 1200,
+        "h": 720
+      },
+      "center": {
+        "x": 4320,
+        "y": 3340
+      },
       "trafficDensity": 0.86,
       "policePresence": 0.38,
-      "neighbours": ["harbor-north", "canal-east", "blackwater"]
+      "neighbours": [
+        "blackwater",
+        "harbor-north"
+      ]
     }
   },
   "edgeIds": [
-    "old-quarter:glasshouse",
-    "old-quarter:canal-west",
-    "glasshouse:foundry",
-    "glasshouse:canal-east",
-    "foundry:harbor-north",
-    "foundry:canal-east",
+    "blackwater:canal-east",
+    "blackwater:canal-west",
+    "blackwater:foundry",
+    "blackwater:harbor-south",
+    "canal-east:foundry",
+    "canal-east:glasshouse",
+    "canal-east:harbor-north",
+    "canal-east:university-district",
+    "canal-west:foundry",
+    "canal-west:west-market",
+    "cathedral-hill:civic-center",
+    "cathedral-hill:north-harbor",
+    "cathedral-hill:university-district",
+    "civic-center:glasshouse",
+    "civic-center:hospital-district",
+    "civic-center:old-quarter",
+    "foundry:old-quarter",
+    "glasshouse:old-quarter",
+    "glasshouse:university-district",
     "harbor-north:harbor-south",
-    "canal-west:canal-east",
-    "canal-west:blackwater",
-    "canal-east:harbor-south",
-    "canal-east:blackwater",
-    "blackwater:harbor-south"
+    "harbor-north:university-district",
+    "hospital-district:west-market",
+    "north-harbor:university-district",
+    "old-quarter:west-market"
   ],
   "edges": {
-    "old-quarter:glasshouse": { "id": "old-quarter:glasshouse", "a": "old-quarter", "b": "glasshouse", "travelSeconds": 7 },
-    "old-quarter:canal-west": { "id": "old-quarter:canal-west", "a": "old-quarter", "b": "canal-west", "travelSeconds": 6 },
-    "glasshouse:foundry": { "id": "glasshouse:foundry", "a": "glasshouse", "b": "foundry", "travelSeconds": 6 },
-    "glasshouse:canal-east": { "id": "glasshouse:canal-east", "a": "glasshouse", "b": "canal-east", "travelSeconds": 7 },
-    "foundry:harbor-north": { "id": "foundry:harbor-north", "a": "foundry", "b": "harbor-north", "travelSeconds": 4 },
-    "foundry:canal-east": { "id": "foundry:canal-east", "a": "foundry", "b": "canal-east", "travelSeconds": 6 },
-    "harbor-north:harbor-south": { "id": "harbor-north:harbor-south", "a": "harbor-north", "b": "harbor-south", "travelSeconds": 8 },
-    "canal-west:canal-east": { "id": "canal-west:canal-east", "a": "canal-west", "b": "canal-east", "travelSeconds": 8 },
-    "canal-west:blackwater": { "id": "canal-west:blackwater", "a": "canal-west", "b": "blackwater", "travelSeconds": 5 },
-    "canal-east:harbor-south": { "id": "canal-east:harbor-south", "a": "canal-east", "b": "harbor-south", "travelSeconds": 6 },
-    "canal-east:blackwater": { "id": "canal-east:blackwater", "a": "canal-east", "b": "blackwater", "travelSeconds": 5 },
-    "blackwater:harbor-south": { "id": "blackwater:harbor-south", "a": "blackwater", "b": "harbor-south", "travelSeconds": 8 }
+    "blackwater:canal-east": {
+      "id": "blackwater:canal-east",
+      "a": "blackwater",
+      "b": "canal-east",
+      "travelSeconds": 16.72,
+      "length": 2508,
+      "portal": {
+        "x": 3540,
+        "y": 2880
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:h:2340:3340:3540:3340",
+        "road-edge:v:3540:3052:3540:3340",
+        "road-edge:v:3540:2820:3540:3052",
+        "road-edge:v:3540:2572:3540:2820",
+        "road-edge:h:2912:2572:3540:2572"
+      ]
+    },
+    "blackwater:canal-west": {
+      "id": "blackwater:canal-west",
+      "a": "blackwater",
+      "b": "canal-west",
+      "travelSeconds": 14.05,
+      "length": 2108,
+      "portal": {
+        "x": 1140,
+        "y": 2880
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:h:1140:3340:2340:3340",
+        "road-edge:v:1140:3052:1140:3340",
+        "road-edge:v:1140:2820:1140:3052",
+        "road-edge:h:1140:2820:752:2820"
+      ]
+    },
+    "blackwater:foundry": {
+      "id": "blackwater:foundry",
+      "a": "blackwater",
+      "b": "foundry",
+      "travelSeconds": 10.43,
+      "length": 1564,
+      "portal": {
+        "x": 2340,
+        "y": 2880
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:v:2340:3052:2340:3340",
+        "road-edge:v:2340:2820:2340:3052",
+        "road-edge:v:2340:2572:2340:2820",
+        "road-edge:v:2340:2346:2340:2572",
+        "road-edge:h:1770:2346:2340:2346"
+      ]
+    },
+    "blackwater:harbor-south": {
+      "id": "blackwater:harbor-south",
+      "a": "blackwater",
+      "b": "harbor-south",
+      "travelSeconds": 13.2,
+      "length": 1980,
+      "portal": {
+        "x": 3600,
+        "y": 3340
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:h:2340:3340:3540:3340",
+        "road-edge:h:3540:3340:4500:3340"
+      ]
+    },
+    "canal-east:foundry": {
+      "id": "canal-east:foundry",
+      "a": "canal-east",
+      "b": "foundry",
+      "travelSeconds": 13.01,
+      "length": 1952,
+      "portal": {
+        "x": 2400,
+        "y": 2820
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:h:2912:2572:3540:2572",
+        "road-edge:v:2912:2572:2912:2820",
+        "road-edge:h:2340:2820:2912:2820",
+        "road-edge:v:2340:2572:2340:2820",
+        "road-edge:v:2340:2346:2340:2572",
+        "road-edge:h:1770:2346:2340:2346"
+      ]
+    },
+    "canal-east:glasshouse": {
+      "id": "canal-east:glasshouse",
+      "a": "canal-east",
+      "b": "glasshouse",
+      "travelSeconds": 5.21,
+      "length": 782,
+      "portal": {
+        "x": 2912,
+        "y": 1980
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:h:2912:2572:3540:2572",
+        "road-edge:v:2912:2212:2912:2572",
+        "road-edge:v:2912:1920:2912:2212",
+        "road-edge:h:2912:1920:2954:1920"
+      ]
+    },
+    "canal-east:harbor-north": {
+      "id": "canal-east:harbor-north",
+      "a": "canal-east",
+      "b": "harbor-north",
+      "travelSeconds": 14.52,
+      "length": 2178,
+      "portal": {
+        "x": 3600,
+        "y": 2820
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:h:2912:2572:3540:2572",
+        "road-edge:v:3540:2572:3540:2820",
+        "road-edge:h:3540:2820:4112:2820",
+        "road-edge:h:4112:2820:4500:2820",
+        "road-edge:v:4500:2390:4500:2820"
+      ]
+    },
+    "canal-east:university-district": {
+      "id": "canal-east:university-district",
+      "a": "canal-east",
+      "b": "university-district",
+      "travelSeconds": 14.8,
+      "length": 2220,
+      "portal": {
+        "x": 3540,
+        "y": 1980
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:h:2912:2572:3540:2572",
+        "road-edge:v:3540:2390:3540:2572",
+        "road-edge:v:3540:2212:3540:2390",
+        "road-edge:v:3540:1920:3540:2212",
+        "road-edge:v:3540:1636:3540:1920",
+        "road-edge:h:3540:1636:4284:1636"
+      ]
+    },
+    "canal-west:foundry": {
+      "id": "canal-west:foundry",
+      "a": "canal-west",
+      "b": "foundry",
+      "travelSeconds": 10.69,
+      "length": 1604,
+      "portal": {
+        "x": 1200,
+        "y": 2820
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:h:1140:2820:752:2820",
+        "road-edge:h:1140:2820:1680:2820",
+        "road-edge:v:1680:2572:1680:2820",
+        "road-edge:v:1680:2290:1680:2572",
+        "road-edge:h:1680:2290:1770:2290",
+        "road-edge:v:1770:2290:1770:2346"
+      ]
+    },
+    "canal-west:west-market": {
+      "id": "canal-west:west-market",
+      "a": "canal-west",
+      "b": "west-market",
+      "travelSeconds": 12.49,
+      "length": 1874,
+      "portal": {
+        "x": 1140,
+        "y": 1980
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:h:1140:2820:752:2820",
+        "road-edge:v:1140:2572:1140:2820",
+        "road-edge:v:1140:2212:1140:2572",
+        "road-edge:v:1140:1920:1140:2212",
+        "road-edge:h:1140:1920:752:1920",
+        "road-edge:h:554:1920:752:1920"
+      ]
+    },
+    "cathedral-hill:civic-center": {
+      "id": "cathedral-hill:civic-center",
+      "a": "cathedral-hill",
+      "b": "civic-center",
+      "travelSeconds": 10.93,
+      "length": 1640,
+      "portal": {
+        "x": 3000,
+        "y": 960
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:v:3540:740:3540:760",
+        "road-edge:v:3540:760:3540:960",
+        "road-edge:h:2954:960:3540:960",
+        "road-edge:h:2340:960:2954:960",
+        "road-edge:v:2340:740:2340:960"
+      ]
+    },
+    "cathedral-hill:north-harbor": {
+      "id": "cathedral-hill:north-harbor",
+      "a": "cathedral-hill",
+      "b": "north-harbor",
+      "travelSeconds": 7.87,
+      "length": 1180,
+      "portal": {
+        "x": 4320,
+        "y": 960
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:v:3540:740:3540:760",
+        "road-edge:v:3540:760:3540:960",
+        "road-edge:h:3540:960:4500:960"
+      ]
+    },
+    "cathedral-hill:university-district": {
+      "id": "cathedral-hill:university-district",
+      "a": "cathedral-hill",
+      "b": "university-district",
+      "travelSeconds": 10.93,
+      "length": 1640,
+      "portal": {
+        "x": 3540,
+        "y": 1020
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:v:3540:740:3540:760",
+        "road-edge:v:3540:760:3540:960",
+        "road-edge:v:3540:1156:3540:960",
+        "road-edge:v:3540:1156:3540:1636",
+        "road-edge:h:3540:1636:4284:1636"
+      ]
+    },
+    "civic-center:glasshouse": {
+      "id": "civic-center:glasshouse",
+      "a": "civic-center",
+      "b": "glasshouse",
+      "travelSeconds": 11.96,
+      "length": 1794,
+      "portal": {
+        "x": 2954,
+        "y": 1020
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:v:2340:740:2340:960",
+        "road-edge:h:2340:960:2954:960",
+        "road-edge:v:2954:1920:2954:960"
+      ]
+    },
+    "civic-center:hospital-district": {
+      "id": "civic-center:hospital-district",
+      "a": "civic-center",
+      "b": "hospital-district",
+      "travelSeconds": 14.24,
+      "length": 2136,
+      "portal": {
+        "x": 1200,
+        "y": 960
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:v:2340:740:2340:960",
+        "road-edge:h:1754:960:2340:960",
+        "road-edge:h:1140:960:1754:960",
+        "road-edge:v:1140:466:1140:960",
+        "road-edge:h:1140:466:918:466"
+      ]
+    },
+    "civic-center:old-quarter": {
+      "id": "civic-center:old-quarter",
+      "a": "civic-center",
+      "b": "old-quarter",
+      "travelSeconds": 9.47,
+      "length": 1420,
+      "portal": {
+        "x": 2340,
+        "y": 1020
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:v:2340:740:2340:960",
+        "road-edge:v:2340:1574:2340:960",
+        "road-edge:h:1754:1574:2340:1574"
+      ]
+    },
+    "foundry:old-quarter": {
+      "id": "foundry:old-quarter",
+      "a": "foundry",
+      "b": "old-quarter",
+      "travelSeconds": 6.24,
+      "length": 936,
+      "portal": {
+        "x": 1680,
+        "y": 1980
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:v:1770:2290:1770:2346",
+        "road-edge:v:1770:2212:1770:2290",
+        "road-edge:h:1680:2212:1770:2212",
+        "road-edge:v:1680:1920:1680:2212",
+        "road-edge:h:1680:1920:1754:1920",
+        "road-edge:v:1754:1574:1754:1920"
+      ]
+    },
+    "glasshouse:old-quarter": {
+      "id": "glasshouse:old-quarter",
+      "a": "glasshouse",
+      "b": "old-quarter",
+      "travelSeconds": 10.31,
+      "length": 1546,
+      "portal": {
+        "x": 2400,
+        "y": 1920
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:h:2912:1920:2954:1920",
+        "road-edge:h:2340:1920:2912:1920",
+        "road-edge:h:1754:1920:2340:1920",
+        "road-edge:v:1754:1574:1754:1920"
+      ]
+    },
+    "glasshouse:university-district": {
+      "id": "glasshouse:university-district",
+      "a": "glasshouse",
+      "b": "university-district",
+      "travelSeconds": 10.76,
+      "length": 1614,
+      "portal": {
+        "x": 3480,
+        "y": 1920
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:h:2954:1920:3540:1920",
+        "road-edge:v:3540:1636:3540:1920",
+        "road-edge:h:3540:1636:4284:1636"
+      ]
+    },
+    "harbor-north:harbor-south": {
+      "id": "harbor-north:harbor-south",
+      "a": "harbor-north",
+      "b": "harbor-south",
+      "travelSeconds": 7.53,
+      "length": 1130,
+      "portal": {
+        "x": 4500,
+        "y": 2880
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:v:4500:2390:4500:2820",
+        "road-edge:v:4500:2820:4500:3052",
+        "road-edge:v:4500:3052:4500:3340",
+        "road-edge:h:3540:3340:4500:3340"
+      ]
+    },
+    "harbor-north:university-district": {
+      "id": "harbor-north:university-district",
+      "a": "harbor-north",
+      "b": "university-district",
+      "travelSeconds": 16.39,
+      "length": 2458,
+      "portal": {
+        "x": 4500,
+        "y": 1980
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:v:4500:1920:4500:2390",
+        "road-edge:h:4112:1920:4500:1920",
+        "road-edge:h:3540:1920:4112:1920",
+        "road-edge:v:3540:1636:3540:1920",
+        "road-edge:h:3540:1636:4284:1636"
+      ]
+    },
+    "hospital-district:west-market": {
+      "id": "hospital-district:west-market",
+      "a": "hospital-district",
+      "b": "west-market",
+      "travelSeconds": 15.08,
+      "length": 2262,
+      "portal": {
+        "x": 1140,
+        "y": 1020
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:h:1140:466:918:466",
+        "road-edge:v:1140:466:1140:960",
+        "road-edge:v:1140:1192:1140:960",
+        "road-edge:v:1140:1192:1140:1920",
+        "road-edge:h:1140:1920:752:1920",
+        "road-edge:h:554:1920:752:1920"
+      ]
+    },
+    "north-harbor:university-district": {
+      "id": "north-harbor:university-district",
+      "a": "north-harbor",
+      "b": "university-district",
+      "travelSeconds": 19.65,
+      "length": 2948,
+      "portal": {
+        "x": 4500,
+        "y": 1020
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:v:4500:1920:4500:960",
+        "road-edge:h:4112:1920:4500:1920",
+        "road-edge:h:3540:1920:4112:1920",
+        "road-edge:v:3540:1636:3540:1920",
+        "road-edge:h:3540:1636:4284:1636"
+      ]
+    },
+    "old-quarter:west-market": {
+      "id": "old-quarter:west-market",
+      "a": "old-quarter",
+      "b": "west-market",
+      "travelSeconds": 10.31,
+      "length": 1546,
+      "portal": {
+        "x": 1200,
+        "y": 1920
+      },
+      "sourceRoadEdgeIds": [
+        "road-edge:v:1754:1574:1754:1920",
+        "road-edge:h:1680:1920:1754:1920",
+        "road-edge:h:1140:1920:1680:1920",
+        "road-edge:h:1140:1920:752:1920",
+        "road-edge:h:554:1920:752:1920"
+      ]
+    }
   }
 }

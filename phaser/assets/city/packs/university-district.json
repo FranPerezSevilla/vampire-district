@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "id": "university-district",
+  "name": "University District",
+  "bounds": {
+    "x": 3480,
+    "y": 1020,
+    "w": 1320,
+    "h": 960
+  },
+  "visual": {
+    "paletteFamily": "academic-blue",
+    "fog": 0.2,
+    "lightWarmth": 0.5,
+    "signage": "campus-wayfinding",
+    "wetStreetReflection": 0.5
+  },
+  "audio": {
+    "ambientId": "university-after-hours",
+    "gain": 0.5,
+    "layers": [
+      "courtyard-wind",
+      "distant-students",
+      "light-traffic"
+    ]
+  },
+  "simulation": {
+    "pedestrianDensity": 0.88,
+    "trafficDensity": 0.48,
+    "policePresence": 0.42,
+    "nightlife": 0.46
+  },
+  "identityTags": [
+    "university",
+    "campus",
+    "courtyards",
+    "rooftops"
+  ],
+  "assets": {
+    "textures": [],
+    "audio": []
+  }
+}

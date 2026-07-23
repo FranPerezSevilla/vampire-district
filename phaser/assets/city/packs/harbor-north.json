@@ -1,26 +1,43 @@
 {
-  "version": 1,
+  "version": 2,
   "id": "harbor-north",
-  "name": "Harbor Approach",
-  "bounds": { "x": 2184, "y": 0, "w": 216, "h": 704 },
+  "name": "Harbor North",
+  "bounds": {
+    "x": 3600,
+    "y": 1980,
+    "w": 1200,
+    "h": 900
+  },
   "visual": {
     "paletteFamily": "cold-teal",
-    "fog": 0.36,
-    "lightWarmth": 0.24,
-    "signage": "port-authority",
-    "wetStreetReflection": 0.58
+    "fog": 0.38,
+    "lightWarmth": 0.22,
+    "signage": "port-warehouse",
+    "wetStreetReflection": 0.56
   },
   "audio": {
-    "ambientId": "harbor-approach",
-    "gain": 0.64,
-    "layers": ["ship-horns", "chain-rattle", "coastal-wind"]
+    "ambientId": "harbor-north-logistics",
+    "gain": 0.66,
+    "layers": [
+      "ship-horns",
+      "forklifts",
+      "coastal-wind"
+    ]
   },
   "simulation": {
-    "pedestrianDensity": 0.46,
-    "trafficDensity": 0.74,
-    "policePresence": 0.64,
-    "nightlife": 0.2
+    "pedestrianDensity": 0.4,
+    "trafficDensity": 0.76,
+    "policePresence": 0.48,
+    "nightlife": 0.12
   },
-  "identityTags": ["harbor", "registry", "checkpoint", "windy"],
-  "assets": { "textures": [], "audio": [] }
+  "identityTags": [
+    "harbor",
+    "warehouses",
+    "freight",
+    "windy"
+  ],
+  "assets": {
+    "textures": [],
+    "audio": []
+  }
 }

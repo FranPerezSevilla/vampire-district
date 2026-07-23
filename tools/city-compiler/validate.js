@@ -2,9 +2,11 @@ import {
   connectedComponents,
   graphEdgeCount,
   pointInRect,
+  pointInSurface,
   pointInsideWorld,
   rectInsideWorld,
   rectOverlapArea,
+  surfaceOverlapArea,
   rectsTouchOrOverlap,
   sampleSegment
 } from "./geometry.js";
@@ -27,7 +29,48 @@ function duplicateIds(items = []) {
 }
 
 function pointOnAny(point, areas = [], margin = 0.01) {
-  return areas.some(area => pointInRect(point, area, margin));
+  return areas.some(area => pointInSurface(point, area, margin));
+}
+
+function graphComponents(nodes = [], edges = []) {
+  const adjacency = new Map(nodes.map(node => [node.id, new Set()]));
+  for (const edge of edges) {
+    if (!adjacency.has(edge.from) || !adjacency.has(edge.to)) continue;
+    adjacency.get(edge.from).add(edge.to);
+    adjacency.get(edge.to).add(edge.from);
+  }
+  const unvisited = new Set(adjacency.keys());
+  const components = [];
+  while (unvisited.size) {
+    const [start] = unvisited;
+    unvisited.delete(start);
+    const queue = [start];
+    const component = [];
+    while (queue.length) {
+      const id = queue.shift();
+      component.push(id);
+      for (const neighbour of adjacency.get(id) || []) {
+        if (!unvisited.has(neighbour)) continue;
+        unvisited.delete(neighbour);
+        queue.push(neighbour);
+      }
+    }
+    components.push(component);
+  }
+  return components;
+}
+
+function crosswalkContinuations(crosswalk) {
+  if (crosswalk.orientation === "horizontal") {
+    return [
+      { x: crosswalk.x - 1, y: crosswalk.y + crosswalk.h / 2 },
+      { x: crosswalk.x + crosswalk.w + 1, y: crosswalk.y + crosswalk.h / 2 }
+    ];
+  }
+  return [
+    { x: crosswalk.x + crosswalk.w / 2, y: crosswalk.y - 1 },
+    { x: crosswalk.x + crosswalk.w / 2, y: crosswalk.y + crosswalk.h + 1 }
+  ];
 }
 
 function roofAreasFor(runtime, layer) {
@@ -52,6 +95,10 @@ export function validateCityBlueprint(blueprint) {
     blockTemplates: blueprint?.blockTemplates || [],
     landmarks: blueprint?.landmarks || [],
     roads: runtime.roads || [],
+    roadGraphNodes: runtime.roadGraphNodes || [],
+    roadGraphEdges: runtime.roadGraphEdges || [],
+    roadJunctions: runtime.roadJunctions || [],
+    roadTransitions: runtime.roadTransitions || [],
     sidewalks: runtime.sidewalks || [],
     crosswalks: runtime.crosswalks || [],
     buildings: runtime.buildings || [],
@@ -95,7 +142,7 @@ export function validateCityBlueprint(blueprint) {
 
   for (const building of collections.buildings) {
     for (const road of collections.roads) {
-      const overlap = rectOverlapArea(building, road);
+      const overlap = surfaceOverlapArea(building, road);
       if (overlap <= 0.01) continue;
       const key = `${building.id}:${road.id}`;
       const entry = issue(
@@ -108,25 +155,88 @@ export function validateCityBlueprint(blueprint) {
     }
   }
 
-  const roadTouches = (left, right) => rectsTouchOrOverlap(left, right, 4.01);
-  const roadComponents = connectedComponents(collections.roads, roadTouches);
-  if (roadComponents.length > 1) {
-    errors.push(issue("ROAD_GRAPH_DISCONNECTED", `Road graph has ${roadComponents.length} disconnected components.`, {
-      components: roadComponents.map(component => component.map(index => collections.roads[index].id))
+  const graphNodeIds = new Set(collections.roadGraphNodes.map(node => node.id));
+  for (const edge of collections.roadGraphEdges) {
+    if (!graphNodeIds.has(edge.from) || !graphNodeIds.has(edge.to)) {
+      errors.push(issue("ROAD_GRAPH_EDGE_NODE_MISSING", `${edge.id} references a missing graph node.`, { edgeId: edge.id, from: edge.from, to: edge.to }));
+      continue;
+    }
+    const from = collections.roadGraphNodes.find(node => node.id === edge.from);
+    const to = collections.roadGraphNodes.find(node => node.id === edge.to);
+    if (Math.abs(from.x - to.x) > 0.01 && Math.abs(from.y - to.y) > 0.01) {
+      errors.push(issue("ROAD_GRAPH_DIAGONAL_EDGE", `${edge.id} is not axis aligned in road graph v1.`, { edgeId: edge.id }));
+    }
+  }
+  const graphRoadComponents = graphComponents(collections.roadGraphNodes, collections.roadGraphEdges);
+  if (graphRoadComponents.length > 1) {
+    errors.push(issue("ROAD_GRAPH_DISCONNECTED", `Road graph has ${graphRoadComponents.length} disconnected components.`, {
+      components: graphRoadComponents
     }));
   }
 
-  for (const crosswalk of collections.crosswalks) {
-    if (!collections.roads.some(road => rectOverlapArea(crosswalk, road) > 0.01)) {
-      errors.push(issue("CROSSWALK_WITHOUT_ROAD", `${crosswalk.id} does not intersect a road.`, { crosswalkId: crosswalk.id }));
+  const junctionOwners = new Map();
+  for (const piece of [...collections.roadJunctions, ...collections.roadTransitions]) {
+    for (const nodeId of piece.graphNodeIds || [piece.graphNodeId]) {
+      junctionOwners.set(nodeId, (junctionOwners.get(nodeId) || 0) + 1);
+    }
+  }
+  for (const node of collections.roadGraphNodes) {
+    if (junctionOwners.get(node.id) !== 1) {
+      errors.push(issue("ROAD_NODE_JUNCTION_AUTHORITY", `${node.id} must own exactly one junction or transition piece.`, {
+        nodeId: node.id,
+        count: junctionOwners.get(node.id) || 0
+      }));
     }
   }
 
-  for (const light of collections.lights) {
+  for (let leftIndex = 0; leftIndex < collections.roads.length; leftIndex++) {
+    for (let rightIndex = leftIndex + 1; rightIndex < collections.roads.length; rightIndex++) {
+      const overlap = surfaceOverlapArea(collections.roads[leftIndex], collections.roads[rightIndex]);
+      if (overlap <= 0.01) continue;
+      errors.push(issue("ROAD_PIECE_OVERLAP", `${collections.roads[leftIndex].id} overlaps ${collections.roads[rightIndex].id}.`, {
+        leftId: collections.roads[leftIndex].id,
+        rightId: collections.roads[rightIndex].id,
+        overlap
+      }));
+    }
+  }
+
+  for (const crosswalk of collections.crosswalks) {
+    if (!collections.roads.some(road => surfaceOverlapArea(crosswalk, road) > 0.01)) {
+      errors.push(issue("CROSSWALK_WITHOUT_ROAD", `${crosswalk.id} does not intersect a road.`, { crosswalkId: crosswalk.id }));
+    }
+    if ([...collections.roadJunctions, ...collections.roadTransitions].some(piece => surfaceOverlapArea(crosswalk, piece) > 0.01)) {
+      errors.push(issue("CROSSWALK_OVER_JUNCTION", `${crosswalk.id} overlaps a junction authority surface.`, { crosswalkId: crosswalk.id }));
+    }
+    const continuations = crosswalkContinuations(crosswalk);
+    if (!continuations.every(point => pointOnAny(point, collections.sidewalks, 1.5))) {
+      errors.push(issue("CROSSWALK_WITHOUT_TWO_SIDEWALKS", `${crosswalk.id} does not connect two valid sidewalk continuations.`, {
+        crosswalkId: crosswalk.id,
+        continuations
+      }));
+    }
+  }
+
+  for (let leftIndex = 0; leftIndex < collections.lights.length; leftIndex++) {
+    const light = collections.lights[leftIndex];
     const point = { x: light.x, y: light.y };
     if (!pointInsideWorld(point, world)) errors.push(issue("LIGHT_OUT_OF_BOUNDS", `${light.id} is outside the world.`, { lightId: light.id }));
-    if (!pointOnAny(point, [...collections.sidewalks, ...collections.crosswalks], 0.5)) {
-      errors.push(issue("LIGHT_OFF_PEDESTRIAN_SURFACE", `${light.id} is not on a sidewalk or crossing.`, { lightId: light.id, point }));
+    if (!pointOnAny(point, collections.sidewalks, 0.5)) {
+      errors.push(issue("LIGHT_OFF_SIDEWALK", `${light.id} is not on a final sidewalk.`, { lightId: light.id, point }));
+    }
+    if (pointOnAny(point, collections.roads, 0.1)) {
+      errors.push(issue("LIGHT_ON_ROAD", `${light.id} overlaps the carriageway.`, { lightId: light.id, point }));
+    }
+    if (pointOnAny(point, collections.crosswalks, 0.1)) {
+      errors.push(issue("LIGHT_ON_CROSSWALK", `${light.id} overlaps a crossing.`, { lightId: light.id, point }));
+    }
+    if (pointOnAny(point, collections.buildings, 8)) {
+      errors.push(issue("LIGHT_INSIDE_BUILDING_CLEARANCE", `${light.id} overlaps a building clearance.`, { lightId: light.id, point }));
+    }
+    for (let rightIndex = leftIndex + 1; rightIndex < collections.lights.length; rightIndex++) {
+      const other = collections.lights[rightIndex];
+      const distance = Math.hypot(light.x - other.x, light.y - other.y);
+      if (distance < 100) errors.push(issue("LIGHTS_TOO_CLOSE", `${light.id} and ${other.id} are too close.`, { leftId: light.id, rightId: other.id, distance }));
     }
   }
 
@@ -210,17 +320,22 @@ export function validateCityBlueprint(blueprint) {
     if (!districtsWithRoofs.has(district.id)) warnings.push(issue("DISTRICT_WITHOUT_ROOF_GAMEPLAY", `${district.id} currently has no authored rooftop area.`, { districtId: district.id }));
   }
 
-  const roadEdges = graphEdgeCount(collections.roads, roadTouches);
+  const roadTouches = (left, right) => rectsTouchOrOverlap(left, right, 0.01);
+  const roadComponents = connectedComponents(collections.roads, roadTouches);
+  const roadEdges = collections.roadGraphEdges.length || graphEdgeCount(collections.roads, roadTouches);
   return {
     valid: errors.length === 0,
     errors,
     warnings,
     metrics: {
       worldArea: world.width * world.height,
-      roadNodes: collections.roads.length,
+      roadNodes: collections.roadGraphNodes.length || collections.roads.length,
       roadEdges,
-      roadComponents: roadComponents.length,
-      roadCycleSurplus: Math.max(0, roadEdges - collections.roads.length + roadComponents.length),
+      roadPieces: collections.roads.length,
+      roadJunctions: collections.roadJunctions.length,
+      roadTransitions: collections.roadTransitions.length,
+      roadComponents: graphRoadComponents.length || roadComponents.length,
+      roadCycleSurplus: Math.max(0, roadEdges - (collections.roadGraphNodes.length || collections.roads.length) + (graphRoadComponents.length || roadComponents.length)),
       districtCount: collections.districts.length,
       recipeCount: collections.recipes.length,
       buildingCount: collections.buildings.length,

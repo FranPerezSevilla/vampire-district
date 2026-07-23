@@ -1,8 +1,13 @@
 {
-  "version": 1,
+  "version": 2,
   "id": "old-quarter",
   "name": "Old Quarter",
-  "bounds": { "x": 0, "y": 0, "w": 960, "h": 640 },
+  "bounds": {
+    "x": 1200,
+    "y": 1020,
+    "w": 1200,
+    "h": 960
+  },
   "visual": {
     "paletteFamily": "gothic-violet",
     "fog": 0.22,
@@ -13,14 +18,26 @@
   "audio": {
     "ambientId": "old-quarter-night",
     "gain": 0.55,
-    "layers": ["distant-bells", "roof-wind", "low-traffic"]
+    "layers": [
+      "distant-bells",
+      "roof-wind",
+      "low-traffic"
+    ]
   },
   "simulation": {
     "pedestrianDensity": 0.9,
     "trafficDensity": 0.42,
-    "policePresence": 0.88,
+    "policePresence": 0.68,
     "nightlife": 0.72
   },
-  "identityTags": ["vampire-core", "civic", "rooftops", "heritage"],
-  "assets": { "textures": [], "audio": [] }
+  "identityTags": [
+    "heritage",
+    "nightlife",
+    "rooftops",
+    "alleys"
+  ],
+  "assets": {
+    "textures": [],
+    "audio": []
+  }
 }

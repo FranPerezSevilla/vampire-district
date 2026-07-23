@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "id": "civic-center",
+  "name": "Civic Centre",
+  "bounds": {
+    "x": 1200,
+    "y": 0,
+    "w": 1800,
+    "h": 1020
+  },
+  "visual": {
+    "paletteFamily": "civic-gold",
+    "fog": 0.16,
+    "lightWarmth": 0.68,
+    "signage": "civic-formal",
+    "wetStreetReflection": 0.46
+  },
+  "audio": {
+    "ambientId": "civic-centre-night",
+    "gain": 0.56,
+    "layers": [
+      "office-hum",
+      "distant-sirens",
+      "medium-traffic"
+    ]
+  },
+  "simulation": {
+    "pedestrianDensity": 0.9,
+    "trafficDensity": 0.7,
+    "policePresence": 0.92,
+    "nightlife": 0.34
+  },
+  "identityTags": [
+    "civic",
+    "police",
+    "city-hall",
+    "formal"
+  ],
+  "assets": {
+    "textures": [],
+    "audio": []
+  }
+}

@@ -21,6 +21,10 @@ test("the relocated Foundry remains playable across street, roof and sewer layer
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const vehicle = scene.vehicleSystem.vehicle("foundry:vehicle:utility");
     const generated = item => String(item?.id || "").startsWith("foundry:");
+    const generatedRoadIds = new Set(
+      district.roads.flatMap(road => road.sourceRoadIds || [])
+        .filter(id => String(id).startsWith("foundry:"))
+    );
 
     const drivable = [
       { x: 1450, y: 2186, angle: 0 },
@@ -49,7 +53,7 @@ test("the relocated Foundry remains playable across street, roof and sewer layer
 
     return {
       selected: district.SELECTED_CITY_CANDIDATE,
-      generatedRoads: district.roads.filter(generated).length,
+      generatedRoads: generatedRoadIds.size,
       generatedBuildings: district.buildings.filter(generated).length,
       generatedRoofs: Object.values(district.roofAreas).flat().filter(generated).length,
       vehicle: vehicle ? { id: vehicle.id, archetypeId: vehicle.archetypeId, x: vehicle.x, y: vehicle.y } : null,

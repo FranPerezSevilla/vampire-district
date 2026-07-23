@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "id": "north-harbor",
+  "name": "North Harbor",
+  "bounds": {
+    "x": 4320,
+    "y": 0,
+    "w": 480,
+    "h": 1020
+  },
+  "visual": {
+    "paletteFamily": "cold-teal",
+    "fog": 0.36,
+    "lightWarmth": 0.24,
+    "signage": "port-authority",
+    "wetStreetReflection": 0.58
+  },
+  "audio": {
+    "ambientId": "north-harbor-approach",
+    "gain": 0.64,
+    "layers": [
+      "ship-horns",
+      "chain-rattle",
+      "coastal-wind"
+    ]
+  },
+  "simulation": {
+    "pedestrianDensity": 0.46,
+    "trafficDensity": 0.74,
+    "policePresence": 0.64,
+    "nightlife": 0.2
+  },
+  "identityTags": [
+    "harbor",
+    "registry",
+    "checkpoint",
+    "windy"
+  ],
+  "assets": {
+    "textures": [],
+    "audio": []
+  }
+}

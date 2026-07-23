@@ -295,23 +295,26 @@ Reference: `CITY_TOPOLOGY_RESET.md`.
 
 **Status: ✅ Complete — City Topology V2**
 
-Delivered baseline: `4800 × 3600`, 14 districts, 46 connected road segments, 80 chunks, site-first hospital/police/city-hall/cathedral/university sites and topology-aware vehicle migration.
+Delivered baseline: `4800 × 3600`, 14 districts, 80 chunks, site-first hospital/police/city-hall/cathedral/university sites and topology-aware vehicle migration. Road geometry v1 adds a 114-node / 158-edge graph, 153 clipped segments and 111 non-overlapping junction authorities.
 
-### 14.1 Road/intersection authority
+### 14.1 Road/intersection authority — ✅ geometry v1
 
-- one road graph;
-- lines/polylines/curves with width/lane semantics;
-- unique T/cross/non-orthogonal/service/dead-end junction objects;
+- one explicit road graph;
+- stable edges with width/class semantics;
+- unique end/corner/T/cross/complex junction objects;
+- supported collinear width-transition polygons;
 - straight road bands terminate at junction boundaries;
-- no overlapping road/sidewalk strips inside intersections.
+- zero road-piece overlap.
 
-### 14.2 Pedestrian and visual language
+Arbitrary-angle/curved offsets remain a later geometry version.
 
-- explicit carriageway, curb, sidewalk and furniture bands;
-- connected sidewalk graph;
-- crosswalks only between valid pedestrian nodes;
-- clear visual distinction between road and sidewalk;
-- semantic lamp/bin anchors.
+### 14.2 Pedestrian and visual language — ✅
+
+- generated sidewalk strips and corner pads;
+- crosswalks outside junction centres with two sidewalk continuations;
+- regenerated pedestrian routes/navigation;
+- post-layout streetlights clear of roads, crossings and buildings;
+- runtime/compiler renderers share polygon-aware road surfaces.
 
 ### 14.3 Parcels and site-first landmarks
 
@@ -321,7 +324,7 @@ Delivered baseline: `4800 × 3600`, 14 districts, 46 connected road segments, 80
 - large landmark sites reserved before local roads/ordinary blocks;
 - police station, hospital, church, plant and similar campuses may shape curved roads.
 
-### 14.4 Regeneration and integration
+### 14.4 Regeneration and integration — ✅
 
 - regenerate or replace the Old Quarter;
 - update traffic lanes and macro edges;

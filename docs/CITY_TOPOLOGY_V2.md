@@ -54,18 +54,20 @@ No reserved site intersects a road. Ordinary generated buildings are placed only
 
 ## Road topology
 
-The city contains 46 connected road rectangles grouped into semantic corridors.
+Road geometry version 1 is generated from an explicit centreline graph rather than independent road rectangles. The graph contains 114 nodes and 158 edges. Each node or near-node cluster owns one junction surface; every straight edge is clipped to those boundaries.
 
-The current Phaser renderer still consumes axis-aligned road rectangles. A higher-level `roadCorridors` collection now preserves multi-segment topology and future curve intent:
+Current generated geometry:
 
 ```text
-geometry     polyline
-curveHint    rounded-corners | future-spline
-points       ordered centre-line points
-segments     current rendered road IDs
+straight road segments   153
+junction authority pieces 111
+transition polygons         0 currently, supported and unit-tested
+road-piece overlaps         0
 ```
 
-The hospital ring and Foundry hook are already bent multi-segment routes. A future curved-road renderer can replace their visual approximation without changing district, traffic or mission identities.
+`roadCorridors` continues to preserve semantic multi-segment routes and future curve intent. The hospital ring and Foundry hook remain named corridor identities, but runtime pieces are now generated from graph edges.
+
+See [`ROAD_GRAPH_GEOMETRY.md`](ROAD_GRAPH_GEOMETRY.md) for the complete generation and validation contract.
 
 ## Districts
 
@@ -96,26 +98,29 @@ Generated topology includes:
 
 - 93 buildings;
 - 7 reserved landmark sites;
-- 168 sidewalk bands;
-- 66 crosswalk pieces;
-- 11 connected pedestrian loops;
-- 549 streamed streetlights;
+- 114 authoritative road nodes and 158 edges;
+- 153 clipped road segments and 111 junction authority pieces;
+- 632 final sidewalk surfaces;
+- 141 crosswalk pieces outside junction centres;
+- 11 regenerated pedestrian loops;
+- 138 post-layout streetlights;
 - 28 body-hiding dumpsters;
-- 29 playable roofs;
+- 30 playable roofs;
 - 5 rooftop links;
 - 9 fire escapes;
 - 12 connected sewer tunnels;
-- 10 sewer/shaft accesses;
-- 62 navigation points.
+- 10 sewer/shaft accesses.
 
 Hard validation requires:
 
-- one connected road component;
+- one connected road graph;
+- exactly one junction/transition authority per graph node;
+- zero road-piece overlap;
 - no building/road overlap;
 - no landmark-site/road overlap;
-- every crosswalk intersects a road;
-- every pedestrian route remains on sidewalks/crosswalks;
-- every light is anchored to a pedestrian surface;
+- every crosswalk outside junction authority and connected to two sidewalks;
+- every pedestrian route remains on final sidewalk surfaces;
+- every light is placed after layout and clear of roads, crossings and buildings;
 - every rooftop route and fire escape terminates on a roof;
 - every sewer access reaches a sewer tunnel.
 

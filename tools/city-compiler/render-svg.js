@@ -13,6 +13,14 @@ function rectElement(item, attributes = "") {
   return `<rect x="${item.x}" y="${item.y}" width="${item.w}" height="${item.h}" ${attributes}/>`;
 }
 
+function surfaceElement(item, attributes = "") {
+  if (item?.geometry === "polygon" && Array.isArray(item.points) && item.points.length >= 3) {
+    const points = item.points.map(point => `${point.x},${point.y}`).join(" ");
+    return `<polygon points="${points}" ${attributes}/>`;
+  }
+  return rectElement(item, attributes);
+}
+
 function center(item) {
   return { x: Number(item.x || 0) + Number(item.w || 0) / 2, y: Number(item.y || 0) + Number(item.h || 0) / 2 };
 }
@@ -35,7 +43,10 @@ export function renderCityDebugSvg(blueprint, validation, score) {
   }).join("\n");
 
   const sidewalks = (runtime.sidewalks || []).map(item => rectElement(item, 'fill="#4c4850" opacity="0.45"')).join("\n");
-  const roads = (runtime.roads || []).map(item => rectElement(item, `fill="${item.kind === "alley" ? "#24232a" : "#17181f"}" stroke="#69636f" stroke-width="1"`)).join("\n");
+  const roads = (runtime.roads || []).map(item => surfaceElement(
+    item,
+    `fill="${item.kind === "alley" ? "#24232a" : "#17181f"}" stroke="#69636f" stroke-width="1"`
+  )).join("\n");
   const crosswalks = (runtime.crosswalks || []).map(item => rectElement(item, 'fill="#b8b2a6" opacity="0.65"')).join("\n");
   const sewers = (runtime.sewerTunnels || []).map(item => rectElement(item, 'fill="none" stroke="#487b70" stroke-width="2" stroke-dasharray="12 8" opacity="0.65"')).join("\n");
   const buildings = (runtime.buildings || []).map(item => {
@@ -49,6 +60,7 @@ export function renderCityDebugSvg(blueprint, validation, score) {
   const dumpsters = (runtime.dumpsters || []).map(item => `<rect x="${item.x - 7}" y="${item.y - 5}" width="14" height="10" fill="#69806b" stroke="#c6e6ca" stroke-width="1"/>`).join("\n");
   const vehicles = (runtime.vehicles || []).map(item => `<circle cx="${item.x}" cy="${item.y}" r="8" fill="#e15e66" stroke="#ffffff" stroke-width="2"/>`).join("\n");
   const landmarks = (blueprint.landmarks || []).map(item => `<circle cx="${item.position.x}" cy="${item.position.y}" r="15" fill="none" stroke="#ffb02e" stroke-width="4"/><text x="${item.position.x + 18}" y="${item.position.y - 12}" class="landmark-label">${escapeXml(item.id)}</text>`).join("\n");
+  const roadGraphNodes = (runtime.roadGraphNodes || []).map(item => `<circle cx="${item.x}" cy="${item.y}" r="3" fill="#61d7ff" opacity="0.75"/>`).join("\n");
 
   const componentRows = Object.entries(score.components || {}).map(([key, value], index) => `<text x="${legendX}" y="${154 + index * 25}" class="legend">${escapeXml(key)}: ${value}</text>`).join("\n");
   const warningRows = (validation.warnings || []).slice(0, 10).map((item, index) => `<text x="${legendX}" y="${365 + index * 20}" class="warning">• ${escapeXml(item.code)}</text>`).join("\n");
@@ -69,6 +81,7 @@ export function renderCityDebugSvg(blueprint, validation, score) {
   <g id="sewers">${sewers}</g>
   <g id="sidewalks">${sidewalks}</g>
   <g id="roads">${roads}</g>
+  <g id="road-graph-nodes">${roadGraphNodes}</g>
   <g id="crosswalks">${crosswalks}</g>
   <g id="buildings">${buildings}</g>
   <g id="pedestrian-routes">${pedestrianRoutes}</g>

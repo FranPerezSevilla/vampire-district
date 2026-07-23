@@ -23,7 +23,7 @@ Normal mode:
 - loads/saves the persistent campaign;
 - prunes mission records/checkpoints absent from the registered definitions;
 - skips campaign entry, mission board and authored tutorial;
-- starts on street at `438, 326`;
+- starts on street at `1540, 1515`;
 - keeps wallet, reputation, vehicles, maintenance and world persistence active.
 
 ### Exploration mode
@@ -110,22 +110,20 @@ There is currently no authored production campaign, so mission-specific Chromium
 
 `test:browser:golden` temporarily runs the persistent free-roam baseline. New narrative golden paths return only after new missions are authored against stable semantic city sites.
 
-## City topology test direction
+## City topology regression coverage
 
-The next topology phase should add pure compiler/geometry tests for:
+Implemented pure compiler/geometry coverage protects:
 
-- road graph connectivity;
-- unique intersection generation;
-- road/curb/sidewalk offset geometry;
-- crosswalk endpoints on valid pedestrian nodes;
-- building/site setbacks;
-- semantic street-furniture anchors;
-- polygonal/compound landmarks;
-- curved/polyline roads;
-- no road/building or duplicate-intersection overlap;
-- traffic/pedestrian/police route compatibility.
+- graph derivation and connectivity;
+- exactly one junction authority per node;
+- clipped corner, T and crossroad geometry;
+- tapered mixed-width transitions;
+- zero road-piece overlap;
+- crosswalk endpoints on two valid sidewalks and outside junction centres;
+- post-layout lights clear of roads, crossings and buildings;
+- deterministic full-city regeneration.
 
-Browser coverage should include a visual/debug snapshot plus real traversal/driving across representative straight, curved, T, cross and landmark-site areas.
+`tests/browser/road-graph-geometry.spec.js` repeats the production-data checks inside the running browser build.
 
 ## Rules for new tests
 

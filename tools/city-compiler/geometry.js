@@ -94,3 +94,134 @@ export function coefficientOfVariation(values = []) {
   const variance = finite.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / finite.length;
   return Math.sqrt(variance) / Math.abs(mean);
 }
+
+export function surfacePoints(surface) {
+  if (Array.isArray(surface?.points) && surface.points.length >= 3) {
+    return surface.points.map(point => ({ x: Number(point.x) || 0, y: Number(point.y) || 0 }));
+  }
+  return [
+    { x: Number(surface?.x || 0), y: Number(surface?.y || 0) },
+    { x: right(surface), y: Number(surface?.y || 0) },
+    { x: right(surface), y: bottom(surface) },
+    { x: Number(surface?.x || 0), y: bottom(surface) }
+  ];
+}
+
+export function pointInPolygon(point, polygon = []) {
+  const x = Number(point?.x || 0);
+  const y = Number(point?.y || 0);
+  let inside = false;
+  for (let current = 0, previous = polygon.length - 1; current < polygon.length; previous = current++) {
+    const xi = Number(polygon[current]?.x || 0);
+    const yi = Number(polygon[current]?.y || 0);
+    const xj = Number(polygon[previous]?.x || 0);
+    const yj = Number(polygon[previous]?.y || 0);
+    const crosses = ((yi > y) !== (yj > y))
+      && x < ((xj - xi) * (y - yi)) / ((yj - yi) || Number.EPSILON) + xi;
+    if (crosses) inside = !inside;
+  }
+  return inside;
+}
+
+export function pointInSurface(point, surface, margin = 0) {
+  if (!Array.isArray(surface?.points) || surface.points.length < 3) return pointInRect(point, surface, margin);
+  if (margin > 0) {
+    const bounds = {
+      x: Number(surface.x || 0) - margin,
+      y: Number(surface.y || 0) - margin,
+      w: Number(surface.w || 0) + margin * 2,
+      h: Number(surface.h || 0) + margin * 2
+    };
+    if (!pointInRect(point, bounds)) return false;
+  }
+  return pointInPolygon(point, surface.points);
+}
+
+export function polygonArea(points = []) {
+  let area = 0;
+  for (let index = 0; index < points.length; index++) {
+    const current = points[index];
+    const next = points[(index + 1) % points.length];
+    area += Number(current.x || 0) * Number(next.y || 0) - Number(next.x || 0) * Number(current.y || 0);
+  }
+  return Math.abs(area) / 2;
+}
+
+function signedPolygonArea(points = []) {
+  let area = 0;
+  for (let index = 0; index < points.length; index++) {
+    const current = points[index];
+    const next = points[(index + 1) % points.length];
+    area += Number(current.x || 0) * Number(next.y || 0) - Number(next.x || 0) * Number(current.y || 0);
+  }
+  return area / 2;
+}
+
+function insideHalfPlane(point, start, end, orientation) {
+  const cross = (Number(end.x) - Number(start.x)) * (Number(point.y) - Number(start.y))
+    - (Number(end.y) - Number(start.y)) * (Number(point.x) - Number(start.x));
+  return orientation >= 0 ? cross >= -1e-9 : cross <= 1e-9;
+}
+
+function lineIntersection(segmentStart, segmentEnd, clipStart, clipEnd) {
+  const x1 = Number(segmentStart.x);
+  const y1 = Number(segmentStart.y);
+  const x2 = Number(segmentEnd.x);
+  const y2 = Number(segmentEnd.y);
+  const x3 = Number(clipStart.x);
+  const y3 = Number(clipStart.y);
+  const x4 = Number(clipEnd.x);
+  const y4 = Number(clipEnd.y);
+  const denominator = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  if (Math.abs(denominator) < 1e-9) return { x: x2, y: y2 };
+  const determinantA = x1 * y2 - y1 * x2;
+  const determinantB = x3 * y4 - y3 * x4;
+  return {
+    x: (determinantA * (x3 - x4) - (x1 - x2) * determinantB) / denominator,
+    y: (determinantA * (y3 - y4) - (y1 - y2) * determinantB) / denominator
+  };
+}
+
+export function convexPolygonIntersection(subject = [], clip = []) {
+  if (subject.length < 3 || clip.length < 3) return [];
+  let output = subject.map(point => ({ x: Number(point.x), y: Number(point.y) }));
+  const orientation = Math.sign(signedPolygonArea(clip)) || 1;
+  for (let clipIndex = 0; clipIndex < clip.length; clipIndex++) {
+    const clipStart = clip[clipIndex];
+    const clipEnd = clip[(clipIndex + 1) % clip.length];
+    const input = output;
+    output = [];
+    if (!input.length) break;
+    let previous = input[input.length - 1];
+    for (const current of input) {
+      const currentInside = insideHalfPlane(current, clipStart, clipEnd, orientation);
+      const previousInside = insideHalfPlane(previous, clipStart, clipEnd, orientation);
+      if (currentInside) {
+        if (!previousInside) output.push(lineIntersection(previous, current, clipStart, clipEnd));
+        output.push(current);
+      } else if (previousInside) {
+        output.push(lineIntersection(previous, current, clipStart, clipEnd));
+      }
+      previous = current;
+    }
+  }
+  return output;
+}
+
+export function surfaceOverlapArea(left, rightValue) {
+  const leftBounds = {
+    x: Number(left?.x || 0),
+    y: Number(left?.y || 0),
+    w: Number(left?.w || 0),
+    h: Number(left?.h || 0)
+  };
+  const rightBounds = {
+    x: Number(rightValue?.x || 0),
+    y: Number(rightValue?.y || 0),
+    w: Number(rightValue?.w || 0),
+    h: Number(rightValue?.h || 0)
+  };
+  if (rectOverlapArea(leftBounds, rightBounds) <= 0) return 0;
+  if (!Array.isArray(left?.points) && !Array.isArray(rightValue?.points)) return rectOverlapArea(leftBounds, rightBounds);
+  return polygonArea(convexPolygonIntersection(surfacePoints(left), surfacePoints(rightValue)));
+}

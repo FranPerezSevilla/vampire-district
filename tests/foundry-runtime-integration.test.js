@@ -22,7 +22,12 @@ const generated = items => items.filter(item => String(item?.id || "").startsWit
 
 test("Foundry identity is retained inside City Topology V2 instead of owning the whole city seed", () => {
   assert.equal(SELECTED_CITY_CANDIDATE, "city-topology-v2-site-first");
-  assert.equal(generated(roads).length, 3);
+  const foundryRoadSources = new Set(roads.flatMap(item => item.sourceRoadIds || []).filter(id => id.startsWith(GENERATED_PREFIX)));
+  assert.deepEqual(foundryRoadSources, new Set([
+    "foundry:road:north-yard",
+    "foundry:road:north-drop",
+    "foundry:road:east-link"
+  ]));
   assert.equal(buildings.filter(item => item.id.startsWith("foundry:block-")).length, 5);
   assert.equal(generated(Object.values(roofAreas).flat()).length, 4);
   assert.equal(generated(rooftopRoutes).length, 3);

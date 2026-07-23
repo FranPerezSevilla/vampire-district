@@ -401,7 +401,7 @@ export class MotorizedPoliceSystem {
 
     const finalStopPhase = unit.role === MOTORIZED_POLICE_ROLES.ROADBLOCK ? 0.72 : 1;
     const candidate = advancePoliceRoute(unit, dt, {
-      speedMultiplier: 1.25 + level * 0.12,
+      speedMultiplier: 2.35 + level * 0.15,
       finalStopPhase
     });
     const point = this.unitPoint(unit, candidate);
@@ -436,7 +436,7 @@ export class MotorizedPoliceSystem {
     const separation = distance(unit, focus);
     const playerDriving = this.vehicleSystem.isDriving?.();
     const shouldDismount = unit.role === MOTORIZED_POLICE_ROLES.ROADBLOCK
-      ? separation <= this.roadblockTriggerDistance
+      ? unit.arrived || separation <= this.roadblockTriggerDistance
       : separation <= this.dismountDistance && (!playerDriving || unit.arrived || unit.blockedSeconds >= 0.65);
     if (shouldDismount || unit.blockedSeconds >= 1.15) {
       this.dismountUnit(unit.id, unit.role === MOTORIZED_POLICE_ROLES.ROADBLOCK ? "roadblock" : "intercept");

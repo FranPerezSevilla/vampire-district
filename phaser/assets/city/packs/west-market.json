@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "id": "west-market",
+  "name": "West Market",
+  "bounds": {
+    "x": 0,
+    "y": 1020,
+    "w": 1200,
+    "h": 960
+  },
+  "visual": {
+    "paletteFamily": "market-amber",
+    "fog": 0.18,
+    "lightWarmth": 0.64,
+    "signage": "market-handpainted",
+    "wetStreetReflection": 0.56
+  },
+  "audio": {
+    "ambientId": "west-market-closing",
+    "gain": 0.58,
+    "layers": [
+      "market-shutters",
+      "distant-radio",
+      "local-traffic"
+    ]
+  },
+  "simulation": {
+    "pedestrianDensity": 1.02,
+    "trafficDensity": 0.5,
+    "policePresence": 0.4,
+    "nightlife": 0.58
+  },
+  "identityTags": [
+    "market",
+    "mixed-use",
+    "alleys",
+    "crowded"
+  ],
+  "assets": {
+    "textures": [],
+    "audio": []
+  }
+}

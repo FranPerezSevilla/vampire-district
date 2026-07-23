@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "id": "hospital-district",
+  "name": "Hospital Ward",
+  "bounds": {
+    "x": 0,
+    "y": 0,
+    "w": 1200,
+    "h": 1020
+  },
+  "visual": {
+    "paletteFamily": "clinical-amber",
+    "fog": 0.2,
+    "lightWarmth": 0.7,
+    "signage": "hospital-wayfinding",
+    "wetStreetReflection": 0.42
+  },
+  "audio": {
+    "ambientId": "hospital-night",
+    "gain": 0.58,
+    "layers": [
+      "ventilation-hum",
+      "distant-sirens",
+      "ambulance-bay"
+    ]
+  },
+  "simulation": {
+    "pedestrianDensity": 0.82,
+    "trafficDensity": 0.64,
+    "policePresence": 0.76,
+    "nightlife": 0.12
+  },
+  "identityTags": [
+    "hospital",
+    "civic",
+    "emergency",
+    "campus"
+  ],
+  "assets": {
+    "textures": [],
+    "audio": []
+  }
+}

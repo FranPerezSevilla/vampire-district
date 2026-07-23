@@ -28,6 +28,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Motorized police](MOTORIZED_POLICE.md) — wanted-level cruiser routing, partial roadblocks, officer reservation and foot-AI transfer.
 - [Testing strategy](TESTING_STRATEGY.md) — normal/explore/scenario profiles, focused browser loops and parallel PR checks.
 - [City Topology V2](CITY_TOPOLOGY_V2.md) — five-times-area site-first city, hospital campus, new road graph and 80 streamed chunks.
+- [Road graph geometry](ROAD_GRAPH_GEOMETRY.md) — graph authority, clipped segments, junctions, transitions, crosswalks and post-layout lights.
 - [City Compiler](CITY_COMPILER.md) — deterministic city blueprints, district recipes, validation and scoring.
 - [City Compiler baseline](CITY_COMPILER_BASELINE.md) — current-city score and legacy geometry debt.
 - [Foundry pilot](CITY_COMPILER_FOUNDRY_PILOT.md) — seeded Foundry generation and candidate review.

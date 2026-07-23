@@ -1,8 +1,13 @@
 {
-  "version": 1,
+  "version": 2,
   "id": "canal-west",
   "name": "Canal West",
-  "bounds": { "x": 0, "y": 640, "w": 1032, "h": 496 },
+  "bounds": {
+    "x": 0,
+    "y": 1980,
+    "w": 1200,
+    "h": 900
+  },
   "visual": {
     "paletteFamily": "moss-blue",
     "fog": 0.26,
@@ -13,7 +18,11 @@
   "audio": {
     "ambientId": "canal-west-residential",
     "gain": 0.48,
-    "layers": ["water-flow", "distant-radio", "sparse-traffic"]
+    "layers": [
+      "water-flow",
+      "distant-radio",
+      "sparse-traffic"
+    ]
   },
   "simulation": {
     "pedestrianDensity": 0.78,
@@ -21,6 +30,14 @@
     "policePresence": 0.28,
     "nightlife": 0.32
   },
-  "identityTags": ["canal", "residential", "quiet", "dark-routes"],
-  "assets": { "textures": [], "audio": [] }
+  "identityTags": [
+    "canal",
+    "residential",
+    "quiet",
+    "dark-routes"
+  ],
+  "assets": {
+    "textures": [],
+    "audio": []
+  }
 }

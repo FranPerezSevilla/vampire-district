@@ -14,13 +14,30 @@ Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) for the project-wide map. Th
 - Playwright Chromium for boot, systems and campaign/free-roam regressions.
 - No backend dependency.
 
-Logical viewport: `960 × 640`. Current imported world: `2400 × 1440`. The game does not allocate a full-world render canvas.
+Logical viewport: `960 × 640`. Current world: `4800 × 3600`. The game does not allocate a full-world render canvas.
 
-## 1.1 City Topology V2
+## 1.1 City Topology V2 and road geometry
 
-`city-topology-v2.js` is the authoritative static geometry dataset. It exports world dimensions, semantic anchors, landmark sites, road corridors, roads, pedestrian surfaces, buildings, roofs, sewers, district zones and police topology.
+`city-road-graph-v1.js` is the authoritative road input. `generate-road-topology.js` compiles its 114 nodes and 158 edges into clipped straight segments, unique junction/transition surfaces, sidewalks, crosswalks, post-layout lights, pedestrian routes and navigation points.
 
-The runtime still renders rectangle segments, while `roadCorridors` retains ordered polyline points and curve hints. Chunk compilation produces a `10 × 8` / 80-file grid.
+`city-topology-v2.js` remains the generated runtime dataset for world dimensions, semantic anchors, landmark sites, road graph/output geometry, buildings, roofs, sewers, district zones and police topology. `ROAD_GEOMETRY_VERSION` versions the road compiler independently from campaign topology migration.
+
+The renderer accepts rectangle road segments/junctions and polygon transition pieces. `roadCorridors` retains ordered semantic polyline points and future curve hints. Chunk compilation produces a `10 × 8` / 80-file grid.
+
+Generation order:
+
+```text
+road graph
+→ junction authority
+→ clipped segments/transitions
+→ sidewalks/crosswalks
+→ building clearance
+→ lights
+→ pedestrian routes/navigation
+→ chunks
+```
+
+See [`ROAD_GRAPH_GEOMETRY.md`](ROAD_GRAPH_GEOMETRY.md).
 
 ## 2. Top-level ownership
 
@@ -63,7 +80,7 @@ show campaign entry        false
 auto-start mission         false
 skip authored tutorial     true
 start layer                street
-spawn                      438, 326
+spawn                      1540, 1515
 ```
 
 Explore/scenario profiles remain isolated and non-persistent.
@@ -417,60 +434,36 @@ wanted 3   pursuit + one partial roadblock
 
 ## 15. Current City Compiler boundary
 
-The current runtime city is an imported comparison baseline, not protected output.
+The current city is generated and hard-valid:
 
 ```text
-protectedZones  []
-landmarks       []
+protectedZones        []
+road graph nodes      114
+road graph edges      158
+road piece overlaps     0
+building/road overlaps  0
+validation warnings     0
 ```
 
-Every district, including `old-quarter`, has `protected: false`.
+`city-road-graph-v1.js` owns road input. `city-topology-v2.js` and the 80 chunk files are generated output. Manual fixes to generated road rectangles are not authoritative.
 
-Existing building/road overlaps remain declared diagnostic debt for the imported baseline. They are not valid for generated candidates.
+## 16. Road/pedestrian/furniture authority
 
-The compiler metadata records:
+### Roads
 
-```text
-compilerStage       mission-constraints-retired
-future landmark     site-first
-```
-
-## 16. Future city-topology authority
-
-The next generator/refactor must establish one geometry authority.
-
-### Road graph
-
-Roads are graph edges represented by lines/polylines/curves with width and lane metadata.
-
-### Intersections
-
-Each junction is one unique object. Straight-road curb/sidewalk bands terminate at its boundary rather than being overdrawn through it.
+Edges own centreline connectivity and width. Nodes own intersection classification. Compiled junction/transition surfaces own the centre; clipped edge segments own approaches.
 
 ### Pedestrian network
 
-Sidewalks are connected graph edges. A crosswalk is valid only when it connects two pedestrian nodes across a real carriageway.
-
-### Parcels/buildings
-
-Ordinary buildings occupy validated polygonal parcels with setbacks from carriageway, sidewalk and intersection clearances. Rectangle-only assumptions are forbidden.
-
-### Site-first landmarks
-
-Important places reserve complete compound/polygonal sites before local roads and ordinary blocks are finalized.
-
-Examples:
-
-- police station with secure yard/parking;
-- hospital campus with emergency/service approaches;
-- church with plaza/garden/cemetery;
-- industrial plant with loading perimeter.
-
-Roads may curve around or approach these sites.
+Sidewalk strips/pads derive from final road surfaces. Crosswalks must avoid junction authority and connect two sidewalks. Pedestrian routes and navigation points regenerate afterward.
 
 ### Street furniture
 
-Lamps/bins attach to semantic sidewalk corners, furniture bands, frontages, plazas or explicit medians. They do not spawn from arbitrary road-strip intervals inside intersections.
+Lights are post-layout objects generated only after road, pedestrian and building geometry is final. Semantic light IDs may snap to a nearby valid sidewalk location.
+
+### Remaining geometry extension
+
+Geometry v1 is axis-aligned. A future version may add arbitrary polyline offsets, rounded joins and polygonal ordinary parcels while retaining stable graph/site identities.
 
 ## 17. Authority table
 
@@ -487,10 +480,11 @@ Lamps/bins attach to semantic sidewalk corners, furniture bands, frontages, plaz
 | civilian slot | `TrafficMaterializationSystem` | campaign vehicles |
 | motorized response unit | `MotorizedPoliceSystem` | civilian traffic/campaign |
 | dismounted officer AI | `PoliceSystem` / `NpcSystem` | cruiser state |
-| imported city comparison | current district data/compiler manifest | future topology authority |
-| future roads/intersections | topology graph + junction objects | overlapping render strips |
-| future pedestrian network | connected sidewalk graph | decorative crosswalks |
-| future landmark footprint | semantic landmark site | leftover rectangular parcel |
+| road input | `city-road-graph-v1.js` nodes/edges | generated rectangle patches |
+| road output | clipped segments + junction/transition surfaces | overlapping render strips |
+| pedestrian network | generated sidewalks/crosswalks/routes | decorative crossings |
+| streetlights | post-layout graph compiler | raw road-interval placement |
+| landmark footprint | semantic landmark site | leftover rectangular parcel |
 
 ## 18. Diagnostics and testing
 
@@ -505,8 +499,11 @@ browser-systems
 browser-campaign
 ```
 
-Reset coverage verifies:
+Current coverage verifies:
 
+- road graph connectivity, junction authority and zero overlap;
+- valid crosswalk continuations and post-layout light clearances;
+- deterministic 80-chunk regeneration;
 - zero production definitions;
 - explicit archived definitions still exercise the generic runner;
 - old-save mission pruning without cash loss;
@@ -521,12 +518,10 @@ Mission-specific Chromium golden paths were deleted because the contracts are no
 
 Current constraints:
 
-- imported city still contains overlap/readability debt;
-- lanes, pedestrian routes and chunks depend on current authored geometry;
-- garage and other services still use raw coordinates;
-- curved-road offset geometry does not exist yet;
+- geometry v1 accepts axis-aligned edges only;
+- arbitrary curved offsets and rounded carriageway joins are not implemented;
+- ordinary parcel/building bounds remain rectangular at runtime;
+- graph changes require atomic regeneration of pedestrian routes and chunks;
 - no production missions are registered.
 
-Next extension: **City Topology & Readability**.
-
-It must introduce unique intersections, explicit road/curb/sidewalk geometry, connected pedestrian routes, valid crosswalks, setbacks, semantic furniture anchors, site-first landmarks and curved/polyline streets before factions or new missions are authored.
+Next product phase: **original factions and territory**. Future geometry versions must preserve semantic sites, graph identities and the hard overlap/continuation/furniture validation introduced here.

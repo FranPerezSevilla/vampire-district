@@ -1,72 +1,346 @@
 {
-  "schemaVersion": 1,
-  "version": 1,
-  "id": "bloodnight-district-packs",
+  "schemaVersion": 2,
+  "version": 2,
+  "id": "bloodnight-district-packs-v2",
+  "chunkSize": 512,
+  "world": {
+    "width": 4800,
+    "height": 3600
+  },
   "packIds": [
+    "hospital-district",
+    "civic-center",
+    "cathedral-hill",
+    "north-harbor",
+    "west-market",
     "old-quarter",
     "glasshouse",
-    "foundry",
-    "harbor-north",
+    "university-district",
     "canal-west",
+    "foundry",
     "canal-east",
+    "harbor-north",
     "blackwater",
     "harbor-south"
   ],
   "packs": {
+    "hospital-district": {
+      "id": "hospital-district",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "w": 1200,
+        "h": 1020
+      },
+      "chunkIds": [
+        "0:0",
+        "1:0",
+        "2:0",
+        "0:1",
+        "1:1",
+        "2:1"
+      ],
+      "priority": 21,
+      "file": "hospital-district.json"
+    },
+    "civic-center": {
+      "id": "civic-center",
+      "bounds": {
+        "x": 1200,
+        "y": 0,
+        "w": 1800,
+        "h": 1020
+      },
+      "chunkIds": [
+        "2:0",
+        "3:0",
+        "4:0",
+        "5:0",
+        "2:1",
+        "3:1",
+        "4:1",
+        "5:1"
+      ],
+      "priority": 23,
+      "file": "civic-center.json"
+    },
+    "cathedral-hill": {
+      "id": "cathedral-hill",
+      "bounds": {
+        "x": 3000,
+        "y": 0,
+        "w": 1320,
+        "h": 1020
+      },
+      "chunkIds": [
+        "5:0",
+        "6:0",
+        "7:0",
+        "8:0",
+        "5:1",
+        "6:1",
+        "7:1",
+        "8:1"
+      ],
+      "priority": 18,
+      "file": "cathedral-hill.json"
+    },
+    "north-harbor": {
+      "id": "north-harbor",
+      "bounds": {
+        "x": 4320,
+        "y": 0,
+        "w": 480,
+        "h": 1020
+      },
+      "chunkIds": [
+        "8:0",
+        "9:0",
+        "8:1",
+        "9:1"
+      ],
+      "priority": 20,
+      "file": "north-harbor.json"
+    },
+    "west-market": {
+      "id": "west-market",
+      "bounds": {
+        "x": 0,
+        "y": 1020,
+        "w": 1200,
+        "h": 960
+      },
+      "chunkIds": [
+        "0:1",
+        "1:1",
+        "2:1",
+        "0:2",
+        "1:2",
+        "2:2",
+        "0:3",
+        "1:3",
+        "2:3"
+      ],
+      "priority": 17,
+      "file": "west-market.json"
+    },
     "old-quarter": {
       "id": "old-quarter",
-      "bounds": { "x": 0, "y": 0, "w": 960, "h": 640 },
-      "chunkIds": ["0:0", "1:0", "0:1", "1:1"],
-      "priority": 20,
+      "bounds": {
+        "x": 1200,
+        "y": 1020,
+        "w": 1200,
+        "h": 960
+      },
+      "chunkIds": [
+        "2:1",
+        "3:1",
+        "4:1",
+        "2:2",
+        "3:2",
+        "4:2",
+        "2:3",
+        "3:3",
+        "4:3"
+      ],
+      "priority": 19,
       "file": "old-quarter.json"
     },
     "glasshouse": {
       "id": "glasshouse",
-      "bounds": { "x": 960, "y": 0, "w": 680, "h": 704 },
-      "chunkIds": ["1:0", "2:0", "3:0", "1:1", "2:1", "3:1"],
-      "priority": 10,
+      "bounds": {
+        "x": 2400,
+        "y": 1020,
+        "w": 1080,
+        "h": 960
+      },
+      "chunkIds": [
+        "4:1",
+        "5:1",
+        "6:1",
+        "4:2",
+        "5:2",
+        "6:2",
+        "4:3",
+        "5:3",
+        "6:3"
+      ],
+      "priority": 19,
       "file": "glasshouse.json"
     },
-    "foundry": {
-      "id": "foundry",
-      "bounds": { "x": 1640, "y": 0, "w": 544, "h": 704 },
-      "chunkIds": ["3:0", "4:0", "3:1", "4:1"],
-      "priority": 20,
-      "file": "foundry.json"
-    },
-    "harbor-north": {
-      "id": "harbor-north",
-      "bounds": { "x": 2184, "y": 0, "w": 216, "h": 704 },
-      "chunkIds": ["4:0", "4:1"],
-      "priority": 30,
-      "file": "harbor-north.json"
+    "university-district": {
+      "id": "university-district",
+      "bounds": {
+        "x": 3480,
+        "y": 1020,
+        "w": 1320,
+        "h": 960
+      },
+      "chunkIds": [
+        "6:1",
+        "7:1",
+        "8:1",
+        "9:1",
+        "6:2",
+        "7:2",
+        "8:2",
+        "9:2",
+        "6:3",
+        "7:3",
+        "8:3",
+        "9:3"
+      ],
+      "priority": 17,
+      "file": "university-district.json"
     },
     "canal-west": {
       "id": "canal-west",
-      "bounds": { "x": 0, "y": 640, "w": 1032, "h": 496 },
-      "chunkIds": ["0:1", "1:1", "2:1", "0:2", "1:2", "2:2"],
-      "priority": 10,
+      "bounds": {
+        "x": 0,
+        "y": 1980,
+        "w": 1200,
+        "h": 900
+      },
+      "chunkIds": [
+        "0:3",
+        "1:3",
+        "2:3",
+        "0:4",
+        "1:4",
+        "2:4",
+        "0:5",
+        "1:5",
+        "2:5"
+      ],
+      "priority": 15,
       "file": "canal-west.json"
+    },
+    "foundry": {
+      "id": "foundry",
+      "bounds": {
+        "x": 1200,
+        "y": 1980,
+        "w": 1200,
+        "h": 900
+      },
+      "chunkIds": [
+        "2:3",
+        "3:3",
+        "4:3",
+        "2:4",
+        "3:4",
+        "4:4",
+        "2:5",
+        "3:5",
+        "4:5"
+      ],
+      "priority": 17,
+      "file": "foundry.json"
     },
     "canal-east": {
       "id": "canal-east",
-      "bounds": { "x": 1032, "y": 704, "w": 1152, "h": 432 },
-      "chunkIds": ["2:1", "3:1", "4:1", "2:2", "3:2", "4:2"],
-      "priority": 10,
+      "bounds": {
+        "x": 2400,
+        "y": 1980,
+        "w": 1200,
+        "h": 900
+      },
+      "chunkIds": [
+        "4:3",
+        "5:3",
+        "6:3",
+        "7:3",
+        "4:4",
+        "5:4",
+        "6:4",
+        "7:4",
+        "4:5",
+        "5:5",
+        "6:5",
+        "7:5"
+      ],
+      "priority": 17,
       "file": "canal-east.json"
+    },
+    "harbor-north": {
+      "id": "harbor-north",
+      "bounds": {
+        "x": 3600,
+        "y": 1980,
+        "w": 1200,
+        "h": 900
+      },
+      "chunkIds": [
+        "7:3",
+        "8:3",
+        "9:3",
+        "7:4",
+        "8:4",
+        "9:4",
+        "7:5",
+        "8:5",
+        "9:5"
+      ],
+      "priority": 19,
+      "file": "harbor-north.json"
     },
     "blackwater": {
       "id": "blackwater",
-      "bounds": { "x": 0, "y": 1136, "w": 2184, "h": 304 },
-      "chunkIds": ["0:2", "1:2", "2:2", "3:2", "4:2"],
-      "priority": 20,
+      "bounds": {
+        "x": 0,
+        "y": 2880,
+        "w": 3600,
+        "h": 720
+      },
+      "chunkIds": [
+        "0:5",
+        "1:5",
+        "2:5",
+        "3:5",
+        "4:5",
+        "5:5",
+        "6:5",
+        "7:5",
+        "0:6",
+        "1:6",
+        "2:6",
+        "3:6",
+        "4:6",
+        "5:6",
+        "6:6",
+        "7:6",
+        "0:7",
+        "1:7",
+        "2:7",
+        "3:7",
+        "4:7",
+        "5:7",
+        "6:7",
+        "7:7"
+      ],
+      "priority": 19,
       "file": "blackwater.json"
     },
     "harbor-south": {
       "id": "harbor-south",
-      "bounds": { "x": 2184, "y": 704, "w": 216, "h": 736 },
-      "chunkIds": ["4:1", "4:2"],
-      "priority": 30,
+      "bounds": {
+        "x": 3600,
+        "y": 2880,
+        "w": 1200,
+        "h": 720
+      },
+      "chunkIds": [
+        "7:5",
+        "8:5",
+        "9:5",
+        "7:6",
+        "8:6",
+        "9:6",
+        "7:7",
+        "8:7",
+        "9:7"
+      ],
+      "priority": 18,
       "file": "harbor-south.json"
     }
   }
