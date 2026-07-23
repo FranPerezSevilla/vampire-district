@@ -18,6 +18,18 @@ jobs:
       - name: Checkout selected branch
         uses: actions/checkout@v4
 
+      - name: Validate output name
+        shell: bash
+        env:
+          ZIP_NAME: ${{ inputs.zip_name }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$ZIP_NAME" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo 'Error: zip_name may only contain letters, numbers, dots, underscores and hyphens.'
+            exit 1
+          fi
+
       - name: Prepare itch.io build
         shell: bash
         run: |
@@ -31,6 +43,8 @@ jobs:
             --exclude='itch-build' \
             --exclude='node_modules' \
             --exclude='*.zip' \
+            --exclude='.DS_Store' \
+            --exclude='Thumbs.db' \
             ./ itch-build/
 
           if [[ ! -f itch-build/index.html ]]; then
@@ -38,25 +52,15 @@ jobs:
             exit 1
           fi
 
-      - name: Create ZIP
-        shell: bash
-        env:
-          ZIP_NAME: ${{ inputs.zip_name }}
-        run: |
-          set -euo pipefail
-
-          if [[ ! "$ZIP_NAME" =~ ^[A-Za-z0-9._-]+$ ]]; then
-            echo 'Error: zip_name may only contain letters, numbers, dots, underscores and hyphens.'
-            exit 1
-          fi
-
-          cd itch-build
-          zip -r "../${ZIP_NAME}.zip" .
-
-      - name: Upload ZIP artifact
+      # GitHub downloads every artifact as a ZIP. Uploading the prepared
+      # directory directly makes that downloaded artifact the final itch.io ZIP,
+      # instead of creating a ZIP inside another ZIP.
+      - name: Upload final itch.io ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.zip_name }}-${{ github.ref_name }}-${{ github.run_number }}
-          path: ${{ inputs.zip_name }}.zip
+          name: ${{ inputs.zip_name }}
+          path: itch-build/
           if-no-files-found: error
+          include-hidden-files: true
+          compression-level: 9
           retention-days: 14
