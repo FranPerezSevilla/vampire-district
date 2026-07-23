@@ -2,11 +2,11 @@
 
 _Last updated: 2026-07-23_
 
-Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) first for the canonical project-wide map. This snapshot summarizes the playable state, accepted extensions and immediate priority.
+Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) first for the canonical project-wide map. This snapshot summarizes the current playable state, persistence boundaries and immediate priority.
 
 ## Product vision
 
-**Vampire District** is a pure top-down urban action, stealth and crime game with readable streets, vehicles, police pressure, short missions and systemic chaos, rebuilt around an original vampire setting.
+**Vampire District** is a pure top-down urban action, stealth and crime game with readable streets, vehicles, police pressure and systemic chaos, rebuilt around an original vampire setting.
 
 > GTA2-like city structure; Vampire District consequences.
 
@@ -31,96 +31,84 @@ Working enhanced-mortal terms:
 
 Commercial-facing names remain subject to trademark clearance.
 
-## Current accepted foundation
+## Accepted foundation
 
-Accepted `main` before Milestone 13.6:
+Accepted `main` before the topology reset:
 
 ```text
-4ebece7045e173093d5e00d76362fe9610aa4596
+b2307569d742f927a403de605ad8fe9abe1f0a9c
 ```
 
-The playable build provides:
+It provides:
 
 - Phaser 3 browser runtime and responsive quality presets;
 - street, low-rooftop, high-rooftop and sewer layers;
-- opening journalist mission and `Clean the Scene` contract;
-- campaign entry, save/load, safe checkpoints and idempotent rewards;
 - combat, draining, Hunger and powers;
-- witnesses, evidence, police escalation and helicopter pressure;
-- damageable lights, dumpsters, bodies and blood evidence;
-- `2400 × 1440` multi-ward district;
-- authored vehicles with arcade driving, hull, trunks and repair/recovery;
-- sidewalk/crossing pedestrians;
+- witnesses, evidence, wanted escalation and helicopter pressure;
+- authored persistent vehicles with arcade driving, hull and trunks;
+- refuge-garage repair and remote owned-wreck recovery;
+- `2400 × 1440` imported multi-ward city;
 - chunk streaming, district packs and dormant simulation;
-- macro traffic/police and ten pooled civilian traffic proxies;
-- following, junction priority, soft contact and graduated impacts;
-- consolidated project blueprint, snapshot, architecture and roadmap;
+- macro traffic and ten pooled civilian traffic proxies;
+- following, junction priority, physical contact and impact consequences;
+- motorized police pursuit, partial roadblock and crew transfer to foot AI;
 - unit, boot, systems and campaign Chromium validation.
 
-## Accepted vehicle-maintenance extension
+## City-topology reset candidate
 
-Milestone 12.1 adds:
+PR #32 removes the authored missions currently registered in production so their raw coordinates no longer protect the original city core.
 
-- refuge-garage full repair for owned parked vehicles;
-- tow recovery for owned wrecks;
-- campaign cash and ledger charge;
-- atomic debit plus condition update with rollback;
-- immediate campaign/live vehicle synchronization;
-- repeat-operation idempotence;
-- no service while wanted, driving or away from the garage.
-
-Detailed document: `VEHICLE_MAINTENANCE.md`.
-
-## Accepted motorized-police extension
-
-Milestone 13.6 adds:
+Current production contract:
 
 ```text
-wanted 0–1   no response cruiser
-wanted 2     one pursuit cruiser · two reserved officers
-wanted 3     pursuit cruiser + partial roadblock · four reserved officers
+registered missions     0
+active mission          none
+campaign persistence    enabled
+campaign entry modal    disabled
+mission board           disabled
+authored tutorial       disabled
+normal spawn            street 438, 326
 ```
 
-Public police totals remain:
+The archived `silenceTheJournalistMission` and `cleanTheSceneMission` definitions remain available as explicit framework examples and unit-test fixtures. They are not production content.
 
-```text
-wanted 0  → 2
-wanted 1  → 3
-wanted 2  → 5
-wanted 3  → 7
-```
+## Current playable mode
 
-The extension provides:
+Normal boot opens persistent free roam directly on the street.
 
-- deterministic macro routing over authored lanes;
-- fixed local pool of two response cruisers;
-- pursuit interception and one partial cross-lane roadblock;
-- officer reservation while crews remain inside vehicles;
-- exact-once transfer into normal foot-police AI;
-- local cruiser collision and disablement;
-- rooftop/sewer hiding while response state remains active;
-- four-second memory of an abandoned suspect vehicle;
-- effective stress diagnostics counting foot plus reserved officers.
+Available systems include:
 
-Response cruisers are transient wanted-response state, not campaign-owned vehicles or civilian traffic tokens. Detailed document: `MOTORIZED_POLICE.md`.
+- walking, aiming, combat and feeding;
+- rooftop/sewer traversal;
+- vehicles, trunks and maintenance;
+- civilian traffic and pedestrians;
+- foot and motorized police;
+- evidence, witnesses and exposure;
+- campaign wallet, reputation and save state.
 
-## Missions
+The mission panel reports that no contract is active and publishes no objective marker.
 
-Opening mission:
+## Save migration
 
-1. intro establishes the inexperienced vampire;
-2. the sire orders the journalist silenced;
-3. rooftop traversal and the blocking thug are introduced;
-4. the player downs and drains the thug;
-5. Hunger and witnesses are explained;
-6. the police informant reveals the journalist location;
-7. full controls and weapon selection unlock;
-8. the player handles the journalist;
-9. the player returns to the rooftop refuge;
-10. the sire acknowledges the result;
-11. only after dismissing dialogue does `REPORT ACCEPTED` open.
+A save containing mission IDs absent from the current production registry is cleaned on load.
 
-The refuge board exposes `Clean the Scene` through campaign definitions rather than parallel scripted progression.
+Pruned:
+
+- stale active mission ID;
+- unregistered mission records;
+- unregistered completed/failed IDs;
+- checkpoint owned by a retired mission.
+
+Preserved:
+
+- cash and ledger;
+- reputation;
+- inventory;
+- authored vehicle ownership/condition/trunks;
+- unlocked refuges;
+- unrelated world flags and persistent world state.
+
+The cleaned state is saved immediately in persistent normal mode.
 
 ## Controls
 
@@ -137,7 +125,7 @@ Wheel           cycle owned weapons
 Q               Dash
 R               Whisper
 F               Blood Sense
-M               mission panel
+M               mission panel (empty without a contract)
 H               pause/help/accessibility
 ```
 
@@ -170,52 +158,81 @@ inactive/dead → downed → being drained → staggered → attacking
 → chasing → fleeing/reporting → lured → investigating → searching → patrol/idle
 ```
 
-Police use one stable attacker and deterministic containment. Motorized crews become ordinary police NPCs after dismount and use the same search, pursuit, attack and recovery rules.
+Motorized response:
 
-## Campaign and persistence
+```text
+wanted 0–1   no response cruiser
+wanted 2     one pursuit cruiser · two reserved officers
+wanted 3     pursuit cruiser + partial roadblock · four reserved officers
+```
 
-`CampaignState` and `MissionRunner` own persistent truth:
+Total police pressure remains `2 / 3 / 5 / 7`. Reserved crews become ordinary foot-police NPCs after dismount.
 
-- active/available/completed missions;
-- latest safe checkpoint;
-- player position/layer, Hunger and loadout;
-- cash and immutable ledger;
-- reputation;
-- authored vehicle condition/trunks;
-- broken props, NPC outcomes, bodies and evidence;
-- tutorial/informant state.
+## Campaign and mission authority
 
-Vehicle maintenance composes `WalletSystem` and `CampaignVehicleSystem`. Campaign checkpoints do not restore authored vehicle condition, so an older checkpoint cannot undo paid maintenance.
+`CampaignState`, `CampaignSystem` and `MissionRunner` remain the campaign framework.
 
-Excluded from campaign persistence:
+Production default:
 
-- civilian traffic tokens/proxies;
-- motorized response cruisers and transient cruiser hull;
-- temporary wanted-response routes and suspect-car memory.
+```text
+CampaignSystem DEFAULT_DEFINITIONS = []
+```
 
-## City and streaming
+`MissionSystem` is now a generic presentation/event facade:
+
+- no automatic opening mission;
+- no journalist-specific interaction bridge;
+- no sire finale;
+- no marker or interactions without an active registered definition;
+- future explicit definitions still use `MissionRunner` as the single objective authority.
+
+Mission coordinates are no longer allowed to protect roads, districts or landmarks.
+
+## City and topology status
+
+Current imported runtime:
 
 ```text
 viewport      960 × 640
 world         2400 × 1440
 area          3,456,000 units²
-expansion     5.625× original
 ```
 
-Wards: original quarter, Glasshouse, Foundry, Canal, Blackwater and Harbor.
+The imported wards and geometry still render for comparison, but:
 
-Accepted stack:
+```text
+protected compiler zones  []
+fixed compiler landmarks  []
+```
 
-1. asynchronous chunks, activation budgets, LRU and local deltas;
-2. district packs, road prefetch and dormant pedestrians;
-3. macro graph, civilian traffic tokens and dormant police;
-4. ten pooled civilian traffic proxies on authored lanes;
-5. following, braking and junction priority;
-6. soft physical contact and lane recovery;
-7. hard/severe impact damage, exposure, heat and cooldown;
-8. two pooled motorized police cruisers using the same graph/lane assets but separate authority.
+Every district, including `old-quarter`, is replaceable.
 
-## Vehicle and response boundaries
+Visual playtesting has identified:
+
+- buildings overlapping or crowding road corridors;
+- road and sidewalk strips superposed at intersections;
+- orphan or meaningless crosswalks;
+- unclear carriageway/curb/sidewalk language;
+- lamps placed from arbitrary road intervals;
+- rectangular-grid bias around important buildings.
+
+## Locked topology direction
+
+The next city model must provide:
+
+- one authoritative road graph;
+- unique intersection geometry instead of overlapping road strips;
+- explicit carriageway, curb and connected sidewalk bands;
+- crosswalks only between valid pedestrian nodes;
+- validated setbacks for ordinary parcels/buildings;
+- semantic anchors for lamps and street furniture;
+- polygonal/compound parcels and building footprints;
+- curved/polyline streets;
+- site-first landmark campuses.
+
+Important sites such as a police station, hospital, church or industrial plant may reserve large irregular grounds first. Roads and ordinary blocks then adapt around those sites, rather than squeezing landmarks into rectangular leftovers between parallel roads.
+
+## Vehicles and traffic boundaries
 
 ### Authored persistent vehicles
 
@@ -237,8 +254,7 @@ Accepted stack:
 - transient route, role, health and obstacle state;
 - no campaign ownership/trunk/maintenance;
 - deploy normal police NPCs exactly once;
-- hide off-street without deleting the response;
-- disappear when wanted response retires.
+- hide off-street without deleting macro response state.
 
 Traffic impact tiers:
 
@@ -259,14 +275,16 @@ compact recovery       $120
 recovery condition     35% hull / 26 of 72
 ```
 
-## Runtime architecture
+The garage coordinate belongs to the replaceable imported city. A later topology pass must bind the service to a semantic garage site.
+
+## Runtime order
 
 ```text
 GameScene.update
   → GameplayRuntime.update
 ```
 
-Large-city order:
+Large-city pre-frame:
 
 ```text
 ChunkStreamSystem
@@ -283,22 +301,31 @@ PedestrianSystem
 normal gameplay frame
 ```
 
-Maintenance remains event-driven outside the frame loop. Motorized response runs after civilian traffic consequences and before normal police/NPC AI so dismounted officers join the ordinary frame immediately.
+Vehicle maintenance and campaign transactions remain event-driven outside the frame loop.
 
-## Economy, factions and Retainer direction
+## Testing state
 
-Locked direction:
+PR domains:
 
-- faction/contact reputation rather than one morality score;
-- district/territory ownership with gameplay consequences;
-- one melee, one sidearm and one long/special slot;
-- paid ammunition with carried caps;
-- separate carried inventory and refuge stash;
-- finite supplier stock and authored caches;
-- trunks provide limited mobile storage;
-- Retainers have loyalty, dependence, condition, upkeep and possible loss.
+```text
+unit-tests
+browser-boot
+browser-systems
+browser-campaign
+```
 
-Initial Retainer roles: Quartermaster, Driver, Cleaner, Mechanic, Fixer, Scout, Guard and Medic.
+The reset adds coverage for:
+
+- zero production definitions;
+- archived definitions working only when explicitly supplied;
+- old-save mission pruning without cash loss;
+- persistent street free-roam boot;
+- no campaign-entry modal, mission board or authored tutorial;
+- no objective marker;
+- retired mission actors inactive and unpinned;
+- no protected Old Quarter or fixed compiler landmarks.
+
+Mission-specific browser golden paths are removed because those contracts are no longer production content.
 
 ## Locked decisions
 
@@ -308,49 +335,42 @@ Initial Retainer roles: Quartermaster, Driver, Cleaner, Mechanic, Fixer, Scout, 
 - sight and hearing remain separate;
 - Enter owns vehicle entry/exit;
 - Space owns traversal/handbrake;
-- persistent authored vehicles, civilian traffic and police cruisers remain separate;
-- large-city scale uses streaming/dormancy;
-- mission progression has one campaign authority;
-- maintenance is idempotent and checkpoint-safe;
-- motorized response preserves total 5/7 police pressure;
-- roadblocks are partial and preserve street/vertical/sewer escape;
-- dismounted crews use existing police AI;
-- ammunition is finite and refuge/safehouse-managed;
-- Retainers have agency, upkeep and failure states;
+- campaign persistence remains active with zero missions;
+- mission definitions are explicit content, not hidden defaults;
+- missions cannot permanently constrain city topology;
+- current imported city geometry is replaceable;
+- intersections have one geometry authority;
+- sidewalks form a connected pedestrian graph;
+- landmarks are site-first and may shape curved roads;
+- parcels/buildings may be polygonal or compound;
+- authored vehicles, civilian traffic and police cruisers remain separate authorities;
+- maintenance remains idempotent and checkpoint-safe;
 - accessibility cannot alter gameplay geometry/state.
-
-## Open decisions
-
-- final commercial names and faction histories;
-- exact territory capture/decay rules;
-- final vehicle/traffic/police-response tuning;
-- full intra-district cruiser lane selection;
-- ammunition prices and detention losses;
-- Retainer blood-cost model and maximum count;
-- long-term perception visualization and camera accessibility.
 
 ## Active risks
 
-1. Browser-system regression time is increasing.
-2. Cruiser timing and roadblock placement need playtesting.
-3. Current motorized units deliver pressure at district boundaries; full freeform pursuit remains deferred.
-4. Faction/territory systems can become cosmetic unless they change patrols, suppliers, safehouses and missions.
-5. Traffic and police density must remain readable and bounded.
-6. Economy/ammunition can become punitive without competing rewards.
-7. Retainers can become menu-only bonuses.
-8. Commercial names need trademark clearance.
+1. Current city geometry contains visible topology/readability debt.
+2. Rebuilding roads affects lanes, pedestrians, chunks and police response together.
+3. Curved streets require robust lane/curb/sidewalk offset geometry.
+4. Landmark campuses must feel urban rather than empty.
+5. The playable build temporarily has no authored narrative content.
+6. Browser-system regression time is increasing.
+7. Factions and missions should wait for stable semantic city sites.
+8. Commercial-facing names need trademark clearance.
 
 ## Immediate priority
 
-Begin **Milestone 14: original factions and territory foundation**.
+Complete the reset, then begin **City Topology & Readability**:
 
-The first implementation should:
+1. authoritative road graph and unique intersections;
+2. visually distinct carriageway, curb and sidewalk;
+3. connected pedestrian graph and valid crosswalks;
+4. building/site setbacks;
+5. semantic lamp/furniture anchors;
+6. site-first large landmarks;
+7. curved/polyline road support;
+8. compiler rejection of overlap and dead pedestrian geometry;
+9. regeneration/replacement of the Old Quarter;
+10. retuning traffic, pedestrians and police against the accepted topology.
 
-- define canonical original faction IDs/data;
-- store district/territory ownership without a parallel campaign authority;
-- connect faction/contact reputation to access and hostility gates;
-- associate safehouses, suppliers, vehicles and patrol profiles with factions;
-- expose mission-definition hooks for territory consequences;
-- migrate existing campaign state safely;
-- add browser diagnostics and focused unit/Chromium coverage;
-- update the blueprint and detailed faction document in the same PR.
+Original factions and territory move behind this topology pass.
