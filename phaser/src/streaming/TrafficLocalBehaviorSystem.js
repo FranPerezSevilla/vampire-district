@@ -326,10 +326,12 @@ export class TrafficLocalBehaviorSystem {
     const blocker = blockers[0] || null;
     let desiredSpeedFactor = 1;
     if (blocker) {
+      const persistentBlocker = ["player-vehicle", "player-on-foot", "parked-vehicle"].includes(blocker.reason);
+      const responseDistance = persistentBlocker ? this.playerLookAhead : this.followDistance;
       if (blocker.gap <= this.hardStopDistance) desiredSpeedFactor = 0;
-      else if (blocker.gap < this.followDistance) {
+      else if (blocker.gap < responseDistance) {
         desiredSpeedFactor = clamp(
-          (blocker.gap - this.hardStopDistance) / Math.max(1, this.followDistance - this.hardStopDistance),
+          (blocker.gap - this.hardStopDistance) / Math.max(1, responseDistance - this.hardStopDistance),
           0,
           1
         );
@@ -355,6 +357,9 @@ export class TrafficLocalBehaviorSystem {
     state.speedFactor = emergencyStop
       ? 0
       : moveToward(state.speedFactor, decision.desiredSpeedFactor, rate * seconds);
+    if (decision.desiredSpeedFactor < 1) {
+      state.speedFactor = Math.min(state.speedFactor, 0.95);
+    }
     state.reason = decision.reason;
     state.gap = decision.gap;
     state.blockerId = decision.blockerId;

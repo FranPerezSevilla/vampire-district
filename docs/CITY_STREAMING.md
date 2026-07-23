@@ -1,12 +1,12 @@
 # City Streaming
 
-_Last updated: 2026-07-22_
+_Last updated: 2026-07-23_
 
 ## Status
 
 **City Streaming 1, 2 and 3 are implemented as the compatibility foundation for a much larger city.**
 
-The playable city remains `2400 × 1440` and retains the same campaign, generated Foundry layout and save authority. Static geometry is now emitted as one JSON payload per chunk and loaded asynchronously around the player or driven vehicle. Ordinary remote entities continue to use chunk-aware dormancy.
+The playable city is `4800 × 3600` and retains the same campaign, generated Foundry identity and save authority. Static geometry is now emitted as one JSON payload per chunk and loaded asynchronously around the player or driven vehicle. Ordinary remote entities continue to use chunk-aware dormancy.
 
 ## Goals
 
@@ -22,7 +22,7 @@ The playable city remains `2400 × 1440` and retains the same campaign, generate
 The current city is compiled into `512 × 512` chunks:
 
 ```text
-5 columns × 3 rows = 15 chunks
+10 columns × 8 rows = 80 chunks
 ```
 
 Chunk IDs use stable grid coordinates:
@@ -32,7 +32,7 @@ Chunk IDs use stable grid coordinates:
 1:0
 2:0
 ...
-4:2
+9:7
 ```
 
 Partial edge chunks preserve the exact world boundary.
@@ -52,7 +52,7 @@ phaser/assets/city/current/manifest.json
 phaser/assets/city/current/chunks/0-0.json
 phaser/assets/city/current/chunks/1-0.json
 ...
-phaser/assets/city/current/chunks/4-2.json
+phaser/assets/city/current/chunks/9-7.json
 ```
 
 The manifest contains only world/chunk metadata, file locations and neighbours. Each payload contains the static records intersecting that chunk.

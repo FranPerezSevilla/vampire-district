@@ -1,8 +1,13 @@
 {
-  "version": 1,
+  "version": 2,
   "id": "harbor-south",
   "name": "South Harbor",
-  "bounds": { "x": 2184, "y": 704, "w": 216, "h": 736 },
+  "bounds": {
+    "x": 3600,
+    "y": 2880,
+    "w": 1200,
+    "h": 720
+  },
   "visual": {
     "paletteFamily": "deep-cyan",
     "fog": 0.42,
@@ -13,7 +18,11 @@
   "audio": {
     "ambientId": "south-harbor-logistics",
     "gain": 0.7,
-    "layers": ["container-cranes", "ship-horns", "heavy-trucks"]
+    "layers": [
+      "container-cranes",
+      "ship-horns",
+      "heavy-trucks"
+    ]
   },
   "simulation": {
     "pedestrianDensity": 0.3,
@@ -21,6 +30,14 @@
     "policePresence": 0.38,
     "nightlife": 0.06
   },
-  "identityTags": ["harbor", "logistics", "warehouses", "remote"],
-  "assets": { "textures": [], "audio": [] }
+  "identityTags": [
+    "harbor",
+    "logistics",
+    "warehouses",
+    "remote"
+  ],
+  "assets": {
+    "textures": [],
+    "audio": []
+  }
 }

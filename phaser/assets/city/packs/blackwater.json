@@ -1,8 +1,13 @@
 {
-  "version": 1,
+  "version": 2,
   "id": "blackwater",
   "name": "Blackwater Industrial",
-  "bounds": { "x": 0, "y": 1136, "w": 2184, "h": 304 },
+  "bounds": {
+    "x": 0,
+    "y": 2880,
+    "w": 3600,
+    "h": 720
+  },
   "visual": {
     "paletteFamily": "oil-blue",
     "fog": 0.34,
@@ -13,7 +18,11 @@
   "audio": {
     "ambientId": "blackwater-terminal",
     "gain": 0.72,
-    "layers": ["generator-drone", "freight-brakes", "low-river"]
+    "layers": [
+      "generator-drone",
+      "freight-brakes",
+      "low-river"
+    ]
   },
   "simulation": {
     "pedestrianDensity": 0.34,
@@ -21,6 +30,14 @@
     "policePresence": 0.46,
     "nightlife": 0.08
   },
-  "identityTags": ["industrial", "terminal", "freight", "isolated"],
-  "assets": { "textures": [], "audio": [] }
+  "identityTags": [
+    "industrial",
+    "terminal",
+    "freight",
+    "isolated"
+  ],
+  "assets": {
+    "textures": [],
+    "audio": []
+  }
 }

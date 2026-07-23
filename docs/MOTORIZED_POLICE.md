@@ -257,3 +257,7 @@ browser-campaign   success
 ```
 
 Acceptance proves one pursuit cruiser at wanted 2, pursuit plus partial roadblock at wanted 3, bounded 5/7 effective police pressure, deterministic lane routing, exact-once officer transfer, disablement, rooftop escape visibility and short abandoned-car memory.
+
+## Graph-derived city response
+
+City Topology V2 uses longer macro routes than the original authored district. Motorized response therefore applies an emergency route multiplier scaled by wanted level. Pursuit cruisers must still reach and materialize near the player within the accepted response window. Roadblock cruisers deploy their reserved officers immediately after reaching the assigned block position; they do not wait for the player to enter a second proximity radius.

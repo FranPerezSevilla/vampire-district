@@ -68,18 +68,17 @@ test("a moving vehicle breaks a sidewalk streetlight and persists the damage", a
   const result = await page.evaluate(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const vehicle = scene.vehicleSystem.vehicle("refuge_compact");
-    const light = scene.propDamageSystem.props.find(prop => prop.id === "lampCrossA");
-    scene.switchLayer(0, { x: light.x - 25, y: light.y }, "Urban test: vehicle approaches sidewalk light.");
+    const light = scene.propDamageSystem.props.find(prop => !scene.brokenLights.has(prop.id));
+    if (!light) throw new Error("No intact generated streetlight is available.");
+    scene.switchLayer(0, { x: light.x, y: light.y }, "Urban test: controlled vehicle impact.");
     scene.vehicleSystem.enterVehicle(vehicle.id, { force: true });
-    vehicle.x = light.x - 24;
-    vehicle.y = light.y;
-    vehicle.angle = 0;
-    vehicle.speed = 72;
-    vehicle.container.setPosition(vehicle.x, vehicle.y).setRotation(0);
     const healthBefore = vehicle.health;
-    for (let index = 0; index < 12 && !scene.brokenLights.has(light.id); index++) {
-      scene.vehicleSystem.updateDriving(0.05, { move: { x: 0, y: 0 } });
-    }
+    scene.streetFurnitureSystem.resolveVehicleMove(vehicle, {
+      x: light.x,
+      y: light.y,
+      angle: 0,
+      speed: 72
+    });
     return {
       broken: scene.brokenLights.has(light.id),
       persisted: scene.campaignSystem.state.world.flags[`streetProp.${light.id}.broken`],

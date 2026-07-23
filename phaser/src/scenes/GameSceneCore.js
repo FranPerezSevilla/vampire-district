@@ -435,11 +435,25 @@ export class GameScene extends Phaser.Scene {
   }
 
   drawRoad(road) {
+    if (road.geometry === "polygon" && Array.isArray(road.points)) {
+      this.map.fillStyle(COLORS.road, 1).fillPoints(road.points, true);
+      return;
+    }
+
     this.map.fillStyle(COLORS.road, 1).fillRect(road.x, road.y, road.w, road.h);
-    this.map.fillStyle(COLORS.roadTrim, 1).fillRect(road.x, road.y, road.w, 3);
-    this.map.fillStyle(COLORS.roadTrim, 1).fillRect(road.x, road.y + road.h - 3, road.w, 3);
+    if (road.pieceKind !== "segment") return;
+
+    this.map.fillStyle(COLORS.roadTrim, 1);
+    if (road.orientation === "horizontal" || road.w > road.h) {
+      this.map.fillRect(road.x, road.y, road.w, 3);
+      this.map.fillRect(road.x, road.y + road.h - 3, road.w, 3);
+    } else {
+      this.map.fillRect(road.x, road.y, 3, road.h);
+      this.map.fillRect(road.x + road.w - 3, road.y, 3, road.h);
+    }
+
     this.map.fillStyle(COLORS.roadStripe, 1);
-    if (road.w > road.h) {
+    if (road.orientation === "horizontal" || road.w > road.h) {
       for (let x = road.x; x < road.x + road.w; x += 32) this.map.fillRect(x, road.y + Math.floor(road.h / 2), 16, 2);
     } else {
       for (let y = road.y; y < road.y + road.h; y += 32) this.map.fillRect(road.x + Math.floor(road.w / 2), y, 2, 16);

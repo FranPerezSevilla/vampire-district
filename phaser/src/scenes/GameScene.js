@@ -159,12 +159,27 @@ export class GameScene extends GameSceneCore {
   }
 
   drawRoadWindow(road) {
+    if (road.geometry === "polygon" && Array.isArray(road.points)) {
+      this.map.fillStyle(COLORS.road, 1).fillPoints(road.points, true);
+      return;
+    }
+
     const fragment = clippedRect(road, this.urbanRenderBounds);
     if (!fragment) return;
     this.map.fillStyle(COLORS.road, 1).fillRect(fragment.x, fragment.y, fragment.w, fragment.h);
-    this.map.lineStyle(2, COLORS.roadTrim, 0.85).strokeRect(fragment.x, fragment.y, fragment.w, fragment.h);
+    if (road.pieceKind !== "segment") return;
+
+    this.map.fillStyle(COLORS.roadTrim, 0.85);
+    if (road.orientation === "horizontal" || road.w > road.h) {
+      this.map.fillRect(fragment.x, road.y, fragment.w, 2);
+      this.map.fillRect(fragment.x, road.y + road.h - 2, fragment.w, 2);
+    } else {
+      this.map.fillRect(road.x, fragment.y, 2, fragment.h);
+      this.map.fillRect(road.x + road.w - 2, fragment.y, 2, fragment.h);
+    }
+
     this.map.fillStyle(COLORS.roadStripe, 1);
-    if (road.w > road.h) {
+    if (road.orientation === "horizontal" || road.w > road.h) {
       const y = road.y + Math.floor(road.h / 2);
       const start = Math.floor(fragment.x / 32) * 32;
       for (let x = start; x < fragment.x + fragment.w; x += 32) {

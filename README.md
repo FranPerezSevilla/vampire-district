@@ -59,10 +59,11 @@ Those assumptions caused the City Compiler to preserve the Old Quarter and fixed
 
 City Topology V2 now uses:
 
-- one authoritative road graph;
-- unique intersection geometry;
+- one authoritative 114-node / 158-edge road graph;
+- clipped road segments and one unique authority surface per intersection;
 - explicit carriageway, curb and connected sidewalk bands;
-- valid pedestrian crossings only;
+- valid pedestrian crossings outside junction centres;
+- post-layout streetlights clear of roads, crossings and buildings;
 - compound site-first landmark reservations and setback-validated rectangular runtime parcels;
 - bent/polyline road corridors with curve metadata for the next renderer;
 - site-first large landmarks such as police stations, hospitals, churches and industrial campuses.
@@ -156,4 +157,5 @@ Start with [`docs/README.md`](docs/README.md), then read:
 - [`docs/PROJECT_SNAPSHOT.md`](docs/PROJECT_SNAPSHOT.md)
 - [`docs/CITY_TOPOLOGY_RESET.md`](docs/CITY_TOPOLOGY_RESET.md)
 - [`docs/CITY_TOPOLOGY_V2.md`](docs/CITY_TOPOLOGY_V2.md)
+- [`docs/ROAD_GRAPH_GEOMETRY.md`](docs/ROAD_GRAPH_GEOMETRY.md)
 - [`docs/TECHNICAL_ARCHITECTURE.md`](docs/TECHNICAL_ARCHITECTURE.md)

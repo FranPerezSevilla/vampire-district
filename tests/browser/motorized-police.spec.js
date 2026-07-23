@@ -22,8 +22,10 @@ test("wanted levels deploy cruisers, reserve officers, form a partial roadblock 
 
   const result = await page.evaluate(async () => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
-    scene.switchLayer(0, { x: 1688, y: 338 }, "Motorized police regression: Foundry interception.");
-    await window.NBD_CITY_STREAM.forceFocus(1688, 338);
+    const district = await import("/phaser/src/data/district.js");
+    const focus = district.CITY_ANCHORS.foundryStreet;
+    scene.switchLayer(0, focus, "Motorized police regression: Foundry interception.");
+    await window.NBD_CITY_STREAM.forceFocus(focus.x, focus.y);
 
     // Keep the local-road portion deterministic. Distant macro movement no
     // longer samples these blockers until a cruiser has materialized.
@@ -63,14 +65,14 @@ test("wanted levels deploy cruisers, reserve officers, form a partial roadblock 
     window.NBD_MOTORIZED_POLICE.damage(roadblock.id, roadblock.maxHealth + 1);
     const disabled = window.NBD_MOTORIZED_POLICE.snapshot().units.find(unit => unit.id === roadblock.id);
 
-    scene.switchLayer(1, { x: 1688, y: 338 }, "Motorized police regression: rooftop escape.");
+    scene.switchLayer(1, focus, "Motorized police regression: rooftop escape.");
     window.NBD_MOTORIZED_POLICE.step(0.1);
     const rooftop = window.NBD_MOTORIZED_POLICE.snapshot();
 
-    scene.switchLayer(0, { x: 1688, y: 338 }, "Motorized police regression: abandoned suspect car memory.");
+    scene.switchLayer(0, focus, "Motorized police regression: abandoned suspect car memory.");
     const playerVehicle = scene.vehicleSystem.vehicle("refuge_compact");
-    playerVehicle.x = 1688;
-    playerVehicle.y = 338;
+    playerVehicle.x = focus.x;
+    playerVehicle.y = focus.y;
     playerVehicle.container?.setPosition?.(playerVehicle.x, playerVehicle.y);
     scene.vehicleSystem.currentVehicleId = playerVehicle.id;
     window.NBD_MOTORIZED_POLICE.step(0.1);

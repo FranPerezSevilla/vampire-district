@@ -32,13 +32,7 @@ The project does not use licensed vampire factions, terminology, lore, symbols o
 
 ## Current baseline
 
-Accepted `main` baseline before the city-topology reset:
-
-```text
-b2307569d742f927a403de605ad8fe9abe1f0a9c
-```
-
-It contains:
+The accepted City Topology V2 foundation contains:
 
 - Phaser 3 browser runtime using native ES modules;
 - street, low-rooftop, high-rooftop and sewer layers;
@@ -46,27 +40,15 @@ It contains:
 - witnesses, evidence, police search, wanted escalation and helicopter pressure;
 - arcade vehicles with persistent hull condition and trunks;
 - refuge garage repair and owned-wreck recovery;
-- a `2400 × 1440` imported multi-ward district;
-- asynchronous chunks, dormancy, macro traffic and ten pooled civilian traffic proxies;
-- local traffic following, junction priority, physical contact and impact consequences;
+- a `4800 × 3600`, fourteen-district site-first city;
+- a 114-node / 158-edge authoritative road graph;
+- 153 clipped straight road pieces and 111 junction authorities with zero overlap;
+- generated sidewalks, crossings, post-layout lights and pedestrian loops;
+- asynchronous `10 × 8` chunks, dormancy, macro traffic and ten pooled civilian traffic proxies;
 - motorized police pursuit, one partial roadblock and officer transfer to foot AI;
-- unit, boot, systems and campaign Chromium validation.
+- unit, browser boot, systems and campaign validation.
 
-### City-topology reset candidate
-
-PR #32 removes authored mission registrations and their authority over city layout:
-
-- zero production mission definitions;
-- old mission saves pruned while unrelated campaign state survives;
-- normal boot enters persistent street free roam;
-- campaign entry, mission board and authored tutorial are not booted;
-- retired mission actors are inactive;
-- `old-quarter` is no longer protected;
-- the current City Compiler baseline has no fixed landmarks;
-- future landmarks use a site-first policy;
-- city topology/readability becomes the active production phase.
-
-Detailed record: `CITY_TOPOLOGY_RESET.md`.
+The production mission registry remains empty so missions cannot regain authority over city geometry.
 
 ## Current playable mode
 
@@ -83,19 +65,20 @@ police/traffic           enabled
 entry modal              disabled
 mission board            disabled
 authored tutorial        disabled
-normal spawn             street 438, 326
+normal spawn             street 1540, 1515
 ```
 
 Archived mission definitions remain source-controlled examples and can be passed explicitly to `CampaignSystem` in tests. They are not production content.
 
 ## World structure
 
-Current imported runtime dimensions:
+Current runtime dimensions:
 
 ```text
 logical viewport     960 × 640
-world                 2400 × 1440
-world area            3,456,000 units²
+world                4800 × 3600
+world area           17,280,000 units²
+streaming grid       10 × 8 / 80 chunks
 ```
 
 Current layers:
@@ -107,88 +90,43 @@ high rooftop
 sewer
 ```
 
-The imported geometry is now a comparison baseline, not a protected target. The entire Old Quarter may be regenerated, moved or removed.
+Every district, including `old-quarter`, is unprotected and may change through the city compiler.
 
 ## City topology policy
 
-The next city cannot be generated as independent horizontal/vertical road strips with sidewalk bands painted on top of one another.
-
-The authoritative model must become:
+The implemented authority order is:
 
 ```text
 terrain / district constraints
-→ landmark sites
-→ road graph and unique intersection geometry
-→ carriageway, curb and connected sidewalk geometry
-→ ordinary blocks and polygonal parcels
-→ ordinary buildings
-→ crossings and street furniture from semantic anchors
-→ validation
+→ site-first landmarks and buildings
+→ authoritative road graph
+→ unique junction/transition geometry
+→ clipped carriageway segments
+→ sidewalks and crosswalks
+→ post-layout street furniture
+→ pedestrian routes/navigation
+→ validation and streamed chunks
 ```
 
-### Intersection authority
+### Road and intersection authority
 
-Each intersection is one unique topological object. Straight-road sidewalk/curb bands stop at its boundary; they are not overdrawn through the crossing.
+`tools/city-compiler/city-road-graph-v1.js` owns road connectivity and widths. Every graph node owns exactly one junction or transition surface. Straight segments stop at those surfaces instead of being overdrawn through them.
 
-Supported topology must eventually include:
-
-- straight segment;
-- curve/polyline;
-- T junction;
-- cross junction;
-- non-orthogonal junction;
-- service access;
-- dead end or turning area;
-- plaza/campus approach.
+Current geometry v1 supports ends, straight continuations, corners, T junctions, crossroads, complex clusters and collinear width-transition polygons. It is axis-aligned; true arbitrary-angle/curved offset geometry remains a future version.
 
 ### Pedestrian authority
 
-Sidewalks form an explicit graph. Crosswalks only exist when they connect two valid pedestrian nodes across a real carriageway.
-
-No crosswalk may terminate:
-
-- inside a road;
-- against a building footprint;
-- in an empty parcel without pedestrian continuation;
-- inside duplicated intersection sidewalk geometry.
-
-### Parcel and building authority
-
-Ordinary buildings occupy validated polygonal parcels with setbacks from:
-
-- carriageway;
-- curb/sidewalk;
-- intersection clearance;
-- service/fire access where required.
-
-The model must not assume all parcels, blocks or buildings are rectangles.
-
-### Site-first landmarks
-
-Important buildings reserve a complete urban site before local roads and ordinary blocks are finalized.
-
-Examples:
-
-- police station and secure yard;
-- hospital campus and emergency access;
-- church with plaza/garden/cemetery;
-- industrial plant and loading yard;
-- civic complex, station, large club or mansion.
-
-A landmark site may contain compound/polygonal footprints, forecourts, parking, service space and pedestrian approaches. Roads may curve around or toward it.
-
-This guarantees that large landmarks are not squeezed into rectangular leftovers between parallel streets.
+Sidewalks are derived from final clipped segments. Crosswalks are generated only outside junction centres and only when both ends continue onto valid sidewalks. Semantic pedestrian route IDs are regenerated onto those surfaces.
 
 ### Street furniture authority
 
-Lamps, bins and similar props attach to semantic anchors:
+Streetlights are generated after roads, junctions, sidewalks, crossings and building clearances. A light must stand on a final sidewalk and may not overlap a road, crossing, building clearance, junction clearance or another nearby light.
 
-- sidewalk corners;
-- valid straight sidewalk furniture bands;
-- building/site frontage points;
-- authored plazas or medians where defined.
+### Parcel and landmark authority
 
-They do not spawn from arbitrary road-strip intervals inside intersections.
+Important buildings reserve complete sites before roads and ordinary parcels. Buildings remain validated against all generated road surfaces. Polygonal ordinary parcels and truly curved roads are still future compiler work; neither is required to repair the current intersection/furniture failures.
+
+Detailed contract: [`ROAD_GRAPH_GEOMETRY.md`](ROAD_GRAPH_GEOMETRY.md).
 
 ## Campaign authority
 
@@ -403,7 +341,7 @@ Own:
 ## Vehicle maintenance
 
 ```text
-garage                 street 304, 326
+garage                 street 1540, 1575
 repair radius          96
 minimum repair         $25
 compact repair         $3 per missing hull
@@ -413,7 +351,7 @@ recovery condition     35% hull
 
 Maintenance composes wallet and persistent vehicle condition as one atomic transaction. It remains usable in missionless persistent free roam.
 
-The garage position is part of the imported baseline and may move during topology redesign; the service must eventually bind to a semantic garage site rather than a permanent raw coordinate.
+The garage uses the semantic City Topology V2 garage anchor and can move with a future topology version.
 
 ## Testing strategy
 
@@ -464,9 +402,9 @@ Mission-specific browser golden paths were removed because the contracts are no 
 
 ## Active risks
 
-1. Current imported road/building/crosswalk geometry visibly contains overlap debt.
-2. Rebuilding topology can invalidate vehicle lanes, pedestrian routes, streaming chunks and police response together.
-3. Curved roads require robust offset geometry for lanes, curbs and sidewalks.
+1. Road graph changes can invalidate traffic lanes, pedestrian routes, streaming chunks and police response together, so regeneration must remain atomic.
+2. Curved roads require robust offset geometry for lanes, curbs and sidewalks.
+3. Future polygonal parcels need collision and streaming support beyond rectangular bounds.
 4. Site-first landmarks need enough urban space without producing empty campuses.
 5. Freeing the Old Quarter may temporarily reduce authored narrative content to zero.
 6. Browser-system regression time continues to grow.
@@ -475,35 +413,33 @@ Mission-specific browser golden paths were removed because the contracts are no 
 
 ## Active production sequence
 
-### Complete/candidate: narrative constraint retirement
+### Complete: narrative constraint retirement
 
 - zero production contracts;
 - persistent free-roam boot;
 - old-save pruning;
-- retired mission actors inactive;
-- no protected district/fixed compiler landmark;
-- archived definitions remain explicit test/reference content.
+- no protected district or mission-coordinate landmark authority.
 
-### Next: city topology and readability
+### Complete: City Topology V2 and road geometry v1
 
-1. authoritative road graph and unique intersections;
-2. explicit carriageway/curb/sidewalk bands;
-3. connected pedestrian network and valid crosswalks;
-4. building and landmark-site setbacks;
-5. semantic lamp/furniture anchors;
-6. polygonal/compound landmark sites;
-7. curved/polyline roads;
-8. compiler rejection of overlap/dead pedestrian geometry;
-9. regenerate or replace the Old Quarter without compatibility constraints;
-10. retune traffic/police/pedestrian routes against the accepted topology.
+- `4800 × 3600`, fourteen districts and 80 chunks;
+- site-first civic/landmark campuses;
+- authoritative road graph;
+- unique corners, T junctions and crossroads;
+- clipped segments and supported tapered width transitions;
+- generated sidewalks/crosswalks;
+- post-layout streetlights;
+- compiler/browser regression coverage.
 
-### After topology stabilizes
+### Next
 
 - original factions and territory;
 - safehouses, stash and ammunition economy;
 - Retainers;
 - expanded arsenal and vehicle combat;
 - new district campaign authored against semantic city sites.
+
+True arbitrary-angle/curved road geometry and polygonal ordinary parcels remain later compiler extensions, not blockers for the current production sequence.
 
 ## Maintenance rule
 

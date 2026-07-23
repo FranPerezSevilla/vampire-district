@@ -8,8 +8,12 @@ import {
   landmarkSites,
   lights,
   pedestrianRoutes,
+  roadGraphNodes,
+  roadGraphEdges,
   roadCorridors,
   roads,
+  roadJunctions,
+  roadTransitions,
   roofAreas,
   rooftopRoutes,
   sewerAccesses,
@@ -17,8 +21,10 @@ import {
   shadowZones,
   sidewalks,
   streetNavigationPoints,
+  CITY_TOPOLOGY_SEED,
   CITY_TOPOLOGY_STATS,
   CITY_TOPOLOGY_VERSION,
+  ROAD_GEOMETRY_VERSION,
   CITY_WORLD
 } from "../../phaser/src/data/district.js";
 import { vehicleDefinitions } from "../../phaser/src/data/vehicles.js";
@@ -54,7 +60,7 @@ function siteLandmark(site) {
 export const currentCityBlueprint = defineCityBlueprint({
   schemaVersion: 2,
   id: "bloodnight-city-topology-v2",
-  seed: "city-topology-v2-site-first",
+  seed: CITY_TOPOLOGY_SEED,
   world: CITY_WORLD,
   protectedZones: [],
   districts: districtZones.map(zone => ({
@@ -70,6 +76,10 @@ export const currentCityBlueprint = defineCityBlueprint({
   blockTemplates,
   runtime: {
     roads,
+    roadGraphNodes,
+    roadGraphEdges,
+    roadJunctions,
+    roadTransitions,
     sidewalks,
     crosswalks,
     buildings,
@@ -91,8 +101,11 @@ export const currentCityBlueprint = defineCityBlueprint({
     generatedAtRuntime: false,
     compilerStage: "topology-v2",
     topologyVersion: CITY_TOPOLOGY_VERSION,
+    roadGeometryVersion: ROAD_GEOMETRY_VERSION,
     topologyStats: CITY_TOPOLOGY_STATS,
     roadCorridors,
+    roadGraphAuthority: "tools/city-compiler/city-road-graph-v1.js",
+    roadGenerationOrder: ["landmarks-buildings", "graph", "junctions", "segments", "sidewalks", "crosswalks", "lights", "pedestrian-routes", "navigation", "chunks"],
     landmarkPolicy: "Reserve large landmark sites first; route roads around sites; author missions only after topology acceptance.",
     validationExceptions: {
       allowedBuildingRoadOverlaps: [],
@@ -117,6 +130,10 @@ export function currentCityManifest(blueprint = currentCityBlueprint) {
     counts: {
       districts: blueprint.districts.length,
       roads: runtime.roads.length,
+      roadGraphNodes: runtime.roadGraphNodes.length,
+      roadGraphEdges: runtime.roadGraphEdges.length,
+      roadJunctions: runtime.roadJunctions.length,
+      roadTransitions: runtime.roadTransitions.length,
       roadCorridors: blueprint.metadata.roadCorridors.length,
       sidewalks: runtime.sidewalks.length,
       crosswalks: runtime.crosswalks.length,

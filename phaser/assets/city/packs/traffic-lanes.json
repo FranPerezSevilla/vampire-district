@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 4,
-  "version": 4,
-  "id": "bloodnight-local-traffic-lanes",
+  "schemaVersion": 5,
+  "version": 5,
+  "id": "bloodnight-graph-derived-traffic-lanes",
   "defaults": {
     "maxActiveVehicles": 10,
     "materializeRadius": 620,
@@ -48,66 +48,1907 @@
     "severeSpeedRetention": 0.35
   },
   "junctions": [
-    { "id": "core", "x": 472, "y": 338, "radius": 30, "approachDistance": 82 },
-    { "id": "glass-north", "x": 1088, "y": 338, "radius": 30, "approachDistance": 82 },
-    { "id": "foundry-north", "x": 1688, "y": 338, "radius": 30, "approachDistance": 82 },
-    { "id": "harbor-north", "x": 2240, "y": 338, "radius": 30, "approachDistance": 82 },
-    { "id": "mourning-canal", "x": 482, "y": 760, "radius": 32, "approachDistance": 88 },
-    { "id": "glass-canal", "x": 1088, "y": 760, "radius": 32, "approachDistance": 88 },
-    { "id": "foundry-canal", "x": 1688, "y": 760, "radius": 32, "approachDistance": 88 },
-    { "id": "harbor-canal", "x": 2240, "y": 760, "radius": 32, "approachDistance": 88 },
-    { "id": "mourning-blackwater", "x": 482, "y": 1192, "radius": 32, "approachDistance": 88 },
-    { "id": "foundry-blackwater", "x": 1688, "y": 1192, "radius": 32, "approachDistance": 88 },
-    { "id": "harbor-blackwater", "x": 2240, "y": 1192, "radius": 32, "approachDistance": 88 }
+    {
+      "id": "traffic-junction:1140:466",
+      "x": 1140,
+      "y": 466,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2340:200",
+      "x": 2340,
+      "y": 200,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:3540:180",
+      "x": 3540,
+      "y": 180,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:4500:960",
+      "x": 4500,
+      "y": 960,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:3540:200",
+      "x": 3540,
+      "y": 200,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2080:200",
+      "x": 2080,
+      "y": 200,
+      "radius": 27.2,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2080:740",
+      "x": 2080,
+      "y": 740,
+      "radius": 27.2,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2480:200",
+      "x": 2480,
+      "y": 200,
+      "radius": 27.2,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2340:740",
+      "x": 2340,
+      "y": 740,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:3080:200",
+      "x": 3080,
+      "y": 200,
+      "radius": 27.2,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2480:740",
+      "x": 2480,
+      "y": 740,
+      "radius": 27.2,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:3080:740",
+      "x": 3080,
+      "y": 740,
+      "radius": 27.2,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:3540:740",
+      "x": 3540,
+      "y": 740,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:918:466",
+      "x": 918,
+      "y": 466,
+      "radius": 28.56,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1140:960",
+      "x": 1140,
+      "y": 960,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2340:960",
+      "x": 2340,
+      "y": 960,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:3540:760",
+      "x": 3540,
+      "y": 760,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:3540:960",
+      "x": 3540,
+      "y": 960,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:554:960",
+      "x": 554,
+      "y": 960,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:554:1192",
+      "x": 554,
+      "y": 1192,
+      "radius": 24,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1754:960",
+      "x": 1754,
+      "y": 960,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1140:1192",
+      "x": 1140,
+      "y": 1192,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1754:1574",
+      "x": 1754,
+      "y": 1574,
+      "radius": 24,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2954:960",
+      "x": 2954,
+      "y": 960,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2340:1574",
+      "x": 2340,
+      "y": 1574,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2954:1920",
+      "x": 2954,
+      "y": 1920,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:3540:1156",
+      "x": 3540,
+      "y": 1156,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:4500:1920",
+      "x": 4500,
+      "y": 1920,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:3540:1636",
+      "x": 3540,
+      "y": 1636,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:554:1920",
+      "x": 554,
+      "y": 1920,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1140:1920",
+      "x": 1140,
+      "y": 1920,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1754:1920",
+      "x": 1754,
+      "y": 1920,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2340:1920",
+      "x": 2340,
+      "y": 1920,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:3540:1920",
+      "x": 3540,
+      "y": 1920,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:752:1920",
+      "x": 752,
+      "y": 1920,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:752:2212",
+      "x": 752,
+      "y": 2212,
+      "radius": 24,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1680:1920",
+      "x": 1680,
+      "y": 1920,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1140:2212",
+      "x": 1140,
+      "y": 2212,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1680:2212",
+      "x": 1680,
+      "y": 2212,
+      "radius": 24,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2912:1920",
+      "x": 2912,
+      "y": 1920,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2340:2212",
+      "x": 2340,
+      "y": 2212,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2912:2212",
+      "x": 2912,
+      "y": 2212,
+      "radius": 24,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:4112:1920",
+      "x": 4112,
+      "y": 1920,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:3540:2212",
+      "x": 3540,
+      "y": 2212,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:4112:2212",
+      "x": 4112,
+      "y": 2212,
+      "radius": 24,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:4500:2390",
+      "x": 4500,
+      "y": 2390,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:752:2572",
+      "x": 752,
+      "y": 2572,
+      "radius": 24,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1140:2572",
+      "x": 1140,
+      "y": 2572,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1770:2212",
+      "x": 1770,
+      "y": 2212,
+      "radius": 24,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1680:2290",
+      "x": 1680,
+      "y": 2290,
+      "radius": 24,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1770:2290",
+      "x": 1770,
+      "y": 2290,
+      "radius": 24,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2340:2290",
+      "x": 2340,
+      "y": 2290,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2912:2572",
+      "x": 2912,
+      "y": 2572,
+      "radius": 24,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:3540:2390",
+      "x": 3540,
+      "y": 2390,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:4112:2390",
+      "x": 4112,
+      "y": 2390,
+      "radius": 24,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1680:2572",
+      "x": 1680,
+      "y": 2572,
+      "radius": 24,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2340:2346",
+      "x": 2340,
+      "y": 2346,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2340:2572",
+      "x": 2340,
+      "y": 2572,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:3540:2572",
+      "x": 3540,
+      "y": 2572,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:4112:2572",
+      "x": 4112,
+      "y": 2572,
+      "radius": 24,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:4500:2820",
+      "x": 4500,
+      "y": 2820,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:752:2820",
+      "x": 752,
+      "y": 2820,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1140:2820",
+      "x": 1140,
+      "y": 2820,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1680:2820",
+      "x": 1680,
+      "y": 2820,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2340:2820",
+      "x": 2340,
+      "y": 2820,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2912:2820",
+      "x": 2912,
+      "y": 2820,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:3540:2820",
+      "x": 3540,
+      "y": 2820,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:4112:2820",
+      "x": 4112,
+      "y": 2820,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1140:3052",
+      "x": 1140,
+      "y": 3052,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2340:3052",
+      "x": 2340,
+      "y": 3052,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:3540:3052",
+      "x": 3540,
+      "y": 3052,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:4500:3052",
+      "x": 4500,
+      "y": 3052,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:1140:3340",
+      "x": 1140,
+      "y": 3340,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:2340:3340",
+      "x": 2340,
+      "y": 3340,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:3540:3340",
+      "x": 3540,
+      "y": 3340,
+      "radius": 40.8,
+      "approachDistance": 88
+    },
+    {
+      "id": "traffic-junction:4500:3340",
+      "x": 4500,
+      "y": 3340,
+      "radius": 40.8,
+      "approachDistance": 88
+    }
   ],
   "edges": {
-    "old-quarter:glasshouse": {
-      "forward": [{ "x": 472, "y": 354 }, { "x": 1088, "y": 354 }],
-      "reverse": [{ "x": 1088, "y": 322 }, { "x": 472, "y": 322 }]
+    "blackwater:canal-east": {
+      "forward": [
+        {
+          "x": 2340,
+          "y": 3352.8
+        },
+        {
+          "x": 3552.571,
+          "y": 3352.571
+        },
+        {
+          "x": 3552.571,
+          "y": 2559.429
+        },
+        {
+          "x": 3000,
+          "y": 2559.2
+        }
+      ],
+      "reverse": [
+        {
+          "x": 3000,
+          "y": 2584.8
+        },
+        {
+          "x": 3527.429,
+          "y": 2584.571
+        },
+        {
+          "x": 3527.429,
+          "y": 3327.429
+        },
+        {
+          "x": 2340,
+          "y": 3327.2
+        }
+      ],
+      "centerline": [
+        {
+          "x": 2340,
+          "y": 3340
+        },
+        {
+          "x": 3540,
+          "y": 3340
+        },
+        {
+          "x": 3540,
+          "y": 2572
+        },
+        {
+          "x": 3000,
+          "y": 2572
+        }
+      ],
+      "laneOffset": 12.8
     },
-    "old-quarter:canal-west": {
-      "forward": [{ "x": 488, "y": 338 }, { "x": 488, "y": 760 }],
-      "reverse": [{ "x": 456, "y": 760 }, { "x": 456, "y": 338 }]
+    "blackwater:canal-west": {
+      "forward": [
+        {
+          "x": 2340,
+          "y": 3324
+        },
+        {
+          "x": 1155.713,
+          "y": 3324.287
+        },
+        {
+          "x": 1155.713,
+          "y": 2804.287
+        },
+        {
+          "x": 752,
+          "y": 2804
+        }
+      ],
+      "reverse": [
+        {
+          "x": 752,
+          "y": 2836
+        },
+        {
+          "x": 1124.287,
+          "y": 2835.713
+        },
+        {
+          "x": 1124.287,
+          "y": 3355.713
+        },
+        {
+          "x": 2340,
+          "y": 3356
+        }
+      ],
+      "centerline": [
+        {
+          "x": 2340,
+          "y": 3340
+        },
+        {
+          "x": 1140,
+          "y": 3340
+        },
+        {
+          "x": 1140,
+          "y": 2820
+        },
+        {
+          "x": 752,
+          "y": 2820
+        }
+      ],
+      "laneOffset": 16
     },
-    "glasshouse:foundry": {
-      "forward": [{ "x": 1088, "y": 354 }, { "x": 1688, "y": 354 }],
-      "reverse": [{ "x": 1688, "y": 322 }, { "x": 1088, "y": 322 }]
-    },
-    "glasshouse:canal-east": {
-      "forward": [{ "x": 1104, "y": 338 }, { "x": 1104, "y": 760 }],
-      "reverse": [{ "x": 1072, "y": 760 }, { "x": 1072, "y": 338 }]
-    },
-    "foundry:harbor-north": {
-      "forward": [{ "x": 1688, "y": 354 }, { "x": 2240, "y": 354 }],
-      "reverse": [{ "x": 2240, "y": 322 }, { "x": 1688, "y": 322 }]
-    },
-    "foundry:canal-east": {
-      "forward": [{ "x": 1704, "y": 338 }, { "x": 1704, "y": 760 }],
-      "reverse": [{ "x": 1672, "y": 760 }, { "x": 1672, "y": 338 }]
-    },
-    "harbor-north:harbor-south": {
-      "forward": [{ "x": 2256, "y": 338 }, { "x": 2256, "y": 760 }],
-      "reverse": [{ "x": 2224, "y": 760 }, { "x": 2224, "y": 338 }]
-    },
-    "canal-west:canal-east": {
-      "forward": [{ "x": 482, "y": 776 }, { "x": 1688, "y": 776 }],
-      "reverse": [{ "x": 1688, "y": 744 }, { "x": 482, "y": 744 }]
-    },
-    "canal-west:blackwater": {
-      "forward": [{ "x": 488, "y": 760 }, { "x": 488, "y": 1192 }],
-      "reverse": [{ "x": 456, "y": 1192 }, { "x": 456, "y": 760 }]
-    },
-    "canal-east:harbor-south": {
-      "forward": [{ "x": 1688, "y": 776 }, { "x": 2240, "y": 776 }],
-      "reverse": [{ "x": 2240, "y": 744 }, { "x": 1688, "y": 744 }]
-    },
-    "canal-east:blackwater": {
-      "forward": [{ "x": 1704, "y": 760 }, { "x": 1704, "y": 1192 }],
-      "reverse": [{ "x": 1672, "y": 1192 }, { "x": 1672, "y": 760 }]
+    "blackwater:foundry": {
+      "forward": [
+        {
+          "x": 2350.4,
+          "y": 3340
+        },
+        {
+          "x": 2350.214,
+          "y": 2335.786
+        },
+        {
+          "x": 1770,
+          "y": 2335.6
+        }
+      ],
+      "reverse": [
+        {
+          "x": 1770,
+          "y": 2356.4
+        },
+        {
+          "x": 2329.786,
+          "y": 2356.214
+        },
+        {
+          "x": 2329.6,
+          "y": 3340
+        }
+      ],
+      "centerline": [
+        {
+          "x": 2340,
+          "y": 3340
+        },
+        {
+          "x": 2340,
+          "y": 2346
+        },
+        {
+          "x": 1770,
+          "y": 2346
+        }
+      ],
+      "laneOffset": 10.4
     },
     "blackwater:harbor-south": {
-      "forward": [{ "x": 1688, "y": 1208 }, { "x": 2240, "y": 1208 }],
-      "reverse": [{ "x": 2240, "y": 1176 }, { "x": 1688, "y": 1176 }]
+      "forward": [
+        {
+          "x": 2340,
+          "y": 3356
+        },
+        {
+          "x": 4320,
+          "y": 3356
+        }
+      ],
+      "reverse": [
+        {
+          "x": 4320,
+          "y": 3324
+        },
+        {
+          "x": 2340,
+          "y": 3324
+        }
+      ],
+      "centerline": [
+        {
+          "x": 2340,
+          "y": 3340
+        },
+        {
+          "x": 4320,
+          "y": 3340
+        }
+      ],
+      "laneOffset": 16
+    },
+    "canal-east:foundry": {
+      "forward": [
+        {
+          "x": 3000,
+          "y": 2561.6
+        },
+        {
+          "x": 2901.786,
+          "y": 2561.786
+        },
+        {
+          "x": 2901.786,
+          "y": 2809.786
+        },
+        {
+          "x": 2350.214,
+          "y": 2809.786
+        },
+        {
+          "x": 2350.214,
+          "y": 2335.786
+        },
+        {
+          "x": 1770,
+          "y": 2335.6
+        }
+      ],
+      "reverse": [
+        {
+          "x": 1770,
+          "y": 2356.4
+        },
+        {
+          "x": 2329.786,
+          "y": 2356.214
+        },
+        {
+          "x": 2329.786,
+          "y": 2830.214
+        },
+        {
+          "x": 2922.214,
+          "y": 2830.214
+        },
+        {
+          "x": 2922.214,
+          "y": 2582.214
+        },
+        {
+          "x": 3000,
+          "y": 2582.4
+        }
+      ],
+      "centerline": [
+        {
+          "x": 3000,
+          "y": 2572
+        },
+        {
+          "x": 2912,
+          "y": 2572
+        },
+        {
+          "x": 2912,
+          "y": 2820
+        },
+        {
+          "x": 2340,
+          "y": 2820
+        },
+        {
+          "x": 2340,
+          "y": 2346
+        },
+        {
+          "x": 1770,
+          "y": 2346
+        }
+      ],
+      "laneOffset": 10.4
+    },
+    "canal-east:glasshouse": {
+      "forward": [
+        {
+          "x": 3000,
+          "y": 2559.2
+        },
+        {
+          "x": 2924.571,
+          "y": 2559.429
+        },
+        {
+          "x": 2924.571,
+          "y": 1932.571
+        },
+        {
+          "x": 2954,
+          "y": 1932.8
+        }
+      ],
+      "reverse": [
+        {
+          "x": 2954,
+          "y": 1907.2
+        },
+        {
+          "x": 2899.429,
+          "y": 1907.429
+        },
+        {
+          "x": 2899.429,
+          "y": 2584.571
+        },
+        {
+          "x": 3000,
+          "y": 2584.8
+        }
+      ],
+      "centerline": [
+        {
+          "x": 3000,
+          "y": 2572
+        },
+        {
+          "x": 2912,
+          "y": 2572
+        },
+        {
+          "x": 2912,
+          "y": 1920
+        },
+        {
+          "x": 2954,
+          "y": 1920
+        }
+      ],
+      "laneOffset": 12.8
+    },
+    "canal-east:harbor-north": {
+      "forward": [
+        {
+          "x": 3000,
+          "y": 2584.8
+        },
+        {
+          "x": 3527.429,
+          "y": 2584.571
+        },
+        {
+          "x": 3527.429,
+          "y": 2832.571
+        },
+        {
+          "x": 4512.571,
+          "y": 2832.571
+        },
+        {
+          "x": 4512.8,
+          "y": 2390
+        }
+      ],
+      "reverse": [
+        {
+          "x": 4487.2,
+          "y": 2390
+        },
+        {
+          "x": 4487.429,
+          "y": 2807.429
+        },
+        {
+          "x": 3552.571,
+          "y": 2807.429
+        },
+        {
+          "x": 3552.571,
+          "y": 2559.429
+        },
+        {
+          "x": 3000,
+          "y": 2559.2
+        }
+      ],
+      "centerline": [
+        {
+          "x": 3000,
+          "y": 2572
+        },
+        {
+          "x": 3540,
+          "y": 2572
+        },
+        {
+          "x": 3540,
+          "y": 2820
+        },
+        {
+          "x": 4500,
+          "y": 2820
+        },
+        {
+          "x": 4500,
+          "y": 2390
+        }
+      ],
+      "laneOffset": 12.8
+    },
+    "canal-east:university-district": {
+      "forward": [
+        {
+          "x": 3000,
+          "y": 2584.8
+        },
+        {
+          "x": 3552.571,
+          "y": 2584.571
+        },
+        {
+          "x": 3552.571,
+          "y": 1648.571
+        },
+        {
+          "x": 4284,
+          "y": 1648.8
+        }
+      ],
+      "reverse": [
+        {
+          "x": 4284,
+          "y": 1623.2
+        },
+        {
+          "x": 3527.429,
+          "y": 1623.429
+        },
+        {
+          "x": 3527.429,
+          "y": 2559.429
+        },
+        {
+          "x": 3000,
+          "y": 2559.2
+        }
+      ],
+      "centerline": [
+        {
+          "x": 3000,
+          "y": 2572
+        },
+        {
+          "x": 3540,
+          "y": 2572
+        },
+        {
+          "x": 3540,
+          "y": 1636
+        },
+        {
+          "x": 4284,
+          "y": 1636
+        }
+      ],
+      "laneOffset": 12.8
+    },
+    "canal-west:foundry": {
+      "forward": [
+        {
+          "x": 752,
+          "y": 2832
+        },
+        {
+          "x": 1691.785,
+          "y": 2831.785
+        },
+        {
+          "x": 1691.785,
+          "y": 2301.785
+        },
+        {
+          "x": 1758.215,
+          "y": 2301.785
+        },
+        {
+          "x": 1758,
+          "y": 2346
+        }
+      ],
+      "reverse": [
+        {
+          "x": 1782,
+          "y": 2346
+        },
+        {
+          "x": 1781.785,
+          "y": 2278.215
+        },
+        {
+          "x": 1668.215,
+          "y": 2278.215
+        },
+        {
+          "x": 1668.215,
+          "y": 2808.215
+        },
+        {
+          "x": 752,
+          "y": 2808
+        }
+      ],
+      "centerline": [
+        {
+          "x": 752,
+          "y": 2820
+        },
+        {
+          "x": 1680,
+          "y": 2820
+        },
+        {
+          "x": 1680,
+          "y": 2290
+        },
+        {
+          "x": 1770,
+          "y": 2290
+        },
+        {
+          "x": 1770,
+          "y": 2346
+        }
+      ],
+      "laneOffset": 12
+    },
+    "canal-west:west-market": {
+      "forward": [
+        {
+          "x": 752,
+          "y": 2836
+        },
+        {
+          "x": 1155.713,
+          "y": 2835.713
+        },
+        {
+          "x": 1155.713,
+          "y": 1904.287
+        },
+        {
+          "x": 554,
+          "y": 1904
+        }
+      ],
+      "reverse": [
+        {
+          "x": 554,
+          "y": 1936
+        },
+        {
+          "x": 1124.287,
+          "y": 1935.713
+        },
+        {
+          "x": 1124.287,
+          "y": 2804.287
+        },
+        {
+          "x": 752,
+          "y": 2804
+        }
+      ],
+      "centerline": [
+        {
+          "x": 752,
+          "y": 2820
+        },
+        {
+          "x": 1140,
+          "y": 2820
+        },
+        {
+          "x": 1140,
+          "y": 1920
+        },
+        {
+          "x": 554,
+          "y": 1920
+        }
+      ],
+      "laneOffset": 16
+    },
+    "cathedral-hill:civic-center": {
+      "forward": [
+        {
+          "x": 3524,
+          "y": 740
+        },
+        {
+          "x": 3524.287,
+          "y": 944.287
+        },
+        {
+          "x": 2355.713,
+          "y": 944.287
+        },
+        {
+          "x": 2356,
+          "y": 740
+        }
+      ],
+      "reverse": [
+        {
+          "x": 2324,
+          "y": 740
+        },
+        {
+          "x": 2324.287,
+          "y": 975.713
+        },
+        {
+          "x": 3555.713,
+          "y": 975.713
+        },
+        {
+          "x": 3556,
+          "y": 740
+        }
+      ],
+      "centerline": [
+        {
+          "x": 3540,
+          "y": 740
+        },
+        {
+          "x": 3540,
+          "y": 960
+        },
+        {
+          "x": 2340,
+          "y": 960
+        },
+        {
+          "x": 2340,
+          "y": 740
+        }
+      ],
+      "laneOffset": 16
+    },
+    "cathedral-hill:north-harbor": {
+      "forward": [
+        {
+          "x": 3524,
+          "y": 740
+        },
+        {
+          "x": 3524.287,
+          "y": 975.713
+        },
+        {
+          "x": 4500,
+          "y": 976
+        }
+      ],
+      "reverse": [
+        {
+          "x": 4500,
+          "y": 944
+        },
+        {
+          "x": 3555.713,
+          "y": 944.287
+        },
+        {
+          "x": 3556,
+          "y": 740
+        }
+      ],
+      "centerline": [
+        {
+          "x": 3540,
+          "y": 740
+        },
+        {
+          "x": 3540,
+          "y": 960
+        },
+        {
+          "x": 4500,
+          "y": 960
+        }
+      ],
+      "laneOffset": 16
+    },
+    "cathedral-hill:university-district": {
+      "forward": [
+        {
+          "x": 3525.6,
+          "y": 740
+        },
+        {
+          "x": 3525.858,
+          "y": 1650.142
+        },
+        {
+          "x": 4284,
+          "y": 1650.4
+        }
+      ],
+      "reverse": [
+        {
+          "x": 4284,
+          "y": 1621.6
+        },
+        {
+          "x": 3554.142,
+          "y": 1621.858
+        },
+        {
+          "x": 3554.4,
+          "y": 740
+        }
+      ],
+      "centerline": [
+        {
+          "x": 3540,
+          "y": 740
+        },
+        {
+          "x": 3540,
+          "y": 1636
+        },
+        {
+          "x": 4284,
+          "y": 1636
+        }
+      ],
+      "laneOffset": 14.4
+    },
+    "civic-center:glasshouse": {
+      "forward": [
+        {
+          "x": 2326.4,
+          "y": 740
+        },
+        {
+          "x": 2326.644,
+          "y": 973.356
+        },
+        {
+          "x": 2940.644,
+          "y": 973.356
+        },
+        {
+          "x": 2940.4,
+          "y": 1920
+        }
+      ],
+      "reverse": [
+        {
+          "x": 2967.6,
+          "y": 1920
+        },
+        {
+          "x": 2967.356,
+          "y": 946.644
+        },
+        {
+          "x": 2353.356,
+          "y": 946.644
+        },
+        {
+          "x": 2353.6,
+          "y": 740
+        }
+      ],
+      "centerline": [
+        {
+          "x": 2340,
+          "y": 740
+        },
+        {
+          "x": 2340,
+          "y": 960
+        },
+        {
+          "x": 2954,
+          "y": 960
+        },
+        {
+          "x": 2954,
+          "y": 1920
+        }
+      ],
+      "laneOffset": 13.6
+    },
+    "civic-center:hospital-district": {
+      "forward": [
+        {
+          "x": 2325.6,
+          "y": 740
+        },
+        {
+          "x": 2325.858,
+          "y": 945.858
+        },
+        {
+          "x": 1154.142,
+          "y": 945.858
+        },
+        {
+          "x": 1154.142,
+          "y": 451.858
+        },
+        {
+          "x": 918,
+          "y": 451.6
+        }
+      ],
+      "reverse": [
+        {
+          "x": 918,
+          "y": 480.4
+        },
+        {
+          "x": 1125.858,
+          "y": 480.142
+        },
+        {
+          "x": 1125.858,
+          "y": 974.142
+        },
+        {
+          "x": 2354.142,
+          "y": 974.142
+        },
+        {
+          "x": 2354.4,
+          "y": 740
+        }
+      ],
+      "centerline": [
+        {
+          "x": 2340,
+          "y": 740
+        },
+        {
+          "x": 2340,
+          "y": 960
+        },
+        {
+          "x": 1140,
+          "y": 960
+        },
+        {
+          "x": 1140,
+          "y": 466
+        },
+        {
+          "x": 918,
+          "y": 466
+        }
+      ],
+      "laneOffset": 14.4
+    },
+    "civic-center:old-quarter": {
+      "forward": [
+        {
+          "x": 2326.4,
+          "y": 740
+        },
+        {
+          "x": 2326.644,
+          "y": 1560.644
+        },
+        {
+          "x": 1754,
+          "y": 1560.4
+        }
+      ],
+      "reverse": [
+        {
+          "x": 1754,
+          "y": 1587.6
+        },
+        {
+          "x": 2353.356,
+          "y": 1587.356
+        },
+        {
+          "x": 2353.6,
+          "y": 740
+        }
+      ],
+      "centerline": [
+        {
+          "x": 2340,
+          "y": 740
+        },
+        {
+          "x": 2340,
+          "y": 1574
+        },
+        {
+          "x": 1754,
+          "y": 1574
+        }
+      ],
+      "laneOffset": 13.6
+    },
+    "foundry:old-quarter": {
+      "forward": [
+        {
+          "x": 1782,
+          "y": 2346
+        },
+        {
+          "x": 1781.785,
+          "y": 2200.215
+        },
+        {
+          "x": 1691.785,
+          "y": 2200.215
+        },
+        {
+          "x": 1691.785,
+          "y": 1931.785
+        },
+        {
+          "x": 1765.785,
+          "y": 1931.785
+        },
+        {
+          "x": 1766,
+          "y": 1574
+        }
+      ],
+      "reverse": [
+        {
+          "x": 1742,
+          "y": 1574
+        },
+        {
+          "x": 1742.215,
+          "y": 1908.215
+        },
+        {
+          "x": 1668.215,
+          "y": 1908.215
+        },
+        {
+          "x": 1668.215,
+          "y": 2223.785
+        },
+        {
+          "x": 1758.215,
+          "y": 2223.785
+        },
+        {
+          "x": 1758,
+          "y": 2346
+        }
+      ],
+      "centerline": [
+        {
+          "x": 1770,
+          "y": 2346
+        },
+        {
+          "x": 1770,
+          "y": 2212
+        },
+        {
+          "x": 1680,
+          "y": 2212
+        },
+        {
+          "x": 1680,
+          "y": 1920
+        },
+        {
+          "x": 1754,
+          "y": 1920
+        },
+        {
+          "x": 1754,
+          "y": 1574
+        }
+      ],
+      "laneOffset": 12
+    },
+    "glasshouse:old-quarter": {
+      "forward": [
+        {
+          "x": 2954,
+          "y": 1906.4
+        },
+        {
+          "x": 1767.356,
+          "y": 1906.644
+        },
+        {
+          "x": 1767.6,
+          "y": 1574
+        }
+      ],
+      "reverse": [
+        {
+          "x": 1740.4,
+          "y": 1574
+        },
+        {
+          "x": 1740.644,
+          "y": 1933.356
+        },
+        {
+          "x": 2954,
+          "y": 1933.6
+        }
+      ],
+      "centerline": [
+        {
+          "x": 2954,
+          "y": 1920
+        },
+        {
+          "x": 1754,
+          "y": 1920
+        },
+        {
+          "x": 1754,
+          "y": 1574
+        }
+      ],
+      "laneOffset": 13.6
+    },
+    "glasshouse:university-district": {
+      "forward": [
+        {
+          "x": 2954,
+          "y": 1934.4
+        },
+        {
+          "x": 3554.142,
+          "y": 1934.142
+        },
+        {
+          "x": 3554.142,
+          "y": 1650.142
+        },
+        {
+          "x": 4284,
+          "y": 1650.4
+        }
+      ],
+      "reverse": [
+        {
+          "x": 4284,
+          "y": 1621.6
+        },
+        {
+          "x": 3525.858,
+          "y": 1621.858
+        },
+        {
+          "x": 3525.858,
+          "y": 1905.858
+        },
+        {
+          "x": 2954,
+          "y": 1905.6
+        }
+      ],
+      "centerline": [
+        {
+          "x": 2954,
+          "y": 1920
+        },
+        {
+          "x": 3540,
+          "y": 1920
+        },
+        {
+          "x": 3540,
+          "y": 1636
+        },
+        {
+          "x": 4284,
+          "y": 1636
+        }
+      ],
+      "laneOffset": 14.4
+    },
+    "harbor-north:harbor-south": {
+      "forward": [
+        {
+          "x": 4484,
+          "y": 2390
+        },
+        {
+          "x": 4484.287,
+          "y": 3324.287
+        },
+        {
+          "x": 4320,
+          "y": 3324
+        }
+      ],
+      "reverse": [
+        {
+          "x": 4320,
+          "y": 3356
+        },
+        {
+          "x": 4515.713,
+          "y": 3355.713
+        },
+        {
+          "x": 4516,
+          "y": 2390
+        }
+      ],
+      "centerline": [
+        {
+          "x": 4500,
+          "y": 2390
+        },
+        {
+          "x": 4500,
+          "y": 3340
+        },
+        {
+          "x": 4320,
+          "y": 3340
+        }
+      ],
+      "laneOffset": 16
+    },
+    "harbor-north:university-district": {
+      "forward": [
+        {
+          "x": 4514.4,
+          "y": 2390
+        },
+        {
+          "x": 4514.142,
+          "y": 1905.858
+        },
+        {
+          "x": 3554.142,
+          "y": 1905.858
+        },
+        {
+          "x": 3554.142,
+          "y": 1650.142
+        },
+        {
+          "x": 4284,
+          "y": 1650.4
+        }
+      ],
+      "reverse": [
+        {
+          "x": 4284,
+          "y": 1621.6
+        },
+        {
+          "x": 3525.858,
+          "y": 1621.858
+        },
+        {
+          "x": 3525.858,
+          "y": 1934.142
+        },
+        {
+          "x": 4485.858,
+          "y": 1934.142
+        },
+        {
+          "x": 4485.6,
+          "y": 2390
+        }
+      ],
+      "centerline": [
+        {
+          "x": 4500,
+          "y": 2390
+        },
+        {
+          "x": 4500,
+          "y": 1920
+        },
+        {
+          "x": 3540,
+          "y": 1920
+        },
+        {
+          "x": 3540,
+          "y": 1636
+        },
+        {
+          "x": 4284,
+          "y": 1636
+        }
+      ],
+      "laneOffset": 14.4
+    },
+    "hospital-district:west-market": {
+      "forward": [
+        {
+          "x": 918,
+          "y": 480.4
+        },
+        {
+          "x": 1125.858,
+          "y": 480.142
+        },
+        {
+          "x": 1125.858,
+          "y": 1905.858
+        },
+        {
+          "x": 554,
+          "y": 1905.6
+        }
+      ],
+      "reverse": [
+        {
+          "x": 554,
+          "y": 1934.4
+        },
+        {
+          "x": 1154.142,
+          "y": 1934.142
+        },
+        {
+          "x": 1154.142,
+          "y": 451.858
+        },
+        {
+          "x": 918,
+          "y": 451.6
+        }
+      ],
+      "centerline": [
+        {
+          "x": 918,
+          "y": 466
+        },
+        {
+          "x": 1140,
+          "y": 466
+        },
+        {
+          "x": 1140,
+          "y": 1920
+        },
+        {
+          "x": 554,
+          "y": 1920
+        }
+      ],
+      "laneOffset": 14.4
+    },
+    "north-harbor:university-district": {
+      "forward": [
+        {
+          "x": 4485.6,
+          "y": 960
+        },
+        {
+          "x": 4485.858,
+          "y": 1905.858
+        },
+        {
+          "x": 3554.142,
+          "y": 1905.858
+        },
+        {
+          "x": 3554.142,
+          "y": 1650.142
+        },
+        {
+          "x": 4284,
+          "y": 1650.4
+        }
+      ],
+      "reverse": [
+        {
+          "x": 4284,
+          "y": 1621.6
+        },
+        {
+          "x": 3525.858,
+          "y": 1621.858
+        },
+        {
+          "x": 3525.858,
+          "y": 1934.142
+        },
+        {
+          "x": 4514.142,
+          "y": 1934.142
+        },
+        {
+          "x": 4514.4,
+          "y": 960
+        }
+      ],
+      "centerline": [
+        {
+          "x": 4500,
+          "y": 960
+        },
+        {
+          "x": 4500,
+          "y": 1920
+        },
+        {
+          "x": 3540,
+          "y": 1920
+        },
+        {
+          "x": 3540,
+          "y": 1636
+        },
+        {
+          "x": 4284,
+          "y": 1636
+        }
+      ],
+      "laneOffset": 14.4
+    },
+    "old-quarter:west-market": {
+      "forward": [
+        {
+          "x": 1740.4,
+          "y": 1574
+        },
+        {
+          "x": 1740.644,
+          "y": 1906.644
+        },
+        {
+          "x": 554,
+          "y": 1906.4
+        }
+      ],
+      "reverse": [
+        {
+          "x": 554,
+          "y": 1933.6
+        },
+        {
+          "x": 1767.356,
+          "y": 1933.356
+        },
+        {
+          "x": 1767.6,
+          "y": 1574
+        }
+      ],
+      "centerline": [
+        {
+          "x": 1754,
+          "y": 1574
+        },
+        {
+          "x": 1754,
+          "y": 1920
+        },
+        {
+          "x": 554,
+          "y": 1920
+        }
+      ],
+      "laneOffset": 13.6
     }
   }
 }

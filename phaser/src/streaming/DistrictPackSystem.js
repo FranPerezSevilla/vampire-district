@@ -342,7 +342,16 @@ export class DistrictPackSystem {
     window.NBD_DISTRICT_PACKS = Object.freeze({
       snapshot: () => this.snapshot(),
       active: () => this.activePack(),
-      forceUpdate: () => this.update(true)
+      forceUpdate: async () => {
+        await this.initialization;
+        this.update(true);
+        await Promise.all([...this.desiredPackIds].map(id => this.requestPack(id)));
+        for (let index = 0; index < Math.max(2, this.desiredPackIds.size + 1); index++) {
+          this.update(true);
+          if (this.activePackId && this.record(this.activePackId)?.state === DISTRICT_PACK_STATES.RESIDENT) break;
+        }
+        return this.snapshot();
+      }
     });
     window.NBD_DISTRICT_PACKS_READY = false;
   }

@@ -1,8 +1,13 @@
 {
-  "version": 1,
+  "version": 2,
   "id": "canal-east",
   "name": "Canal East",
-  "bounds": { "x": 1032, "y": 704, "w": 1152, "h": 432 },
+  "bounds": {
+    "x": 2400,
+    "y": 1980,
+    "w": 1200,
+    "h": 900
+  },
   "visual": {
     "paletteFamily": "canal-magenta",
     "fog": 0.2,
@@ -13,7 +18,11 @@
   "audio": {
     "ambientId": "canal-east-market",
     "gain": 0.56,
-    "layers": ["water-flow", "market-shutters", "medium-traffic"]
+    "layers": [
+      "water-flow",
+      "market-shutters",
+      "medium-traffic"
+    ]
   },
   "simulation": {
     "pedestrianDensity": 0.96,
@@ -21,6 +30,14 @@
     "policePresence": 0.4,
     "nightlife": 0.56
   },
-  "identityTags": ["canal", "mixed-use", "market", "crossroads"],
-  "assets": { "textures": [], "audio": [] }
+  "identityTags": [
+    "canal",
+    "mixed-use",
+    "market",
+    "crossroads"
+  ],
+  "assets": {
+    "textures": [],
+    "audio": []
+  }
 }
