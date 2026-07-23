@@ -1,7 +1,7 @@
 import { BOOT_MODES, bootProfile } from "../boot/BootProfile.js";
 import { TutorialDirector } from "./TutorialDirector.js";
 
-function completeTutorial(scene, uiScene, director, { moveToExploreSpawn = false } = {}) {
+function completeTutorial(scene, uiScene, director, { moveToFreeRoamSpawn = false } = {}) {
   director.started = true;
   director.introPromise = Promise.resolve();
   director.busy = false;
@@ -23,13 +23,18 @@ function completeTutorial(scene, uiScene, director, { moveToExploreSpawn = false
   scene.registry?.set?.("bootMode", bootProfile.mode);
   scene.inputSystem?.resetWorldEdges?.();
 
-  if (moveToExploreSpawn) {
+  if (moveToFreeRoamSpawn) {
+    const persistent = bootProfile.mode === BOOT_MODES.NORMAL;
     scene.switchLayer?.(
       bootProfile.spawn.layer,
       { x: bootProfile.spawn.x, y: bootProfile.spawn.y },
-      "EXPLORATION MODE: no tutorial, mission or persistent campaign changes."
+      persistent
+        ? "CITY FREE ROAM: no active contract. Campaign economy and vehicles remain persistent."
+        : "EXPLORATION MODE: no tutorial, mission or persistent campaign changes."
     );
-    scene.lastActionText = "EXPLORATION MODE: drive, fight and test the district freely. Progress is not saved.";
+    scene.lastActionText = persistent
+      ? "CITY FREE ROAM: drive, fight and inspect the district while the city is redesigned."
+      : "EXPLORATION MODE: drive, fight and test the district freely. Progress is not saved.";
   }
   return true;
 }
@@ -67,9 +72,10 @@ function attachTutorialDirector() {
 
   if (bootProfile.skipTutorial) {
     completeTutorial(scene, uiScene, director, {
-      moveToExploreSpawn: bootProfile.mode === BOOT_MODES.EXPLORE
+      moveToFreeRoamSpawn: bootProfile.startOnStreet
     });
     window.NBD_EXPLORE_READY = bootProfile.mode === BOOT_MODES.EXPLORE;
+    window.NBD_FREE_ROAM_READY = true;
     return;
   }
 
