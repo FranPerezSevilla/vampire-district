@@ -27,6 +27,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Vehicle maintenance](VEHICLE_MAINTENANCE.md) — costed refuge-garage repair, atomic wallet/condition updates and owned-wreck recovery.
 - [Motorized police](MOTORIZED_POLICE.md) — wanted-level cruiser routing, partial roadblocks, officer reservation and foot-AI transfer.
 - [Testing strategy](TESTING_STRATEGY.md) — normal/explore/scenario profiles, focused browser loops and parallel PR checks.
+- [City Topology V2](CITY_TOPOLOGY_V2.md) — five-times-area site-first city, hospital campus, new road graph and 80 streamed chunks.
 - [City Compiler](CITY_COMPILER.md) — deterministic city blueprints, district recipes, validation and scoring.
 - [City Compiler baseline](CITY_COMPILER_BASELINE.md) — current-city score and legacy geometry debt.
 - [Foundry pilot](CITY_COMPILER_FOUNDRY_PILOT.md) — seeded Foundry generation and candidate review.

@@ -16,6 +16,12 @@ Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) for the project-wide map. Th
 
 Logical viewport: `960 × 640`. Current imported world: `2400 × 1440`. The game does not allocate a full-world render canvas.
 
+## 1.1 City Topology V2
+
+`city-topology-v2.js` is the authoritative static geometry dataset. It exports world dimensions, semantic anchors, landmark sites, road corridors, roads, pedestrian surfaces, buildings, roofs, sewers, district zones and police topology.
+
+The runtime still renders rectangle segments, while `roadCorridors` retains ordered polyline points and curve hints. Chunk compilation produces a `10 × 8` / 80-file grid.
+
 ## 2. Top-level ownership
 
 ```text

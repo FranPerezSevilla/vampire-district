@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { CampaignEventBus } from "../phaser/src/campaign/CampaignEventBus.js";
 import { createCampaignState } from "../phaser/src/campaign/CampaignState.js";
 import { WalletSystem } from "../phaser/src/campaign/WalletSystem.js";
+import { REFUGE_GARAGE } from "../phaser/src/data/vehicle-maintenance.js";
 import { vehicleDefinitions } from "../phaser/src/data/vehicles.js";
 import { CampaignVehicleSystem } from "../phaser/src/vehicles/CampaignVehicleSystem.js";
 import { VehicleMaintenanceService } from "../phaser/src/vehicles/VehicleMaintenanceService.js";
@@ -29,8 +30,8 @@ function setup({ cash = 0 } = {}) {
 
 function setCompact(vehicles, condition) {
   vehicles.updateCondition("refuge_compact", {
-    x: 304,
-    y: 326,
+    x: REFUGE_GARAGE.x,
+    y: REFUGE_GARAGE.y,
     angle: 0,
     parked: true,
     ...condition
@@ -141,8 +142,8 @@ test("recovery tows an owned wreck to its garage slot with minimum drivable hull
   assert.equal(result.healthAfter, 26);
   assert.equal(condition.health, 26);
   assert.equal(condition.disabled, false);
-  assert.equal(condition.x, 304);
-  assert.equal(condition.y, 326);
+  assert.equal(condition.x, REFUGE_GARAGE.x);
+  assert.equal(condition.y, REFUGE_GARAGE.y);
   assert.equal(condition.angle, 0);
   assert.equal(condition.parked, true);
   assert.equal(wallet.balance(), 380);

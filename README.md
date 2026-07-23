@@ -4,7 +4,7 @@
 
 The long-term structure is intentionally GTA2-like: readable districts, vehicles, traffic, weapons, factions, territory, cash and systemic police chaos. The original vampire setting adds Hunger, feeding, powers, rooftops, sewers, Retainers, safehouses and political consequences.
 
-The current public build is a **persistent free-roam systems sandbox**. The previous journalist and `Clean the Scene` contracts are no longer registered because their fixed coordinates were forcing the original street layout to remain permanent while the rest of the city evolved around it.
+The current public build is a **persistent free-roam systems sandbox** running City Topology V2: a `4800 × 3600` world with exactly five times the previous area. The previous journalist and `Clean the Scene` contracts are no longer registered because their fixed coordinates were forcing the original street layout to remain permanent while the rest of the city evolved around it.
 
 Open `index.html` through a local/static web server, or use the published GitHub Pages build. ES modules will not work reliably through every browser's `file://` mode.
 
@@ -57,14 +57,14 @@ The old opening contract depended on fixed raw coordinates for:
 
 Those assumptions caused the City Compiler to preserve the Old Quarter and fixed landmarks. The current reset removes that protection so every district, road and landmark may be regenerated.
 
-The next city architecture will use:
+City Topology V2 now uses:
 
 - one authoritative road graph;
 - unique intersection geometry;
 - explicit carriageway, curb and connected sidewalk bands;
 - valid pedestrian crossings only;
-- polygonal parcels/buildings;
-- curved/polyline roads;
+- compound site-first landmark reservations and setback-validated rectangular runtime parcels;
+- bent/polyline road corridors with curve metadata for the next renderer;
 - site-first large landmarks such as police stations, hospitals, churches and industrial campuses.
 
 Future missions will be authored against stable semantic city sites after the topology is accepted, rather than forcing the city to preserve obsolete mission coordinates.
@@ -155,4 +155,5 @@ Start with [`docs/README.md`](docs/README.md), then read:
 - [`docs/PROJECT_BLUEPRINT.md`](docs/PROJECT_BLUEPRINT.md)
 - [`docs/PROJECT_SNAPSHOT.md`](docs/PROJECT_SNAPSHOT.md)
 - [`docs/CITY_TOPOLOGY_RESET.md`](docs/CITY_TOPOLOGY_RESET.md)
+- [`docs/CITY_TOPOLOGY_V2.md`](docs/CITY_TOPOLOGY_V2.md)
 - [`docs/TECHNICAL_ARCHITECTURE.md`](docs/TECHNICAL_ARCHITECTURE.md)

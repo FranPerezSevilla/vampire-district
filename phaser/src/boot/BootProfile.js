@@ -1,4 +1,6 @@
-export const BOOT_PROFILE_VERSION = 2;
+import { CITY_ANCHORS } from "../data/generated/city-topology-v2.js";
+
+export const BOOT_PROFILE_VERSION = 3;
 
 export const BOOT_MODES = Object.freeze({
   NORMAL: "normal",
@@ -6,7 +8,7 @@ export const BOOT_MODES = Object.freeze({
   SCENARIO: "scenario"
 });
 
-const DEFAULT_EXPLORE_SPAWN = Object.freeze({ x: 438, y: 326, layer: 0 });
+const DEFAULT_EXPLORE_SPAWN = Object.freeze({ ...CITY_ANCHORS.streetSpawn });
 
 function normalizedScenarioId(value) {
   return String(value || "")
@@ -44,8 +46,6 @@ export function createBootProfile(search = globalThis?.location?.search || "") {
     persistentCampaign: !isolated,
     autoLoadCampaign: !isolated,
     autoSaveCampaign: !isolated,
-    // There are currently no registered contracts, so normal boot enters the
-    // persistent sandbox directly instead of presenting a mission decision.
     showCampaignEntry: false,
     autoStartOpeningMission: false,
     skipTutorial: true,

@@ -1,5 +1,5 @@
 import { COMBAT_STATES } from "../data/combat.js";
-import { LAYERS } from "../data/district.js";
+import { CITY_ANCHORS, LAYERS } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 
 const CLUB_ENTRY = Object.freeze({ x: 642, y: 404 });
@@ -7,7 +7,7 @@ const REFUGE = Object.freeze({ x: 150, y: 146 });
 const REVEAL_TIMEOUT_MS = 15_000;
 
 function nextFrame() {
-  return new Promise(resolve => window.requestAnimationFrame(resolve));
+  return new Promise(resolve => window.setTimeout(resolve, 16));
 }
 
 export class ReleaseCandidateHarness {
@@ -63,6 +63,50 @@ export class ReleaseCandidateHarness {
     director.finishTutorial();
     if (this.uiScene.introOpen) this.uiScene.closeIntro();
     return director;
+  }
+
+  async focusStreet(point, label) {
+    this.scene.switchLayer(LAYERS.STREET, point, label);
+    await window.NBD_CITY_STREAM?.forceFocus?.(point.x, point.y, 512, 0);
+    this.scene.entityStreamSystem?.resync?.();
+    this.scene.npcSystem?.rebuildSpatialIndex?.();
+    return point;
+  }
+
+  preparePoliceOfficers(count = 2, point = CITY_ANCHORS.policeEntrance) {
+    const police = this.scene.policeSystem;
+    const allPolice = () => police.allPolice?.() || police.police();
+    while (allPolice().length < count) police.spawnPolice?.(0);
+    const offsets = [
+      { x: -18, y: 0 },
+      { x: 18, y: 0 },
+      { x: 0, y: -22 },
+      { x: 0, y: 22 },
+      { x: -30, y: -20 },
+      { x: 30, y: 20 },
+      { x: -30, y: 20 },
+      { x: 30, y: -20 }
+    ];
+    const officers = allPolice().slice(0, count);
+    officers.forEach((officer, index) => {
+      const offset = offsets[index % offsets.length];
+      officer.x = point.x + offset.x;
+      officer.y = point.y + offset.y;
+      officer.layer = LAYERS.STREET;
+      officer.dead = false;
+      officer.inactive = false;
+      officer.intercepted = false;
+      officer.hiddenBody = false;
+      officer.stunnedTimer = 0;
+      officer.active = true;
+      officer.container?.setPosition?.(officer.x, officer.y);
+      officer.container?.setAlpha?.(1);
+      officer.container?.setVisible?.(true);
+      this.scene.entityStreamSystem?.applyNpcState?.(officer, 0);
+    });
+    this.scene.entityStreamSystem?.resync?.();
+    this.scene.npcSystem?.rebuildSpatialIndex?.();
+    return officers;
   }
 
   async prepareJournalistObjective() {
@@ -138,9 +182,8 @@ export class ReleaseCandidateHarness {
 
   async policeEscalationSequence() {
     this.unlockPostTutorialWorld();
-    this.scene.switchLayer(
-      LAYERS.STREET,
-      { x: 488, y: 326 },
+    await this.focusStreet(
+      CITY_ANCHORS.policeEntrance,
       "RC test: police escalation sequence."
     );
 
@@ -151,7 +194,7 @@ export class ReleaseCandidateHarness {
     };
 
     try {
-      const officers = police.police();
+      const officers = this.preparePoliceOfficers(2, CITY_ANCHORS.policeEntrance);
       if (officers.length < 2) throw new Error("At least two police officers are required");
       const [first, second] = officers;
       const levels = [];
@@ -204,14 +247,13 @@ export class ReleaseCandidateHarness {
 
   async policeRecoverySequence() {
     this.unlockPostTutorialWorld();
-    this.scene.switchLayer(
-      LAYERS.STREET,
-      { x: 110, y: 110 },
+    await this.focusStreet(
+      CITY_ANCHORS.policeEntrance,
       "RC test: police recovery sequence."
     );
 
+    const officer = this.preparePoliceOfficers(1, CITY_ANCHORS.policeEntrance)[0];
     this.scene.combatSystem.ensureCombatStates();
-    const officer = this.scene.policeSystem.police()[0];
     if (!officer) throw new Error("A police officer is required for recovery testing");
     const recoveryEventsBefore = this.events.filter(event => event.type === "entity-recovered").length;
 
@@ -330,13 +372,13 @@ export class ReleaseCandidateHarness {
       };
     }
 
-    this.scene.switchLayer(
-      LAYERS.STREET,
-      { x: 488, y: 326 },
-      "RC stress: central crossroad."
+    await this.focusStreet(
+      CITY_ANCHORS.policeEntrance,
+      "RC stress: central police response zone."
     );
     this.scene.exposureSystem.forceLevel(3, "RC stress scenario: maximum police response.");
     police.spawnForExposure(3);
+    this.preparePoliceOfficers(6, CITY_ANCHORS.policeEntrance);
 
     await this.waitFor(
       () => this.scene.exposureSystem.level() >= 3

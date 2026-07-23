@@ -293,7 +293,9 @@ Reference: `CITY_TOPOLOGY_RESET.md`.
 
 ## Milestone 14 — City topology and readability
 
-**Status: 🔵 Active next phase after 13.7 acceptance**
+**Status: ✅ Complete — City Topology V2**
+
+Delivered baseline: `4800 × 3600`, 14 districts, 46 connected road segments, 80 chunks, site-first hospital/police/city-hall/cathedral/university sites and topology-aware vehicle migration.
 
 ### 14.1 Road/intersection authority
 
@@ -342,7 +344,7 @@ Acceptance:
 
 ## Milestone 15 — Original factions and territory
 
-**Status: ⬜ Planned after topology stabilizes**
+**Status: 🔵 Active next phase**
 
 - canonical original faction IDs/data;
 - Blackglass Directorate and Red Assembly with distinct mechanics;

@@ -24,8 +24,8 @@ test("a hard traffic impact damages once, alerts police and keeps the pooled slo
 
   const result = await page.evaluate(async () => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
-    scene.switchLayer(0, { x: 760, y: 338 }, "Graduated traffic impact test.");
-    await window.NBD_CITY_STREAM.forceFocus(760, 338);
+    scene.switchLayer(0, { x: 1140, y: 960 }, "Graduated traffic impact test.");
+    await window.NBD_CITY_STREAM.forceFocus(1140, 960);
     window.NBD_TRAFFIC.resync();
     window.NBD_TRAFFIC_BEHAVIOR.step(0.05);
     window.NBD_TRAFFIC_PHYSICS.step(0.05);

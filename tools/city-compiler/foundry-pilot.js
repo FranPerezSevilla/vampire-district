@@ -1,17 +1,14 @@
-import { blockTemplateById } from "./catalog.js";
 import {
   evaluateFoundryCandidate,
   foundryCandidateSummary,
   foundryDistrict,
-  generateFoundryCandidate as generateDraftFoundryCandidate,
+  generateFoundryCandidate,
   rankFoundryCandidates,
   scoreFoundryCandidate
 } from "./foundry-generator.js";
-import { defineCityBlueprint } from "./model.js";
 
-const PEDESTRIAN_CONNECTOR_ID = "foundry:sidewalk:back-lane-route";
+const PILOT_BUILDING_PREFIX = "foundry:block-";
 const GENERATED_PREFIX = "foundry:";
-const NAVIGATION_PREFIX = "foundry:navigation:";
 
 function slug(value) {
   return String(value || "candidate")
@@ -20,86 +17,11 @@ function slug(value) {
     .replace(/^-+|-+$/g, "") || "candidate";
 }
 
-function normalizeBuilding(building) {
-  if (!String(building?.id || "").startsWith(GENERATED_PREFIX)) return building;
-  const template = blockTemplateById[building.templateId];
-  if (!template) return building;
-  return {
-    ...building,
-    w: Math.max(template.footprint.minWidth, Math.min(template.footprint.maxWidth, building.w)),
-    h: Math.max(template.footprint.minHeight, Math.min(template.footprint.maxHeight, building.h))
-  };
-}
-
-function normalizePlan(plan, buildings) {
-  const byId = Object.fromEntries(buildings.map(building => [building.id, building]));
-  return {
-    ...plan,
-    normalized: true,
-    blocks: (plan.blocks || []).map(block => {
-      const building = byId[block.buildingId];
-      return building
-        ? { ...block, footprint: { x: building.x, y: building.y, w: building.w, h: building.h } }
-        : block;
-    })
-  };
-}
-
-function normalizeNavigationPoints(draft) {
-  const northRoad = draft.runtime.roads.find(item => item.id === "foundry:road:north-yard");
-  const eastRoad = draft.runtime.roads.find(item => item.id === "foundry:road:east-link");
-  if (!northRoad || !eastRoad) return draft.runtime.streetNavigationPoints || [];
-
-  const points = [
-    { id: `${NAVIGATION_PREFIX}north-yard`, x: 1860, y: northRoad.y + northRoad.h / 2, generated: true },
-    { id: `${NAVIGATION_PREFIX}east-link`, x: 2080, y: eastRoad.y + eastRoad.h / 2, generated: true },
-    { id: `${NAVIGATION_PREFIX}avenue`, x: 1850, y: 338, generated: true }
-  ];
-  const generatedCoordinates = new Set(points.map(point => `${point.x}:${point.y}`));
-  const existing = (draft.runtime.streetNavigationPoints || []).filter(point => {
-    if (String(point?.id || "").startsWith(NAVIGATION_PREFIX)) return false;
-    return !generatedCoordinates.has(`${Number(point?.x) || 0}:${Number(point?.y) || 0}`);
-  });
-  return [...existing, ...points];
-}
-
 export function normalizeFoundryCandidate(draft) {
-  const buildings = draft.runtime.buildings.map(normalizeBuilding);
-  const sidewalks = draft.runtime.sidewalks.some(item => item.id === PEDESTRIAN_CONNECTOR_ID)
-    ? draft.runtime.sidewalks
-    : [
-        ...draft.runtime.sidewalks,
-        {
-          id: PEDESTRIAN_CONNECTOR_ID,
-          x: 1904,
-          y: 270,
-          w: 12,
-          h: 128,
-          roadId: "harborBackLane",
-          generated: true,
-          purpose: "continuous Foundry pedestrian loop"
-        }
-      ];
-  const streetNavigationPoints = normalizeNavigationPoints(draft);
-  const plan = normalizePlan(draft.metadata?.foundryPilot || {}, buildings);
-  return defineCityBlueprint({
-    ...draft,
-    runtime: { ...draft.runtime, buildings, sidewalks, streetNavigationPoints },
-    metadata: {
-      ...draft.metadata,
-      foundryPilot: plan,
-      normalization: {
-        templateFootprints: true,
-        pedestrianSurfaceContinuity: true,
-        stableNavigationIds: true
-      }
-    }
-  });
+  return draft;
 }
 
-export function generateFoundryCandidate(seed, options = {}) {
-  return normalizeFoundryCandidate(generateDraftFoundryCandidate(seed, options));
-}
+export { generateFoundryCandidate };
 
 export function generateFoundryCandidates({ seedPrefix = "foundry-pilot", count = 24, baseBlueprint } = {}) {
   const total = Math.max(1, Math.floor(Number(count) || 1));
@@ -109,18 +31,17 @@ export function generateFoundryCandidates({ seedPrefix = "foundry-pilot", count 
   });
 }
 
-function generated(items = []) {
-  return items
-    .filter(item => String(item?.id || "").startsWith(GENERATED_PREFIX))
-    .sort((left, right) => left.id.localeCompare(right.id));
-}
-
 function candidateFeatures(result) {
   const runtime = result.blueprint.runtime;
-  const buildings = generated(runtime.buildings);
-  const roads = generated(runtime.roads);
-  const roofs = generated(Object.values(runtime.roofAreas || {}).flat());
-  const vehicle = generated(runtime.vehicles)[0];
+  const buildings = runtime.buildings
+    .filter(item => String(item?.id || "").startsWith(PILOT_BUILDING_PREFIX))
+    .sort((left, right) => left.id.localeCompare(right.id));
+  const roads = runtime.roads
+    .filter(item => String(item?.id || "").startsWith(GENERATED_PREFIX))
+    .sort((left, right) => left.id.localeCompare(right.id));
+  const roofs = Object.values(runtime.roofAreas || {}).flat()
+    .filter(item => String(item?.buildingId || "").startsWith(PILOT_BUILDING_PREFIX));
+  const vehicle = runtime.vehicles.find(item => item.id === "foundry:vehicle:utility");
   return {
     templates: buildings.map(item => item.templateId || item.family || "unknown"),
     buildings: buildings.map(item => [item.x, item.y, item.w, item.h]),

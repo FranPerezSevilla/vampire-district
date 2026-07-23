@@ -23,8 +23,8 @@ test("local traffic brakes for the driven vehicle, keeps its slot and resumes wh
 
   const result = await page.evaluate(async () => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
-    scene.switchLayer(0, { x: 760, y: 338 }, "Local traffic behavior test.");
-    await window.NBD_CITY_STREAM.forceFocus(760, 338);
+    scene.switchLayer(0, { x: 1140, y: 960 }, "Local traffic behavior test.");
+    await window.NBD_CITY_STREAM.forceFocus(1140, 960);
     window.NBD_TRAFFIC.resync();
     window.NBD_TRAFFIC_BEHAVIOR.step(0.05);
 

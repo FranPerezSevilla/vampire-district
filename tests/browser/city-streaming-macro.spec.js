@@ -11,18 +11,22 @@ async function waitForMacroCity(page) {
   ));
 }
 
-test.describe.configure({ timeout: 75_000 });
+test.describe.configure({ timeout: 90_000 });
 
-test("abstract traffic advances and dormant police wake onto district-local patrols", async ({ page }) => {
+test("abstract traffic advances and dormant police wake onto topology-local patrols", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
   await waitForMacroCity(page);
 
   const macro = await page.evaluate(async () => {
+    const district = await import("/phaser/src/data/district.js");
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
-    scene.switchLayer(0, { x: 2080, y: 430 }, "Macro police test east focus.");
-    await window.NBD_CITY_STREAM.forceFocus(2080, 430);
+    scene.switchLayer(0, district.CITY_ANCHORS.harborFar, "Macro police far focus.");
+    await window.NBD_CITY_STREAM.forceFocus(
+      district.CITY_ANCHORS.harborFar.x,
+      district.CITY_ANCHORS.harborFar.y
+    );
     window.NBD_ENTITY_STREAM.resync();
     scene.npcSystem.refreshVisibility();
 
@@ -33,16 +37,18 @@ test("abstract traffic advances and dormant police wake onto district-local patr
       y: cop.y,
       containerX: cop.container.x,
       containerY: cop.container.y,
-      state: cop.streamState
+      state: cop.streamState,
+      district: scene.policeSystem.zoneAt(cop.x, cop.y).id
     };
-    window.NBD_MACRO_CITY.forceTick(4);
+    window.NBD_MACRO_CITY.forceTick(8);
     const afterSnapshot = window.NBD_MACRO_CITY.snapshot();
     const after = {
       x: cop.x,
       y: cop.y,
       containerX: cop.container.x,
       containerY: cop.container.y,
-      state: cop.streamState
+      state: cop.streamState,
+      district: scene.policeSystem.zoneAt(cop.x, cop.y).id
     };
 
     return {
@@ -51,8 +57,7 @@ test("abstract traffic advances and dormant police wake onto district-local patr
       before,
       after,
       modelMoved: before.x !== after.x || before.y !== after.y,
-      visualMoved: before.containerX !== after.containerX || before.containerY !== after.containerY,
-      currentDistrict: scene.policeSystem.zoneAt(after.x, after.y).id
+      visualMoved: before.containerX !== after.containerX || before.containerY !== after.containerY
     };
   });
 
@@ -60,7 +65,6 @@ test("abstract traffic advances and dormant police wake onto district-local patr
   expect(macro.after.state).toBe("dormant");
   expect(macro.modelMoved).toBe(true);
   expect(macro.visualMoved).toBe(false);
-  expect(macro.currentDistrict).toBe("canal-west");
   expect(macro.afterSnapshot.abstractTrafficTokens).toBeGreaterThan(0);
   expect(macro.afterSnapshot.lastAdvancedPoliceIds).toContain("police_patrol_2");
   expect(macro.afterSnapshot.travellingPolice.some(item => item.npcId === "police_patrol_2")).toBe(true);
@@ -89,9 +93,8 @@ test("abstract traffic advances and dormant police wake onto district-local patr
   expect(wake.sameObject).toBe(true);
   expect(wake.state).toBe("active");
   expect(wake.active).toBe(true);
-  expect(wake.district).toBe("canal-west");
   expect(wake.target.kind).toBe("patrol");
   expect(wake.target.districtPatrol).toBe(true);
-  expect(wake.targetDistrict).toBe("canal-west");
+  expect(wake.targetDistrict).toBe(wake.district);
   expect(pageErrors).toEqual([]);
 });

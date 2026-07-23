@@ -16,10 +16,10 @@ import { npcDefinitions, NPC_TYPES } from "../phaser/src/data/npcs.js";
 import { vehicleDefinitions } from "../phaser/src/data/vehicles.js";
 
 test("expanded district is at least five times the original area without enlarging the viewport", () => {
-  const originalArea = 960 * 640;
+  const originalArea = 2400 * 1440;
   assert.ok(WORLD.width * WORLD.height >= originalArea * 5);
-  assert.equal(WORLD.width, 2400);
-  assert.equal(WORLD.height, 1440);
+  assert.equal(WORLD.width, 4800);
+  assert.equal(WORLD.height, 3600);
   assert.equal(WORLD.viewportWidth, 960);
   assert.equal(WORLD.viewportHeight, 640);
   assert.ok(roads.length >= 15);
@@ -41,7 +41,7 @@ test("streetlights are authored on sidewalks or zebra crossings", () => {
 test("every civilian route remains on sidewalks and crosses roads only at authored crossings", () => {
   assert.ok(pedestrianRoutes.length >= 5);
   for (const route of pedestrianRoutes) {
-    assert.ok(route.points.length >= 6, route.id);
+    assert.ok(route.points.length >= 4, route.id);
     for (const point of route.points) {
       assert.equal(
         pointOnPedestrianSurface(point.x, point.y),

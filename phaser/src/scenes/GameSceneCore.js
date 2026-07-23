@@ -1,12 +1,14 @@
 import { CAMERA, COLORS, PLAYER, WORLD } from "../data/balance.js";
 import {
   buildings,
+  CITY_ANCHORS,
   fireEscapes,
   LAYER_NAMES,
   LAYERS,
   lights,
   roads,
   roofAreas,
+  roofDrops,
   rooftopRoutes,
   sewerAccesses,
   sewerTunnels,
@@ -27,32 +29,7 @@ import { PowersSystem } from "../systems/PowersSystem.js";
 import { TransitionSystem } from "../systems/TransitionSystem.js";
 import { WitnessSystem } from "../systems/WitnessSystem.js";
 
-const ROOF_DROPS = Object.freeze([
-  {
-    id: "drop_market_north_alley",
-    label: "drop to north alley",
-    roof: { x: 286, y: 208, layer: LAYERS.ROOF_LOW },
-    street: { x: 268, y: 244 }
-  },
-  {
-    id: "drop_warehouse_alley",
-    label: "drop to warehouse alley",
-    roof: { x: 180, y: 416, layer: LAYERS.ROOF_LOW },
-    street: { x: 176, y: 392 }
-  },
-  {
-    id: "drop_club_rear",
-    label: "drop to club rear shadow",
-    roof: { x: 736, y: 478, layer: LAYERS.ROOF_LOW },
-    street: { x: 750, y: 502 }
-  },
-  {
-    id: "drop_old_block_service",
-    label: "drop to south service alley",
-    roof: { x: 538, y: 540, layer: LAYERS.ROOF_LOW },
-    street: { x: 520, y: 540 }
-  }
-]);
+const ROOF_DROPS = roofDrops;
 
 const HIDDEN_MAP_LABELS = new Set([
   "LAMP",
@@ -68,11 +45,11 @@ const HIDDEN_MAP_LABELS = new Set([
 export class GameScene extends Phaser.Scene {
   constructor() {
     super("GameScene");
-    this.currentLayer = LAYERS.ROOF_HIGH;
+    this.currentLayer = PLAYER.startLayer;
     this.playerSpeed = PLAYER.baseSpeed;
     this.nearestInteraction = null;
     this.nearestMovement = null;
-    this.lastActionText = "Initial rooftop refuge.";
+    this.lastActionText = "City Topology V2 free roam.";
     this.brokenLights = new Set();
     this.taskRevealCinematic = { active: false, queued: null, initialPlayed: false };
   }
@@ -117,10 +94,10 @@ export class GameScene extends Phaser.Scene {
 
   handleLayerDebugInput(frame = this.currentInputFrame) {
     const layer = Number(frame?.debugLayerPressed || 0);
-    if (layer === 1) this.switchLayer(LAYERS.STREET, { x: 488, y: 326 }, "Debug: street layer.");
-    if (layer === 2) this.switchLayer(LAYERS.ROOF_LOW, { x: 345, y: 168 }, "Debug: low rooftops.");
-    if (layer === 3) this.switchLayer(LAYERS.ROOF_HIGH, { x: 150, y: 146 }, "Debug: high refuge rooftop.");
-    if (layer === 4) this.switchLayer(LAYERS.SEWER, { x: 472, y: 326 }, "Debug: sewer layer.");
+    if (layer === 1) this.switchLayer(LAYERS.STREET, CITY_ANCHORS.streetSpawn, "Debug: street layer.");
+    if (layer === 2) this.switchLayer(LAYERS.ROOF_LOW, CITY_ANCHORS.roofLowSpawn, "Debug: low rooftops.");
+    if (layer === 3) this.switchLayer(LAYERS.ROOF_HIGH, CITY_ANCHORS.roofHighSpawn, "Debug: high refuge rooftop.");
+    if (layer === 4) this.switchLayer(LAYERS.SEWER, CITY_ANCHORS.sewerSpawn, "Debug: sewer layer.");
   }
 
   switchLayer(layer, position, status) {

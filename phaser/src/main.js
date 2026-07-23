@@ -12,11 +12,12 @@ const RESOLUTION_PRESETS = Object.freeze({
 });
 
 function savedResolutionKey() {
+  const fallback = window.NBD_RC_TEST_MODE ? "compact" : "qhd";
   try {
     const saved = window.localStorage.getItem(RESOLUTION_STORAGE_KEY);
-    return RESOLUTION_PRESETS[saved] ? saved : "qhd";
+    return RESOLUTION_PRESETS[saved] ? saved : fallback;
   } catch {
-    return "qhd";
+    return fallback;
   }
 }
 

@@ -1,3 +1,4 @@
+import { CITY_TOPOLOGY_VERSION } from "../data/district.js";
 import { VEHICLE_OWNERSHIP, vehicleArchetype } from "../data/vehicles.js";
 
 const STATUS_VALUES = new Set(Object.values(VEHICLE_OWNERSHIP));
@@ -40,15 +41,36 @@ export class CampaignVehicleSystem {
 
   ensureStartingOwnership(definitions = []) {
     let changed = false;
+    let migrated = false;
+    const topologyKey = "city.topologyVersion";
+    const previousTopology = Math.max(0, Math.trunc(Number(this.state.world.flags[topologyKey]) || 0));
+
+    if (previousTopology < CITY_TOPOLOGY_VERSION) {
+      for (const definition of definitions) {
+        if (!definition?.id) continue;
+        for (const field of ["x", "y", "angle", "parked"]) {
+          delete this.state.world.flags[flagKey(definition.id, field)];
+        }
+      }
+      this.state.world.flags[topologyKey] = CITY_TOPOLOGY_VERSION;
+      changed = true;
+      migrated = true;
+    }
+
     for (const definition of definitions) {
       if (!definition?.startOwned || !definition.id) continue;
       if (this.state.world.ownedVehicles.includes(definition.id)) continue;
       this.state.world.ownedVehicles.push(definition.id);
       changed = true;
     }
-    if (changed) this.commit("vehicle:starting-ownership", {
-      vehicleIds: this.state.world.ownedVehicles.join(",")
-    });
+
+    if (changed) this.commit(
+      migrated ? "vehicle:topology-migrated" : "vehicle:starting-ownership",
+      {
+        vehicleIds: this.state.world.ownedVehicles.join(","),
+        topologyVersion: CITY_TOPOLOGY_VERSION
+      }
+    );
     return changed;
   }
 

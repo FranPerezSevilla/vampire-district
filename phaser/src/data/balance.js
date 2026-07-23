@@ -1,6 +1,8 @@
+import { CITY_ANCHORS, CITY_WORLD } from "./generated/city-topology-v2.js";
+
 export const WORLD = Object.freeze({
-  width: 2400,
-  height: 1440,
+  width: CITY_WORLD.width,
+  height: CITY_WORLD.height,
   viewportWidth: 960,
   viewportHeight: 640,
   tile: 16,
@@ -8,9 +10,9 @@ export const WORLD = Object.freeze({
 });
 
 export const PLAYER = Object.freeze({
-  startX: 150,
-  startY: 146,
-  startLayer: 2,
+  startX: CITY_ANCHORS.streetSpawn.x,
+  startY: CITY_ANCHORS.streetSpawn.y,
+  startLayer: CITY_ANCHORS.streetSpawn.layer,
   baseSpeed: 112,
   sprintMultiplier: 1.55,
   radius: 6

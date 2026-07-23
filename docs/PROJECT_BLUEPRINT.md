@@ -8,6 +8,18 @@ This is the canonical high-level blueprint for the project. It defines the playa
 
 Detailed subsystem documents remain authoritative for tuning values and acceptance records. This is the first document an AI, developer or reviewer should read before changing the project.
 
+## Current city foundation
+
+City Topology V2 replaces the former protected core:
+
+- world: `4800 × 3600`;
+- area: exactly five times the previous `2400 × 1440` world;
+- streaming grid: `10 × 8`, 80 asynchronous chunk files;
+- fourteen unprotected districts;
+- site-first hospital, police headquarters, city hall, cathedral and university;
+- connected road graph with bend/curve-ready corridor metadata;
+- future missions consume semantic sites only after topology acceptance.
+
 ## Product identity
 
 **Vampire District** is a pure top-down urban action, stealth and crime game with readable streets, vehicles, police pressure and systemic chaos, rebuilt around an original vampire setting.
