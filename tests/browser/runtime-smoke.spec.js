@@ -4,11 +4,6 @@ const ROUTES = ["/", "/phaser/"];
 
 test.describe.configure({ timeout: 90_000 });
 
-async function dispatchDialogueAdvance(page) {
-  await page.waitForTimeout(320);
-  await page.locator(".game-frame").click({ position: { x: 100, y: 100 } });
-}
-
 for (const route of ROUTES) {
   test(`${route} composes one healthy gameplay runtime`, async ({ page }) => {
     const pageErrors = [];
@@ -78,36 +73,41 @@ for (const route of ROUTES) {
   });
 }
 
-test("intro resumes the world and opens the click-driven narrative", async ({ page }) => {
+test("normal boot skips the retired narrative and opens persistent street free roam", async ({ page }) => {
+  const pageErrors = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => Boolean(
     window.NBD_APP_READY
+    && window.NBD_FREE_ROAM_READY
     && window.NBD_PHASER_GAME?.scene?.getScene?.("GameScene")?.tutorialDirector
   ));
 
-  await expect(page.locator("#ui-modal")).toHaveClass(/open/);
-  await page.locator("#ui-modal-action").click();
   await expect(page.locator("#ui-modal")).not.toHaveClass(/open/);
-  await expect(page.locator("#tutorial-dialogue")).toHaveClass(/open/, { timeout: 15_000 });
-  await expect(page.locator(".tutorial-dialogue__advance")).toContainText("CLICK");
-
-  const previous = await page.locator(".tutorial-dialogue__text").textContent();
-  await dispatchDialogueAdvance(page);
-  await page.waitForFunction(previousText => {
-    const dialogue = document.getElementById("tutorial-dialogue");
-    const current = document.querySelector(".tutorial-dialogue__text")?.textContent || "";
-    return Boolean(dialogue?.classList.contains("open") && current && current !== previousText);
-  }, previous || "", { timeout: 15_000 });
+  await expect(page.locator("#tutorial-dialogue")).not.toHaveClass(/open/);
+  await expect(page.locator(".campaign-entry")).toHaveCount(0);
 
   const gameState = await page.evaluate(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     return {
       tutorialStarted: Boolean(scene.tutorialDirector?.started),
-      worldLockedForDialogue: Boolean(scene.registry.get("taskRevealActive")),
-      pendingAttack: Boolean(scene.inputSystem?.primaryPressed)
+      tutorialState: scene.tutorialDirector?.state,
+      taskRevealActive: Boolean(scene.registry.get("taskRevealActive")),
+      pendingAttack: Boolean(scene.inputSystem?.primaryPressed),
+      currentLayer: scene.currentLayer,
+      activeMissionId: scene.campaignSystem.state.missions.activeMissionId,
+      registeredMissions: scene.campaignSystem.snapshot().definitions.length,
+      missionBoard: Boolean(scene.missionBoardSystem || window.NBD_MISSION_BOARD)
     };
   });
+
   expect(gameState.tutorialStarted).toBeTruthy();
-  expect(gameState.worldLockedForDialogue).toBeTruthy();
+  expect(gameState.tutorialState).toBe("complete");
+  expect(gameState.taskRevealActive).toBeFalsy();
   expect(gameState.pendingAttack).toBeFalsy();
+  expect(gameState.currentLayer).toBe(0);
+  expect(gameState.activeMissionId).toBeNull();
+  expect(gameState.registeredMissions).toBe(0);
+  expect(gameState.missionBoard).toBe(false);
+  expect(pageErrors).toEqual([]);
 });
