@@ -13,7 +13,16 @@ import {
   CAMPAIGN_SCHEMA_VERSION,
   CHECKPOINT_KINDS
 } from "../phaser/src/campaign/constants.js";
-import { SILENCE_THE_JOURNALIST_ID } from "../phaser/src/campaign/missions/silenceTheJournalist.js";
+import { cleanTheSceneMission } from "../phaser/src/campaign/missions/cleanTheScene.js";
+import {
+  SILENCE_THE_JOURNALIST_ID,
+  silenceTheJournalistMission
+} from "../phaser/src/campaign/missions/silenceTheJournalist.js";
+
+const TEST_DEFINITIONS = Object.freeze([
+  silenceTheJournalistMission,
+  cleanTheSceneMission
+]);
 
 function memoryStorage() {
   const values = new Map();
@@ -25,7 +34,12 @@ function memoryStorage() {
 }
 
 function campaignAtNightclub() {
-  const campaign = new CampaignSystem({ autoLoad: false, autoSave: false, now: () => 1000 });
+  const campaign = new CampaignSystem({
+    definitions: TEST_DEFINITIONS,
+    autoLoad: false,
+    autoSave: false,
+    now: () => 1000
+  });
   campaign.startMission(SILENCE_THE_JOURNALIST_ID, {
     metadata: { rooftopJumps: 3 }
   });
@@ -136,6 +150,7 @@ test("campaign export and import preserve checkpoint mission rollback data", () 
 
   const serialized = campaign.export();
   const restored = new CampaignSystem({
+    definitions: TEST_DEFINITIONS,
     storage,
     autoLoad: false,
     autoSave: false,
@@ -195,7 +210,7 @@ test("completed campaign state rejects a stale active checkpoint to protect rewa
   assert.equal(checkpointCanResume(campaign.checkpoint(), campaign.state), false);
 });
 
-test("starting another mission run clears the previous mission checkpoint", () => {
+test("starting another explicitly supplied mission clears the previous checkpoint", () => {
   const campaign = campaignAtNightclub();
   campaign.setCheckpoint(checkpointFor(campaign), { emit: false });
   campaign.failActiveMission("Test restart.");
@@ -205,7 +220,7 @@ test("starting another mission run clears the previous mission checkpoint", () =
   assert.equal(campaign.checkpoint(), null);
 });
 
-test("retrying the same failed mission preserves its last safe checkpoint for boot restoration", () => {
+test("retrying the same explicitly supplied failed mission preserves its safe checkpoint", () => {
   const campaign = campaignAtNightclub();
   const checkpoint = checkpointFor(campaign);
   campaign.setCheckpoint(checkpoint, { emit: false });
