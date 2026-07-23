@@ -136,6 +136,18 @@ Release-candidate domains:
 npm run test:rc
 ```
 
+## itch.io build
+
+A manual GitHub Actions workflow can package any selected branch as an itch.io-ready HTML ZIP:
+
+```text
+Actions → Build itch.io ZIP → Run workflow
+```
+
+Choose the branch, run the workflow and download the artifact. Extract the downloaded artifact once, then upload the inner `vampire-district.zip` to itch.io.
+
+See [`docs/ITCH_IO_BUILD.md`](docs/ITCH_IO_BUILD.md) for the full process and package contract.
+
 ## Documentation
 
 Start with [`docs/README.md`](docs/README.md), then read:
