@@ -2,19 +2,19 @@
 
 _Last updated: 2026-07-23_
 
-Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) for the project-wide map. This document defines runtime ownership, update ordering, event-driven services, persistence boundaries and testing contracts.
+Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) for the project-wide map. This document defines runtime ownership, boot composition, campaign/mission registration, persistence boundaries, city-topology policy and testing contracts.
 
 ## 1. Runtime and stack
 
 - Phaser 3 browser runtime.
 - Native ES modules.
-- DOM/CSS overlays for HUD, dialogue, campaign entry, mission board, garage and result modals.
-- Data-driven campaign, city, combat, vehicle, maintenance, traffic and police definitions.
+- DOM/CSS overlays for HUD, garage, pause/help and result presentation.
+- Data-driven campaign, combat, vehicle, maintenance, traffic and police systems.
 - Node built-in test runner for pure/unit coverage.
-- Playwright Chromium for boot, systems and campaign regressions.
+- Playwright Chromium for boot, systems and campaign/free-roam regressions.
 - No backend dependency.
 
-Logical viewport: `960 × 640`. World: `2400 × 1440`. The game does not allocate a full-world render canvas.
+Logical viewport: `960 × 640`. Current imported world: `2400 × 1440`. The game does not allocate a full-world render canvas.
 
 ## 2. Top-level ownership
 
@@ -23,27 +23,46 @@ GameScene.update
   → GameplayRuntime.update
 ```
 
-`GameScene` owns scene objects and delegates frame coordination. `GameplayRuntime` owns deterministic specialist order and temporary input adaptation.
+`GameScene` owns scene objects and delegates frame coordination. `GameplayRuntime` owns deterministic specialist order and temporary foot/vehicle input adaptation.
 
 No feature may add a second world frame loop or parallel gameplay authority.
 
-### `UIScene`
+## 3. Production boot composition
 
-Owns HUD/modal presentation. World input is locked while campaign entry, mission board, garage, pause, failure or success UI is open.
+Normal production boot is a persistent missionless sandbox.
 
-### Event-driven campaign services
+```text
+BootProfile
+→ campaign/preload
+→ Phaser game composition
+→ campaign/bootstrap
+→ tutorial/bootstrap (immediate completion/free-roam setup)
+→ vehicle maintenance bootstrap
+```
 
-Campaign mutations that do not require per-frame simulation live outside `GameplayRuntime`:
+Not production-booted while the registry is empty:
 
-- mission activation/rewards;
-- cash and ledger;
-- reputation;
-- authored vehicle condition/trunks;
-- vehicle repair/recovery.
+- campaign entry system;
+- refuge mission board;
+- authored journalist tutorial flow;
+- mission-specific browser golden paths.
 
-These services emit plain events. The campaign wildcard listener touches and autosaves state.
+Normal boot profile:
 
-## 3. Current system map
+```text
+mode                       normal
+persistent campaign        true
+auto load/save             true
+show campaign entry        false
+auto-start mission         false
+skip authored tutorial     true
+start layer                street
+spawn                      438, 326
+```
+
+Explore/scenario profiles remain isolated and non-persistent.
+
+## 4. Current system map
 
 ### Campaign and state
 
@@ -51,14 +70,16 @@ These services emit plain events. The campaign wildcard listener touches and aut
 - `CampaignEventBus`
 - `CampaignSystem`
 - `MissionRunner`
-- `MissionSystem`
+- generic `MissionSystem`
+- `CampaignCheckpointSystem`
 - `WalletSystem`
+- `ReputationSystem`
 - `CampaignVehicleSystem`
 - `VehicleMaintenanceService`
-- campaign entry controller
-- refuge contract board
 - `VehicleMaintenanceUiSystem`
 - `StatePublisher`
+
+Campaign-entry and mission-board source modules remain available for future explicit content, but are not instantiated by the production bootstrap.
 
 ### Player and combat
 
@@ -109,14 +130,16 @@ These services emit plain events. The campaign wildcard listener touches and aut
 
 ### Guidance/presentation helpers
 
-- `TutorialDirector`
-- `TaskRevealSystem`
-- `ObjectiveMarkerSystem`
-- `OutskirtsSystem`
-- `UxGuidanceSystem`
-- interaction and transition systems
+- completed `TutorialDirector` shell for compatibility/accessibility UI;
+- `TaskRevealSystem`;
+- `ObjectiveMarkerSystem`;
+- `OutskirtsSystem`;
+- `UxGuidanceSystem`;
+- interaction and transition systems.
 
-## 4. Authoritative frame order
+With no active mission, the objective marker has no target and `MissionSystem` publishes no mission interaction.
+
+## 5. Authoritative frame order
 
 Large-city pre-frame:
 
@@ -156,15 +179,15 @@ InputSystem.beginFrame
 Ordering guarantees:
 
 1. chunks/resources are resident before local queries;
-2. dormant state advances before local activation;
+2. dormant state advances before activation;
 3. macro traffic/police graph state is current before presentation;
-4. civilian lane behaviour and physical consequences resolve before cruisers sample the road;
-5. motorized police can create foot officers before the normal police/NPC frame;
+4. civilian lane behaviour/contact resolves before cruisers sample roads;
+5. motorized police can create foot officers before normal police/NPC AI;
 6. player and AI consume final positions once.
 
-Vehicle maintenance is event-driven and deliberately absent from the frame order.
+Vehicle maintenance and campaign transactions are event-driven outside the frame order.
 
-## 5. Input architecture
+## 6. Input architecture
 
 Authoritative files:
 
@@ -199,48 +222,120 @@ Control ownership:
 
 - Enter: vehicle entry/exit only;
 - Space: traversal on foot, handbrake while driving;
-- E: non-traversal interaction, trunk or garage;
+- E: interaction, trunk or garage;
 - Shift: quiet movement on foot;
 - wheel: weapon selection while gameplay is active.
 
 No gameplay feature reads raw world-action keys independently.
 
-## 6. Campaign and persistence
+## 7. Campaign persistence
 
-`CampaignState` is versioned/serializable. `MissionRunner` is the single objective authority.
+`CampaignState` is versioned and serializable.
 
 Persistent domains:
 
-- mission records and latest safe checkpoint;
 - cash and transaction ledger;
-- reputation;
+- faction/contact reputation;
 - player position/layer, Hunger and loadout;
-- authored vehicle position, angle, hull, parked state and trunk;
+- authored vehicle ownership, position, angle, hull, parked state and trunk;
 - broken props;
 - static NPC outcomes, bodies and evidence;
-- tutorial/informant state.
+- unlocked refuges and general world flags;
+- mission records/checkpoints only for definitions registered by the current build.
 
-Checkpoint rules:
+Excluded:
 
-- definitions author safety policy;
-- unsafe progress rolls back to the latest safe checkpoint;
-- failed retry preserves that checkpoint;
-- completion requires a completion checkpoint;
-- rewards remain idempotent.
-
-Authored vehicle condition is campaign state but not checkpoint payload. A checkpoint rollback cannot revert later paid maintenance.
-
-Excluded from campaign persistence:
-
-- civilian traffic tokens/local proxy state;
-- motorized response cruisers, routes, transient hull and suspect memory;
+- civilian traffic token/local proxy state;
+- motorized cruisers, routes, transient hull and suspect memory;
 - temporary traffic/police contact cooldowns.
 
-## 7. Wallet and maintenance transaction
+Authored vehicle condition is campaign state but not mission-checkpoint payload. A checkpoint rollback cannot revert later paid maintenance.
+
+## 8. Mission registration authority
+
+Production default:
+
+```js
+CampaignSystem.DEFAULT_DEFINITIONS = [];
+```
+
+No mission is implicitly registered or started.
+
+Archived definitions remain source-controlled examples:
+
+- `silenceTheJournalistMission`;
+- `cleanTheSceneMission`.
+
+Tests or future content modules must pass definitions explicitly:
+
+```js
+new CampaignSystem({ definitions: [definition] });
+```
+
+This keeps the generic framework testable while preventing retired content from constraining production geometry.
+
+### Generic MissionSystem facade
+
+With no active mission, `MissionSystem`:
+
+- returns `null` current objective and marker;
+- provides no mission-specific interactions;
+- reports free-roam task/objective text;
+- forwards no objective progress because no registered runner exists.
+
+With an explicitly supplied active definition, it still:
+
+- reads objective state from `MissionRunner`;
+- forwards typed neutralization events;
+- presents generic labels/markers;
+- publishes failure/completion results;
+- preserves one objective authority.
+
+Retired journalist-specific logic is removed:
+
+- automatic opening start;
+- rooftop-jump/informant adapter;
+- journalist visibility bridge;
+- return-to-refuge sire finale.
+
+## 9. Retired mission save pruning
+
+During `CampaignSystem` service construction, stored mission state is compared with the definitions registered for the current build.
+
+Pruned when unregistered:
+
+- `activeMissionId`;
+- mission records;
+- completed IDs;
+- failed IDs;
+- latest checkpoint belonging to that mission.
+
+Preserved:
+
+- wallet/ledger;
+- reputation;
+- inventory;
+- authored vehicles;
+- unlocked refuges;
+- unrelated world flags/state.
+
+When normal autosave is enabled, the cleaned state is persisted immediately.
+
+## 10. Retired actor and streaming boundary
+
+Retained inactive archetypes:
+
+- journalist;
+- exposed body;
+- rooftop thug.
+
+They are source-controlled for explicit future content/tests but are inactive in free roam. The tutorial-created informant is hidden when the tutorial shell completes immediately.
+
+`EntityStreamPolicy` only pins mission targets/informants/intercepts when an active mission exists. Therefore retired actors cannot keep the Old Quarter resident or shape streaming behaviour.
+
+## 11. Wallet and maintenance transaction
 
 `WalletSystem` owns cash and immutable ledger entries.
-
-Normal operations emit `wallet:changed`. Milestone 12.1 adds an explicit silent option used only when a higher-level transaction owns final commit/rollback.
 
 Maintenance authority:
 
@@ -255,11 +350,11 @@ VehicleMaintenanceService
 
 Before mutation, the service snapshots cash, ledger, world flags, event log, sequences, revision and timestamp. Failure restores all values and persists rollback.
 
-Repair requires an owned, damaged, parked vehicle inside the garage radius. Recovery requires an owned wreck, sufficient cash and no wanted level; it returns the vehicle to a deterministic garage slot with `35%` hull.
+Repair requires an owned damaged parked vehicle inside the garage radius. Recovery requires an owned wreck, sufficient cash and no wanted level; it returns the vehicle to a deterministic garage slot with `35%` hull.
 
-`VehicleMaintenanceUiSystem` is presentation only. It adds an E interaction, pauses the scene, owns keyboard focus and calls the campaign service.
+The service remains available in missionless persistent free roam.
 
-## 8. Persistent authored vehicles
+## 12. Persistent authored vehicles
 
 `VehicleSystem.vehicles` contains authored/campaign vehicles.
 
@@ -273,11 +368,9 @@ Persistent state:
 
 `VehicleModel` owns pure kinematics/impact helpers. `VehicleDriving` owns occupancy checks, safe contact search, sliding and world collision consequences.
 
-`VehicleSystem.damageVehicle()` is the public runtime hull route. `persistVehicle()` commits live condition through `CampaignVehicleSystem`.
+After maintenance, `syncFromCampaign()` updates position, velocity/drift, hull, wreck visuals, visibility, HUD/browser state and `lastPersisted`.
 
-After maintenance, `syncFromCampaign()` updates position, angles, zeroed velocity/drift, hull, wreck visuals, visibility, HUD/browser state and `lastPersisted`.
-
-## 9. Civilian traffic architecture
+## 13. Civilian traffic architecture
 
 Civilian proxies are not authored vehicles:
 
@@ -286,150 +379,116 @@ Civilian proxies are not authored vehicles:
 - not enterable, searchable, repairable or persistent;
 - no ownership, trunk or hull.
 
-### Streaming/macro
+Streaming/macro:
 
-- `ChunkStreamSystem`: async load, retry/cancel, activation budget, LRU, queries and deltas.
-- `DistrictPackSystem`: district resources and road-aware prefetch.
-- `EntityStreamSystem`: active/dormant state without deleting campaign truth.
-- `DistantSimulationSystem`: low-frequency dormant progression.
-- `MacroTrafficPoliceSystem`: district graph, civilian traffic phases/trips and dormant foot-police travel.
+- `ChunkStreamSystem`: async load, activation budget, LRU, queries/deltas;
+- `DistrictPackSystem`: district resources and road-aware prefetch;
+- `EntityStreamSystem`: active/dormant state;
+- `DistantSimulationSystem`: low-frequency dormant progression;
+- `MacroTrafficPoliceSystem`: district graph, civilian traffic trips and dormant police travel.
 
-### Local 4C–4F
+Local 4C–4F:
 
-- `TrafficMaterializationSystem`: maps nearby macro tokens to ten containers and explicit lanes.
-- `TrafficLocalBehaviorSystem`: lane phase, following, queues, braking and junction priority.
-- `TrafficPhysicalConsequencesSystem`: soft push/block, damping and temporary lane offsets.
-- `TrafficImpactConsequencesSystem`: hard/severe hull damage, audio, exposure, heat, stalls and cooldown.
+- `TrafficMaterializationSystem`: ten pooled containers and lane sampling;
+- `TrafficLocalBehaviorSystem`: following, queues, braking and junction priority;
+- `TrafficPhysicalConsequencesSystem`: soft push/block and lane offsets;
+- `TrafficImpactConsequencesSystem`: hard/severe damage, exposure, heat, stalls and cooldown.
 
-## 10. Motorized police architecture
+## 14. Motorized police architecture
 
-### Pure policy
-
-`MotorizedPolicePolicy.js` owns:
-
-- wanted-level cruiser count;
-- pursuit/roadblock role assignment;
-- breadth-first district routing;
-- graph edge/lane direction lookup;
-- route-leg construction;
-- bounded route advancement;
-- `72%` final-leg roadblock stop;
-- officer reservation count.
-
-### Response authority
-
-`MotorizedPoliceSystem` owns:
-
-- transient unit identity and role;
-- origin/target district and route progress;
-- fixed pool of two cruiser containers;
-- local visibility and siren presentation;
-- transient cruiser health/disabled state;
-- collision blocking/consequences;
-- dismount decision;
-- abandoned suspect-car memory.
-
-Defaults:
+Wanted response:
 
 ```text
-wanted 2                  one pursuit cruiser
-wanted 3                  pursuit + one partial roadblock
-materialize radius        920
-pursuit dismount          150
-roadblock trigger         210
-roadblock final phase     0.72
-impact cooldown           0.9 s
-abandoned-car memory      4 s
-crew                      2 officers per cruiser
+wanted 2   one pursuit cruiser
+wanted 3   pursuit + one partial roadblock
 ```
 
-### Macro/local safety policy
+`MotorizedPolicePolicy` owns routing/roles/progression/reservation. `MotorizedPoliceSystem` owns transient units, two containers, local visibility, collision, hull, dismount decisions and abandoned-car memory.
 
-`MotorizedPoliceLocalPolicy` separates distant abstract travel from local occupancy:
+`MotorizedPoliceLocalPolicy` separates abstract distant travel from local blockers and prevents roadblock crews deploying before the cruiser reaches its cross-lane stop.
 
-- before a candidate enters the local window, authored cars/civilian proxies do not freeze macro travel;
-- once local, normal blockers apply;
-- roadblock crews cannot deploy merely on entering trigger radius before reaching the cross-lane stop;
-- a cruiser trapped locally for `1.15 s` may deploy its crew and continue pressure on foot.
+`PoliceSystem.desiredCount(level)` remains the public total `2 / 3 / 5 / 7`. `footDesiredCount()` subtracts reserved crews. After dismount, officers are ordinary police NPCs and the motorized layer no longer owns their AI.
 
-### Officer totals and transfer
+## 15. Current City Compiler boundary
 
-`PoliceSystem.desiredCount(level)` remains the public total:
+The current runtime city is an imported comparison baseline, not protected output.
 
 ```text
-0 → 2
-1 → 3
-2 → 5
-3 → 7
+protectedZones  []
+landmarks       []
 ```
 
-`footDesiredCount()` subtracts officers reserved inside active cruisers. `spawnForExposure()` uses the foot target.
+Every district, including `old-quarter`, has `protected: false`.
 
-`spawnMotorizedOfficers()` creates stable unit-derived NPC IDs, metadata and current investigation target. It is idempotent: repeated calls return existing IDs.
+Existing building/road overlaps remain declared diagnostic debt for the imported baseline. They are not valid for generated candidates.
 
-After dismount, officers are normal police NPCs; `MotorizedPoliceSystem` no longer owns their AI.
+The compiler metadata records:
 
-### Vertical escape and retirement
+```text
+compilerStage       mission-constraints-retired
+future landmark     site-first
+```
 
-Cruiser containers hide off-street, but macro response state remains. When wanted response retires, transient units are discarded. No campaign migration is needed.
+## 16. Future city-topology authority
 
-## 11. Authority table
+The next generator/refactor must establish one geometry authority.
+
+### Road graph
+
+Roads are graph edges represented by lines/polylines/curves with width and lane metadata.
+
+### Intersections
+
+Each junction is one unique object. Straight-road curb/sidewalk bands terminate at its boundary rather than being overdrawn through it.
+
+### Pedestrian network
+
+Sidewalks are connected graph edges. A crosswalk is valid only when it connects two pedestrian nodes across a real carriageway.
+
+### Parcels/buildings
+
+Ordinary buildings occupy validated polygonal parcels with setbacks from carriageway, sidewalk and intersection clearances. Rectangle-only assumptions are forbidden.
+
+### Site-first landmarks
+
+Important places reserve complete compound/polygonal sites before local roads and ordinary blocks are finalized.
+
+Examples:
+
+- police station with secure yard/parking;
+- hospital campus with emergency/service approaches;
+- church with plaza/garden/cemetery;
+- industrial plant with loading perimeter.
+
+Roads may curve around or approach these sites.
+
+### Street furniture
+
+Lamps/bins attach to semantic sidewalk corners, furniture bands, frontages, plazas or explicit medians. They do not spawn from arbitrary road-strip intervals inside intersections.
+
+## 17. Authority table
 
 | Domain | Authoritative owner | Not authoritative |
 |---|---|---|
-| mission progress | `MissionRunner` | UI step |
+| registered mission content | explicit `CampaignSystem.definitions` | archived files/default boot |
+| mission progress | `MissionRunner` | UI step/raw coordinate script |
 | campaign save | campaign services | runtime proxies |
 | player input | `InputSystem` | raw-key feature reads |
 | cash/ledger | `WalletSystem` | garage UI |
 | authored vehicle condition | `CampaignVehicleSystem` / live `VehicleSystem` | traffic/police proxies |
-| maintenance composition | `VehicleMaintenanceService` | wallet or UI alone |
+| maintenance composition | `VehicleMaintenanceService` | wallet/UI alone |
 | macro civilian traffic | `MacroTrafficPoliceSystem` | local proxy systems |
-| civilian slot | `TrafficMaterializationSystem` | campaign/authored vehicles |
-| civilian behaviour/contact | 4D/4E/4F systems | macro persistence |
-| total police target | `PoliceSystem.desiredCount` | motorized system |
-| foot police target | `PoliceSystem.footDesiredCount` | release harness |
+| civilian slot | `TrafficMaterializationSystem` | campaign vehicles |
 | motorized response unit | `MotorizedPoliceSystem` | civilian traffic/campaign |
-| local motorized safety | `MotorizedPoliceLocalPolicy` | macro routing policy |
-| dismounted officer AI | `PoliceSystem` / `NpcSystem` | motorized cruiser state |
-| police heat | `PoliceSystem` | traffic/cruiser storage |
-| evidence | `EvidenceSystem` | rendering effects |
+| dismounted officer AI | `PoliceSystem` / `NpcSystem` | cruiser state |
+| imported city comparison | current district data/compiler manifest | future topology authority |
+| future roads/intersections | topology graph + junction objects | overlapping render strips |
+| future pedestrian network | connected sidewalk graph | decorative crosswalks |
+| future landmark footprint | semantic landmark site | leftover rectangular parcel |
 
-## 12. Events and diagnostics
+## 18. Diagnostics and testing
 
-Events carry identifiers and primitive values, never service instances.
-
-Relevant events:
-
-```text
-vehicle:maintenance-completed
-police:motorized-officers-deployed
-```
-
-Browser diagnostics:
-
-```js
-window.NBD_CAMPAIGN
-window.NBD_VEHICLES
-window.NBD_VEHICLE_MAINTENANCE
-window.NBD_CITY_STREAM
-window.NBD_TRAFFIC
-window.NBD_TRAFFIC_BEHAVIOR
-window.NBD_TRAFFIC_PHYSICS
-window.NBD_TRAFFIC_IMPACTS
-window.NBD_MOTORIZED_POLICE
-```
-
-These are test/diagnostic surfaces, not additional authorities.
-
-The release-candidate stress harness exposes:
-
-```text
-footPolice      physical police NPCs
-reservedPolice  officers inside active cruisers
-police          effective pressure total
-```
-
-## 13. Testing architecture
+Browser diagnostics include campaign, vehicles, maintenance, streaming, civilian traffic, impacts, motorized police and runtime ownership surfaces.
 
 PR domains:
 
@@ -440,40 +499,28 @@ browser-systems
 browser-campaign
 ```
 
-Pure/unit coverage includes:
+Reset coverage verifies:
 
-- input, geometry, combat, drain and AI priority;
-- campaign definitions/checkpoints/rewards;
-- wallet, vehicle condition and maintenance rollback;
-- chunk/macro/dormant simulation;
-- civilian traffic lane/assignment/behaviour/contact/impact;
-- motorized wanted counts, roles and reservation;
-- graph/lane routing and route advancement;
-- roadblock stop and local safety policy.
+- zero production definitions;
+- explicit archived definitions still exercise the generic runner;
+- old-save mission pruning without cash loss;
+- persistent street free-roam boot;
+- no campaign entry, mission board, objective or authored tutorial;
+- retired actors inactive/unpinned;
+- no protected Old Quarter/fixed landmarks.
 
-Chromium systems coverage includes:
+Mission-specific Chromium golden paths were deleted because the contracts are no longer production content.
 
-- authored vehicle driving, maintenance and recovery;
-- expanded city/civilian traffic regression;
-- level-two pursuit cruiser and exact-once crew deployment;
-- level-three partial roadblock angle/blocking;
-- cruiser disablement;
-- rooftop hiding and suspect-car memory;
-- historic police stress using effective pressure;
-- no page errors or runtime ownership conflicts.
-
-A feature is complete only when code, tests and documentation agree.
-
-## 14. Current constraints and next extension
+## 19. Current constraints and next extension
 
 Current constraints:
 
-- motorized response uses macro lanes to deliver pressure to district boundaries;
-- no freeform intra-district cruiser path selection;
-- one partial roadblock, no spike strips or drive-by fire;
-- response cruisers are transient and not campaign persistent;
-- civilian traffic remains bounded to ten local containers;
-- one refuge garage, full repair only;
-- browser-systems duration is increasing.
+- imported city still contains overlap/readability debt;
+- lanes, pedestrian routes and chunks depend on current authored geometry;
+- garage and other services still use raw coordinates;
+- curved-road offset geometry does not exist yet;
+- no production missions are registered.
 
-Next extension: **Milestone 14 original factions and territory foundation** using migration-safe campaign data, district ownership, reputation/access gates and mission-definition hooks without adding another campaign authority.
+Next extension: **City Topology & Readability**.
+
+It must introduce unique intersections, explicit road/curb/sidewalk geometry, connected pedestrian routes, valid crosswalks, setbacks, semantic furniture anchors, site-first landmarks and curved/polyline streets before factions or new missions are authored.
