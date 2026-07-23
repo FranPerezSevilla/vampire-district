@@ -1,6 +1,6 @@
 # itch.io build workflow
 
-The repository includes a manual GitHub Actions workflow that packages any selected branch as an itch.io-ready HTML game ZIP.
+The repository includes a manual GitHub Actions workflow that packages any selected branch as one final itch.io-ready HTML game ZIP.
 
 Workflow file:
 
@@ -19,17 +19,17 @@ Workflow file:
 7. Run the workflow and wait for it to finish.
 8. Open the completed run and download the artifact from the **Artifacts** section.
 
-GitHub downloads the artifact as an outer ZIP. Extract it once to obtain the actual itch.io upload:
+The downloaded file itself is the final itch.io upload:
 
 ```text
 vampire-district.zip
 ```
 
-Upload that inner ZIP to itch.io as an **HTML** project with **This file will be played in the browser** enabled.
+Do not extract and repackage it. Upload that ZIP directly to itch.io as an **HTML** project with **This file will be played in the browser** enabled.
 
 ## Package contract
 
-The generated itch.io ZIP contains the playable repository files with `index.html` directly at its root:
+The downloaded ZIP contains `index.html` directly at its root:
 
 ```text
 vampire-district.zip
@@ -50,6 +50,10 @@ The following development-only content is excluded:
 - existing ZIP files
 - common operating-system metadata files
 
+## Why there is no nested ZIP
+
+GitHub Actions always downloads an artifact as a ZIP archive. The workflow therefore uploads the prepared `itch-build` directory directly instead of first creating another ZIP. The artifact downloaded from GitHub is already the definitive package for itch.io.
+
 ## Branch behaviour
 
 The workflow packages the branch selected in GitHub's **Run workflow** interface. This allows test builds to be generated from feature branches without merging them into `main`.
@@ -62,8 +66,9 @@ A generated artifact is retained for 14 days.
 feature branch
 → run browser/regression checks
 → generate itch.io ZIP from that branch
-→ download and smoke-test the ZIP
-→ upload to the restricted itch.io playtest page
+→ download the final ZIP
+→ smoke-test its contents locally
+→ upload that same ZIP to the restricted itch.io playtest page
 ```
 
 Do not rely on the GitHub Pages build through an iframe or redirect for formal playtests. A self-contained ZIP keeps the tested version stable and avoids external hosting, focus and fullscreen issues.
