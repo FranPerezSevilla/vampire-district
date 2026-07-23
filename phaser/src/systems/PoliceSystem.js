@@ -47,15 +47,19 @@ export class PoliceSystem extends PoliceSystemCore {
   }
 
   desiredCount(level = this.scene.exposureSystem.level()) {
+    return DESIRED_POLICE_BY_LEVEL[clampLevel(level)];
+  }
+
+  footDesiredCount(level = this.scene.exposureSystem.level()) {
     const clamped = clampLevel(level);
     const reserved = this.scene.motorizedPoliceSystem?.reservedOfficerCount?.(clamped) || 0;
-    return Math.max(2, DESIRED_POLICE_BY_LEVEL[clamped] - reserved);
+    return Math.max(2, this.desiredCount(clamped) - reserved);
   }
 
   spawnForExposure(level = this.scene.exposureSystem.level()) {
     const clamped = clampLevel(level);
     if (clamped < 1) return;
-    const desired = this.desiredCount(clamped);
+    const desired = this.footDesiredCount(clamped);
     const existingPolice = this.allPolice().length;
     this.spawnedThisTick = 0;
     while (existingPolice + this.spawnedThisTick < desired) this.spawnPolice(clamped);
