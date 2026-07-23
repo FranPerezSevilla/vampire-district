@@ -1,3 +1,4 @@
+import { installMotorizedPoliceLocalPolicy } from "../police/MotorizedPoliceLocalPolicy.js";
 import { MotorizedPoliceSystem } from "../police/MotorizedPoliceSystem.js";
 import { PedestrianSystem } from "../systems/PedestrianSystem.js";
 import { StreetFurnitureSystem } from "../systems/StreetFurnitureSystem.js";
@@ -68,6 +69,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.trafficPhysicalConsequencesSystem = new TrafficPhysicalConsequencesSystem(scene);
     scene.trafficImpactConsequencesSystem = new TrafficImpactConsequencesSystem(scene);
     scene.motorizedPoliceSystem = new MotorizedPoliceSystem(scene);
+    scene.motorizedPoliceLocalPolicy = installMotorizedPoliceLocalPolicy(scene.motorizedPoliceSystem);
     scene.npcSystem?.refreshVisibility?.();
     scene.vehicleSystem?.refreshVisibility?.();
   }
@@ -134,6 +136,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
   }
 
   destroy() {
+    this.scene.motorizedPoliceLocalPolicy?.destroy?.();
+    this.scene.motorizedPoliceLocalPolicy = null;
     this.scene.motorizedPoliceSystem?.destroy?.();
     this.scene.motorizedPoliceSystem = null;
     this.scene.trafficImpactConsequencesSystem?.destroy?.();
