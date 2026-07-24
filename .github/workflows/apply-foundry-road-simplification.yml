@@ -1,0 +1,64 @@
+name: Apply Foundry road simplification
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate-and-measure:
+    if: ${{ github.head_ref == 'agent/simplify-foundry-road-block' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/simplify-foundry-road-block
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Apply Foundry simplification
+        run: python3 tools/city-compiler/apply-foundry-simplification.py
+
+      - name: Install exact test dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+
+      - name: Regenerate city topology
+        run: npm run city:topology
+
+      - name: Print generated metrics
+        run: |
+          node --input-type=module <<'NODE'
+          const city = await import('./phaser/src/data/generated/city-topology-v2.js');
+          console.log(JSON.stringify({
+            version: city.ROAD_GEOMETRY_VERSION,
+            nodes: city.roadGraphNodes.length,
+            edges: city.roadGraphEdges.length,
+            segments: city.roadSegments.length,
+            junctionPieces: city.roadJunctions.length,
+            sidewalks: city.sidewalks.length,
+            roadEdgeBands: city.sidewalks.filter(item => item.bandKind === 'road-edge').length,
+            junctionSidewalks: city.junctionSidewalks.length,
+            crosswalks: city.crosswalks.length,
+            exclusions: city.propExclusionZones.length,
+            lights: city.lights.length,
+            absorbedShortApproaches: city.CITY_TOPOLOGY_STATS.absorbedShortApproachCount,
+          }, null, 2));
+          NODE
+
+      - name: Commit regenerated candidate
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Simplify Foundry industrial road block"
+          git push origin HEAD:agent/simplify-foundry-road-block
