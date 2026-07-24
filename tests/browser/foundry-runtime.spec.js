@@ -72,7 +72,7 @@ test("the relocated Foundry remains playable across street, roof and sewer layer
   expect(result.generatedRoads).toBe(1);
   expect(result.generatedBuildings).toBe(7);
   expect(result.generatedRoofs).toBe(4);
-  expect(result.foundryStreet).toMatchObject({ x: 2010, y: 2212 });
+  expect(result.foundryStreet).toMatchObject({ x: 1800, y: 2572 });
   expect(result.vehicle).toMatchObject({ id: "foundry:vehicle:utility", archetypeId: "sedan", x: 1900, y: 2212 });
   expect(result.drivable.every(Boolean)).toBe(true);
   expect(result.streetInteractions).toContain("foundry:fire-escape:west_up");
