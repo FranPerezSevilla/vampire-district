@@ -54,14 +54,25 @@ jobs:
         run: npm run test:browser:boot
 
       - name: Run browser system tests
-        run: npm run test:browser:systems
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:browser:systems 2>&1 | tee foundry-browser-systems.log
+
+      - name: Upload browser-system diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foundry-browser-system-diagnostics
+          path: foundry-browser-systems.log
+          retention-days: 2
 
       - name: Run browser campaign tests
         run: npm run test:browser:campaign
 
       - name: Commit clean Foundry topology
         run: |
-          rm -f foundry-unit-tests.log
+          rm -f foundry-unit-tests.log foundry-browser-systems.log
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
