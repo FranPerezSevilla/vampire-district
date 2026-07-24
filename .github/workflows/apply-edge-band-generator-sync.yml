@@ -34,11 +34,17 @@ jobs:
             echo "Temporary patch already consumed."
             exit 0
           fi
-          cat tools/edge-sync/part-00.txt tools/edge-sync/part-01.txt \
-            | base64 --decode \
-            | gzip --decompress \
-            > /tmp/edge-sync.patch
-          git apply --check /tmp/edge-sync.patch
+          wc -c tools/edge-sync/part-00.txt tools/edge-sync/part-01.txt
+          sha256sum tools/edge-sync/part-00.txt tools/edge-sync/part-01.txt
+          test "$(sha256sum tools/edge-sync/part-00.txt | cut -d' ' -f1)" = "56f937ae4bb3212a5db9371627c2fd9be8726a05dbec90403c10588c02925396"
+          test "$(sha256sum tools/edge-sync/part-01.txt | cut -d' ' -f1)" = "ba641bc20ff6536e6368559e9419538c3e420f2cd089e2dd306a4ad85a721c04"
+          cat tools/edge-sync/part-00.txt tools/edge-sync/part-01.txt > /tmp/edge-sync.patch.b64
+          test "$(sha256sum /tmp/edge-sync.patch.b64 | cut -d' ' -f1)" = "571ce35f04f23242bafd51f92d8cab2f1b1737c5bdc749c0058fb2a40b88fc45"
+          base64 --decode /tmp/edge-sync.patch.b64 > /tmp/edge-sync.patch.gz
+          gzip --test /tmp/edge-sync.patch.gz
+          gzip --decompress --stdout /tmp/edge-sync.patch.gz > /tmp/edge-sync.patch
+          test "$(sha256sum /tmp/edge-sync.patch | cut -d' ' -f1)" = "1eef130731a75808f434cdb75d82faa23d8a7884d2e145756c21ff6202e6a35b"
+          git apply --check --verbose /tmp/edge-sync.patch
           git apply /tmp/edge-sync.patch
           rm -rf tools/edge-sync
           rm -f .github/workflows/export-road-edge-bands.yml
