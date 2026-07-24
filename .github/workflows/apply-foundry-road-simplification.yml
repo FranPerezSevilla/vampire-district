@@ -23,7 +23,9 @@ jobs:
           node-version: 22
 
       - name: Apply Foundry simplification
-        run: python3 tools/city-compiler/apply-foundry-simplification.py
+        run: |
+          sed -i 's/MINIMUM_PARALLEL_ROAD_BLOCK_DEPTH = 48/MINIMUM_PARALLEL_ROAD_BLOCK_DEPTH = 36/' tools/city-compiler/apply-foundry-simplification.py
+          python3 tools/city-compiler/apply-foundry-simplification.py
 
       - name: Install exact test dependencies
         run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
@@ -54,6 +56,7 @@ jobs:
             junctionPieces: city.roadJunctions.length,
             sidewalks: city.sidewalks.length,
             roadEdgeBands: city.sidewalks.filter(item => item.bandKind === 'road-edge').length,
+            roadEdgeBandSources: city.CITY_TOPOLOGY_STATS.roadEdgeBandSourceCount,
             junctionSidewalks: city.junctionSidewalks.length,
             crosswalks: city.crosswalks.length,
             exclusions: city.propExclusionZones.length,
