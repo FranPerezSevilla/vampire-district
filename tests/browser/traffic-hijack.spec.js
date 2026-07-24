@@ -86,6 +86,9 @@ test("civilian traffic spawns off camera, can be hijacked and ejects bounded WTF
     }
     scene.vehicleSystem.pruneTransientVehicles(6);
     const transientVehicles = scene.vehicleSystem.vehicles.filter(candidate => candidate.transient);
+    const transientVehicleIds = new Set(transientVehicles.map(candidate => candidate.id));
+    const orphanTransientVehicleRecords = [...scene.entityStreamSystem.vehicleRecords.keys()]
+      .filter(id => (id.startsWith("traffic-stolen-") || id.startsWith("traffic-cap-test-")) && !transientVehicleIds.has(id));
 
     return {
       missing: false,
@@ -110,6 +113,7 @@ test("civilian traffic spawns off camera, can be hijacked and ejects bounded WTF
       policeInteraction,
       transientVehicleCount: transientVehicles.length,
       transientCap: 6,
+      orphanTransientVehicleRecords,
       actionText: scene.lastActionText
     };
   });
@@ -133,6 +137,7 @@ test("civilian traffic spawns off camera, can be hijacked and ejects bounded WTF
   expect(result.policeForcedEntry).toBe(false);
   expect(result.policeInteraction).toBe(false);
   expect(result.transientVehicleCount).toBeLessThanOrEqual(result.transientCap);
+  expect(result.orphanTransientVehicleRecords).toEqual([]);
   expect(result.actionText).toContain("Police vehicles cannot be stolen");
   expect(pageErrors).toEqual([]);
 });
