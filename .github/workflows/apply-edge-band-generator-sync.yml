@@ -21,10 +21,10 @@ jobs:
           ref: agent/fix-road-edge-band-generator-sync
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
+      - name: Check runner Node
+        run: |
+          node --version
+          npm --version
 
       - name: Apply verified source patch
         shell: bash
