@@ -1,6 +1,14 @@
+import { AI_STATES } from "../data/ai.js";
 import { LAYERS } from "../data/district.js";
-import { vehicleArchetype } from "../data/vehicles.js";
+import { NPC_TYPES } from "../data/npcs.js";
+import { VEHICLE_OWNERSHIP, vehicleArchetype } from "../data/vehicles.js";
 import { paintVehicle } from "../vehicles/VehicleView.js";
+
+const TRAFFIC_ENTER_RADIUS = 30;
+const SPAWN_CAMERA_MARGIN = 54;
+const DESPAWN_CAMERA_MARGIN = 300;
+const MAX_TRANSIENT_TRAFFIC_VEHICLES = 6;
+const MAX_TRANSIENT_OCCUPANTS = 12;
 
 function finite(value, fallback = 0) {
   if (value === null || value === undefined || value === "") return fallback;
@@ -25,6 +33,43 @@ function vehicleRadius(archetype) {
 function round(value, digits = 2) {
   const factor = 10 ** digits;
   return Math.round(finite(value) * factor) / factor;
+}
+
+function stableHash(value) {
+  let hash = 2166136261;
+  for (const character of String(value || "")) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function safeId(value) {
+  return String(value || "traffic").replace(/[^a-z0-9_-]+/gi, "-").replace(/^-+|-+$/g, "") || "traffic";
+}
+
+export function cameraWorldBounds(scene) {
+  const view = scene?.cameras?.main?.worldView;
+  if (!view) return null;
+  const width = Math.max(0, finite(view.width));
+  const height = Math.max(0, finite(view.height));
+  return {
+    x: finite(view.x),
+    y: finite(view.y),
+    width,
+    height,
+    right: finite(view.x) + width,
+    bottom: finite(view.y) + height
+  };
+}
+
+export function pointInsideCamera(point, bounds, margin = 0) {
+  if (!bounds || !point) return false;
+  const padding = Math.max(0, finite(margin));
+  return finite(point.x) >= bounds.x - padding
+    && finite(point.x) <= bounds.right + padding
+    && finite(point.y) >= bounds.y - padding
+    && finite(point.y) <= bounds.bottom + padding;
 }
 
 export const DEFAULT_TRAFFIC_LANES_URL = new URL(
@@ -75,6 +120,10 @@ export function pointAlongPolyline(points, progress) {
 }
 
 export class TrafficMaterializationSystem {
+  static pointAlongPolyline(points, progress) {
+    return pointAlongPolyline(points, progress);
+  }
+
   constructor(scene, {
     lanesUrl = DEFAULT_TRAFFIC_LANES_URL,
     fetchImpl = globalThis.fetch?.bind?.(globalThis),
@@ -97,6 +146,8 @@ export class TrafficMaterializationSystem {
     this.despawnRadius = despawnRadius;
     this.pool = [];
     this.assignments = new Map();
+    this.spawnedOccupants = [];
+    this.hijackSequence = 0;
     this.ready = false;
     this.destroyed = false;
     this.lastCandidateCount = 0;
@@ -243,7 +294,7 @@ export class TrafficMaterializationSystem {
     return assigned ? true : Boolean(city.isPointActive?.(token.x, token.y) ?? true);
   }
 
-  safeFromPersistentVehicles(token, radius, { allowCurrentVehicle = false } = {}) {
+  safeFromPersistentVehicles(token, radius, { allowCurrentVehicle = false, allowPlayer = false } = {}) {
     const currentVehicleId = this.scene.vehicleSystem?.currentVehicleId || null;
     for (const vehicle of this.scene.vehicleSystem?.vehicles || []) {
       if (allowCurrentVehicle && currentVehicleId && vehicle.id === currentVehicleId) continue;
@@ -253,7 +304,7 @@ export class TrafficMaterializationSystem {
       }
     }
     const player = this.scene.player;
-    if (!this.scene.vehicleSystem?.isDriving?.() && player
+    if (!allowPlayer && !this.scene.vehicleSystem?.isDriving?.() && player
       && Math.hypot(finite(player.x) - token.x, finite(player.y) - token.y) < radius + 24) {
       return false;
     }
@@ -271,12 +322,22 @@ export class TrafficMaterializationSystem {
   eligible(token, assigned = false) {
     if (this.scene.currentLayer !== LAYERS.STREET) return false;
     const focus = this.focus();
-    const limit = assigned ? this.despawnRadius : this.materializeRadius;
-    if (distanceSquared(token, focus) > limit * limit) return false;
-    if (!this.pointReady(token, assigned)) return false;
     const slot = assigned ? this.assignments.get(token.tokenId) : null;
+    const point = assigned && slot ? slot : token;
+    const camera = cameraWorldBounds(this.scene);
+
+    if (assigned) {
+      const retainedByCamera = pointInsideCamera(point, camera, DESPAWN_CAMERA_MARGIN);
+      const retainedByFollow = distanceSquared(point, focus) <= this.despawnRadius * this.despawnRadius;
+      if (!retainedByCamera && !retainedByFollow) return false;
+      return this.pointReady(point, true);
+    }
+
+    if (distanceSquared(token, focus) > this.materializeRadius * this.materializeRadius) return false;
+    if (pointInsideCamera(token, camera, SPAWN_CAMERA_MARGIN)) return false;
+    if (!this.pointReady(token, false)) return false;
     const radius = slot?.radius || 16;
-    return this.safeFromPersistentVehicles(token, radius, { allowCurrentVehicle: assigned })
+    return this.safeFromPersistentVehicles(token, radius)
       && this.safeFromTraffic(token, radius, token.tokenId);
   }
 
@@ -295,6 +356,13 @@ export class TrafficMaterializationSystem {
     slot.edgeId = null;
     slot.tokenIndex = -1;
     slot.direction = null;
+    slot.speedFactor = 1;
+    slot.desiredSpeedFactor = 1;
+    slot.behaviorReason = null;
+    slot.behaviorGap = null;
+    slot.behaviorLag = 0;
+    slot.behaviorBlockerId = null;
+    slot.junctionId = null;
     slot.container.setActive(false).setVisible(false);
     return true;
   }
@@ -350,7 +418,7 @@ export class TrafficMaterializationSystem {
 
     for (const [tokenId, slot] of this.assignments) {
       const token = byId.get(tokenId);
-      if (token) this.updateSlot(slot, token);
+      if (token && (force || !Number.isFinite(slot.speedFactor))) this.updateSlot(slot, token);
     }
 
     this.publish(force || changed);
@@ -359,6 +427,161 @@ export class TrafficMaterializationSystem {
 
   update() {
     return this.reconcile(false);
+  }
+
+  collectInteractions() {
+    if (this.scene.currentLayer !== LAYERS.STREET || this.scene.vehicleSystem?.isDriving?.()) return [];
+    if (this.scene.feedingSystem?.isActive?.() || this.scene.evidenceSystem?.draggingBody) return [];
+    const player = this.scene.player;
+    if (!player) return [];
+    const options = [];
+    for (const slot of this.pool) {
+      if (!slot.tokenId) continue;
+      const distance = Math.hypot(slot.x - player.x, slot.y - player.y);
+      if (distance > TRAFFIC_ENTER_RADIUS) continue;
+      options.push({
+        id: `steal_${slot.tokenId}`,
+        type: "vehicleEnter",
+        label: `Steal ${slot.archetype.label}`,
+        detail: "ENTER · civilian traffic · occupants aboard",
+        priority: 112,
+        distance,
+        x: slot.x,
+        y: slot.y,
+        target: slot,
+        run: () => this.hijack(slot.tokenId)
+      });
+    }
+    return options;
+  }
+
+  occupantCount(slot) {
+    if (slot.archetypeId === "van") return 2;
+    if (slot.archetypeId === "sedan") return 1 + (stableHash(slot.tokenId) % 2);
+    return 1;
+  }
+
+  occupantPosition(slot, index, count) {
+    const side = index % 2 === 0 ? 1 : -1;
+    const row = Math.floor(index / 2);
+    const lateral = slot.radius + 13 + row * 5;
+    const longitudinal = (index - (count - 1) / 2) * 9;
+    const perpendicular = slot.angle + Math.PI / 2;
+    const candidates = [side, -side].map(direction => ({
+      x: slot.x + Math.cos(perpendicular) * lateral * direction + Math.cos(slot.angle) * longitudinal,
+      y: slot.y + Math.sin(perpendicular) * lateral * direction + Math.sin(slot.angle) * longitudinal
+    }));
+    return candidates.find(point => this.scene.canStandAt?.(point.x, point.y)) || candidates[0];
+  }
+
+  spawnOccupants(slot, vehicleId) {
+    const count = this.occupantCount(slot);
+    const occupants = [];
+    for (let index = 0; index < count; index++) {
+      const position = this.occupantPosition(slot, index, count);
+      const id = `traffic-occupant-${safeId(slot.tokenId)}-${this.hijackSequence}-${index}`;
+      const npc = this.scene.npcSystem?.createNpc?.({
+        id,
+        type: NPC_TYPES.CIVILIAN,
+        x: position.x,
+        y: position.y,
+        layer: LAYERS.STREET,
+        speed: 12,
+        behavior: "loiter",
+        vehicleOccupant: true,
+        sourceVehicleId: vehicleId
+      });
+      if (!npc) continue;
+      npc.transientTrafficOccupant = true;
+      npc.transientSequence = this.hijackSequence;
+      npc.inactive = false;
+      npc.alarmed = false;
+      if (npc.ai) {
+        npc.ai.state = AI_STATES.INVESTIGATING;
+        npc.ai.intent = "carjacked-wtf";
+      }
+      this.scene.npcSystem.npcs.push(npc);
+      this.scene.sensoryAwarenessSystem?.startHeardOnlyReaction?.(
+        npc,
+        { x: slot.x, y: slot.y },
+        { reaction: 2.8 }
+      );
+      occupants.push(npc);
+      this.spawnedOccupants.push(npc);
+    }
+    this.pruneOccupants();
+    this.scene.npcSystem?.rebuildSpatialIndex?.();
+    return occupants;
+  }
+
+  pruneOccupants() {
+    this.spawnedOccupants = this.spawnedOccupants.filter(npc => this.scene.npcSystem?.npcs?.includes?.(npc));
+    const removable = this.spawnedOccupants.filter(npc => !npc.dead && !npc.dragged);
+    while (this.spawnedOccupants.length > MAX_TRANSIENT_OCCUPANTS && removable.length) {
+      const npc = removable.shift();
+      const allIndex = this.scene.npcSystem.npcs.indexOf(npc);
+      if (allIndex >= 0) this.scene.npcSystem.npcs.splice(allIndex, 1);
+      this.scene.entityStreamSystem?.npcRecords?.delete?.(npc.id);
+      const ownIndex = this.spawnedOccupants.indexOf(npc);
+      if (ownIndex >= 0) this.spawnedOccupants.splice(ownIndex, 1);
+      npc.__nbdWtfLabel?.destroy?.();
+      npc.container?.destroy?.();
+    }
+  }
+
+  hijack(tokenId) {
+    const slot = this.assignments.get(String(tokenId));
+    if (!slot || this.scene.vehicleSystem?.isDriving?.()) return false;
+    const distance = Math.hypot(slot.x - finite(this.scene.player?.x), slot.y - finite(this.scene.player?.y));
+    if (distance > TRAFFIC_ENTER_RADIUS + 3) return false;
+
+    const captured = {
+      tokenId: slot.tokenId,
+      edgeId: slot.edgeId,
+      tokenIndex: slot.tokenIndex,
+      direction: slot.direction,
+      x: slot.x,
+      y: slot.y,
+      angle: slot.angle,
+      radius: slot.radius,
+      archetype: slot.archetype,
+      archetypeId: slot.archetypeId
+    };
+    this.hijackSequence++;
+    this.release(slot);
+
+    const vehicleId = `traffic-stolen-${this.hijackSequence}-${safeId(captured.tokenId)}`;
+    const vehicle = this.scene.vehicleSystem.addTransientVehicle({
+      id: vehicleId,
+      name: `${captured.archetype.label} from traffic`,
+      archetypeId: captured.archetypeId,
+      x: captured.x,
+      y: captured.y,
+      angle: captured.angle,
+      ownership: VEHICLE_OWNERSHIP.PARKED,
+      ownerId: `traffic-owner-${safeId(captured.tokenId)}`,
+      factionId: null,
+      parked: true,
+      layer: LAYERS.STREET,
+      transient: true,
+      trafficOriginTokenId: captured.tokenId
+    });
+    const entered = this.scene.vehicleSystem.enterVehicle(vehicle.id, { force: true });
+    if (!entered) {
+      this.scene.vehicleSystem.removeTransientVehicle(vehicle, { publish: false });
+      return false;
+    }
+
+    const occupants = this.spawnOccupants(captured, vehicle.id);
+    this.scene.vehicleSystem.pruneTransientVehicles(MAX_TRANSIENT_TRAFFIC_VEHICLES);
+    this.scene.lastActionText += ` ${occupants.length === 1 ? "The occupant jumps out" : `${occupants.length} occupants jump out`} in WTF mode.`;
+    this.scene.events?.emit?.("traffic:vehicle-hijacked", {
+      tokenId: captured.tokenId,
+      vehicleId: vehicle.id,
+      occupants: occupants.map(npc => npc.id)
+    });
+    this.publish(true);
+    return true;
   }
 
   blocksVehicle(x, y, radius = 0, { ignoreTokenId = null } = {}) {
@@ -383,6 +606,7 @@ export class TrafficMaterializationSystem {
   }
 
   snapshot() {
+    const camera = cameraWorldBounds(this.scene);
     return {
       ready: this.ready,
       lanesId: this.lanes?.id || null,
@@ -390,10 +614,20 @@ export class TrafficMaterializationSystem {
       maxActiveVehicles: this.maxActiveVehicles || 0,
       materializeRadius: round(this.materializeRadius),
       despawnRadius: round(this.despawnRadius),
+      spawnCameraMargin: SPAWN_CAMERA_MARGIN,
+      despawnCameraMargin: DESPAWN_CAMERA_MARGIN,
+      camera: camera ? {
+        x: round(camera.x),
+        y: round(camera.y),
+        width: round(camera.width),
+        height: round(camera.height)
+      } : null,
       tokenCount: this.trafficTokens().length,
       candidateCount: this.lastCandidateCount,
       blockedCandidateCount: this.lastBlockedCandidateCount,
       materializedCount: this.assignments.size,
+      transientVehicleCount: this.scene.vehicleSystem?.vehicles?.filter?.(vehicle => vehicle.transient).length || 0,
+      transientOccupantCount: this.spawnedOccupants.length,
       materialized: this.pool
         .filter(slot => slot.tokenId)
         .map(slot => ({
@@ -406,7 +640,8 @@ export class TrafficMaterializationSystem {
           phase: round(slot.phase, 3),
           x: round(slot.x),
           y: round(slot.y),
-          angle: round(slot.angle, 3)
+          angle: round(slot.angle, 3),
+          insideCamera: pointInsideCamera(slot, camera, 0)
         }))
         .sort((left, right) => left.slotIndex - right.slotIndex),
       initializationError: this.initializationError ? String(this.initializationError.message || this.initializationError) : null
@@ -419,12 +654,14 @@ export class TrafficMaterializationSystem {
       snapshot.ready,
       snapshot.poolSize,
       snapshot.materialized.map(item => item.tokenId),
+      snapshot.transientVehicleCount,
+      snapshot.transientOccupantCount,
       snapshot.initializationError
     ]);
     if (!force && key === this.lastPublishedKey) return snapshot;
     this.lastPublishedKey = key;
     this.scene.statePublisher?.setMany?.({
-      trafficMaterializationText: `Local traffic ${snapshot.materializedCount}/${snapshot.poolSize}`,
+      trafficMaterializationText: `Local traffic ${snapshot.materializedCount}/${snapshot.poolSize} · stolen ${snapshot.transientVehicleCount}`,
       trafficMaterializationState: snapshot
     });
     if (typeof window !== "undefined") window.NBD_TRAFFIC_READY = snapshot.ready;
@@ -437,7 +674,8 @@ export class TrafficMaterializationSystem {
       snapshot: () => this.snapshot(),
       resync: () => this.reconcile(true),
       tokens: () => this.trafficTokens().map(token => ({ ...token })),
-      blocks: (x, y, radius = 0) => this.blocksVehicle(x, y, radius)
+      blocks: (x, y, radius = 0) => this.blocksVehicle(x, y, radius),
+      steal: tokenId => this.hijack(tokenId)
     });
     window.NBD_TRAFFIC_READY = false;
   }
@@ -450,7 +688,9 @@ export class TrafficMaterializationSystem {
       vehicleSystem.canOccupy = this.originalVehicleCanOccupy;
     }
     for (const slot of this.pool) slot.container?.destroy?.();
+    for (const npc of this.spawnedOccupants) npc.__nbdWtfLabel?.destroy?.();
     this.pool = [];
+    this.spawnedOccupants = [];
     this.assignments.clear();
     this.lanes = null;
     this.ready = false;

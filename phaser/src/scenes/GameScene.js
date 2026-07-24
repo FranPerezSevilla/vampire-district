@@ -4,11 +4,9 @@ import {
   crosswalks,
   districtZoneAt,
   LAYERS,
-  lights,
   roads,
   sewerAccesses,
   sewerTunnels,
-  shadowZones,
   sidewalks
 } from "../data/district.js";
 import { GameScene as GameSceneCore } from "./GameSceneCore.js";
@@ -17,7 +15,6 @@ const URBAN_RENDER_HALF_WIDTH = 680;
 const URBAN_RENDER_HALF_HEIGHT = 480;
 const URBAN_RENDER_SECTOR_WIDTH = 360;
 const URBAN_RENDER_SECTOR_HEIGHT = 260;
-const LIGHT_GLOW_LIMIT = 12;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, Number(value) || 0));
@@ -50,7 +47,10 @@ export class GameScene extends GameSceneCore {
   collectInteractions() {
     if (this.vehicleSystem?.isDriving?.()) return this.vehicleSystem.collectInteractions();
     const options = super.collectInteractions();
-    if (!this.feedingSystem?.isActive?.()) options.push(...(this.vehicleSystem?.collectInteractions?.() || []));
+    if (!this.feedingSystem?.isActive?.()) {
+      options.push(...(this.vehicleSystem?.collectInteractions?.() || []));
+      options.push(...(this.trafficMaterializationSystem?.collectInteractions?.() || []));
+    }
     return options;
   }
 
@@ -127,20 +127,11 @@ export class GameScene extends GameSceneCore {
   }
 
   currentLight() {
-    if (this.currentLayer !== LAYERS.STREET || !this.cityStreamSystem) return super.currentLight();
-    return this.cityStreamSystem.queryPoint("lights", this.player.x, this.player.y, 128)
-      .find(light => !this.brokenLights.has(light.id)
-        && Phaser.Math.Distance.Between(this.player.x, this.player.y, light.x, light.y) < light.radius) || null;
+    return null;
   }
 
-  currentShadowAt(x, y, layer = this.currentLayer) {
-    if (layer !== LAYERS.STREET || !this.cityStreamSystem) return super.currentShadowAt(x, y, layer);
-    const brokenLamp = this.cityStreamSystem.queryPoint("lights", x, y, 128)
-      .find(light => this.brokenLights.has(light.id)
-        && Phaser.Math.Distance.Between(x, y, light.x, light.y) < light.radius * 0.72);
-    if (brokenLamp) return { id: `broken-${brokenLamp.id}`, name: "broken light shadow" };
-    return this.cityStreamSystem.queryPoint("shadowZones", x, y, 1)
-      .find(zone => this.pointInRect(x, y, zone)) || null;
+  currentShadowAt() {
+    return null;
   }
 
   drawDistrictStreet() {
@@ -149,8 +140,6 @@ export class GameScene extends GameSceneCore {
     for (const road of this.chunkItems("roads", bounds, roads, { margin: 12 })) this.drawRoadWindow(road);
     this.drawSidewalkNetwork();
     this.drawCrosswalkNetwork();
-    this.drawShadowZones();
-    this.drawLights();
     this.drawSewerManholes();
     for (const item of this.chunkItems("buildings", bounds, buildings, { margin: 80 })) this.drawBuilding(item);
     if (this.currentLayer > LAYERS.STREET) {
@@ -242,56 +231,6 @@ export class GameScene extends GameSceneCore {
     }
   }
 
-  drawShadowZones() {
-    for (const zone of this.chunkItems("shadowZones", this.urbanRenderBounds, shadowZones, { margin: 32 })) {
-      const fragment = clippedRect(zone, this.urbanRenderBounds);
-      if (!fragment) continue;
-      const alpha = zone.id === "districtDarkness" ? 0.20 : 0.44 + zone.strength * 0.18;
-      this.map.fillStyle(0x0d0a18, alpha).fillRect(fragment.x, fragment.y, fragment.w, fragment.h);
-      if (zone.id !== "districtDarkness") {
-        this.map.lineStyle(1, 0xd7c8ff, 0.14).strokeRect(fragment.x, fragment.y, fragment.w, fragment.h);
-      }
-    }
-
-    for (const light of this.chunkItems("lights", this.urbanRenderBounds, lights, { margin: 128 })) {
-      if (!this.brokenLights.has(light.id) || !this.visiblePoint(light, light.radius)) continue;
-      const radius = light.radius * 0.72;
-      this.map.fillStyle(0x05030a, 0.50).fillCircle(light.x, light.y, radius);
-      this.map.lineStyle(1, 0xa75cff, 0.22).strokeCircle(light.x, light.y, radius);
-    }
-  }
-
-  drawLights() {
-    const focus = this.renderFocus();
-    const visible = this.chunkItems("lights", this.urbanRenderBounds, lights, { margin: 128 })
-      .filter(light => this.visiblePoint(light, light.radius + 20));
-    const glowIds = new Set(
-      visible
-        .filter(light => !this.brokenLights.has(light.id))
-        .sort((a, b) => (
-          Phaser.Math.Distance.Between(focus.x, focus.y, a.x, a.y)
-          - Phaser.Math.Distance.Between(focus.x, focus.y, b.x, b.y)
-        ))
-        .slice(0, LIGHT_GLOW_LIMIT)
-        .map(light => light.id)
-    );
-
-    for (const light of visible) {
-      if (this.brokenLights.has(light.id)) {
-        this.map.fillStyle(0x5d2535, 1).fillRect(light.x - 3, light.y - 2, 6, 2);
-        this.map.fillStyle(0x302734, 1).fillRect(light.x - 2, light.y - 14, 4, 16);
-        this.map.fillStyle(0xff3b50, 1).fillRect(light.x - 5, light.y - 18, 10, 2);
-        continue;
-      }
-      if (glowIds.has(light.id)) {
-        this.map.fillStyle(0xffdc74, 0.07).fillCircle(light.x, light.y, light.radius * 0.72);
-        this.map.lineStyle(1, 0xffdc74, 0.18).strokeCircle(light.x, light.y, light.radius * 0.72);
-      }
-      this.map.fillStyle(0xffe16b, 1).fillRect(light.x - 2, light.y - 14, 4, 16);
-      this.map.fillStyle(0xfff2a8, 1).fillRect(light.x - 5, light.y - 18, 10, 3);
-    }
-  }
-
   drawSewerManholes() {
     for (const access of this.chunkItems("sewerAccesses", this.urbanRenderBounds, sewerAccesses, { margin: 16 })) {
       if (!access.street || !this.visiblePoint(access.street, 16)) continue;
@@ -340,16 +279,13 @@ export class GameScene extends GameSceneCore {
     const vehicle = this.vehicleSystem?.currentVehicle?.();
     if (vehicle) return `driving ${vehicle.name} through ${districtZoneAt(vehicle.x, vehicle.y).name}`;
     if (this.currentLayer !== LAYERS.STREET) return super.describeCurrentZone();
-    const zone = districtZoneAt(this.player.x, this.player.y).name;
-    const light = this.currentLight();
-    if (light) return `${zone} · under ${light.name}`;
-    const shadow = this.currentShadow();
-    return shadow ? `${zone} · in ${shadow.name}` : `${zone} · open street`;
+    return `${districtZoneAt(this.player.x, this.player.y).name} · open street`;
   }
 
   visibilityText() {
     const vehicle = this.vehicleSystem?.currentVehicle?.();
     if (vehicle) return `Exposed · inside ${vehicle.name}`;
+    if (this.currentLayer === LAYERS.STREET) return "Visible · open street";
     return super.visibilityText();
   }
 

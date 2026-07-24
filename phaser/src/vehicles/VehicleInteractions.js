@@ -48,6 +48,8 @@ export function collectVehicleInteractions(system) {
   const options = [];
   for (const vehicle of system.vehicles) {
     if (vehicle.disabled) continue;
+    const status = vehicle.transient ? vehicle.status : system.campaign.vehicles.status(vehicle);
+    if (status === VEHICLE_OWNERSHIP.POLICE || vehicle.ownership === VEHICLE_OWNERSHIP.POLICE) continue;
     const distance = Phaser.Math.Distance.Between(
       system.scene.player.x,
       system.scene.player.y,
@@ -55,11 +57,12 @@ export function collectVehicleInteractions(system) {
       vehicle.y
     );
     if (distance > ENTER_RADIUS) continue;
+    const theft = status !== VEHICLE_OWNERSHIP.OWNED && status !== VEHICLE_OWNERSHIP.STOLEN;
     options.push({
       id: `enter_${vehicle.id}`,
       type: "vehicleEnter",
-      label: `Enter ${vehicle.name}`,
-      detail: `ENTER · ${vehicleStatusLabel(vehicle)} · ${vehicle.archetype.label}`,
+      label: `${theft ? "Steal" : "Enter"} ${vehicle.name}`,
+      detail: `ENTER · ${vehicleStatusLabel({ ...vehicle, status })} · ${vehicle.archetype.label}`,
       priority: 96,
       distance,
       x: vehicle.x,
@@ -67,24 +70,28 @@ export function collectVehicleInteractions(system) {
       target: vehicle,
       run: () => system.enterVehicle(vehicle.id)
     });
-    options.push({
-      id: `trunk_${vehicle.id}`,
-      type: "vehicleTrunk",
-      label: `Inspect ${vehicle.name} trunk`,
-      detail: vehicleTrunkLabel(system, vehicle),
-      priority: 58,
-      distance,
-      x: vehicle.x,
-      y: vehicle.y,
-      target: vehicle,
-      run: () => system.inspectTrunk(vehicle.id)
-    });
+    if (!vehicle.transient) {
+      options.push({
+        id: `trunk_${vehicle.id}`,
+        type: "vehicleTrunk",
+        label: `Inspect ${vehicle.name} trunk`,
+        detail: vehicleTrunkLabel(system, vehicle),
+        priority: 58,
+        distance,
+        x: vehicle.x,
+        y: vehicle.y,
+        target: vehicle,
+        run: () => system.inspectTrunk(vehicle.id)
+      });
+    }
   }
   return options;
 }
 
 export function canEnterVehicle(system, vehicle) {
   if (!vehicle || vehicle.disabled || system.currentVehicle()) return false;
+  const status = vehicle.transient ? vehicle.status : system.campaign.vehicles.status(vehicle);
+  if (status === VEHICLE_OWNERSHIP.POLICE || vehicle.ownership === VEHICLE_OWNERSHIP.POLICE) return false;
   if (system.scene.currentLayer !== LAYERS.STREET || vehicle.layer !== LAYERS.STREET) return false;
   if (system.scene.feedingSystem?.isActive?.() || system.scene.evidenceSystem?.draggingBody) return false;
   if (system.scene.combatSystem?.isBusy?.() || system.scene.playerDamageSystem?.isHitStunned?.()) return false;
@@ -98,10 +105,16 @@ export function canEnterVehicle(system, vehicle) {
 
 export function enterVehicle(system, vehicleId, { force = false } = {}) {
   const vehicle = system.vehicle(vehicleId);
-  if (!vehicle || (!force && !canEnterVehicle(system, vehicle))) {
-    system.scene.lastActionText = vehicle?.disabled
-      ? `${vehicle.name} is disabled.`
-      : "Move closer and finish the current action before entering the vehicle.";
+  const status = vehicle
+    ? (vehicle.transient ? vehicle.status : system.campaign.vehicles.status(vehicle))
+    : null;
+  const policeVehicle = status === VEHICLE_OWNERSHIP.POLICE || vehicle?.ownership === VEHICLE_OWNERSHIP.POLICE;
+  if (!vehicle || policeVehicle || (!force && !canEnterVehicle(system, vehicle))) {
+    system.scene.lastActionText = policeVehicle
+      ? "Police vehicles cannot be stolen."
+      : vehicle?.disabled
+        ? `${vehicle.name} is disabled.`
+        : "Move closer and finish the current action before entering the vehicle.";
     RawAudio.play("cancel");
     return false;
   }
@@ -114,7 +127,7 @@ export function enterVehicle(system, vehicleId, { force = false } = {}) {
   system.scene.registry?.set?.("vehicleOccupied", vehicle.id);
   system.scene.inputSystem?.resetWorldEdges?.();
 
-  const previousStatus = system.campaign.vehicles.status(vehicle);
+  const previousStatus = vehicle.transient ? vehicle.status : system.campaign.vehicles.status(vehicle);
   if (previousStatus !== VEHICLE_OWNERSHIP.OWNED && previousStatus !== VEHICLE_OWNERSHIP.STOLEN) {
     registerVehicleTheft(system, vehicle, previousStatus);
   } else {
@@ -168,7 +181,7 @@ export function exitVehicle(system, { force = false } = {}) {
 
 export function inspectVehicleTrunk(system, vehicleId) {
   const vehicle = system.vehicle(vehicleId);
-  if (!vehicle) return false;
+  if (!vehicle || vehicle.transient) return false;
   const trunk = system.campaign.vehicles.trunkSnapshot(vehicle.id, vehicle.archetype.trunkCapacity);
   system.scene.lastActionText = trunk.items.length
     ? `${vehicle.name} trunk ${trunk.used}/${trunk.capacity}: ${trunk.items.join(", ")}.`
@@ -179,7 +192,7 @@ export function inspectVehicleTrunk(system, vehicleId) {
 
 export function storeVehicleTrunkItem(system, vehicleId, itemId) {
   const vehicle = system.vehicle(vehicleId);
-  if (!vehicle) throw new RangeError(`Unknown vehicle ${vehicleId}.`);
+  if (!vehicle || vehicle.transient) throw new RangeError(`Unknown persistent vehicle ${vehicleId}.`);
   const result = system.campaign.vehicles.storeItem(vehicle.id, itemId, vehicle.archetype.trunkCapacity);
   system.publish();
   return result;
@@ -187,7 +200,7 @@ export function storeVehicleTrunkItem(system, vehicleId, itemId) {
 
 export function removeVehicleTrunkItem(system, vehicleId, itemId) {
   const vehicle = system.vehicle(vehicleId);
-  if (!vehicle) throw new RangeError(`Unknown vehicle ${vehicleId}.`);
+  if (!vehicle || vehicle.transient) throw new RangeError(`Unknown persistent vehicle ${vehicleId}.`);
   const result = system.campaign.vehicles.removeItem(vehicle.id, itemId, vehicle.archetype.trunkCapacity);
   system.publish();
   return result;
