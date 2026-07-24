@@ -273,6 +273,28 @@ test("a partial building conflict splits one road-edge band instead of deleting 
   assert.equal(roadGraphIntegrity(source, compiled).valid, true);
 });
 
+test("integrity rejects long parallel roads that leave no usable city block", () => {
+  const dense = graph(
+    [
+      { id: "north-west", x: 40, y: 150 },
+      { id: "north-east", x: 560, y: 150 },
+      { id: "south-west", x: 40, y: 220 },
+      { id: "south-east", x: 560, y: 220 }
+    ],
+    [
+      { id: "north-road", from: "north-west", to: "north-east", width: 60, orientation: "horizontal", roadClass: "local", kind: "road", sourceRoadIds: ["north-road"] },
+      { id: "south-road", from: "south-west", to: "south-east", width: 60, orientation: "horizontal", roadClass: "local", kind: "road", sourceRoadIds: ["south-road"] }
+    ]
+  );
+  const integrity = roadGraphIntegrity(dense);
+
+  assert.equal(integrity.valid, false);
+  assert.equal(
+    integrity.errors.some(error => error.code === "ROAD_GRAPH_PARALLEL_ROADS_TOO_CLOSE"),
+    true
+  );
+});
+
 test("dumpsters are snapped after layout outside junction and crosswalk exclusions", () => {
   assert.equal(dumpsters.length > 0, true);
   for (const dumpster of dumpsters) {
@@ -299,21 +321,34 @@ test("the full city is reproducible from its explicit road graph with no road-pi
     lightMinimumSpacing: 150
   });
 
+  const retiredFoundrySources = new Set([
+    "foundryService",
+    "foundry:road:north-drop",
+    "foundry:road:east-link"
+  ]);
+  assert.equal(
+    cityRoadGraph.edges.some(edge => (edge.sourceRoadIds || []).some(sourceId => retiredFoundrySources.has(sourceId))),
+    false
+  );
+  assert.equal(cityRoadGraph.edges.some(edge => edge.id === "road-edge:h:1680:2212:2340:2212"), true);
+  assert.equal(cityRoadGraph.edges.some(edge => edge.id === "road-edge:v:1680:2212:1680:2572"), true);
+  assert.equal(cityRoadGraph.edges.some(edge => edge.id === "road-edge:v:2340:2212:2340:2572"), true);
+
   assert.equal(roadGraphNodes.length, cityRoadGraph.nodes.length);
   assert.equal(roadGraphEdges.length, cityRoadGraph.edges.length);
-  assert.equal(compiled.stats.graphNodeCount, 114);
-  assert.equal(compiled.stats.graphEdgeCount, 158);
-  assert.equal(compiled.stats.roadSegmentCount, 147);
+  assert.equal(compiled.stats.graphNodeCount, 107);
+  assert.equal(compiled.stats.graphEdgeCount, 148);
+  assert.equal(compiled.stats.roadSegmentCount, 144);
   assert.equal(compiled.stats.transitionCount, roadTransitions.length);
-  assert.equal(compiled.stats.sidewalkCount, 778);
+  assert.equal(compiled.stats.sidewalkCount, 776);
   assert.equal(compiled.stats.roadEdgeBandCount, 309);
-  assert.equal(compiled.stats.roadEdgeBandSourceCount, 294);
-  assert.equal(compiled.stats.absorbedShortApproachCount, 6);
+  assert.equal(compiled.stats.roadEdgeBandSourceCount, 288);
+  assert.equal(compiled.stats.absorbedShortApproachCount, 1);
   assert.equal(compiled.stats.junctionSidewalkCount, junctionSidewalks.length);
   assert.equal(compiled.stats.crosswalkCount, 137);
-  assert.equal(compiled.stats.propExclusionZoneCount, 557);
+  assert.equal(compiled.stats.propExclusionZoneCount, 536);
   assert.equal(compiled.stats.propExclusionZoneCount, propExclusionZones.length);
-  assert.equal(compiled.stats.lightCount, 126);
+  assert.equal(compiled.stats.lightCount, 128);
   assert.equal(compiled.roadEdgeBands.every(band => (band.orientation === "horizontal" ? band.w : band.h) >= 36), true);
   assert.equal(compiled.roadEdgeBands.every(band => buildings.every(building => surfaceOverlapArea(band, building) <= 0.01)), true);
   assert.equal(roadGraphIntegrity(cityRoadGraph, compiled).valid, true);

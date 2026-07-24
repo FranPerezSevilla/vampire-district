@@ -42,9 +42,9 @@ The current foundation provides:
 - authored persistent vehicles with arcade driving, hull and trunks;
 - semantic refuge-garage repair and remote owned-wreck recovery;
 - `4800 × 3600` City Topology V2 with fourteen unprotected districts;
-- a 114-node / 158-edge road graph compiled into 147 clipped segments and 104 junction authorities;
+- a 107-node / 148-edge road graph compiled into 144 clipped segments and 103 junction authorities;
 - zero road-piece or building/road overlap;
-- 778 sidewalk surfaces: 309 continuous road-edge bands from 294 sources plus 469 junction-owned surfaces, 137 valid crossings, 126 post-layout lights, 28 post-layout dumpsters and 11 regenerated pedestrian loops;
+- 776 sidewalk surfaces: 309 continuous road-edge bands from 288 sources plus 467 junction-owned surfaces, 137 valid crossings, 128 post-layout lights, 28 post-layout dumpsters and 11 regenerated pedestrian loops;
 - `10 × 8` asynchronous chunk streaming, district packs and dormant simulation;
 - macro traffic and ten pooled civilian traffic proxies;
 - motorized police pursuit, partial roadblock and crew transfer to foot AI;
@@ -176,10 +176,10 @@ Current runtime:
 viewport             960 × 640
 world                4800 × 3600
 area                 17,280,000 units²
-road graph           114 nodes / 158 edges
+road graph           107 nodes / 148 edges
 road output          147 segments / 104 junction authorities
 road overlaps        0
-sidewalks            778 (309 edge bands / 469 junction-owned)
+sidewalks            776 (309 edge bands / 467 junction-owned)
 crosswalks           137
 post-layout lights   126
 chunks               10 × 8 / 80
@@ -201,7 +201,7 @@ Implemented and locked:
 - landmarks remain site-first;
 - missions reference semantic sites rather than protecting raw coordinates.
 
-Road geometry v3 is axis-aligned. Arbitrary-angle/curved offsets and polygonal ordinary parcels remain later extensions.
+Road geometry v4 is axis-aligned. Arbitrary-angle/curved offsets and polygonal ordinary parcels remain later extensions.
 
 ## Vehicles and traffic boundaries
 

@@ -465,7 +465,7 @@ Lights are post-layout objects generated only after road, pedestrian and buildin
 
 ### Remaining geometry extension
 
-Geometry v3 is axis-aligned. A future version may add arbitrary polyline offsets, rounded joins and polygonal ordinary parcels while retaining stable graph/site identities.
+Geometry v4 is axis-aligned. A future version may add arbitrary polyline offsets, rounded joins and polygonal ordinary parcels while retaining stable graph/site identities.
 
 ## 17. Authority table
 
@@ -520,7 +520,7 @@ Mission-specific Chromium golden paths were deleted because the contracts are no
 
 Current constraints:
 
-- geometry v3 accepts axis-aligned edges only;
+- geometry v4 accepts axis-aligned edges only;
 - arbitrary curved offsets and rounded carriageway joins are not implemented;
 - ordinary parcel/building bounds remain rectangular at runtime;
 - graph changes require atomic regeneration of pedestrian routes and chunks;
