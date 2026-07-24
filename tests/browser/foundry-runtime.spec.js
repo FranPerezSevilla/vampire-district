@@ -27,10 +27,10 @@ test("the relocated Foundry remains playable across street, roof and sewer layer
     );
 
     const drivable = [
-      { x: 1450, y: 2186, angle: 0 },
-      { x: 1680, y: 2186, angle: 0 },
-      { x: 1770, y: 2250, angle: Math.PI / 2 },
-      { x: 2000, y: 2346, angle: 0 }
+      { x: 1900, y: 2212, angle: 0 },
+      { x: 1680, y: 2392, angle: Math.PI / 2 },
+      { x: 1900, y: 2572, angle: 0 },
+      { x: 2340, y: 2392, angle: Math.PI / 2 }
     ].map(point => scene.vehicleSystem.canOccupy(vehicle, point.x, point.y, point.angle));
 
     scene.switchLayer(0, { x: 1360, y: 2450 }, "Foundry west fire escape.");
@@ -56,6 +56,7 @@ test("the relocated Foundry remains playable across street, roof and sewer layer
       generatedRoads: generatedRoadIds.size,
       generatedBuildings: district.buildings.filter(generated).length,
       generatedRoofs: Object.values(district.roofAreas).flat().filter(generated).length,
+      foundryStreet: district.CITY_ANCHORS.foundryStreet,
       vehicle: vehicle ? { id: vehicle.id, archetypeId: vehicle.archetypeId, x: vehicle.x, y: vehicle.y } : null,
       drivable,
       streetInteractions,
@@ -68,10 +69,11 @@ test("the relocated Foundry remains playable across street, roof and sewer layer
   });
 
   expect(result.selected).toBe("city-topology-v2-site-first");
-  expect(result.generatedRoads).toBe(3);
+  expect(result.generatedRoads).toBe(1);
   expect(result.generatedBuildings).toBe(7);
   expect(result.generatedRoofs).toBe(4);
-  expect(result.vehicle).toMatchObject({ id: "foundry:vehicle:utility", archetypeId: "sedan", x: 1680, y: 2290 });
+  expect(result.foundryStreet).toMatchObject({ x: 1800, y: 2572 });
+  expect(result.vehicle).toMatchObject({ id: "foundry:vehicle:utility", archetypeId: "sedan", x: 1900, y: 2212 });
   expect(result.drivable.every(Boolean)).toBe(true);
   expect(result.streetInteractions).toContain("foundry:fire-escape:west_up");
   expect(result.roofEntryInteractions).toContain("foundry:fire-escape:west_down");

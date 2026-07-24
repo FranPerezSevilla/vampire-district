@@ -116,23 +116,30 @@ test("graph-first road geometry has unique junction authority and post-layout fu
       invalidCrosswalks,
       invalidLights,
       invalidDumpsters,
+      retiredFoundryRoads: district.roadGraphEdges
+        .filter(edge => (edge.sourceRoadIds || []).some(sourceId => [
+          "foundryService",
+          "foundry:road:north-drop",
+          "foundry:road:east-link"
+        ].includes(sourceId)))
+        .map(edge => edge.id),
       generatedRouteLengths: district.pedestrianRoutes.map(route => route.points.length)
     };
   });
 
-  expect(result.geometryVersion).toBe(3);
-  expect(result.graphNodes).toBe(114);
-  expect(result.graphEdges).toBe(158);
-  expect(result.roadSegments).toBe(147);
-  expect(result.junctionPieces).toBe(104);
-  expect(result.sidewalks).toBe(778);
+  expect(result.geometryVersion).toBe(4);
+  expect(result.graphNodes).toBe(107);
+  expect(result.graphEdges).toBe(148);
+  expect(result.roadSegments).toBe(144);
+  expect(result.junctionPieces).toBe(103);
+  expect(result.sidewalks).toBe(776);
   expect(result.roadEdgeBands).toBe(309);
-  expect(result.roadEdgeBandSources).toBe(294);
-  expect(result.absorbedShortApproaches).toBe(6);
-  expect(result.junctionSidewalks).toBe(469);
+  expect(result.roadEdgeBandSources).toBe(288);
+  expect(result.absorbedShortApproaches).toBe(1);
+  expect(result.junctionSidewalks).toBe(467);
   expect(result.crosswalks).toBe(137);
-  expect(result.propExclusionZones).toBe(557);
-  expect(result.lights).toBe(126);
+  expect(result.propExclusionZones).toBe(536);
+  expect(result.lights).toBe(128);
   expect(result.dumpsters).toBe(28);
   expect(result.nodesWithoutUniqueAuthority).toEqual([]);
   expect(result.roadOverlaps).toEqual([]);
@@ -141,7 +148,8 @@ test("graph-first road geometry has unique junction authority and post-layout fu
   expect(result.invalidCrosswalks).toEqual([]);
   expect(result.invalidLights).toEqual([]);
   expect(result.invalidDumpsters).toEqual([]);
+  expect(result.retiredFoundryRoads).toEqual([]);
   expect(result.generatedRouteLengths.every(length => length >= 4)).toBe(true);
-  expect(result.stats.roadGeometryVersion).toBe(3);
+  expect(result.stats.roadGeometryVersion).toBe(4);
   expect(pageErrors).toEqual([]);
 });

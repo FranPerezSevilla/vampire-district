@@ -63,6 +63,15 @@ const pedestrianNavigationPoints = pedestrianRoutes.flatMap(route => route.point
 })));
 const streetNavigationPoints = [...preservedNavigationPoints, ...pedestrianNavigationPoints];
 
+const cityAnchors = {
+  ...current.CITY_ANCHORS,
+  foundryStreet: {
+    ...(current.CITY_ANCHORS.foundryStreet || {}),
+    x: 1800,
+    y: 2572
+  }
+};
+
 const topologyStats = {
   ...current.CITY_TOPOLOGY_STATS,
   roadGeometryVersion: CITY_ROAD_GRAPH_VERSION,
@@ -89,7 +98,7 @@ const collections = [
   ["CITY_TOPOLOGY_SEED", "city-topology-v2-site-first"],
   ["CITY_WORLD", current.CITY_WORLD],
   ["CITY_TOPOLOGY_STATS", topologyStats],
-  ["CITY_ANCHORS", current.CITY_ANCHORS],
+  ["CITY_ANCHORS", cityAnchors],
   ["landmarkSites", current.landmarkSites],
   ["roadGraphNodes", compiled.graph.nodes],
   ["roadGraphEdges", compiled.graph.edges],

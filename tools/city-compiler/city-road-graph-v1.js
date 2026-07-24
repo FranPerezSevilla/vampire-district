@@ -6,7 +6,7 @@ function deepFreeze(value) {
   return Object.freeze(value);
 }
 
-export const CITY_ROAD_GRAPH_VERSION = 3;
+export const CITY_ROAD_GRAPH_VERSION = 4;
 export const cityRoadGraph = deepFreeze({
   "version": 1,
   "geometry": "axis-aligned-centreline-graph",
@@ -572,16 +572,6 @@ export const cityRoadGraph = deepFreeze({
       ]
     },
     {
-      "id": "road-node:1770:2212",
-      "x": 1770,
-      "y": 2212,
-      "sourceRoadIds": [
-        "canalNorthService",
-        "foundry:road:north-drop",
-        "foundry:road:north-yard"
-      ]
-    },
-    {
       "id": "road-node:2340:2212",
       "x": 2340,
       "y": 2212,
@@ -629,59 +619,6 @@ export const cityRoadGraph = deepFreeze({
       "sourceRoadIds": [
         "canalNorthService",
         "foundry:road:north-yard"
-      ]
-    },
-    {
-      "id": "road-node:1320:2290",
-      "x": 1320,
-      "y": 2290,
-      "sourceRoadIds": [
-        "foundryService"
-      ]
-    },
-    {
-      "id": "road-node:1680:2290",
-      "x": 1680,
-      "y": 2290,
-      "sourceRoadIds": [
-        "foundryService",
-        "foundryVertical"
-      ]
-    },
-    {
-      "id": "road-node:1770:2290",
-      "x": 1770,
-      "y": 2290,
-      "sourceRoadIds": [
-        "foundry:road:north-drop",
-        "foundryService"
-      ]
-    },
-    {
-      "id": "road-node:2340:2290",
-      "x": 2340,
-      "y": 2290,
-      "sourceRoadIds": [
-        "civicSpine",
-        "foundryService"
-      ]
-    },
-    {
-      "id": "road-node:1770:2346",
-      "x": 1770,
-      "y": 2346,
-      "sourceRoadIds": [
-        "foundry:road:east-link",
-        "foundry:road:north-drop"
-      ]
-    },
-    {
-      "id": "road-node:2340:2346",
-      "x": 2340,
-      "y": 2346,
-      "sourceRoadIds": [
-        "civicSpine",
-        "foundry:road:east-link"
       ]
     },
     {
@@ -2270,14 +2207,14 @@ export const cityRoadGraph = deepFreeze({
       "generated": false
     },
     {
-      "id": "road-edge:h:1680:2212:1770:2212",
+      "id": "road-edge:h:1680:2212:2340:2212",
       "from": "road-node:1680:2212",
-      "to": "road-node:1770:2212",
+      "to": "road-node:2340:2212",
       "width": 64,
       "orientation": "horizontal",
       "roadClass": "alley",
       "kind": "alley",
-      "label": "Canal North Service",
+      "label": "Foundry North Service",
       "sourceRoadIds": [
         "canalNorthService",
         "foundry:road:north-yard"
@@ -2285,9 +2222,9 @@ export const cityRoadGraph = deepFreeze({
       "generated": false
     },
     {
-      "id": "road-edge:v:1680:2212:1680:2290",
+      "id": "road-edge:v:1680:2212:1680:2572",
       "from": "road-node:1680:2212",
-      "to": "road-node:1680:2290",
+      "to": "road-node:1680:2572",
       "width": 64,
       "orientation": "vertical",
       "roadClass": "alley",
@@ -2297,35 +2234,6 @@ export const cityRoadGraph = deepFreeze({
         "foundryVertical"
       ],
       "generated": false
-    },
-    {
-      "id": "road-edge:h:1770:2212:2340:2212",
-      "from": "road-node:1770:2212",
-      "to": "road-node:2340:2212",
-      "width": 64,
-      "orientation": "horizontal",
-      "roadClass": "alley",
-      "kind": "alley",
-      "label": "Canal North Service",
-      "sourceRoadIds": [
-        "canalNorthService",
-        "foundry:road:north-yard"
-      ],
-      "generated": false
-    },
-    {
-      "id": "road-edge:v:1770:2212:1770:2290",
-      "from": "road-node:1770:2212",
-      "to": "road-node:1770:2290",
-      "width": 60,
-      "orientation": "vertical",
-      "roadClass": "alley",
-      "kind": "alley",
-      "label": "Foundry north yard drop",
-      "sourceRoadIds": [
-        "foundry:road:north-drop"
-      ],
-      "generated": true
     },
     {
       "id": "road-edge:h:2340:2212:2912:2212",
@@ -2343,9 +2251,9 @@ export const cityRoadGraph = deepFreeze({
       "generated": false
     },
     {
-      "id": "road-edge:v:2340:2212:2340:2290",
+      "id": "road-edge:v:2340:2212:2340:2572",
       "from": "road-node:2340:2212",
-      "to": "road-node:2340:2290",
+      "to": "road-node:2340:2572",
       "width": 120,
       "orientation": "vertical",
       "roadClass": "major",
@@ -2441,118 +2349,6 @@ export const cityRoadGraph = deepFreeze({
       "label": "Harbor Service Lane",
       "sourceRoadIds": [
         "harborVertical"
-      ],
-      "generated": false
-    },
-    {
-      "id": "road-edge:h:1320:2290:1680:2290",
-      "from": "road-node:1320:2290",
-      "to": "road-node:1680:2290",
-      "width": 60,
-      "orientation": "horizontal",
-      "roadClass": "alley",
-      "kind": "alley",
-      "label": "Foundry Works Road",
-      "sourceRoadIds": [
-        "foundryService"
-      ],
-      "generated": false
-    },
-    {
-      "id": "road-edge:h:1680:2290:1770:2290",
-      "from": "road-node:1680:2290",
-      "to": "road-node:1770:2290",
-      "width": 60,
-      "orientation": "horizontal",
-      "roadClass": "alley",
-      "kind": "alley",
-      "label": "Foundry Works Road",
-      "sourceRoadIds": [
-        "foundryService"
-      ],
-      "generated": false
-    },
-    {
-      "id": "road-edge:v:1680:2290:1680:2572",
-      "from": "road-node:1680:2290",
-      "to": "road-node:1680:2572",
-      "width": 64,
-      "orientation": "vertical",
-      "roadClass": "alley",
-      "kind": "alley",
-      "label": "Foundry Service Spine",
-      "sourceRoadIds": [
-        "foundryVertical"
-      ],
-      "generated": false
-    },
-    {
-      "id": "road-edge:h:1770:2290:2340:2290",
-      "from": "road-node:1770:2290",
-      "to": "road-node:2340:2290",
-      "width": 60,
-      "orientation": "horizontal",
-      "roadClass": "alley",
-      "kind": "alley",
-      "label": "Foundry Works Road",
-      "sourceRoadIds": [
-        "foundryService"
-      ],
-      "generated": false
-    },
-    {
-      "id": "road-edge:v:1770:2290:1770:2346",
-      "from": "road-node:1770:2290",
-      "to": "road-node:1770:2346",
-      "width": 60,
-      "orientation": "vertical",
-      "roadClass": "alley",
-      "kind": "alley",
-      "label": "Foundry north yard drop",
-      "sourceRoadIds": [
-        "foundry:road:north-drop"
-      ],
-      "generated": true
-    },
-    {
-      "id": "road-edge:v:2340:2290:2340:2346",
-      "from": "road-node:2340:2290",
-      "to": "road-node:2340:2346",
-      "width": 120,
-      "orientation": "vertical",
-      "roadClass": "major",
-      "kind": "road",
-      "label": "Civic Avenue",
-      "sourceRoadIds": [
-        "civicSpine"
-      ],
-      "generated": false
-    },
-    {
-      "id": "road-edge:h:1770:2346:2340:2346",
-      "from": "road-node:1770:2346",
-      "to": "road-node:2340:2346",
-      "width": 52,
-      "orientation": "horizontal",
-      "roadClass": "alley",
-      "kind": "alley",
-      "label": "Foundry east service link",
-      "sourceRoadIds": [
-        "foundry:road:east-link"
-      ],
-      "generated": true
-    },
-    {
-      "id": "road-edge:v:2340:2346:2340:2572",
-      "from": "road-node:2340:2346",
-      "to": "road-node:2340:2572",
-      "width": 120,
-      "orientation": "vertical",
-      "roadClass": "major",
-      "kind": "road",
-      "label": "Civic Avenue",
-      "sourceRoadIds": [
-        "civicSpine"
       ],
       "generated": false
     },
@@ -3398,46 +3194,43 @@ export const cityRoadGraph = deepFreeze({
     },
     {
       "id": "foundry-hook",
-      "label": "Foundry service hook",
+      "label": "Foundry yard perimeter",
       "kind": "service",
       "geometry": "polyline",
       "curveHint": "rounded-corners",
       "points": [
         {
-          "x": 1400,
-          "y": 2186
+          "x": 1680,
+          "y": 2212
         },
         {
-          "x": 1770,
-          "y": 2186
+          "x": 2340,
+          "y": 2212
         },
         {
-          "x": 1770,
-          "y": 2346
+          "x": 2340,
+          "y": 2572
         },
         {
-          "x": 2280,
-          "y": 2346
+          "x": 1680,
+          "y": 2572
+        },
+        {
+          "x": 1680,
+          "y": 2212
         }
       ],
       "sourceRoadIds": [
         "foundry:road:north-yard",
-        "foundry:road:north-drop",
-        "foundry:road:east-link"
+        "civicSpine",
+        "canalSouthService",
+        "foundryVertical"
       ],
       "graphEdgeIds": [
-        "road-edge:h:120:2212:752:2212",
-        "road-edge:h:1140:2212:752:2212",
-        "road-edge:h:1140:2212:1680:2212",
-        "road-edge:h:1680:2212:1770:2212",
-        "road-edge:h:1770:2212:2340:2212",
-        "road-edge:v:1770:2212:1770:2290",
-        "road-edge:h:2340:2212:2912:2212",
-        "road-edge:h:2912:2212:3540:2212",
-        "road-edge:h:3540:2212:4112:2212",
-        "road-edge:h:4112:2212:4320:2212",
-        "road-edge:v:1770:2290:1770:2346",
-        "road-edge:h:1770:2346:2340:2346"
+        "road-edge:h:1680:2212:2340:2212",
+        "road-edge:v:2340:2212:2340:2572",
+        "road-edge:h:1680:2572:2340:2572",
+        "road-edge:v:1680:2212:1680:2572"
       ]
     }
   ],
@@ -3635,16 +3428,16 @@ export const cityRoadGraph = deepFreeze({
     },
     {
       "id": "foundry:pedestrian-route:works-loop",
-      "name": "Foundry works sidewalk loop",
+      "name": "Foundry works perimeter loop",
       "bounds": {
-        "x": 1680,
-        "y": 2255,
-        "w": 660,
-        "h": 70
+        "x": 1640,
+        "y": 2140,
+        "w": 740,
+        "h": 500
       },
       "center": {
         "x": 2010,
-        "y": 2290
+        "y": 2392
       }
     }
   ]

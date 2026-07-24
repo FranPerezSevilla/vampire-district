@@ -4,7 +4,7 @@ _Last updated: 2026-07-24_
 
 ## Status
 
-**Geometry v1 was introduced in PR #34, junction ownership was polished in PR #35, and geometry v3 now guarantees continuous road-edge bands.**
+**Geometry v1 was introduced in PR #34, junction ownership was polished in PR #35, and geometry v4 now guarantees continuous road-edge bands and usable road-block depth.**
 
 This pass replaces the City Topology V2 road rectangles as runtime authority with an explicit axis-aligned centreline graph. Rectangles remain an output format for straight road pieces and chunk bounds, not the city input model.
 
@@ -91,7 +91,7 @@ complex
   from,
   to,
   width,
-  orientation,   // horizontal | vertical in geometry v3
+  orientation,   // horizontal | vertical in geometry v4
   roadClass,     // major | local | alley
   kind,
   label,
@@ -110,8 +110,15 @@ The compiler rejects:
 - duplicate node or edge IDs;
 - edges referencing missing nodes;
 - zero/negative widths;
-- diagonal edges in axis-aligned geometry v3;
+- diagonal edges in axis-aligned geometry v4;
 - disconnected road components.
+- parallel road pairs overlapping at least 120 units when they leave less than 36 units of usable block depth.
+
+### Foundry industrial-yard simplification
+
+Geometry v4 removes the redundant Foundry Works Road, north-drop and east-link micro-grid. The district now uses a legible perimeter formed by Foundry North Service, Foundry Service Spine, Civic Avenue and Canal South Service. The enclosed space is an industrial loading yard rather than another public-road block.
+
+The rule is graph-level and independent from streaming chunks: chunks only partition the generated surfaces and never create additional roads.
 
 ### Phase 2 — Node classification
 
@@ -134,9 +141,8 @@ A small number of provisional node surfaces may overlap when two source endpoint
 Current city:
 
 ```text
-graph nodes                  114
-single/cluster authorities   104
-multi-node clusters           10
+graph nodes                  107
+junction authority pieces     103
 nodes without authority        0
 nodes with duplicate authority 0
 ```
@@ -148,10 +154,10 @@ Each edge is shortened at both ends by the exact extent of its node authority su
 Runtime road pieces:
 
 ```text
-straight segments   147
-junction pieces     104
+straight segments   144
+junction pieces     103
 transition pieces     0 in the current city
-all road pieces     251
+all road pieces     247
 road-piece overlaps   0
 ```
 
@@ -168,11 +174,11 @@ Junctions still own the local pedestrian envelope: corner pads, closed sides of 
 Current output:
 
 ```text
-road-edge band sources      294
+road-edge band sources      288
 continuous road-edge bands  309
-junction-owned surfaces     469
-total sidewalk surfaces     778
-absorbed micro-approaches      6
+junction-owned surfaces     467
+total sidewalk surfaces     776
+absorbed micro-approaches      1
 band/road overlaps             0
 band/building overlaps         0
 fragments below 36 px          0
@@ -212,7 +218,7 @@ Seven semantic authored light identities are preserved by snapping them to the n
 Current output:
 
 ```text
-post-layout lights   126
+post-layout lights   128
 invalid lights         0
 ```
 
@@ -224,7 +230,7 @@ Each junction produces a no-prop envelope plus approach-leg clearances. Crosswal
 Current output:
 
 ```text
-prop exclusion zones   557
+prop exclusion zones   536
 post-layout dumpsters   28
 invalid dumpsters         0
 ```
@@ -274,6 +280,7 @@ Hard validation now includes:
 ROAD_GRAPH_EDGE_NODE_MISSING
 ROAD_GRAPH_DIAGONAL_EDGE
 ROAD_GRAPH_DISCONNECTED
+ROAD_GRAPH_PARALLEL_ROADS_TOO_CLOSE
 ROAD_NODE_JUNCTION_AUTHORITY
 ROAD_PIECE_OVERLAP
 CROSSWALK_OVER_JUNCTION
@@ -320,7 +327,7 @@ npm run test:browser:systems
 
 ## Current limitation and next geometry version
 
-Road geometry v3 is deliberately axis-aligned. `roadCorridors` still preserves higher-level polyline/curve intent, but true diagonal and curved carriageway polygons are not claimed by this pass.
+Road geometry v4 is deliberately axis-aligned. `roadCorridors` still preserves higher-level polyline/curve intent, but true diagonal and curved carriageway polygons are not claimed by this pass.
 
 A future geometry version can add arbitrary polyline offsets and rounded joins without changing:
 

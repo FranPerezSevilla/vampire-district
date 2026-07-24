@@ -295,9 +295,9 @@ Reference: `CITY_TOPOLOGY_RESET.md`.
 
 **Status: ✅ Complete — City Topology V2**
 
-Delivered baseline: `4800 × 3600`, 14 districts, 80 chunks, site-first hospital/police/city-hall/cathedral/university sites and topology-aware vehicle migration. Road geometry v3 keeps the 114-node / 158-edge graph, compiles 147 clipped segments and 104 non-overlapping junction authorities, absorbs six micro-approaches and emits continuous obstacle-clipped road-edge bands.
+Delivered baseline: `4800 × 3600`, 14 districts, 80 chunks, site-first hospital/police/city-hall/cathedral/university sites and topology-aware vehicle migration. Road geometry v4 keeps the 107-node / 148-edge graph, compiles 147 clipped segments and 104 non-overlapping junction authorities, absorbs one remaining micro-approach and emits continuous obstacle-clipped road-edge bands.
 
-### 14.1 Road/intersection authority — ✅ geometry v3
+### 14.1 Road/intersection authority — ✅ geometry v4
 
 - one explicit road graph;
 - stable edges with width/class semantics;

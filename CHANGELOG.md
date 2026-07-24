@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-07-24 — Foundry industrial road-block simplification
+
+- Removed the redundant Foundry Works Road, north-drop and east-link micro-grid.
+- Preserved a four-edge perimeter around a usable industrial loading yard.
+- Added graph validation for parallel roads that leave less than 36 units of block depth.
+- Migrated the Foundry semantic corridor and pedestrian route anchor to the perimeter.
+- Regenerated City Topology V2 and all affected chunks from road geometry v4.
+
 ## Prototype snapshot
 
 Initial repo setup for the single-file vampire district prototype.
