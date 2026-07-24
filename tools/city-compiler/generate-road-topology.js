@@ -67,8 +67,8 @@ const cityAnchors = {
   ...current.CITY_ANCHORS,
   foundryStreet: {
     ...(current.CITY_ANCHORS.foundryStreet || {}),
-    x: 2010,
-    y: 2212
+    x: 1800,
+    y: 2572
   }
 };
 
