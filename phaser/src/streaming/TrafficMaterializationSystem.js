@@ -294,7 +294,7 @@ export class TrafficMaterializationSystem {
     return assigned ? true : Boolean(city.isPointActive?.(token.x, token.y) ?? true);
   }
 
-  safeFromPersistentVehicles(token, radius, { allowCurrentVehicle = false } = {}) {
+  safeFromPersistentVehicles(token, radius, { allowCurrentVehicle = false, allowPlayer = false } = {}) {
     const currentVehicleId = this.scene.vehicleSystem?.currentVehicleId || null;
     for (const vehicle of this.scene.vehicleSystem?.vehicles || []) {
       if (allowCurrentVehicle && currentVehicleId && vehicle.id === currentVehicleId) continue;
@@ -304,7 +304,7 @@ export class TrafficMaterializationSystem {
       }
     }
     const player = this.scene.player;
-    if (!this.scene.vehicleSystem?.isDriving?.() && player
+    if (!allowPlayer && !this.scene.vehicleSystem?.isDriving?.() && player
       && Math.hypot(finite(player.x) - token.x, finite(player.y) - token.y) < radius + 24) {
       return false;
     }
@@ -330,15 +330,15 @@ export class TrafficMaterializationSystem {
       const retainedByCamera = pointInsideCamera(point, camera, DESPAWN_CAMERA_MARGIN);
       const retainedByFollow = distanceSquared(point, focus) <= this.despawnRadius * this.despawnRadius;
       if (!retainedByCamera && !retainedByFollow) return false;
-    } else {
-      if (distanceSquared(token, focus) > this.materializeRadius * this.materializeRadius) return false;
-      if (pointInsideCamera(token, camera, SPAWN_CAMERA_MARGIN)) return false;
+      return this.pointReady(point, true);
     }
 
-    if (!this.pointReady(point, assigned)) return false;
+    if (distanceSquared(token, focus) > this.materializeRadius * this.materializeRadius) return false;
+    if (pointInsideCamera(token, camera, SPAWN_CAMERA_MARGIN)) return false;
+    if (!this.pointReady(token, false)) return false;
     const radius = slot?.radius || 16;
-    return this.safeFromPersistentVehicles(point, radius, { allowCurrentVehicle: assigned })
-      && this.safeFromTraffic(point, radius, token.tokenId);
+    return this.safeFromPersistentVehicles(token, radius)
+      && this.safeFromTraffic(token, radius, token.tokenId);
   }
 
   assign(slot, token) {
