@@ -29,7 +29,18 @@ jobs:
         run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
 
       - name: Regenerate city topology
-        run: npm run city:topology
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run city:topology 2>&1 | tee foundry-topology.log
+
+      - name: Upload topology diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foundry-topology-diagnostics
+          path: foundry-topology.log
+          retention-days: 2
 
       - name: Print generated metrics
         run: |
