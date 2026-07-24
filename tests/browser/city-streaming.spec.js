@@ -40,12 +40,7 @@ test("asynchronous city streaming fetches the 10 by 8 topology and keeps static 
       0
     );
     const eastInspect = window.NBD_CITY_STREAM.inspectBounds({ x: 3600, y: 1980, w: 1200, h: 1620 });
-    const harborLamp = district.lights
-      .filter(light => light.x >= 4096 && light.y >= 2560)
-      .sort((a, b) => Math.hypot(a.x - district.CITY_ANCHORS.harborFar.x, a.y - district.CITY_ANCHORS.harborFar.y)
-        - Math.hypot(b.x - district.CITY_ANCHORS.harborFar.x, b.y - district.CITY_ANCHORS.harborFar.y))[0];
-    scene.player.setPosition(harborLamp.x, harborLamp.y);
-    const harborLight = scene.currentLight()?.id || null;
+    scene.player.setPosition(district.CITY_ANCHORS.harborFar.x, district.CITY_ANCHORS.harborFar.y);
 
     return {
       west,
@@ -54,8 +49,8 @@ test("asynchronous city streaming fetches the 10 by 8 topology and keeps static 
       eastInspect,
       hospitalBlocked,
       emergencyRoadOpen,
-      harborLight,
-      harborLampId: harborLamp.id,
+      activeLight: scene.currentLight(),
+      activeShadow: scene.currentShadowAt(scene.player.x, scene.player.y),
       westStateAfterMove: window.NBD_CITY_STREAM.stateOf("1:0"),
       westLoadStateAfterMove: window.NBD_CITY_STREAM.loadStateOf("1:0"),
       deltas: window.NBD_CITY_STREAM.deltaSnapshot()
@@ -81,6 +76,7 @@ test("asynchronous city streaming fetches the 10 by 8 topology and keeps static 
   expect(["dormant", "unloaded"]).toContain(result.westStateAfterMove);
   expect(["resident", "cached", "unloaded"]).toContain(result.westLoadStateAfterMove);
   expect(result.eastInspect.buildings).toBeGreaterThan(0);
-  expect(result.harborLight).toBe(result.harborLampId);
+  expect(result.activeLight).toBeNull();
+  expect(result.activeShadow).toBeNull();
   expect(result.deltas.count).toBeGreaterThan(0);
 });
