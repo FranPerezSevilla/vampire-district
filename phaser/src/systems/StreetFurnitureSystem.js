@@ -1,3 +1,4 @@
+import { WORLD } from "../data/balance.js";
 import {
   buildings,
   crosswalks,
@@ -85,11 +86,12 @@ function roadDistance(x, y) {
   return best;
 }
 
-function placementScore(prop, candidate) {
+function placementScore(prop, candidate, occupied = []) {
   const { x, y, building } = candidate;
   if (!Number.isFinite(x) || !Number.isFinite(y)) return -Infinity;
   if (buildings.some(item => pointInRect(x, y, item, 5))) return -Infinity;
   if (surfaceContains(roads, x, y) || surfaceContains(crosswalks, x, y)) return -Infinity;
+  if (occupied.some(point => Math.hypot(point.x - x, point.y - y) < 34)) return -Infinity;
 
   const special = SPECIAL_FRONTAGE.test(semanticText(prop, building));
   const nearbyBuildings = buildings.filter(item => distanceToRect(x, y, item) <= 74);
@@ -113,7 +115,7 @@ function placementScore(prop, candidate) {
   return score;
 }
 
-function contextualDumpsterPlacement(prop) {
+function contextualDumpsterPlacement(prop, occupied = []) {
   const localBuildings = buildings
     .filter(building => distanceToRect(prop.x, prop.y, building) <= BUILDING_SEARCH_RADIUS)
     .sort((left, right) => (
@@ -132,15 +134,18 @@ function contextualDumpsterPlacement(prop) {
   let best = null;
   let bestScore = -Infinity;
   for (const candidate of candidates) {
-    const score = placementScore(prop, candidate);
+    const score = placementScore(prop, candidate, occupied);
     if (score > bestScore) {
       best = candidate;
       bestScore = score;
     }
   }
 
-  if (best) return { x: best.x, y: best.y };
-  return { x: prop.x, y: prop.y };
+  const point = best || { x: prop.x, y: prop.y };
+  return {
+    x: clamp(point.x, 18, WORLD.width - 18),
+    y: clamp(point.y, 18, WORLD.height - 18)
+  };
 }
 
 function bodyFlag(bodyId, field) {
@@ -150,11 +155,13 @@ function bodyFlag(bodyId, field) {
 export class StreetFurnitureSystem extends StreetFurnitureSystemCore {
   constructor(scene, campaign) {
     super(scene, campaign);
+    const occupied = [];
     for (const prop of this.dumpsters) {
-      const placement = contextualDumpsterPlacement(prop);
+      const placement = contextualDumpsterPlacement(prop, occupied);
       prop.x = placement.x;
       prop.y = placement.y;
       prop.visual.container?.setPosition?.(prop.x, prop.y);
+      occupied.push({ x: prop.x, y: prop.y });
     }
     this.restoreReleasedBodies();
     this.publish();
