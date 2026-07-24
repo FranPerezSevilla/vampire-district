@@ -126,7 +126,7 @@ test("wanted levels deploy cruisers, reserve officers, form a partial roadblock 
   expect(result.roadblock.officersDismounted).toBe(true);
   expect(result.roadblockOfficers).toHaveLength(2);
   expect(result.roadblockOfficers.every(officer => officer.role === "roadblock")).toBe(true);
-  expect(Math.abs(Math.abs(result.roadblock.angle) - Math.PI / 2)).toBeLessThan(0.12);
+  expect(Math.abs(Math.cos(result.roadblock.angle))).toBeLessThan(0.12);
   expect(result.blocksAtRoadblock).toBe(true);
 
   expect(result.disabled.disabled).toBe(true);
