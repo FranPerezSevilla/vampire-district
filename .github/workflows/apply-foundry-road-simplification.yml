@@ -44,11 +44,12 @@ jobs:
           path: foundry-topology.log
           retention-days: 2
 
-      - name: Print generated metrics
+      - name: Record generated metrics
         run: |
           node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
           const city = await import('./phaser/src/data/generated/city-topology-v2.js');
-          console.log(JSON.stringify({
+          const metrics = {
             version: city.ROAD_GEOMETRY_VERSION,
             nodes: city.roadGraphNodes.length,
             edges: city.roadGraphEdges.length,
@@ -62,8 +63,18 @@ jobs:
             exclusions: city.propExclusionZones.length,
             lights: city.lights.length,
             absorbedShortApproaches: city.CITY_TOPOLOGY_STATS.absorbedShortApproachCount,
-          }, null, 2));
+          };
+          const source = JSON.stringify(metrics, null, 2);
+          console.log(source);
+          writeFileSync('foundry-metrics.json', source + '\n');
           NODE
+
+      - name: Upload generated metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: foundry-generated-metrics
+          path: foundry-metrics.json
+          retention-days: 2
 
       - name: Commit regenerated candidate
         run: |
