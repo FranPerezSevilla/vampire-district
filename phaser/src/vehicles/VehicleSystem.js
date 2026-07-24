@@ -78,19 +78,48 @@ export class VehicleSystem {
     return vehicle;
   }
 
+  removeTransientVehicle(vehicleOrId, { publish = true } = {}) {
+    const vehicle = typeof vehicleOrId === "string" ? this.vehicle(vehicleOrId) : vehicleOrId;
+    if (!vehicle?.transient || vehicle.id === this.currentVehicleId) return false;
+    const index = this.vehicles.indexOf(vehicle);
+    if (index < 0) return false;
+    this.vehicles.splice(index, 1);
+    this.scene.entityStreamSystem?.vehicleRecords?.delete?.(vehicle.id);
+    vehicle.container?.destroy?.();
+    if (publish) this.publish();
+    return true;
+  }
+
+  transientRemovalPriority(vehicle) {
+    const focus = this.scene.renderFocus?.() || this.scene.player || { x: 0, y: 0 };
+    const dx = Number(vehicle.x) - Number(focus.x);
+    const dy = Number(vehicle.y) - Number(focus.y);
+    const view = this.scene.cameras?.main?.worldView;
+    const margin = 160;
+    const onCamera = Boolean(view
+      && vehicle.x >= view.x - margin
+      && vehicle.x <= view.x + view.width + margin
+      && vehicle.y >= view.y - margin
+      && vehicle.y <= view.y + view.height + margin);
+    return { onCamera, distanceSquared: dx * dx + dy * dy };
+  }
+
   pruneTransientVehicles(maximum = 6) {
     const limit = Math.max(0, Math.floor(Number(maximum) || 0));
     const removable = this.vehicles
       .filter(vehicle => vehicle.transient && vehicle.id !== this.currentVehicleId)
-      .sort((left, right) => left.transientSequence - right.transientSequence);
+      .sort((left, right) => {
+        const leftPriority = this.transientRemovalPriority(left);
+        const rightPriority = this.transientRemovalPriority(right);
+        return Number(leftPriority.onCamera) - Number(rightPriority.onCamera)
+          || rightPriority.distanceSquared - leftPriority.distanceSquared
+          || left.transientSequence - right.transientSequence;
+      });
     let transientCount = this.vehicles.filter(vehicle => vehicle.transient).length;
     let removed = 0;
     while (transientCount > limit && removable.length) {
       const vehicle = removable.shift();
-      const index = this.vehicles.indexOf(vehicle);
-      if (index < 0) continue;
-      this.vehicles.splice(index, 1);
-      vehicle.container?.destroy?.();
+      if (!this.removeTransientVehicle(vehicle, { publish: false })) continue;
       transientCount--;
       removed++;
     }
