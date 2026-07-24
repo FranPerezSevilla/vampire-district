@@ -521,6 +521,7 @@ export class TrafficMaterializationSystem {
       const npc = removable.shift();
       const allIndex = this.scene.npcSystem.npcs.indexOf(npc);
       if (allIndex >= 0) this.scene.npcSystem.npcs.splice(allIndex, 1);
+      this.scene.entityStreamSystem?.npcRecords?.delete?.(npc.id);
       const ownIndex = this.spawnedOccupants.indexOf(npc);
       if (ownIndex >= 0) this.spawnedOccupants.splice(ownIndex, 1);
       npc.__nbdWtfLabel?.destroy?.();
@@ -567,9 +568,7 @@ export class TrafficMaterializationSystem {
     });
     const entered = this.scene.vehicleSystem.enterVehicle(vehicle.id, { force: true });
     if (!entered) {
-      const index = this.scene.vehicleSystem.vehicles.indexOf(vehicle);
-      if (index >= 0) this.scene.vehicleSystem.vehicles.splice(index, 1);
-      vehicle.container?.destroy?.();
+      this.scene.vehicleSystem.removeTransientVehicle(vehicle, { publish: false });
       return false;
     }
 
