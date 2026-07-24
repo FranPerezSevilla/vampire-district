@@ -46,6 +46,7 @@ test("wanted levels deploy cruisers, reserve officers, form a partial roadblock 
     const desiredFootAtTwo = scene.policeSystem.footDesiredCount(2);
     const levelTwoAfterTravel = window.NBD_MOTORIZED_POLICE.step(12);
     const pursuit = levelTwoAfterTravel.units[0];
+    const pursuitSeparation = Math.hypot(pursuit.x - focus.x, pursuit.y - focus.y);
     const pursuitOfficers = scene.policeSystem.allPolice()
       .filter(cop => cop.motorizedUnitId === pursuit.id)
       .map(cop => ({ id: cop.id, chasingPlayer: cop.chasingPlayer, unitId: cop.motorizedUnitId }));
@@ -81,11 +82,13 @@ test("wanted levels deploy cruisers, reserve officers, form a partial roadblock 
     const abandonedMemory = window.NBD_MOTORIZED_POLICE.snapshot().suspectMemory;
 
     return {
+      focus,
       levelTwoInitial,
       totalTargetAtTwo,
       desiredFootAtTwo,
       levelTwoAfterTravel,
       pursuit,
+      pursuitSeparation,
       pursuitOfficers,
       levelThreeInitial,
       totalTargetAtThree,
@@ -107,7 +110,10 @@ test("wanted levels deploy cruisers, reserve officers, form a partial roadblock 
   expect(result.desiredFootAtTwo).toBe(3);
   expect(result.pursuit.role).toBe("pursuit");
   expect(result.pursuit.visible).toBe(true);
-  expect(result.pursuit.officersDismounted).toBe(true);
+  expect(
+    result.pursuit.officersDismounted,
+    JSON.stringify({ focus: result.focus, pursuit: result.pursuit, separation: result.pursuitSeparation }, null, 2)
+  ).toBe(true);
   expect(result.pursuitOfficers).toHaveLength(2);
   expect(result.pursuitOfficers.every(officer => officer.unitId === result.pursuit.id)).toBe(true);
 
