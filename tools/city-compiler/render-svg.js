@@ -42,12 +42,13 @@ export function renderCityDebugSvg(blueprint, validation, score) {
       <text x="${district.bounds.x + 12}" y="${district.bounds.y + 22}" class="district-label">${escapeXml(label)}</text>`;
   }).join("\n");
 
-  const sidewalks = (runtime.sidewalks || []).map(item => rectElement(item, 'fill="#4c4850" opacity="0.45"')).join("\n");
+  const sidewalks = (runtime.sidewalks || []).map(item => surfaceElement(item, 'fill="#4c4850" stroke="#77717d" stroke-width="0.65" opacity="0.45"')).join("\n");
   const roads = (runtime.roads || []).map(item => surfaceElement(
     item,
     `fill="${item.kind === "alley" ? "#24232a" : "#17181f"}" stroke="#69636f" stroke-width="1"`
   )).join("\n");
   const crosswalks = (runtime.crosswalks || []).map(item => rectElement(item, 'fill="#b8b2a6" opacity="0.65"')).join("\n");
+  const propExclusionZones = (runtime.propExclusionZones || []).map(item => rectElement(item, 'fill="#ff6c57" fill-opacity="0.035" stroke="#ff8a72" stroke-width="0.7" stroke-dasharray="5 5" opacity="0.36"')).join("\n");
   const sewers = (runtime.sewerTunnels || []).map(item => rectElement(item, 'fill="none" stroke="#487b70" stroke-width="2" stroke-dasharray="12 8" opacity="0.65"')).join("\n");
   const buildings = (runtime.buildings || []).map(item => {
     const point = center(item);
@@ -79,8 +80,9 @@ export function renderCityDebugSvg(blueprint, validation, score) {
   <rect width="100%" height="100%" fill="#090a0f"/>
   <g id="districts">${districtRects}</g>
   <g id="sewers">${sewers}</g>
-  <g id="sidewalks">${sidewalks}</g>
   <g id="roads">${roads}</g>
+  <g id="sidewalks">${sidewalks}</g>
+  <g id="prop-exclusion-zones">${propExclusionZones}</g>
   <g id="road-graph-nodes">${roadGraphNodes}</g>
   <g id="crosswalks">${crosswalks}</g>
   <g id="buildings">${buildings}</g>

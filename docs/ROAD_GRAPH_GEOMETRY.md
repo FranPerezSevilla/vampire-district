@@ -1,10 +1,10 @@
 # Road graph geometry — intersections, transitions and post-layout furniture
 
-_Last updated: 2026-07-23_
+_Last updated: 2026-07-24_
 
 ## Status
 
-**Implemented in PR #34.**
+**Geometry v1 implemented in PR #34; junction-ownership and prop-placement polish implemented in PR #35.**
 
 This pass replaces the City Topology V2 road rectangles as runtime authority with an explicit axis-aligned centreline graph. Rectangles remain an output format for straight road pieces and chunk bounds, not the city input model.
 
@@ -32,10 +32,11 @@ road graph
 → one authority surface per node/near-node cluster
 → clipped straight segments
 → width-transition polygons
-→ sidewalks and corner pads
+→ segment sidewalks and junction-owned closures/corner pads
 → crosswalks outside junction authority
+→ explicit prop-exclusion envelopes and approach zones
 → buildings/clearances
-→ post-layout streetlights
+→ post-layout kerb lights and service furniture
 → pedestrian routes and navigation points
 → 80 streamed chunks
 ```
@@ -90,7 +91,7 @@ complex
   from,
   to,
   width,
-  orientation,   // horizontal | vertical in geometry v1
+  orientation,   // horizontal | vertical in geometry v2
   roadClass,     // major | local | alley
   kind,
   label,
@@ -109,7 +110,7 @@ The compiler rejects:
 - duplicate node or edge IDs;
 - edges referencing missing nodes;
 - zero/negative widths;
-- diagonal edges in axis-aligned geometry v1;
+- diagonal edges in axis-aligned geometry v2;
 - disconnected road components.
 
 ### Phase 2 — Node classification
@@ -158,14 +159,17 @@ Transition support is active even though the current accepted graph has no colli
 
 ### Phase 5 — Sidewalks
 
-Sidewalk strips are derived from the sides of clipped segments. Corner pads fill valid pedestrian space around node authority pieces while respecting building clearances.
+Sidewalk strips are derived from the sides of clipped segments. Each junction then owns the missing local pedestrian envelope: corner pads, closed sides of T junctions, straight-node closures, dead-end caps and tapered offset polygons.
 
-The compiler no longer generates a full sidewalk band through the middle of an intersection.
+Segment strips draw only their longitudinal kerb edges. Junction-owned surfaces draw only their exposed edges, so internal rectangle end caps and duplicate seams are no longer rendered. Any candidate surface overlapping another carriageway or a building is rejected.
 
 Current output:
 
 ```text
-sidewalk surfaces  632
+sidewalk surfaces          741
+junction-owned surfaces    486
+sidewalk/road overlaps       0
+sidewalk/building overlaps   0
 ```
 
 ### Phase 6 — Crosswalks
@@ -180,7 +184,7 @@ Crosswalks are generated from eligible junction legs only. They are placed beyon
 Current output:
 
 ```text
-crosswalks                  141
+crosswalks                  137
 crosswalk/junction overlaps   0
 invalid sidewalk endpoints    0
 ```
@@ -192,18 +196,31 @@ Lights are no longer produced from raw road intervals. Candidate points are samp
 A light is rejected when it:
 
 - is outside the world;
-- is not on a final sidewalk;
-- lies on a road or crossing;
-- violates building or junction clearance;
+- is not on a final sidewalk kerb;
+- lies on a road, crossing or generated prop-exclusion zone;
+- violates building clearance;
 - is too close to another accepted light.
 
-Seven semantic authored light identities are preserved by snapping them to the nearest valid final sidewalk point. All other lights have deterministic graph-edge/side IDs.
+Seven semantic authored light identities are preserved by snapping them to the nearest valid outer kerb. All other lights have deterministic graph-edge/side IDs.
 
 Current output:
 
 ```text
-post-layout lights   138
+post-layout lights   105
 invalid lights         0
+```
+
+
+### Phase 7b — Prop exclusions and service furniture
+
+Each junction produces a no-prop envelope plus approach-leg clearances. Crosswalks add their own expanded clearance zones. Dumpsters are evaluated only after those zones, roads, sidewalks, buildings and lights exist. Invalid legacy anchors are deterministically snapped to a valid service kerb or service-yard point, while body-hide spots follow the relocated dumpster.
+
+Current output:
+
+```text
+prop exclusion zones   564
+post-layout dumpsters   28
+invalid dumpsters         0
 ```
 
 ### Phase 8 — Pedestrian routes and NPC starts
@@ -241,7 +258,7 @@ The streaming contract remains `10 × 8`, 80 chunk files.
 - polygon transition pieces;
 - lateral trim/centre markings on straight segments only.
 
-Junctions do not receive duplicated end borders or independent centre stripes. The compiler SVG renderer uses the same polygon-aware surface contract and can display graph nodes for diagnostics.
+Junctions do not receive duplicated end borders or independent centre stripes. Sidewalk rendering is two-pass: surfaces are filled first, then only explicit `trimEdges`/`trimSegments` are drawn. The compiler SVG renderer follows the same road-before-sidewalk order and can overlay prop-exclusion zones for diagnostics.
 
 ## Validation and tests
 
@@ -260,6 +277,9 @@ LIGHT_ON_ROAD
 LIGHT_ON_CROSSWALK
 LIGHT_INSIDE_BUILDING_CLEARANCE
 LIGHTS_TOO_CLOSE
+JUNCTION_SIDEWALK_ROAD_OVERLAP
+JUNCTION_SIDEWALK_BUILDING_OVERLAP
+PROP_EXCLUSION_INVALID_BOUNDS
 ```
 
 Focused tests cover:
@@ -287,7 +307,7 @@ npm run test:browser:systems
 
 ## Current limitation and next geometry version
 
-Road geometry v1 is deliberately axis-aligned. `roadCorridors` still preserves higher-level polyline/curve intent, but true diagonal and curved carriageway polygons are not claimed by this pass.
+Road geometry v2 is deliberately axis-aligned. `roadCorridors` still preserves higher-level polyline/curve intent, but true diagonal and curved carriageway polygons are not claimed by this pass.
 
 A future geometry version can add arbitrary polyline offsets and rounded joins without changing:
 

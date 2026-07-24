@@ -38,7 +38,7 @@ test("graph-first road geometry has unique junction authority and post-layout fu
     }
 
     function pointOn(point, surfaces, margin = 0) {
-      return surfaces.some(surface => geometry.pointInRect(point, surface, margin));
+      return surfaces.some(surface => geometry.pointInSurface(point, surface, margin));
     }
 
     function continuations(crosswalk) {
@@ -58,13 +58,29 @@ test("graph-first road geometry has unique junction authority and post-layout fu
       || !continuations(crosswalk).every(point => pointOn(point, district.sidewalks, 1.5))
     )).map(item => item.id);
 
+    const invalidJunctionSidewalks = district.junctionSidewalks.filter(sidewalk => (
+      district.roads.some(road => geometry.surfaceOverlapArea(sidewalk, road) > 0.01)
+      || district.buildings.some(building => geometry.surfaceOverlapArea(sidewalk, building) > 0.01)
+    )).map(item => item.id);
+
     const invalidLights = district.lights.filter(light => {
       const point = { x: light.x, y: light.y };
       return light.placementPhase !== "post-layout"
         || !district.sidewalks.some(sidewalk => geometry.pointInSurface(point, sidewalk))
         || district.roads.some(road => geometry.pointInSurface(point, road))
         || district.crosswalks.some(crosswalk => geometry.pointInSurface(point, crosswalk))
+        || district.propExclusionZones.some(zone => geometry.pointInSurface(point, zone))
         || district.buildings.some(building => geometry.pointInRect(point, building, 8));
+    }).map(item => item.id);
+
+    const invalidDumpsters = district.dumpsters.filter(dumpster => {
+      const point = { x: dumpster.x, y: dumpster.y };
+      return dumpster.placementPhase !== "post-layout"
+        || !["service-kerb", "service-yard"].includes(dumpster.anchorKind)
+        || district.roads.some(road => geometry.pointInSurface(point, road, 6))
+        || district.crosswalks.some(crosswalk => geometry.pointInSurface(point, crosswalk, 24))
+        || district.propExclusionZones.some(zone => geometry.pointInSurface(point, zone))
+        || district.buildings.some(building => geometry.pointInRect(point, building, 18));
     }).map(item => item.id);
 
     return {
@@ -75,26 +91,42 @@ test("graph-first road geometry has unique junction authority and post-layout fu
       roadSegments: district.roadSegments.length,
       junctionPieces: district.roadJunctions.length,
       transitions: district.roadTransitions.length,
+      sidewalks: district.sidewalks.length,
+      junctionSidewalks: district.junctionSidewalks.length,
+      crosswalks: district.crosswalks.length,
+      propExclusionZones: district.propExclusionZones.length,
+      lights: district.lights.length,
+      dumpsters: district.dumpsters.length,
       nodesWithoutUniqueAuthority: district.roadGraphNodes
         .filter(node => ownership.get(node.id) !== 1)
         .map(node => node.id),
       roadOverlaps,
+      invalidJunctionSidewalks,
       invalidCrosswalks,
       invalidLights,
+      invalidDumpsters,
       generatedRouteLengths: district.pedestrianRoutes.map(route => route.points.length)
     };
   });
 
-  expect(result.geometryVersion).toBe(1);
+  expect(result.geometryVersion).toBe(2);
   expect(result.graphNodes).toBe(114);
   expect(result.graphEdges).toBe(158);
   expect(result.roadSegments).toBe(153);
   expect(result.junctionPieces).toBe(111);
+  expect(result.sidewalks).toBe(741);
+  expect(result.junctionSidewalks).toBe(486);
+  expect(result.crosswalks).toBe(137);
+  expect(result.propExclusionZones).toBe(564);
+  expect(result.lights).toBe(105);
+  expect(result.dumpsters).toBe(28);
   expect(result.nodesWithoutUniqueAuthority).toEqual([]);
   expect(result.roadOverlaps).toEqual([]);
+  expect(result.invalidJunctionSidewalks).toEqual([]);
   expect(result.invalidCrosswalks).toEqual([]);
   expect(result.invalidLights).toEqual([]);
+  expect(result.invalidDumpsters).toEqual([]);
   expect(result.generatedRouteLengths.every(length => length >= 4)).toBe(true);
-  expect(result.stats.roadGeometryVersion).toBe(1);
+  expect(result.stats.roadGeometryVersion).toBe(2);
   expect(pageErrors).toEqual([]);
 });

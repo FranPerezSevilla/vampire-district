@@ -1,6 +1,6 @@
 # Vampire District — project blueprint
 
-_Last updated: 2026-07-23_
+_Last updated: 2026-07-24_
 
 ## Purpose
 
@@ -102,8 +102,9 @@ terrain / district constraints
 → authoritative road graph
 → unique junction/transition geometry
 → clipped carriageway segments
-→ sidewalks and crosswalks
-→ post-layout street furniture
+→ segment and junction-owned sidewalks
+→ crosswalks and prop-exclusion zones
+→ post-layout kerb lights and service furniture
 → pedestrian routes/navigation
 → validation and streamed chunks
 ```
@@ -112,15 +113,15 @@ terrain / district constraints
 
 `tools/city-compiler/city-road-graph-v1.js` owns road connectivity and widths. Every graph node owns exactly one junction or transition surface. Straight segments stop at those surfaces instead of being overdrawn through them.
 
-Current geometry v1 supports ends, straight continuations, corners, T junctions, crossroads, complex clusters and collinear width-transition polygons. It is axis-aligned; true arbitrary-angle/curved offset geometry remains a future version.
+Current geometry v2 supports ends, straight continuations, corners, T junctions, crossroads, complex clusters and collinear width-transition polygons. It is axis-aligned; true arbitrary-angle/curved offset geometry remains a future version.
 
 ### Pedestrian authority
 
-Sidewalks are derived from final clipped segments. Crosswalks are generated only outside junction centres and only when both ends continue onto valid sidewalks. Semantic pedestrian route IDs are regenerated onto those surfaces.
+Sidewalks are derived from final clipped segments, then junction-owned closures and corner surfaces complete the local pedestrian envelope without drawing internal end-cap seams. Crosswalks are generated only outside junction centres and only when both ends continue onto valid sidewalks. Semantic pedestrian route IDs are regenerated onto those surfaces.
 
 ### Street furniture authority
 
-Streetlights are generated after roads, junctions, sidewalks, crossings and building clearances. A light must stand on a final sidewalk and may not overlap a road, crossing, building clearance, junction clearance or another nearby light.
+Streetlights and dumpsters are generated after roads, junctions, sidewalks, crossings and building clearances. They snap to semantic kerb/service anchors and may not overlap roads, crossings, buildings, junction approaches or another nearby prop.
 
 ### Parcel and landmark authority
 
@@ -420,15 +421,16 @@ Mission-specific browser golden paths were removed because the contracts are no 
 - old-save pruning;
 - no protected district or mission-coordinate landmark authority.
 
-### Complete: City Topology V2 and road geometry v1
+### Complete: City Topology V2 and road geometry v2
 
 - `4800 × 3600`, fourteen districts and 80 chunks;
 - site-first civic/landmark campuses;
 - authoritative road graph;
 - unique corners, T junctions and crossroads;
 - clipped segments and supported tapered width transitions;
-- generated sidewalks/crosswalks;
-- post-layout streetlights;
+- generated segment and junction-owned sidewalks/crosswalks;
+- explicit junction/crosswalk prop-exclusion zones;
+- post-layout kerb lights and service dumpsters;
 - compiler/browser regression coverage.
 
 ### Next

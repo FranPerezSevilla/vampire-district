@@ -1,6 +1,6 @@
 # Project snapshot
 
-_Last updated: 2026-07-23_
+_Last updated: 2026-07-24_
 
 Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) first for the canonical project-wide map. This snapshot summarizes the current playable state, persistence boundaries and immediate priority.
 
@@ -44,11 +44,11 @@ The current foundation provides:
 - `4800 × 3600` City Topology V2 with fourteen unprotected districts;
 - a 114-node / 158-edge road graph compiled into 153 clipped segments and 111 junction authorities;
 - zero road-piece or building/road overlap;
-- 632 sidewalks, 141 valid crossings, 138 post-layout lights and 11 regenerated pedestrian loops;
+- 741 sidewalks (486 junction-owned), 137 valid crossings, 105 post-layout lights, 28 post-layout dumpsters and 11 regenerated pedestrian loops;
 - `10 × 8` asynchronous chunk streaming, district packs and dormant simulation;
 - macro traffic and ten pooled civilian traffic proxies;
 - motorized police pursuit, partial roadblock and crew transfer to foot AI;
-- 270 passing unit tests plus browser boot/systems/campaign domains.
+- 276 passing unit tests plus browser boot/systems/campaign domains.
 
 Production remains persistent missionless free roam. Archived mission definitions are explicit framework fixtures only.
 
@@ -179,9 +179,9 @@ area                 17,280,000 units²
 road graph           114 nodes / 158 edges
 road output          153 segments / 111 junction authorities
 road overlaps        0
-sidewalks            632
-crosswalks           141
-post-layout lights   138
+sidewalks            741 (486 junction-owned)
+crosswalks           137
+post-layout lights   105
 chunks               10 × 8 / 80
 ```
 
@@ -195,13 +195,13 @@ Implemented and locked:
 - each node owns exactly one junction or transition authority;
 - straight road segments are clipped at junction boundaries;
 - mixed-width collinear roads use a taper polygon;
-- sidewalks derive from final road segments;
+- sidewalks derive from final road segments and each junction owns its closure/corner surfaces;
 - crossings sit outside junction centres and connect two sidewalks;
-- lights are placed after roads, crossings and buildings;
+- lights and dumpsters are placed after roads, crossings, buildings and junction exclusion zones;
 - landmarks remain site-first;
 - missions reference semantic sites rather than protecting raw coordinates.
 
-Road geometry v1 is axis-aligned. Arbitrary-angle/curved offsets and polygonal ordinary parcels remain later extensions.
+Road geometry v2 is axis-aligned. Arbitrary-angle/curved offsets and polygonal ordinary parcels remain later extensions.
 
 ## Vehicles and traffic boundaries
 

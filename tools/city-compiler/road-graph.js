@@ -14,6 +14,10 @@ function finite(value, fallback = 0) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, finite(value)));
+}
+
 function rounded(value, precision = 3) {
   const scale = 10 ** precision;
   return Math.round(finite(value) * scale) / scale;
@@ -485,7 +489,11 @@ function sidewalkStrips(segments, width, world) {
         geometry: "rect",
         graphEdgeId: segment.graphEdgeId,
         side: "north",
+        orientation: "horizontal",
         roadPieceId: segment.id,
+        junctionOwned: false,
+        trimEdges: ["north", "south"],
+        anchorKind: "kerb-strip",
         generated: true
       }, world));
       strips.push(clippedRect({
@@ -497,7 +505,11 @@ function sidewalkStrips(segments, width, world) {
         geometry: "rect",
         graphEdgeId: segment.graphEdgeId,
         side: "south",
+        orientation: "horizontal",
         roadPieceId: segment.id,
+        junctionOwned: false,
+        trimEdges: ["north", "south"],
+        anchorKind: "kerb-strip",
         generated: true
       }, world));
     } else {
@@ -510,7 +522,11 @@ function sidewalkStrips(segments, width, world) {
         geometry: "rect",
         graphEdgeId: segment.graphEdgeId,
         side: "west",
+        orientation: "vertical",
         roadPieceId: segment.id,
+        junctionOwned: false,
+        trimEdges: ["west", "east"],
+        anchorKind: "kerb-strip",
         generated: true
       }, world));
       strips.push(clippedRect({
@@ -522,7 +538,11 @@ function sidewalkStrips(segments, width, world) {
         geometry: "rect",
         graphEdgeId: segment.graphEdgeId,
         side: "east",
+        orientation: "vertical",
         roadPieceId: segment.id,
+        junctionOwned: false,
+        trimEdges: ["west", "east"],
+        anchorKind: "kerb-strip",
         generated: true
       }, world));
     }
@@ -530,8 +550,162 @@ function sidewalkStrips(segments, width, world) {
   return strips.filter(strip => strip.w > EPSILON && strip.h > EPSILON);
 }
 
-function sidewalkCornerPads(profiles, pieceByNode, width, world, buildings) {
-  const pads = [];
+function clippedPolygonSurface(surface, world) {
+  const points = (surface.points || []).map(point => ({
+    x: rounded(clamp(point.x, 0, finite(world.width))),
+    y: rounded(clamp(point.y, 0, finite(world.height)))
+  }));
+  const bounds = boundsFromPoints(points);
+  return {
+    ...surface,
+    ...bounds,
+    geometry: "polygon",
+    points
+  };
+}
+
+function sidewalkSurfaceAccepted(surface, buildings, roads = []) {
+  if (!surface || finite(surface.w) <= EPSILON || finite(surface.h) <= EPSILON) return false;
+  if (buildings.some(building => surfaceOverlapArea(surface, building) > EPSILON)) return false;
+  return !roads.some(road => surfaceOverlapArea(surface, road) > EPSILON);
+}
+
+function junctionSidewalkRect(piece, width, role, side, extra = {}) {
+  const values = side === "north"
+    ? { x: piece.x, y: piece.y - width, w: piece.w, h: width }
+    : side === "south"
+      ? { x: piece.x, y: bottom(piece), w: piece.w, h: width }
+      : side === "west"
+        ? { x: piece.x - width, y: piece.y, w: width, h: piece.h }
+        : { x: right(piece), y: piece.y, w: width, h: piece.h };
+  return {
+    id: `sidewalk-junction:${piece.id}:${role}:${side}`,
+    ...values,
+    geometry: "rect",
+    pieceKind: "junction-sidewalk",
+    junctionPieceId: piece.id,
+    graphNodeId: piece.graphNodeId,
+    graphNodeIds: [...(piece.graphNodeIds || [piece.graphNodeId])],
+    side,
+    role,
+    junctionOwned: true,
+    trimEdges: side === "north" || side === "south" ? ["north", "south"] : ["west", "east"],
+    anchorKind: role === "closure" ? "junction-closure" : "junction-side",
+    generated: true,
+    ...extra
+  };
+}
+
+function junctionCornerPad(piece, width, quadrant) {
+  const x = quadrant.x < 0 ? finite(piece.x) - width : right(piece);
+  const y = quadrant.y < 0 ? finite(piece.y) - width : bottom(piece);
+  const trimEdges = quadrant.id === "nw"
+    ? ["north", "west"]
+    : quadrant.id === "ne"
+      ? ["north", "east"]
+      : quadrant.id === "se"
+        ? ["south", "east"]
+        : ["south", "west"];
+  return {
+    id: `sidewalk-junction:${piece.id}:corner:${quadrant.id}`,
+    x,
+    y,
+    w: width,
+    h: width,
+    geometry: "rect",
+    pieceKind: "junction-sidewalk",
+    junctionPieceId: piece.id,
+    graphNodeId: piece.graphNodeId,
+    graphNodeIds: [...(piece.graphNodeIds || [piece.graphNodeId])],
+    corner: quadrant.id,
+    role: "corner",
+    junctionOwned: true,
+    trimEdges,
+    anchorKind: "junction-corner",
+    generated: true
+  };
+}
+
+function transitionSidewalkSurfaces(profile, piece, width, world, buildings, roads) {
+  if (!Array.isArray(piece.points) || piece.points.length !== 4) return [];
+  const [first, second, third, fourth] = piece.points;
+  let surfaces;
+  if (profile.legs.every(leg => leg.orientation === "horizontal")) {
+    const northOuterA = { x: first.x, y: first.y - width };
+    const northOuterB = { x: second.x, y: second.y - width };
+    const southOuterA = { x: fourth.x, y: fourth.y + width };
+    const southOuterB = { x: third.x, y: third.y + width };
+    surfaces = [
+      clippedPolygonSurface({
+        id: `sidewalk-transition:${piece.id}:north`,
+        points: [northOuterA, northOuterB, second, first],
+        pieceKind: "junction-sidewalk",
+        junctionPieceId: piece.id,
+        graphNodeId: piece.graphNodeId,
+        graphNodeIds: [...(piece.graphNodeIds || [piece.graphNodeId])],
+        side: "north",
+        role: "transition-offset",
+        junctionOwned: true,
+        trimSegments: [[northOuterA, northOuterB], [first, second]],
+        anchorKind: "transition-kerb",
+        generated: true
+      }, world),
+      clippedPolygonSurface({
+        id: `sidewalk-transition:${piece.id}:south`,
+        points: [fourth, third, southOuterB, southOuterA],
+        pieceKind: "junction-sidewalk",
+        junctionPieceId: piece.id,
+        graphNodeId: piece.graphNodeId,
+        graphNodeIds: [...(piece.graphNodeIds || [piece.graphNodeId])],
+        side: "south",
+        role: "transition-offset",
+        junctionOwned: true,
+        trimSegments: [[fourth, third], [southOuterA, southOuterB]],
+        anchorKind: "transition-kerb",
+        generated: true
+      }, world)
+    ];
+  } else {
+    const westOuterA = { x: first.x - width, y: first.y };
+    const westOuterB = { x: fourth.x - width, y: fourth.y };
+    const eastOuterA = { x: second.x + width, y: second.y };
+    const eastOuterB = { x: third.x + width, y: third.y };
+    surfaces = [
+      clippedPolygonSurface({
+        id: `sidewalk-transition:${piece.id}:west`,
+        points: [westOuterA, first, fourth, westOuterB],
+        pieceKind: "junction-sidewalk",
+        junctionPieceId: piece.id,
+        graphNodeId: piece.graphNodeId,
+        graphNodeIds: [...(piece.graphNodeIds || [piece.graphNodeId])],
+        side: "west",
+        role: "transition-offset",
+        junctionOwned: true,
+        trimSegments: [[westOuterA, westOuterB], [first, fourth]],
+        anchorKind: "transition-kerb",
+        generated: true
+      }, world),
+      clippedPolygonSurface({
+        id: `sidewalk-transition:${piece.id}:east`,
+        points: [second, eastOuterA, eastOuterB, third],
+        pieceKind: "junction-sidewalk",
+        junctionPieceId: piece.id,
+        graphNodeId: piece.graphNodeId,
+        graphNodeIds: [...(piece.graphNodeIds || [piece.graphNodeId])],
+        side: "east",
+        role: "transition-offset",
+        junctionOwned: true,
+        trimSegments: [[second, third], [eastOuterA, eastOuterB]],
+        anchorKind: "transition-kerb",
+        generated: true
+      }, world)
+    ];
+  }
+  return surfaces.filter(surface => sidewalkSurfaceAccepted(surface, buildings, roads));
+}
+
+function junctionOwnedSidewalks(profiles, pieceByNode, width, world, buildings, roads) {
+  const surfaces = [];
   const quadrants = [
     { id: "nw", x: -1, y: -1 },
     { id: "ne", x: 1, y: -1 },
@@ -540,30 +714,52 @@ function sidewalkCornerPads(profiles, pieceByNode, width, world, buildings) {
   ];
   const profileByNode = new Map(profiles.map(profile => [profile.node.id, profile]));
   const uniquePieces = [...new Map([...pieceByNode.values()].map(piece => [piece.id, piece])).values()];
+
   for (const piece of uniquePieces) {
     const owners = (piece.graphNodeIds || [piece.graphNodeId]).map(id => profileByNode.get(id)).filter(Boolean);
-    if (owners.every(profile => ["straight", "transition", "end"].includes(profile.kind))) continue;
-    for (const quadrant of quadrants) {
-      const x = quadrant.x < 0 ? finite(piece.x) - width : right(piece);
-      const y = quadrant.y < 0 ? finite(piece.y) - width : bottom(piece);
-      const pad = clippedRect({
-        id: `sidewalk-corner:${piece.id}:${quadrant.id}`,
-        x,
-        y,
-        w: width,
-        h: width,
-        geometry: "rect",
-        graphNodeId: piece.graphNodeId,
-        graphNodeIds: [...(piece.graphNodeIds || [piece.graphNodeId])],
-        corner: quadrant.id,
-        generated: true
-      }, world);
-      if (pad.w <= EPSILON || pad.h <= EPSILON) continue;
-      if (buildings.some(building => surfaceOverlapArea(pad, building) > EPSILON)) continue;
-      pads.push(pad);
+    if (!owners.length) continue;
+    if (owners.length === 1 && owners[0].kind === "transition") {
+      surfaces.push(...transitionSidewalkSurfaces(owners[0], piece, width, world, buildings, roads));
+      continue;
+    }
+
+    const directions = new Set(owners.flatMap(profile => profile.legs.map(leg => leg.direction)));
+    const hasHorizontal = owners.some(profile => profile.hasHorizontal);
+    const hasVertical = owners.some(profile => profile.hasVertical);
+    const allStraight = owners.every(profile => profile.kind === "straight");
+
+    if (!allStraight) {
+      for (const quadrant of quadrants) {
+        const pad = clippedRect(junctionCornerPad(piece, width, quadrant), world);
+        if (sidewalkSurfaceAccepted(pad, buildings, roads)) surfaces.push(pad);
+      }
+    }
+
+    const closureSides = new Set();
+    if (allStraight) {
+      if (hasHorizontal) closureSides.add("north").add("south");
+      if (hasVertical) closureSides.add("west").add("east");
+    } else {
+      if (hasHorizontal) {
+        if (!directions.has("north")) closureSides.add("north");
+        if (!directions.has("south")) closureSides.add("south");
+      }
+      if (hasVertical) {
+        if (!directions.has("west")) closureSides.add("west");
+        if (!directions.has("east")) closureSides.add("east");
+      }
+      for (const owner of owners.filter(profile => profile.kind === "end" && profile.legs.length === 1)) {
+        closureSides.add(opposite(owner.legs[0].direction));
+      }
+    }
+
+    for (const side of closureSides) {
+      const closure = clippedRect(junctionSidewalkRect(piece, width, "closure", side), world);
+      if (sidewalkSurfaceAccepted(closure, buildings, roads)) surfaces.push(closure);
     }
   }
-  return pads;
+
+  return surfaces;
 }
 
 function crosswalkForLeg(profile, piece, leg, thickness, inset, world) {
@@ -614,7 +810,19 @@ function crosswalkForLeg(profile, piece, leg, thickness, inset, world) {
   return clipped.w > EPSILON && clipped.h > EPSILON ? clipped : null;
 }
 
-function buildCrosswalks(profiles, pieceByNode, world, options) {
+function crosswalkContinuationPoints(crosswalk) {
+  return crosswalk.orientation === "horizontal"
+    ? [
+        { x: crosswalk.x - 1, y: crosswalk.y + crosswalk.h / 2 },
+        { x: crosswalk.x + crosswalk.w + 1, y: crosswalk.y + crosswalk.h / 2 }
+      ]
+    : [
+        { x: crosswalk.x + crosswalk.w / 2, y: crosswalk.y - 1 },
+        { x: crosswalk.x + crosswalk.w / 2, y: crosswalk.y + crosswalk.h + 1 }
+      ];
+}
+
+function buildCrosswalks(profiles, pieceByNode, sidewalks, world, options) {
   const candidates = [];
   const junctionPieces = [...new Map([...pieceByNode.values()].map(piece => [piece.id, piece])).values()];
   for (const profile of profiles) {
@@ -643,6 +851,7 @@ function buildCrosswalks(profiles, pieceByNode, world, options) {
   const result = [];
   for (const candidate of candidates.sort((left, rightValue) => left.id.localeCompare(rightValue.id))) {
     if (junctionPieces.some(piece => surfaceOverlapArea(piece, candidate) > 0.01)) continue;
+    if (!crosswalkContinuationPoints(candidate).every(point => sidewalks.some(sidewalk => pointInSurface(point, sidewalk, 1.5)))) continue;
     if (result.some(existing => surfaceOverlapArea(existing, candidate) > 0.01)) continue;
     result.push(candidate);
   }
@@ -653,9 +862,26 @@ function stripLength(strip) {
   return strip.w >= strip.h ? strip.w : strip.h;
 }
 
-function candidatePoint(strip, distance) {
-  if (strip.w >= strip.h) return { x: strip.x + distance, y: strip.y + strip.h / 2 };
-  return { x: strip.x + strip.w / 2, y: strip.y + distance };
+function kerbPoint(strip, distance, inset = 4) {
+  if (strip.w >= strip.h) {
+    return {
+      x: rounded(finite(strip.x) + distance),
+      y: rounded(strip.side === "north" ? finite(strip.y) + inset : bottom(strip) - inset)
+    };
+  }
+  return {
+    x: rounded(strip.side === "west" ? finite(strip.x) + inset : right(strip) - inset),
+    y: rounded(finite(strip.y) + distance)
+  };
+}
+
+function projectedKerbPoint(strip, anchor, inset = 4, endClearance = 28) {
+  const length = stripLength(strip);
+  const clearance = Math.min(Math.max(4, endClearance), Math.max(4, length / 2));
+  const distance = strip.w >= strip.h
+    ? clamp(finite(anchor.x) - finite(strip.x), clearance, length - clearance)
+    : clamp(finite(anchor.y) - finite(strip.y), clearance, length - clearance);
+  return kerbPoint(strip, distance, inset);
 }
 
 function stripRoadClass(strip, edgeById) {
@@ -674,66 +900,140 @@ function shouldUseStrip(strip, roadClass) {
   return false;
 }
 
+function buildPropExclusionZones(profiles, pieceByNode, crosswalks, world, options) {
+  const zones = [];
+  const uniquePieces = [...new Map([...pieceByNode.values()].map(piece => [piece.id, piece])).values()];
+  for (const piece of uniquePieces) {
+    zones.push(clippedRect({
+      id: `prop-exclusion:junction:${piece.id}`,
+      ...expandedRect(piece, options.sidewalkWidth + options.propJunctionClearance),
+      geometry: "rect",
+      exclusionKind: "junction-envelope",
+      junctionPieceId: piece.id,
+      graphNodeId: piece.graphNodeId,
+      graphNodeIds: [...(piece.graphNodeIds || [piece.graphNodeId])],
+      generated: true
+    }, world));
+  }
+
+  for (const profile of profiles) {
+    const piece = pieceByNode.get(profile.node.id);
+    for (const leg of profile.legs) {
+      const lateral = leg.width / 2 + options.sidewalkWidth + options.propApproachClearance;
+      const length = options.propApproachLength;
+      const values = leg.direction === "east"
+        ? { x: right(piece), y: finite(profile.node.y) - lateral, w: length, h: lateral * 2 }
+        : leg.direction === "west"
+          ? { x: finite(piece.x) - length, y: finite(profile.node.y) - lateral, w: length, h: lateral * 2 }
+          : leg.direction === "south"
+            ? { x: finite(profile.node.x) - lateral, y: bottom(piece), w: lateral * 2, h: length }
+            : { x: finite(profile.node.x) - lateral, y: finite(piece.y) - length, w: lateral * 2, h: length };
+      const zone = clippedRect({
+        id: `prop-exclusion:approach:${profile.node.id}:${leg.direction}`,
+        ...values,
+        geometry: "rect",
+        exclusionKind: "junction-approach",
+        graphNodeId: profile.node.id,
+        graphEdgeId: leg.edge.id,
+        leg: leg.direction,
+        generated: true
+      }, world);
+      if (zone.w > EPSILON && zone.h > EPSILON) zones.push(zone);
+    }
+  }
+
+  for (const crosswalk of crosswalks) {
+    const zone = clippedRect({
+      id: `prop-exclusion:crosswalk:${crosswalk.id}`,
+      ...expandedRect(crosswalk, options.propCrosswalkClearance),
+      geometry: "rect",
+      exclusionKind: "crosswalk-clearance",
+      graphNodeId: crosswalk.graphNodeId,
+      graphEdgeId: crosswalk.graphEdgeId,
+      generated: true
+    }, world);
+    if (zone.w > EPSILON && zone.h > EPSILON) zones.push(zone);
+  }
+
+  return zones;
+}
+
 function lightCandidateValid(point, context) {
   if (point.x < context.margin || point.y < context.margin) return false;
   if (point.x > context.world.width - context.margin || point.y > context.world.height - context.margin) return false;
   if (!context.sidewalks.some(sidewalk => pointInSurface(point, sidewalk))) return false;
   if (context.roads.some(road => pointInSurface(point, road))) return false;
-  if (pointNearSurface(point, context.crosswalks, context.crosswalkClearance)) return false;
+  if (context.propExclusionZones.some(zone => pointInSurface(point, zone))) return false;
   if (pointNearSurface(point, context.buildings, context.buildingClearance)) return false;
-  if (context.junctions.some(junction => pointInSurface(point, expandedRect(junction, context.junctionClearance)))) return false;
   if (context.accepted.some(light => distanceToPoint(light, point) < context.minimumSpacing)) return false;
   return true;
 }
 
 function nearestValidSidewalkPoint(anchor, context, maxDistance = 180) {
   const candidates = [];
-  for (const sidewalk of context.sidewalks) {
-    const x = Math.max(sidewalk.x + 4, Math.min(anchor.x, right(sidewalk) - 4));
-    const y = Math.max(sidewalk.y + 4, Math.min(anchor.y, bottom(sidewalk) - 4));
-    const point = { x: rounded(x), y: rounded(y) };
+  for (const sidewalk of context.sidewalks.filter(item => item.graphEdgeId && item.side)) {
+    const point = projectedKerbPoint(
+      sidewalk,
+      anchor,
+      context.kerbInset,
+      context.endClearance
+    );
     const distance = distanceToPoint(anchor, point);
-    if (distance <= maxDistance) candidates.push({ point, distance });
+    if (distance <= maxDistance) candidates.push({ point, distance, sidewalk });
   }
-  candidates.sort((a, b) => a.distance - b.distance);
-  return candidates.find(candidate => lightCandidateValid(candidate.point, context))?.point || null;
+  candidates.sort((a, b) => a.distance - b.distance || a.sidewalk.id.localeCompare(b.sidewalk.id));
+  return candidates.find(candidate => lightCandidateValid(candidate.point, context)) || null;
 }
 
-function buildLights({ graph, segments, sidewalks, crosswalks, junctions, buildings, world, options }) {
+function buildLights({
+  graph,
+  segments,
+  sidewalks,
+  crosswalks,
+  junctions,
+  propExclusionZones,
+  buildings,
+  world,
+  options
+}) {
   const edgeById = new Map(graph.edges.map(edge => [edge.id, edge]));
   const accepted = [];
   const context = {
     roads: [...segments, ...junctions],
     sidewalks,
     crosswalks,
-    junctions,
+    propExclusionZones,
     buildings,
     world,
     margin: options.lightWorldMargin,
-    crosswalkClearance: options.lightCrosswalkClearance,
     buildingClearance: options.lightBuildingClearance,
-    junctionClearance: options.lightJunctionClearance,
     minimumSpacing: options.lightMinimumSpacing,
+    kerbInset: options.lightKerbInset,
+    endClearance: options.lightEndClearance,
     accepted
   };
 
   for (const anchor of graph.authoredLightAnchors || []) {
-    const point = nearestValidSidewalkPoint(anchor, context, options.authoredLightSnapDistance);
-    if (!point) continue;
+    const candidate = nearestValidSidewalkPoint(anchor, context, options.authoredLightSnapDistance);
+    if (!candidate) continue;
     accepted.push({
       id: String(anchor.id),
-      x: point.x,
-      y: point.y,
+      x: candidate.point.x,
+      y: candidate.point.y,
       radius: finite(anchor.radius, 72),
       name: String(anchor.name || anchor.id),
       layer: 0,
       semantic: true,
       generated: true,
+      graphEdgeId: candidate.sidewalk.graphEdgeId,
+      sidewalkId: candidate.sidewalk.id,
+      kerbSide: candidate.sidewalk.side,
+      anchorKind: "kerb-light",
       placementPhase: "post-layout"
     });
   }
 
-  for (const strip of sidewalks.filter(item => item.graphEdgeId)) {
+  for (const strip of sidewalks.filter(item => item.graphEdgeId && item.side)) {
     const roadClass = stripRoadClass(strip, edgeById);
     if (!shouldUseStrip(strip, roadClass)) continue;
     const spacing = spacingForClass(roadClass, options);
@@ -744,7 +1044,7 @@ function buildLights({ graph, segments, sidewalks, crosswalks, junctions, buildi
     const count = Math.max(1, Math.floor(usable / spacing) + 1);
     for (let index = 0; index < count; index++) {
       const distance = count === 1 ? length / 2 : margin + usable * (index / (count - 1));
-      const point = candidatePoint(strip, distance);
+      const point = kerbPoint(strip, distance, options.lightKerbInset);
       if (!lightCandidateValid(point, context)) continue;
       accepted.push({
         id: `lamp:${strip.graphEdgeId}:${strip.side}:${String(index + 1).padStart(2, "0")}`,
@@ -756,10 +1056,128 @@ function buildLights({ graph, segments, sidewalks, crosswalks, junctions, buildi
         generated: true,
         graphEdgeId: strip.graphEdgeId,
         sidewalkId: strip.id,
+        kerbSide: strip.side,
+        anchorKind: "kerb-light",
         placementPhase: "post-layout"
       });
     }
   }
+  return accepted;
+}
+
+function streetFurnitureCandidateValid(point, context) {
+  if (point.x < context.margin || point.y < context.margin) return false;
+  if (point.x > context.world.width - context.margin || point.y > context.world.height - context.margin) return false;
+  if (pointNearSurface(point, context.roads, context.roadClearance)) return false;
+  if (pointNearSurface(point, context.crosswalks, context.crosswalkClearance)) return false;
+  if (context.propExclusionZones.some(zone => pointInSurface(point, zone))) return false;
+  if (pointNearSurface(point, context.buildings, context.buildingClearance)) return false;
+  if (context.lights.some(light => distanceToPoint(light, point) < context.lightClearance)) return false;
+  if (context.accepted.some(prop => distanceToPoint(prop, point) < context.minimumSpacing)) return false;
+  return true;
+}
+
+function radialServiceCandidates(anchor, maxDistance, step = 24) {
+  const candidates = [];
+  for (let radius = step; radius <= maxDistance; radius += step) {
+    for (let index = 0; index < 16; index++) {
+      const angle = index * Math.PI * 2 / 16;
+      candidates.push({
+        x: rounded(finite(anchor.x) + Math.cos(angle) * radius),
+        y: rounded(finite(anchor.y) + Math.sin(angle) * radius),
+        distance: radius,
+        anchorKind: "service-yard"
+      });
+    }
+  }
+  return candidates;
+}
+
+export function placePostLayoutDumpsters(dumpsters = [], {
+  roads = [],
+  sidewalks = [],
+  crosswalks = [],
+  propExclusionZones = [],
+  buildings = [],
+  lights = [],
+  world,
+  kerbInset = 4,
+  endClearance = 36,
+  snapDistance = 260,
+  worldMargin = 20,
+  roadClearance = 6,
+  crosswalkClearance = 24,
+  buildingClearance = 18,
+  lightClearance = 42,
+  minimumSpacing = 90
+} = {}) {
+  const accepted = [];
+  const strips = sidewalks.filter(item => item.graphEdgeId && item.side);
+  const context = {
+    roads,
+    sidewalks,
+    crosswalks,
+    propExclusionZones,
+    buildings,
+    lights,
+    world,
+    margin: worldMargin,
+    roadClearance,
+    crosswalkClearance,
+    buildingClearance,
+    lightClearance,
+    minimumSpacing,
+    accepted
+  };
+
+  for (const definition of dumpsters) {
+    const sourceAnchor = { x: finite(definition.x), y: finite(definition.y) };
+    let point = sourceAnchor;
+    let anchorKind = "service-yard";
+    let sidewalk = null;
+
+    if (!streetFurnitureCandidateValid(point, context)) {
+      const kerbCandidates = strips.map(strip => {
+        const candidate = projectedKerbPoint(strip, sourceAnchor, kerbInset, endClearance);
+        return {
+          point: candidate,
+          sidewalk: strip,
+          distance: distanceToPoint(sourceAnchor, candidate),
+          anchorKind: "service-kerb"
+        };
+      }).filter(candidate => candidate.distance <= snapDistance)
+        .sort((left, rightValue) => left.distance - rightValue.distance || left.sidewalk.id.localeCompare(rightValue.sidewalk.id));
+      const kerb = kerbCandidates.find(candidate => streetFurnitureCandidateValid(candidate.point, context));
+      if (kerb) {
+        point = kerb.point;
+        sidewalk = kerb.sidewalk;
+        anchorKind = kerb.anchorKind;
+      } else {
+        const yard = radialServiceCandidates(sourceAnchor, snapDistance)
+          .find(candidate => streetFurnitureCandidateValid(candidate, context));
+        if (!yard) throw new Error(`Unable to place street furniture ${definition.id} outside road exclusions.`);
+        point = yard;
+        anchorKind = yard.anchorKind;
+      }
+    }
+
+    const placed = {
+      ...definition,
+      x: rounded(point.x),
+      y: rounded(point.y),
+      generated: true,
+      placementPhase: "post-layout",
+      anchorKind,
+      sourceAnchor,
+      ...(sidewalk ? {
+        graphEdgeId: sidewalk.graphEdgeId,
+        sidewalkId: sidewalk.id,
+        kerbSide: sidewalk.side
+      } : {})
+    };
+    accepted.push(placed);
+  }
+
   return accepted;
 }
 
@@ -912,16 +1330,19 @@ export function compileAxisAlignedRoadGraph(graph, {
   sidewalkWidth = 22,
   crosswalkThickness = 14,
   crosswalkInset = 8,
+  propJunctionClearance = 10,
+  propApproachClearance = 8,
+  propApproachLength = 92,
+  propCrosswalkClearance = 24,
   lightRadius = 64,
   lightSpacingMajor = 360,
   lightSpacingLocal = 300,
   lightSpacingAlley = 260,
   lightEndClearance = 70,
   lightWorldMargin = 8,
-  lightCrosswalkClearance = 24,
   lightBuildingClearance = 12,
-  lightJunctionClearance = 18,
   lightMinimumSpacing = 150,
+  lightKerbInset = 5,
   authoredLightSnapDistance = 220
 } = {}) {
   if (!graph?.nodes?.length || !graph?.edges?.length) throw new TypeError("Road graph requires nodes and edges.");
@@ -945,36 +1366,50 @@ export function compileAxisAlignedRoadGraph(graph, {
     nodeById
   )).filter(Boolean);
   const junctions = pieces.filter(Boolean);
-  const strips = sidewalkStrips(segments, sidewalkWidth, world);
-  const pads = sidewalkCornerPads(profiles, pieceByNode, sidewalkWidth, world, buildings);
-  const sidewalks = [...strips, ...pads];
+  const roads = [...segments, ...junctions];
+  const strips = sidewalkStrips(segments, sidewalkWidth, world)
+    .filter(strip => sidewalkSurfaceAccepted(strip, buildings, roads));
+  const junctionSidewalks = junctionOwnedSidewalks(
+    profiles,
+    pieceByNode,
+    sidewalkWidth,
+    world,
+    buildings,
+    roads
+  );
+  const sidewalks = [...strips, ...junctionSidewalks];
   const options = {
+    sidewalkWidth,
     crosswalkThickness,
     crosswalkInset,
+    propJunctionClearance,
+    propApproachClearance,
+    propApproachLength,
+    propCrosswalkClearance,
     lightRadius,
     lightSpacingMajor,
     lightSpacingLocal,
     lightSpacingAlley,
     lightEndClearance,
     lightWorldMargin,
-    lightCrosswalkClearance,
     lightBuildingClearance,
-    lightJunctionClearance,
     lightMinimumSpacing,
+    lightKerbInset,
     authoredLightSnapDistance
   };
-  const crosswalks = buildCrosswalks(profiles, pieceByNode, world, options);
+  const crosswalks = buildCrosswalks(profiles, pieceByNode, sidewalks, world, options);
+  const propExclusionZones = buildPropExclusionZones(profiles, pieceByNode, crosswalks, world, options);
   const lights = buildLights({
     graph,
     segments,
     sidewalks,
     crosswalks,
     junctions,
+    propExclusionZones,
     buildings,
     world,
     options
   });
-  const roads = [...segments, ...junctions];
   return {
     graph: {
       ...graph,
@@ -990,7 +1425,10 @@ export function compileAxisAlignedRoadGraph(graph, {
     roadJunctions: junctions.filter(piece => piece.pieceKind === "junction"),
     roadTransitions: junctions.filter(piece => piece.pieceKind === "transition"),
     sidewalks,
+    junctionSidewalks,
     crosswalks,
+    propExclusionZones,
+    buildingObstacles: [...buildings],
     lights,
     stats: {
       graphNodeCount: graph.nodes.length,
@@ -1000,7 +1438,9 @@ export function compileAxisAlignedRoadGraph(graph, {
       junctionCount: junctions.length,
       transitionCount: junctions.filter(piece => piece.pieceKind === "transition").length,
       sidewalkCount: sidewalks.length,
+      junctionSidewalkCount: junctionSidewalks.length,
       crosswalkCount: crosswalks.length,
+      propExclusionZoneCount: propExclusionZones.length,
       lightCount: lights.length
     }
   };
@@ -1050,6 +1490,25 @@ export function roadGraphIntegrity(graph, compiled = null) {
             overlap
           });
         }
+      }
+    }
+    for (const sidewalk of compiled.junctionSidewalks || []) {
+      for (const road of roads) {
+        const overlap = surfaceOverlapArea(sidewalk, road);
+        if (overlap > 0.01) {
+          errors.push({ code: "JUNCTION_SIDEWALK_ROAD_OVERLAP", sidewalkId: sidewalk.id, roadId: road.id, overlap });
+        }
+      }
+      for (const building of compiled.buildingObstacles || []) {
+        const overlap = surfaceOverlapArea(sidewalk, building);
+        if (overlap > 0.01) {
+          errors.push({ code: "JUNCTION_SIDEWALK_BUILDING_OVERLAP", sidewalkId: sidewalk.id, buildingId: building.id, overlap });
+        }
+      }
+    }
+    for (const zone of compiled.propExclusionZones || []) {
+      if (!(finite(zone.w) > EPSILON) || !(finite(zone.h) > EPSILON)) {
+        errors.push({ code: "PROP_EXCLUSION_INVALID_BOUNDS", zoneId: zone.id });
       }
     }
   }

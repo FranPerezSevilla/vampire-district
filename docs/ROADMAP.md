@@ -1,6 +1,6 @@
 # Roadmap
 
-_Last updated: 2026-07-23_
+_Last updated: 2026-07-24_
 
 This roadmap is ordered by dependency, not calendar date. A milestone is complete only when implementation, automated coverage, browser regression and documentation agree.
 
@@ -295,9 +295,9 @@ Reference: `CITY_TOPOLOGY_RESET.md`.
 
 **Status: ✅ Complete — City Topology V2**
 
-Delivered baseline: `4800 × 3600`, 14 districts, 80 chunks, site-first hospital/police/city-hall/cathedral/university sites and topology-aware vehicle migration. Road geometry v1 adds a 114-node / 158-edge graph, 153 clipped segments and 111 non-overlapping junction authorities.
+Delivered baseline: `4800 × 3600`, 14 districts, 80 chunks, site-first hospital/police/city-hall/cathedral/university sites and topology-aware vehicle migration. Road geometry v2 adds a 114-node / 158-edge graph, 153 clipped segments and 111 non-overlapping junction authorities.
 
-### 14.1 Road/intersection authority — ✅ geometry v1
+### 14.1 Road/intersection authority — ✅ geometry v2
 
 - one explicit road graph;
 - stable edges with width/class semantics;
@@ -312,6 +312,9 @@ Arbitrary-angle/curved offsets remain a later geometry version.
 
 - generated sidewalk strips and corner pads;
 - crosswalks outside junction centres with two sidewalk continuations;
+- junction-owned closure/corner surfaces without internal sidewalk end-cap seams;
+- explicit no-prop envelopes for junction centres, approaches and crosswalks;
+- kerb/service snapping for lights and dumpsters after final layout;
 - regenerated pedestrian routes/navigation;
 - post-layout streetlights clear of roads, crossings and buildings;
 - runtime/compiler renderers share polygon-aware road surfaces.

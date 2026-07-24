@@ -1,6 +1,6 @@
 # Technical architecture
 
-_Last updated: 2026-07-23_
+_Last updated: 2026-07-24_
 
 Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) for the project-wide map. This document defines runtime ownership, boot composition, campaign/mission registration, persistence boundaries, city-topology policy and testing contracts.
 
@@ -30,9 +30,11 @@ Generation order:
 road graph
 → junction authority
 → clipped segments/transitions
-→ sidewalks/crosswalks
+→ segment and junction-owned sidewalks
+→ crosswalks
+→ prop-exclusion zones
 → building clearance
-→ lights
+→ kerb lights and service furniture
 → pedestrian routes/navigation
 → chunks
 ```
@@ -463,7 +465,7 @@ Lights are post-layout objects generated only after road, pedestrian and buildin
 
 ### Remaining geometry extension
 
-Geometry v1 is axis-aligned. A future version may add arbitrary polyline offsets, rounded joins and polygonal ordinary parcels while retaining stable graph/site identities.
+Geometry v2 is axis-aligned. A future version may add arbitrary polyline offsets, rounded joins and polygonal ordinary parcels while retaining stable graph/site identities.
 
 ## 17. Authority table
 
@@ -518,7 +520,7 @@ Mission-specific Chromium golden paths were deleted because the contracts are no
 
 Current constraints:
 
-- geometry v1 accepts axis-aligned edges only;
+- geometry v2 accepts axis-aligned edges only;
 - arbitrary curved offsets and rounded carriageway joins are not implemented;
 - ordinary parcel/building bounds remain rectangular at runtime;
 - graph changes require atomic regeneration of pedestrian routes and chunks;

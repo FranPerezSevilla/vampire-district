@@ -131,7 +131,7 @@ Desired chunks are never evicted merely to satisfy the limit. Dormant or unloade
 Static urban operations use resident chunk-local indexes:
 
 - street rendering;
-- roads, sidewalks and crosswalks;
+- roads, segment/junction-owned sidewalks, crosswalks and prop-exclusion zones;
 - buildings;
 - streetlights and broken-light shadows;
 - shadow zones;

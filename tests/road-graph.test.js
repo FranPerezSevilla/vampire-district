@@ -15,7 +15,10 @@ import { cityRoadGraph } from "../tools/city-compiler/city-road-graph-v1.js";
 import {
   buildings,
   crosswalks,
+  dumpsters,
+  junctionSidewalks,
   lights,
+  propExclusionZones,
   roadGraphEdges,
   roadGraphNodes,
   roadJunctions,
@@ -149,7 +152,7 @@ test("crosswalks are outside the junction centre and connect two final sidewalks
   for (const crossing of crosswalks) {
     assert.equal(roads.some(road => surfaceOverlapArea(crossing, road) > 0.01), true, crossing.id);
     assert.equal(
-      continuationPoints(crossing).every(point => sidewalks.some(sidewalk => pointInRect(point, sidewalk, 1.5))),
+      continuationPoints(crossing).every(point => sidewalks.some(sidewalk => pointInSurface(point, sidewalk, 1.5))),
       true,
       crossing.id
     );
@@ -162,10 +165,67 @@ test("streetlights are post-layout furniture clear of roads, crossings and build
   for (const light of lights) {
     const point = { x: light.x, y: light.y };
     assert.equal(light.placementPhase, "post-layout", light.id);
+    assert.equal(light.anchorKind, "kerb-light", light.id);
     assert.equal(sidewalks.some(sidewalk => pointInSurface(point, sidewalk)), true, light.id);
     assert.equal(roads.some(road => pointInSurface(point, road)), false, light.id);
     assert.equal(crosswalks.some(crossing => pointInSurface(point, crossing)), false, light.id);
+    assert.equal(propExclusionZones.some(zone => pointInSurface(point, zone)), false, light.id);
     assert.equal(buildings.some(building => pointInRect(point, building, 8)), false, light.id);
+  }
+});
+
+
+test("junction-owned sidewalks close missing legs without intruding into carriageways", () => {
+  const source = graph(
+    [
+      { id: "west", x: 40, y: 200 },
+      { id: "junction", x: 300, y: 200 },
+      { id: "east", x: 560, y: 200 },
+      { id: "north", x: 300, y: 40 }
+    ],
+    [
+      { id: "major-west", from: "west", to: "junction", width: 120, orientation: "horizontal", roadClass: "major", kind: "road", sourceRoadIds: ["major"] },
+      { id: "major-east", from: "junction", to: "east", width: 120, orientation: "horizontal", roadClass: "major", kind: "road", sourceRoadIds: ["major"] },
+      { id: "local-north", from: "north", to: "junction", width: 64, orientation: "vertical", roadClass: "local", kind: "road", sourceRoadIds: ["local"] }
+    ]
+  );
+  const compiled = compileAxisAlignedRoadGraph(source, { world });
+  const owned = compiled.junctionSidewalks.filter(item => item.graphNodeIds.includes("junction"));
+
+  assert.ok(owned.some(item => item.role === "closure" && item.side === "south"));
+  assert.ok(owned.some(item => item.role === "corner"));
+  assert.equal(owned.every(sidewalk => compiled.roads.every(road => surfaceOverlapArea(sidewalk, road) <= 0.01)), true);
+});
+
+test("width transitions own two polygonal kerb surfaces", () => {
+  const source = graph(
+    [
+      { id: "west", x: 40, y: 200 },
+      { id: "transition", x: 300, y: 200 },
+      { id: "east", x: 560, y: 200 }
+    ],
+    [
+      { id: "narrow", from: "west", to: "transition", width: 56, orientation: "horizontal", roadClass: "local", kind: "road", sourceRoadIds: ["narrow"] },
+      { id: "wide", from: "transition", to: "east", width: 120, orientation: "horizontal", roadClass: "major", kind: "road", sourceRoadIds: ["wide"] }
+    ]
+  );
+  const compiled = compileAxisAlignedRoadGraph(source, { world });
+  const transitionWalks = compiled.junctionSidewalks.filter(item => item.graphNodeIds.includes("transition"));
+
+  assert.equal(transitionWalks.length, 2);
+  assert.equal(transitionWalks.every(item => item.geometry === "polygon" && item.role === "transition-offset"), true);
+});
+
+test("dumpsters are snapped after layout outside junction and crosswalk exclusions", () => {
+  assert.equal(dumpsters.length > 0, true);
+  for (const dumpster of dumpsters) {
+    const point = { x: dumpster.x, y: dumpster.y };
+    assert.equal(dumpster.placementPhase, "post-layout", dumpster.id);
+    assert.ok(["service-kerb", "service-yard"].includes(dumpster.anchorKind), dumpster.id);
+    assert.equal(roads.some(road => pointInSurface(point, road, 6)), false, dumpster.id);
+    assert.equal(crosswalks.some(crosswalk => pointInSurface(point, crosswalk, 24)), false, dumpster.id);
+    assert.equal(propExclusionZones.some(zone => pointInSurface(point, zone)), false, dumpster.id);
+    assert.equal(buildings.some(building => pointInRect(point, building, 18)), false, dumpster.id);
   }
 });
 
@@ -188,6 +248,11 @@ test("the full city is reproducible from its explicit road graph with no road-pi
   assert.equal(compiled.stats.graphEdgeCount, 158);
   assert.equal(compiled.stats.roadSegmentCount, 153);
   assert.equal(compiled.stats.transitionCount, roadTransitions.length);
+  assert.equal(compiled.stats.sidewalkCount, 741);
+  assert.equal(compiled.stats.junctionSidewalkCount, junctionSidewalks.length);
+  assert.equal(compiled.stats.crosswalkCount, 137);
+  assert.equal(compiled.stats.propExclusionZoneCount, propExclusionZones.length);
+  assert.equal(compiled.stats.lightCount, 105);
   assert.equal(roadGraphIntegrity(cityRoadGraph, compiled).valid, true);
   assertNoRoadOverlap(compiled.roads);
 });
