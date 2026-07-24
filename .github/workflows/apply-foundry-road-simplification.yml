@@ -1,4 +1,4 @@
-name: Apply Foundry road simplification
+name: Finalize Foundry road simplification
 
 on:
   pull_request:
@@ -8,10 +8,10 @@ permissions:
   contents: write
 
 jobs:
-  regenerate-and-measure:
+  finalize-validate-clean:
     if: ${{ github.head_ref == 'agent/simplify-foundry-road-block' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,61 +22,33 @@ jobs:
         with:
           node-version: 22
 
-      - name: Apply Foundry simplification
+      - name: Apply Foundry topology simplification
         run: |
-          sed -i 's/MINIMUM_PARALLEL_ROAD_BLOCK_DEPTH = 48/MINIMUM_PARALLEL_ROAD_BLOCK_DEPTH = 36/' tools/city-compiler/apply-foundry-simplification.py
           python3 tools/city-compiler/apply-foundry-simplification.py
+          python3 tools/city-compiler/finalize-foundry-simplification.py
 
       - name: Install exact test dependencies
         run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
 
-      - name: Regenerate city topology
-        shell: bash
-        run: |
-          set -o pipefail
-          npm run city:topology 2>&1 | tee foundry-topology.log
+      - name: Regenerate and validate City Topology V2
+        run: npm run city:topology
 
-      - name: Upload topology diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: foundry-topology-diagnostics
-          path: foundry-topology.log
-          retention-days: 2
+      - name: Run unit tests
+        run: npm test
 
-      - name: Record generated metrics
-        run: |
-          node --input-type=module <<'NODE'
-          import { writeFileSync } from 'node:fs';
-          const city = await import('./phaser/src/data/generated/city-topology-v2.js');
-          const metrics = {
-            version: city.ROAD_GEOMETRY_VERSION,
-            nodes: city.roadGraphNodes.length,
-            edges: city.roadGraphEdges.length,
-            segments: city.roadSegments.length,
-            junctionPieces: city.roadJunctions.length,
-            sidewalks: city.sidewalks.length,
-            roadEdgeBands: city.sidewalks.filter(item => item.bandKind === 'road-edge').length,
-            roadEdgeBandSources: city.CITY_TOPOLOGY_STATS.roadEdgeBandSourceCount,
-            junctionSidewalks: city.junctionSidewalks.length,
-            crosswalks: city.crosswalks.length,
-            exclusions: city.propExclusionZones.length,
-            lights: city.lights.length,
-            absorbedShortApproaches: city.CITY_TOPOLOGY_STATS.absorbedShortApproachCount,
-          };
-          const source = JSON.stringify(metrics, null, 2);
-          console.log(source);
-          writeFileSync('foundry-metrics.json', source + '\n');
-          NODE
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
 
-      - name: Upload generated metrics
-        uses: actions/upload-artifact@v4
-        with:
-          name: foundry-generated-metrics
-          path: foundry-metrics.json
-          retention-days: 2
+      - name: Run browser boot tests
+        run: npm run test:browser:boot
 
-      - name: Commit regenerated candidate
+      - name: Run browser system tests
+        run: npm run test:browser:systems
+
+      - name: Run browser campaign tests
+        run: npm run test:browser:campaign
+
+      - name: Commit clean Foundry topology
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
