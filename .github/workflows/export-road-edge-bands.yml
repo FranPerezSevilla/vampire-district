@@ -1,0 +1,31 @@
+name: Export road edge band branch
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+  push:
+    branches:
+      - agent/continuous-road-edge-bands
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    if: ${{ github.head_ref == 'agent/continuous-road-edge-bands' || github.ref_name == 'agent/continuous-road-edge-bands' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/continuous-road-edge-bands
+      - name: Create source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar --exclude=.git --exclude=node_modules --exclude=.github/workflows/export-road-edge-bands.yml -czf /tmp/road-edge-bands-source.tar.gz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: road-edge-bands-source
+          path: /tmp/road-edge-bands-source.tar.gz
+          retention-days: 2
