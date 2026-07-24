@@ -62,13 +62,14 @@ export function registerVehicleTheft(system, vehicle, previousStatus) {
     policeVehicle ? 42 : factionVehicle ? 25 : 18,
     `reported theft of ${vehicle.name}`
   );
-  system.campaign.handle(CAMPAIGN_EVENT_TYPES.VEHICLE_STOLEN, {
-    vehicleId: vehicle.id,
-    targetId: vehicle.id,
-    factionId: vehicle.factionId,
-    previousStatus,
-    transient: Boolean(vehicle.transient)
-  });
+  if (!vehicle.transient) {
+    system.campaign.handle(CAMPAIGN_EVENT_TYPES.VEHICLE_STOLEN, {
+      vehicleId: vehicle.id,
+      targetId: vehicle.id,
+      factionId: vehicle.factionId,
+      previousStatus
+    });
+  }
   system.scene.lastActionText = policeVehicle
     ? `POLICE VEHICLE STOLEN: ${vehicle.name}. Units converge on the last known position.`
     : `STOLEN: ${vehicle.name}. Witnesses may report the theft.`;
