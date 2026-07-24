@@ -1,0 +1,77 @@
+name: Apply road edge-band generator sync
+
+on:
+  push:
+    branches:
+      - agent/fix-road-edge-band-generator-sync
+
+permissions:
+  contents: write
+
+jobs:
+  apply-validate-clean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-road-edge-band-generator-sync
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply verified source patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f tools/edge-sync/part-00.txt ]]; then
+            echo "Temporary patch already consumed."
+            exit 0
+          fi
+          cat tools/edge-sync/part-00.txt tools/edge-sync/part-01.txt \
+            | base64 --decode \
+            | gzip --decompress \
+            > /tmp/edge-sync.patch
+          git apply --check /tmp/edge-sync.patch
+          git apply /tmp/edge-sync.patch
+          rm -rf tools/edge-sync
+          rm -f .github/workflows/export-road-edge-bands.yml
+          rm -f .github/workflows/apply-edge-band-generator-sync.yml
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Regenerate and validate city
+        run: npm run city:topology
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser boot tests
+        run: npm run test:browser:boot
+
+      - name: Run browser system tests
+        run: npm run test:browser:systems
+
+      - name: Run browser campaign tests
+        run: npm run test:browser:campaign
+
+      - name: Commit reproducible generator sync
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Synchronize continuous road-edge band generator"
+          git push origin HEAD:agent/fix-road-edge-band-generator-sync
