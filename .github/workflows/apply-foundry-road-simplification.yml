@@ -53,6 +53,20 @@ jobs:
       - name: Run browser boot tests
         run: npm run test:browser:boot
 
+      - name: Run focused motorized-police regression
+        shell: bash
+        run: |
+          set -o pipefail
+          npx playwright test tests/browser/motorized-police.spec.js --project=chromium 2>&1 | tee foundry-motorized-police.log
+
+      - name: Upload motorized-police diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foundry-motorized-police-diagnostics
+          path: foundry-motorized-police.log
+          retention-days: 2
+
       - name: Run browser system tests
         shell: bash
         run: |
@@ -72,7 +86,7 @@ jobs:
 
       - name: Commit clean Foundry topology
         run: |
-          rm -f foundry-unit-tests.log foundry-browser-systems.log
+          rm -f foundry-unit-tests.log foundry-motorized-police.log foundry-browser-systems.log
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
