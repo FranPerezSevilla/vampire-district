@@ -53,7 +53,17 @@ test("civilian traffic spawns off camera, can be hijacked and ejects bounded WTF
       intent: npc.ai?.intent || null
     }));
 
+    const transientVehicleFlags = Object.keys(scene.campaignSystem.state.world.flags)
+      .filter(key => key.startsWith(`vehicle.${vehicle?.id}.`));
+
     scene.vehicleSystem.exitVehicle({ force: true });
+    const authored = scene.vehicleSystem.vehicle("market_sedan");
+    scene.player.setPosition(authored.x, authored.y);
+    const authoredCanEnter = scene.vehicleSystem.canEnter(authored);
+    const authoredEntered = scene.vehicleSystem.enterVehicle(authored.id);
+    const authoredStatus = authored.status;
+    scene.vehicleSystem.exitVehicle({ force: true });
+
     const police = scene.vehicleSystem.vehicles.find(candidate => candidate.ownership === "police");
     scene.player.setPosition(police.x, police.y);
     const policeCanEnter = scene.vehicleSystem.canEnter(police);
@@ -91,6 +101,10 @@ test("civilian traffic spawns off camera, can be hijacked and ejects bounded WTF
       } : null,
       sourceTokenStillMaterialized: afterTheft.materialized.some(item => item.tokenId === selected.tokenId),
       occupants: occupantState,
+      transientVehicleFlags,
+      authoredCanEnter,
+      authoredEntered,
+      authoredStatus,
       policeCanEnter,
       policeForcedEntry,
       policeInteraction,
@@ -111,6 +125,10 @@ test("civilian traffic spawns off camera, can be hijacked and ejects bounded WTF
   expect(result.occupants.length).toBeGreaterThanOrEqual(1);
   expect(result.occupants.length).toBeLessThanOrEqual(2);
   expect(result.occupants.every(occupant => occupant.wtfVisible && occupant.reactionTimer > 0 && occupant.intent === "carjacked-wtf")).toBe(true);
+  expect(result.transientVehicleFlags).toEqual([]);
+  expect(result.authoredCanEnter).toBe(true);
+  expect(result.authoredEntered).toBe(true);
+  expect(result.authoredStatus).toBe("stolen");
   expect(result.policeCanEnter).toBe(false);
   expect(result.policeForcedEntry).toBe(false);
   expect(result.policeInteraction).toBe(false);
