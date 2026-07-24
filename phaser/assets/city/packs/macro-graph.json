@@ -211,8 +211,8 @@
         "h": 900
       },
       "center": {
-        "x": 1770,
-        "y": 2346
+        "x": 1680,
+        "y": 2572
       },
       "trafficDensity": 0.66,
       "policePresence": 0.34,
@@ -372,8 +372,8 @@
       "id": "blackwater:foundry",
       "a": "blackwater",
       "b": "foundry",
-      "travelSeconds": 10.43,
-      "length": 1564,
+      "travelSeconds": 9.52,
+      "length": 1428,
       "portal": {
         "x": 2340,
         "y": 2880
@@ -381,9 +381,8 @@
       "sourceRoadEdgeIds": [
         "road-edge:v:2340:3052:2340:3340",
         "road-edge:v:2340:2820:2340:3052",
-        "road-edge:v:2340:2572:2340:2820",
-        "road-edge:v:2340:2346:2340:2572",
-        "road-edge:h:1770:2346:2340:2346"
+        "road-edge:h:1680:2820:2340:2820",
+        "road-edge:v:1680:2572:1680:2820"
       ]
     },
     "blackwater:harbor-south": {
@@ -405,8 +404,8 @@
       "id": "canal-east:foundry",
       "a": "canal-east",
       "b": "foundry",
-      "travelSeconds": 13.01,
-      "length": 1952,
+      "travelSeconds": 12.11,
+      "length": 1816,
       "portal": {
         "x": 2400,
         "y": 2820
@@ -415,9 +414,8 @@
         "road-edge:h:2912:2572:3540:2572",
         "road-edge:v:2912:2572:2912:2820",
         "road-edge:h:2340:2820:2912:2820",
-        "road-edge:v:2340:2572:2340:2820",
-        "road-edge:v:2340:2346:2340:2572",
-        "road-edge:h:1770:2346:2340:2346"
+        "road-edge:h:1680:2820:2340:2820",
+        "road-edge:v:1680:2572:1680:2820"
       ]
     },
     "canal-east:glasshouse": {
@@ -478,8 +476,8 @@
       "id": "canal-west:foundry",
       "a": "canal-west",
       "b": "foundry",
-      "travelSeconds": 10.69,
-      "length": 1604,
+      "travelSeconds": 7.84,
+      "length": 1176,
       "portal": {
         "x": 1200,
         "y": 2820
@@ -487,10 +485,7 @@
       "sourceRoadEdgeIds": [
         "road-edge:h:1140:2820:752:2820",
         "road-edge:h:1140:2820:1680:2820",
-        "road-edge:v:1680:2572:1680:2820",
-        "road-edge:v:1680:2290:1680:2572",
-        "road-edge:h:1680:2290:1770:2290",
-        "road-edge:v:1770:2290:1770:2346"
+        "road-edge:v:1680:2572:1680:2820"
       ]
     },
     "canal-west:west-market": {
@@ -618,16 +613,14 @@
       "id": "foundry:old-quarter",
       "a": "foundry",
       "b": "old-quarter",
-      "travelSeconds": 6.24,
-      "length": 936,
+      "travelSeconds": 7.15,
+      "length": 1072,
       "portal": {
         "x": 1680,
         "y": 1980
       },
       "sourceRoadEdgeIds": [
-        "road-edge:v:1770:2290:1770:2346",
-        "road-edge:v:1770:2212:1770:2290",
-        "road-edge:h:1680:2212:1770:2212",
+        "road-edge:v:1680:2212:1680:2572",
         "road-edge:v:1680:1920:1680:2212",
         "road-edge:h:1680:1920:1754:1920",
         "road-edge:v:1754:1574:1754:1920"

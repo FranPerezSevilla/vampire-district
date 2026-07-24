@@ -7,6 +7,8 @@ import {
 
 const EPSILON = 0.001;
 const ROAD_CLASS_PRIORITY = Object.freeze({ alley: 1, local: 2, major: 3 });
+const MINIMUM_PARALLEL_ROAD_BLOCK_DEPTH = 36;
+const MINIMUM_PARALLEL_ROAD_OVERLAP = 120;
 const DIRECTIONS = Object.freeze(["north", "east", "south", "west"]);
 
 function finite(value, fallback = 0) {
@@ -1609,6 +1611,40 @@ export function roadGraphIntegrity(graph, compiled = null) {
       errors.push({ code: "ROAD_GRAPH_DIAGONAL_EDGE", edgeId: edge.id });
     }
     if (!(finite(edge.width) > 0)) errors.push({ code: "ROAD_GRAPH_INVALID_WIDTH", edgeId: edge.id });
+  }
+  for (let leftIndex = 0; leftIndex < edges.length; leftIndex++) {
+    const leftEdge = edges[leftIndex];
+    const leftFrom = nodes.get(leftEdge.from);
+    const leftTo = nodes.get(leftEdge.to);
+    if (!leftFrom || !leftTo) continue;
+    for (let rightIndex = leftIndex + 1; rightIndex < edges.length; rightIndex++) {
+      const rightEdge = edges[rightIndex];
+      if (leftEdge.orientation !== rightEdge.orientation) continue;
+      const rightFrom = nodes.get(rightEdge.from);
+      const rightTo = nodes.get(rightEdge.to);
+      if (!rightFrom || !rightTo) continue;
+      const horizontal = leftEdge.orientation === "horizontal";
+      const leftFixed = horizontal ? finite(leftFrom.y) : finite(leftFrom.x);
+      const rightFixed = horizontal ? finite(rightFrom.y) : finite(rightFrom.x);
+      const centerlineGap = Math.abs(leftFixed - rightFixed);
+      if (centerlineGap <= EPSILON) continue;
+      const leftStart = horizontal ? Math.min(finite(leftFrom.x), finite(leftTo.x)) : Math.min(finite(leftFrom.y), finite(leftTo.y));
+      const leftEnd = horizontal ? Math.max(finite(leftFrom.x), finite(leftTo.x)) : Math.max(finite(leftFrom.y), finite(leftTo.y));
+      const rightStart = horizontal ? Math.min(finite(rightFrom.x), finite(rightTo.x)) : Math.min(finite(rightFrom.y), finite(rightTo.y));
+      const rightEnd = horizontal ? Math.max(finite(rightFrom.x), finite(rightTo.x)) : Math.max(finite(rightFrom.y), finite(rightTo.y));
+      const overlap = Math.max(0, Math.min(leftEnd, rightEnd) - Math.max(leftStart, rightStart));
+      const blockDepth = centerlineGap - (finite(leftEdge.width) + finite(rightEdge.width)) / 2;
+      if (overlap >= MINIMUM_PARALLEL_ROAD_OVERLAP && blockDepth < MINIMUM_PARALLEL_ROAD_BLOCK_DEPTH - EPSILON) {
+        errors.push({
+          code: "ROAD_GRAPH_PARALLEL_ROADS_TOO_CLOSE",
+          leftEdgeId: leftEdge.id,
+          rightEdgeId: rightEdge.id,
+          overlap: rounded(overlap),
+          blockDepth: rounded(blockDepth),
+          requiredBlockDepth: MINIMUM_PARALLEL_ROAD_BLOCK_DEPTH
+        });
+      }
+    }
   }
   if (compiled) {
     const junctionOwners = new Map();

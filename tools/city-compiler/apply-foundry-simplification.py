@@ -168,7 +168,7 @@ def update_integrity_validation() -> None:
         text,
         'const ROAD_CLASS_PRIORITY = Object.freeze({ alley: 1, local: 2, major: 3 });\n',
         'const ROAD_CLASS_PRIORITY = Object.freeze({ alley: 1, local: 2, major: 3 });\n'
-        'const MINIMUM_PARALLEL_ROAD_BLOCK_DEPTH = 48;\n'
+        'const MINIMUM_PARALLEL_ROAD_BLOCK_DEPTH = 36;\n'
         'const MINIMUM_PARALLEL_ROAD_OVERLAP = 120;\n',
         "parallel-road constants",
     )
