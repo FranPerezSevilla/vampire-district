@@ -353,30 +353,61 @@ function nodePiece(profile, world) {
   return junctionRect(profile, world);
 }
 
-function junctionAuthorities(profiles, world) {
+function approachGap(leftPiece, rightPiece, edge) {
+  if (edge.orientation === "horizontal") {
+    return Math.max(0, Math.max(finite(leftPiece.x), finite(rightPiece.x)) - Math.min(right(leftPiece), right(rightPiece)));
+  }
+  return Math.max(0, Math.max(finite(leftPiece.y), finite(rightPiece.y)) - Math.min(bottom(leftPiece), bottom(rightPiece)));
+}
+
+function junctionAuthorities(profiles, world, edges = [], minimumApproachLength = 0) {
   const provisional = profiles.map(profile => nodePiece(profile, world));
-  const unvisited = new Set(provisional.map((_, index) => index));
-  const components = [];
-  while (unvisited.size) {
-    const [start] = unvisited;
-    unvisited.delete(start);
-    const queue = [start];
-    const component = [];
-    while (queue.length) {
-      const index = queue.shift();
-      component.push(index);
-      for (const candidate of [...unvisited]) {
-        if (surfaceOverlapArea(provisional[index], provisional[candidate]) <= 0.01) continue;
-        unvisited.delete(candidate);
-        queue.push(candidate);
-      }
+  const profileIndexByNode = new Map(profiles.map((profile, index) => [profile.node.id, index]));
+  const parent = provisional.map((_, index) => index);
+
+  const find = index => {
+    while (parent[index] !== index) {
+      parent[index] = parent[parent[index]];
+      index = parent[index];
     }
-    components.push(component);
+    return index;
+  };
+  const union = (left, rightValue) => {
+    const leftRoot = find(left);
+    const rightRoot = find(rightValue);
+    if (leftRoot === rightRoot) return;
+    parent[rightRoot] = leftRoot;
+  };
+
+  for (let left = 0; left < provisional.length; left++) {
+    for (let rightValue = left + 1; rightValue < provisional.length; rightValue++) {
+      if (surfaceOverlapArea(provisional[left], provisional[rightValue]) > 0.01) union(left, rightValue);
+    }
+  }
+
+  const absorbedShortApproachEdgeIds = [];
+  for (const edge of edges) {
+    const fromIndex = profileIndexByNode.get(edge.from);
+    const toIndex = profileIndexByNode.get(edge.to);
+    if (fromIndex == null || toIndex == null) continue;
+    const gap = approachGap(provisional[fromIndex], provisional[toIndex], edge);
+    if (gap < minimumApproachLength - EPSILON) {
+      union(fromIndex, toIndex);
+      if (gap > EPSILON) absorbedShortApproachEdgeIds.push(edge.id);
+    }
+  }
+
+  const componentsByRoot = new Map();
+  for (let index = 0; index < provisional.length; index++) {
+    const root = find(index);
+    const component = componentsByRoot.get(root) || [];
+    component.push(index);
+    componentsByRoot.set(root, component);
   }
 
   const pieces = [];
   const pieceByNode = new Map();
-  for (const component of components) {
+  for (const component of componentsByRoot.values()) {
     const componentProfiles = component.map(index => profiles[index]);
     const componentPieces = component.map(index => provisional[index]);
     const nodeIds = componentProfiles.map(profile => profile.node.id).sort();
@@ -388,6 +419,8 @@ function junctionAuthorities(profiles, world) {
       const y = Math.min(...componentPieces.map(item => finite(item.y)));
       const maxX = Math.max(...componentPieces.map(item => right(item)));
       const maxY = Math.max(...componentPieces.map(item => bottom(item)));
+      const nodeIdSet = new Set(nodeIds);
+      const absorbedEdges = edges.filter(edge => nodeIdSet.has(edge.from) && nodeIdSet.has(edge.to));
       piece = clippedRect({
         id: `road-junction-cluster:${nodeIds.map(id => id.replace("road-node:", "")).join(":")}`,
         x,
@@ -399,16 +432,19 @@ function junctionAuthorities(profiles, world) {
         junctionKind: "complex-cluster",
         graphNodeId: nodeIds[0],
         graphNodeIds: nodeIds,
+        graphEdgeIds: absorbedEdges.map(edge => edge.id).sort(),
+        sourceRoadIds: [...new Set(absorbedEdges.flatMap(edge => edge.sourceRoadIds || []))].sort(),
         kind: componentProfiles.some(profile => profile.legs.some(leg => leg.edge.roadClass === "major")) ? "road" : "alley",
         label: "Complex road junction",
         generated: true,
-        suppressStripe: true
+        suppressStripe: true,
+        absorbedShortApproaches: true
       }, world);
     }
     pieces.push(piece);
     for (const nodeId of nodeIds) pieceByNode.set(nodeId, piece);
   }
-  return { pieces, pieceByNode };
+  return { pieces, pieceByNode, absorbedShortApproachEdgeIds: [...new Set(absorbedShortApproachEdgeIds)].sort() };
 }
 
 function trimForLeg(profile, piece, leg) {
@@ -494,6 +530,7 @@ function sidewalkStrips(segments, width, world) {
         junctionOwned: false,
         trimEdges: ["north", "south"],
         anchorKind: "kerb-strip",
+        bandKind: "road-edge",
         generated: true
       }, world));
       strips.push(clippedRect({
@@ -510,6 +547,7 @@ function sidewalkStrips(segments, width, world) {
         junctionOwned: false,
         trimEdges: ["north", "south"],
         anchorKind: "kerb-strip",
+        bandKind: "road-edge",
         generated: true
       }, world));
     } else {
@@ -527,6 +565,7 @@ function sidewalkStrips(segments, width, world) {
         junctionOwned: false,
         trimEdges: ["west", "east"],
         anchorKind: "kerb-strip",
+        bandKind: "road-edge",
         generated: true
       }, world));
       strips.push(clippedRect({
@@ -543,11 +582,93 @@ function sidewalkStrips(segments, width, world) {
         junctionOwned: false,
         trimEdges: ["west", "east"],
         anchorKind: "kerb-strip",
+        bandKind: "road-edge",
         generated: true
       }, world));
     }
   }
   return strips.filter(strip => strip.w > EPSILON && strip.h > EPSILON);
+}
+
+function stripAxisBounds(strip) {
+  return strip.orientation === "horizontal"
+    ? { start: finite(strip.x), end: right(strip) }
+    : { start: finite(strip.y), end: bottom(strip) };
+}
+
+function splitIntervalsAroundCut(intervals, cutStart, cutEnd) {
+  const result = [];
+  for (const interval of intervals) {
+    if (cutEnd <= interval.start + EPSILON || cutStart >= interval.end - EPSILON) {
+      result.push(interval);
+      continue;
+    }
+    if (cutStart > interval.start + EPSILON) result.push({ start: interval.start, end: Math.min(interval.end, cutStart) });
+    if (cutEnd < interval.end - EPSILON) result.push({ start: Math.max(interval.start, cutEnd), end: interval.end });
+  }
+  return result;
+}
+
+function buildRoadEdgeBands(baseStrips, obstacles, minimumFragmentLength = 8) {
+  const bands = [];
+  const sources = [];
+  for (const strip of baseStrips) {
+    const axis = stripAxisBounds(strip);
+    let intervals = [{ start: axis.start, end: axis.end }];
+    for (const obstacle of obstacles) {
+      if (surfaceOverlapArea(strip, obstacle) <= 0.01) continue;
+      const cutStart = strip.orientation === "horizontal"
+        ? Math.max(axis.start, finite(obstacle.x))
+        : Math.max(axis.start, finite(obstacle.y));
+      const cutEnd = strip.orientation === "horizontal"
+        ? Math.min(axis.end, right(obstacle))
+        : Math.min(axis.end, bottom(obstacle));
+      if (cutEnd - cutStart <= EPSILON) continue;
+      intervals = splitIntervalsAroundCut(intervals, cutStart, cutEnd);
+    }
+
+    const retained = intervals.filter(interval => interval.end - interval.start >= minimumFragmentLength - EPSILON);
+    const openLength = retained.reduce((sum, interval) => sum + interval.end - interval.start, 0);
+    const discardedLength = intervals.reduce((sum, interval) => {
+      const length = interval.end - interval.start;
+      return sum + (length < minimumFragmentLength - EPSILON ? length : 0);
+    }, 0);
+    const sourceLength = axis.end - axis.start;
+    const blockedLength = Math.max(0, sourceLength - openLength - discardedLength);
+    const source = {
+      ...strip,
+      sourceLength: rounded(sourceLength),
+      openLength: rounded(openLength),
+      blockedLength: rounded(blockedLength),
+      discardedLength: rounded(discardedLength),
+      fragmentCount: retained.length,
+      minimumFragmentLength
+    };
+    sources.push(source);
+
+    retained.forEach((interval, index) => {
+      const fullLength = Math.abs(interval.start - axis.start) <= EPSILON && Math.abs(interval.end - axis.end) <= EPSILON;
+      const fragment = {
+        ...strip,
+        id: fullLength ? strip.id : `${strip.id}:fragment:${String(index + 1).padStart(2, "0")}`,
+        sourceStripId: strip.id,
+        sourceLength: rounded(sourceLength),
+        fragmentIndex: index,
+        fragmentCount: retained.length,
+        continuous: true,
+        minimumFragmentLength
+      };
+      if (strip.orientation === "horizontal") {
+        fragment.x = rounded(interval.start);
+        fragment.w = rounded(interval.end - interval.start);
+      } else {
+        fragment.y = rounded(interval.start);
+        fragment.h = rounded(interval.end - interval.start);
+      }
+      bands.push(fragment);
+    });
+  }
+  return { bands, sources };
 }
 
 function clippedPolygonSurface(surface, world) {
@@ -859,7 +980,9 @@ function buildCrosswalks(profiles, pieceByNode, sidewalks, world, options) {
 }
 
 function stripLength(strip) {
-  return strip.w >= strip.h ? strip.w : strip.h;
+  if (strip.orientation === "horizontal") return finite(strip.w);
+  if (strip.orientation === "vertical") return finite(strip.h);
+  return strip.w >= strip.h ? finite(strip.w) : finite(strip.h);
 }
 
 function kerbPoint(strip, distance, inset = 4) {
@@ -1046,8 +1169,11 @@ function buildLights({
       const distance = count === 1 ? length / 2 : margin + usable * (index / (count - 1));
       const point = kerbPoint(strip, distance, options.lightKerbInset);
       if (!lightCandidateValid(point, context)) continue;
+      const fragmentToken = strip.sourceStripId && strip.id !== strip.sourceStripId
+        ? `:f${String(finite(strip.fragmentIndex) + 1).padStart(2, "0")}`
+        : "";
       accepted.push({
-        id: `lamp:${strip.graphEdgeId}:${strip.side}:${String(index + 1).padStart(2, "0")}`,
+        id: `lamp:${strip.graphEdgeId}:${strip.side}${fragmentToken}:${String(index + 1).padStart(2, "0")}`,
         x: rounded(point.x),
         y: rounded(point.y),
         radius: options.lightRadius,
@@ -1334,6 +1460,8 @@ export function compileAxisAlignedRoadGraph(graph, {
   propApproachClearance = 8,
   propApproachLength = 92,
   propCrosswalkClearance = 24,
+  minimumApproachLength = 36,
+  minimumSidewalkFragmentLength = 36,
   lightRadius = 64,
   lightSpacingMajor = 360,
   lightSpacingLocal = 300,
@@ -1355,7 +1483,12 @@ export function compileAxisAlignedRoadGraph(graph, {
     incidentByNode.get(edge.to).push(edge);
   }
   const profiles = graph.nodes.map(node => classifyNode(node, incidentByNode.get(node.id), nodeById));
-  const { pieces, pieceByNode } = junctionAuthorities(profiles, world);
+  const { pieces, pieceByNode, absorbedShortApproachEdgeIds } = junctionAuthorities(
+    profiles,
+    world,
+    graph.edges,
+    minimumApproachLength
+  );
   const profileByNode = new Map(profiles.map(profile => [profile.node.id, profile]));
   const segments = graph.edges.map(edge => segmentForEdge(
     edge,
@@ -1367,8 +1500,12 @@ export function compileAxisAlignedRoadGraph(graph, {
   )).filter(Boolean);
   const junctions = pieces.filter(Boolean);
   const roads = [...segments, ...junctions];
-  const strips = sidewalkStrips(segments, sidewalkWidth, world)
-    .filter(strip => sidewalkSurfaceAccepted(strip, buildings, roads));
+  const baseRoadEdgeBands = sidewalkStrips(segments, sidewalkWidth, world);
+  const { bands: roadEdgeBands, sources: roadEdgeBandSources } = buildRoadEdgeBands(
+    baseRoadEdgeBands,
+    [...buildings, ...roads],
+    minimumSidewalkFragmentLength
+  );
   const junctionSidewalks = junctionOwnedSidewalks(
     profiles,
     pieceByNode,
@@ -1377,7 +1514,7 @@ export function compileAxisAlignedRoadGraph(graph, {
     buildings,
     roads
   );
-  const sidewalks = [...strips, ...junctionSidewalks];
+  const sidewalks = [...roadEdgeBands, ...junctionSidewalks];
   const options = {
     sidewalkWidth,
     crosswalkThickness,
@@ -1386,6 +1523,8 @@ export function compileAxisAlignedRoadGraph(graph, {
     propApproachClearance,
     propApproachLength,
     propCrosswalkClearance,
+    minimumApproachLength,
+    minimumSidewalkFragmentLength,
     lightRadius,
     lightSpacingMajor,
     lightSpacingLocal,
@@ -1425,6 +1564,8 @@ export function compileAxisAlignedRoadGraph(graph, {
     roadJunctions: junctions.filter(piece => piece.pieceKind === "junction"),
     roadTransitions: junctions.filter(piece => piece.pieceKind === "transition"),
     sidewalks,
+    roadEdgeBands,
+    roadEdgeBandSources,
     junctionSidewalks,
     crosswalks,
     propExclusionZones,
@@ -1438,6 +1579,9 @@ export function compileAxisAlignedRoadGraph(graph, {
       junctionCount: junctions.length,
       transitionCount: junctions.filter(piece => piece.pieceKind === "transition").length,
       sidewalkCount: sidewalks.length,
+      roadEdgeBandCount: roadEdgeBands.length,
+      roadEdgeBandSourceCount: roadEdgeBandSources.length,
+      absorbedShortApproachCount: absorbedShortApproachEdgeIds.length,
       junctionSidewalkCount: junctionSidewalks.length,
       crosswalkCount: crosswalks.length,
       propExclusionZoneCount: propExclusionZones.length,
@@ -1492,6 +1636,34 @@ export function roadGraphIntegrity(graph, compiled = null) {
         }
       }
     }
+    const roadEdgeBandsBySource = new Map();
+    for (const band of compiled.roadEdgeBands || []) {
+      const sourceId = band.sourceStripId || band.id;
+      const items = roadEdgeBandsBySource.get(sourceId) || [];
+      items.push(band);
+      roadEdgeBandsBySource.set(sourceId, items);
+      if (stripLength(band) < finite(band.minimumFragmentLength, 0) - EPSILON) {
+        errors.push({ code: "ROAD_EDGE_BAND_FRAGMENT_TOO_SHORT", bandId: band.id, length: stripLength(band) });
+      }
+      for (const road of roads) {
+        const overlap = surfaceOverlapArea(band, road);
+        if (overlap > 0.01) errors.push({ code: "ROAD_EDGE_BAND_ROAD_OVERLAP", bandId: band.id, roadId: road.id, overlap });
+      }
+      for (const building of compiled.buildingObstacles || []) {
+        const overlap = surfaceOverlapArea(band, building);
+        if (overlap > 0.01) errors.push({ code: "ROAD_EDGE_BAND_BUILDING_OVERLAP", bandId: band.id, buildingId: building.id, overlap });
+      }
+    }
+    for (const source of compiled.roadEdgeBandSources || []) {
+      const covered = (roadEdgeBandsBySource.get(source.id) || []).reduce((sum, band) => sum + stripLength(band), 0);
+      if (Math.abs(covered - finite(source.openLength)) > 0.01) {
+        errors.push({ code: "ROAD_EDGE_BAND_COVERAGE", sourceId: source.id, expected: source.openLength, actual: rounded(covered) });
+      }
+      if (finite(source.openLength) >= finite(source.minimumFragmentLength, 0) && !(roadEdgeBandsBySource.get(source.id) || []).length) {
+        errors.push({ code: "ROAD_EDGE_BAND_MISSING", sourceId: source.id, openLength: source.openLength });
+      }
+    }
+
     for (const sidewalk of compiled.junctionSidewalks || []) {
       for (const road of roads) {
         const overlap = surfaceOverlapArea(sidewalk, road);

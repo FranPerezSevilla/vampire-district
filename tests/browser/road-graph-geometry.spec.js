@@ -58,6 +58,13 @@ test("graph-first road geometry has unique junction authority and post-layout fu
       || !continuations(crosswalk).every(point => pointOn(point, district.sidewalks, 1.5))
     )).map(item => item.id);
 
+    const roadEdgeBands = district.sidewalks.filter(sidewalk => sidewalk.bandKind === "road-edge");
+    const invalidRoadEdgeBands = roadEdgeBands.filter(band => (
+      (band.orientation === "horizontal" ? band.w : band.h) < 36
+      || district.roads.some(road => geometry.surfaceOverlapArea(band, road) > 0.01)
+      || district.buildings.some(building => geometry.surfaceOverlapArea(band, building) > 0.01)
+    )).map(item => item.id);
+
     const invalidJunctionSidewalks = district.junctionSidewalks.filter(sidewalk => (
       district.roads.some(road => geometry.surfaceOverlapArea(sidewalk, road) > 0.01)
       || district.buildings.some(building => geometry.surfaceOverlapArea(sidewalk, building) > 0.01)
@@ -92,6 +99,9 @@ test("graph-first road geometry has unique junction authority and post-layout fu
       junctionPieces: district.roadJunctions.length,
       transitions: district.roadTransitions.length,
       sidewalks: district.sidewalks.length,
+      roadEdgeBands: roadEdgeBands.length,
+      roadEdgeBandSources: district.CITY_TOPOLOGY_STATS.roadEdgeBandSourceCount,
+      absorbedShortApproaches: district.CITY_TOPOLOGY_STATS.absorbedShortApproachCount,
       junctionSidewalks: district.junctionSidewalks.length,
       crosswalks: district.crosswalks.length,
       propExclusionZones: district.propExclusionZones.length,
@@ -101,6 +111,7 @@ test("graph-first road geometry has unique junction authority and post-layout fu
         .filter(node => ownership.get(node.id) !== 1)
         .map(node => node.id),
       roadOverlaps,
+      invalidRoadEdgeBands,
       invalidJunctionSidewalks,
       invalidCrosswalks,
       invalidLights,
@@ -109,24 +120,28 @@ test("graph-first road geometry has unique junction authority and post-layout fu
     };
   });
 
-  expect(result.geometryVersion).toBe(2);
+  expect(result.geometryVersion).toBe(3);
   expect(result.graphNodes).toBe(114);
   expect(result.graphEdges).toBe(158);
-  expect(result.roadSegments).toBe(153);
-  expect(result.junctionPieces).toBe(111);
-  expect(result.sidewalks).toBe(741);
-  expect(result.junctionSidewalks).toBe(486);
+  expect(result.roadSegments).toBe(147);
+  expect(result.junctionPieces).toBe(104);
+  expect(result.sidewalks).toBe(778);
+  expect(result.roadEdgeBands).toBe(309);
+  expect(result.roadEdgeBandSources).toBe(294);
+  expect(result.absorbedShortApproaches).toBe(6);
+  expect(result.junctionSidewalks).toBe(469);
   expect(result.crosswalks).toBe(137);
-  expect(result.propExclusionZones).toBe(564);
-  expect(result.lights).toBe(105);
+  expect(result.propExclusionZones).toBe(557);
+  expect(result.lights).toBe(126);
   expect(result.dumpsters).toBe(28);
   expect(result.nodesWithoutUniqueAuthority).toEqual([]);
   expect(result.roadOverlaps).toEqual([]);
+  expect(result.invalidRoadEdgeBands).toEqual([]);
   expect(result.invalidJunctionSidewalks).toEqual([]);
   expect(result.invalidCrosswalks).toEqual([]);
   expect(result.invalidLights).toEqual([]);
   expect(result.invalidDumpsters).toEqual([]);
   expect(result.generatedRouteLengths.every(length => length >= 4)).toBe(true);
-  expect(result.stats.roadGeometryVersion).toBe(2);
+  expect(result.stats.roadGeometryVersion).toBe(3);
   expect(pageErrors).toEqual([]);
 });

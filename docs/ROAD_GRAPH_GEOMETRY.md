@@ -4,7 +4,7 @@ _Last updated: 2026-07-24_
 
 ## Status
 
-**Geometry v1 implemented in PR #34; junction-ownership and prop-placement polish implemented in PR #35.**
+**Geometry v1 was introduced in PR #34, junction ownership was polished in PR #35, and geometry v3 now guarantees continuous road-edge bands.**
 
 This pass replaces the City Topology V2 road rectangles as runtime authority with an explicit axis-aligned centreline graph. Rectangles remain an output format for straight road pieces and chunk bounds, not the city input model.
 
@@ -91,7 +91,7 @@ complex
   from,
   to,
   width,
-  orientation,   // horizontal | vertical in geometry v2
+  orientation,   // horizontal | vertical in geometry v3
   roadClass,     // major | local | alley
   kind,
   label,
@@ -110,7 +110,7 @@ The compiler rejects:
 - duplicate node or edge IDs;
 - edges referencing missing nodes;
 - zero/negative widths;
-- diagonal edges in axis-aligned geometry v2;
+- diagonal edges in axis-aligned geometry v3;
 - disconnected road components.
 
 ### Phase 2 — Node classification
@@ -135,8 +135,8 @@ Current city:
 
 ```text
 graph nodes                  114
-single/cluster authorities   111
-multi-node clusters            3
+single/cluster authorities   104
+multi-node clusters           10
 nodes without authority        0
 nodes with duplicate authority 0
 ```
@@ -148,28 +148,34 @@ Each edge is shortened at both ends by the exact extent of its node authority su
 Runtime road pieces:
 
 ```text
-straight segments   153
-junction pieces     111
+straight segments   147
+junction pieces     104
 transition pieces     0 in the current city
-all road pieces     264
+all road pieces     251
 road-piece overlaps   0
 ```
 
 Transition support is active even though the current accepted graph has no collinear width-change node. Unit coverage verifies that a narrow road joining a wider collinear road produces one four-point taper polygon.
 
-### Phase 5 — Sidewalks
+### Phase 5 — Continuous road-edge bands and junction sidewalks
 
-Sidewalk strips are derived from the sides of clipped segments. Each junction then owns the missing local pedestrian envelope: corner pads, closed sides of T junctions, straight-node closures, dead-end caps and tapered offset polygons.
+Road-edge bands are now a distinct compiler layer derived from each clipped road segment. Every segment side creates one source band; buildings and other road surfaces subtract only the conflicting longitudinal intervals instead of deleting the complete side. The remaining intervals are emitted as deterministic continuous fragments.
 
-Segment strips draw only their longitudinal kerb edges. Junction-owned surfaces draw only their exposed edges, so internal rectangle end caps and duplicate seams are no longer rendered. Any candidate surface overlapping another carriageway or a building is rejected.
+Six 8–28 px micro-approaches are absorbed into compound junction authority before band generation. This prevents tiny isolated rectangles from appearing between neighbouring intersections. Fragments shorter than 36 px are treated as orphan residue and discarded; valid longer portions remain continuous.
+
+Junctions still own the local pedestrian envelope: corner pads, closed sides of T junctions, straight-node closures, dead-end caps and tapered offset polygons. Segment bands draw only longitudinal kerb edges, while junction-owned surfaces draw only exposed edges.
 
 Current output:
 
 ```text
-sidewalk surfaces          741
-junction-owned surfaces    486
-sidewalk/road overlaps       0
-sidewalk/building overlaps   0
+road-edge band sources      294
+continuous road-edge bands  309
+junction-owned surfaces     469
+total sidewalk surfaces     778
+absorbed micro-approaches      6
+band/road overlaps             0
+band/building overlaps         0
+fragments below 36 px          0
 ```
 
 ### Phase 6 — Crosswalks
@@ -206,7 +212,7 @@ Seven semantic authored light identities are preserved by snapping them to the n
 Current output:
 
 ```text
-post-layout lights   105
+post-layout lights   126
 invalid lights         0
 ```
 
@@ -218,7 +224,7 @@ Each junction produces a no-prop envelope plus approach-leg clearances. Crosswal
 Current output:
 
 ```text
-prop exclusion zones   564
+prop exclusion zones   557
 post-layout dumpsters   28
 invalid dumpsters         0
 ```
@@ -279,6 +285,11 @@ LIGHT_INSIDE_BUILDING_CLEARANCE
 LIGHTS_TOO_CLOSE
 JUNCTION_SIDEWALK_ROAD_OVERLAP
 JUNCTION_SIDEWALK_BUILDING_OVERLAP
+ROAD_EDGE_BAND_FRAGMENT_TOO_SHORT
+ROAD_EDGE_BAND_ROAD_OVERLAP
+ROAD_EDGE_BAND_BUILDING_OVERLAP
+ROAD_EDGE_BAND_COVERAGE
+ROAD_EDGE_BAND_MISSING
 PROP_EXCLUSION_INVALID_BOUNDS
 ```
 
@@ -290,6 +301,8 @@ Focused tests cover:
 - tapered collinear width transitions;
 - crosswalk-to-sidewalk continuity;
 - post-layout light clearances;
+- absorption of micro-approaches into compound junctions;
+- partial building conflicts splitting bands without deleting the full side;
 - deterministic recompilation of the full city graph.
 
 Browser coverage imports the production topology and rechecks junction ownership, road-piece overlap, crossing continuity and light placement inside the running Phaser build.
@@ -307,7 +320,7 @@ npm run test:browser:systems
 
 ## Current limitation and next geometry version
 
-Road geometry v2 is deliberately axis-aligned. `roadCorridors` still preserves higher-level polyline/curve intent, but true diagonal and curved carriageway polygons are not claimed by this pass.
+Road geometry v3 is deliberately axis-aligned. `roadCorridors` still preserves higher-level polyline/curve intent, but true diagonal and curved carriageway polygons are not claimed by this pass.
 
 A future geometry version can add arbitrary polyline offsets and rounded joins without changing:
 

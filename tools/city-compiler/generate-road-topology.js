@@ -73,6 +73,9 @@ const topologyStats = {
   roadJunctionCount: compiled.stats.junctionCount,
   roadTransitionCount: compiled.stats.transitionCount,
   sidewalkCount: compiled.stats.sidewalkCount,
+  roadEdgeBandCount: compiled.stats.roadEdgeBandCount,
+  roadEdgeBandSourceCount: compiled.stats.roadEdgeBandSourceCount,
+  absorbedShortApproachCount: compiled.stats.absorbedShortApproachCount,
   junctionSidewalkCount: compiled.stats.junctionSidewalkCount,
   crosswalkCount: compiled.stats.crosswalkCount,
   propExclusionZoneCount: compiled.stats.propExclusionZoneCount,
@@ -135,7 +138,7 @@ const source = [
 await writeFile(outputPath, source, "utf8");
 console.log(`Road graph v${CITY_ROAD_GRAPH_VERSION} · nodes ${compiled.stats.graphNodeCount} · edges ${compiled.stats.graphEdgeCount}`);
 console.log(`Road geometry · ${compiled.stats.roadSegmentCount} segments · ${compiled.stats.junctionCount} node pieces · ${compiled.stats.transitionCount} transitions`);
-console.log(`Pedestrian geometry · ${compiled.stats.sidewalkCount} sidewalks (${compiled.stats.junctionSidewalkCount} junction-owned) · ${compiled.stats.crosswalkCount} crosswalks`);
+console.log(`Pedestrian geometry · ${compiled.stats.roadEdgeBandCount} continuous edge bands from ${compiled.stats.roadEdgeBandSourceCount} sources · ${compiled.stats.junctionSidewalkCount} junction-owned sidewalks · ${compiled.stats.crosswalkCount} crosswalks`);
 console.log(`Prop exclusions · ${compiled.stats.propExclusionZoneCount}`);
 console.log(`Post-layout furniture · ${compiled.stats.lightCount} lights · ${dumpsters.length} dumpsters`);
 console.log(`Pedestrian routes · ${pedestrianRoutes.length}`);
