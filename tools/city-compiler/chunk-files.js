@@ -13,6 +13,7 @@ function normalizedCollections(runtime = {}) {
     roads: runtime.roads || [],
     sidewalks: runtime.sidewalks || [],
     crosswalks: runtime.crosswalks || [],
+    propExclusionZones: runtime.propExclusionZones || [],
     buildings: runtime.buildings || [],
     roofs: Object.values(runtime.roofAreas || {}).flat(),
     rooftopRoutes: runtime.rooftopRoutes || [],

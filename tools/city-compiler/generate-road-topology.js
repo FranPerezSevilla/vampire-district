@@ -8,6 +8,7 @@ import { cityRoadGraph, CITY_ROAD_GRAPH_VERSION } from "./city-road-graph-v1.js"
 import {
   buildPedestrianRoutesFromSidewalks,
   compileAxisAlignedRoadGraph,
+  placePostLayoutDumpsters,
   roadGraphIntegrity
 } from "./road-graph.js";
 
@@ -31,6 +32,21 @@ if (!integrity.valid) {
   process.exitCode = 1;
   throw new Error(`Road graph compilation failed with ${integrity.errors.length} integrity errors.`);
 }
+
+const dumpsters = placePostLayoutDumpsters(current.dumpsters, {
+  roads: compiled.roads,
+  sidewalks: compiled.sidewalks,
+  crosswalks: compiled.crosswalks,
+  propExclusionZones: compiled.propExclusionZones,
+  buildings: current.buildings,
+  lights: compiled.lights,
+  world: current.CITY_WORLD
+});
+const dumpstersById = new Map(dumpsters.map(dumpster => [dumpster.id, dumpster]));
+const bodyHideSpots = current.bodyHideSpots.map(spot => {
+  const dumpster = dumpstersById.get(spot.streetPropId || spot.id);
+  return dumpster ? { ...spot, x: dumpster.x, y: dumpster.y } : spot;
+});
 
 const pedestrianRoutes = buildPedestrianRoutesFromSidewalks(
   cityRoadGraph.pedestrianRouteAnchors,
@@ -57,8 +73,11 @@ const topologyStats = {
   roadJunctionCount: compiled.stats.junctionCount,
   roadTransitionCount: compiled.stats.transitionCount,
   sidewalkCount: compiled.stats.sidewalkCount,
+  junctionSidewalkCount: compiled.stats.junctionSidewalkCount,
   crosswalkCount: compiled.stats.crosswalkCount,
-  lightCount: compiled.stats.lightCount
+  propExclusionZoneCount: compiled.stats.propExclusionZoneCount,
+  lightCount: compiled.stats.lightCount,
+  dumpsterCount: dumpsters.length
 };
 
 const collections = [
@@ -77,7 +96,9 @@ const collections = [
   ["roadJunctions", compiled.roadJunctions],
   ["roadTransitions", compiled.roadTransitions],
   ["sidewalks", compiled.sidewalks],
+  ["junctionSidewalks", compiled.junctionSidewalks],
   ["crosswalks", compiled.crosswalks],
+  ["propExclusionZones", compiled.propExclusionZones],
   ["buildings", current.buildings],
   ["roofAreas", current.roofAreas],
   ["rooftopRoutes", current.rooftopRoutes],
@@ -86,8 +107,8 @@ const collections = [
   ["sewerTunnels", current.sewerTunnels],
   ["sewerAccesses", current.sewerAccesses],
   ["lights", compiled.lights],
-  ["dumpsters", current.dumpsters],
-  ["bodyHideSpots", current.bodyHideSpots],
+  ["dumpsters", dumpsters],
+  ["bodyHideSpots", bodyHideSpots],
   ["shadowZones", current.shadowZones],
   ["pedestrianRoutes", pedestrianRoutes],
   ["streetNavigationPoints", streetNavigationPoints],
@@ -114,7 +135,8 @@ const source = [
 await writeFile(outputPath, source, "utf8");
 console.log(`Road graph v${CITY_ROAD_GRAPH_VERSION} · nodes ${compiled.stats.graphNodeCount} · edges ${compiled.stats.graphEdgeCount}`);
 console.log(`Road geometry · ${compiled.stats.roadSegmentCount} segments · ${compiled.stats.junctionCount} node pieces · ${compiled.stats.transitionCount} transitions`);
-console.log(`Pedestrian geometry · ${compiled.stats.sidewalkCount} sidewalks · ${compiled.stats.crosswalkCount} crosswalks`);
-console.log(`Post-layout lights · ${compiled.stats.lightCount}`);
+console.log(`Pedestrian geometry · ${compiled.stats.sidewalkCount} sidewalks (${compiled.stats.junctionSidewalkCount} junction-owned) · ${compiled.stats.crosswalkCount} crosswalks`);
+console.log(`Prop exclusions · ${compiled.stats.propExclusionZoneCount}`);
+console.log(`Post-layout furniture · ${compiled.stats.lightCount} lights · ${dumpsters.length} dumpsters`);
 console.log(`Pedestrian routes · ${pedestrianRoutes.length}`);
 console.log(`Generated ${path.relative(root, outputPath)}`);

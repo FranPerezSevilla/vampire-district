@@ -100,7 +100,9 @@ export function validateCityBlueprint(blueprint) {
     roadJunctions: runtime.roadJunctions || [],
     roadTransitions: runtime.roadTransitions || [],
     sidewalks: runtime.sidewalks || [],
+    junctionSidewalks: runtime.junctionSidewalks || [],
     crosswalks: runtime.crosswalks || [],
+    propExclusionZones: runtime.propExclusionZones || [],
     buildings: runtime.buildings || [],
     rooftopRoutes: runtime.rooftopRoutes || [],
     fireEscapes: runtime.fireEscapes || [],
@@ -130,6 +132,7 @@ export function validateCityBlueprint(blueprint) {
     ["road", collections.roads],
     ["sidewalk", collections.sidewalks],
     ["crosswalk", collections.crosswalks],
+    ["propExclusionZone", collections.propExclusionZones],
     ["building", collections.buildings],
     ["sewerTunnel", collections.sewerTunnels],
     ["shadowZone", collections.shadowZones]
@@ -201,6 +204,23 @@ export function validateCityBlueprint(blueprint) {
     }
   }
 
+  for (const sidewalk of collections.junctionSidewalks) {
+    for (const road of collections.roads) {
+      const overlap = surfaceOverlapArea(sidewalk, road);
+      if (overlap > 0.01) errors.push(issue("JUNCTION_SIDEWALK_ROAD_OVERLAP", `${sidewalk.id} overlaps road ${road.id}.`, { sidewalkId: sidewalk.id, roadId: road.id, overlap }));
+    }
+    for (const building of collections.buildings) {
+      const overlap = surfaceOverlapArea(sidewalk, building);
+      if (overlap > 0.01) errors.push(issue("JUNCTION_SIDEWALK_BUILDING_OVERLAP", `${sidewalk.id} overlaps building ${building.id}.`, { sidewalkId: sidewalk.id, buildingId: building.id, overlap }));
+    }
+  }
+
+  for (const zone of collections.propExclusionZones) {
+    if (!(Number(zone.w) > 0 && Number(zone.h) > 0)) {
+      errors.push(issue("PROP_EXCLUSION_INVALID_BOUNDS", `${zone.id} has invalid bounds.`, { zoneId: zone.id }));
+    }
+  }
+
   for (const crosswalk of collections.crosswalks) {
     if (!collections.roads.some(road => surfaceOverlapArea(crosswalk, road) > 0.01)) {
       errors.push(issue("CROSSWALK_WITHOUT_ROAD", `${crosswalk.id} does not intersect a road.`, { crosswalkId: crosswalk.id }));
@@ -230,6 +250,9 @@ export function validateCityBlueprint(blueprint) {
     if (pointOnAny(point, collections.crosswalks, 0.1)) {
       errors.push(issue("LIGHT_ON_CROSSWALK", `${light.id} overlaps a crossing.`, { lightId: light.id, point }));
     }
+    if (pointOnAny(point, collections.propExclusionZones, 0.1)) {
+      errors.push(issue("LIGHT_IN_PROP_EXCLUSION", `${light.id} overlaps a junction or crossing exclusion zone.`, { lightId: light.id, point }));
+    }
     if (pointOnAny(point, collections.buildings, 8)) {
       errors.push(issue("LIGHT_INSIDE_BUILDING_CLEARANCE", `${light.id} overlaps a building clearance.`, { lightId: light.id, point }));
     }
@@ -243,8 +266,12 @@ export function validateCityBlueprint(blueprint) {
   for (const dumpster of collections.dumpsters) {
     const point = { x: dumpster.x, y: dumpster.y };
     if (!pointInsideWorld(point, world)) errors.push(issue("DUMPSTER_OUT_OF_BOUNDS", `${dumpster.id} is outside the world.`, { dumpsterId: dumpster.id }));
-    const majorRoad = collections.roads.find(road => road.kind === "road" && pointInRect(point, road));
-    if (majorRoad) warnings.push(issue("DUMPSTER_ON_MAJOR_ROAD", `${dumpster.id} sits inside ${majorRoad.id}.`, { dumpsterId: dumpster.id, roadId: majorRoad.id }));
+    if (dumpster.placementPhase !== "post-layout") errors.push(issue("DUMPSTER_PRE_LAYOUT", `${dumpster.id} was not placed after layout.`, { dumpsterId: dumpster.id }));
+    if (!["service-kerb", "service-yard"].includes(dumpster.anchorKind)) errors.push(issue("DUMPSTER_INVALID_ANCHOR", `${dumpster.id} has no semantic service anchor.`, { dumpsterId: dumpster.id, anchorKind: dumpster.anchorKind }));
+    if (pointOnAny(point, collections.roads, 6)) errors.push(issue("DUMPSTER_ON_ROAD", `${dumpster.id} overlaps a carriageway clearance.`, { dumpsterId: dumpster.id, point }));
+    if (pointOnAny(point, collections.crosswalks, 24)) errors.push(issue("DUMPSTER_ON_CROSSWALK", `${dumpster.id} overlaps a crossing clearance.`, { dumpsterId: dumpster.id, point }));
+    if (pointOnAny(point, collections.propExclusionZones, 0.1)) errors.push(issue("DUMPSTER_IN_PROP_EXCLUSION", `${dumpster.id} overlaps a junction or crossing exclusion zone.`, { dumpsterId: dumpster.id, point }));
+    if (pointOnAny(point, collections.buildings, 18)) errors.push(issue("DUMPSTER_INSIDE_BUILDING_CLEARANCE", `${dumpster.id} overlaps a building clearance.`, { dumpsterId: dumpster.id, point }));
   }
 
   for (const route of collections.pedestrianRoutes) {
@@ -341,6 +368,8 @@ export function validateCityBlueprint(blueprint) {
       buildingCount: collections.buildings.length,
       roofCount: roofs.length,
       pedestrianRouteCount: collections.pedestrianRoutes.length,
+      junctionSidewalkCount: collections.junctionSidewalks.length,
+      propExclusionZoneCount: collections.propExclusionZones.length,
       lightCount: collections.lights.length,
       dumpsterCount: collections.dumpsters.length,
       vehicleCount: collections.vehicles.length,

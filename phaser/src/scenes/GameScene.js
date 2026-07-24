@@ -199,13 +199,29 @@ export class GameScene extends GameSceneCore {
   }
 
   drawSidewalkNetwork() {
+    const visible = this.chunkItems("sidewalks", this.urbanRenderBounds, sidewalks, { margin: 6 });
     this.map.fillStyle(COLORS.sidewalk, 1);
-    this.map.lineStyle(1, COLORS.sidewalkTrim, 0.72);
-    for (const walk of this.chunkItems("sidewalks", this.urbanRenderBounds, sidewalks, { margin: 4 })) {
+    for (const walk of visible) {
+      if (walk.geometry === "polygon" && Array.isArray(walk.points)) {
+        this.map.fillPoints(walk.points, true);
+        continue;
+      }
       const fragment = clippedRect(walk, this.urbanRenderBounds);
-      if (!fragment) continue;
-      this.map.fillRect(fragment.x, fragment.y, fragment.w, fragment.h);
-      this.map.strokeRect(fragment.x, fragment.y, fragment.w, fragment.h);
+      if (fragment) this.map.fillRect(fragment.x, fragment.y, fragment.w, fragment.h);
+    }
+
+    this.map.lineStyle(1, COLORS.sidewalkTrim, 0.72);
+    for (const walk of visible) {
+      for (const segment of walk.trimSegments || []) {
+        if (!Array.isArray(segment) || segment.length !== 2) continue;
+        this.map.lineBetween(segment[0].x, segment[0].y, segment[1].x, segment[1].y);
+      }
+      for (const edge of walk.trimEdges || []) {
+        if (edge === "north") this.map.lineBetween(walk.x, walk.y, walk.x + walk.w, walk.y);
+        else if (edge === "south") this.map.lineBetween(walk.x, walk.y + walk.h, walk.x + walk.w, walk.y + walk.h);
+        else if (edge === "west") this.map.lineBetween(walk.x, walk.y, walk.x, walk.y + walk.h);
+        else if (edge === "east") this.map.lineBetween(walk.x + walk.w, walk.y, walk.x + walk.w, walk.y + walk.h);
+      }
     }
   }
 

@@ -116,10 +116,13 @@ Implemented pure compiler/geometry coverage protects:
 
 - graph derivation and connectivity;
 - exactly one junction authority per node;
+- junction-owned sidewalks clear of roads and buildings;
+- prop-exclusion zones with valid bounds;
 - clipped corner, T and crossroad geometry;
 - tapered mixed-width transitions;
 - zero road-piece overlap;
 - crosswalk endpoints on two valid sidewalks and outside junction centres;
+- lights and dumpsters outside junction/crosswalk exclusion zones;
 - post-layout lights clear of roads, crossings and buildings;
 - deterministic full-city regeneration.
 

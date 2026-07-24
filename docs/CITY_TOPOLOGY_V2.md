@@ -1,6 +1,6 @@
 # City Topology V2 — five-times-area site-first city
 
-_Last updated: 2026-07-23_
+_Last updated: 2026-07-24_
 
 ## Status
 
@@ -100,11 +100,11 @@ Generated topology includes:
 - 7 reserved landmark sites;
 - 114 authoritative road nodes and 158 edges;
 - 153 clipped road segments and 111 junction authority pieces;
-- 632 final sidewalk surfaces;
-- 141 crosswalk pieces outside junction centres;
+- 741 final sidewalk surfaces, including 486 owned by junctions;
+- 137 crosswalk pieces outside junction centres;
 - 11 regenerated pedestrian loops;
-- 138 post-layout streetlights;
-- 28 body-hiding dumpsters;
+- 105 post-layout streetlights;
+- 28 body-hiding dumpsters snapped after layout outside 564 junction/crosswalk exclusion zones;
 - 30 playable roofs;
 - 5 rooftop links;
 - 9 fire escapes;
@@ -120,7 +120,7 @@ Hard validation requires:
 - no landmark-site/road overlap;
 - every crosswalk outside junction authority and connected to two sidewalks;
 - every pedestrian route remains on final sidewalk surfaces;
-- every light is placed after layout and clear of roads, crossings and buildings;
+- every light and dumpster is placed after layout and clear of roads, crossings, buildings and prop-exclusion zones;
 - every rooftop route and fire escape terminates on a roof;
 - every sewer access reaches a sewer tunnel.
 

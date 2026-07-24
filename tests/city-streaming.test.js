@@ -89,6 +89,7 @@ test("City Compiler emits a deterministic ten-by-eight asynchronous chunk set", 
   assert.equal(Object.keys(fileSet.payloads).length, 80);
   assert.ok(fileSet.payloads["0:0"].collections.buildings.some(item => item.id === "hospital"));
   assert.ok(fileSet.payloads["2:4"].collections.buildings.some(item => item.id === "foundry:block-02:west-works"));
+  assert.ok(Object.values(fileSet.payloads).some(payload => (payload.collections.propExclusionZones || []).length > 0));
 });
 
 test("incremental chunk index deduplicates cloned cross-boundary records by stable stream id", () => {
