@@ -4,12 +4,15 @@ on:
   push:
     branches:
       - agent/fix-road-edge-band-generator-sync
+  pull_request:
+    types: [opened, reopened, synchronize]
 
 permissions:
   contents: write
 
 jobs:
   apply-validate-clean:
+    if: ${{ github.event_name == 'push' || github.head_ref == 'agent/fix-road-edge-band-generator-sync' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
