@@ -42,7 +42,7 @@ The accepted City Topology V2 foundation contains:
 - refuge garage repair and owned-wreck recovery;
 - a `4800 × 3600`, fourteen-district site-first city;
 - a 114-node / 158-edge authoritative road graph;
-- 153 clipped straight road pieces and 111 junction authorities with zero overlap;
+- 147 clipped straight road pieces and 104 junction authorities with zero overlap;
 - generated sidewalks, crossings, post-layout lights and pedestrian loops;
 - asynchronous `10 × 8` chunks, dormancy, macro traffic and ten pooled civilian traffic proxies;
 - motorized police pursuit, one partial roadblock and officer transfer to foot AI;
@@ -113,7 +113,7 @@ terrain / district constraints
 
 `tools/city-compiler/city-road-graph-v1.js` owns road connectivity and widths. Every graph node owns exactly one junction or transition surface. Straight segments stop at those surfaces instead of being overdrawn through them.
 
-Current geometry v2 supports ends, straight continuations, corners, T junctions, crossroads, complex clusters and collinear width-transition polygons. It is axis-aligned; true arbitrary-angle/curved offset geometry remains a future version.
+Current geometry v3 supports ends, straight continuations, corners, T junctions, crossroads, complex clusters and collinear width-transition polygons. It is axis-aligned; true arbitrary-angle/curved offset geometry remains a future version.
 
 ### Pedestrian authority
 
@@ -421,7 +421,7 @@ Mission-specific browser golden paths were removed because the contracts are no 
 - old-save pruning;
 - no protected district or mission-coordinate landmark authority.
 
-### Complete: City Topology V2 and road geometry v2
+### Complete: City Topology V2 and road geometry v3
 
 - `4800 × 3600`, fourteen districts and 80 chunks;
 - site-first civic/landmark campuses;

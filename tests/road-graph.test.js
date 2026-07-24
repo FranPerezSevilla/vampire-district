@@ -216,6 +216,63 @@ test("width transitions own two polygonal kerb surfaces", () => {
   assert.equal(transitionWalks.every(item => item.geometry === "polygon" && item.role === "transition-offset"), true);
 });
 
+
+test("micro approaches are absorbed into one compound junction instead of emitting orphan bands", () => {
+  const source = graph(
+    [
+      { id: "west", x: 40, y: 200 },
+      { id: "left-junction", x: 260, y: 200 },
+      { id: "right-junction", x: 340, y: 200 },
+      { id: "east", x: 560, y: 200 },
+      { id: "north", x: 260, y: 40 },
+      { id: "south", x: 340, y: 360 }
+    ],
+    [
+      { id: "west-leg", from: "west", to: "left-junction", width: 64, orientation: "horizontal", roadClass: "local", kind: "road", sourceRoadIds: ["west-leg"] },
+      { id: "micro-link", from: "left-junction", to: "right-junction", width: 64, orientation: "horizontal", roadClass: "local", kind: "road", sourceRoadIds: ["micro-link"] },
+      { id: "east-leg", from: "right-junction", to: "east", width: 64, orientation: "horizontal", roadClass: "local", kind: "road", sourceRoadIds: ["east-leg"] },
+      { id: "north-leg", from: "north", to: "left-junction", width: 64, orientation: "vertical", roadClass: "local", kind: "road", sourceRoadIds: ["north-leg"] },
+      { id: "south-leg", from: "right-junction", to: "south", width: 64, orientation: "vertical", roadClass: "local", kind: "road", sourceRoadIds: ["south-leg"] }
+    ]
+  );
+  const compiled = compileAxisAlignedRoadGraph(source, { world, minimumApproachLength: 36 });
+  const authority = compiled.roadJunctions.find(piece => (
+    piece.graphNodeIds.includes("left-junction") && piece.graphNodeIds.includes("right-junction")
+  ));
+
+  assert.ok(authority);
+  assert.equal(authority.sourceRoadIds.includes("micro-link"), true);
+  assert.equal(compiled.roadSegments.some(segment => segment.graphEdgeId === "micro-link"), false);
+  assert.equal(compiled.roadEdgeBands.some(band => band.graphEdgeId === "micro-link"), false);
+  assert.equal(compiled.stats.absorbedShortApproachCount, 1);
+});
+
+test("a partial building conflict splits one road-edge band instead of deleting the whole side", () => {
+  const source = graph(
+    [
+      { id: "west", x: 40, y: 200 },
+      { id: "east", x: 560, y: 200 }
+    ],
+    [
+      { id: "street", from: "west", to: "east", width: 80, orientation: "horizontal", roadClass: "local", kind: "road", sourceRoadIds: ["street"] }
+    ]
+  );
+  const blocker = { id: "blocker", x: 250, y: 130, w: 80, h: 40 };
+  const compiled = compileAxisAlignedRoadGraph(source, {
+    world,
+    buildings: [blocker],
+    minimumSidewalkFragmentLength: 36
+  });
+  const north = compiled.roadEdgeBands.filter(band => band.graphEdgeId === "street" && band.side === "north");
+  const south = compiled.roadEdgeBands.filter(band => band.graphEdgeId === "street" && band.side === "south");
+
+  assert.equal(north.length, 2);
+  assert.equal(south.length, 1);
+  assert.equal(north.every(band => surfaceOverlapArea(band, blocker) <= 0.01), true);
+  assert.equal(north.every(band => (band.orientation === "horizontal" ? band.w : band.h) >= 36), true);
+  assert.equal(roadGraphIntegrity(source, compiled).valid, true);
+});
+
 test("dumpsters are snapped after layout outside junction and crosswalk exclusions", () => {
   assert.equal(dumpsters.length > 0, true);
   for (const dumpster of dumpsters) {
@@ -246,13 +303,19 @@ test("the full city is reproducible from its explicit road graph with no road-pi
   assert.equal(roadGraphEdges.length, cityRoadGraph.edges.length);
   assert.equal(compiled.stats.graphNodeCount, 114);
   assert.equal(compiled.stats.graphEdgeCount, 158);
-  assert.equal(compiled.stats.roadSegmentCount, 153);
+  assert.equal(compiled.stats.roadSegmentCount, 147);
   assert.equal(compiled.stats.transitionCount, roadTransitions.length);
-  assert.equal(compiled.stats.sidewalkCount, 741);
+  assert.equal(compiled.stats.sidewalkCount, 778);
+  assert.equal(compiled.stats.roadEdgeBandCount, 309);
+  assert.equal(compiled.stats.roadEdgeBandSourceCount, 294);
+  assert.equal(compiled.stats.absorbedShortApproachCount, 6);
   assert.equal(compiled.stats.junctionSidewalkCount, junctionSidewalks.length);
   assert.equal(compiled.stats.crosswalkCount, 137);
+  assert.equal(compiled.stats.propExclusionZoneCount, 557);
   assert.equal(compiled.stats.propExclusionZoneCount, propExclusionZones.length);
-  assert.equal(compiled.stats.lightCount, 105);
+  assert.equal(compiled.stats.lightCount, 126);
+  assert.equal(compiled.roadEdgeBands.every(band => (band.orientation === "horizontal" ? band.w : band.h) >= 36), true);
+  assert.equal(compiled.roadEdgeBands.every(band => buildings.every(building => surfaceOverlapArea(band, building) <= 0.01)), true);
   assert.equal(roadGraphIntegrity(cityRoadGraph, compiled).valid, true);
   assertNoRoadOverlap(compiled.roads);
 });

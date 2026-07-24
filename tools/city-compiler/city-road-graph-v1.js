@@ -6,7 +6,7 @@ function deepFreeze(value) {
   return Object.freeze(value);
 }
 
-export const CITY_ROAD_GRAPH_VERSION = 2;
+export const CITY_ROAD_GRAPH_VERSION = 3;
 export const cityRoadGraph = deepFreeze({
   "version": 1,
   "geometry": "axis-aligned-centreline-graph",

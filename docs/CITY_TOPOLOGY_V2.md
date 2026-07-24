@@ -59,8 +59,8 @@ Road geometry version 1 is generated from an explicit centreline graph rather th
 Current generated geometry:
 
 ```text
-straight road segments   153
-junction authority pieces 111
+straight road segments   147
+junction authority pieces 104
 transition polygons         0 currently, supported and unit-tested
 road-piece overlaps         0
 ```
@@ -99,12 +99,12 @@ Generated topology includes:
 - 93 buildings;
 - 7 reserved landmark sites;
 - 114 authoritative road nodes and 158 edges;
-- 153 clipped road segments and 111 junction authority pieces;
-- 741 final sidewalk surfaces, including 486 owned by junctions;
+- 147 clipped road segments and 104 junction authority pieces;
+- 778 final sidewalk surfaces: 309 continuous road-edge bands plus 469 owned by junctions;
 - 137 crosswalk pieces outside junction centres;
 - 11 regenerated pedestrian loops;
-- 105 post-layout streetlights;
-- 28 body-hiding dumpsters snapped after layout outside 564 junction/crosswalk exclusion zones;
+- 126 post-layout streetlights;
+- 28 body-hiding dumpsters snapped after layout outside 557 junction/crosswalk exclusion zones;
 - 30 playable roofs;
 - 5 rooftop links;
 - 9 fire escapes;

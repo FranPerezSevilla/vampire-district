@@ -117,6 +117,9 @@ Implemented pure compiler/geometry coverage protects:
 - graph derivation and connectivity;
 - exactly one junction authority per node;
 - junction-owned sidewalks clear of roads and buildings;
+- continuous road-edge bands covering every unblocked segment side;
+- no road-edge band fragments below 36 px;
+- micro-approaches absorbed before band generation;
 - prop-exclusion zones with valid bounds;
 - clipped corner, T and crossroad geometry;
 - tapered mixed-width transitions;
