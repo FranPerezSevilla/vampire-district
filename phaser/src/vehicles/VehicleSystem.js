@@ -1,4 +1,4 @@
-import { vehicleArchetype, vehicleDefinitions } from "../data/vehicles.js";
+import { VEHICLE_OWNERSHIP, vehicleArchetype, vehicleDefinitions } from "../data/vehicles.js";
 import { createVehicleState } from "./VehicleModel.js";
 import { createVehicleHud, installVehicleBrowserApi, paintVehicle, publishVehicleState, refreshVehicleVisibility, updateVehicleHud, vehicleSystemSnapshot, vehicleSystemSummary } from "./VehicleView.js";
 import { canVehicleOccupy, filterVehicleInputFrame, handleVehicleWorldCollision, updateVehicleCamera, updateVehicleDriving } from "./VehicleDriving.js";
@@ -16,6 +16,7 @@ export class VehicleSystem {
     this.crashCooldown = 0;
     this.handbrakeActive = false;
     this.pedestrianCooldowns = new Map();
+    this.transientSequence = 0;
     this.destroyed = false;
     this.vehicles = vehicleDefinitions.map(definition => this.createVehicle(definition));
     this.hud = createVehicleHud(scene);
@@ -45,7 +46,11 @@ export class VehicleSystem {
       archetype,
       container,
       visual,
-      status: this.campaign.vehicles.status(definition),
+      transient: Boolean(definition.transient),
+      transientSequence: Number(definition.transientSequence) || 0,
+      status: definition.transient
+        ? (definition.status || definition.ownership || VEHICLE_OWNERSHIP.STOLEN)
+        : this.campaign.vehicles.status(definition),
       ownership: definition.ownership,
       lastPersisted: {
         x: state.x,
@@ -55,6 +60,42 @@ export class VehicleSystem {
         parked: state.parked
       }
     };
+  }
+
+  addTransientVehicle(definition) {
+    const transientDefinition = {
+      ...definition,
+      ownership: definition.ownership || VEHICLE_OWNERSHIP.STOLEN,
+      status: definition.status || VEHICLE_OWNERSHIP.STOLEN,
+      transient: true,
+      transientSequence: ++this.transientSequence
+    };
+    const vehicle = this.createVehicle(transientDefinition);
+    this.vehicles.push(vehicle);
+    this.scene.entityStreamSystem?.applyVehicleState?.(vehicle);
+    this.refreshVisibility();
+    this.publish();
+    return vehicle;
+  }
+
+  pruneTransientVehicles(maximum = 6) {
+    const limit = Math.max(0, Math.floor(Number(maximum) || 0));
+    const removable = this.vehicles
+      .filter(vehicle => vehicle.transient && vehicle.id !== this.currentVehicleId)
+      .sort((left, right) => left.transientSequence - right.transientSequence);
+    let transientCount = this.vehicles.filter(vehicle => vehicle.transient).length;
+    let removed = 0;
+    while (transientCount > limit && removable.length) {
+      const vehicle = removable.shift();
+      const index = this.vehicles.indexOf(vehicle);
+      if (index < 0) continue;
+      this.vehicles.splice(index, 1);
+      vehicle.container?.destroy?.();
+      transientCount--;
+      removed++;
+    }
+    if (removed) this.publish();
+    return removed;
   }
 
   currentVehicle() {
@@ -139,7 +180,7 @@ export class VehicleSystem {
 
   syncFromCampaign(vehicleId) {
     const vehicle = this.vehicle(vehicleId);
-    if (!vehicle) return false;
+    if (!vehicle || vehicle.transient) return false;
     const condition = this.campaign.vehicles.condition(vehicle);
     vehicle.x = condition.x;
     vehicle.y = condition.y;
@@ -190,7 +231,7 @@ export class VehicleSystem {
   }
 
   persistVehicle(vehicle, { emit = true } = {}) {
-    if (!vehicle) return false;
+    if (!vehicle || vehicle.transient) return false;
     const condition = {
       x: vehicle.x,
       y: vehicle.y,
