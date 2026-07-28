@@ -1,0 +1,23 @@
+name: Temporary hunting payload diagnostics
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+      - name: Upload payload blocks exactly as stored
+        uses: actions/upload-artifact@v4
+        with:
+          name: hunting-payload-blocks
+          path: .github/hunting-law-payload*
+          if-no-files-found: error
+          retention-days: 2
