@@ -131,7 +131,7 @@ A pistol shot emits noise even when it misses.
 - Persistent lower-right weapon indicator; the power dock remains lower-left.
 - Increased weapon name and ammo typography.
 - Empty pistol warning state.
-- Successful wheel step produces `EQUIPPED: ...`.
+- Weapon cycling updates only the persistent weapon HUD; it creates no transient top or bottom popup.
 - First-use teaching temporarily pulses the weapon HUD.
 - Attack arc/reticle colour follows the weapon.
 - Optional high-contrast aim adds black outline, white core, larger ring and cross mark.

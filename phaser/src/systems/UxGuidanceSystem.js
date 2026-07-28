@@ -287,15 +287,8 @@ export class UxGuidanceSystem {
     );
   }
 
-  handleWeaponChanged(payload = {}) {
+  handleWeaponChanged() {
     this.weaponChanges += 1;
-    const ammo = payload.ammo == null ? "unlimited use" : `${payload.ammo} rounds`;
-    this.showTransient(
-      "LMB",
-      `${payload.name || "Weapon"} equipped · ${ammo}. Left-click attacks in the aimed direction.`,
-      3_800,
-      "weapon"
-    );
   }
 
   handleEntityDowned(payload = {}) {
