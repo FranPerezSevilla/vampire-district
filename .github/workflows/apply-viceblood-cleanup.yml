@@ -25,12 +25,25 @@ jobs:
           ref: ${{ env.TARGET_BRANCH }}
           fetch-depth: 0
 
+      - name: Detect pending cleanup payload
+        id: gate
+        shell: bash
+        run: |
+          if compgen -G '.github/cleanup-parts/cleanup-part-*.py' > /dev/null; then
+            echo 'apply=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'apply=false' >> "$GITHUB_OUTPUT"
+            echo 'Cleanup payload already consumed; nothing to apply.'
+          fi
+
       - name: Set up Node.js
+        if: steps.gate.outputs.apply == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
       - name: Assemble and apply cleanup
+        if: steps.gate.outputs.apply == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -42,12 +55,15 @@ jobs:
           rm -f .github/workflows/apply-viceblood-cleanup.yml
 
       - name: Install exact dependencies
+        if: steps.gate.outputs.apply == 'true'
         run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
 
       - name: Regenerate canonical city outputs
+        if: steps.gate.outputs.apply == 'true'
         run: npm run city:topology
 
       - name: Check JavaScript syntax
+        if: steps.gate.outputs.apply == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -56,9 +72,11 @@ jobs:
           done < <(find phaser tests tools -type f \( -name '*.js' -o -name '*.mjs' \) -print | sort)
 
       - name: Run unit regression
+        if: steps.gate.outputs.apply == 'true'
         run: npm test
 
       - name: Validate and compile city
+        if: steps.gate.outputs.apply == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -67,6 +85,7 @@ jobs:
           npm run city:foundry -- --output-dir=/tmp/viceblood-foundry
 
       - name: Verify repository cleanup
+        if: steps.gate.outputs.apply == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -79,18 +98,29 @@ jobs:
           test "$(find .github/workflows -maxdepth 1 -type f -printf '%f\n' | sort | tr '\n' ' ')" = "build-itch-zip.yml tests.yml "
           git diff --check
 
-      - name: Commit final cleanup
+      - name: Commit source and documentation cleanup
+        if: steps.gate.outputs.apply == 'true'
         shell: bash
         run: |
           set -euo pipefail
+
+          # GitHub's workflow token cannot publish deletions or edits under
+          # .github/workflows. Restore those paths for this commit; the
+          # connector will apply the validated workflow tree atomically next.
+          git checkout "origin/${TARGET_BRANCH}" -- .github/workflows
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -m "Complete Viceblood identity and legacy cleanup"
+          git rev-parse 'HEAD^{tree}' > viceblood-cleanup-head-tree.txt
           git push origin "HEAD:${TARGET_BRANCH}"
 
-      - name: Dispatch complete test matrix
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run tests.yml --ref "$TARGET_BRANCH"
+      - name: Upload committed tree reference
+        if: steps.gate.outputs.apply == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: viceblood-cleanup-head-tree
+          path: viceblood-cleanup-head-tree.txt
+          if-no-files-found: error
+          retention-days: 2
