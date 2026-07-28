@@ -36,16 +36,18 @@ jobs:
             git ls-files css js legacy | sort || true
 
             echo '===== REFERENCES TO ROOT CSS/JS/LEGACY OUTSIDE THAT BLOCK ====='
-            git grep -n -I -i -E '(["'"'/(])(css|js|legacy)/|prototype-threat-limits' -- . ':(exclude)css/**' ':(exclude)js/**' ':(exclude)legacy/**' || true
+            (git grep -n -I -i -E '(css|js|legacy)/|prototype-threat-limits' -- . || true) \
+              | grep -v -E '^(css|js|legacy)/' || true
 
             echo '===== PATCH TOOL FILES ====='
             git ls-files 'tools/patch-*.mjs' | sort || true
 
             echo '===== REFERENCES TO PATCH TOOLS OUTSIDE THEMSELVES ====='
-            git grep -n -I -i -E 'tools/patch-[^ ]+\.mjs|patch-phase11-powers|patch-phaser-hunters' -- . ':(exclude)tools/patch-*.mjs' || true
+            (git grep -n -I -i -E 'tools/patch-[^ ]+\.mjs|patch-phase11-powers|patch-phaser-hunters' -- . || true) \
+              | grep -v -E '^tools/patch-' || true
 
             echo '===== PACKAGE AND WORKFLOW TOOL REFERENCES ====='
-            git grep -n -I -i -E 'tools/|legacy/|css/|js/' -- package.json '.github/workflows/*.yml' '.github/workflows/*.yaml' || true
+            git grep -n -I -i -E 'tools/|legacy/|css/|js/' -- package.json .github/workflows || true
           } >> "$report"
 
           wc -l "$report"
