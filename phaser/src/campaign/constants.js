@@ -1,4 +1,4 @@
-export const CAMPAIGN_SCHEMA_VERSION = 2;
+export const CAMPAIGN_SCHEMA_VERSION = 3;
 export const CAMPAIGN_STORAGE_KEY = "viceblood-campaign-v1";
 export const LEGACY_CAMPAIGN_STORAGE_KEYS = Object.freeze([
   "vampire-district-campaign-v1"
@@ -63,7 +63,10 @@ export const CAMPAIGN_EVENT_TYPES = Object.freeze({
   RETURNED: "refuge:returned",
   VEHICLE_STOLEN: "vehicle:stolen",
   VEHICLE_DELIVERED: "vehicle:delivered",
-  WANTED_CHANGED: "wanted:changed"
+  WANTED_CHANGED: "wanted:changed",
+  TERRITORY_INFLUENCE_CHANGED: "territory:influence-changed",
+  TERRITORY_OWNER_CHANGED: "territory:owner-changed",
+  TERRITORY_DISTRICT_ENTERED: "territory:district-entered"
 });
 
 export const OBJECTIVE_EVENT_BY_TYPE = Object.freeze({

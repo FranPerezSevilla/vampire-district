@@ -8,6 +8,7 @@ import {
   MISSION_STATUS
 } from "./constants.js";
 import { sanitizeCampaignCheckpoint } from "./CampaignCheckpoint.js";
+import { createTerritoryState, sanitizeTerritoryState } from "../factions/TerritoryModel.js";
 
 function finiteNumber(value, fallback = 0) {
   const number = Number(value);
@@ -140,6 +141,7 @@ export function createCampaignState({ now = 0 } = {}) {
       },
       contacts: {}
     },
+    territory: createTerritoryState({ now: timestamp }),
     inventory: {
       carried: {
         meleeWeaponId: null,
@@ -257,6 +259,7 @@ export function sanitizeCampaignState(candidate, { now = 0 } = {}) {
         LEGACY_CAMPAIGN_CONTACT_IDS
       )
     },
+    territory: sanitizeTerritoryState(source.territory, { now: timestamp }),
     inventory: {
       carried: {
         meleeWeaponId: plainRecord(plainRecord(source.inventory).carried).meleeWeaponId == null
@@ -301,10 +304,10 @@ export function migrateCampaignState(candidate, { now = 0 } = {}) {
     throw new RangeError(`Campaign save version ${version} is newer than supported version ${CAMPAIGN_SCHEMA_VERSION}.`);
   }
 
-  // Versions zero and one did not persist a world checkpoint. Sanitisation keeps
-  // their money, mission, reputation and inventory data and supplies the new
-  // checkpoint collection. CampaignCheckpointSystem can synthesize a safe world
-  // snapshot from an existing opening-mission record on first boot.
+  // Versions zero and one did not persist a world checkpoint. Version two did
+  // not persist district territory. Sanitisation keeps money, missions,
+  // reputation, inventory and world data while supplying the missing checkpoint
+  // and canonical fourteen-district territory collections.
   return sanitizeCampaignState(source, { now });
 }
 

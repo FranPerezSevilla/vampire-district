@@ -22,7 +22,7 @@ function memoryStorage() {
 test("fresh campaign state is JSON-only and contains the starting refuge", () => {
   const state = createCampaignState({ now: 1234 });
   assert.equal(state.version, CAMPAIGN_SCHEMA_VERSION);
-  assert.equal(state.version, 2);
+  assert.equal(state.version, 3);
   assert.equal(state.player.cash, 0);
   assert.equal(state.player.currentRefugeId, CAMPAIGN_REFUGES.ROOFTOP_REFUGE);
   assert.deepEqual(state.world.unlockedRefuges, [CAMPAIGN_REFUGES.ROOFTOP_REFUGE]);

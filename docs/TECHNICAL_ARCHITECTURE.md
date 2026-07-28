@@ -99,6 +99,7 @@ Explore/scenario profiles remain isolated and non-persistent.
 - `CampaignCheckpointSystem`
 - `WalletSystem`
 - `ReputationSystem`
+- `TerritorySystem`
 - `CampaignVehicleSystem`
 - `VehicleMaintenanceService`
 - `VehicleMaintenanceUiSystem`
@@ -136,6 +137,7 @@ Campaign-entry and mission-board source modules remain available for future expl
 
 - `PropDamageSystem`
 - `StreetFurnitureSystem`
+- `TerritoryRuntimeSystem`
 - `VehicleSystem`
 - `VehicleModel`
 - `VehicleDriving`
@@ -180,6 +182,8 @@ TrafficPhysicalConsequencesSystem.update
 TrafficImpactConsequencesSystem.update
 MotorizedPoliceSystem.update
 PedestrianSystem.update
+normal gameplay frame
+TerritoryRuntimeSystem.update
 ```
 
 Normal gameplay frame:
@@ -261,6 +265,7 @@ Persistent domains:
 
 - cash and transaction ledger;
 - faction/contact reputation;
+- fourteen district territory records with bounded influence, derived ownership and change history;
 - player position/layer, Hunger and loadout;
 - authored vehicle ownership, position, angle, hull, parked state and trunk;
 - broken props;
@@ -270,11 +275,19 @@ Persistent domains:
 
 Excluded:
 
+- current district-entry presentation state; ownership/influence itself is persistent;
 - civilian traffic token/local proxy state;
 - motorized cruisers, routes, transient hull and suspect memory;
 - temporary traffic/police contact cooldowns.
 
 Authored vehicle condition is campaign state but not mission-checkpoint payload. A checkpoint rollback cannot revert later paid maintenance.
+
+
+### Territory authority
+
+`TerritorySystem` is the sole campaign authority for district influence, status and ownership. It emits influence and owner-change events; missions and future suppliers/patrols must call its public methods rather than editing `CampaignState.territory` directly.
+
+`TerritoryRuntimeSystem` performs only semantic district lookup and HUD/event publication after the normal gameplay frame. It does not move the player, simulate autonomous territory pressure or duplicate persistent ownership.
 
 ## 8. Mission registration authority
 

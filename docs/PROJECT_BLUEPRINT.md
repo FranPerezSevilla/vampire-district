@@ -137,6 +137,7 @@ Persistent campaign state includes:
 
 - cash and immutable transaction ledger;
 - faction/contact reputation;
+- migration-safe district territory: owner, bounded influence and change history;
 - player loadout and ammunition;
 - authored vehicle condition and trunks;
 - broken world props;
@@ -192,7 +193,8 @@ accept explicitly registered contract
 → solve through city systems
 → produce persistent consequences
 → report/complete/checkpoint
-→ unlock faction, territory or economy changes
+→ alter faction reputation and district influence through authoritative services
+→ unlock territory, supplier, patrol or economy changes
 ```
 
 ## Controls
@@ -409,7 +411,7 @@ Mission-specific browser golden paths were removed because the contracts are no 
 4. Site-first landmarks need enough urban space without producing empty campuses.
 5. Freeing the Old Quarter may temporarily reduce authored narrative content to zero.
 6. Browser-system regression time continues to grow.
-7. Economy and factions must wait until the city has stable semantic sites.
+7. Territory consumers must use stable semantic district/site IDs rather than raw coordinates.
 8. Commercial-facing names still require trademark clearance.
 
 ## Active production sequence
@@ -433,9 +435,16 @@ Mission-specific browser golden paths were removed because the contracts are no 
 - post-layout kerb lights and service dumpsters;
 - compiler/browser regression coverage.
 
+### Active: Milestone 15.1 faction territory foundation
+
+- canonical First Estate and Gutter Crown data;
+- fourteen persistent district influence/ownership records;
+- reputation-derived territory relationship policy;
+- semantic district-entry feedback and events.
+
 ### Next
 
-- original factions and territory;
+- connect faction sites, patrols and suppliers to the territory authority;
 - safehouses, stash and ammunition economy;
 - Retainers;
 - expanded arsenal and vehicle combat;
@@ -454,4 +463,5 @@ Update this blueprint and the relevant detailed document in the same PR when cha
 - landmark/site/parcel policy;
 - vehicle/traffic/police persistence boundaries;
 - active production priority;
+- faction/territory persistence or relationship policy;
 - locked design decisions.

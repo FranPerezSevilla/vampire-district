@@ -1,6 +1,6 @@
 # Roadmap
 
-_Last updated: 2026-07-24_
+_Last updated: 2026-07-28_
 
 This roadmap is ordered by dependency, not calendar date. A milestone is complete only when implementation, automated coverage, browser regression and documentation agree.
 
@@ -14,6 +14,15 @@ Read `PROJECT_BLUEPRINT.md` for the canonical architecture and production sequen
 - ⬜ Planned
 - ◇ Deferred or optional
 - ◈ Historical content retained as reference, not active production content
+
+## Viceblood identity guardrails
+
+- Viceblood is an urban predation, concealment and vampire-politics game built on a GTA2-like systemic city.
+- Hunger, feeding, the Veil, hunting rights, evidence, favours, territory, the Beast, refuges and the approaching dawn provide the vampire identity.
+- Blood is not an emotional-resonance system and does not grant emotion-derived builds, personalities or powers. That concept belongs outside Viceblood.
+- Hunger remains the single player-facing feeding resource: feeding lowers it; powers, supernatural healing and losing control raise it. Stored blood may lower Hunger without creating a second permanent meter.
+- Crime systems earn their place when they help the player hunt, conceal supernatural evidence, transport bodies or blood, manipulate institutions, or survive faction politics.
+- The setting, terminology, factions, ranks, symbols and supernatural rules remain original rather than reproducing a licensed vampire property.
 
 ## Milestone 0 — Vertical slice foundation
 
@@ -346,24 +355,260 @@ Acceptance:
 - curved roads are supported;
 - unit, boot, systems and city validation remain green.
 
-## Milestone 15 — Original factions and territory
+## Milestone 15 — Original factions, territory and hunting law
 
 **Status: 🔵 Active next phase**
 
-- canonical original faction IDs/data;
-- The First Estate and The Gutter Crown with distinct mechanics;
-- separate independent House/contact records;
-- district ownership in migration-safe campaign state;
-- faction links for sites, suppliers, vehicles and patrols;
-- access/hostility gates;
-- mission hooks for territory changes;
-- original symbols, ranks and histories.
+The city becomes a vampire ecosystem only when territory controls access to prey, concealment services, safe routes and political consequences. Faction ownership must therefore affect how the player hunts, not merely recolour districts or alter a reputation number.
 
-Factions wait until the city exposes stable semantic districts/sites rather than temporary raw coordinates.
+### 15.1 Territory foundation — 🔵 Active in PR #41
 
-## Milestone 16 — Safehouses, stash and ammunition economy
+- canonical original faction IDs/data for The First Estate and The Gutter Crown;
+- independent Houses represented by separate stable records, never one simulation faction;
+- migration-safe ownership and influence for all fourteen semantic districts;
+- controlled, contested and independent district states;
+- reputation-derived watched/restricted/hostile/welcome access policy;
+- district-entry HUD feedback;
+- influence, ownership-change and district-entry events;
+- future links for sites, suppliers, vehicles, patrols and missions.
+
+This phase deliberately excludes the full territory-war loop, faction campaigns, supplier changes, safehouse changes and new faction combat archetypes.
+
+Reference: `MILESTONE_15_1_FACTIONS_TERRITORY.md`.
+
+### 15.2 Blood ownership, hunting rights and poaching — ⬜ Planned
+
+Every feeding attempt records its district, current owner, permission state, victim protection state and resulting evidence.
+
+- legal feeding: covered by an explicit right, service or faction permission;
+- tolerated feeding: not formally permitted, but below the owner's enforcement threshold;
+- poaching: feeding without permission in claimed territory;
+- protected prey: named contacts, staff, informants, donors or community members who may not be touched;
+- political violation: feeding that harms a faction's institutional or territorial interests even when the Veil remains intact.
+
+Faction distinction:
+
+- **The First Estate** regulates who may be fed upon, favours selected donors and institutional blood sources, and demands clean scenes with no public scandal;
+- **The Gutter Crown** regulates where the player may hunt, demands tribute and loyalty, protects local people and informants, and forbids bringing police pressure into its routes and tunnels.
+
+The owner is not omniscient. Poaching is discovered through witnesses, cameras, marked/protected victims, recovered bodies, repeated patterns or informants.
+
+District hunting pressure progresses through low, medium, high and critical states. Excessive predation reduces lone pedestrians, closes nightlife, increases escorts/patrols and can create a temporary curfew or investigation. The player must not be able to farm one neighbourhood forever without changing it.
+
+### 15.3 Favours, blood debt and vampire services — ⬜ Planned
+
+Faction rewards and penalties extend beyond cash and generic reputation.
+
+Services may include:
+
+- temporary hunting rights;
+- access to a selected donor or stored blood;
+- removal of a body;
+- deletion of a recording;
+- reduction of ordinary police Heat;
+- use of a sewer route, hidden garage or emergency refuge;
+- protection for a victim, Retainer, vehicle or property;
+- false paperwork, a mundane cover story or access to a restricted site.
+
+A faction service may create a persistent favour owed by the player. A completed contract may also make a contact or faction owe the player. Debts are concrete callable obligations with authored consequences, not only `+10/-10` reputation changes.
+
+### 15.4 Vampire city infrastructure — ⬜ Planned
+
+Semantic businesses and institutions become part of the feeding and concealment network:
+
+| Site | Vampire function |
+|---|---|
+| Nightclub | concentrates possible prey and social access |
+| Hospital / blood bank | stored blood, patients, staff and records |
+| Motel | isolated rooms and temporary shelter |
+| Funeral home / morgue | bodies, paperwork and discreet transport |
+| Garage | plates, vehicle cleaning, trunks and recovery |
+| Police station | Heat, evidence and compromised officers |
+| Power utility | blackouts and camera disruption |
+| Newspaper / broadcaster | public explanation of impossible events |
+| Cold storage / warehouse | reserves and refrigerated transport |
+| Back-room bar | information, anonymous prey and faction contact |
+
+The First Estate controls clean institutional versions of this network. The Gutter Crown controls clandestine, improvised and street-level alternatives.
+
+## Milestone 15.5 — Predator feeding and Hunger economy
+
+**Status: ⬜ Planned immediately after hunting-law contracts**
+
+Feeding becomes the central predatory decision rather than a health pickup.
+
+### Feeding depth
+
+The existing held right-click action gains clear thresholds while preserving direct control:
+
+- **Quick bite**: small Hunger reduction, short exposure window, living victim, partial memory;
+- **Full feed**: substantial Hunger reduction, unconscious victim, visible marks and a scene that must be handled;
+- **Drain**: maximum Hunger reduction, dead victim, severe body evidence and political consequences.
+
+The player chooses when to release. Viceblood does not add a separate rhythm minigame or remove control merely to make feeding feel dramatic.
+
+### Consequences and follow-up actions
+
+After feeding, context may allow:
+
+- leave the victim;
+- drag or hide the victim;
+- place a body or unconscious victim in a compatible trunk;
+- use Whisper to calm, redirect or blur the immediate memory;
+- create a mundane crime scene or transport the evidence elsewhere;
+- continue feeding and accept the greater risk.
+
+### Hunger economy
+
+- Hunger remains the single visible resource;
+- feeding lowers Hunger;
+- powers and supernatural recovery raise Hunger;
+- ordinary medicine may stabilise a situation but does not replace feeding as the vampire's recovery loop;
+- stored blood is safer and less effective than fresh feeding, represented as a consumable supply rather than a second permanent bar;
+- contaminated or vampire blood remains an optional later extension, not an MVP requirement.
+
+Acceptance:
+
+- the player can intentionally stop at each feeding depth;
+- each depth has a distinct victim outcome, evidence profile and Hunger value;
+- interruption, movement, awareness and geometry rules remain deterministic;
+- no emotion, mood or resonance statistics are attached to blood;
+- feeding is useful for survival, powers, investigation pressure and politics rather than only restoring a meter.
+
+## Milestone 15.6 — Heat, Exposure and concrete evidence
 
 **Status: ⬜ Planned**
+
+Viceblood separates ordinary criminal attention from proof of the supernatural.
+
+```text
+Heat      → police believe the player committed human crime
+Exposure  → people or institutions possess evidence that something impossible exists
+```
+
+### Evidence sources
+
+- witnesses with a remembered event and reporting state;
+- camera, mobile, traffic or police recordings;
+- drained or abnormally damaged bodies;
+- visible use of powers;
+- repeated feeding patterns, vehicles, districts or methods;
+- hunter case material derived from the above.
+
+Heat and Exposure are summaries of concrete state, not unexplained punishment bars.
+
+### Crime as an alibi
+
+The player may deliberately accept more Heat to protect the Veil:
+
+- destroy a camera and turn supernatural evidence into vandalism;
+- steal an ambulance or hearse to remove a body;
+- stage a crash, robbery, gang attack or fire around an impossible death;
+- create an ordinary pursuit while a recording, witness or corpse is moved;
+- force institutions to treat the event as crime rather than the supernatural.
+
+This trade is a signature Viceblood rule: appearing to be a more obvious criminal can be safer than appearing to be a vampire.
+
+### Cleanup actions
+
+- intimidate, redirect or use Whisper on a witness;
+- steal or destroy recordings;
+- intercept a body before the morgue or forensics stage;
+- move evidence through a faction route;
+- call in a favour from a Cleaner, institution or compromised contact;
+- plant a mundane explanation or point investigators toward a rival.
+
+Acceptance:
+
+- the UI can explain which evidence currently drives Exposure;
+- removing the final supporting evidence lowers the corresponding Exposure pressure;
+- Heat and Exposure may rise, fall or diverge independently;
+- street, rooftop, sewer and vehicle choices all provide distinct cleanup options;
+- no hunter or faction gains unexplained perfect knowledge.
+
+## Milestone 15.7 — Blood Sense, Whisper and the Beast
+
+**Status: ⬜ Planned**
+
+### Blood Sense
+
+Blood Sense becomes the primary predator-reading mode:
+
+- directional heartbeats and living bodies behind thin cover;
+- wounded targets and fresh blood trails;
+- recently fed-upon victims and drained bodies;
+- other vampires recognised by the absence of a heartbeat;
+- faction-protected or marked targets only when the player has learned that information through the world.
+
+Blood Sense does not reveal emotions, personalities or emotion-derived buffs.
+
+### Contextual Whisper
+
+Whisper gains small, systemic commands selected from context rather than a large dialogue tree:
+
+- **Come here**;
+- **Walk away**;
+- **Stay calm**;
+- **Forget this**;
+- **Open it**;
+- **Get in**;
+- **Call them off**, when the target and alert state permit it.
+
+Every command has a Hunger cost, range, resistance and witness consequence. Alerted, trained or resistant targets cannot be treated as unlimited puppets.
+
+### The Beast
+
+High Hunger creates temptation and loss of subtlety rather than arbitrary random failure:
+
+- heartbeats become louder and vulnerable prey easier to identify;
+- physical actions and feeding become faster or cheaper;
+- the safe release window during feeding narrows;
+- subtle Whisper and controlled cleanup become harder;
+- the player may voluntarily **Give In** for a short burst of speed, strength and recovery at the cost of precision, witnesses and evidence.
+
+The game does not seize input without a readable cause. The Beast offers useful power at exactly the moment using it is most dangerous.
+
+## Milestone 15.8 — Persistent hunter investigation
+
+**Status: ⬜ Planned**
+
+Viceblood uses one named, persistent hunter before considering generic hunter populations.
+
+The hunter maintains a migration-safe case containing:
+
+- collected testimony;
+- recovered recordings;
+- examined bodies;
+- recognised vehicles and plates;
+- repeated districts, feeding sites and escape routes;
+- suspected faction protection, contacts and refuges;
+- confidence in the player's identity and habits.
+
+Escalation:
+
+1. examines scenes after police activity;
+2. installs cameras, trackers or traps;
+3. watches recurring hunting grounds;
+4. follows a vehicle, victim or contact;
+5. intercepts a blood delivery or faction service;
+6. blocks a known escape route with specialised light or equipment;
+7. searches for the player's refuge before dawn.
+
+Counterplay includes destroying evidence, feeding false information, framing another vampire, compromising a source, changing habits, using faction influence or forcing the hunter into hostile territory.
+
+Acceptance:
+
+- the hunter's actions are traceable to case evidence;
+- repeated player habits make the hunter measurably more effective;
+- changing habits and destroying evidence reduce or redirect the investigation;
+- the system does not become endless combat waves;
+- killing, discrediting or politically neutralising the hunter are distinct long-term outcomes.
+
+## Milestone 16 — Safehouses, stash, blood supply and night pressure
+
+**Status: ⬜ Planned**
+
+### Loadout and supplies
 
 - no floating street-ammunition pickups;
 - one melee, one sidearm and one long/special slot;
@@ -371,11 +616,37 @@ Factions wait until the city exposes stable semantic districts/sites rather than
 - separate carried loadout and refuge stash;
 - finite supplier stock;
 - paid resupply and authored caches;
-- trunks provide limited mobile storage.
+- trunks provide limited mobile storage;
+- stored blood is kept in refuges, selected vehicles or faction-controlled sites.
+
+### Refuge identity
+
+A refuge may provide:
+
+- sealed windows and daylight protection;
+- blood, weapon and evidence storage;
+- garage access and a clean vehicle;
+- alternate roof, street or sewer exits;
+- a place for a Retainer or contact to operate;
+- upgrades that improve security, concealment or emergency escape rather than generic decoration.
+
+### Night and dawn
+
+The first implementation uses event-driven night phases rather than a permanently aggressive real-time clock:
+
+```text
+Dusk → Midnight → Dead Hours → Approaching Dawn → Dawn
+```
+
+Contracts, major travel, deep feeding, arrests and selected services may advance the phase. As dawn approaches, clubs close, prey thins out, police cleanup increases, vampires withdraw and safe routes become more important.
+
+Emergency shelter may include a compatible vehicle trunk, basement, motel room, sewer chamber or faction refuge. Surviving outside the primary refuge can cost blood, equipment, a favour or a compromised location rather than always causing instant death.
 
 ## Milestone 17 — Retainers
 
 **Status: ⬜ Planned**
+
+The MVP supports one active named Retainer before any larger organisation-management layer.
 
 Initial roles:
 
@@ -388,11 +659,17 @@ Initial roles:
 - Guard;
 - Medic.
 
-Tracked state includes loyalty, dependence, exposure, condition, competence, upkeep, dose due and assignments.
+A Retainer may be called to bring a vehicle, move a body, store blood, create a co-alibi, access a building, warn about a raid or perform one role-specific service.
 
-## Milestone 18 — Expanded arsenal and vehicle combat
+Tracked state includes loyalty, dependence, exposure, condition, competence, upkeep, dose due and assignments. Maintaining the bond requires blood and creates vulnerability: enemies can identify, follow, capture, turn or threaten the Retainer.
+
+Retainers are persistent people with limits and consequences, not disposable summonable units or a private army.
+
+## Milestone 18 — Expanded arsenal, vehicle combat and vampire logistics
 
 **Status: ⬜ Planned**
+
+### Arsenal and combat
 
 - shotgun, SMG and specialist weapons;
 - limited thrown/distraction items;
@@ -401,31 +678,110 @@ Tracked state includes loyalty, dependence, exposure, condition, competence, upk
 - authored weapon/mission loot;
 - enemy/faction loadouts.
 
+### Vehicle logistics
+
+Vehicles support vampire problems as well as pursuit:
+
+- move a body or unconscious victim in a compatible trunk;
+- transport stored blood, evidence or a sleeping vampire;
+- feed discreetly inside a parked vehicle when geometry and witnesses allow it;
+- use vehicle identity, damage, blood and plates as evidence;
+- clean, abandon, burn, disguise or swap a compromised vehicle through services.
+
+Useful authored archetypes may include:
+
+- ambulance for hospitals and body access;
+- hearse for discreet transport;
+- refrigerated van for blood supply;
+- tinted vehicle for limited dawn protection;
+- maintenance van for utilities, cameras and restricted service access.
+
+### Layer identity
+
+- **Street**: abundant prey, vehicles, police, cameras and rapid escape;
+- **Rooftops**: stalking, observation, private entry, Shadow Dash and fewer ordinary witnesses;
+- **Sewers**: body movement, concealed travel, emergency shelter and Gutter Crown control.
+
+The three layers solve different vampire problems rather than serving as interchangeable shortcuts.
+
 ## Milestone 19 — New district campaign
 
-**Status: ⬜ Planned after city/factions/economy**
+**Status: ⬜ Planned after city/factions/predation/economy**
 
 - new opening contract authored against semantic sites;
 - vehicle pursuit contract;
 - First Estate/Gutter Crown/Unaligned alternatives;
-- territory consequences;
+- territory and hunting-right consequences;
 - Retainer recruitment/rescue;
-- safehouse/supplier progression.
+- safehouse/supplier progression;
+- persistent hunter pressure;
+- multiple solutions that deliberately trade Heat, Exposure, debt and faction standing.
+
+Candidate systemic contracts:
+
+- steal a blood-bank van before it reaches the hospital;
+- recover a drained body before a forensic examination;
+- capture a witness alive for interrogation or memory removal;
+- move a sleeping or wounded vampire before dawn;
+- identify a vampire poaching in protected territory;
+- destroy or replace traffic-camera recordings;
+- create a blackout to open a temporary hunting window;
+- transport blood through rival-controlled districts;
+- infiltrate a protected club where powers and feeding are forbidden;
+- recover a car whose trunk contains protected prey or evidence;
+- make a supernatural death look like a gang crime, robbery or crash;
+- follow an investigator to discover what the police or hunter knows;
+- sabotage a rival refuge without exposing vampires;
+- rescue a captured Retainer or compromised contact;
+- choose between delivering a blood reserve to a faction and consuming it to survive.
+
+Other vampires remain scarce, named and persistent. A vampire has a territory, hunting habits, contacts, debts and a nightly routine. Killing one can leave a district leaderless, trigger an investigation or open a political conflict rather than merely removing another enemy sprite.
 
 Acceptance:
 
 - missions support multiple solutions and persistent consequences;
 - no mission protects raw city geometry;
-- vehicles, factions, economy and vampire systems interact;
-- city feels like a systemic top-down crime game with original vampire consequences.
+- vehicles, feeding, evidence, factions, economy, the hunter and vampire powers interact;
+- campaign rewards include rights, services, debts and access as well as cash;
+- the city feels like a systemic top-down crime game whose consequences are unmistakably vampiric.
+
+## Cross-cutting presentation targets
+
+These details are not substitutes for the systemic milestones, but they must reinforce them:
+
+- feeding suppresses city audio and foregrounds heartbeat, breath and interruption cues;
+- drained bodies appear pale, still and abnormal without requiring graphic gore;
+- vampires appear as silence or absence inside Blood Sense;
+- recordings may show distortion rather than convenient invisibility;
+- radio and news react to disappearances, blood thefts, blackouts, attacks and implausible official explanations;
+- The First Estate discusses prey and cleanup through controlled institutional language;
+- The Gutter Crown marks routes, protected people and territory physically;
+- refuges visibly communicate sealed daylight protection, emergency exits and hidden reserves;
+- repeated overhunting changes pedestrian behaviour and nightlife presentation;
+- strong powers may create readable audiovisual anomalies that become evidence when witnessed or recorded.
+
+## First vampire-identity release cut
+
+The smallest coherent sequence that materially changes how Viceblood feels is:
+
+1. finish Milestone 15.1 territory foundation;
+2. add hunting rights, protected prey and discoverable poaching;
+3. add Quick bite / Full feed / Drain outcomes;
+4. separate Heat from evidence-driven Exposure and implement crime-as-an-alibi cleanup;
+5. expand Blood Sense and contextual Whisper without emotion systems;
+6. make the single hunter investigate concrete evidence and repeated habits;
+7. connect safehouses, stored blood and approaching dawn.
+
+This cut deliberately precedes broad weapon, vehicle and mission-content expansion. A new gun does not add as much vampire identity as changing what it means to hunt, feed and conceal the result.
 
 ## Later expansion candidates
 
-- second district;
+- second city or major outer district;
 - interiors and additional garages;
 - player-facing key remapping;
 - larger vehicle/weapon catalogues;
 - additional original supernatural rivals;
+- deeper contaminated-blood or vampire-blood rules only after the core Hunger loop works;
 - art/audio production pass;
 - full gamepad support;
 - multiplayer/networking remains deferred.
@@ -442,3 +798,5 @@ Acceptance:
 8. `PROJECT_BLUEPRINT.md` and detailed subsystem docs agree.
 9. Mission content references semantic sites rather than accidentally protecting raw geometry.
 10. Commercial-facing names receive trademark clearance before release.
+11. Vampire-facing systems do not introduce emotion/resonance blood mechanics.
+12. Heat, Exposure, hunting rights, evidence and hunter knowledge remain explainable from concrete world state.
