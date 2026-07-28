@@ -324,8 +324,9 @@ export class UIScene extends Phaser.Scene {
   }
 
   handleDomKeyDown(event) {
-    if (event.defaultPrevented || event.repeat || isTextEntryTarget(event.target)) return;
+    if (event.repeat || isTextEntryTarget(event.target)) return;
     const code = event.code;
+    if (event.defaultPrevented && code !== "Escape") return;
 
     // Let the browser activate focused buttons and links with Enter/Space. The
     // corresponding click handler owns those controls and must not be pre-empted.
