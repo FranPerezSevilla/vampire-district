@@ -1,6 +1,7 @@
 import { AI_STATES } from "../data/ai.js";
 import { COMBAT_STATES } from "../data/combat.js";
 import { LAYERS } from "../data/district.js";
+import { FEEDING_DEPTHS, feedingDepthLabel } from "../data/feeding.js";
 import { NPC_TYPES } from "../data/npcs.js";
 import { RawAudio } from "./RawAudioSystem.js";
 
@@ -99,33 +100,45 @@ export class WitnessSystem {
     feed.seenNotified = true;
     RawAudio.play("witnessWtf");
     for (const witness of witnesses) {
-      this.alarmWitness(witness, "a vampire drain", 28, {
+      this.alarmWitness(witness, "a vampire feeding", 28, {
         masqueradeRisk: true,
         reactionSeconds: 2.4,
         source: feed.npc
       });
     }
-    this.scene.lastActionText = `VEIL RISK: ${witnesses.length} witness(es) saw the drain. They freeze, then run to report.`;
+    this.scene.lastActionText = `VEIL RISK: ${witnesses.length} witness(es) saw the feeding. They freeze, then run to report.`;
   }
 
-  onDrainCompleted(victim, alreadyNotified = false) {
+  onFeedingResolved(victim, depth = FEEDING_DEPTHS.DRAIN, alreadyNotified = false) {
     if (!victim || victim.type === NPC_TYPES.RAT) return { witnesses: 0 };
     if (this.scene.currentLayer !== LAYERS.STREET) return { witnesses: 0 };
-    if (alreadyNotified) return { witnesses: victim.maxWitnesses || 1 };
+    if (alreadyNotified) return { witnesses: 1 };
 
-    const witnesses = this.witnessesSeeing(victim, this.scene.currentShadow() ? 105 : 155);
+    const radius = depth === FEEDING_DEPTHS.QUICK_BITE
+      ? (this.scene.currentShadow() ? 88 : 132)
+      : depth === FEEDING_DEPTHS.FULL_FEED
+        ? (this.scene.currentShadow() ? 98 : 146)
+        : (this.scene.currentShadow() ? 105 : 155);
+    const witnesses = this.witnessesSeeing(victim, radius);
     if (!witnesses.length) return { witnesses: 0 };
 
+    const severity = depth === FEEDING_DEPTHS.QUICK_BITE ? 20 : depth === FEEDING_DEPTHS.FULL_FEED ? 26 : 30;
+    const reactionSeconds = depth === FEEDING_DEPTHS.QUICK_BITE ? 1.45 : depth === FEEDING_DEPTHS.FULL_FEED ? 1.8 : 2.1;
+    const label = feedingDepthLabel(depth).toLowerCase();
     RawAudio.play("witnessWtf");
     for (const witness of witnesses) {
-      this.alarmWitness(witness, "a completed vampire drain", 30, {
+      this.alarmWitness(witness, `a vampire ${label}`, severity, {
         masqueradeRisk: true,
-        reactionSeconds: 2.1,
+        reactionSeconds,
         source: victim
       });
     }
-    this.scene.lastActionText = "VEIL RISK: witnesses saw the drained body. Stop them before they report.";
+    this.scene.lastActionText = `VEIL RISK: witnesses saw the ${label}. Stop them before they report.`;
     return { witnesses: witnesses.length };
+  }
+
+  onDrainCompleted(victim, alreadyNotified = false) {
+    return this.onFeedingResolved(victim, FEEDING_DEPTHS.DRAIN, alreadyNotified);
   }
 
   onMundaneViolence(victim, label, severity = 8) {

@@ -1,20 +1,24 @@
-# Contextual drain system
+# Contextual predator feeding system
 
-_Status: Milestone 4 implementation complete and integrated with Milestone 8 AI; browser regression and tuning remain pending._
+_Status: Milestone 4 eligibility complete; Milestone 15.5 feeding-depth implementation active in PR #43._
 
 ## Purpose
 
-Draining is a dedicated vampire action owned by the right mouse button. It no longer appears as an E interaction. The system distinguishes a vulnerable downed target from a standing target that can only be taken from behind while unaware.
+Feeding is a dedicated vampire action owned by the right mouse button. It never appears as an E interaction. The system distinguishes a vulnerable downed target from a standing target that can only be taken from behind while unaware, then lets the player choose how far to feed by releasing the held button.
 
 ## Authoritative files
 
 - `phaser/src/data/drain.js` — pure eligibility, awareness and target-selection rules.
-- `phaser/src/combat/DrainSystem.js` — right-button channel, runtime validation, feedback and heard-only reactions.
-- `phaser/src/systems/FeedingSystem.js` — channel progress, Hunger relief, completion and cancellation events.
-- `phaser/src/systems/AiStateSystem.js` — drain priority and downed-recovery suppression.
-- `phaser/src/input/input-runtime.js` — updates the drain system from the central input frame.
+- `phaser/src/data/feeding.js` — feeding thresholds, cumulative Hunger relief and victim/evidence outcomes.
+- `phaser/src/combat/DrainSystem.js` — right-button hold, runtime validation, progress feedback and heard-only reactions.
+- `phaser/src/systems/FeedingSystem.js` — progress authority, release resolution, incremental Hunger relief and events.
+- `phaser/src/systems/WitnessSystem.js` — active feeding sight and depth-specific witness response.
+- `phaser/src/systems/EvidenceSystemCore.js` — bite/blood/body evidence and unconscious-victim cleanup/discovery.
+- `phaser/src/factions/HuntingLawSystem.js` — territory, permission and protected-prey assessment for the actual feeding depth.
+- `phaser/src/systems/AiStateSystem.js` — feeding priority and downed-recovery suppression.
 - `tests/drain.test.js` — pure eligibility and priority tests.
-- `tests/ai.test.js` — recovery suppression and state-priority tests.
+- `tests/feeding-depth.test.js` — thresholds, outcomes and anti-farming Hunger arithmetic.
+- `tests/browser/feeding-depths.spec.js` — real Quick Bite → Full Feed → Drain browser loop.
 
 ## Input contract
 
@@ -28,118 +32,141 @@ Draining is a dedicated vampire action owned by the right mouse button. It no lo
 }
 ```
 
-A drain starts only when the right button is pressed and remains held. Releasing the button before completion cancels the channel. Browser context-menu suppression remains scoped to the game canvas.
+The action begins while right mouse is held on a valid target. Releasing resolves the deepest new threshold already reached:
+
+```text
+0.65 s   Quick Bite
+1.65 s   Full Feed
+3.00 s   Drain
+```
+
+Releasing before the first available threshold cancels with no Hunger reward. After a victim has already received a Quick Bite or Full Feed, a new hold resumes from that cumulative depth and only grants the remaining Hunger value. The same victim therefore cannot be farmed repeatedly.
+
+Browser context-menu suppression remains scoped to the game canvas.
+
+## Feeding outcomes
+
+### Quick Bite
+
+- `14` total Hunger relief;
+- living, usually conscious and briefly disoriented victim;
+- fresh bite evidence and partial memory;
+- no abandoned body and no blood stain;
+- may still be poaching or protected-prey harm.
+
+### Full Feed
+
+- `34` total Hunger relief, or only the incremental difference after a Quick Bite;
+- living unconscious/downed victim;
+- bite evidence plus one blood stain;
+- victim can be dragged, dropped or hidden with the evidence interactions;
+- a civilian who finds the victim can reveal latent political evidence.
+
+### Drain
+
+- `58` total Hunger relief, or only the remaining difference after shallower feeding;
+- dead victim and drained body;
+- bite/body evidence plus the strongest blood scene;
+- preserves the old lethal drain outcome as the deepest result.
+
+Rats retain one simplified one-second feed, restore `12` Hunger and remain exempt from faction hunting law.
 
 ## Eligibility
 
 ### Downed target
 
-A target in combat state `downed` is drainable:
+A target in combat state `downed` is feedable:
 
 - from any approach direction;
 - while inside the 34-unit start range;
 - while aimed at;
 - when no blocking geometry lies between player and target.
 
-The start range deliberately exceeds the 32-unit unarmed punch range. A target knocked down by a maximum-range punch must be immediately eligible for feeding without requiring a confusing extra step toward the body.
+The start range deliberately exceeds the 32-unit unarmed punch range, so a maximum-range knockdown is immediately usable.
 
 ### Standing target
 
-A standing human is drainable only when:
+A standing human is feedable only when:
 
 - inside the start range;
 - aligned with the player's aim;
 - the player lies inside the target's rear arc;
-- the target is not alarmed, chasing, attacking, reporting or otherwise aware of the player;
+- the target is not alarmed, chasing, attacking, reporting or otherwise aware;
 - the line between player and target is clear.
 
-An active hunter in hunt mode is considered aware. Police who are searching but have not seen the player may still be approached from behind.
+An active hunter in hunt mode is aware. Police who are searching but have not seen the player may still be approached from behind.
 
-### Rats
-
-Rats remain directly drainable within range and aim alignment. They do not use human awareness or rear-arc rules.
-
-## Selection priority
-
-When more than one target is valid:
+### Selection priority
 
 1. Downed targets.
 2. Rats.
 3. Standing rear-arc targets.
 
-Within the same category, distance and aim angle decide. The journalist receives only a very small tie-break bonus; it cannot override a clearly closer or better-aligned target.
+Within one category, distance and aim angle decide.
 
 ## AI and recovery priority
 
-A drain victim cannot simultaneously attack, chase or report. The AI resolver stops those lower-priority intents while `drainVictim` is active.
+A feeding victim cannot simultaneously attack, chase or report. Police and hunters retain timed downed recovery, but recovery is suspended while the feeding hold is active.
 
-Police and hunters have timed downed recovery, but recovery is suspended as soon as a valid drain channel starts:
+- Full Feed leaves them unconscious until their normal recovery time.
+- Recovery clears the runtime unconscious marker but preserves the historical bite/depth record.
+- Drain and ordinary death prevent recovery.
+- Civilians and other non-recovering types remain downed until another system resolves them.
 
-- releasing/cancelling after the timer has elapsed allows recovery on the next eligible update;
-- completing the drain marks the target permanently resolved;
-- killing the target also prevents recovery;
-- civilians, journalist and rooftop thug never recover even without a drain.
+## Interruption
 
-## Channel cancellation
+Feeding is interrupted by movement, damage, invalid geometry, range break, target/layer changes or world/UI locking.
 
-A right-click drain cancels when:
+The deterministic rule is:
 
-- the right button is released;
-- the player moves;
-- the player takes damage;
-- the target becomes unavailable;
-- the target changes layer;
-- distance exceeds the 42-unit break range;
-- blocking geometry separates player and target;
-- UI, dialogue, transition or world locking interrupts gameplay.
+- before a new threshold: cancel, no new reward;
+- after a new threshold: resolve the deepest threshold reached and record that the result was interrupted.
 
-Taking damage already cancels `FeedingSystem.active` through `PlayerDamageSystem`, so the same hit that raises Hunger also tears the player away from the victim.
+This avoids arbitrary loss of blood already taken while preserving readable risk.
 
-## Perception
+## Perception and evidence
 
-Visual witnesses continue to use the active-drain witness checks. A drain also emits a muffled struggle at start:
+Visual witnesses can react during the hold. A muffled struggle also causes nearby NPCs who only hear it to turn toward the source without immediately gaining perfect knowledge.
 
-- NPCs who see the drain use their normal visual response;
-- NPCs who only hear it turn toward the source and enter `WTF`;
-- hearing alone does not start pursuit or reporting;
-- the victim is excluded from witnessing its own drain;
-- confirmed sight later overrides a heard-only reaction.
+At resolution:
+
+- witness radius/severity increases from Quick Bite to Full Feed to Drain;
+- hunting law receives the real depth, victim outcome, memory and evidence profile;
+- protected prey overrides any general hunting permission;
+- evidence remains latent until a witness, protected marker, recovered victim/body or later investigation reveals it;
+- the Night Ledger records the depth and discovery state.
 
 ## Feedback
 
-- A valid target receives a compact `RMB · DRAIN` marker.
-- Downed candidates use a distinct ring from standing rear-drain candidates.
-- During the channel, a tether and `HOLD RMB` label remain visible.
-- An invalid right click briefly shows `NO VALID DRAIN`.
-- Existing feeding progress remains visible above the player.
-
-## Tutorial
-
-The rooftop blocker sequence teaches:
-
-1. aim and left-click four times to knock the thug down while reading his slow retaliation;
-2. aim at the downed thug;
-3. hold the right mouse button until the drain completes.
-
-The tutorial control mode permits primary attack and the abstract drain action. E is no longer used to drain. The thug has no recovery timer.
+- Valid targets show `RMB · FEED`.
+- The held action shows one compact progress bar with threshold markers.
+- Before a threshold it names the next result.
+- After a threshold it says what releasing will resolve and what continued holding reaches next.
+- There is no rhythm minigame and no automatic loss of control.
 
 ## Events
 
-Implemented events:
+```text
+feeding:right-click-started
+feeding:started
+feeding:threshold-reached
+feeding:resolved
+feeding:interrupted
+feeding:cancelled
+feeding:completed        compatibility event
+hunger:changed
+```
 
-- `feeding:right-click-started`
-- `feeding:started`
-- `feeding:cancelled`
-- `feeding:completed`
-- `hunger:changed`
-- `ai:state-changed`
-- `combat:entity-recovered`
+Events contain identifiers and serializable values rather than runtime objects.
 
-Events carry identifiers and plain values rather than system instances.
+## Persistence
 
-## Known limitations
+The victim's cumulative feeding depth, memory/evidence markers, unconscious state and linked hunting assessments are included in checkpoint and chunk-delta projections. A reload cannot restore the victim's blood or grant the same Hunger again.
 
-- Legacy E-based stun and kill options remain temporarily available outside the guided rooftop drain.
-- Drain hearing currently reuses the sensory reaction state through a runtime bridge rather than a final unified `PerceptionSystem` event contract.
-- Exact range, rear angle, aim assistance, recovery interruption and channel feel require browser playtesting.
-- Browser smoke tests are still manual.
+## Deliberate limits
+
+- no blood quality, emotion or resonance system;
+- no stored-blood inventory yet;
+- no autonomous district hunting-pressure simulation;
+- no feeding cinematics or timing minigame;
+- final audio, animation and threshold tuning still require manual playtesting.

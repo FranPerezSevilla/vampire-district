@@ -16,6 +16,12 @@ const CLASSIFICATION_LABELS = Object.freeze({
   exempt: "EXEMPT FEED"
 });
 
+const FEEDING_DEPTH_LABELS = Object.freeze({
+  quick_bite: "QUICK BITE",
+  full_feed: "FULL FEED",
+  drain: "DRAIN"
+});
+
 function plain(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
@@ -91,6 +97,7 @@ function incidentFromAssessment(assessment, huntingLaw, now) {
       ? "warning"
       : "stable";
   const authority = assessment.ownerLabel || (assessment.ownerId ? titleCase(assessment.ownerId) : "No claimant");
+  const feedingDepth = FEEDING_DEPTH_LABELS[assessment.feedingDepth] || "FEEDING";
   const status = political
     ? discoveryState === "known"
       ? "DISCOVERED"
@@ -105,7 +112,7 @@ function incidentFromAssessment(assessment, huntingLaw, now) {
     kind: "hunting",
     severity,
     title: CLASSIFICATION_LABELS[assessment.classification] || titleCase(assessment.classification),
-    detail: `${assessment.districtName || titleCase(assessment.districtId)} · ${authority}`,
+    detail: `${feedingDepth} · ${assessment.districtName || titleCase(assessment.districtId)} · ${authority}`,
     status
   };
 }

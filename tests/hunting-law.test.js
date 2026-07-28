@@ -171,12 +171,23 @@ test("latent poaching becomes known exactly once when the body is recovered", ()
   const assessment = huntingLaw.assessFeed({
     districtId: "civic-center",
     victim: { id: "poached-victim", type: "civilian" },
-    bodyEvidence: true,
+    feedingDepth: "full_feed",
+    victimOutcome: "unconscious",
+    victimAlive: true,
+    victimConscious: false,
+    memoryState: "fragmented",
+    bodyEvidence: false,
     biteEvidence: true,
     source: "unit-test"
   });
   assert.equal(assessment.classification, HUNTING_CLASSIFICATION.POACHING);
   assert.equal(assessment.currentDiscoveryState, HUNTING_DISCOVERY.LATENT);
+  assert.equal(assessment.feedingDepth, "full_feed");
+  assert.equal(assessment.victimOutcome, "unconscious");
+  assert.equal(assessment.victimAlive, true);
+  assert.equal(assessment.victimConscious, false);
+  assert.equal(assessment.bodyEvidence, false);
+  assert.equal(assessment.biteEvidence, true);
   assert.equal(discoveries.length, 0);
 
   setNow(4500);
@@ -225,6 +236,7 @@ test("version-three saves gain hunting-law state without losing territory or cam
   assert.equal(migrated.territory.districts["old-quarter"].changeCount, 2);
   assert.deepEqual(migrated.world.ownedVehicles, ["refuge_compact"]);
   assert.equal(migrated.world.flags.retained, true);
+  assert.equal(migrated.huntingLaw.version, 2);
   assert.deepEqual(migrated.huntingLaw.assessments, []);
   assert.deepEqual(migrated.huntingLaw.rights, {});
   assert.deepEqual(migrated.huntingLaw.protectedVictims, {});

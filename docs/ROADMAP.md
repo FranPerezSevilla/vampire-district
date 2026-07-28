@@ -357,7 +357,7 @@ Acceptance:
 
 ## Milestone 15 — Original factions, territory and hunting law
 
-**Status: 🔵 Active next phase**
+**Status: 🔵 Active — territory and hunting law complete; feeding depth in PR #43**
 
 The city becomes a vampire ecosystem only when territory controls access to prey, concealment services, safe routes and political consequences. Faction ownership must therefore affect how the player hunts, not merely recolour districts or alter a reputation number.
 
@@ -376,9 +376,9 @@ This phase deliberately excludes the full territory-war loop, faction campaigns,
 
 Reference: `MILESTONE_15_1_FACTIONS_TERRITORY.md`.
 
-### 15.2 Blood ownership, hunting rights and poaching — 🔵 Active in PR #42
+### 15.2 Blood ownership, hunting rights and poaching — ✅ Complete
 
-Every completed feeding action records its district, current owner, permission state, victim protection state and resulting evidence. The first implementation slice is active in PR #42.
+Every completed feeding action records its district, current owner, permission state, victim protection state and resulting evidence. The implementation shipped through PR #42.
 
 - legal feeding: covered by an explicit right, service or faction permission;
 - tolerated feeding: not formally permitted, but below the owner's enforcement threshold;
@@ -393,7 +393,7 @@ Faction distinction:
 
 The owner is not omniscient. Poaching is discovered through witnesses, cameras, marked/protected victims, recovered bodies, repeated patterns or informants.
 
-PR #42 also introduces the paused **Night Ledger**: one player-facing panel for faction relations, controlled districts, hunting rights, hidden/known violations, police pursuit, witnesses, evidence and recent incidents. It opens from a dedicated HUD icon or `L` and pauses the game while visible.
+PR #42 also delivered the paused **Night Ledger**: one player-facing panel for faction relations, controlled districts, hunting rights, hidden/known violations, police pursuit, witnesses, evidence and recent incidents. It opens from a dedicated HUD icon or `L` and pauses the game while visible.
 
 District hunting pressure progresses through low, medium, high and critical states. Excessive predation reduces lone pedestrians, closes nightlife, increases escorts/patrols and can create a temporary curfew or investigation. The player must not be able to farm one neighbourhood forever without changing it.
 
@@ -435,13 +435,13 @@ The First Estate controls clean institutional versions of this network. The Gutt
 
 ## Milestone 15.5 — Predator feeding and Hunger economy
 
-**Status: ⬜ Planned immediately after hunting-law contracts**
+**Status: 🔵 Active in PR #43**
 
 Feeding becomes the central predatory decision rather than a health pickup.
 
 ### Feeding depth
 
-The existing held right-click action gains clear thresholds while preserving direct control:
+PR #43 gives the existing held right-click action clear thresholds while preserving direct control:
 
 - **Quick bite**: small Hunger reduction, short exposure window, living victim, partial memory;
 - **Full feed**: substantial Hunger reduction, unconscious victim, visible marks and a scene that must be handled;

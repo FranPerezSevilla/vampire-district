@@ -298,6 +298,15 @@ export class CampaignCheckpointSystem {
       intercepted: Boolean(npc.intercepted),
       corpseDiscovered: Boolean(npc.corpseDiscovered),
       hasReported: Boolean(npc.hasReported),
+      feedingDepth: String(npc.feedingDepth || "none"),
+      feedingMemoryState: String(npc.feedingMemoryState || "none"),
+      feedingUnconscious: Boolean(npc.feedingUnconscious),
+      feedingBiteEvidence: Boolean(npc.feedingBiteEvidence),
+      feedingEvidenceDiscovered: Boolean(npc.feedingEvidenceDiscovered),
+      huntingAssessmentId: npc.huntingAssessmentId || null,
+      huntingAssessmentIds: [...new Set((Array.isArray(npc.huntingAssessmentIds) ? npc.huntingAssessmentIds : [])
+        .map(value => String(value || "").trim())
+        .filter(Boolean))],
       combat: {
         state: npc.combat?.state || COMBAT_STATES.ACTIVE,
         resilience: npc.combat?.resilience || 0,
@@ -362,6 +371,13 @@ export class CampaignCheckpointSystem {
       intercepted: false,
       corpseDiscovered: false,
       hasReported: false,
+      feedingDepth: "none",
+      feedingMemoryState: "none",
+      feedingUnconscious: false,
+      feedingBiteEvidence: false,
+      feedingEvidenceDiscovered: false,
+      huntingAssessmentId: null,
+      huntingAssessmentIds: [],
       combat: { state: COMBAT_STATES.ACTIVE, resilience: 0, maxResilience: 0 }
     };
     return {
@@ -458,6 +474,15 @@ export class CampaignCheckpointSystem {
     npc.intercepted = Boolean(state.intercepted);
     npc.corpseDiscovered = Boolean(state.corpseDiscovered);
     npc.hasReported = Boolean(state.hasReported);
+    npc.feedingDepth = String(state.feedingDepth || "none");
+    npc.feedingMemoryState = String(state.feedingMemoryState || "none");
+    npc.feedingUnconscious = Boolean(state.feedingUnconscious);
+    npc.feedingBiteEvidence = Boolean(state.feedingBiteEvidence);
+    npc.feedingEvidenceDiscovered = Boolean(state.feedingEvidenceDiscovered);
+    npc.huntingAssessmentId = state.huntingAssessmentId || null;
+    npc.huntingAssessmentIds = [...new Set((Array.isArray(state.huntingAssessmentIds) ? state.huntingAssessmentIds : [])
+      .map(value => String(value || "").trim())
+      .filter(Boolean))];
     npc.alarmed = false;
     npc.chasingPlayer = false;
     npc.enemyAttack = null;

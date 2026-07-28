@@ -251,6 +251,7 @@ export class AiStateSystem {
     combat.feedbackUntil = now + AI_RULES.recoveryStaggerMs;
     combat.lastHitBy = "recovery";
     npc.stunnedTimer = AI_RULES.recoveryStaggerMs / 1000;
+    npc.feedingUnconscious = false;
     npc.enemyAttack = null;
     npc.enemyAttackCooldownUntil = now + 900;
     npc.soundReactionTimer = 0;

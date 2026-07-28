@@ -99,6 +99,8 @@ test("a real drain is assessed as poaching and a recovered body discovers the vi
   expect(result.latent).toMatchObject({
     districtId: "civic-center",
     ownerId: "first_estate",
+    feedingDepth: "drain",
+    victimOutcome: "dead",
     classification: "poaching",
     politicalViolation: true,
     currentDiscoveryState: "latent",

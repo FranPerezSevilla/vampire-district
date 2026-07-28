@@ -26,7 +26,7 @@ The player holds the existing contextual right-click action and chooses when to 
 - substantial Hunger relief;
 - victim survives but becomes unconscious/downed;
 - visible bite and victim evidence remain;
-- the scene may need hiding, transport or cleanup;
+- the unconscious victim can be dragged, dropped or hidden through the existing evidence interactions;
 - higher interruption and discovery risk than Quick Bite.
 
 ### Drain
@@ -125,8 +125,9 @@ Relief is clamped to the current Hunger value. Rats remain exempt from faction h
 - each depth has a distinct Hunger value, victim outcome and evidence profile;
 - full hold preserves the existing lethal drain outcome;
 - interruption before the first threshold produces no feeding reward;
-- interruption after a threshold resolves or cancels according to one documented deterministic rule;
+- interruption before a new threshold cancels, while interruption after one resolves the deepest newly reached depth;
 - hunting law records the actual depth and evidence state;
+- checkpoint/chunk projections preserve cumulative victim depth so blood cannot be farmed after reload;
 - Night Ledger incidents distinguish the three outcomes;
 - feeding remains playable when campaign/faction services are absent;
 - unit, boot, campaign and systems suites remain green.

@@ -124,19 +124,19 @@ export class DrainSystem {
 
   updateActiveDrain(frame, active) {
     if (!frame?.worldEnabled) {
-      this.scene.feedingSystem.cancel("The drain stops when the world is interrupted.");
+      this.scene.feedingSystem.interrupt("world-interrupted", "The feeding stops when the world is interrupted.");
       return;
     }
     if (!frame.drainHeld) {
-      this.scene.feedingSystem.cancel("You release the victim before the drain is complete.");
+      this.scene.feedingSystem.release("input-release");
       return;
     }
     if (frame.hasMovementIntent) {
-      this.scene.feedingSystem.cancel("You move and break away before finishing the drain.");
+      this.scene.feedingSystem.interrupt("movement", "You move and break away from the victim.");
       return;
     }
     if (!this.activeTargetStillValid(active)) {
-      this.scene.feedingSystem.cancel("The victim is no longer in a valid draining position.");
+      this.scene.feedingSystem.interrupt("invalid-position", "The victim is no longer in a valid feeding position.");
     }
   }
 
@@ -224,13 +224,33 @@ export class DrainSystem {
     const active = this.scene.feedingSystem?.active;
     if (active?.source === "rightMouse" && active.npc) {
       const npc = active.npc;
-      this.graphics.lineStyle(2, 0xff3b50, 0.72);
+      const progress = this.scene.feedingSystem?.progress?.();
+      const ready = Boolean(progress?.ready);
+      const color = ready ? 0xffb02e : 0xff3b50;
+      this.graphics.lineStyle(2, color, 0.72);
       this.graphics.beginPath();
       this.graphics.moveTo(this.scene.player.x, this.scene.player.y);
       this.graphics.lineTo(npc.x, npc.y);
       this.graphics.strokePath();
-      this.graphics.lineStyle(2, 0xff3b50, 0.9).strokeCircle(npc.x, npc.y, 17);
-      this.label.setText("HOLD RMB").setPosition(npc.x, npc.y - 22).setVisible(true);
+      this.graphics.lineStyle(2, color, 0.9).strokeCircle(npc.x, npc.y, 17);
+
+      const barWidth = 58;
+      const barX = npc.x - barWidth / 2;
+      const barY = npc.y - 34;
+      const pct = Math.max(0, Math.min(1, Number(progress?.pct) || 0));
+      this.graphics.fillStyle(0x05060b, 0.88).fillRect(barX - 1, barY - 1, barWidth + 2, 7);
+      this.graphics.fillStyle(color, 0.82).fillRect(barX, barY, barWidth * pct, 5);
+      for (const threshold of Object.values(progress?.thresholds || {})) {
+        const markerPct = Math.max(0, Math.min(1, Number(threshold) / Math.max(0.001, Number(progress?.duration) || 1)));
+        const markerX = barX + barWidth * markerPct;
+        this.graphics.lineStyle(1, 0xf1e6ff, 0.62).lineBetween(markerX, barY - 1, markerX, barY + 6);
+      }
+
+      const nextText = progress?.nextLabel ? ` · HOLD FOR ${progress.nextLabel}` : "";
+      const text = progress?.ready
+        ? `RELEASE · ${progress.reachedLabel}${nextText}`
+        : `HOLD RMB · ${progress?.nextLabel || "DRAIN"}`;
+      this.label.setText(text).setPosition(npc.x, npc.y - 39).setVisible(true);
       return;
     }
 
@@ -240,7 +260,7 @@ export class DrainSystem {
       const color = downed ? 0xffb02e : 0xff3b50;
       this.graphics.lineStyle(2, color, 0.82).strokeCircle(npc.x, npc.y, downed ? 18 : 15);
       this.graphics.fillStyle(color, 0.08).fillCircle(npc.x, npc.y, downed ? 18 : 15);
-      this.label.setText("RMB · DRAIN").setPosition(npc.x, npc.y - 21).setVisible(true);
+      this.label.setText("RMB · FEED").setPosition(npc.x, npc.y - 21).setVisible(true);
       return;
     }
 

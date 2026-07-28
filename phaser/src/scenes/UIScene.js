@@ -572,7 +572,7 @@ export class UIScene extends Phaser.Scene {
         "Pause Menu",
         `<p><strong>Controls</strong><br>
            Movement: ${key("w", "W")}/${key("a", "A")}/${key("s", "S")}/${key("d", "D")} or arrows run by default · hold ${key("quiet", "SHIFT")} for quiet movement<br>
-           Combat: mouse aims · left-click uses equipped weapon · mouse wheel changes weapon · hold right-click to drain<br>
+           Combat: mouse aims · left-click uses equipped weapon · mouse wheel changes weapon · hold right-click to feed · release at a threshold or continue to Drain<br>
            Traversal: ${key("traverse", "SPACE")} near a route · Interact: ${key("interact", "E")} for dialogue, clues and evidence<br>
            Powers: ${key("dash", "Q")} Dash · ${key("whisper", "R")} Whisper · ${key("sense", "F")} Blood Sense · M Mission · L Night Ledger</p>
          <p><strong>Stats</strong></p><pre>${this.escapeHtml(this.statsText(pauseData))}</pre>
