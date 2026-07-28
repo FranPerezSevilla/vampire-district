@@ -66,7 +66,8 @@ Available systems include:
 - evidence, witnesses and exposure;
 - campaign wallet, reputation and save state;
 - persistent faction influence and ownership across all fourteen semantic districts;
-- feeding assessments for hunting rights, protected prey, poaching and evidence-driven discovery.
+- feeding assessments for hunting rights, protected prey, poaching and evidence-driven discovery;
+- paused Night Ledger for faction relations, hunting-law status, police pressure and recent incidents.
 
 The mission panel reports that no contract is active and publishes no objective marker.
 
@@ -110,6 +111,7 @@ Q               Dash
 R               Whisper
 F               Blood Sense
 M               mission panel (empty without a contract)
+L               paused Night Ledger: factions, hunting law and police pressure
 H               pause/help/accessibility
 ```
 

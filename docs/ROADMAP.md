@@ -393,6 +393,8 @@ Faction distinction:
 
 The owner is not omniscient. Poaching is discovered through witnesses, cameras, marked/protected victims, recovered bodies, repeated patterns or informants.
 
+PR #42 also introduces the paused **Night Ledger**: one player-facing panel for faction relations, controlled districts, hunting rights, hidden/known violations, police pursuit, witnesses, evidence and recent incidents. It opens from a dedicated HUD icon or `L` and pauses the game while visible.
+
 District hunting pressure progresses through low, medium, high and critical states. Excessive predation reduces lone pedestrians, closes nightlife, increases escorts/patrols and can create a temporary curfew or investigation. The player must not be able to farm one neighbourhood forever without changing it.
 
 ### 15.3 Favours, blood debt and vampire services — ⬜ Planned

@@ -93,6 +93,21 @@ PROTECTED PREY · GUTTER CROWN
 
 Ordinary legal/unclaimed feeding may remain silent unless diagnostics or accessibility settings request full feedback.
 
+## Night Ledger
+
+Political and police consequences remain available through a dedicated paused panel instead of relying only on transient toasts.
+
+The `L` key or the Ledger HUD button opens a modal overlay and pauses `GameScene`. The panel contains:
+
+- First Estate and Gutter Crown reputation tiers and values;
+- controlled districts and active hunting rights per faction;
+- hidden and discovered political violations;
+- independent House/contact count without inventing one global third faction;
+- current police alert, Exposure, officers, cruisers, witnesses, reports, discovered bodies and evidence;
+- a recent incident stream combining hunting, territory, reputation and active police pressure.
+
+The Ledger button exposes a compact badge. Yellow indicates hidden violations or a police search; red indicates discovered political violations or active pursuit/air support. Opening the panel never advances simulation, and closing it resumes the same frame state.
+
 ## Deliberate limits
 
 - no Quick Bite / Full Feed / Drain thresholds yet;
@@ -111,5 +126,6 @@ Ordinary legal/unclaimed feeding may remain silent unless diagnostics or accessi
 - contested/independent territory is not falsely attributed to one faction;
 - discovery is based on explicit evidence inputs rather than omniscience;
 - assessments survive save/load without storing Phaser or DOM objects;
+- Night Ledger opens by button or `L`, pauses gameplay, exposes faction/police state and resumes cleanly;
 - feeding remains fully playable when no faction permission data exists;
 - unit, boot, campaign and systems suites remain green.
