@@ -40,6 +40,38 @@ jobs:
         with:
           node-version: 22
 
+      - name: Assemble and verify Base64 payload
+        if: steps.gate.outputs.apply == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat \
+            .github/territory-payload.b64 \
+            .github/territory-payload.part-01 \
+            .github/territory-payload.part-02 \
+            > /tmp/territory.b64
+          test "$(wc -c < /tmp/territory.b64)" = '20424'
+          echo '9444f62f96d9dd6f65c08e672aca24589cd41adb2f43cb05c49b94ea0869d1de  /tmp/territory.b64' | sha256sum -c -
+
+      - name: Decode and verify gzip payload
+        if: steps.gate.outputs.apply == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d /tmp/territory.b64 > /tmp/territory.patch.gz
+          test "$(wc -c < /tmp/territory.patch.gz)" = '15318'
+          echo '1d486722ee98a65976a2cf9068db564fde4aa2f59189ddea0d77c6a33622afaf  /tmp/territory.patch.gz' | sha256sum -c -
+          gzip -t /tmp/territory.patch.gz
+
+      - name: Expand and verify territory patch
+        if: steps.gate.outputs.apply == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          gzip -dc /tmp/territory.patch.gz > /tmp/territory.patch
+          test "$(wc -c < /tmp/territory.patch)" = '58203'
+          echo '883193f385c3a8c181aae641a7c1017ca37f5243f0d26a2835dae0c07419802e  /tmp/territory.patch' | sha256sum -c -
+
       - name: Apply territory patch
         if: steps.gate.outputs.apply == 'true'
         shell: bash
@@ -48,11 +80,7 @@ jobs:
           workflow=.github/workflows/temporary-territory-source-snapshot.yml
           cp "$workflow" /tmp/territory-workflow.yml
           rm -f "$workflow"
-          cat \
-            .github/territory-payload.b64 \
-            .github/territory-payload.part-01 \
-            .github/territory-payload.part-02 \
-            | base64 -d | gzip -dc > /tmp/territory.patch
+          git apply --check /tmp/territory.patch
           git apply /tmp/territory.patch
           rm -f \
             .github/territory-payload.b64 \
