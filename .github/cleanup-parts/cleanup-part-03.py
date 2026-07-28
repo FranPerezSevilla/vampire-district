@@ -86,7 +86,7 @@ test("active product surfaces use Viceblood and expose no legacy-prototype link"
 test("retired product and faction names survive only in explicit compatibility records", async () => {
   const violations = [];
   for (const file of await trackedTextFiles()) {
-    const path = relative(ROOT, file).replaceAll("\\", "/");
+    const path = relative(ROOT, file).split(String.fromCharCode(92)).join("/");
     if (ALLOWED_HISTORICAL_TERM_FILES.has(path)) continue;
     const content = await readFile(file, "utf8");
     if (/Vampire District|Night Blood District|Bloodnight District|bloodnight-|Blackglass Directorate|Red Assembly/i.test(content)) {
