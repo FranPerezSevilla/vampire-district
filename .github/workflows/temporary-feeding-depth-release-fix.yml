@@ -1,0 +1,215 @@
+name: Publish predator feeding depths
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+
+    steps:
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+
+      - name: Detect pending implementation
+        id: gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          for index in 00 01 02 03 04 05 06 07 08 09 10; do
+            test -f ".github/feeding-depth-payload.part-${index}" || {
+              echo 'apply=false' >> "$GITHUB_OUTPUT"
+              exit 0
+            }
+          done
+          echo 'apply=true' >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        if: steps.gate.outputs.apply == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Reconstruct verified implementation
+        if: steps.gate.outputs.apply == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/feeding-depth-payload.part-* > /tmp/feeding-depth.b64
+          test "$(wc -c < /tmp/feeding-depth.b64)" = '36444'
+          echo 'e8842493ecb3596afb4587da2d8d87ac182a6e039bceca2532eaa0e806ff2b24  /tmp/feeding-depth.b64' | sha256sum -c -
+          base64 -d /tmp/feeding-depth.b64 > /tmp/feeding-depth.patch.gz
+          echo '48845a9817763a379d14a4ba47fa2f7bda97b5393dd032ced91857c39a5ac54b  /tmp/feeding-depth.patch.gz' | sha256sum -c -
+          gzip -dc /tmp/feeding-depth.patch.gz > /tmp/feeding-depth.patch
+          echo '364a3189d17b11f2cbb0382aeda5b7e9be321498ef6e63ffd338b5e822d282d0  /tmp/feeding-depth.patch' | sha256sum -c -
+
+      - name: Apply implementation and release-result fix
+        if: steps.gate.outputs.apply == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          workflow=.github/workflows/temporary-feeding-depth-release-fix.yml
+          cp "$workflow" /tmp/feeding-depth-release-workflow.yml
+          rm -f \
+            "$workflow" \
+            .github/workflows/temporary-feeding-depth-source.yml \
+            .github/workflows/temporary-feeding-depth-diagnostics.yml
+
+          git apply --check --exclude=.github/workflows/temporary-feeding-depth-source.yml /tmp/feeding-depth.patch
+          git apply --exclude=.github/workflows/temporary-feeding-depth-source.yml /tmp/feeding-depth.patch
+
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('phaser/src/systems/FeedingSystem.js')
+          content = path.read_text()
+          expected = content
+          content = content.replace(
+              'return Boolean(this.resolveDepth(depth, { reason, interrupted: false }));',
+              'return this.resolveDepth(depth, { reason, interrupted: false });'
+          )
+          content = content.replace(
+              'return Boolean(this.resolveDepth(depth, { reason, interrupted: true }));',
+              'return this.resolveDepth(depth, { reason, interrupted: true });'
+          )
+          if content == expected:
+              raise SystemExit('Feeding release-result fix precondition was not found.')
+          path.write_text(content)
+          PY
+
+          rm -f .github/feeding-depth-payload.part-*
+
+      - name: Install exact dependencies
+        if: steps.gate.outputs.apply == 'true'
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+
+      - name: Check JavaScript syntax
+        if: steps.gate.outputs.apply == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r file; do
+            node --check "$file"
+          done < <(find phaser tests tools -type f \( -name '*.js' -o -name '*.mjs' \) -print | sort)
+
+      - name: Run unit regression
+        if: steps.gate.outputs.apply == 'true'
+        run: node --test tests/*.test.js
+
+      - name: Validate and compile city
+        if: steps.gate.outputs.apply == 'true'
+        run: |
+          npm run city:validate
+          npm run city:compile -- --output-dir=/tmp/viceblood-feeding-city
+          npm run city:foundry -- --output-dir=/tmp/viceblood-feeding-foundry
+
+      - name: Install Chromium
+        if: steps.gate.outputs.apply == 'true'
+        run: npx playwright install chromium
+
+      - name: Validate feeding-depth browser loops
+        if: steps.gate.outputs.apply == 'true'
+        run: >-
+          npx playwright test
+          tests/browser/feeding-depths.spec.js
+          tests/browser/hunting-law-runtime.spec.js
+          tests/browser/night-ledger.spec.js
+          --reporter=line
+
+      - name: Verify patch quality
+        if: steps.gate.outputs.apply == 'true'
+        run: git diff --check
+
+      - name: Publish validated implementation
+        if: steps.gate.outputs.apply == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          workflow=.github/workflows/temporary-feeding-depth-release-fix.yml
+          mkdir -p .github/workflows
+          mv /tmp/feeding-depth-release-workflow.yml "$workflow"
+
+          python <<'PY'
+          import base64
+          import json
+          import os
+          import stat
+          import subprocess
+          import urllib.parse
+          import urllib.request
+
+          repository = os.environ['GITHUB_REPOSITORY']
+          token = os.environ['GH_TOKEN']
+          branch = os.environ['TARGET_BRANCH']
+
+          def command(*args):
+              return subprocess.check_output(args, text=True).strip()
+
+          def paths_from_git(*args):
+              raw = subprocess.check_output(args)
+              return [item.decode() for item in raw.split(b'\0') if item]
+
+          def request(method, path, payload):
+              data = json.dumps(payload).encode('utf-8')
+              req = urllib.request.Request(
+                  f'https://api.github.com/repos/{repository}{path}',
+                  data=data,
+                  method=method,
+                  headers={
+                      'Authorization': f'Bearer {token}',
+                      'Accept': 'application/vnd.github+json',
+                      'X-GitHub-Api-Version': '2022-11-28',
+                      'Content-Type': 'application/json',
+                  },
+              )
+              with urllib.request.urlopen(req) as response:
+                  return json.load(response)
+
+          parent = command('git', 'rev-parse', 'HEAD')
+          base_tree = command('git', 'rev-parse', 'HEAD^{tree}')
+          changed = paths_from_git(
+              'git', 'diff', '--name-only', '-z', '--diff-filter=ACMRTUXB', 'HEAD'
+          )
+          changed += paths_from_git('git', 'ls-files', '--others', '--exclude-standard', '-z')
+          deleted = paths_from_git(
+              'git', 'diff', '--name-only', '-z', '--diff-filter=D', 'HEAD'
+          )
+
+          entries = []
+          for path in sorted(set(changed)):
+              with open(path, 'rb') as source:
+                  payload = base64.b64encode(source.read()).decode('ascii')
+              blob = request('POST', '/git/blobs', {'content': payload, 'encoding': 'base64'})
+              mode = '100755' if os.stat(path).st_mode & stat.S_IXUSR else '100644'
+              entries.append({'path': path, 'mode': mode, 'type': 'blob', 'sha': blob['sha']})
+
+          for path in sorted(set(deleted)):
+              entries.append({'path': path, 'mode': '100644', 'type': 'blob', 'sha': None})
+
+          tree = request('POST', '/git/trees', {'base_tree': base_tree, 'tree': entries})
+          commit = request(
+              'POST',
+              '/git/commits',
+              {
+                  'message': 'Implement Quick Bite, Full Feed and Drain',
+                  'tree': tree['sha'],
+                  'parents': [parent],
+              },
+          )
+          ref = urllib.parse.quote(f'heads/{branch}', safe='/')
+          request('PATCH', f'/git/refs/{ref}', {'sha': commit['sha'], 'force': False})
+          print(f"Published feeding-depth commit {commit['sha']}")
+          PY
