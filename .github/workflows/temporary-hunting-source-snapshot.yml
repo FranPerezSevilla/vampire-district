@@ -26,14 +26,22 @@ jobs:
         id: gate
         shell: bash
         run: |
-          if [ -f .github/hunting-law-payload.part-01 ] \
-            && [ -f .github/hunting-law-payload.part-02 ] \
-            && [ -f .github/hunting-law-payload.part-03 ]; then
-            echo 'apply=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'apply=false' >> "$GITHUB_OUTPUT"
-            echo 'Hunting-law implementation payload already consumed.'
-          fi
+          required=(
+            .github/hunting-law-payload.part-01
+            .github/hunting-law-payload.part-02-1
+            .github/hunting-law-payload.part-02-2
+            .github/hunting-law-payload.part-02-3
+            .github/hunting-law-payload.part-02-4
+            .github/hunting-law-payload.part-03
+          )
+          for file in "${required[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo 'apply=false' >> "$GITHUB_OUTPUT"
+              echo "Missing payload block: $file"
+              exit 0
+            fi
+          done
+          echo 'apply=true' >> "$GITHUB_OUTPUT"
 
       - name: Set up Node.js
         if: steps.gate.outputs.apply == 'true'
@@ -48,7 +56,10 @@ jobs:
           set -euo pipefail
           cat \
             .github/hunting-law-payload.part-01 \
-            .github/hunting-law-payload.part-02 \
+            .github/hunting-law-payload.part-02-1 \
+            .github/hunting-law-payload.part-02-2 \
+            .github/hunting-law-payload.part-02-3 \
+            .github/hunting-law-payload.part-02-4 \
             .github/hunting-law-payload.part-03 \
             > /tmp/hunting-law.b64
           test "$(wc -c < /tmp/hunting-law.b64)" = '22652'
@@ -76,6 +87,10 @@ jobs:
           rm -f \
             .github/hunting-law-payload.part-01 \
             .github/hunting-law-payload.part-02 \
+            .github/hunting-law-payload.part-02-1 \
+            .github/hunting-law-payload.part-02-2 \
+            .github/hunting-law-payload.part-02-3 \
+            .github/hunting-law-payload.part-02-4 \
             .github/hunting-law-payload.part-03
 
       - name: Install exact dependencies
