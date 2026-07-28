@@ -1,6 +1,6 @@
 # Project snapshot
 
-_Last updated: 2026-07-24_
+_Last updated: 2026-07-28_
 
 Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) first for the canonical project-wide map. This snapshot summarizes the current playable state, persistence boundaries and immediate priority.
 
@@ -48,7 +48,7 @@ The current foundation provides:
 - `10 × 8` asynchronous chunk streaming, district packs and dormant simulation;
 - macro traffic and ten pooled civilian traffic proxies;
 - motorized police pursuit, partial roadblock and crew transfer to foot AI;
-- 276 passing unit tests plus browser boot/systems/campaign domains.
+- 291 passing unit tests with the Milestone 15.1 foundation, plus browser boot/systems/campaign domains.
 
 Production remains persistent missionless free roam. Archived mission definitions are explicit framework fixtures only.
 
@@ -64,7 +64,8 @@ Available systems include:
 - civilian traffic and pedestrians;
 - foot and motorized police;
 - evidence, witnesses and exposure;
-- campaign wallet, reputation and save state.
+- campaign wallet, reputation and save state;
+- persistent faction influence and ownership across all fourteen semantic districts.
 
 The mission panel reports that no contract is active and publishes no objective marker.
 
@@ -83,6 +84,7 @@ Preserved:
 
 - cash and ledger;
 - reputation;
+- district ownership, influence and territory change counters;
 - inventory;
 - authored vehicle ownership/condition/trunks;
 - unlocked refuges;
@@ -270,9 +272,10 @@ TrafficImpactConsequencesSystem
 MotorizedPoliceSystem
 PedestrianSystem
 normal gameplay frame
+TerritoryRuntimeSystem
 ```
 
-Vehicle maintenance and campaign transactions remain event-driven outside the frame loop.
+Vehicle maintenance and campaign transactions remain event-driven outside the frame loop. `TerritoryRuntimeSystem` observes the final player position after the gameplay frame and publishes district-entry feedback without owning movement.
 
 ## Testing state
 
@@ -294,7 +297,8 @@ The reset adds coverage for:
 - no campaign-entry modal, mission board or authored tutorial;
 - no objective marker;
 - retired mission actors inactive and unpinned;
-- no protected Old Quarter or fixed compiler landmarks.
+- no protected Old Quarter or fixed compiler landmarks;
+- fourteen migration-safe territory records and semantic district-entry feedback.
 
 Mission-specific browser golden paths are removed because those contracts are no longer production content.
 
@@ -307,6 +311,7 @@ Mission-specific browser golden paths are removed because those contracts are no
 - Enter owns vehicle entry/exit;
 - Space owns traversal/handbrake;
 - campaign persistence remains active with zero missions;
+- territory ownership is derived from bounded influence and never duplicated in mission data;
 - mission definitions are explicit content, not hidden defaults;
 - missions cannot permanently constrain city topology;
 - city geometry is compiler-generated from semantic sites and a road graph;
@@ -324,12 +329,12 @@ Mission-specific browser golden paths are removed because those contracts are no
 2. True curved streets require robust arbitrary-angle offset geometry for lanes, curbs and sidewalks.
 3. Future polygonal ordinary parcels need collision and streaming support beyond rectangular bounds.
 4. Landmark campuses must remain dense and urban rather than empty.
-5. The playable build has no authored narrative content while the new city foundation stabilizes.
+5. The playable build has no authored narrative content while faction territory consumers are being connected.
 6. Browser-system regression time is increasing.
 7. Commercial-facing names still require trademark clearance.
 
 ## Immediate priority
 
-With road graph geometry accepted, proceed to **original factions and territory** while keeping city changes semantic and compiler-driven.
+Complete **Milestone 15.1 faction territory foundation**, then connect stable site, patrol and supplier consumers in Milestone 15.2.
 
 Future geometry work may add arbitrary-angle curves and polygonal ordinary parcels, but must preserve graph IDs, landmark sites, traffic/police integration and the hard no-overlap contracts.

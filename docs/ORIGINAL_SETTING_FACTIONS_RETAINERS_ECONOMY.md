@@ -137,6 +137,14 @@ Rules:
 
 Visual language varies by House. Their shared identifier is the absence of First Estate or Gutter Crown markings, not one universal uniform.
 
+## Territory implementation foundation
+
+Milestone 15.1 gives every accepted City Topology V2 district one persistent territory record. The First Estate and The Gutter Crown receive bounded `0–100` influence values; ownership is derived only when one faction reaches the control threshold and leads clearly. Old Quarter and Canal East begin contested.
+
+The runtime uses semantic district IDs to publish entry feedback and derive hostility/access from the current owner's faction reputation. Independent Houses do not share a global territory or reputation value. Future missions, patrols, suppliers and safehouses consume territory events rather than writing campaign state directly.
+
+Reference: `MILESTONE_15_1_FACTIONS_TERRITORY.md`.
+
 ## Reputation model
 
 Do not use one global morality bar.

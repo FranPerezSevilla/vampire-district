@@ -15,6 +15,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Functional specification](FUNCTIONAL_SPEC.md) — intended player experience and gameplay rules.
 - [Faction naming](FACTION_NAMING.md) — canonical names, retired aliases, technical IDs and naming guardrails for The First Estate, The Gutter Crown and the independent Houses.
 - [Original setting, factions, retainers and economy](ORIGINAL_SETTING_FACTIONS_RETAINERS_ECONOMY.md) — original-IP guardrails, factions, Retainers, weapon slots, safehouses, ammunition and cash economy.
+- [Milestone 15.1 faction territory](MILESTONE_15_1_FACTIONS_TERRITORY.md) — canonical faction data, district ownership/influence, relationship policy and territory events.
 - [Campaign foundation](CAMPAIGN_FOUNDATION.md) — versioned state, MissionRunner authority, cash, reputation and safe checkpoints; authored contracts are currently unregistered.
 - [Historical mission flow](MISSION_FLOW.md) — archived journalist vertical-slice ordering; not registered in the production build.
 - [Milestone 11 status](MILESTONE_11_STATUS.md) — campaign-foundation acceptance record; mission content status is historical.

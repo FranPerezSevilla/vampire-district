@@ -88,7 +88,7 @@ mission-specific world adapter / TaskRevealSystem / HUD / TutorialDirector
 
 The compatibility `step` exposed by `MissionSystem` is derived from current objective metadata. It is not a second mutable progression value.
 
-## Campaign state version 2
+## Campaign state version 3
 
 Current storage key:
 
@@ -96,7 +96,7 @@ Current storage key:
 viceblood-campaign-v1
 ```
 
-The historical `vampire-district-campaign-v1` key is read only as a one-time compatibility alias. A valid old save is rewritten to the Viceblood key and the retired key is removed. The stored schema version remains `2`.
+The historical `vampire-district-campaign-v1` key is read only as a one-time compatibility alias. A valid old save is rewritten to the Viceblood key and the retired key is removed. The stored schema version is `3`. Version `2` saves receive the canonical fourteen-district territory collection without losing any existing domain.
 
 Top-level structure:
 
@@ -113,6 +113,10 @@ Top-level structure:
     latest
   },
   reputation,
+  territory: {
+    version,
+    districts
+  },
   inventory,
   world,
   ledger,
@@ -122,10 +126,17 @@ Top-level structure:
 
 The state contains only JSON values. Phaser containers, functions, DOM nodes, event emitters and circular references are prohibited.
 
+
+### Territory state
+
+Each semantic district stores bounded First Estate and Gutter Crown influence, derived owner/status, last-change timestamp and change count. Independent Houses are not collapsed into a global faction value. Territory mutations are owned by `TerritorySystem` and emit campaign events for future mission and economy consumers.
+
 ### Migration
 
 - Version `0` is treated as the earlier unschematized prototype shape.
 - Version `1` retains cash, mission, reputation, inventory and world state, then receives the checkpoint collection and sequence.
+- Version `2` retains every existing domain and receives the territory collection for all fourteen City Topology V2 district IDs.
+- Territory owner/status labels are recalculated from bounded faction influence instead of trusting arbitrary saved values.
 - A newer unsupported version fails explicitly.
 - Corrupt JSON can fail strictly during import or fall back to a fresh state during normal boot.
 - An old opening-mission record without a checkpoint can synthesize a conservative safe checkpoint at the next authored objective boundary.
