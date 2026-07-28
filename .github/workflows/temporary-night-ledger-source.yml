@@ -78,6 +78,11 @@ jobs:
           git apply --check --exclude="$workflow" /tmp/night-ledger.patch
           git apply --exclude="$workflow" /tmp/night-ledger.patch
           rm -f .github/night-ledger-payload.part-*
+          python <<'PY'
+          from pathlib import Path
+          path = Path('phaser/styles.css')
+          path.write_text(path.read_text().rstrip() + '\n')
+          PY
 
       - name: Install exact dependencies
         if: steps.gate.outputs.apply == 'true'
