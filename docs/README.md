@@ -1,4 +1,4 @@
-# Vampire District documentation
+# Viceblood documentation
 
 This directory is the project source of truth for design, implementation and planning.
 
@@ -13,6 +13,7 @@ This directory is the project source of truth for design, implementation and pla
 
 - [Visual art bible](VISUAL_ART_BIBLE.md) — classic urban gothic-punk direction, palette, lighting and art-test criteria.
 - [Functional specification](FUNCTIONAL_SPEC.md) — intended player experience and gameplay rules.
+- [Faction naming](FACTION_NAMING.md) — canonical names, retired aliases, technical IDs and naming guardrails for The First Estate, The Gutter Crown and the independent Houses.
 - [Original setting, factions, retainers and economy](ORIGINAL_SETTING_FACTIONS_RETAINERS_ECONOMY.md) — original-IP guardrails, factions, Retainers, weapon slots, safehouses, ammunition and cash economy.
 - [Campaign foundation](CAMPAIGN_FOUNDATION.md) — versioned state, MissionRunner authority, cash, reputation and safe checkpoints; authored contracts are currently unregistered.
 - [Historical mission flow](MISSION_FLOW.md) — archived journalist vertical-slice ordering; not registered in the production build.
