@@ -15,27 +15,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Compact branding and legacy audit
+      - name: Build branding and legacy audit report
         shell: bash
         run: |
           set -euo pipefail
+          report=branding-audit-report.txt
+          : > "$report"
 
-          echo '===== VAMPIRE DISTRICT BRANDING OCCURRENCES ====='
-          git grep -n -I -i -E 'vampire[ _-]+district' -- . || true
+          {
+            echo '===== VAMPIRE DISTRICT BRANDING OCCURRENCES ====='
+            git grep -n -I -i -E 'vampire[ _-]+district' -- . || true
 
-          echo '===== PROTOTYPE AND LEGACY REFERENCES ====='
-          git grep -n -I -i -E 'original prototype|prototype original|legacy prototype|old prototype|prototype link|legacy/|/legacy|prototype/' -- . || true
+            echo '===== PROTOTYPE AND LEGACY REFERENCES ====='
+            git grep -n -I -i -E 'original prototype|prototype original|legacy prototype|old prototype|prototype link|legacy/|/legacy|prototype/' -- . || true
 
-          echo '===== OLD-SLUG / PROTOTYPE URLS AND HREFS ====='
-          git grep -n -I -i -E '(https?://[^ ]*(vampire-district|prototype|legacy)|href=[^ >]*(vampire-district|prototype|legacy))' -- . || true
+            echo '===== OLD-SLUG / PROTOTYPE URLS AND HREFS ====='
+            git grep -n -I -i -E '(https?://[^ ]*(vampire-district|prototype|legacy)|href=[^ >]*(vampire-district|prototype|legacy))' -- . || true
 
-          echo '===== SUSPICIOUS FILENAMES ====='
-          git ls-files | grep -i -E '(^|/)(legacy|old|prototype|original)(/|[-_.])|vampire[-_ ]district' || true
+            echo '===== SUSPICIOUS FILENAMES ====='
+            git ls-files | grep -i -E '(^|/)(legacy|old|prototype|original)(/|[-_.])|vampire[-_ ]district' || true
 
-          echo '===== HTML LINKS ====='
-          git grep -n -I -i -E '(href|src)=["'"'][^"'"']+["'"']' -- '*.html' || true
+            echo '===== HTML LINKS ====='
+            git grep -n -I -i -E '(href|src)=["'"'][^"'"']+["'"']' -- '*.html' || true
 
-          echo '===== POTENTIALLY UNUSED LEGACY ENTRY FILES ====='
-          for candidate in prototype.html original.html legacy.html index-legacy.html legacy/index.html phaser/legacy/index.html; do
-            if [ -e "$candidate" ]; then echo "$candidate"; fi
-          done
+            echo '===== POTENTIALLY UNUSED LEGACY ENTRY FILES ====='
+            for candidate in prototype.html original.html legacy.html index-legacy.html legacy/index.html phaser/legacy/index.html; do
+              if [ -e "$candidate" ]; then echo "$candidate"; fi
+            done
+          } >> "$report"
+
+          wc -l "$report"
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: viceblood-branding-audit
+          path: branding-audit-report.txt
+          if-no-files-found: error
+          retention-days: 2
