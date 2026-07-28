@@ -2,6 +2,7 @@ import { installMotorizedPoliceLocalPolicy } from "../police/MotorizedPoliceLoca
 import { MotorizedPoliceSystem } from "../police/MotorizedPoliceSystem.js";
 import { PedestrianSystem } from "../systems/PedestrianSystem.js";
 import { StreetFurnitureSystem } from "../systems/StreetFurnitureSystem.js";
+import { installBuildingSidewalkClearancePolicy } from "../streaming/BuildingSidewalkClearancePolicy.js";
 import { ChunkStreamSystem } from "../streaming/ChunkStreamSystem.js";
 import { DistrictPackSystem } from "../streaming/DistrictPackSystem.js";
 import { DistantSimulationSystem } from "../streaming/DistantSimulationSystem.js";
@@ -12,6 +13,7 @@ import { TrafficImpactConsequencesSystem } from "../streaming/TrafficImpactConse
 import { TrafficLocalBehaviorSystem } from "../streaming/TrafficLocalBehaviorSystem.js";
 import { TrafficMaterializationSystem } from "../streaming/TrafficMaterializationSystem.js";
 import { TrafficPhysicalConsequencesSystem } from "../streaming/TrafficPhysicalConsequencesSystem.js";
+import { installVehicleCollisionSofteningPolicy } from "../vehicles/VehicleCollisionSofteningPolicy.js";
 import { VehicleSystem } from "../vehicles/VehicleSystem.js";
 import { GameplayRuntime as GameplayRuntimeCore } from "./GameplayRuntimeCore.js";
 
@@ -33,6 +35,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.diagnostics.claim("TrafficLocalBehaviorSystem.update", "TrafficLocalBehaviorSystem");
     this.diagnostics.claim("TrafficPhysicalConsequencesSystem.update", "TrafficPhysicalConsequencesSystem");
     this.diagnostics.claim("TrafficImpactConsequencesSystem.update", "TrafficImpactConsequencesSystem");
+    this.diagnostics.claim("VehicleCollisionSofteningPolicy.updateDriving", "VehicleCollisionSofteningPolicy");
     this.diagnostics.claim("MotorizedPoliceSystem.update", "MotorizedPoliceSystem");
     this.diagnostics.claim("VehicleSystem.updateDriving", "VehicleSystem");
     this.diagnostics.claim("VehicleSystem.enterVehicle", "VehicleSystem");
@@ -47,6 +50,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.diagnostics.registerSystem("TrafficLocalBehaviorSystem");
     this.diagnostics.registerSystem("TrafficPhysicalConsequencesSystem");
     this.diagnostics.registerSystem("TrafficImpactConsequencesSystem");
+    this.diagnostics.registerSystem("VehicleCollisionSofteningPolicy");
     this.diagnostics.registerSystem("MotorizedPoliceSystem");
     this.diagnostics.registerSystem("VehicleSystem");
     this.diagnostics.registerSystem("PedestrianSystem");
@@ -56,6 +60,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
   constructor(scene) {
     super(scene);
     scene.cityStreamSystem = new ChunkStreamSystem(scene);
+    scene.buildingSidewalkClearancePolicy = installBuildingSidewalkClearancePolicy(scene);
     scene.pedestrianSystem = new PedestrianSystem(scene);
     scene.streetFurnitureSystem = new StreetFurnitureSystem(scene, scene.campaignSystem);
     scene.vehicleSystem = new VehicleSystem(scene, scene.campaignSystem);
@@ -68,6 +73,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.trafficLocalBehaviorSystem = new TrafficLocalBehaviorSystem(scene);
     scene.trafficPhysicalConsequencesSystem = new TrafficPhysicalConsequencesSystem(scene);
     scene.trafficImpactConsequencesSystem = new TrafficImpactConsequencesSystem(scene);
+    scene.vehicleCollisionSofteningPolicy = installVehicleCollisionSofteningPolicy(scene);
     scene.motorizedPoliceSystem = new MotorizedPoliceSystem(scene);
     scene.motorizedPoliceLocalPolicy = installMotorizedPoliceLocalPolicy(scene.motorizedPoliceSystem);
     scene.npcSystem?.refreshVisibility?.();
@@ -140,6 +146,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.scene.motorizedPoliceLocalPolicy = null;
     this.scene.motorizedPoliceSystem?.destroy?.();
     this.scene.motorizedPoliceSystem = null;
+    this.scene.vehicleCollisionSofteningPolicy?.destroy?.();
+    this.scene.vehicleCollisionSofteningPolicy = null;
     this.scene.trafficImpactConsequencesSystem?.destroy?.();
     this.scene.trafficImpactConsequencesSystem = null;
     this.scene.trafficPhysicalConsequencesSystem?.destroy?.();
@@ -164,6 +172,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.scene.streetFurnitureSystem = null;
     this.scene.pedestrianSystem?.destroy?.();
     this.scene.pedestrianSystem = null;
+    this.scene.buildingSidewalkClearancePolicy?.destroy?.();
+    this.scene.buildingSidewalkClearancePolicy = null;
     this.scene.cityStreamSystem?.destroy?.();
     this.scene.cityStreamSystem = null;
     super.destroy();

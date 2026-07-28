@@ -29,10 +29,12 @@ export function vehicleTheftWitnesses(system, vehicle) {
 }
 
 export function registerVehicleTheft(system, vehicle, previousStatus) {
-  vehicle.status = system.campaign.vehicles.markStolen(vehicle.id, {
-    source: "vehicle_entry",
-    factionId: vehicle.factionId
-  });
+  vehicle.status = vehicle.transient
+    ? VEHICLE_OWNERSHIP.STOLEN
+    : system.campaign.vehicles.markStolen(vehicle.id, {
+        source: "vehicle_entry",
+        factionId: vehicle.factionId
+      });
 
   const policeVehicle = previousStatus === VEHICLE_OWNERSHIP.POLICE;
   const factionVehicle = previousStatus === VEHICLE_OWNERSHIP.FACTION;
@@ -60,19 +62,22 @@ export function registerVehicleTheft(system, vehicle, previousStatus) {
     policeVehicle ? 42 : factionVehicle ? 25 : 18,
     `reported theft of ${vehicle.name}`
   );
-  system.campaign.handle(CAMPAIGN_EVENT_TYPES.VEHICLE_STOLEN, {
-    vehicleId: vehicle.id,
-    targetId: vehicle.id,
-    factionId: vehicle.factionId,
-    previousStatus
-  });
+  if (!vehicle.transient) {
+    system.campaign.handle(CAMPAIGN_EVENT_TYPES.VEHICLE_STOLEN, {
+      vehicleId: vehicle.id,
+      targetId: vehicle.id,
+      factionId: vehicle.factionId,
+      previousStatus
+    });
+  }
   system.scene.lastActionText = policeVehicle
     ? `POLICE VEHICLE STOLEN: ${vehicle.name}. Units converge on the last known position.`
     : `STOLEN: ${vehicle.name}. Witnesses may report the theft.`;
   system.scene.events?.emit?.("vehicle:stolen", {
     vehicleId: vehicle.id,
     previousStatus,
-    witnesses: witnesses.length
+    witnesses: witnesses.length,
+    transient: Boolean(vehicle.transient)
   });
 }
 

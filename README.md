@@ -1,10 +1,10 @@
-# Vampire District
+# Viceblood
 
-**Vampire District** is a Phaser 3 top-down urban vampire action, stealth and crime game for the browser.
+**Viceblood** is a Phaser 3 top-down urban vampire action, stealth and crime game for the browser.
 
 The long-term structure is intentionally GTA2-like: readable districts, vehicles, traffic, weapons, factions, territory, cash and systemic police chaos. The original vampire setting adds Hunger, feeding, powers, rooftops, sewers, Retainers, safehouses and political consequences.
 
-The current public build is a **persistent free-roam systems sandbox** running City Topology V2: a `4800 × 3600` world with exactly five times the previous area. The previous journalist and `Clean the Scene` contracts are no longer registered because their fixed coordinates were forcing the original street layout to remain permanent while the rest of the city evolved around it.
+The current public build is a **persistent free-roam systems sandbox** running City Topology V2: a `4800 × 3600` world with exactly five times the previous area. The repository keeps its historical `vampire-district` slug for compatibility, but the product name is now Viceblood.
 
 Open `index.html` through a local/static web server, or use the published GitHub Pages build. ES modules will not work reliably through every browser's `file://` mode.
 
@@ -24,13 +24,18 @@ Available systems:
 - mouse-directed combat, resilience, stagger and knockdown;
 - Unarmed, Iron Pipe and Pistol prototype loadout;
 - contextual right-click draining;
-- damageable streetlights, dumpsters, bodies and blood evidence;
+- dumpsters that favour alleys, building gaps and industrial/service frontage;
 - authored vehicles with arcade driving, handbrake drift, hull and trunks;
+- any non-police authored vehicle can be stolen;
+- civilian traffic materializes outside the camera, remains while followed and uses a fixed local pool;
+- civilian traffic vehicles can be hijacked, converting them into capped transient drivable cars;
+- one or more civilian occupants jump out with a visible `WTF` reaction when a traffic car is stolen;
 - refuge-garage repair and owned-wreck recovery;
 - streamed multi-ward city;
-- macro traffic and ten pooled local civilian vehicles;
-- persistent campaign wallet, reputation, vehicles and save state;
+- persistent campaign wallet, reputation, authored vehicles and save state;
 - runtime ownership diagnostics and Playwright regression infrastructure.
+
+Streetlight rendering, damage, darkness patches and their stealth logic are retired. Street visibility is now independent of lamps and authored shadow zones.
 
 Current production mission state:
 
@@ -44,26 +49,14 @@ authored tutorial       disabled
 
 Archived mission definitions remain source-controlled framework examples, but they are not production content.
 
-## Why the missions were retired
+## City Topology V2
 
-The old opening contract depended on fixed raw coordinates for:
-
-- the rooftop refuge;
-- police station roof/informant;
-- rooftop blocker;
-- nightclub/journalist;
-- service alley/body;
-- return finale.
-
-Those assumptions caused the City Compiler to preserve the Old Quarter and fixed landmarks. The current reset removes that protection so every district, road and landmark may be regenerated.
-
-City Topology V2 now uses:
+The current city uses:
 
 - one authoritative 114-node / 158-edge road graph;
 - clipped road segments and one unique authority surface per intersection;
 - explicit carriageway, curb and connected sidewalk bands;
 - valid pedestrian crossings outside junction centres;
-- post-layout streetlights clear of roads, crossings and buildings;
 - compound site-first landmark reservations and setback-validated rectangular runtime parcels;
 - bent/polyline road corridors with curve metadata for the next renderer;
 - site-first large landmarks such as police stations, hospitals, churches and industrial campuses.
@@ -91,7 +84,7 @@ These are working names pending commercial trademark clearance. See [`docs/ORIGI
 - Left mouse: use the equipped weapon.
 - Mouse wheel: previous/next owned weapon.
 - Right mouse: hold to drain a valid target.
-- Enter: enter/exit vehicles only.
+- Enter: enter, steal or exit non-police vehicles.
 - Space: contextual traversal on foot; handbrake while driving.
 - E: interactions, trunks and garage.
 - Q: Shadow Dash.
@@ -100,6 +93,20 @@ These are working names pending commercial trademark clearance. See [`docs/ORIGI
 - M: mission panel; currently reports no active contract.
 - H: pause/help/accessibility settings.
 - Escape: UI/dialog fallback.
+
+## Traffic lifecycle
+
+Civilian traffic uses two bounded layers:
+
+```text
+macro traffic tokens
+→ maximum ten local visual proxies
+→ off-camera materialization
+→ generous camera/follow retention
+→ ordinary proxy despawn only when far and off-camera
+```
+
+Hijacking a proxy converts it into a transient `VehicleSystem` car. These cars are not written to campaign persistence and are capped separately, so following or stealing traffic cannot grow the runtime indefinitely. Police vehicles remain unavailable for theft.
 
 ## Production sequence
 
@@ -145,7 +152,7 @@ A manual GitHub Actions workflow can package any selected branch as a final itch
 Actions → Build itch.io ZIP → Run workflow
 ```
 
-Choose the branch, run the workflow and download the artifact. The downloaded `vampire-district.zip` is already the definitive package: upload it directly to itch.io without extracting or repackaging it.
+Choose the branch, run the workflow and download the artifact. The downloaded ZIP is the definitive package: upload it directly to itch.io without extracting or repackaging it.
 
 See [`docs/ITCH_IO_BUILD.md`](docs/ITCH_IO_BUILD.md) for the full process and package contract.
 

@@ -1,3 +1,4 @@
+import { fitBuildingToSidewalks } from "./BuildingSidewalkClearance.js";
 import {
   CITY_TOPOLOGY_SEED,
   CITY_TOPOLOGY_STATS,
@@ -17,7 +18,7 @@ import {
   junctionSidewalks,
   crosswalks,
   propExclusionZones,
-  buildings,
+  buildings as generatedBuildings,
   roofAreas,
   rooftopRoutes,
   roofDrops,
@@ -36,6 +37,10 @@ import {
   districtEntryPoints,
   policeLocalZones
 } from "./generated/city-topology-v2.js";
+
+export const buildings = Object.freeze(
+  generatedBuildings.map(building => fitBuildingToSidewalks(building, sidewalks))
+);
 
 export const LAYERS = Object.freeze({
   SEWER: -1,

@@ -19,7 +19,6 @@ const SENSE_CONFIG = Object.freeze({
 });
 
 const SOUND_EVENTS = Object.freeze({
-  breakLight: { label: "streetlight vandalism", hearing: 176, visual: 154, severity: 10, heat: 22, reaction: 2.1 },
   roofDrop: { label: "a heavy fall from the rooftops", hearing: 192, visual: 165, severity: 11, heat: 20, reaction: 2.5 }
 });
 

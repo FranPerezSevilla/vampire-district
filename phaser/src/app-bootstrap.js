@@ -73,13 +73,13 @@ async function ensurePhaser() {
 }
 
 function renderBootFailure(error) {
-  console.error("Vampire District failed to boot", error);
+  console.error("Viceblood failed to boot", error);
   const root = document.getElementById("game-root");
   if (!root) return;
   root.innerHTML = `
     <div style="display:grid;place-items:center;min-height:320px;padding:32px;text-align:center;background:#090a12;color:#f4ecff;border:1px solid #513c65">
       <div>
-        <strong style="display:block;margin-bottom:10px;color:#ffb02e">Vampire District could not start</strong>
+        <strong style="display:block;margin-bottom:10px;color:#ffb02e">Viceblood could not start</strong>
         <span style="font-size:13px;line-height:1.5;color:#c9bfd7">${String(error?.message || error || "Unknown boot error")}</span>
       </div>
     </div>

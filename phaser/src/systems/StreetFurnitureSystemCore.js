@@ -61,19 +61,9 @@ export class StreetFurnitureSystem {
       this.persistBroken(payload.propId, true);
     };
     scene.events?.on?.("prop:broken", this.onPropBroken);
-    this.restoreBrokenLights();
     this.refreshVisibility();
     this.publish();
     scene.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, this.destroy, this);
-  }
-
-  restoreBrokenLights() {
-    for (const prop of this.scene.propDamageSystem?.props || []) {
-      if (!this.campaign.state.world.flags[flagKey(prop.id)]) continue;
-      prop.broken = true;
-      prop.durability = 0;
-      this.scene.brokenLights?.add?.(prop.id);
-    }
   }
 
   persistBroken(id, broken = true) {
@@ -98,22 +88,6 @@ export class StreetFurnitureSystem {
     const footprint = vehicleFootprintPoints(nextState, vehicle.archetype, 2);
     const impactSpeed = Math.abs(Number(nextState.speed) || 0);
     const impacts = [];
-
-    for (const prop of this.scene.propDamageSystem?.props || []) {
-      if (prop.broken || this.scene.brokenLights?.has?.(prop.id)) continue;
-      if (!pointHitsVehicleFootprint(prop, footprint, (prop.hitRadius || 7) + 3)) continue;
-      const result = vehiclePropImpactResult(STREET_PROP_TYPES.STREETLIGHT, impactSpeed);
-      if (result.blocks) return { blocked: true, impacts, propId: prop.id };
-      this.scene.propDamageSystem.damage(prop, Math.max(1, prop.durability || 1), `vehicle:${vehicle.id}`);
-      this.persistBroken(prop.id, true);
-      if (result.vehicleDamage > 0) {
-        this.scene.vehicleSystem?.damageVehicle?.(vehicle.id, result.vehicleDamage, {
-          reason: "streetlight-impact",
-          persist: false
-        });
-      }
-      impacts.push({ propId: prop.id, type: STREET_PROP_TYPES.STREETLIGHT, broken: true });
-    }
 
     for (const prop of this.dumpsters) {
       if (prop.broken) continue;
@@ -227,8 +201,7 @@ export class StreetFurnitureSystem {
         x: prop.x,
         y: prop.y,
         broken: prop.broken
-      })),
-      brokenLights: [...(this.scene.brokenLights || [])]
+      }))
     };
   }
 
@@ -236,7 +209,7 @@ export class StreetFurnitureSystem {
     const snapshot = this.snapshot();
     const brokenDumpsters = snapshot.dumpsters.filter(item => item.broken).length;
     this.scene.statePublisher?.setMany?.({
-      streetFurnitureText: `Street props · lamps ${snapshot.brokenLights.length} broken · dumpsters ${brokenDumpsters} ruptured`,
+      streetFurnitureText: `Street props · dumpsters ${brokenDumpsters} ruptured`,
       streetFurnitureState: snapshot
     });
     if (typeof window !== "undefined") {
