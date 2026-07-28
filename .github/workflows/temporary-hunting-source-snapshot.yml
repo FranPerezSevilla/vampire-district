@@ -1,0 +1,24 @@
+name: Temporary hunting-law source snapshot
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+      - name: Archive tracked source
+        run: git archive --format=zip --output=viceblood-hunting-source.zip HEAD
+      - name: Upload source
+        uses: actions/upload-artifact@v4
+        with:
+          name: viceblood-hunting-source
+          path: viceblood-hunting-source.zip
+          retention-days: 2
