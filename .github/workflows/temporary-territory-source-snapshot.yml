@@ -1,4 +1,4 @@
-name: Diagnose faction territory patch
+name: Apply faction territory foundation
 
 on:
   pull_request:
@@ -6,22 +6,49 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose:
+  apply:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
     steps:
       - name: Check out PR branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref || github.ref_name }}
+          ref: ${{ env.TARGET_BRANCH }}
           fetch-depth: 0
 
-      - name: Reconstruct validated payload
+      - name: Detect pending territory payload
+        id: gate
+        shell: bash
+        run: |
+          if [ -f .github/territory-payload.b64 ] \
+            && [ -f .github/territory-payload.part-01 ] \
+            && [ -f .github/territory-payload.part-02 ]; then
+            echo 'apply=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'apply=false' >> "$GITHUB_OUTPUT"
+            echo 'Territory implementation payload already consumed.'
+          fi
+
+      - name: Set up Node.js
+        if: steps.gate.outputs.apply == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Reconstruct and apply validated payload
+        if: steps.gate.outputs.apply == 'true'
         shell: bash
         run: |
           set -euo pipefail
+          workflow=.github/workflows/temporary-territory-source-snapshot.yml
+          cp "$workflow" /tmp/territory-workflow.yml
+          rm -f "$workflow"
+
           cat \
             .github/territory-payload.b64 \
             .github/territory-payload.part-01 \
@@ -31,22 +58,116 @@ jobs:
           base64 -d /tmp/territory.b64 | gzip -dc > /tmp/territory.patch
           echo '883193f385c3a8c181aae641a7c1017ca37f5243f0d26a2835dae0c07419802e  /tmp/territory.patch' | sha256sum -c -
 
-      - name: Capture git apply diagnostics
-        id: apply
-        continue-on-error: true
+          git apply --check --exclude=docs/ROADMAP.md /tmp/territory.patch
+          git apply --exclude=docs/ROADMAP.md /tmp/territory.patch
+          rm -f \
+            .github/territory-payload.b64 \
+            .github/territory-payload.part-01 \
+            .github/territory-payload.part-02
+
+      - name: Install exact dependencies
+        if: steps.gate.outputs.apply == 'true'
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+
+      - name: Run unit regression
+        if: steps.gate.outputs.apply == 'true'
+        run: node --test tests/*.test.js
+
+      - name: Validate city topology
+        if: steps.gate.outputs.apply == 'true'
+        run: npm run city:validate
+
+      - name: Compile current city
+        if: steps.gate.outputs.apply == 'true'
+        run: npm run city:compile -- --output-dir=/tmp/viceblood-territory-city
+
+      - name: Compile Foundry candidates
+        if: steps.gate.outputs.apply == 'true'
+        run: npm run city:foundry -- --output-dir=/tmp/viceblood-territory-foundry
+
+      - name: Verify patch quality
+        if: steps.gate.outputs.apply == 'true'
+        run: git diff --check
+
+      - name: Publish validated territory tree
+        if: steps.gate.outputs.apply == 'true'
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          set -o pipefail
-          git apply --check --verbose /tmp/territory.patch 2>&1 | tee /tmp/territory-apply.log
+          set -euo pipefail
+          workflow=.github/workflows/temporary-territory-source-snapshot.yml
+          mkdir -p .github/workflows
+          mv /tmp/territory-workflow.yml "$workflow"
 
-      - name: Upload apply diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: territory-apply-diagnostics
-          path: /tmp/territory-apply.log
-          if-no-files-found: error
-          retention-days: 2
+          python <<'PY'
+          import base64
+          import json
+          import os
+          import stat
+          import subprocess
+          import urllib.parse
+          import urllib.request
 
-      - name: Report result
-        run: |
-          echo "git apply outcome: ${{ steps.apply.outcome }}"
+          repository = os.environ["GITHUB_REPOSITORY"]
+          token = os.environ["GH_TOKEN"]
+          branch = os.environ["TARGET_BRANCH"]
+
+          def command(*args):
+              return subprocess.check_output(args, text=True).strip()
+
+          def paths_from_git(*args):
+              raw = subprocess.check_output(args)
+              return [item.decode() for item in raw.split(b"\0") if item]
+
+          def request(method, path, payload):
+              data = json.dumps(payload).encode("utf-8")
+              req = urllib.request.Request(
+                  f"https://api.github.com/repos/{repository}{path}",
+                  data=data,
+                  method=method,
+                  headers={
+                      "Authorization": f"Bearer {token}",
+                      "Accept": "application/vnd.github+json",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                      "Content-Type": "application/json",
+                  },
+              )
+              with urllib.request.urlopen(req) as response:
+                  return json.load(response)
+
+          parent = command("git", "rev-parse", "HEAD")
+          base_tree = command("git", "rev-parse", "HEAD^{tree}")
+          changed = paths_from_git(
+              "git", "diff", "--name-only", "-z", "--diff-filter=ACMRTUXB", "HEAD"
+          )
+          changed += paths_from_git("git", "ls-files", "--others", "--exclude-standard", "-z")
+          deleted = paths_from_git(
+              "git", "diff", "--name-only", "-z", "--diff-filter=D", "HEAD"
+          )
+
+          entries = []
+          for path in sorted(set(changed)):
+              with open(path, "rb") as source:
+                  content = base64.b64encode(source.read()).decode("ascii")
+              blob = request("POST", "/git/blobs", {"content": content, "encoding": "base64"})
+              mode = "100755" if os.stat(path).st_mode & stat.S_IXUSR else "100644"
+              entries.append({"path": path, "mode": mode, "type": "blob", "sha": blob["sha"]})
+
+          for path in sorted(set(deleted)):
+              entries.append({"path": path, "mode": "100644", "type": "blob", "sha": None})
+
+          tree = request("POST", "/git/trees", {"base_tree": base_tree, "tree": entries})
+          commit = request(
+              "POST",
+              "/git/commits",
+              {
+                  "message": "Implement faction territory foundation",
+                  "tree": tree["sha"],
+                  "parents": [parent],
+              },
+          )
+          ref = urllib.parse.quote(f"heads/{branch}", safe="/")
+          request("PATCH", f"/git/refs/{ref}", {"sha": commit["sha"], "force": False})
+          print(f"Published territory commit {commit['sha']}")
+          PY
