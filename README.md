@@ -67,14 +67,14 @@ Future missions will be authored against stable semantic city sites after the to
 
 The project will not use factions, terminology, ranks, lore or symbols from an existing licensed vampire property.
 
-Working structure:
+Canonical faction direction:
 
-- **Blackglass Directorate** — secretive institutional establishment;
-- **Red Assembly** — violent territorial coalition;
-- **Unaligned Houses** — separate independent operators;
+- **The First Estate** — the old institutional elite: wealth, property, influence and controlled violence;
+- **The Gutter Crown** — a territorial street coalition built on force, reputation and the ability to hold ground;
+- **The Houses** — a provisional umbrella term for independent operators and bloodlines, never one unified faction;
 - **Retainers** — named enhanced mortals with Loyalty, Dependence, Exposure, upkeep and failure states.
 
-These are working names pending commercial trademark clearance. See [`docs/ORIGINAL_SETTING_FACTIONS_RETAINERS_ECONOMY.md`](docs/ORIGINAL_SETTING_FACTIONS_RETAINERS_ECONOMY.md).
+The First Estate and The Gutter Crown are the accepted design names. Commercial trademark clearance is still required before release. See [`docs/FACTION_NAMING.md`](docs/FACTION_NAMING.md) and [`docs/ORIGINAL_SETTING_FACTIONS_RETAINERS_ECONOMY.md`](docs/ORIGINAL_SETTING_FACTIONS_RETAINERS_ECONOMY.md).
 
 ## Controls
 
