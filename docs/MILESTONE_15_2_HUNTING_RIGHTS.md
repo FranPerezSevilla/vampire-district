@@ -106,7 +106,7 @@ The `L` key or the Ledger HUD button opens a modal overlay and pauses `GameScene
 - current police alert, Exposure, officers, cruisers, witnesses, reports, discovered bodies and evidence;
 - a recent incident stream combining hunting, territory, reputation and active police pressure.
 
-The Ledger button exposes a compact badge. Yellow indicates hidden violations or a police search; red indicates discovered political violations or active pursuit/air support. Opening the panel never advances simulation, and closing it resumes the same frame state.
+The Ledger button exposes a compact badge. Yellow indicates hidden violations or a police search; red indicates discovered political violations or active pursuit/air support. Opening the panel never advances simulation. It closes through its button, backdrop, `L`, or `Escape`, then resumes the same frame state and restores focus to the HUD button.
 
 ## Deliberate limits
 
@@ -127,5 +127,6 @@ The Ledger button exposes a compact badge. Yellow indicates hidden violations or
 - discovery is based on explicit evidence inputs rather than omniscience;
 - assessments survive save/load without storing Phaser or DOM objects;
 - Night Ledger opens by button or `L`, pauses gameplay, exposes faction/police state and resumes cleanly;
+- Night Ledger closes by button, backdrop, `L`, or `Escape`;
 - feeding remains fully playable when no faction permission data exists;
 - unit, boot, campaign and systems suites remain green.
