@@ -54,6 +54,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python <<'PY'
+          from pathlib import Path
+          path = Path('.github/hunting-law-payload.part-02-1')
+          content = path.read_text()
+          if len(content) != 2000 or content[1493] != 'o':
+              raise SystemExit('Unexpected hunting payload correction precondition.')
+          path.write_text(content[:1493] + 'a' + content[1494:])
+          PY
+
           cat \
             .github/hunting-law-payload.part-01 \
             .github/hunting-law-payload.part-02-1 \
