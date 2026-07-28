@@ -36,7 +36,7 @@ The accepted City Topology V2 foundation contains:
 
 - Phaser 3 browser runtime using native ES modules;
 - street, low-rooftop, high-rooftop and sewer layers;
-- mouse-directed combat, draining, Hunger and powers;
+- mouse-directed combat, held predator feeding, Hunger and powers;
 - witnesses, evidence, police search, wanted escalation and helicopter pressure;
 - arcade vehicles with persistent hull condition and trunks;
 - refuge garage repair and owned-wreck recovery;
@@ -207,7 +207,7 @@ Space           traversal on foot; handbrake while driving
 E               non-traversal interaction, trunk or garage
 Mouse           aim and facing
 Left mouse      equipped attack
-Right mouse     drain valid target
+Right mouse     hold to feed; release at Quick Bite / Full Feed or continue to Drain
 Wheel           cycle owned weapons
 Q               Dash
 R               Whisper

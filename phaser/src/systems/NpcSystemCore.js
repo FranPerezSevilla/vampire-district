@@ -74,6 +74,13 @@ export class NpcSystem {
       hiddenBody: false,
       dragged: false,
       corpseDiscovered: false,
+      feedingDepth: "none",
+      feedingMemoryState: "none",
+      feedingUnconscious: false,
+      feedingBiteEvidence: false,
+      feedingEvidenceDiscovered: false,
+      huntingAssessmentId: null,
+      huntingAssessmentIds: [],
       alarmed: false,
       intercepted: false,
       hasReported: false,
@@ -444,6 +451,7 @@ export class NpcSystem {
     npc.fed = deathKind === "drained";
     npc.killed = deathKind === "killed";
     npc.hiddenBody = false;
+    npc.feedingUnconscious = false;
     npc.dragged = false;
     npc.alarmed = false;
     npc.reactionTimer = 0;

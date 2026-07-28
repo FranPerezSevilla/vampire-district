@@ -75,7 +75,14 @@ function checkpointFor(campaign) {
           y: 360,
           layer: 0,
           dead: false,
-          combat: { state: "active", resilience: 3, maxResilience: 3 }
+          feedingDepth: "full_feed",
+          feedingMemoryState: "fragmented",
+          feedingUnconscious: true,
+          feedingBiteEvidence: true,
+          feedingEvidenceDiscovered: false,
+          huntingAssessmentId: "hunt-000002",
+          huntingAssessmentIds: ["hunt-000001", "hunt-000002", "hunt-000002"],
+          combat: { state: "downed", resilience: 0, maxResilience: 3 }
         }
       },
       bloodStains: [],
@@ -119,7 +126,14 @@ test("checkpoint sanitization keeps an atomic mission, world and loadout snapsho
   assert.equal(checkpoint.loadout.selectedWeaponId, "pistol");
   assert.equal(checkpoint.loadout.ammo.pistol, 5);
   assert.deepEqual(checkpoint.world.brokenLights, ["lampClub"]);
-  assert.equal(checkpoint.world.npcs.journalist.combat.resilience, 3);
+  assert.equal(checkpoint.version, 2);
+  assert.equal(checkpoint.world.npcs.journalist.combat.state, "downed");
+  assert.equal(checkpoint.world.npcs.journalist.combat.resilience, 0);
+  assert.equal(checkpoint.world.npcs.journalist.feedingDepth, "full_feed");
+  assert.equal(checkpoint.world.npcs.journalist.feedingUnconscious, true);
+  assert.equal(checkpoint.world.npcs.journalist.feedingBiteEvidence, true);
+  assert.equal(checkpoint.world.npcs.journalist.huntingAssessmentId, "hunt-000002");
+  assert.deepEqual(checkpoint.world.npcs.journalist.huntingAssessmentIds, ["hunt-000001", "hunt-000002"]);
   assert.equal(checkpoint.tutorial.completed, true);
 });
 

@@ -23,7 +23,7 @@ Available systems:
 - motorized police pursuit and partial roadblocks;
 - mouse-directed combat, resilience, stagger and knockdown;
 - Unarmed, Iron Pipe and Pistol prototype loadout;
-- contextual right-click draining;
+- held right-click feeding with intentional Quick Bite, Full Feed and Drain release depths;
 - dumpsters that favour alleys, building gaps and industrial/service frontage;
 - authored vehicles with arcade driving, handbrake drift, hull and trunks;
 - any non-police authored vehicle can be stolen;
@@ -86,7 +86,7 @@ The First Estate and The Gutter Crown are the accepted design names. Commercial 
 - Mouse: aim and face.
 - Left mouse: use the equipped weapon.
 - Mouse wheel: previous/next owned weapon.
-- Right mouse: hold to drain a valid target.
+- Right mouse: hold on a valid target; release for Quick Bite or Full Feed, or continue to Drain.
 - Enter: enter, steal or exit non-police vehicles.
 - Space: contextual traversal on foot; handbrake while driving.
 - E: interactions, trunks and garage.
@@ -117,7 +117,8 @@ Hijacking a proxy converts it into a transient `VehicleSystem` car. These cars a
 ```text
 narrative constraint retirement
 → city topology and readability
-→ original factions and territory
+→ original factions, territory and hunting law
+→ predator feeding depths and evidence pressure
 → safehouses, stash and ammunition economy
 → Retainers
 → expanded arsenal and vehicle combat

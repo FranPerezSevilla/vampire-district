@@ -1,6 +1,6 @@
 import { CAMPAIGN_FACTIONS } from "../campaign/constants.js";
 
-export const HUNTING_LAW_STATE_VERSION = 1;
+export const HUNTING_LAW_STATE_VERSION = 2;
 export const MAX_HUNTING_ASSESSMENTS = 64;
 
 export const HUNTING_CLASSIFICATION = Object.freeze({
@@ -128,6 +128,11 @@ export function sanitizeHuntingAssessment(candidate) {
     territoryRelationship: text(source.territoryRelationship, "neutral"),
     victimId: text(source.victimId),
     victimType: text(source.victimType, "unknown"),
+    feedingDepth: text(source.feedingDepth, "drain"),
+    victimOutcome: text(source.victimOutcome, "dead"),
+    victimAlive: Boolean(source.victimAlive),
+    victimConscious: Boolean(source.victimConscious),
+    memoryState: text(source.memoryState, "none"),
     protectionId: source.protectionId == null ? null : text(source.protectionId),
     protectedByFactionId: source.protectedByFactionId == null ? null : text(source.protectedByFactionId),
     protectedByContactId: source.protectedByContactId == null ? null : text(source.protectedByContactId),

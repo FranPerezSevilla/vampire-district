@@ -1,5 +1,6 @@
 import { bodyHideSpots, LAYERS, shadowZones } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
+import { FEEDING_DEPTHS } from "../data/feeding.js";
 import { resolveAction } from "./ActionSystem.js";
 import { RawAudio } from "./RawAudioSystem.js";
 
@@ -26,7 +27,7 @@ export class EvidenceSystem {
         actions.push({
           id: "hide_dragged_body",
           type: "evidence",
-          label: `Hide body in ${spot.name}`,
+          label: `Hide ${this.subjectNoun(this.draggingBody)} in ${spot.name}`,
           detail: "evidence cleanup",
           priority: 118,
           distance: 0,
@@ -38,7 +39,7 @@ export class EvidenceSystem {
       actions.push({
         id: "drop_dragged_body",
         type: "evidence",
-        label: "Drop body",
+        label: `Drop ${this.subjectNoun(this.draggingBody)}`,
         detail: "leave evidence visible",
         priority: 70,
         distance: 0,
@@ -54,7 +55,9 @@ export class EvidenceSystem {
     return [{
       id: `drag_${body.id}`,
       type: "evidence",
-      label: body.type === NPC_TYPES.TARGET ? "Drag journalist body" : "Drag body",
+      label: body.type === NPC_TYPES.TARGET
+        ? `Drag journalist ${body.dead ? "body" : "victim"}`
+        : `Drag ${this.subjectNoun(body)}`,
       detail: "slow and noisy cleanup route",
       priority: 110,
       distance: Phaser.Math.Distance.Between(this.scene.player.x, this.scene.player.y, body.x, body.y),
@@ -71,15 +74,35 @@ export class EvidenceSystem {
     if (this.discoveryTimer <= 0) {
       this.discoveryTimer = 0.6;
       this.updateCorpseDiscovery();
+      this.updateFeedingVictimDiscovery();
     }
   }
 
-  onFeedCompleted(npc) {
+  onFeedingResolved(npc, result = {}) {
     if (!npc || npc.type === NPC_TYPES.RAT) return;
-    const count = npc.type === NPC_TYPES.TARGET ? 4 : npc.type === NPC_TYPES.POLICE || npc.type === NPC_TYPES.HUNTER ? 4 : 3;
-    for (let i = 0; i < count; i++) {
-      this.createBloodStain(npc.x, npc.y, npc.layer, npc.type === NPC_TYPES.TARGET ? "target-drain" : "drain");
-    }
+    const depth = result.feedingDepth || FEEDING_DEPTHS.DRAIN;
+    const baseCount = Math.max(0, Math.trunc(Number(result.bloodStains) || 0));
+    const count = depth === FEEDING_DEPTHS.DRAIN && npc.type === NPC_TYPES.TARGET
+      ? Math.max(4, baseCount)
+      : depth === FEEDING_DEPTHS.DRAIN && [NPC_TYPES.POLICE, NPC_TYPES.HUNTER].includes(npc.type)
+        ? Math.max(4, baseCount)
+        : baseCount;
+    const kind = depth === FEEDING_DEPTHS.QUICK_BITE
+      ? "quick-bite"
+      : depth === FEEDING_DEPTHS.FULL_FEED
+        ? "full-feed"
+        : npc.type === NPC_TYPES.TARGET
+          ? "target-drain"
+          : "drain";
+    for (let i = 0; i < count; i++) this.createBloodStain(npc.x, npc.y, npc.layer, kind);
+    npc.feedingEvidenceDiscovered = false;
+  }
+
+  onFeedCompleted(npc) {
+    this.onFeedingResolved(npc, {
+      feedingDepth: FEEDING_DEPTHS.DRAIN,
+      bloodStains: npc?.type === NPC_TYPES.TARGET ? 4 : 3
+    });
   }
 
   onKillCompleted(npc) {
@@ -113,10 +136,26 @@ export class EvidenceSystem {
     this.bloodStains = this.bloodStains.filter(stain => stain.life > 0);
   }
 
+  evidenceSubjects(layer = this.scene.currentLayer) {
+    const bodies = this.scene.npcSystem?.visibleBodies?.(layer) || [];
+    const unconscious = (this.scene.npcSystem?.npcs || []).filter(npc => Boolean(
+      npc.feedingUnconscious
+      && !npc.dead
+      && !npc.inactive
+      && !npc.intercepted
+      && npc.layer === layer
+    ));
+    return [...new Set([...bodies, ...unconscious])];
+  }
+
+  subjectNoun(subject) {
+    return subject?.dead ? "body" : "unconscious victim";
+  }
+
   nearestVisibleBody(radius = 25) {
     let best = null;
     let bestD = Infinity;
-    for (const body of this.scene.npcSystem.visibleBodies(this.scene.currentLayer)) {
+    for (const body of this.evidenceSubjects(this.scene.currentLayer)) {
       if (body.hiddenBody || body.dragged) continue;
       const d = Phaser.Math.Distance.Between(this.scene.player.x, this.scene.player.y, body.x, body.y);
       if (d <= radius && d < bestD) {
@@ -141,7 +180,8 @@ export class EvidenceSystem {
     body.dragged = true;
     body.vx = 0;
     body.vy = 0;
-    this.scene.lastActionText = "You grab the body. Carrying a body is a felony if police see it; civilians may report it.";
+    const noun = this.subjectNoun(body);
+    this.scene.lastActionText = `You grab the ${noun}. Carrying ${noun === "body" ? "a body" : "an unconscious victim"} is a felony if police see it; civilians may report it.`;
   }
 
   updateDraggedBody(dt) {
@@ -180,10 +220,11 @@ export class EvidenceSystem {
       y: this.draggingBody.y,
       layer: this.draggingBody.layer
     });
+    const noun = this.subjectNoun(this.draggingBody);
     this.draggingBody.dragged = false;
     this.draggingBody = null;
     this.dragNoiseTimer = 0;
-    this.scene.lastActionText = "Body dropped. If it remains visible, someone can discover it.";
+    this.scene.lastActionText = `${noun === "body" ? "Body" : "Unconscious victim"} dropped. If left visible, someone can discover the evidence.`;
   }
 
   hideDraggedBody(spot) {
@@ -203,7 +244,8 @@ export class EvidenceSystem {
     this.dragNoiseTimer = 0;
     this.stats.bodiesHidden++;
     this.cleanBloodAround(body.x, body.y, body.layer, spot.cleanRadius || 78);
-    this.scene.lastActionText = `Body hidden in ${spot.name}. Evidence pressure drops.`;
+    const noun = this.subjectNoun(body);
+    this.scene.lastActionText = `${noun === "body" ? "Body" : "Unconscious victim"} hidden in ${spot.name}. Evidence pressure drops.`;
     this.scene.events?.emit?.("evidence:body-hidden", {
       targetId: body.id,
       method: "hidden",
@@ -262,22 +304,59 @@ export class EvidenceSystem {
       if (watcher) {
         body.corpseDiscovered = true;
         this.stats.bodiesDiscovered++;
-        if (body.huntingAssessmentId) {
-          this.scene.campaignSystem?.huntingLaw?.discover?.(body.huntingAssessmentId, {
-            source: "recovered_body",
-            witnessId: watcher.id,
-            referenceId: body.id
-          });
-        }
+        this.discoverFeedingAssessments(body, {
+          source: "recovered_body",
+          witnessId: watcher.id,
+          referenceId: body.id
+        });
         this.scene.witnessSystem.alarmWitness(watcher, "an abandoned body", 16, { reactionSeconds: 1.2 });
         this.scene.exposureSystem.add(5, "A civilian discovers a body and runs to report it.");
       }
     }
   }
 
+
+  updateFeedingVictimDiscovery() {
+    if (this.scene.currentLayer !== LAYERS.STREET) return;
+    for (const victim of this.scene.npcSystem?.npcs || []) {
+      if (!victim?.feedingUnconscious || victim.dead || victim.inactive || victim.intercepted) continue;
+      if (victim.hiddenBody || victim.dragged || victim.feedingEvidenceDiscovered || victim.layer !== LAYERS.STREET) continue;
+      const hidden = this.shadowAt(victim.x, victim.y, victim.layer);
+      const range = hidden ? 52 : 96;
+      const watcher = (this.scene.npcSystem?.npcs || []).find(npc => {
+        if (npc === victim || npc.dead || npc.inactive || npc.intercepted || npc.stunnedTimer > 0) return false;
+        if (npc.layer !== victim.layer || ![NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)) return false;
+        return Phaser.Math.Distance.Between(npc.x, npc.y, victim.x, victim.y) <= range;
+      });
+      if (!watcher) continue;
+
+      victim.feedingEvidenceDiscovered = true;
+      this.discoverFeedingAssessments(victim, {
+        source: "recovered_victim",
+        witnessId: watcher.id,
+        referenceId: victim.id
+      });
+      this.scene.witnessSystem?.alarmWitness?.(watcher, "an unconscious victim with strange bite marks", 14, {
+        masqueradeRisk: true,
+        reactionSeconds: 1.0,
+        source: victim
+      });
+      this.scene.exposureSystem?.add?.(3, "A civilian finds an unconscious feeding victim with abnormal bite marks.");
+    }
+  }
+
+  discoverFeedingAssessments(subject, metadata = {}) {
+    const ids = [...new Set([
+      ...(Array.isArray(subject?.huntingAssessmentIds) ? subject.huntingAssessmentIds : []),
+      subject?.huntingAssessmentId
+    ].map(value => String(value || "").trim()).filter(Boolean))];
+    for (const id of ids) this.scene.campaignSystem?.huntingLaw?.discover?.(id, metadata);
+    return ids.length;
+  }
+
   drawMarkers(graphics) {
     if (this.scene.currentLayer === LAYERS.STREET) {
-      const hasBody = Boolean(this.draggingBody) || this.scene.npcSystem.visibleBodies(this.scene.currentLayer).some(body => !body.hiddenBody);
+      const hasBody = Boolean(this.draggingBody) || this.evidenceSubjects(this.scene.currentLayer).some(body => !body.hiddenBody);
       if (hasBody) {
         for (const spot of bodyHideSpots) {
           graphics.lineStyle(1, 0x78c7a3, 0.60).strokeCircle(spot.x, spot.y, spot.radius);

@@ -1,6 +1,7 @@
+import { FEEDING_DEPTHS } from "../data/feeding.js";
 import { CHECKPOINT_KINDS, MISSION_STATUS, OBJECTIVE_STATUS } from "./constants.js";
 
-export const CAMPAIGN_CHECKPOINT_VERSION = 1;
+export const CAMPAIGN_CHECKPOINT_VERSION = 2;
 
 function finite(value, fallback = 0) {
   const number = Number(value);
@@ -97,6 +98,13 @@ function sanitizeNpcState(id, value) {
     intercepted: Boolean(source.intercepted),
     corpseDiscovered: Boolean(source.corpseDiscovered),
     hasReported: Boolean(source.hasReported),
+    feedingDepth: String(source.feedingDepth || FEEDING_DEPTHS.NONE),
+    feedingMemoryState: String(source.feedingMemoryState || "none"),
+    feedingUnconscious: Boolean(source.feedingUnconscious),
+    feedingBiteEvidence: Boolean(source.feedingBiteEvidence),
+    feedingEvidenceDiscovered: Boolean(source.feedingEvidenceDiscovered),
+    huntingAssessmentId: source.huntingAssessmentId == null ? null : String(source.huntingAssessmentId),
+    huntingAssessmentIds: uniqueStrings(source.huntingAssessmentIds),
     combat: {
       state: String(combat.state || "active"),
       resilience: Math.max(0, finite(combat.resilience, 0)),

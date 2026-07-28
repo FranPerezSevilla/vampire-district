@@ -37,7 +37,7 @@ The current foundation provides:
 
 - Phaser 3 browser runtime and responsive quality presets;
 - street, low-rooftop, high-rooftop and sewer layers;
-- combat, draining, Hunger and powers;
+- combat, held predator feeding, Hunger and powers;
 - witnesses, evidence, wanted escalation and helicopter pressure;
 - authored persistent vehicles with arcade driving, hull and trunks;
 - semantic refuge-garage repair and remote owned-wreck recovery;
@@ -48,7 +48,7 @@ The current foundation provides:
 - `10 × 8` asynchronous chunk streaming, district packs and dormant simulation;
 - macro traffic and ten pooled civilian traffic proxies;
 - motorized police pursuit, partial roadblock and crew transfer to foot AI;
-- 298 passing unit tests with the Milestone 15.2 hunting-law foundation, plus browser boot/systems/campaign domains.
+- 305 passing unit tests with hunting law and predator-feeding depth coverage, plus browser boot/systems/campaign domains.
 
 Production remains persistent missionless free roam. Archived mission definitions are explicit framework fixtures only.
 
@@ -58,7 +58,7 @@ Normal boot opens persistent free roam directly on the street.
 
 Available systems include:
 
-- walking, aiming, combat and feeding;
+- walking, aiming, combat and Quick Bite / Full Feed / Drain feeding;
 - rooftop/sewer traversal;
 - vehicles, trunks and maintenance;
 - civilian traffic and pedestrians;
@@ -105,7 +105,7 @@ Space           traversal on foot; handbrake while driving
 E               interaction, trunk or refuge garage
 Mouse           aim and face
 Left mouse      equipped attack
-Right mouse     drain valid target
+Right mouse     hold to feed; release at Quick Bite / Full Feed or continue to Drain
 Wheel           cycle owned weapons
 Q               Dash
 R               Whisper
@@ -140,7 +140,7 @@ Prototype weapons:
 AI priority:
 
 ```text
-inactive/dead → downed → being drained → staggered → attacking
+inactive/dead → downed → being fed upon → staggered → attacking
 → chasing → fleeing/reporting → lured → investigating → searching → patrol/idle
 ```
 
@@ -341,6 +341,6 @@ Mission-specific browser golden paths are removed because those contracts are no
 
 ## Immediate priority
 
-Complete **Milestone 15.2 hunting rights and poaching**: classify real feeding by district authority, explicit permission, protected prey and discoverable evidence. Quick Bite / Full Feed / Drain depth follows after this contract is stable.
+Complete **Milestone 15.5 predator feeding depths** in PR #43: make held right-click resolve intentional Quick Bite, Full Feed or Drain outcomes with distinct Hunger, victim, evidence and political consequences.
 
 Future geometry work may add arbitrary-angle curves and polygonal ordinary parcels, but must preserve graph IDs, landmark sites, traffic/police integration and the hard no-overlap contracts.

@@ -48,6 +48,7 @@ function campaignSnapshot() {
           districtName: "Civic Centre",
           ownerId: "first_estate",
           ownerLabel: "The First Estate",
+          feedingDepth: "quick_bite",
           classification: "poaching",
           politicalViolation: true,
           discoveryState: "latent",
@@ -61,6 +62,7 @@ function campaignSnapshot() {
           ownerId: "gutter_crown",
           ownerLabel: "The Gutter Crown",
           protectedByFactionId: "gutter_crown",
+          feedingDepth: "drain",
           classification: "protected",
           politicalViolation: true,
           discoveryState: "known",
@@ -114,6 +116,8 @@ test("Night Ledger aggregates factions, hunting rights and political violations"
   assert.equal(crown.knownViolationCount, 1);
   assert.equal(model.incidents[0].title, "PROTECTED PREY");
   assert.equal(model.incidents[0].status, "DISCOVERED");
+  assert.match(model.incidents[0].detail, /^DRAIN ·/);
+  assert.match(model.incidents[1].detail, /^QUICK BITE ·/);
 });
 
 test("Night Ledger promotes active police pursuit into the alert badge and incident stream", () => {

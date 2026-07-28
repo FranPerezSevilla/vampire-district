@@ -195,18 +195,115 @@ test("HTTP chunk store retries transient failures, cancels stale requests and tr
 
 test("chunk delta serialization indexes bodies, evidence, broken props and vehicles without a second save authority", () => {
   const scene = fakeScene();
-  scene.npcSystem.npcs = [{ id: "body", x: 100, y: 100, layer: 0, dead: true, hiddenBody: false }];
+  scene.npcSystem.npcs = [
+    { id: "body", x: 100, y: 100, layer: 0, dead: true, hiddenBody: false },
+    {
+      id: "fed-victim",
+      x: 108,
+      y: 104,
+      layer: 0,
+      dead: false,
+      hiddenBody: false,
+      feedingDepth: "full_feed",
+      feedingMemoryState: "fragmented",
+      feedingUnconscious: true,
+      feedingBiteEvidence: true,
+      huntingAssessmentId: "hunt-2",
+      huntingAssessmentIds: ["hunt-1", "hunt-2"]
+    }
+  ];
   scene.evidenceSystem.bloodStains = [{ id: 1, x: 120, y: 110, layer: 0, kind: "blood", age: 2, life: 70 }];
   scene.streetFurnitureSystem.dumpsters = [{ id: "dump", x: 140, y: 120, broken: true }];
   scene.vehicleSystem.vehicles = [{ id: "car", x: 160, y: 130, angle: 0.2, health: 50, parked: true }];
   const store = new ChunkDeltaStore(scene, fileSet.manifest);
   const delta = store.captureChunk("0:0");
 
-  assert.equal(delta.bodies.length, 1);
+  assert.equal(delta.version, 2);
+  assert.equal(delta.bodies.length, 2);
+  assert.deepEqual(delta.bodies.find(body => body.id === "fed-victim"), {
+    id: "fed-victim",
+    x: 108,
+    y: 104,
+    layer: 0,
+    dead: false,
+    deathKind: null,
+    inactive: false,
+    dragged: false,
+    hiddenBody: false,
+    hiddenSpotId: null,
+    corpseDiscovered: false,
+    exposedAfterContainment: false,
+    feedingDepth: "full_feed",
+    feedingMemoryState: "fragmented",
+    feedingUnconscious: true,
+    feedingBiteEvidence: true,
+    feedingEvidenceDiscovered: false,
+    huntingAssessmentId: "hunt-2",
+    huntingAssessmentIds: ["hunt-1", "hunt-2"]
+  });
   assert.equal(delta.evidence.length, 1);
   assert.equal(delta.streetProps.length, 1);
   assert.equal(delta.vehicles.length, 1);
-  assert.deepEqual(store.snapshot().domains, { bodies: 1, evidence: 1, streetProps: 1, vehicles: 1 });
+  assert.deepEqual(store.snapshot().domains, { bodies: 2, evidence: 1, streetProps: 1, vehicles: 1 });
   assert.equal(scene.campaignSystem.state.world.flags["cityChunkDelta.0:0"].chunkId, "0:0");
+  store.destroy();
+});
+
+
+test("chunk delta restoration preserves cumulative feeding depth and drops unsafe carry state", () => {
+  const scene = fakeScene();
+  scene.currentLayer = 0;
+  const victim = {
+    id: "fed-victim",
+    x: 10,
+    y: 10,
+    layer: 0,
+    dead: false,
+    inactive: false,
+    hiddenBody: false,
+    dragged: false,
+    combat: { state: "active", resilience: 3, maxResilience: 3 },
+    container: {
+      setPosition(x, y) { this.x = x; this.y = y; return this; },
+      setVisible(value) { this.visible = value; return this; }
+    }
+  };
+  scene.npcSystem.npcs = [victim];
+  scene.campaignSystem.state.world.flags["cityChunkDelta.0:0"] = {
+    version: 2,
+    chunkId: "0:0",
+    bodies: [{
+      id: "fed-victim",
+      x: 108,
+      y: 104,
+      layer: 0,
+      dead: false,
+      inactive: false,
+      dragged: true,
+      hiddenBody: false,
+      feedingDepth: "full_feed",
+      feedingMemoryState: "fragmented",
+      feedingUnconscious: true,
+      feedingBiteEvidence: true,
+      feedingEvidenceDiscovered: false,
+      huntingAssessmentId: "hunt-2",
+      huntingAssessmentIds: ["hunt-1", "hunt-2"]
+    }],
+    evidence: [],
+    streetProps: [],
+    vehicles: []
+  };
+
+  const store = new ChunkDeltaStore(scene, fileSet.manifest);
+  assert.equal(victim.x, 108);
+  assert.equal(victim.y, 104);
+  assert.equal(victim.feedingDepth, "full_feed");
+  assert.equal(victim.feedingUnconscious, true);
+  assert.equal(victim.feedingBiteEvidence, true);
+  assert.equal(victim.combat.state, "downed");
+  assert.equal(victim.combat.resilience, 0);
+  assert.equal(victim.stunnedTimer, Number.POSITIVE_INFINITY);
+  assert.equal(victim.dragged, false);
+  assert.deepEqual(victim.huntingAssessmentIds, ["hunt-1", "hunt-2"]);
   store.destroy();
 });

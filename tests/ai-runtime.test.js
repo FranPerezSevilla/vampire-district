@@ -66,6 +66,7 @@ function makeScene(npcs) {
 
 test("AiStateSystem recovers police at the scheduled time and emits one event", () => {
   const cop = downedNpc(NPC_TYPES.POLICE, 4);
+  cop.feedingUnconscious = true;
   const { scene, remembered } = makeScene([cop]);
   const recovered = [];
   scene.events.on("combat:entity-recovered", payload => recovered.push(payload));
@@ -86,6 +87,7 @@ test("AiStateSystem recovers police at the scheduled time and emits one event", 
   assert.equal(cop.combat.state, COMBAT_STATES.STAGGERED);
   assert.equal(cop.combat.resilience, 2);
   assert.equal(cop.stunnedTimer, AI_RULES.recoveryStaggerMs / 1000);
+  assert.equal(cop.feedingUnconscious, false);
   assert.equal(recovered.length, 1);
   assert.equal(recovered[0].targetId, cop.id);
   assert.equal(remembered(), 1);
