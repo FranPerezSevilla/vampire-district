@@ -361,7 +361,7 @@ Acceptance:
 
 The city becomes a vampire ecosystem only when territory controls access to prey, concealment services, safe routes and political consequences. Faction ownership must therefore affect how the player hunts, not merely recolour districts or alter a reputation number.
 
-### 15.1 Territory foundation — 🔵 Active in PR #41
+### 15.1 Territory foundation — ✅ Complete
 
 - canonical original faction IDs/data for The First Estate and The Gutter Crown;
 - independent Houses represented by separate stable records, never one simulation faction;
@@ -376,9 +376,9 @@ This phase deliberately excludes the full territory-war loop, faction campaigns,
 
 Reference: `MILESTONE_15_1_FACTIONS_TERRITORY.md`.
 
-### 15.2 Blood ownership, hunting rights and poaching — ⬜ Planned
+### 15.2 Blood ownership, hunting rights and poaching — 🔵 Active in PR #42
 
-Every feeding attempt records its district, current owner, permission state, victim protection state and resulting evidence.
+Every completed feeding action records its district, current owner, permission state, victim protection state and resulting evidence. The first implementation slice is active in PR #42.
 
 - legal feeding: covered by an explicit right, service or faction permission;
 - tolerated feeding: not formally permitted, but below the owner's enforcement threshold;
@@ -764,8 +764,8 @@ These details are not substitutes for the systemic milestones, but they must rei
 
 The smallest coherent sequence that materially changes how Viceblood feels is:
 
-1. finish Milestone 15.1 territory foundation;
-2. add hunting rights, protected prey and discoverable poaching;
+1. use the completed Milestone 15.1 territory foundation;
+2. complete hunting rights, protected prey and discoverable poaching;
 3. add Quick bite / Full feed / Drain outcomes;
 4. separate Heat from evidence-driven Exposure and implement crime-as-an-alibi cleanup;
 5. expand Blood Sense and contextual Whisper without emotion systems;

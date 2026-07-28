@@ -104,7 +104,7 @@ test("version-two campaign saves gain territory without losing existing campaign
   }, { now: 9000 });
 
   assert.equal(migrated.version, CAMPAIGN_SCHEMA_VERSION);
-  assert.equal(migrated.version, 3);
+  assert.equal(migrated.version, 4);
   assert.equal(migrated.player.cash, 480);
   assert.equal(migrated.reputation.factions.first_estate, 17);
   assert.equal(migrated.reputation.contacts.estate_cleaner, 4);

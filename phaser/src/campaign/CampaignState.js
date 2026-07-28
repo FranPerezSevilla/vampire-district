@@ -9,6 +9,7 @@ import {
 } from "./constants.js";
 import { sanitizeCampaignCheckpoint } from "./CampaignCheckpoint.js";
 import { createTerritoryState, sanitizeTerritoryState } from "../factions/TerritoryModel.js";
+import { createHuntingLawState, sanitizeHuntingLawState } from "../factions/HuntingLawModel.js";
 
 function finiteNumber(value, fallback = 0) {
   const number = Number(value);
@@ -142,6 +143,7 @@ export function createCampaignState({ now = 0 } = {}) {
       contacts: {}
     },
     territory: createTerritoryState({ now: timestamp }),
+    huntingLaw: createHuntingLawState(),
     inventory: {
       carried: {
         meleeWeaponId: null,
@@ -260,6 +262,7 @@ export function sanitizeCampaignState(candidate, { now = 0 } = {}) {
       )
     },
     territory: sanitizeTerritoryState(source.territory, { now: timestamp }),
+    huntingLaw: sanitizeHuntingLawState(source.huntingLaw, { now: timestamp }),
     inventory: {
       carried: {
         meleeWeaponId: plainRecord(plainRecord(source.inventory).carried).meleeWeaponId == null
@@ -305,9 +308,9 @@ export function migrateCampaignState(candidate, { now = 0 } = {}) {
   }
 
   // Versions zero and one did not persist a world checkpoint. Version two did
-  // not persist district territory. Sanitisation keeps money, missions,
-  // reputation, inventory and world data while supplying the missing checkpoint
-  // and canonical fourteen-district territory collections.
+  // not persist district territory. Version three did not persist hunting-law
+  // rights, victim protection, assessments or discoveries. Sanitisation keeps
+  // every existing campaign domain while supplying the missing collections.
   return sanitizeCampaignState(source, { now });
 }
 

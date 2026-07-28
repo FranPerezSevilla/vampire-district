@@ -48,7 +48,7 @@ The current foundation provides:
 - `10 × 8` asynchronous chunk streaming, district packs and dormant simulation;
 - macro traffic and ten pooled civilian traffic proxies;
 - motorized police pursuit, partial roadblock and crew transfer to foot AI;
-- 291 passing unit tests with the Milestone 15.1 foundation, plus browser boot/systems/campaign domains.
+- 298 passing unit tests with the Milestone 15.2 hunting-law foundation, plus browser boot/systems/campaign domains.
 
 Production remains persistent missionless free roam. Archived mission definitions are explicit framework fixtures only.
 
@@ -65,7 +65,8 @@ Available systems include:
 - foot and motorized police;
 - evidence, witnesses and exposure;
 - campaign wallet, reputation and save state;
-- persistent faction influence and ownership across all fourteen semantic districts.
+- persistent faction influence and ownership across all fourteen semantic districts;
+- feeding assessments for hunting rights, protected prey, poaching and evidence-driven discovery.
 
 The mission panel reports that no contract is active and publishes no objective marker.
 
@@ -85,6 +86,7 @@ Preserved:
 - cash and ledger;
 - reputation;
 - district ownership, influence and territory change counters;
+- hunting rights, protected-victim records, feeding assessments and discoveries;
 - inventory;
 - authored vehicle ownership/condition/trunks;
 - unlocked refuges;
@@ -298,7 +300,8 @@ The reset adds coverage for:
 - no objective marker;
 - retired mission actors inactive and unpinned;
 - no protected Old Quarter or fixed compiler landmarks;
-- fourteen migration-safe territory records and semantic district-entry feedback.
+- fourteen migration-safe territory records and semantic district-entry feedback;
+- political feeding classification and recovered-body discovery of latent poaching.
 
 Mission-specific browser golden paths are removed because those contracts are no longer production content.
 
@@ -312,6 +315,7 @@ Mission-specific browser golden paths are removed because those contracts are no
 - Space owns traversal/handbrake;
 - campaign persistence remains active with zero missions;
 - territory ownership is derived from bounded influence and never duplicated in mission data;
+- feeding submits facts to one hunting-law authority instead of directly changing faction reputation;
 - mission definitions are explicit content, not hidden defaults;
 - missions cannot permanently constrain city topology;
 - city geometry is compiler-generated from semantic sites and a road graph;
@@ -335,6 +339,6 @@ Mission-specific browser golden paths are removed because those contracts are no
 
 ## Immediate priority
 
-Complete **Milestone 15.1 faction territory foundation**, then connect stable site, patrol and supplier consumers in Milestone 15.2.
+Complete **Milestone 15.2 hunting rights and poaching**: classify real feeding by district authority, explicit permission, protected prey and discoverable evidence. Quick Bite / Full Feed / Drain depth follows after this contract is stable.
 
 Future geometry work may add arbitrary-angle curves and polygonal ordinary parcels, but must preserve graph IDs, landmark sites, traffic/police integration and the hard no-overlap contracts.
