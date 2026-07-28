@@ -319,7 +319,7 @@ export function generateFoundryCandidate(seed, { baseBlueprint = currentCityBlue
 
   return defineCityBlueprint({
     ...baseBlueprint,
-    id: `bloodnight-foundry-${normalizedSeed}`,
+    id: `viceblood-foundry-${normalizedSeed}`,
     seed: normalizedSeed,
     runtime: candidateRuntime,
     metadata: {

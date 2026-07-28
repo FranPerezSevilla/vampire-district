@@ -6,9 +6,9 @@ Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) first for the canonical proj
 
 ## Product vision
 
-**Vampire District** is a pure top-down urban action, stealth and crime game with readable streets, vehicles, police pressure and systemic chaos, rebuilt around an original vampire setting.
+**Viceblood** is a pure top-down urban action, stealth and crime game with readable streets, vehicles, police pressure and systemic chaos, rebuilt around an original vampire setting.
 
-> GTA2-like city structure; Vampire District consequences.
+> GTA2-like city structure; Viceblood consequences.
 
 Streets, traffic, vehicles, weapons, factions, territory and cash remain core. Rooftops, sewers, Hunger, feeding, the Veil, powers, Retainers and supernatural politics differentiate it.
 
@@ -18,15 +18,15 @@ The project does not use names, lore, ranks, symbols, factions or terminology fr
 
 Working factions:
 
-- **Blackglass Directorate**;
-- **Red Assembly**;
-- separate **Unaligned Houses**.
+- **The First Estate**;
+- **The Gutter Crown**;
+- separate **The Houses**.
 
 Working enhanced-mortal terms:
 
 - neutral: **Retainer**;
-- Directorate: **Proxy**;
-- Assembly: **Marked**;
+- First Estate: **Proxy**;
+- Gutter Crown: **Marked**;
 - Unaligned: **Hand**.
 
 Commercial-facing names remain subject to trademark clearance.

@@ -10,12 +10,12 @@
 
 ## Prototype snapshot
 
-Initial repo setup for the single-file vampire district prototype.
+Initial repository setup for the single-file browser prototype.
 
 Current working local artifact:
 
 - `index.html` single-file HTML/CSS/JS prototype.
-- Top-down vampire district sandbox.
+- Top-down urban vampire sandbox.
 - Journalist interception mission for clan hierarchy narrative.
 - Hunger driven by power usage.
 - Shadow Dash, Whisper and Blood Sense.

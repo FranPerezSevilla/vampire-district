@@ -55,19 +55,19 @@ test("wallet refuses overspending without mutating balance or ledger", () => {
 
 test("faction and contact reputation are separate and clamped", () => {
   const { reputation } = fixture();
-  reputation.modifyFaction("blackglass_directorate", 12, { reason: "mission" });
+  reputation.modifyFaction("first_estate", 12, { reason: "mission" });
   reputation.modifyContact("police_roof_informant", 4, { reason: "protected identity" });
   reputation.modifyContact("unaligned_mechanic", -18, { reason: "unpaid debt" });
 
-  assert.equal(reputation.faction("blackglass_directorate"), 12);
+  assert.equal(reputation.faction("first_estate"), 12);
   assert.equal(reputation.contact("police_roof_informant"), 4);
   assert.equal(reputation.contact("unaligned_mechanic"), -18);
   assert.equal(reputation.tier(12).id, "useful");
   assert.equal(reputation.tier(-18).id, "distrusted");
 
-  reputation.modifyFaction("blackglass_directorate", 500);
+  reputation.modifyFaction("first_estate", 500);
   reputation.modifyContact("unaligned_mechanic", -500);
-  assert.equal(reputation.faction("blackglass_directorate"), 100);
+  assert.equal(reputation.faction("first_estate"), 100);
   assert.equal(reputation.contact("unaligned_mechanic"), -100);
 });
 
@@ -76,7 +76,7 @@ test("campaign events record plain-data wallet and reputation changes", () => {
   const received = [];
   events.on("*", event => received.push(event.type));
   wallet.credit(100, { source: "mission" });
-  reputation.modifyFaction("red_assembly", -5, { source: "mission" });
+  reputation.modifyFaction("gutter_crown", -5, { source: "mission" });
 
   assert.deepEqual(received, ["wallet:changed", "reputation:changed"]);
   assert.deepEqual(state.eventLog.map(event => event.type), received);

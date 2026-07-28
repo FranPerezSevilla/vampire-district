@@ -18,7 +18,7 @@ function argumentValue(prefix) {
 const outputDir = path.resolve(argumentValue("--output-dir=") || "phaser/assets/city/current");
 const packsDir = path.resolve(argumentValue("--packs-dir=") || "phaser/assets/city/packs");
 const fileSet = buildCityChunkFileSet({
-  id: "bloodnight-current-city-chunks",
+  id: "viceblood-current-city-chunks",
   world: currentCityBlueprint.world,
   runtime: currentCityBlueprint.runtime
 });

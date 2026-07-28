@@ -12,8 +12,8 @@ export const cleanTheSceneMission = defineMission({
   id: CLEAN_THE_SCENE_ID,
   version: 2,
   title: "Clean the Scene",
-  factionId: CAMPAIGN_FACTIONS.BLACKGLASS_DIRECTORATE,
-  contactId: "directorate_cleaner",
+  factionId: CAMPAIGN_FACTIONS.FIRST_ESTATE,
+  contactId: "estate_cleaner",
   description: "Recover compromised evidence, remove an exposed body, lose the police search and report back to the refuge.",
   replayable: true,
   objectives: [
@@ -100,10 +100,10 @@ export const cleanTheSceneMission = defineMission({
   rewards: {
     cash: 275,
     reputation: {
-      [CAMPAIGN_FACTIONS.BLACKGLASS_DIRECTORATE]: 2
+      [CAMPAIGN_FACTIONS.FIRST_ESTATE]: 2
     },
     contacts: {
-      directorate_cleaner: 3
+      estate_cleaner: 3
     },
     flags: {
       cleaner_contact_unlocked: true
@@ -113,7 +113,7 @@ export const cleanTheSceneMission = defineMission({
     worldAdapter: CLEAN_THE_SCENE_ID,
     missionBoard: {
       order: 10,
-      contactLabel: "Directorate cleaner"
+      contactLabel: "Estate cleaner"
     },
     placements: {
       serviceAlley: SERVICE_ALLEY,

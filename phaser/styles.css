@@ -60,20 +60,6 @@ h1 {
   font-weight: 790;
 }
 
-.legacy-link {
-  color: var(--text);
-  text-decoration: none;
-  border: 1px solid rgba(241, 230, 255, .20);
-  background: rgba(255, 255, 255, .04);
-  padding: 9px 12px;
-  border-radius: 8px;
-  font-size: 12px;
-}
-
-.legacy-link:hover {
-  border-color: rgba(120, 199, 163, .55);
-  color: var(--accent);
-}
 
 .game-frame {
   position: relative;

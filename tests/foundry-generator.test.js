@@ -116,7 +116,7 @@ test("Foundry comparison renderer emits three ranked panels", () => {
 });
 
 test("Foundry compiler CLI writes rankings, comparison and candidate reports", () => {
-  const outputDir = mkdtempSync(path.join(tmpdir(), "bloodnight-foundry-pilot-"));
+  const outputDir = mkdtempSync(path.join(tmpdir(), "viceblood-foundry-pilot-"));
   try {
     const result = spawnSync(process.execPath, [
       "tools/city-compiler/compile-foundry.js",

@@ -4,7 +4,7 @@
 
 The long-term structure is intentionally GTA2-like: readable districts, vehicles, traffic, weapons, factions, territory, cash and systemic police chaos. The original vampire setting adds Hunger, feeding, powers, rooftops, sewers, Retainers, safehouses and political consequences.
 
-The current public build is a **persistent free-roam systems sandbox** running City Topology V2: a `4800 × 3600` world with exactly five times the previous area. The repository keeps its historical `vampire-district` slug for compatibility, but the product name is now Viceblood.
+The current public build is a **persistent free-roam systems sandbox** running City Topology V2: a `4800 × 3600` world with exactly five times the previous area.
 
 Open `index.html` through a local/static web server, or use the published GitHub Pages build. ES modules will not work reliably through every browser's `file://` mode.
 
@@ -53,7 +53,7 @@ Archived mission definitions remain source-controlled framework examples, but th
 
 The current city uses:
 
-- one authoritative 114-node / 158-edge road graph;
+- one authoritative 107-node / 148-edge road graph;
 - clipped road segments and one unique authority surface per intersection;
 - explicit carriageway, curb and connected sidewalk bands;
 - valid pedestrian crossings outside junction centres;

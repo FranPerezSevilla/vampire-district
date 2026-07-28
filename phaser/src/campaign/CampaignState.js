@@ -2,6 +2,9 @@ import {
   CAMPAIGN_FACTIONS,
   CAMPAIGN_REFUGES,
   CAMPAIGN_SCHEMA_VERSION,
+  LEGACY_CAMPAIGN_CONTACT_IDS,
+  LEGACY_CAMPAIGN_FACTION_IDS,
+  LEGACY_CAMPAIGN_VEHICLE_IDS,
   MISSION_STATUS
 } from "./constants.js";
 import { sanitizeCampaignCheckpoint } from "./CampaignCheckpoint.js";
@@ -39,6 +42,32 @@ function numericRecord(value) {
   for (const [key, item] of Object.entries(plainRecord(value))) {
     if (!key) continue;
     result[key] = finiteNumber(item, 0);
+  }
+  return result;
+}
+
+function remapRecordKeys(value, aliases = {}) {
+  const result = { ...value };
+  for (const [legacyId, canonicalId] of Object.entries(aliases)) {
+    if (!(canonicalId in result) && legacyId in result) result[canonicalId] = result[legacyId];
+    delete result[legacyId];
+  }
+  return result;
+}
+
+function remapString(value, aliases = {}) {
+  const id = String(value || "").trim();
+  return aliases[id] || id;
+}
+
+function remapVehicleFlagKeys(value) {
+  const result = {};
+  for (const [key, item] of Object.entries(stringRecord(value))) {
+    let target = key;
+    for (const [legacyId, canonicalId] of Object.entries(LEGACY_CAMPAIGN_VEHICLE_IDS)) {
+      target = target.replace(`vehicle.${legacyId}.`, `vehicle.${canonicalId}.`);
+    }
+    result[target] = item;
   }
   return result;
 }
@@ -106,8 +135,8 @@ export function createCampaignState({ now = 0 } = {}) {
     },
     reputation: {
       factions: {
-        [CAMPAIGN_FACTIONS.BLACKGLASS_DIRECTORATE]: 0,
-        [CAMPAIGN_FACTIONS.RED_ASSEMBLY]: 0
+        [CAMPAIGN_FACTIONS.FIRST_ESTATE]: 0,
+        [CAMPAIGN_FACTIONS.GUTTER_CROWN]: 0
       },
       contacts: {}
     },
@@ -218,9 +247,15 @@ export function sanitizeCampaignState(candidate, { now = 0 } = {}) {
     reputation: {
       factions: {
         ...defaults.reputation.factions,
-        ...numericRecord(plainRecord(source.reputation).factions)
+        ...remapRecordKeys(
+          numericRecord(plainRecord(source.reputation).factions),
+          LEGACY_CAMPAIGN_FACTION_IDS
+        )
       },
-      contacts: numericRecord(plainRecord(source.reputation).contacts)
+      contacts: remapRecordKeys(
+        numericRecord(plainRecord(source.reputation).contacts),
+        LEGACY_CAMPAIGN_CONTACT_IDS
+      )
     },
     inventory: {
       carried: {
@@ -238,9 +273,12 @@ export function sanitizeCampaignState(candidate, { now = 0 } = {}) {
       refuges
     },
     world: {
-      ownedVehicles: uniqueStrings(plainRecord(source.world).ownedVehicles),
+      ownedVehicles: uniqueStrings(
+        uniqueStrings(plainRecord(source.world).ownedVehicles)
+          .map(id => remapString(id, LEGACY_CAMPAIGN_VEHICLE_IDS))
+      ),
       unlockedRefuges: uniqueStrings(plainRecord(source.world).unlockedRefuges),
-      flags: stringRecord(plainRecord(source.world).flags)
+      flags: remapVehicleFlagKeys(plainRecord(source.world).flags)
     },
     ledger,
     eventLog

@@ -73,7 +73,7 @@ refuge board
   → drag exposed body into a valid hiding place
   → lose Exposure / police attention
   → return to rooftop refuge
-  → receive $275, Directorate +2 and cleaner contact +3
+  → receive $275, First Estate +2 and cleaner contact +3
   → contract board reopens
 ```
 

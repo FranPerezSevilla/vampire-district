@@ -1,10 +1,25 @@
 export const CAMPAIGN_SCHEMA_VERSION = 2;
-// Keep the original storage key so version-one campaign saves migrate in place.
-export const CAMPAIGN_STORAGE_KEY = "vampire-district-campaign-v1";
+export const CAMPAIGN_STORAGE_KEY = "viceblood-campaign-v1";
+export const LEGACY_CAMPAIGN_STORAGE_KEYS = Object.freeze([
+  "vampire-district-campaign-v1"
+]);
 
 export const CAMPAIGN_FACTIONS = Object.freeze({
-  BLACKGLASS_DIRECTORATE: "blackglass_directorate",
-  RED_ASSEMBLY: "red_assembly"
+  FIRST_ESTATE: "first_estate",
+  GUTTER_CROWN: "gutter_crown"
+});
+
+export const LEGACY_CAMPAIGN_FACTION_IDS = Object.freeze({
+  blackglass_directorate: CAMPAIGN_FACTIONS.FIRST_ESTATE,
+  red_assembly: CAMPAIGN_FACTIONS.GUTTER_CROWN
+});
+
+export const LEGACY_CAMPAIGN_CONTACT_IDS = Object.freeze({
+  directorate_cleaner: "estate_cleaner"
+});
+
+export const LEGACY_CAMPAIGN_VEHICLE_IDS = Object.freeze({
+  directorate_van: "estate_van"
 });
 
 export const CAMPAIGN_REFUGES = Object.freeze({

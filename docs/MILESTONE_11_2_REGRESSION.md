@@ -123,7 +123,7 @@ After reload:
 ## Completed checkpoint
 
 - Complete the opening mission once.
-- Confirm cash `$500`, Blackglass `+5` and sire `+1`.
+- Confirm cash `$500`, First Estate `+5` and sire `+1`.
 - Confirm one wallet ledger entry.
 - Reload.
 - Intro and report modal do not reopen.

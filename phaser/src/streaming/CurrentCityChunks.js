@@ -40,7 +40,7 @@ export const currentCityChunkCollections = Object.freeze({
 });
 
 export const currentCityChunkManifest = buildCityChunkManifest({
-  id: "bloodnight-current-city-chunks",
+  id: "viceblood-current-city-chunks",
   world: { width: WORLD.width, height: WORLD.height },
   chunkSize: DEFAULT_CITY_CHUNK_SIZE,
   collections: currentCityChunkCollections

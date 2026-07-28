@@ -1,7 +1,7 @@
 {
   "schemaVersion": 5,
   "version": 5,
-  "id": "bloodnight-graph-derived-traffic-lanes",
+  "id": "viceblood-graph-derived-traffic-lanes",
   "defaults": {
     "maxActiveVehicles": 10,
     "materializeRadius": 620,

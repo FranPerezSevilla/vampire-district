@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { CampaignSystem } from "../phaser/src/campaign/CampaignSystem.js";
-import { CAMPAIGN_EVENT_TYPES, CAMPAIGN_STORAGE_KEY, MISSION_STATUS } from "../phaser/src/campaign/constants.js";
+import { createCampaignState } from "../phaser/src/campaign/CampaignState.js";
+import { CAMPAIGN_EVENT_TYPES, CAMPAIGN_STORAGE_KEY, LEGACY_CAMPAIGN_STORAGE_KEYS, MISSION_STATUS } from "../phaser/src/campaign/constants.js";
 import {
   SILENCE_THE_JOURNALIST_ID,
   silenceTheJournalistMission
@@ -45,6 +46,43 @@ test("CampaignSystem autosaves an explicitly supplied active mission and restore
   assert.equal(restored.state.missions.activeMissionId, SILENCE_THE_JOURNALIST_ID);
   assert.equal(restored.missions.currentObjective().id, "neutralize_journalist");
   assert.equal(restored.state.missions.records[SILENCE_THE_JOURNALIST_ID].status, MISSION_STATUS.ACTIVE);
+});
+
+
+test("campaign storage migrates the historical product and faction identifiers once", () => {
+  const storage = memoryStorage();
+  const legacyKey = LEGACY_CAMPAIGN_STORAGE_KEYS[0];
+  const state = createCampaignState({ now: 10 });
+  state.player.cash = 77;
+  state.reputation.factions = {
+    blackglass_directorate: 12,
+    red_assembly: -4
+  };
+  state.reputation.contacts = { directorate_cleaner: 6 };
+  state.world.ownedVehicles = ["directorate_van"];
+  state.world.flags = {
+    "vehicle.directorate_van.status": "owned"
+  };
+  storage.setItem(legacyKey, JSON.stringify(state));
+
+  const system = new CampaignSystem({
+    storage,
+    now: () => 20,
+    autoLoad: true,
+    autoSave: false
+  });
+
+  assert.equal(system.state.player.cash, 77);
+  assert.equal(system.state.reputation.factions.first_estate, 12);
+  assert.equal(system.state.reputation.factions.gutter_crown, -4);
+  assert.equal(system.state.reputation.contacts.estate_cleaner, 6);
+  assert.ok(system.state.world.ownedVehicles.includes("estate_van"));
+  assert.equal(system.state.world.ownedVehicles.includes("directorate_van"), false);
+  assert.equal(system.state.world.flags["vehicle.estate_van.status"], "owned");
+  assert.equal(system.state.reputation.factions.blackglass_directorate, undefined);
+  assert.equal(system.state.reputation.factions.red_assembly, undefined);
+  assert.equal(storage.getItem(legacyKey), null);
+  assert.ok(storage.getItem(CAMPAIGN_STORAGE_KEY));
 });
 
 test("campaign export/import preserves money, reputation and explicit mission progress", () => {

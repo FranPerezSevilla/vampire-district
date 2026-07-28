@@ -518,7 +518,7 @@ function buildMacroAndLanes(districts, network, profiles) {
     macroGraph: {
       schemaVersion: 2,
       version: 2,
-      id: "bloodnight-macro-navigation-v2",
+      id: "viceblood-macro-navigation-v2",
       nodeIds,
       nodes,
       edgeIds: Object.keys(edges),
@@ -527,7 +527,7 @@ function buildMacroAndLanes(districts, network, profiles) {
     trafficLanes: {
       schemaVersion: 5,
       version: 5,
-      id: "bloodnight-graph-derived-traffic-lanes",
+      id: "viceblood-graph-derived-traffic-lanes",
       defaults: { ...TRAFFIC_DEFAULTS },
       behavior: { ...TRAFFIC_BEHAVIOR },
       physics: { ...TRAFFIC_PHYSICS },
@@ -563,7 +563,7 @@ export function buildDistrictStreamingFileSet({
     manifest: {
       schemaVersion: 2,
       version: 2,
-      id: "bloodnight-district-packs-v2",
+      id: "viceblood-district-packs-v2",
       chunkSize,
       world: { ...blueprint.world },
       packIds,

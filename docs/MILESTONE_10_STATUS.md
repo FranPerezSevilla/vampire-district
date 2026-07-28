@@ -73,7 +73,7 @@ Automated release-candidate acceptance is green. Milestone 10 remains 🟡 until
 
 ## Remaining cleanup boundary
 
-Several superseded prototype source files remain as unloaded historical implementation files. The playable HTML no longer imports them and source-ownership tests protect that fact. Physical deletion will occur after manual acceptance, followed by one final CI run.
+The superseded canvas prototype, its root `css/` and `js/` trees, and the one-off patch workflows were physically removed after Phaser acceptance. Source-ownership tests protect the active runtime from reintroducing that parallel stack.
 
 ## Release boundary
 

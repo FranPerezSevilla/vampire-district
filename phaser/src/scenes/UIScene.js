@@ -397,7 +397,7 @@ export class UIScene extends Phaser.Scene {
 
     if (this.introOpen) {
       this.setModal(
-        "Vampire District",
+        "Viceblood",
         `<p>You were turned several decades ago. Among vampires, you are still little more than a clumsy fledgling with much to learn.</p>
          <p>You spend your nights running errands and being sent from one place to another. You feel trapped in an unlife that promised to be far more exciting than it truly is.</p>`,
         "Begin the night · Enter"
@@ -454,7 +454,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   setModal(title, bodyHtml, actionLabel) {
-    const visibleTitle = title === "Night Blood District" ? "Vampire District" : title;
+    const visibleTitle = title || "Viceblood";
     const body = String(bodyHtml || "");
     this.setText(this.dom.modalTitle, visibleTitle);
     if (this.dom.modalBody && this.lastModalBodyHtml !== body) {

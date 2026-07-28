@@ -140,7 +140,7 @@ This does not yet disable world camera shake. A complete reduced-camera-motion s
 
 Both playable HTML routes now use:
 
-- `Vampire District` as the visible project title;
+- `Viceblood` as the visible project title;
 - `Render quality` rather than a misleading browser-window resolution label;
 - current mouse, wheel, Shift, Space and E controls;
 - no visible instruction that Space sprints or that E breaks streetlights.

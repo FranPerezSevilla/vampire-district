@@ -96,7 +96,7 @@ GUTTER CROWN
 
 **Status:** provisional umbrella terminology, not a unified faction.
 
-The Houses describes independent bloodlines, smugglers, brokers, mercenaries, isolated sires and criminal families that do not maintain permanent allegiance to either major faction.
+The Houses is used as a presentation label for independent bloodlines, smugglers, brokers, mercenaries, isolated sires and criminal families that do not maintain permanent allegiance to either major faction.
 
 Rules:
 

@@ -52,7 +52,7 @@ This directory is the project source of truth for design, implementation and pla
 - [NPC AI](AI_SYSTEM.md) — priority states, police roles, witnesses, hunter memory and recovery.
 - [Drain system](DRAIN_SYSTEM.md) — eligibility, channel cancellation and perception.
 - [Movement system](MOVEMENT_SYSTEM.md) — running, quiet movement, footsteps and traversal.
-- [Damageable props](PROP_SYSTEM.md) — streetlights, darkness, reactions and events.
+- [Historical damageable-props experiment](PROP_SYSTEM.md) — retired streetlight/darkness implementation record.
 - [Weapon system](WEAPON_SYSTEM.md) — prototype inventory, wheel selection, attacks, ammo and noise.
 - [Tutorial UX and accessibility](UX_ACCESSIBILITY.md) — historical authored teaching plus current HUD/accessibility contracts.
 - [Control scheme](CONTROL_SCHEME.md) — keyboard/mouse controls and interaction priority.

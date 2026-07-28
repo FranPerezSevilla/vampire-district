@@ -2,7 +2,7 @@ import { checkpointCanResume } from "./CampaignCheckpoint.js";
 import { MISSION_STATUS } from "./constants.js";
 
 export const CAMPAIGN_ENTRY_VERSION = 2;
-export const CAMPAIGN_ENTRY_SESSION_KEY = "vampire-district-campaign-entry-once-v1";
+export const CAMPAIGN_ENTRY_SESSION_KEY = "viceblood-campaign-entry-once-v1";
 
 export const CAMPAIGN_ENTRY_MODES = Object.freeze({
   NEW_GAME: "new-game",
@@ -233,7 +233,7 @@ export function createCampaignEntry(snapshotCandidate, { autoEnter = false } = {
       missionId: opening.id,
       missionTitle: opening.title,
       eyebrow: "NEW CAMPAIGN",
-      title: "Vampire District",
+      title: "Viceblood",
       body: [
         "Begin the campaign from its first registered contract, or open an isolated exploration session."
       ],
@@ -251,7 +251,7 @@ export function createCampaignEntry(snapshotCandidate, { autoEnter = false } = {
     autoEnter,
     blocksAutomaticOpeningStart: true,
     eyebrow: "CITY SANDBOX",
-    title: "Vampire District",
+    title: "Viceblood",
     body: [
       "There are no registered campaign contracts in this build.",
       "Enter persistent free roam while the city topology and landmark sites are redesigned."

@@ -4,7 +4,7 @@ _Status: locked product direction; faction names are working names pending comme
 
 ## Core decision
 
-Vampire District will use a wholly original vampire setting. It will not ship with names, lore, ranks, terminology, symbols or faction histories taken from another tabletop or videogame property.
+Viceblood will use a wholly original vampire setting. It will not ship with names, lore, ranks, terminology, symbols or faction histories taken from another tabletop or videogame property.
 
 The intended structure remains:
 
@@ -37,11 +37,11 @@ The names below are design working names, not cleared commercial marks. Before a
 
 ## Faction structure
 
-### The Blackglass Directorate
+### The First Estate
 
-**Systemic role:** secretive ruling establishment.
+**Systemic role:** old institutional elite.
 
-The Directorate is not a royal court or religious sect. It is an old administrative machine that treats secrecy as infrastructure. Its members hold property, hospitals, private security, municipal contracts, press influence and compromised police contacts.
+The First Estate is not a royal court, corporation or religious sect. It is a network of inherited property, civic influence and carefully maintained obligations. Its members hold hospitals, private security, municipal contracts, press influence and compromised police contacts.
 
 Doctrine:
 
@@ -60,26 +60,26 @@ Gameplay identity:
 
 Internal structure:
 
-- Directors control portfolios rather than hereditary titles;
+- Stewards control portfolios rather than fantasy court titles;
 - portfolios include police, hospitals, property, media, transport and archives;
 - local decisions are recorded as sealed directives;
 - failure creates debt, demotion or reassignment rather than ritual punishment.
 
 Visual language:
 
-- black glass, smoked chrome and muted violet;
+- bone white, smoked silver, deep burgundy and old stone;
 - tailored coats and practical security uniforms;
-- unmarked sedans;
-- clean modernist interiors hiding old basements;
-- geometric insignia based on a fractured black pane.
+- understated official sedans;
+- restored civic interiors hiding older service spaces;
+- a narrow shield-and-key seal used on documents, doors and discreet vehicle marks.
 
-The journalist mission is a Directorate opening mission: the sire uses a compromised officer and demands that the Veil remain intact.
+The journalist mission is a First Estate opening mission: the sire uses a compromised officer and demands that the Veil remain intact.
 
-### The Red Assembly
+### The Gutter Crown
 
 **Systemic role:** violent territorial rival.
 
-The Assembly is a coalition of predatory crews, abandoned fledglings, radical bloodlines and criminal organizations. It is not united by worship or ancient prophecy. It believes that the Directorate has turned vampires into dependent bureaucrats and that territory belongs to whoever can hold it tonight.
+The Gutter Crown is a coalition of predatory crews, abandoned fledglings, radical bloodlines and criminal organizations. It is not united by worship or ancient prophecy. It believes that the First Estate has turned vampires into dependent bureaucrats and that territory belongs to whoever can hold it tonight.
 
 Doctrine:
 
@@ -108,13 +108,13 @@ Visual language:
 - oxidized red, industrial orange and dirty steel;
 - patched street clothing, workwear and stolen tactical equipment;
 - painted vehicles and improvised barricades;
-- symbols based on several hands forming one broken circle.
+- crude crown marks assembled from three broken strokes, easy to paint on walls and vehicles.
 
-### The Unaligned Houses
+### The Houses
 
 **Systemic role:** original equivalent of independent operators, without treating them as one unified sect.
 
-The Unaligned Houses are a category used by the Directorate, not a single faction. It includes old bloodlines, smugglers, information brokers, mercenaries, isolated sires, criminal families and individual vampires who refuse permanent allegiance.
+The Houses is a presentation label, not a single faction. It includes old bloodlines, smugglers, information brokers, mercenaries, isolated sires, criminal families and individual vampires who refuse permanent allegiance.
 
 Gameplay identity:
 
@@ -135,7 +135,7 @@ Rules:
 - others sell to both sides or betray either side for sufficient payment;
 - the UI may group them as `UNALIGNED`, but simulation data keeps separate reputations.
 
-Visual language varies by House. Their shared identifier is absence of Directorate or Assembly markings, not one universal uniform.
+Visual language varies by House. Their shared identifier is the absence of First Estate or Gutter Crown markings, not one universal uniform.
 
 ## Reputation model
 
@@ -190,9 +190,9 @@ Faction terminology:
 
 | Group | Preferred term | Cultural meaning |
 |---|---|---|
-| Blackglass Directorate | Proxy | A deniable daytime institutional asset. |
-| Red Assembly | Marked | A mortal visibly claimed by a crew. |
-| Unaligned Houses | Hand | A practical operator trusted to act during daylight. |
+| The First Estate | Proxy | A deniable daytime institutional asset. |
+| The Gutter Crown | Marked | A mortal visibly claimed by a crew. |
+| The Houses | Hand | A practical operator trusted to act during daylight. |
 | System/UI | Retainer | Neutral mechanical category. |
 
 ### Retainer attributes
@@ -361,7 +361,7 @@ Prices vary by supplier, reputation, district pressure, scarcity and mission sta
 
 ### Faction supply identities
 
-#### Blackglass Directorate
+#### The First Estate
 
 - expensive;
 - dependable stock;
@@ -369,14 +369,14 @@ Prices vary by supplier, reputation, district pressure, scarcity and mission sta
 - higher reputation requirements;
 - access to clean police or security ammunition.
 
-#### Red Assembly
+#### The Gutter Crown
 
 - cheaper bulk ammunition;
 - irregular availability;
 - more automatic and heavy weapons;
 - increased chance of supplier heat or compromised goods.
 
-#### Unaligned Houses
+#### The Houses
 
 - variable prices;
 - rare and specialist equipment;
@@ -534,7 +534,7 @@ The mission framework, money and persistent inventory must exist before faction 
 
 - No shipped faction uses protected setting names or copied lore expression.
 - The three political roles feel mechanically distinct rather than being simple colour swaps.
-- Unaligned Houses are simulated separately, not as one monolithic faction.
+- Every House is simulated separately, not as one monolithic faction.
 - Retainers are named people with agency, upkeep and risk.
 - Ammunition cannot be replenished infinitely or for free.
 - Refuge stock and carried capacity are separate.

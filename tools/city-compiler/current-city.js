@@ -61,7 +61,7 @@ function siteLandmark(site) {
 
 export const currentCityBlueprint = defineCityBlueprint({
   schemaVersion: 2,
-  id: "bloodnight-city-topology-v2",
+  id: "viceblood-city-topology-v2",
   seed: CITY_TOPOLOGY_SEED,
   world: CITY_WORLD,
   protectedZones: [],

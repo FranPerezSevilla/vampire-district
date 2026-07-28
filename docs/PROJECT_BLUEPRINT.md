@@ -1,4 +1,4 @@
-# Vampire District — project blueprint
+# Viceblood — project blueprint
 
 _Last updated: 2026-07-24_
 
@@ -22,9 +22,9 @@ City Topology V2 replaces the former protected core:
 
 ## Product identity
 
-**Vampire District** is a pure top-down urban action, stealth and crime game with readable streets, vehicles, police pressure and systemic chaos, rebuilt around an original vampire setting.
+**Viceblood** is a pure top-down urban action, stealth and crime game with readable streets, vehicles, police pressure and systemic chaos, rebuilt around an original vampire setting.
 
-> GTA2-like city structure; Vampire District consequences.
+> GTA2-like city structure; Viceblood consequences.
 
 Streets, traffic, vehicles, weapons, factions, territory, cash and rapid navigation remain core pillars. Rooftops, sewers, Hunger, feeding, the Veil, powers, Retainers and supernatural politics create the project identity.
 

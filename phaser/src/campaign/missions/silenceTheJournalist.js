@@ -7,7 +7,7 @@ export const silenceTheJournalistMission = defineMission({
   id: SILENCE_THE_JOURNALIST_ID,
   version: 2,
   title: "Silence the Journalist",
-  factionId: CAMPAIGN_FACTIONS.BLACKGLASS_DIRECTORATE,
+  factionId: CAMPAIGN_FACTIONS.FIRST_ESTATE,
   contactId: "your_sire",
   description: "Reach the compromised police informant, locate the journalist, silence him and report at the rooftop refuge.",
   replayable: false,
@@ -93,7 +93,7 @@ export const silenceTheJournalistMission = defineMission({
   rewards: {
     cash: 500,
     reputation: {
-      [CAMPAIGN_FACTIONS.BLACKGLASS_DIRECTORATE]: 5
+      [CAMPAIGN_FACTIONS.FIRST_ESTATE]: 5
     },
     contacts: {
       your_sire: 1
