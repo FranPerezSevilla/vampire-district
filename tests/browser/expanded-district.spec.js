@@ -40,7 +40,7 @@ for (const route of ROUTES) {
         },
         pedestrians,
         police: scene.policeSystem.police().length,
-        lights: scene.propDamageSystem.props.length,
+        retiredLightProps: scene.propDamageSystem.props.length,
         dumpsters: window.NBD_STREET_PROPS.snapshot().dumpsters.length,
         activeMissionId: scene.campaignSystem.state.missions.activeMissionId,
         tutorialState: scene.tutorialDirector.state
@@ -54,42 +54,34 @@ for (const route of ROUTES) {
     expect(state.pedestrians.count).toBeLessThanOrEqual(6);
     expect(state.pedestrians.pedestrians.every(item => item.onPedestrianSurface)).toBe(true);
     expect(state.police).toBe(2);
-    expect(state.lights).toBeGreaterThanOrEqual(60);
+    expect(state.retiredLightProps).toBe(0);
     expect(state.dumpsters).toBeGreaterThanOrEqual(12);
     expect(state.activeMissionId).toBeNull();
     expect(state.tutorialState).toBe("complete");
   });
 }
 
-test("a moving vehicle breaks a sidewalk streetlight and persists the damage", async ({ page }) => {
+test("streetlight authority stays retired while streamed dumpsters remain active", async ({ page }) => {
   await page.goto("/?testScenario=street-damage", { waitUntil: "domcontentloaded" });
   await waitForUrbanRuntime(page, "street-damage");
 
   const result = await page.evaluate(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
-    const vehicle = scene.vehicleSystem.vehicle("refuge_compact");
-    const light = scene.propDamageSystem.props.find(prop => !scene.brokenLights.has(prop.id));
-    if (!light) throw new Error("No intact generated streetlight is available.");
-    scene.switchLayer(0, { x: light.x, y: light.y }, "Urban test: controlled vehicle impact.");
-    scene.vehicleSystem.enterVehicle(vehicle.id, { force: true });
-    const healthBefore = vehicle.health;
-    scene.streetFurnitureSystem.resolveVehicleMove(vehicle, {
-      x: light.x,
-      y: light.y,
-      angle: 0,
-      speed: 72
-    });
+    const streetProps = window.NBD_STREET_PROPS.snapshot();
     return {
-      broken: scene.brokenLights.has(light.id),
-      persisted: scene.campaignSystem.state.world.flags[`streetProp.${light.id}.broken`],
-      healthBefore,
-      healthAfter: vehicle.health
+      lightProps: scene.propDamageSystem?.props?.length || 0,
+      brokenLights: scene.brokenLights?.size || 0,
+      currentLight: scene.currentLight?.() || null,
+      currentShadow: scene.currentShadowAt?.(scene.player.x, scene.player.y, 0) || null,
+      dumpsters: streetProps.dumpsters.length
     };
   });
 
-  expect(result.broken).toBe(true);
-  expect(result.persisted).toBe(true);
-  expect(result.healthAfter).toBeLessThan(result.healthBefore);
+  expect(result.lightProps).toBe(0);
+  expect(result.brokenLights).toBe(0);
+  expect(result.currentLight).toBeNull();
+  expect(result.currentShadow).toBeNull();
+  expect(result.dumpsters).toBeGreaterThanOrEqual(12);
 });
 
 test("a dumpster corpse stays exposed, can be dragged, and can be recontained without a mission adapter", async ({ page }) => {
