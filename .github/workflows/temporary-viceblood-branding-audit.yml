@@ -1,0 +1,43 @@
+name: Temporary Viceblood branding audit
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Audit tracked files and branding references
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '===== TRACKED FILES ====='
+          git ls-files | sort
+
+          echo '===== VAMPIRE DISTRICT BRANDING OCCURRENCES ====='
+          git grep -n -I -i -E 'vampire[ _-]+district' -- . || true
+
+          echo '===== PRODUCT/PROTOTYPE/LEGACY REFERENCES ====='
+          git grep -n -I -i -E 'original prototype|prototype original|legacy prototype|old prototype|prototype link|legacy/|/legacy|prototype/' -- . || true
+
+          echo '===== URLS AND HREFS WITH OLD SLUG OR PROTOTYPE TERMS ====='
+          git grep -n -I -i -E '(https?://[^ ]*(vampire-district|prototype|legacy)|href=[^ >]*(vampire-district|prototype|legacy))' -- . || true
+
+          echo '===== SUSPICIOUS FILENAMES ====='
+          git ls-files | grep -i -E '(^|/)(legacy|old|prototype|original)(/|[-_.])|vampire[-_ ]district' || true
+
+          echo '===== TOP-LEVEL HTML/JS ENTRY REFERENCES ====='
+          for file in index.html phaser/index.html phaser/src/app-bootstrap.js package.json README.md; do
+            if [ -f "$file" ]; then
+              echo "--- $file"
+              sed -n '1,260p' "$file"
+            fi
+          done
