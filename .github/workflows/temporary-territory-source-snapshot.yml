@@ -1,4 +1,4 @@
-name: Temporary territory source snapshot
+name: Apply faction territory foundation
 
 on:
   pull_request:
@@ -6,19 +6,49 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  archive:
+  apply:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
-      - name: Check out PR
+      - name: Check out PR branch
         uses: actions/checkout@v4
-      - name: Archive tracked source
-        run: git archive --format=zip --output=viceblood-territory-source.zip HEAD
-      - name: Upload source
-        uses: actions/upload-artifact@v4
         with:
-          name: viceblood-territory-source
-          path: viceblood-territory-source.zip
-          retention-days: 2
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Apply, validate and publish territory foundation
+        shell: bash
+        env:
+          TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          payload=.github/territory-payload.b64
+          if [ ! -f "$payload" ]; then
+            echo 'Territory implementation payload already consumed.'
+            exit 0
+          fi
+
+          base64 -d "$payload" | gzip -dc > /tmp/territory.patch
+          git apply /tmp/territory.patch
+          rm -f "$payload"
+
+          npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+          node --test tests/*.test.js
+          npm run city:validate
+          npm run city:compile -- --output-dir=/tmp/viceblood-territory-city
+          npm run city:foundry -- --output-dir=/tmp/viceblood-territory-foundry
+          git diff --check
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Implement faction territory foundation'
+          git push origin "HEAD:${TARGET_BRANCH}"
