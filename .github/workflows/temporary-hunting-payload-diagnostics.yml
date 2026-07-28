@@ -19,5 +19,6 @@ jobs:
         with:
           name: hunting-payload-blocks
           path: .github/hunting-law-payload*
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 2
