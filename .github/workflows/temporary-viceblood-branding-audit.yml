@@ -32,16 +32,20 @@ jobs:
             echo '===== OLD-SLUG / PROTOTYPE URLS AND HREFS ====='
             git grep -n -I -i -E '(https?://[^ ]*(vampire-district|prototype|legacy)|href=[^ >]*(vampire-district|prototype|legacy))' -- . || true
 
-            echo '===== SUSPICIOUS FILENAMES ====='
-            git ls-files | grep -i -E '(^|/)(legacy|old|prototype|original)(/|[-_.])|vampire[-_ ]district' || true
+            echo '===== LEGACY BLOCK FILES ====='
+            git ls-files css js legacy | sort || true
 
-            echo '===== HTML LINKS ====='
-            git grep -n -I -i -E '(href|src)=["'"'][^"'"']+["'"']' -- '*.html' || true
+            echo '===== REFERENCES TO ROOT CSS/JS/LEGACY OUTSIDE THAT BLOCK ====='
+            git grep -n -I -i -E '(["'"'/(])(css|js|legacy)/|prototype-threat-limits' -- . ':(exclude)css/**' ':(exclude)js/**' ':(exclude)legacy/**' || true
 
-            echo '===== POTENTIALLY UNUSED LEGACY ENTRY FILES ====='
-            for candidate in prototype.html original.html legacy.html index-legacy.html legacy/index.html phaser/legacy/index.html; do
-              if [ -e "$candidate" ]; then echo "$candidate"; fi
-            done
+            echo '===== PATCH TOOL FILES ====='
+            git ls-files 'tools/patch-*.mjs' | sort || true
+
+            echo '===== REFERENCES TO PATCH TOOLS OUTSIDE THEMSELVES ====='
+            git grep -n -I -i -E 'tools/patch-[^ ]+\.mjs|patch-phase11-powers|patch-phaser-hunters' -- . ':(exclude)tools/patch-*.mjs' || true
+
+            echo '===== PACKAGE AND WORKFLOW TOOL REFERENCES ====='
+            git grep -n -I -i -E 'tools/|legacy/|css/|js/' -- package.json '.github/workflows/*.yml' '.github/workflows/*.yaml' || true
           } >> "$report"
 
           wc -l "$report"
