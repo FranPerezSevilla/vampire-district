@@ -2,6 +2,7 @@ import { installMotorizedPoliceLocalPolicy } from "../police/MotorizedPoliceLoca
 import { MotorizedPoliceSystem } from "../police/MotorizedPoliceSystem.js";
 import { PedestrianSystem } from "../systems/PedestrianSystem.js";
 import { StreetFurnitureSystem } from "../systems/StreetFurnitureSystem.js";
+import { installBuildingSidewalkClearancePolicy } from "../streaming/BuildingSidewalkClearancePolicy.js";
 import { ChunkStreamSystem } from "../streaming/ChunkStreamSystem.js";
 import { DistrictPackSystem } from "../streaming/DistrictPackSystem.js";
 import { DistantSimulationSystem } from "../streaming/DistantSimulationSystem.js";
@@ -59,6 +60,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
   constructor(scene) {
     super(scene);
     scene.cityStreamSystem = new ChunkStreamSystem(scene);
+    scene.buildingSidewalkClearancePolicy = installBuildingSidewalkClearancePolicy(scene);
     scene.pedestrianSystem = new PedestrianSystem(scene);
     scene.streetFurnitureSystem = new StreetFurnitureSystem(scene, scene.campaignSystem);
     scene.vehicleSystem = new VehicleSystem(scene, scene.campaignSystem);
@@ -170,6 +172,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.scene.streetFurnitureSystem = null;
     this.scene.pedestrianSystem?.destroy?.();
     this.scene.pedestrianSystem = null;
+    this.scene.buildingSidewalkClearancePolicy?.destroy?.();
+    this.scene.buildingSidewalkClearancePolicy = null;
     this.scene.cityStreamSystem?.destroy?.();
     this.scene.cityStreamSystem = null;
     super.destroy();
