@@ -11,7 +11,7 @@ async function waitForCity(page) {
 
 test.describe.configure({ timeout: 90_000 });
 
-test("the NEON club footprint never covers its streamed sidewalk", async ({ page }) => {
+test("the nightclub footprint never covers its streamed sidewalk", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
@@ -22,18 +22,18 @@ test("the NEON club footprint never covers its streamed sidewalk", async ({ page
     const clubFocus = { x: 1990, y: 1375 };
     await window.NBD_CITY_STREAM.forceFocus(clubFocus.x, clubFocus.y);
     scene.cameras.main.centerOn(clubFocus.x, clubFocus.y);
-    scene.redrawLayer("NEON sidewalk clearance test.");
+    scene.redrawLayer("Nightclub sidewalk clearance test.");
 
     const area = { x: 1780, y: 1210, w: 440, h: 340 };
-    const neon = scene.cityStreamSystem.query("buildings", area, { includePrefetched: true, margin: 24 })
-      .find(building => String(building.sign || "").trim().toUpperCase() === "NEON");
-    if (!neon) return { missing: true };
+    const club = scene.cityStreamSystem.query("buildings", area, { includePrefetched: true, margin: 24 })
+      .find(building => String(building.id || "").trim().toLowerCase() === "club");
+    if (!club) return { missing: true };
 
     const nearby = {
-      x: neon.x - 12,
-      y: neon.y - 12,
-      w: neon.w + 24,
-      h: neon.h + 24
+      x: club.x - 12,
+      y: club.y - 12,
+      w: club.w + 24,
+      h: club.h + 24
     };
     const sidewalks = scene.cityStreamSystem.query("sidewalks", nearby, { includePrefetched: true, margin: 12 });
     const boundsFor = surface => {
@@ -54,22 +54,22 @@ test("the NEON club footprint never covers its streamed sidewalk", async ({ page
 
     return {
       missing: false,
-      neon: {
-        id: neon.id,
-        sign: neon.sign,
-        x: neon.x,
-        y: neon.y,
-        w: neon.w,
-        h: neon.h,
-        clearancePolicy: neon.clearancePolicy || null
+      club: {
+        id: club.id,
+        sign: club.sign,
+        x: club.x,
+        y: club.y,
+        w: club.w,
+        h: club.h,
+        clearancePolicy: club.clearancePolicy || null
       },
-      touchingSidewalks: sidewalks.filter(surface => overlaps(neon, boundsFor(surface), 3)).map(surface => surface.id),
+      touchingSidewalks: sidewalks.filter(surface => overlaps(club, boundsFor(surface), 3)).map(surface => surface.id),
       policy: scene.buildingSidewalkClearancePolicy.snapshot()
     };
   });
 
   expect(result.missing).toBe(false);
-  expect(result.neon).toMatchObject({ sign: "NEON", clearancePolicy: "neon-sidewalk-clearance-v1" });
+  expect(result.club).toMatchObject({ id: "club", sign: "CLUB", clearancePolicy: "neon-sidewalk-clearance-v1" });
   expect(result.touchingSidewalks).toEqual([]);
   expect(result.policy.adjustedQueries).toBeGreaterThan(0);
   expect(pageErrors).toEqual([]);
