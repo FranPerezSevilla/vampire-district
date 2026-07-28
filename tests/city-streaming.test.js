@@ -13,7 +13,7 @@ import {
 } from "../phaser/src/streaming/ChunkStreamSystem.js";
 
 const fileSet = buildCityChunkFileSet({
-  id: "bloodnight-current-city-chunks",
+  id: "viceblood-current-city-chunks",
   world: currentCityBlueprint.world,
   runtime: currentCityBlueprint.runtime
 });

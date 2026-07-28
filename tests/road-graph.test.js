@@ -12,6 +12,7 @@ import {
   surfaceOverlapArea
 } from "../tools/city-compiler/geometry.js";
 import { cityRoadGraph } from "../tools/city-compiler/city-road-graph-v1.js";
+import { buildings as generatedBuildings } from "../phaser/src/data/generated/city-topology-v2.js";
 import {
   buildings,
   crosswalks,
@@ -311,7 +312,7 @@ test("dumpsters are snapped after layout outside junction and crosswalk exclusio
 test("the full city is reproducible from its explicit road graph with no road-piece overlap", () => {
   const compiled = compileAxisAlignedRoadGraph(cityRoadGraph, {
     world: CITY_WORLD,
-    buildings,
+    buildings: generatedBuildings,
     sidewalkWidth: 22,
     crosswalkThickness: 14,
     crosswalkInset: 8,
@@ -350,7 +351,7 @@ test("the full city is reproducible from its explicit road graph with no road-pi
   assert.equal(compiled.stats.propExclusionZoneCount, propExclusionZones.length);
   assert.equal(compiled.stats.lightCount, 128);
   assert.equal(compiled.roadEdgeBands.every(band => (band.orientation === "horizontal" ? band.w : band.h) >= 36), true);
-  assert.equal(compiled.roadEdgeBands.every(band => buildings.every(building => surfaceOverlapArea(band, building) <= 0.01)), true);
+  assert.equal(compiled.roadEdgeBands.every(band => generatedBuildings.every(building => surfaceOverlapArea(band, building) <= 0.01)), true);
   assert.equal(roadGraphIntegrity(cityRoadGraph, compiled).valid, true);
   assertNoRoadOverlap(compiled.roads);
 });

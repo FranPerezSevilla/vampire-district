@@ -154,7 +154,7 @@ export class MissionBoardSystem {
       id: "open_refuge_mission_board",
       type: "mission-board",
       label: "Open contract board",
-      detail: "select a Directorate contract",
+      detail: "select a First Estate contract",
       priority: 150,
       distance,
       x: marker.x,
@@ -181,7 +181,7 @@ export class MissionBoardSystem {
       const contactReward = Object.values(card.rewards.contacts || {})[0] || 0;
       const rewardText = [
         `$${Number(card.rewards.cash || 0).toFixed(0)}`,
-        factionReward ? `Directorate +${factionReward}` : "",
+        factionReward ? `First Estate +${factionReward}` : "",
         contactReward ? `Contact +${contactReward}` : ""
       ].filter(Boolean).join(" · ");
       const runText = card.completionCount > 0 ? `Completed ${card.completionCount} time${card.completionCount === 1 ? "" : "s"}` : "New contract";
@@ -210,9 +210,9 @@ export class MissionBoardSystem {
     overlay.setAttribute("aria-labelledby", "mission-board-title");
     overlay.innerHTML = `
       <div class="mission-board__panel">
-        <p class="mission-board__eyebrow">ROOFTOP REFUGE · BLACKGLASS DIRECTORATE</p>
+        <p class="mission-board__eyebrow">ROOFTOP REFUGE · THE FIRST ESTATE</p>
         <h2 id="mission-board-title">Contract board</h2>
-        <p class="mission-board__intro">The opening order is settled. Choose the next problem the Directorate wants erased.</p>
+        <p class="mission-board__intro">The opening order is settled. Choose the next problem the First Estate wants erased.</p>
         <div class="mission-board__cards">${cards || "<p>No contracts are currently available.</p>"}</div>
         <div class="mission-board__actions">
           <button class="hud-button menu" type="button" data-mission-board-action="close">Close · Esc</button>

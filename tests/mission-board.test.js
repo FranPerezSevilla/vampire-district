@@ -41,8 +41,8 @@ test("an explicitly supplied board unlocks Clean the Scene after its opening pre
     id: CLEAN_THE_SCENE_ID,
     title: "Clean the Scene",
     description: "Recover compromised evidence, remove an exposed body, lose the police search and report back to the refuge.",
-    contactId: "directorate_cleaner",
-    contactLabel: "Directorate cleaner",
+    contactId: "estate_cleaner",
+    contactLabel: "Estate cleaner",
     replayable: true,
     status: "inactive",
     completionCount: 0,
@@ -50,8 +50,8 @@ test("an explicitly supplied board unlocks Clean the Scene after its opening pre
     actionLabel: "Accept contract",
     rewards: {
       cash: 275,
-      reputation: { blackglass_directorate: 2 },
-      contacts: { directorate_cleaner: 3 },
+      reputation: { first_estate: 2 },
+      contacts: { estate_cleaner: 3 },
       flags: { cleaner_contact_unlocked: true },
       items: []
     }

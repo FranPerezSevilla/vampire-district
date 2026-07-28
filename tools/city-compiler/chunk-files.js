@@ -34,7 +34,7 @@ function stableItemId(category, item, index) {
 }
 
 export function buildCityChunkFileSet({
-  id = "bloodnight-current-city-chunks",
+  id = "viceblood-current-city-chunks",
   world,
   runtime,
   collections = normalizedCollections(runtime),

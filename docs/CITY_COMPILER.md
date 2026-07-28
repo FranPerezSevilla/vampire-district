@@ -4,7 +4,7 @@ _Last updated: 2026-07-21_
 
 ## Purpose
 
-The City Compiler is an offline, deterministic toolchain for designing Bloodnight District through authored intent, reusable district recipes, reusable block templates, hard validation and comparable scoring.
+The City Compiler is an offline, deterministic toolchain for designing Viceblood through authored intent, reusable district recipes, reusable block templates, hard validation and comparable scoring.
 
 It does **not** generate a different city for each player. Development generates candidate cities from stable seeds; a selected candidate is reviewed, polished and committed as normal game data.
 
@@ -83,8 +83,8 @@ The blueprint is the global design contract:
 
 ```js
 {
-  id: "bloodnight-current-city",
-  seed: "bloodnight-current-city-v1",
+  id: "viceblood-current-city",
+  seed: "viceblood-current-city-v1",
   world: { width: 2400, height: 1440 },
   protectedZones: ["old-quarter"],
   districts: [...],

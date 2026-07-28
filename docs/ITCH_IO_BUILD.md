@@ -15,14 +15,22 @@ Workflow file:
 3. Select **Build itch.io ZIP**.
 4. Click **Run workflow**.
 5. Choose the branch to package using GitHub's branch selector.
-6. Optionally change the output name. The default is `vampire-district`.
+6. Optionally change the output name. The default is `viceblood`.
 7. Run the workflow and wait for it to finish.
 8. Open the completed run and download the artifact from the **Artifacts** section.
 
 The downloaded file itself is the final itch.io upload:
 
 ```text
-vampire-district.zip
+viceblood.zip
+├── index.html
+├── node_modules/
+│   └── phaser/dist/phaser.min.js
+└── phaser/
+    ├── assets/
+    ├── src/
+    ├── styles.css
+    └── release-candidate.css
 ```
 
 Do not extract and repackage it. Upload that ZIP directly to itch.io as an **HTML** project with **This file will be played in the browser** enabled.
@@ -32,7 +40,7 @@ Do not extract and repackage it. Upload that ZIP directly to itch.io as an **HTM
 The downloaded ZIP contains `index.html` directly at its root:
 
 ```text
-vampire-district.zip
+viceblood.zip
 ├── index.html
 ├── phaser/
 ├── assets/

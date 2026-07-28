@@ -77,7 +77,6 @@ export {
   junctionSidewalks,
   crosswalks,
   propExclusionZones,
-  buildings,
   roofAreas,
   rooftopRoutes,
   roofDrops,

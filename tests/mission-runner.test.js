@@ -61,7 +61,7 @@ test("killed and drained outcomes both complete the journalist mission", () => {
     assert.equal(state.missions.activeMissionId, null);
     assert.deepEqual(state.missions.completed, [SILENCE_THE_JOURNALIST_ID]);
     assert.equal(wallet.balance(), 500);
-    assert.equal(reputation.faction("blackglass_directorate"), 5);
+    assert.equal(reputation.faction("first_estate"), 5);
     assert.equal(reputation.contact("your_sire"), 1);
     assert.equal(state.world.flags.journalist_silenced, true);
   }
@@ -116,6 +116,6 @@ test("Clean the Scene is authored entirely through the same generic runner", () 
 
   assert.equal(state.missions.records.clean_the_scene.status, MISSION_STATUS.COMPLETED);
   assert.equal(wallet.balance(), 275);
-  assert.equal(reputation.contact("directorate_cleaner"), 3);
+  assert.equal(reputation.contact("estate_cleaner"), 3);
   assert.equal(state.world.flags.cleaner_contact_unlocked, true);
 });

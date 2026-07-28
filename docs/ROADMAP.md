@@ -70,13 +70,11 @@ The old rooftop blocker teaching sequence is historical and no longer production
 - Space traverses on foot;
 - deterministic routes and actual-displacement footsteps.
 
-## Milestone 6 — Damageable streetlights and world props
+## Milestone 6 — Historical light and prop experiment
 
-**Status: ✅ Complete**
+**Status: ◈ Streetlight/darkness mechanics retired**
 
-- combat-language prop destruction;
-- broken lights remove illumination and persist;
-- sight/hearing reactions and prop events.
+The original destructible-light experiment informed combat-language props and perception reactions. Streetlight rendering, lamp damage and darkness-based visibility are no longer production systems.
 
 ## Milestone 7 — Weapon system and wheel inventory
 
@@ -87,7 +85,7 @@ The old rooftop blocker teaching sequence is historical and no longer production
 - shared melee/hitscan contracts;
 - ammo, empty rejection, tracer and HUD.
 
-Milestone 15 replaces the all-owned prototype with slots, carried limits, refuge stash and paid resupply.
+Milestone 16 replaces the all-owned prototype with slots, carried limits, refuge stash and paid resupply.
 
 ## Milestone 8 — AI combat behaviours
 
@@ -174,7 +172,7 @@ These definitions remain explicit fixtures/reference content but are no longer r
 - authored ownership/status and archetypes;
 - limited trunks integrated with campaign persistence;
 - pedestrian impacts and blood evidence;
-- destructible streetlights/dumpsters;
+- vehicle interaction with bounded street furniture;
 - expanded `2400 × 1440` imported district;
 - pedestrians and distributed police;
 - explore/scenario profiles and focused regression.
@@ -316,7 +314,7 @@ Arbitrary-angle/curved offsets remain a later geometry version.
 - explicit no-prop envelopes for junction centres, approaches and crosswalks;
 - kerb/service snapping for lights and dumpsters after final layout;
 - regenerated pedestrian routes/navigation;
-- post-layout streetlights clear of roads, crossings and buildings;
+- street furniture anchored clear of roads, crossings and buildings;
 - runtime/compiler renderers share polygon-aware road surfaces.
 
 ### 14.3 Parcels and site-first landmarks
@@ -341,7 +339,7 @@ Acceptance:
 - no building intersects or visually crowds a road corridor;
 - no crosswalk ends without pedestrian continuation;
 - intersections have no duplicated sidewalk bands;
-- lamps sit on valid sidewalk/frontage anchors;
+- street furniture sits on valid sidewalk/frontage anchors;
 - road/curb/sidewalk are readable at a glance;
 - the entire old core can change;
 - large landmarks are not restricted to rectangular leftovers;
@@ -353,8 +351,8 @@ Acceptance:
 **Status: 🔵 Active next phase**
 
 - canonical original faction IDs/data;
-- Blackglass Directorate and Red Assembly with distinct mechanics;
-- separate Unaligned House/contact records;
+- The First Estate and The Gutter Crown with distinct mechanics;
+- separate independent House/contact records;
 - district ownership in migration-safe campaign state;
 - faction links for sites, suppliers, vehicles and patrols;
 - access/hostility gates;
@@ -409,7 +407,7 @@ Tracked state includes loyalty, dependence, exposure, condition, competence, upk
 
 - new opening contract authored against semantic sites;
 - vehicle pursuit contract;
-- Directorate/Assembly/Unaligned alternatives;
+- First Estate/Gutter Crown/Unaligned alternatives;
 - territory consequences;
 - Retainer recruitment/rescue;
 - safehouse/supplier progression.

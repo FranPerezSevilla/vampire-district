@@ -25,7 +25,8 @@ test("GameScene separates world size from viewport and renders active city chunk
   assert.equal(scene.includes("URBAN_RENDER_SECTOR_WIDTH"), true);
   assert.equal(scene.includes("calculateUrbanRenderBounds"), true);
   assert.equal(scene.includes("clippedRect"), true);
-  assert.equal(scene.includes("LIGHT_GLOW_LIMIT"), true);
+  assert.equal(scene.includes("LIGHT_GLOW_LIMIT"), false);
+  assert.equal(scene.includes("drawLights"), false);
   assert.equal(scene.includes('this.cityStreamSystem.query("buildings"'), true);
   assert.equal(scene.includes('this.chunkItems("roads"'), true);
   assert.equal(scene.includes("fillRect(0, 0, WORLD.width, WORLD.height)"), false);

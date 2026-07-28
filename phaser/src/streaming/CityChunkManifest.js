@@ -100,7 +100,7 @@ function neighbours(column, row, columns, rows) {
   return ids;
 }
 
-export function buildCityChunkManifest({ world, collections = {}, chunkSize = DEFAULT_CITY_CHUNK_SIZE, id = "bloodnight-city" } = {}) {
+export function buildCityChunkManifest({ world, collections = {}, chunkSize = DEFAULT_CITY_CHUNK_SIZE, id = "viceblood-city" } = {}) {
   const size = Math.max(64, finite(chunkSize, DEFAULT_CITY_CHUNK_SIZE));
   const normalizedWorld = Object.freeze({
     width: Math.max(size, finite(world?.width, size)),

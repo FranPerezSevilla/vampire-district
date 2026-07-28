@@ -114,8 +114,8 @@ complete Silence the Journalist
 
 ```text
 Cash                         $275
-Blackglass Directorate       +2
-Directorate cleaner          +3
+The First Estate       +2
+Estate cleaner          +3
 World flag                   cleaner_contact_unlocked
 ```
 
@@ -124,7 +124,7 @@ The board is definition-driven, keyboard accessible, focus trapped, responsive o
 ## Persistence guarantees
 
 - Rewards are granted once and recorded in the ledger.
-- Reloading a completed opening mission preserves `$500`, Blackglass `+5` and sire `+1`.
+- Reloading a completed opening mission preserves `$500`, First Estate `+5` and sire `+1`.
 - Reloading completed `Clean the Scene` preserves total campaign cash of `$775`, two ledger entries and its reputation rewards.
 - A failed mission is not restored behind the player's back; Retry is explicit.
 - New Game resets campaign history, money, reputation and checkpoints before starting the opening contract.

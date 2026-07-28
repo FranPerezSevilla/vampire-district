@@ -73,7 +73,7 @@ test("current city scoring is bounded and exposes actionable components", () => 
 test("current city manifest is serializable and omits runtime geometry payloads", () => {
   const manifest = currentCityManifest();
   const serialized = JSON.stringify(manifest);
-  assert.ok(serialized.includes("bloodnight-city-topology-v2"));
+  assert.ok(serialized.includes("viceblood-city-topology-v2"));
   assert.equal(Object.hasOwn(manifest, "runtime"), false);
   assert.equal(manifest.counts.districts, currentCityBlueprint.districts.length);
   assert.equal(manifest.counts.vehicles, 5);
@@ -96,7 +96,7 @@ test("debug renderer emits a self-contained SVG with city layers and score", () 
 });
 
 test("compiler CLI writes manifest, report and layered SVG", () => {
-  const outputDir = mkdtempSync(path.join(tmpdir(), "bloodnight-city-compiler-"));
+  const outputDir = mkdtempSync(path.join(tmpdir(), "viceblood-city-compiler-"));
   try {
     const result = spawnSync(process.execPath, [
       "tools/city-compiler/compile.js",

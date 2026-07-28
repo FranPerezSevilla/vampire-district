@@ -1,11 +1,11 @@
-# Vampire District — Biblia visual resumida
+# Viceblood — Biblia visual resumida
 
 > **Estado:** dirección base aprobada  
 > **Dirección:** gothic punk urbano clásico  
 > **Ámbito:** vertical slice y futura expansión del distrito  
 > **Última actualización:** 2026-07-18
 
-Este documento es la fuente de verdad para la dirección artística de **Vampire District**. Define el tono, la jerarquía visual y las reglas de producción; no pretende cerrar todavía cada asset, proporción o animación.
+Este documento es la fuente de verdad para la dirección artística de **Viceblood**. Define el tono, la jerarquía visual y las reglas de producción; no pretende cerrar todavía cada asset, proporción o animación.
 
 La referencia de género es el **gothic punk urbano de los años noventa**: decadencia contemporánea, romanticismo oscuro, subcultura nocturna y poder social. Debemos capturar ese espíritu sin reproducir logos, símbolos, tipografías, maquetaciones, personajes ni iconografía de *Vampire: The Masquerade* u otras propiedades.
 
@@ -35,7 +35,7 @@ El entorno se lee principalmente mediante masas de luz, sombra y material. El co
 | Romántico, decadente y socialmente hostil | Fantasía medieval o parque temático gótico |
 | Sensual sin perder amenaza | Gore continuo o estética de Halloween |
 | Noventero en actitud, no en nostalgia literal | Parodia retro llena de referencias obvias |
-| Original y reconocible como *Vampire District* | Copia visual de otra franquicia vampírica |
+| Original y reconocible como *Viceblood* | Copia visual de otra franquicia vampírica |
 
 ## 4. Jerarquía visual
 
@@ -51,7 +51,7 @@ La decoración nunca puede ocultar una silueta, una ruta o un estado jugable. To
 
 ## 5. Paleta base propuesta
 
-![Paleta base gothic punk de Vampire District](assets/gothic-punk-palette.svg)
+![Paleta base gothic punk de Viceblood](assets/gothic-punk-palette.svg)
 
 La paleta exacta se valida con la escena de prueba, pero estos roles quedan fijados.
 

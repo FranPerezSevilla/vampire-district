@@ -35,7 +35,7 @@ test("fresh campaign state is JSON-only and contains the starting refuge", () =>
 test("campaign state serializes and restores deterministic mission, inventory and reputation data", () => {
   const state = createCampaignState({ now: 10 });
   state.player.cash = 725;
-  state.reputation.factions.blackglass_directorate = 12;
+  state.reputation.factions.first_estate = 12;
   state.reputation.contacts.police_roof_informant = 3;
   state.inventory.carried.sidearmWeaponId = "pistol";
   state.inventory.carried.ammoByType.pistol = 24;
@@ -44,7 +44,7 @@ test("campaign state serializes and restores deterministic mission, inventory an
 
   const restored = deserializeCampaignState(serializeCampaignState(state), { now: 99 });
   assert.equal(restored.player.cash, 725);
-  assert.equal(restored.reputation.factions.blackglass_directorate, 12);
+  assert.equal(restored.reputation.factions.first_estate, 12);
   assert.equal(restored.reputation.contacts.police_roof_informant, 3);
   assert.equal(restored.inventory.carried.sidearmWeaponId, "pistol");
   assert.equal(restored.inventory.carried.ammoByType.pistol, 24);
@@ -70,7 +70,7 @@ test("pre-schema and partial saves migrate to current defaults", () => {
 test("sanitisation strips functions, invalid arrays and non-finite values", () => {
   const state = sanitizeCampaignState({
     player: { cash: Number.POSITIVE_INFINITY },
-    reputation: { factions: { blackglass_directorate: Number.NaN } },
+    reputation: { factions: { first_estate: Number.NaN } },
     world: {
       flags: { okay: true, bad: () => false },
       ownedVehicles: ["sedan_1", "sedan_1", ""]
@@ -80,7 +80,7 @@ test("sanitisation strips functions, invalid arrays and non-finite values", () =
   });
 
   assert.equal(state.player.cash, 0);
-  assert.equal(state.reputation.factions.blackglass_directorate, 0);
+  assert.equal(state.reputation.factions.first_estate, 0);
   assert.deepEqual(state.world.flags, { okay: true });
   assert.deepEqual(state.world.ownedVehicles, ["sedan_1"]);
   assert.deepEqual(state.checkpoints, { latest: null });

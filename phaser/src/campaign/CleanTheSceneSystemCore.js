@@ -153,7 +153,7 @@ export class CleanTheSceneSystem {
     this.host.publishResult(
       "complete",
       "SCENE CONTAINED",
-      "The Directorate confirms the evidence is gone and releases your payment.",
+      "The First Estate confirms the evidence is gone and releases your payment.",
       {
         missionId: CLEAN_THE_SCENE_ID,
         actionLabel: "Return to contract board · Enter/Esc"

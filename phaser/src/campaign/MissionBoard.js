@@ -63,7 +63,7 @@ export function createMissionBoardModel(snapshotCandidate) {
         title: String(definition.title || definition.id),
         description: String(definition.description || ""),
         contactId: definition.contactId == null ? null : String(definition.contactId),
-        contactLabel: String(definition.metadata?.missionBoard?.contactLabel || "Blackglass Directorate"),
+        contactLabel: String(definition.metadata?.missionBoard?.contactLabel || "The First Estate"),
         replayable,
         status: record?.status || MISSION_STATUS.INACTIVE,
         completionCount,

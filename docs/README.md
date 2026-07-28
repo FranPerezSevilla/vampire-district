@@ -1,4 +1,4 @@
-# Vampire District documentation
+# Viceblood documentation
 
 This directory is the project source of truth for design, implementation and planning.
 
@@ -13,6 +13,7 @@ This directory is the project source of truth for design, implementation and pla
 
 - [Visual art bible](VISUAL_ART_BIBLE.md) — classic urban gothic-punk direction, palette, lighting and art-test criteria.
 - [Functional specification](FUNCTIONAL_SPEC.md) — intended player experience and gameplay rules.
+- [Faction naming](FACTION_NAMING.md) — canonical names, retired aliases, technical IDs and naming guardrails for The First Estate, The Gutter Crown and the independent Houses.
 - [Original setting, factions, retainers and economy](ORIGINAL_SETTING_FACTIONS_RETAINERS_ECONOMY.md) — original-IP guardrails, factions, Retainers, weapon slots, safehouses, ammunition and cash economy.
 - [Campaign foundation](CAMPAIGN_FOUNDATION.md) — versioned state, MissionRunner authority, cash, reputation and safe checkpoints; authored contracts are currently unregistered.
 - [Historical mission flow](MISSION_FLOW.md) — archived journalist vertical-slice ordering; not registered in the production build.
@@ -51,7 +52,7 @@ This directory is the project source of truth for design, implementation and pla
 - [NPC AI](AI_SYSTEM.md) — priority states, police roles, witnesses, hunter memory and recovery.
 - [Drain system](DRAIN_SYSTEM.md) — eligibility, channel cancellation and perception.
 - [Movement system](MOVEMENT_SYSTEM.md) — running, quiet movement, footsteps and traversal.
-- [Damageable props](PROP_SYSTEM.md) — streetlights, darkness, reactions and events.
+- [Historical damageable-props experiment](PROP_SYSTEM.md) — retired streetlight/darkness implementation record.
 - [Weapon system](WEAPON_SYSTEM.md) — prototype inventory, wheel selection, attacks, ammo and noise.
 - [Tutorial UX and accessibility](UX_ACCESSIBILITY.md) — historical authored teaching plus current HUD/accessibility contracts.
 - [Control scheme](CONTROL_SCHEME.md) — keyboard/mouse controls and interaction priority.

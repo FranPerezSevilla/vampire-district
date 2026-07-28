@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="650" viewBox="0 0 1440 650" role="img" aria-labelledby="title desc">
-  <title id="title">Vampire District — paleta gothic punk urbano clásico</title>
+  <title id="title">Viceblood — paleta gothic punk urbano clásico</title>
   <desc id="desc">Doce colores organizados por neutros, luz urbana, autoridad y acentos vampíricos, con una proporción de uso 70 20 10.</desc>
   <rect width="1440" height="650" rx="28" fill="#08070D"/>
   <rect x="18" y="18" width="1404" height="614" rx="20" fill="none" stroke="#403B40" stroke-width="2"/>
 
-  <text x="64" y="72" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">VAMPIRE DISTRICT · PALETA BASE</text>
+  <text x="64" y="72" fill="#D5CDBF" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">VICEBLOOD · PALETA BASE</text>
   <text x="64" y="108" fill="#879078" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="600">Gothic punk urbano clásico · La ciudad utiliza luz; el vampiro utiliza color.</text>
 
   <g transform="translate(64 148)">

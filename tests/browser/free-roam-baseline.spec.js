@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-const STORAGE_KEY = "vampire-district-campaign-v1";
+const STORAGE_KEY = "viceblood-campaign-v1";
+const LEGACY_STORAGE_KEY = "vampire-district-campaign-v1";
 
 function legacyMissionState() {
   return {
@@ -58,7 +59,7 @@ function legacyMissionState() {
     },
     checkpoints: { latest: null },
     reputation: {
-      factions: { blackglass_directorate: 5, red_assembly: 0 },
+      factions: { first_estate: 5, gutter_crown: 0 },
       contacts: { your_sire: 1 }
     },
     inventory: {
@@ -95,15 +96,16 @@ test("normal boot retires legacy missions and opens persistent street free roam"
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.addInitScript(({ key, state }) => {
     localStorage.setItem(key, JSON.stringify(state));
-  }, { key: STORAGE_KEY, state: legacyMissionState() });
+  }, { key: LEGACY_STORAGE_KEY, state: legacyMissionState() });
 
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await waitForFreeRoam(page);
 
-  const result = await page.evaluate(storageKey => {
+  const result = await page.evaluate(({ storageKey, legacyStorageKey }) => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const campaign = window.NBD_CAMPAIGN_SYSTEM.snapshot();
     const stored = JSON.parse(localStorage.getItem(storageKey));
+    const legacyStored = localStorage.getItem(legacyStorageKey);
     const journalist = scene.npcSystem.npcs.find(npc => npc.id === "journalist");
     const rooftopThug = scene.npcSystem.npcs.find(npc => npc.id === "rooftop_thug");
     const informant = scene.tutorialDirector?.informant;
@@ -117,6 +119,7 @@ test("normal boot retires legacy missions and opens persistent street free roam"
       failed: campaign.state.missions.failed,
       cash: campaign.wallet.balance,
       storedMissions: stored.missions,
+      legacyStored,
       currentLayer: scene.currentLayer,
       player: { x: scene.player.x, y: scene.player.y },
       taskText: scene.missionSystem.activeTaskText(),
@@ -130,7 +133,7 @@ test("normal boot retires legacy missions and opens persistent street free roam"
       rooftopThugInactive: rooftopThug?.inactive,
       informantInactive: informant?.inactive
     };
-  }, STORAGE_KEY);
+  }, { storageKey: STORAGE_KEY, legacyStorageKey: LEGACY_STORAGE_KEY });
 
   expect(result.boot.mode).toBe("normal");
   expect(result.boot.persistentCampaign).toBe(true);
@@ -144,6 +147,7 @@ test("normal boot retires legacy missions and opens persistent street free roam"
   expect(result.cash).toBe(321);
   expect(result.storedMissions.activeMissionId).toBeNull();
   expect(result.storedMissions.records).toEqual({});
+  expect(result.legacyStored).toBeNull();
   expect(result.currentLayer).toBe(0);
   expect(result.player).toEqual({ x: 1540, y: 1515 });
   expect(result.taskText).toContain("No active contract");

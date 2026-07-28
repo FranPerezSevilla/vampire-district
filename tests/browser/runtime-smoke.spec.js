@@ -17,7 +17,7 @@ for (const route of ROUTES) {
       && window.NBD_PHASER_GAME.scene?.getScene?.("GameScene")?.inputSystem
     ));
 
-    await expect(page.locator("h1")).toHaveText("Vampire District");
+    await expect(page.locator("h1")).toHaveText("Viceblood");
     await expect(page.locator("#game-root canvas")).toBeVisible();
     await expect(page.locator(".weapon-hud")).toBeVisible();
     await expect(page.locator("#hud-hunger-value")).toContainText("%");

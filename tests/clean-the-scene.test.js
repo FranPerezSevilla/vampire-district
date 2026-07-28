@@ -45,8 +45,8 @@ test("an explicitly supplied Clean the Scene advances through reusable runner ev
   assert.equal(record.rewardsGranted, true);
   assert.equal(record.completionCount, 1);
   assert.equal(system.wallet.balance(), 775);
-  assert.equal(system.state.reputation.factions.blackglass_directorate, 7);
-  assert.equal(system.state.reputation.contacts.directorate_cleaner, 3);
+  assert.equal(system.state.reputation.factions.first_estate, 7);
+  assert.equal(system.state.reputation.contacts.estate_cleaner, 3);
   assert.equal(system.state.world.flags.cleaner_contact_unlocked, true);
   assert.equal(system.state.ledger.length, 2);
 

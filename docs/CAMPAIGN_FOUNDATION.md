@@ -90,13 +90,13 @@ The compatibility `step` exposed by `MissionSystem` is derived from current obje
 
 ## Campaign state version 2
 
-Storage key remains:
+Current storage key:
 
 ```text
-vampire-district-campaign-v1
+viceblood-campaign-v1
 ```
 
-Keeping the key allows version-one saves to migrate in place. The stored schema version is `2`.
+The historical `vampire-district-campaign-v1` key is read only as a one-time compatibility alias. A valid old save is rewritten to the Viceblood key and the retired key is removed. The stored schema version remains `2`.
 
 Top-level structure:
 
@@ -215,7 +215,7 @@ First completion of `Silence the Journalist` grants:
 
 ```text
 Cash                         $500
-Blackglass Directorate       +5
+The First Estate       +5
 Your sire                    +1
 World flag                   journalist_silenced
 ```
@@ -224,8 +224,8 @@ Completion of each `Clean the Scene` run grants:
 
 ```text
 Cash                         $275
-Blackglass Directorate       +2
-Directorate cleaner          +3
+The First Estate       +2
+Estate cleaner          +3
 World flag                   cleaner_contact_unlocked
 ```
 

@@ -98,7 +98,7 @@ With `prefers-reduced-motion: reduce`:
 
 Check both `/` and `/phaser/`:
 
-- visible title is `Vampire District`;
+- visible title is `Viceblood`;
 - selector is labelled `Render quality`;
 - options are Low, High, Very high and Ultra;
 - no visible copy says Shift sprints;
