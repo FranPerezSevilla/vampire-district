@@ -27,7 +27,6 @@ export const SOUND_CATALOG = Object.freeze({
   playerLandSoft: sound("playerLandSoft", "player", "Short fall or rooftop landing", { spatial: true }),
   playerLandHard: sound("playerLandHard", "player", "Long fall impact", { spatial: true, priority: "high" }),
   playerClothesRustle: sound("playerClothesRustle", "player", "Sharp turn or movement start", { spatial: true, volume: 0.55 }),
-  playerCollisionWall: sound("playerCollisionWall", "player", "Player hits a wall or obstacle", { spatial: true }),
 
   // Vampire powers
   dash: sound("dash", "powers", "Successful Shadow Dash", { fallback: "dash", spatial: true, priority: "high" }),
