@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-const STORAGE_KEY = "vampire-district-campaign-v1";
+const STORAGE_KEY = "viceblood-campaign-v1";
+const LEGACY_STORAGE_KEY = "vampire-district-campaign-v1";
 
 function legacyMissionState() {
   return {
@@ -100,10 +101,11 @@ test("normal boot retires legacy missions and opens persistent street free roam"
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await waitForFreeRoam(page);
 
-  const result = await page.evaluate(storageKey => {
+  const result = await page.evaluate(({ storageKey, legacyStorageKey }) => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const campaign = window.NBD_CAMPAIGN_SYSTEM.snapshot();
     const stored = JSON.parse(localStorage.getItem(storageKey));
+    const legacyStored = localStorage.getItem(legacyStorageKey);
     const journalist = scene.npcSystem.npcs.find(npc => npc.id === "journalist");
     const rooftopThug = scene.npcSystem.npcs.find(npc => npc.id === "rooftop_thug");
     const informant = scene.tutorialDirector?.informant;
@@ -131,7 +133,7 @@ test("normal boot retires legacy missions and opens persistent street free roam"
       rooftopThugInactive: rooftopThug?.inactive,
       informantInactive: informant?.inactive
     };
-  }, STORAGE_KEY);
+  }, { storageKey: STORAGE_KEY, legacyStorageKey: LEGACY_STORAGE_KEY });
 
   expect(result.boot.mode).toBe("normal");
   expect(result.boot.persistentCampaign).toBe(true);
