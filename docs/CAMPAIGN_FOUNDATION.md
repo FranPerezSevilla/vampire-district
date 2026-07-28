@@ -88,7 +88,7 @@ mission-specific world adapter / TaskRevealSystem / HUD / TutorialDirector
 
 The compatibility `step` exposed by `MissionSystem` is derived from current objective metadata. It is not a second mutable progression value.
 
-## Campaign state version 3
+## Campaign state version 4
 
 Current storage key:
 
@@ -96,7 +96,7 @@ Current storage key:
 viceblood-campaign-v1
 ```
 
-The historical `vampire-district-campaign-v1` key is read only as a one-time compatibility alias. A valid old save is rewritten to the Viceblood key and the retired key is removed. The stored schema version is `3`. Version `2` saves receive the canonical fourteen-district territory collection without losing any existing domain.
+The historical `vampire-district-campaign-v1` key is read only as a one-time compatibility alias. A valid old save is rewritten to the Viceblood key and the retired key is removed. The stored schema version is `4`. Version `2` saves receive territory, while version `3` saves receive hunting-law rights, protected-victim records, assessments and discoveries without losing any existing domain.
 
 Top-level structure:
 
@@ -117,6 +117,15 @@ Top-level structure:
     version,
     districts
   },
+  huntingLaw: {
+    version,
+    sequences,
+    rights,
+    protectedVictims,
+    assessments,
+    discoveries,
+    counters
+  },
   inventory,
   world,
   ledger,
@@ -131,12 +140,18 @@ The state contains only JSON values. Phaser containers, functions, DOM nodes, ev
 
 Each semantic district stores bounded First Estate and Gutter Crown influence, derived owner/status, last-change timestamp and change count. Independent Houses are not collapsed into a global faction value. Territory mutations are owned by `TerritorySystem` and emit campaign events for future mission and economy consumers.
 
+### Hunting-law state
+
+`HuntingLawSystem` owns explicit district rights, protected-victim records and the bounded history of feeding assessments. Every completed drain records the semantic district, territory owner/relationship, permission, protection, political classification and discovery evidence. Owners learn about violations only through explicit witnesses, protected markers, recovered bodies or other recorded evidence sources.
+
 ### Migration
 
 - Version `0` is treated as the earlier unschematized prototype shape.
 - Version `1` retains cash, mission, reputation, inventory and world state, then receives the checkpoint collection and sequence.
 - Version `2` retains every existing domain and receives the territory collection for all fourteen City Topology V2 district IDs.
+- Version `3` retains territory and receives an empty canonical hunting-law collection.
 - Territory owner/status labels are recalculated from bounded faction influence instead of trusting arbitrary saved values.
+- Hunting assessments, rights, protection and discovery data are sanitized into bounded JSON-only records.
 - A newer unsupported version fails explicitly.
 - Corrupt JSON can fail strictly during import or fall back to a fresh state during normal boot.
 - An old opening-mission record without a checkpoint can synthesize a conservative safe checkpoint at the next authored objective boundary.
@@ -424,7 +439,7 @@ Import, reset, New Game and checkpoint Retry use a page reload so all Phaser sys
 
 Unit coverage includes:
 
-- schema v1 → v2 migration;
+- schema v1 → v4 migration, including v2 territory and v3 hunting-law defaults;
 - checkpoint sanitization and JSON serialization;
 - safety reasons and atomic mission rollback data;
 - completed-checkpoint compatibility;
@@ -438,6 +453,7 @@ Unit coverage includes:
 - board availability, replay labels and active/failure exclusion;
 - complete `Clean the Scene` typed-event progression;
 - idempotent wallet and reputation rewards;
+- hunting-right matching, protected-prey precedence, poaching classification and exact-once discovery;
 - boot-order and source-ownership guards.
 
 Chromium coverage includes:
@@ -452,6 +468,7 @@ Chromium coverage includes:
 - accessible refuge board on wide and narrow viewports;
 - complete camera-roll, body-removal, wanted-loss and refuge-return flow;
 - `Clean the Scene` completion reload without duplicate rewards;
+- actual feeding assessment, persistent poaching and recovered-body discovery;
 - existing release-candidate tutorial, mission, police and post-report free-roam coverage.
 
 ## Known limitations
@@ -461,4 +478,4 @@ Chromium coverage includes:
 - Some migrated v1 saves use conservative authored spawn/actor presets because the older schema did not contain world state.
 - The current prototype loadout still owns all three weapons; campaign slot and stash rules arrive in Milestone 15.
 - The current playable campaign has one refuge board and one secondary replayable contract.
-- Vehicles, traffic, broader faction territory and supplier/retainer systems are not part of Milestone 11.
+- Hunting pressure, faction retaliation, supplier/retainer systems and multi-depth feeding remain later milestones.

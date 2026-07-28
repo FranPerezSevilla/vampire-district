@@ -34,6 +34,8 @@ Available systems:
 - streamed multi-ward city;
 - persistent campaign wallet, reputation, authored vehicles and save state;
 - persistent ownership and influence state for all fourteen districts, with entry notices and reputation-derived territory relations;
+- persistent hunting-right, protected-prey and evidence-driven poaching assessments for completed feeding;
+- paused Night Ledger panel for faction relations, territory, hidden/known violations, police pressure and recent incidents;
 - runtime ownership diagnostics and Playwright regression infrastructure.
 
 Streetlight rendering, damage, darkness patches and their stealth logic are retired. Street visibility is now independent of lamps and authored shadow zones.
@@ -92,6 +94,7 @@ The First Estate and The Gutter Crown are the accepted design names. Commercial 
 - R: Vampiric Whisper.
 - F: Blood Sense.
 - M: mission panel; currently reports no active contract.
+- L: open the paused Night Ledger for faction and police consequences.
 - H: pause/help/accessibility settings.
 - Escape: UI/dialog fallback.
 

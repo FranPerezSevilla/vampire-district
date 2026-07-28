@@ -3,6 +3,7 @@ import { MotorizedPoliceSystem } from "../police/MotorizedPoliceSystem.js";
 import { PedestrianSystem } from "../systems/PedestrianSystem.js";
 import { StreetFurnitureSystem } from "../systems/StreetFurnitureSystem.js";
 import { TerritoryRuntimeSystem } from "../factions/TerritoryRuntimeSystem.js";
+import { HuntingLawRuntimeSystem } from "../factions/HuntingLawRuntimeSystem.js";
 import { installBuildingSidewalkClearancePolicy } from "../streaming/BuildingSidewalkClearancePolicy.js";
 import { ChunkStreamSystem } from "../streaming/ChunkStreamSystem.js";
 import { DistrictPackSystem } from "../streaming/DistrictPackSystem.js";
@@ -58,6 +59,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.diagnostics.registerSystem("PedestrianSystem");
     this.diagnostics.registerSystem("StreetFurnitureSystem");
     this.diagnostics.registerSystem("TerritoryRuntimeSystem");
+    this.diagnostics.registerSystem("HuntingLawRuntimeSystem");
   }
 
   constructor(scene) {
@@ -80,6 +82,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.motorizedPoliceSystem = new MotorizedPoliceSystem(scene);
     scene.motorizedPoliceLocalPolicy = installMotorizedPoliceLocalPolicy(scene.motorizedPoliceSystem);
     scene.territoryRuntimeSystem = new TerritoryRuntimeSystem(scene);
+    scene.huntingLawRuntimeSystem = new HuntingLawRuntimeSystem(scene);
     scene.npcSystem?.refreshVisibility?.();
     scene.vehicleSystem?.refreshVisibility?.();
   }
@@ -147,6 +150,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
   }
 
   destroy() {
+    this.scene.huntingLawRuntimeSystem?.destroy?.();
+    this.scene.huntingLawRuntimeSystem = null;
     this.scene.territoryRuntimeSystem?.destroy?.();
     this.scene.territoryRuntimeSystem = null;
     this.scene.motorizedPoliceLocalPolicy?.destroy?.();

@@ -57,6 +57,10 @@
 
         <div class="hud-actions">
           <button id="hud-mission-button" class="hud-button mission" type="button"><span>MISSION</span><small id="hud-mission-step">1/4</small><kbd>M</kbd></button>
+          <button id="hud-ledger-button" class="hud-button ledger" type="button" aria-label="Open Night Ledger" aria-controls="night-ledger" aria-expanded="false">
+            <i class="ledger-sigil" aria-hidden="true"><span></span><span></span><span></span></i>
+            <span>LEDGER</span><b id="hud-ledger-badge" class="ledger-badge" aria-hidden="true"></b><kbd>L</kbd>
+          </button>
           <button id="hud-menu-button" class="hud-button menu" type="button" aria-label="Open menu"><span>MENU</span><kbd>H</kbd></button>
         </div>
 
@@ -74,6 +78,20 @@
           <p id="mission-last" class="mission-last"></p>
         </aside>
 
+        <div id="night-ledger" class="night-ledger" aria-hidden="true">
+          <button id="night-ledger-scrim" class="night-ledger-scrim" type="button" aria-label="Close Night Ledger"></button>
+          <section class="night-ledger-panel" role="dialog" aria-modal="true" aria-labelledby="night-ledger-title">
+            <header class="night-ledger-header">
+              <div>
+                <p>NIGHT LEDGER</p>
+                <h2 id="night-ledger-title">Factions & pressure</h2>
+              </div>
+              <button id="night-ledger-close" class="night-ledger-close" type="button" aria-label="Close Night Ledger">CLOSE <kbd>ESC</kbd></button>
+            </header>
+            <div id="night-ledger-content" class="night-ledger-content"></div>
+          </section>
+        </div>
+
         <div id="interaction-menu" class="interaction-menu" aria-label="Interaction choices"></div>
         <div id="hud-toast" class="hud-toast"><span id="hud-toast-text"></span></div>
         <div id="hud-prompt" class="hud-prompt"><kbd>E</kbd><span id="hud-prompt-text"></span></div>
@@ -89,7 +107,7 @@
     </section>
 
     <section class="notes" aria-label="Build notes">
-      <b>Controls:</b> WASD or arrows run · Shift moves quietly · mouse aims · left click attacks · wheel changes weapon · right click drains · Space traverses · E interacts.
+      <b>Controls:</b> WASD or arrows run · Shift moves quietly · mouse aims · left click attacks · wheel changes weapon · right click drains · Space traverses · E interacts · L opens the paused Night Ledger.
     </section>
   </main>
 

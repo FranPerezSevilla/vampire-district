@@ -1,5 +1,6 @@
 import { HUNGER } from "../data/balance.js";
 import { NPC_TYPES } from "../data/npcs.js";
+import { districtZoneAt } from "../data/district.js";
 import { resolveAction } from "./ActionSystem.js";
 import { RawAudio } from "./RawAudioSystem.js";
 
@@ -169,6 +170,9 @@ export class FeedingSystem {
     if (npc.type === NPC_TYPES.RAT) this.stats.ratFeeds++;
     this.trackNeutralized(npc);
 
+    const huntingAssessment = this.assessHuntingLaw(npc, feed, witnessResult);
+    if (huntingAssessment?.id) npc.huntingAssessmentId = huntingAssessment.id;
+
     this.scene.npcSystem.markFed(npc);
     this.scene.evidenceSystem?.onFeedCompleted(npc);
     this.publishNeutralized(npc, "drained", "drain");
@@ -179,14 +183,20 @@ export class FeedingSystem {
 
     const publicNote = witnessResult.witnesses ? ` Veil witness(es): ${witnessResult.witnesses}.` : "";
     const unlock = npc.type === NPC_TYPES.THUG ? " The police roof jump is now open." : "";
-    this.scene.lastActionText = `DRAIN complete: ${this.targetName(npc)}. Hunger -${relief}.${unlock} A body remains.${publicNote}`;
+    const politicalNote = huntingAssessment?.notice ? ` ${huntingAssessment.notice}.` : "";
+    const bodyNote = npc.type === NPC_TYPES.RAT ? "" : " A body remains.";
+    this.scene.lastActionText = `DRAIN complete: ${this.targetName(npc)}. Hunger -${relief}.${unlock}${bodyNote}${publicNote}${politicalNote}`;
     this.scene.events?.emit?.("feeding:completed", {
       targetId: npc.id,
       source: feed.source || "system",
       eligibility: feed.eligibility || "legacy",
       hungerBefore,
       hungerAfter: this.hunger,
-      relief
+      relief,
+      huntingAssessmentId: huntingAssessment?.id || null,
+      huntingClassification: huntingAssessment?.classification || null,
+      huntingPoliticalViolation: Boolean(huntingAssessment?.politicalViolation),
+      huntingDiscoveryState: huntingAssessment?.currentDiscoveryState || huntingAssessment?.discoveryState || null
     });
     this.scene.events?.emit?.("hunger:changed", {
       source: "feeding",
@@ -195,6 +205,43 @@ export class FeedingSystem {
       amount: this.hunger - hungerBefore
     });
     this.scene.redrawLayer(this.scene.lastActionText);
+  }
+
+  assessHuntingLaw(npc, feed, witnessResult = {}) {
+    const huntingLaw = this.scene.campaignSystem?.huntingLaw;
+    if (!huntingLaw || !npc) return null;
+    const district = districtZoneAt(npc.x, npc.y);
+    if (!district?.id) return null;
+    const witnessCount = Math.max(
+      0,
+      Number(witnessResult?.witnesses) || 0,
+      Number(feed?.maxWitnesses) || 0
+    );
+    try {
+      return huntingLaw.assessFeed({
+        districtId: district.id,
+        victim: {
+          id: npc.id,
+          type: npc.type,
+          huntingProtected: npc.huntingProtected,
+          huntingProtection: npc.huntingProtection,
+          huntingProtectionReason: npc.huntingProtectionReason,
+          protectedByFactionId: npc.protectedByFactionId,
+          protectedByContactId: npc.protectedByContactId
+        },
+        witnessCount,
+        bodyEvidence: npc.type !== NPC_TYPES.RAT,
+        biteEvidence: npc.type !== NPC_TYPES.RAT,
+        wantedLevel: this.scene.exposureSystem?.level?.() || 0,
+        factionObserver: false,
+        source: feed?.source || "system",
+        eligibility: feed?.eligibility || "legacy",
+        layer: npc.layer ?? this.scene.currentLayer ?? 0
+      });
+    } catch (error) {
+      console.warn("Hunting-law assessment failed; feeding remains playable.", error);
+      return null;
+    }
   }
 
   publishNeutralized(npc, kind, weaponId) {

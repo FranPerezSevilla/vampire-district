@@ -1,6 +1,8 @@
 import { UX_STORAGE_KEYS, normalizeBooleanPreference } from "../data/ux-guidance.js";
 import { bindingLabel } from "../input/bindings.js";
 import { installUxStyle } from "../systems/UxGuidanceSystem.js";
+import { buildNightLedgerModel } from "../ui/NightLedgerModel.js";
+import { renderNightLedgerMarkup } from "../ui/NightLedgerView.js";
 
 const POWER_CONFIG = Object.freeze({
   dash: { label: "Dash", max: 3.0 },
@@ -50,6 +52,12 @@ export class UIScene extends Phaser.Scene {
     this.resultType = null;
     this.resultDismissed = false;
     this.missionOpen = false;
+    this.ledgerOpen = false;
+    this.ledgerModel = null;
+    this.ledgerRefreshAt = 0;
+    this.ledgerSignalValue = null;
+    this.ledgerSignalUntil = 0;
+    this.lastLedgerMarkup = "";
     this.lastToastText = "";
     this.toastUntil = 0;
     this.lastUiPaused = null;
@@ -79,11 +87,17 @@ export class UIScene extends Phaser.Scene {
       wantedPips: [...document.querySelectorAll("[data-wanted-pip]")],
       missionButton: $("hud-mission-button"),
       missionStep: $("hud-mission-step"),
+      ledgerButton: $("hud-ledger-button"),
+      ledgerBadge: $("hud-ledger-badge"),
       menuButton: $("hud-menu-button"),
       missionDrawer: $("mission-drawer"),
       missionCurrent: $("mission-current"),
       missionChecklist: $("mission-checklist"),
       missionLast: $("mission-last"),
+      ledger: $("night-ledger"),
+      ledgerContent: $("night-ledger-content"),
+      ledgerClose: $("night-ledger-close"),
+      ledgerScrim: $("night-ledger-scrim"),
       prompt: $("hud-prompt"),
       promptKey: document.querySelector("#hud-prompt kbd"),
       promptText: $("hud-prompt-text"),
@@ -132,6 +146,8 @@ export class UIScene extends Phaser.Scene {
     this.setAttributeIfChanged(this.dom.toast, "aria-live", "polite");
     this.setAttributeIfChanged(this.dom.weapon, "role", "status");
     this.setAttributeIfChanged(this.dom.weapon, "aria-live", "polite");
+    this.setAttributeIfChanged(this.dom.ledgerButton, "aria-expanded", "false");
+    this.setAttributeIfChanged(this.dom.ledger, "aria-hidden", "true");
 
     const modalPanel = this.dom.modal?.querySelector?.(".ui-modal-panel");
     if (modalPanel) {
@@ -142,6 +158,18 @@ export class UIScene extends Phaser.Scene {
     this.dom.missionButton?.addEventListener("pointerdown", event => {
       event.preventDefault();
       this.toggleMissionDrawer();
+    });
+    this.dom.ledgerButton?.addEventListener("pointerdown", event => {
+      event.preventDefault();
+      this.toggleNightLedger();
+    });
+    this.dom.ledgerClose?.addEventListener("pointerdown", event => {
+      event.preventDefault();
+      this.closeNightLedger();
+    });
+    this.dom.ledgerScrim?.addEventListener("pointerdown", event => {
+      event.preventDefault();
+      this.closeNightLedger();
     });
     this.dom.menuButton?.addEventListener("pointerdown", event => {
       event.preventDefault();
@@ -173,12 +201,14 @@ export class UIScene extends Phaser.Scene {
 
   update() {
     const data = this.readState();
+    const ledger = this.readNightLedgerState();
     this.updateMissionResult(data);
-    this.renderHud(data);
+    this.renderHud(data, ledger);
     this.renderMission(data);
     this.renderPowers(data.powersText);
     this.renderPrompt(data);
     this.renderInteractionMenu(data.menu);
+    this.renderNightLedger(ledger);
     this.renderModal(data);
     this.updateUiPause();
   }
@@ -218,9 +248,85 @@ export class UIScene extends Phaser.Scene {
     };
   }
 
+  readNightLedgerState(force = false) {
+    const now = this.time?.now || 0;
+    if (!force && this.ledgerModel && now < this.ledgerRefreshAt) return this.ledgerModel;
+    this.ledgerRefreshAt = now + (this.ledgerOpen ? 120 : 360);
+
+    const gameScene = this.scene.get("GameScene");
+    const campaign = gameScene?.campaignSystem || globalThis.NBD_CAMPAIGN_SYSTEM || null;
+    let campaignSnapshot = null;
+    try {
+      campaignSnapshot = campaign?.snapshot?.() || null;
+    } catch {
+      campaignSnapshot = null;
+    }
+    const currentDistrict = gameScene?.territoryRuntimeSystem?.current?.()
+      || gameScene?.territoryRuntimeSystem?.districtAt?.(gameScene?.player?.x, gameScene?.player?.y)
+      || null;
+    this.ledgerModel = buildNightLedgerModel({
+      campaignSnapshot,
+      currentDistrict,
+      policeState: this.collectPoliceLedgerState(gameScene),
+      now: Date.now()
+    });
+    this.updateLedgerSignal(this.ledgerModel);
+    return this.ledgerModel;
+  }
+
+  collectPoliceLedgerState(gameScene) {
+    if (!gameScene) return {};
+    const exposure = gameScene.exposureSystem;
+    const police = gameScene.policeSystem;
+    const witnesses = gameScene.witnessSystem;
+    const evidence = gameScene.evidenceSystem;
+    const officers = police?.police?.() || [];
+    const chasing = officers.filter(officer => officer.chasingPlayer).length;
+    const level = Math.max(0, Number(exposure?.level?.()) || 0);
+    const hottest = police?.hottestZone?.() || null;
+    const heat = hottest ? Number(police?.localHeat?.[hottest.id]) || 0 : 0;
+    const motorized = gameScene.motorizedPoliceSystem?.snapshot?.() || {};
+    const fleeing = witnesses?.alarmedWitnesses?.() || [];
+    return {
+      level,
+      exposureValue: Number(exposure?.value) || 0,
+      exposureMax: 125,
+      lastReason: exposure?.lastReason || "No active police escalation.",
+      summary: police?.summary?.() || "Police status unavailable",
+      footOfficers: officers.length,
+      chasingOfficers: chasing,
+      searchingOfficers: level >= 1 ? Math.max(0, officers.length - chasing) : 0,
+      motorizedUnits: Number(motorized.activeUnits) || 0,
+      desiredMotorizedUnits: Number(motorized.desiredUnits) || 0,
+      fleeingWitnesses: fleeing.length,
+      veilRiskWitnesses: fleeing.filter(witness => witness.masqueradeRisk).length,
+      witnessReports: Number(witnesses?.reports) || 0,
+      bodiesDiscovered: Number(evidence?.stats?.bodiesDiscovered) || 0,
+      bodiesHidden: Number(evidence?.stats?.bodiesHidden) || 0,
+      bloodEvidence: Array.isArray(evidence?.bloodStains) ? evidence.bloodStains.length : 0,
+      hottestZoneName: hottest?.name || "No hot zone",
+      hottestZoneHeat: heat,
+      hunterSummary: gameScene.hunterSystem?.summary?.() || "Hunters dormant"
+    };
+  }
+
+  updateLedgerSignal(model) {
+    if (!model?.ready) return;
+    const value = model.knownViolationCount * 10
+      + model.latentViolationCount * 3
+      + model.police.level * 4
+      + model.police.witnessReports
+      + model.police.bodiesDiscovered;
+    if (this.ledgerSignalValue != null && value > this.ledgerSignalValue) {
+      this.ledgerSignalUntil = (this.time?.now || 0) + 1900;
+    }
+    this.ledgerSignalValue = value;
+  }
+
   handleDomKeyDown(event) {
-    if (event.defaultPrevented || event.repeat || isTextEntryTarget(event.target)) return;
+    if (event.repeat || isTextEntryTarget(event.target)) return;
     const code = event.code;
+    if (event.defaultPrevented && code !== "Escape") return;
 
     // Let the browser activate focused buttons and links with Enter/Space. The
     // corresponding click handler owns those controls and must not be pre-empted.
@@ -240,13 +346,21 @@ export class UIScene extends Phaser.Scene {
         this.toggleMissionDrawer();
         handled = true;
       }
+    } else if (code === "KeyL") {
+      if (this.ledgerOpen || (!this.modalBlocksInput() && !this.registry.get("taskRevealActive"))) {
+        this.toggleNightLedger();
+        handled = true;
+      }
     } else if (code === "KeyH") {
-      if (!this.introOpen && !this.resultOpen && !this.registry.get("taskRevealActive")) {
+      if (!this.ledgerOpen && !this.introOpen && !this.resultOpen && !this.registry.get("taskRevealActive")) {
         this.togglePause();
         handled = true;
       }
     } else if (code === "Escape") {
-      if (this.resultOpen && this.resultType === "success") {
+      if (this.ledgerOpen) {
+        this.closeNightLedger();
+        handled = true;
+      } else if (this.resultOpen && this.resultType === "success") {
         this.closeResult();
         handled = true;
       } else if (this.pauseOpen) {
@@ -266,7 +380,7 @@ export class UIScene extends Phaser.Scene {
     event.stopPropagation();
   }
 
-  renderHud(data) {
+  renderHud(data, ledger = null) {
     const hunger = this.hungerPercent(data.hungerText);
     this.setText(this.dom.hungerValue, `${Math.round(hunger)}%`);
     if (this.dom.hungerFill) this.dom.hungerFill.style.width = `${Phaser.Math.Clamp(hunger, 0, 100)}%`;
@@ -290,6 +404,14 @@ export class UIScene extends Phaser.Scene {
     this.dom.root?.classList.toggle("wanted-air", wantedLevel >= 3);
     this.dom.missionButton?.classList.toggle("active", this.missionOpen);
     this.dom.menuButton?.classList.toggle("active", this.pauseOpen);
+    if (this.dom.ledgerButton) {
+      this.dom.ledgerButton.classList.remove("stable", "warning", "danger");
+      this.dom.ledgerButton.classList.add(ledger?.severity || "stable");
+      this.dom.ledgerButton.classList.toggle("active", this.ledgerOpen);
+      this.dom.ledgerButton.classList.toggle("has-alert", Boolean(ledger?.alertCount));
+      this.dom.ledgerButton.classList.toggle("signal", (this.time?.now || 0) < this.ledgerSignalUntil);
+    }
+    this.setText(this.dom.ledgerBadge, ledger?.alertCount > 99 ? "99+" : ledger?.alertCount || "");
     this.setText(this.dom.missionStep, this.missionProgressLabel(data.mission, data.campaignMission));
 
     const weapon = data.weapon || {};
@@ -304,6 +426,14 @@ export class UIScene extends Phaser.Scene {
     this.setAttributeIfChanged(this.dom.vitals, "aria-label", `Vampire Hunger ${Math.round(hunger)} percent`);
     this.setAttributeIfChanged(this.dom.wanted, "aria-label", `Police alert level ${wantedLevel}: ${WANTED_LABELS[wantedLevel]}`);
     this.setAttributeIfChanged(this.dom.missionButton, "aria-expanded", this.missionOpen ? "true" : "false");
+    this.setAttributeIfChanged(this.dom.ledgerButton, "aria-expanded", this.ledgerOpen ? "true" : "false");
+    this.setAttributeIfChanged(
+      this.dom.ledgerButton,
+      "aria-label",
+      ledger?.alertCount
+        ? `Open Night Ledger, ${ledger.alertCount} active pressure item${ledger.alertCount === 1 ? "" : "s"}`
+        : "Open Night Ledger"
+    );
     this.setAttributeIfChanged(this.dom.menuButton, "aria-expanded", this.pauseOpen ? "true" : "false");
     this.setAttributeIfChanged(
       this.dom.weapon,
@@ -324,6 +454,18 @@ export class UIScene extends Phaser.Scene {
     if (markup !== this.lastMissionMarkup) {
       this.lastMissionMarkup = markup;
       this.dom.missionChecklist.innerHTML = markup;
+    }
+  }
+
+  renderNightLedger(model) {
+    const open = Boolean(this.ledgerOpen);
+    this.dom.ledger?.classList.toggle("open", open);
+    this.setAttributeIfChanged(this.dom.ledger, "aria-hidden", open ? "false" : "true");
+    if (!open || !this.dom.ledgerContent) return;
+    const markup = renderNightLedgerMarkup(model);
+    if (markup !== this.lastLedgerMarkup) {
+      this.lastLedgerMarkup = markup;
+      this.dom.ledgerContent.innerHTML = markup;
     }
   }
 
@@ -432,7 +574,7 @@ export class UIScene extends Phaser.Scene {
            Movement: ${key("w", "W")}/${key("a", "A")}/${key("s", "S")}/${key("d", "D")} or arrows run by default · hold ${key("quiet", "SHIFT")} for quiet movement<br>
            Combat: mouse aims · left-click uses equipped weapon · mouse wheel changes weapon · hold right-click to drain<br>
            Traversal: ${key("traverse", "SPACE")} near a route · Interact: ${key("interact", "E")} for dialogue, clues and evidence<br>
-           Powers: ${key("dash", "Q")} Dash · ${key("whisper", "R")} Whisper · ${key("sense", "F")} Blood Sense · M Mission</p>
+           Powers: ${key("dash", "Q")} Dash · ${key("whisper", "R")} Whisper · ${key("sense", "F")} Blood Sense · M Mission · L Night Ledger</p>
          <p><strong>Stats</strong></p><pre>${this.escapeHtml(this.statsText(pauseData))}</pre>
          ${this.accessibilityMarkup()}`,
         "Close · H / Esc"
@@ -487,6 +629,7 @@ export class UIScene extends Phaser.Scene {
     this.introOpen = type === "intro";
     this.pauseOpen = type === "pause";
     this.resultOpen = type === "result";
+    this.ledgerOpen = false;
   }
 
   closeIntro() {
@@ -495,7 +638,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   togglePause() {
-    if (this.introOpen || this.resultOpen || this.registry.get("taskRevealActive")) return false;
+    if (this.ledgerOpen || this.introOpen || this.resultOpen || this.registry.get("taskRevealActive")) return false;
     this.pauseOpen = !this.pauseOpen;
     if (this.pauseOpen) {
       this.pauseSnapshot = this.readState();
@@ -504,6 +647,29 @@ export class UIScene extends Phaser.Scene {
       this.pauseSnapshot = null;
     }
     this.updateUiPause();
+    return true;
+  }
+
+  toggleNightLedger() {
+    return this.ledgerOpen ? this.closeNightLedger() : this.openNightLedger();
+  }
+
+  openNightLedger() {
+    if (this.introOpen || this.pauseOpen || this.resultOpen || this.registry.get("taskRevealActive")) return false;
+    this.ledgerOpen = true;
+    this.closeMissionDrawer();
+    this.ledgerRefreshAt = 0;
+    this.readNightLedgerState(true);
+    this.updateUiPause();
+    window.requestAnimationFrame?.(() => this.dom.ledgerClose?.focus?.());
+    return true;
+  }
+
+  closeNightLedger() {
+    if (!this.ledgerOpen) return false;
+    this.ledgerOpen = false;
+    this.updateUiPause();
+    window.requestAnimationFrame?.(() => this.dom.ledgerButton?.focus?.());
     return true;
   }
 
@@ -520,6 +686,7 @@ export class UIScene extends Phaser.Scene {
     this.resultType = type;
     this.pauseOpen = false;
     this.pauseSnapshot = null;
+    this.ledgerOpen = false;
     this.missionOpen = false;
     if (type === "failure") this.resultDismissed = false;
     this.updateUiPause();
@@ -545,11 +712,11 @@ export class UIScene extends Phaser.Scene {
   }
 
   modalBlocksInput() {
-    return this.introOpen || this.pauseOpen || this.resultOpen;
+    return this.introOpen || this.pauseOpen || this.resultOpen || this.ledgerOpen;
   }
 
   updateUiPause() {
-    const paused = this.introOpen || this.pauseOpen || this.resultOpen;
+    const paused = this.introOpen || this.pauseOpen || this.resultOpen || this.ledgerOpen;
     if (paused === this.lastUiPaused) return;
     this.lastUiPaused = paused;
     this.registry.set("uiPaused", paused);

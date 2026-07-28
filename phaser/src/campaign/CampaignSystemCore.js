@@ -6,6 +6,7 @@ import { MissionRunner } from "./MissionRunner.js";
 import { ReputationSystem } from "./ReputationSystem.js";
 import { WalletSystem } from "./WalletSystem.js";
 import { TerritorySystem } from "../factions/TerritorySystem.js";
+import { HuntingLawSystem } from "../factions/HuntingLawSystem.js";
 import { CAMPAIGN_EVENT_TYPES } from "./constants.js";
 import { cleanTheSceneMission } from "./missions/cleanTheScene.js";
 import { silenceTheJournalistMission } from "./missions/silenceTheJournalist.js";
@@ -47,6 +48,11 @@ export class CampaignSystem {
     this.territory = new TerritorySystem(this.state, {
       events: this.events,
       reputation: this.reputation,
+      now: this.now
+    });
+    this.huntingLaw = new HuntingLawSystem(this.state, {
+      events: this.events,
+      territory: this.territory,
       now: this.now
     });
     this.missions = new MissionRunner(this.state, {
@@ -215,6 +221,7 @@ export class CampaignSystem {
         contacts: this.reputation.contactSnapshot()
       },
       territory: this.territory.snapshot(),
+      huntingLaw: this.huntingLaw.snapshot(),
       definitions: this.definitions.map(definition => ({
         id: definition.id,
         title: definition.title,
@@ -237,7 +244,7 @@ export class CampaignSystem {
     const checkpoint = this.state.checkpoints.latest
       ? ` · checkpoint ${this.state.checkpoints.latest.objectiveId || this.state.checkpoints.latest.kind}`
       : "";
-    return `Cash $${this.wallet.balance().toFixed(0)} · ${mission}${checkpoint} · ${this.territory.summary()}`;
+    return `Cash $${this.wallet.balance().toFixed(0)} · ${mission}${checkpoint} · ${this.territory.summary()} · ${this.huntingLaw.summary()}`;
   }
 
   destroy() {

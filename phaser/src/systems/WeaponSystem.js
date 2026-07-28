@@ -90,7 +90,6 @@ export class WeaponSystem {
     this.index = next;
     const current = this.currentWeapon();
     RawAudio.play("menu", { cooldown: 0.04 });
-    this.scene.lastActionText = `EQUIPPED: ${current.name}${this.ammoLabel(current, true)}.`;
     this.scene.events?.emit?.("weapon:changed", {
       previousWeaponId: previous.id,
       weaponId: current.id,

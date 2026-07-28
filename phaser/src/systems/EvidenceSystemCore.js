@@ -262,6 +262,13 @@ export class EvidenceSystem {
       if (watcher) {
         body.corpseDiscovered = true;
         this.stats.bodiesDiscovered++;
+        if (body.huntingAssessmentId) {
+          this.scene.campaignSystem?.huntingLaw?.discover?.(body.huntingAssessmentId, {
+            source: "recovered_body",
+            witnessId: watcher.id,
+            referenceId: body.id
+          });
+        }
         this.scene.witnessSystem.alarmWitness(watcher, "an abandoned body", 16, { reactionSeconds: 1.2 });
         this.scene.exposureSystem.add(5, "A civilian discovers a body and runs to report it.");
       }
