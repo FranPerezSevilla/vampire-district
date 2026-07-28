@@ -50,6 +50,7 @@ jobs:
             git grep -n -I -i -E 'tools/|legacy/|css/|js/' -- package.json .github/workflows || true
           } >> "$report"
 
+          git archive --format=zip --output=viceblood-source-snapshot.zip HEAD
           wc -l "$report"
 
       - name: Upload audit report
@@ -57,5 +58,13 @@ jobs:
         with:
           name: viceblood-branding-audit
           path: branding-audit-report.txt
+          if-no-files-found: error
+          retention-days: 2
+
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: viceblood-source-snapshot
+          path: viceblood-source-snapshot.zip
           if-no-files-found: error
           retention-days: 2
