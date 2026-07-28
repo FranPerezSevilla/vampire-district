@@ -12,44 +12,74 @@ jobs:
   apply:
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    env:
+      TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
     steps:
       - name: Check out PR branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref || github.ref_name }}
+          ref: ${{ env.TARGET_BRANCH }}
           fetch-depth: 0
 
+      - name: Detect pending territory payload
+        id: gate
+        shell: bash
+        run: |
+          if [ -f .github/territory-payload.b64 ]; then
+            echo 'apply=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'apply=false' >> "$GITHUB_OUTPUT"
+            echo 'Territory implementation payload already consumed.'
+          fi
+
       - name: Set up Node.js
+        if: steps.gate.outputs.apply == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Apply, validate and publish territory foundation
+      - name: Apply territory patch
+        if: steps.gate.outputs.apply == 'true'
         shell: bash
-        env:
-          TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           set -euo pipefail
-          payload=.github/territory-payload.b64
           workflow=.github/workflows/temporary-territory-source-snapshot.yml
-          if [ ! -f "$payload" ]; then
-            echo 'Territory implementation payload already consumed.'
-            exit 0
-          fi
-
           cp "$workflow" /tmp/territory-workflow.yml
           rm -f "$workflow"
-          base64 -d "$payload" | gzip -dc > /tmp/territory.patch
+          base64 -d .github/territory-payload.b64 | gzip -dc > /tmp/territory.patch
           git apply /tmp/territory.patch
-          rm -f "$payload"
+          rm -f .github/territory-payload.b64
 
-          npm install --ignore-scripts --no-audit --no-fund --no-package-lock
-          node --test tests/*.test.js
-          npm run city:validate
-          npm run city:compile -- --output-dir=/tmp/viceblood-territory-city
-          npm run city:foundry -- --output-dir=/tmp/viceblood-territory-foundry
-          git diff --check
+      - name: Install exact dependencies
+        if: steps.gate.outputs.apply == 'true'
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
 
+      - name: Run unit regression
+        if: steps.gate.outputs.apply == 'true'
+        run: node --test tests/*.test.js
+
+      - name: Validate city topology
+        if: steps.gate.outputs.apply == 'true'
+        run: npm run city:validate
+
+      - name: Compile current city
+        if: steps.gate.outputs.apply == 'true'
+        run: npm run city:compile -- --output-dir=/tmp/viceblood-territory-city
+
+      - name: Compile Foundry candidates
+        if: steps.gate.outputs.apply == 'true'
+        run: npm run city:foundry -- --output-dir=/tmp/viceblood-territory-foundry
+
+      - name: Verify patch quality
+        if: steps.gate.outputs.apply == 'true'
+        run: git diff --check
+
+      - name: Publish faction territory implementation
+        if: steps.gate.outputs.apply == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          workflow=.github/workflows/temporary-territory-source-snapshot.yml
           mkdir -p .github/workflows
           mv /tmp/territory-workflow.yml "$workflow"
           git config user.name 'github-actions[bot]'
