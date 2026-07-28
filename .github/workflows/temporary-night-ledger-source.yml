@@ -1,0 +1,24 @@
+name: Temporary Night Ledger source snapshot
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+      - name: Archive tracked source
+        run: git archive --format=zip --output=viceblood-night-ledger-source.zip HEAD
+      - name: Upload source
+        uses: actions/upload-artifact@v4
+        with:
+          name: viceblood-night-ledger-source
+          path: viceblood-night-ledger-source.zip
+          retention-days: 2
