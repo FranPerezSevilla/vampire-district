@@ -6,7 +6,7 @@ on:
       zip_name:
         description: ZIP file name (without .zip)
         required: true
-        default: vampire-district
+        default: viceblood
         type: string
 
 jobs:
@@ -17,6 +17,14 @@ jobs:
     steps:
       - name: Checkout selected branch
         uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pinned Phaser
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
 
       - name: Validate output name
         shell: bash
@@ -35,20 +43,17 @@ jobs:
         run: |
           set -euo pipefail
 
-          mkdir -p itch-build
-
-          rsync -av \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='itch-build' \
-            --exclude='node_modules' \
-            --exclude='*.zip' \
-            --exclude='.DS_Store' \
-            --exclude='Thumbs.db' \
-            ./ itch-build/
+          mkdir -p itch-build/phaser itch-build/node_modules/phaser/dist
+          cp index.html itch-build/index.html
+          cp node_modules/phaser/dist/phaser.min.js itch-build/node_modules/phaser/dist/phaser.min.js
+          rsync -av phaser/ itch-build/phaser/
 
           if [[ ! -f itch-build/index.html ]]; then
             echo 'Error: index.html was not found at the root of the packaged build.'
+            exit 1
+          fi
+          if [[ ! -f itch-build/node_modules/phaser/dist/phaser.min.js ]]; then
+            echo 'Error: the pinned local Phaser runtime was not packaged.'
             exit 1
           fi
 
