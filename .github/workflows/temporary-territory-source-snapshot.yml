@@ -83,16 +83,85 @@ jobs:
         if: steps.gate.outputs.apply == 'true'
         run: git diff --check
 
-      - name: Publish faction territory implementation
+      - name: Publish validated territory tree
         if: steps.gate.outputs.apply == 'true'
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           workflow=.github/workflows/temporary-territory-source-snapshot.yml
           mkdir -p .github/workflows
           mv /tmp/territory-workflow.yml "$workflow"
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          git commit -m 'Implement faction territory foundation'
-          git push origin "HEAD:${TARGET_BRANCH}"
+
+          python <<'PY'
+          import base64
+          import json
+          import os
+          import stat
+          import subprocess
+          import urllib.parse
+          import urllib.request
+
+          repository = os.environ["GITHUB_REPOSITORY"]
+          token = os.environ["GH_TOKEN"]
+          branch = os.environ["TARGET_BRANCH"]
+
+          def command(*args):
+              return subprocess.check_output(args, text=True).strip()
+
+          def paths_from_git(*args):
+              raw = subprocess.check_output(args)
+              return [item.decode() for item in raw.split(b"\0") if item]
+
+          def request(method, path, payload):
+              data = json.dumps(payload).encode("utf-8")
+              req = urllib.request.Request(
+                  f"https://api.github.com/repos/{repository}{path}",
+                  data=data,
+                  method=method,
+                  headers={
+                      "Authorization": f"Bearer {token}",
+                      "Accept": "application/vnd.github+json",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                      "Content-Type": "application/json",
+                  },
+              )
+              with urllib.request.urlopen(req) as response:
+                  return json.load(response)
+
+          parent = command("git", "rev-parse", "HEAD")
+          base_tree = command("git", "rev-parse", "HEAD^{tree}")
+          changed = paths_from_git(
+              "git", "diff", "--name-only", "-z", "--diff-filter=ACMRTUXB", "HEAD"
+          )
+          changed += paths_from_git("git", "ls-files", "--others", "--exclude-standard", "-z")
+          deleted = paths_from_git(
+              "git", "diff", "--name-only", "-z", "--diff-filter=D", "HEAD"
+          )
+
+          entries = []
+          for path in sorted(set(changed)):
+              with open(path, "rb") as source:
+                  content = base64.b64encode(source.read()).decode("ascii")
+              blob = request("POST", "/git/blobs", {"content": content, "encoding": "base64"})
+              mode = "100755" if os.stat(path).st_mode & stat.S_IXUSR else "100644"
+              entries.append({"path": path, "mode": mode, "type": "blob", "sha": blob["sha"]})
+
+          for path in sorted(set(deleted)):
+              entries.append({"path": path, "mode": "100644", "type": "blob", "sha": None})
+
+          tree = request("POST", "/git/trees", {"base_tree": base_tree, "tree": entries})
+          commit = request(
+              "POST",
+              "/git/commits",
+              {
+                  "message": "Implement faction territory foundation",
+                  "tree": tree["sha"],
+                  "parents": [parent],
+              },
+          )
+          ref = urllib.parse.quote(f"heads/{branch}", safe="/")
+          request("PATCH", f"/git/refs/{ref}", {"sha": commit["sha"], "force": False})
+          print(f"Published territory commit {commit['sha']}")
+          PY
