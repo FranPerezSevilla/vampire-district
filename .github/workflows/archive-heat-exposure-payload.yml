@@ -19,13 +19,15 @@ jobs:
       - name: Inspect payload
         shell: bash
         run: |
-          wc -c .github/heat-exposure-payload.part-* || true
-          sha256sum .github/heat-exposure-payload.part-* || true
+          wc -c .github/heat-exposure-payload.part-* .github/heat-exposure-final.part-* || true
+          sha256sum .github/heat-exposure-payload.part-* .github/heat-exposure-final.part-* || true
       - name: Upload payload files
         uses: actions/upload-artifact@v4
         with:
           name: heat-exposure-payload-files
-          path: .github/heat-exposure-payload.part-*
+          path: |
+            .github/heat-exposure-payload.part-*
+            .github/heat-exposure-final.part-*
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 2
