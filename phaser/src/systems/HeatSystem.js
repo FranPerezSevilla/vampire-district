@@ -10,6 +10,8 @@ import {
   sanitizeHeatState
 } from "../data/attention.js";
 
+const HEAT_COOLING_GRACE_MS = 2000;
+
 function finite(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -24,6 +26,7 @@ export class HeatSystem {
     this.scene = scene;
     this.state = sanitizeHeatState(state || createHeatState());
     this.persistTimer = 0;
+    this.coolingBlockedUntil = 0;
     this.lastPublishedLevel = this.level();
     this.installDiagnostics();
     scene.events?.once?.(globalThis.Phaser?.Scenes?.Events?.SHUTDOWN || "shutdown", this.destroy, this);
@@ -115,6 +118,10 @@ export class HeatSystem {
     district.value = Math.max(0, Math.min(MAX_DISTRICT_HEAT, valueBefore + delta));
     district.lastReason = String(reason || "Police Heat rises.");
     district.updatedAt = this.now();
+    this.coolingBlockedUntil = Math.max(
+      this.coolingBlockedUntil,
+      district.updatedAt + HEAT_COOLING_GRACE_MS
+    );
     this.state.lastReason = district.lastReason;
     const levelAfter = heatLevelFromValue(district.value);
     const incident = {
@@ -176,7 +183,7 @@ export class HeatSystem {
 
   cool(dt, { multiplier = 1 } = {}) {
     const seconds = Math.max(0, finite(dt));
-    if (!seconds) return 0;
+    if (!seconds || this.now() < this.coolingBlockedUntil) return 0;
     const beforeLevel = this.level();
     let cooled = 0;
     for (const [id, district] of Object.entries(this.state.districts)) {
@@ -224,6 +231,7 @@ export class HeatSystem {
     const before = this.level();
     this.state = createHeatState();
     this.state.lastReason = reason;
+    this.coolingBlockedUntil = 0;
     if (before > 0) {
       this.emit(ATTENTION_EVENT_TYPES.HEAT_WANTED_CHANGED, {
         districtId: null,
@@ -249,6 +257,7 @@ export class HeatSystem {
   restoreState(candidate) {
     const before = this.level();
     this.state = sanitizeHeatState(candidate);
+    this.coolingBlockedUntil = 0;
     const after = this.level();
     this.lastPublishedLevel = after;
     if (after !== before) {
