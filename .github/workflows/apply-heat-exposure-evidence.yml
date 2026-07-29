@@ -79,7 +79,6 @@ jobs:
           test "$(wc -c < /tmp/heat-exposure.patch)" = '224704'
           echo '76ab10c0b76a7e11fbac6cd39ebd2d4c50260f7ed98df46b4ca974b51d164d25  /tmp/heat-exposure.patch' | sha256sum -c -
 
-          rm -f docs/MILESTONE_15_6_HEAT_EXPOSURE_EVIDENCE.md
           git apply --check /tmp/heat-exposure.patch
           git apply /tmp/heat-exposure.patch
 
