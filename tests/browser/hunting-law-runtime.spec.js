@@ -14,7 +14,7 @@ async function waitForHuntingLaw(page) {
   ));
 }
 
-test("a real drain is assessed as poaching and a recovered body discovers the violation", async ({ page }) => {
+test("a real drain is assessed as poaching and a completed witness report discovers the violation", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
@@ -147,7 +147,7 @@ test("a real drain is assessed as poaching and a recovered body discovers the vi
     witnessId: "civ_east_1",
     referenceId: "civ_cross_1"
   });
-  expect(result.known.discovery.sources).toContain("recovered_body");
+  expect(result.known.discovery.sources).toContain("witness_report");
   expect(result.storedAfterDiscovery.discoveries[result.latent.id]).toMatchObject({
     assessmentId: result.latent.id,
     witnessId: "civ_east_1"
