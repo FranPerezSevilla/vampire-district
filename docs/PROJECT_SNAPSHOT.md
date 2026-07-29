@@ -37,7 +37,7 @@ The current foundation provides:
 
 - Phaser 3 browser runtime and responsive quality presets;
 - street, low-rooftop, high-rooftop and sewer layers;
-- combat, held predator feeding, Hunger and powers;
+- combat, held predator feeding, readable Beast pressure, Blood Sense, contextual Whisper and voluntary Give In;
 - witnesses, evidence, wanted escalation and helicopter pressure;
 - authored persistent vehicles with arcade driving, hull and trunks;
 - semantic refuge-garage repair and remote owned-wreck recovery;
@@ -48,7 +48,7 @@ The current foundation provides:
 - `10 × 8` asynchronous chunk streaming, district packs and dormant simulation;
 - macro traffic and ten pooled civilian traffic proxies;
 - motorized police pursuit, partial roadblock and crew transfer to foot AI;
-- 315 passing unit tests with territory, hunting law, feeding-depth and Heat/Exposure coverage, plus browser boot/systems/campaign domains.
+- 322 passing unit tests with territory, hunting law, feeding depth, Heat/Exposure and predator-power coverage, plus browser boot/systems/campaign domains.
 
 Production remains persistent missionless free roam. Archived mission definitions are explicit framework fixtures only.
 
@@ -59,6 +59,7 @@ Normal boot opens persistent free roam directly on the street.
 Available systems include:
 
 - walking, aiming, combat and Quick Bite / Full Feed / Drain feeding;
+- heartbeat/wound/feeding-trace Blood Sense, contextual Whisper commands and voluntary Give In;
 - independent Police Heat and evidence-backed Veil Exposure;
 - a paused Night Ledger that explains factions, Heat and concrete evidence;
 - rooftop/sewer traversal;
@@ -112,6 +113,7 @@ Wheel           cycle owned weapons
 Q               Dash
 R               Whisper
 F               Blood Sense
+B               Give In to the Beast
 M               mission panel (empty without a contract)
 L               paused Night Ledger: factions, Heat, evidence and hunting law
 H               pause/help/accessibility
@@ -343,6 +345,6 @@ Mission-specific browser golden paths are removed because those contracts are no
 
 ## Immediate priority
 
-Implement **Milestone 15.7 Blood Sense, contextual Whisper and the Beast**: make predation readable through the world, add small systemic commands, and turn high Hunger into a tempting loss-of-subtlety trade rather than random input seizure.
+Implement **Milestone 15.8 persistent hunter investigation**: create one named hunter whose testimony, recovered evidence, recognised vehicles and repeated player habits produce traceable escalation rather than generic combat waves.
 
 Future geometry work may add arbitrary-angle curves and polygonal ordinary parcels, but must preserve graph IDs, landmark sites, traffic/police integration and the hard no-overlap contracts.

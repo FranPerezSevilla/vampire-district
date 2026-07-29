@@ -159,8 +159,91 @@ export class WitnessSystem {
     return witnesses.length;
   }
 
-  onSuspiciousPower(_label, _severity = 0, _radius = 0, _options = {}) {
-    return 0;
+  onSuspiciousPower(label, severity = 16, radius = 130, options = {}) {
+    if (this.scene.currentLayer !== LAYERS.STREET) {
+      return { witnesses: 0, witnessIds: [], evidenceId: null, institutionalObservers: 0 };
+    }
+    const source = options.source || this.scene.player;
+    const subject = {
+      id: options.subjectId || source?.id || "player",
+      x: source?.x ?? this.scene.player.x,
+      y: source?.y ?? this.scene.player.y,
+      layer: options.layer ?? this.scene.currentLayer
+    };
+    const excluded = new Set(options.exclude || []);
+    const civilianWitnesses = this.witnessesSeeing(subject, radius, {
+      exclude: [...excluded]
+    });
+    const candidates = this.scene.npcSystem?.queryRadius?.(
+      subject.x,
+      subject.y,
+      radius,
+      subject.layer
+    ) || this.scene.npcSystem?.npcs || [];
+    const institutionalObservers = candidates.filter(npc => Boolean(
+      npc
+      && !excluded.has(npc)
+      && [NPC_TYPES.POLICE, NPC_TYPES.HUNTER].includes(npc.type)
+      && !npc.dead
+      && !npc.inactive
+      && !npc.intercepted
+      && !npc.hiddenBody
+      && npc.layer === subject.layer
+      && !(Number.isFinite(npc.stunnedTimer) && npc.stunnedTimer > 0)
+      && npc.combat?.state !== COMBAT_STATES.DOWNED
+      && this.canWitnessSee(npc, subject, radius)
+    ));
+    const observers = [...new Set([...civilianWitnesses, ...institutionalObservers])];
+    if (!observers.length) {
+      return { witnesses: 0, witnessIds: [], evidenceId: null, institutionalObservers: 0 };
+    }
+
+    const witnessIds = observers.map(witness => witness.id);
+    const knowledgeState = institutionalObservers.length ? "institutional" : "latent";
+    const evidence = this.scene.exposureSystem?.registerVisiblePowerUse?.({
+      label,
+      x: subject.x,
+      y: subject.y,
+      layer: subject.layer,
+      subjectId: subject.id,
+      exposureWeight: Math.max(4, Number(options.exposureWeight) || Math.ceil(severity * 0.65)),
+      knowledgeState,
+      witnessIds
+    }) || null;
+
+    RawAudio.play("witnessWtf", { cooldown: 0.35 });
+    for (const witness of civilianWitnesses) {
+      this.alarmWitness(witness, label, severity, {
+        masqueradeRisk: true,
+        reactionSeconds: options.reactionSeconds ?? 0.75,
+        source: subject,
+        sourceEvent: options.sourceEvent || "visible_power_use",
+        relatedEvidenceIds: evidence?.id ? [evidence.id] : []
+      });
+    }
+    for (const observer of institutionalObservers) {
+      observer.alarmed = true;
+      if (observer.type === NPC_TYPES.POLICE) {
+        observer.chasingPlayer = true;
+        this.scene.policeSystem?.addHeat?.(
+          observer.x,
+          observer.y,
+          Math.max(14, Math.ceil(Number(severity) || 16)),
+          `Police witness ${label}.`,
+          { source: options.sourceEvent || "visible_power_use" }
+        );
+        this.scene.policeSystem?.rememberPlayerPosition?.();
+      } else if (observer.type === NPC_TYPES.HUNTER) {
+        observer.hunterIntent = "hunt";
+      }
+      this.scene.aiStateSystem?.resolveNpc?.(observer);
+    }
+    return {
+      witnesses: observers.length,
+      witnessIds,
+      evidenceId: evidence?.id || null,
+      institutionalObservers: institutionalObservers.length
+    };
   }
 
   witnessesSeeing(subject, radius = 140, options = {}) {

@@ -14,7 +14,7 @@ The implemented scheme keeps GTA2-style immediacy and contextual city traversal 
 | Hold Shift | Move slowly and generate much quieter footsteps. |
 | Mouse | Aim and face. |
 | Left mouse | Use equipped weapon. During dialogue, advances the bubble instead. |
-| Right mouse | Hold to drain a valid downed, rear-approached or rat target. |
+| Right mouse | Hold on a valid target; release for Quick Bite or Full Feed, or continue to Drain. |
 | Wheel | Previous/next owned weapon. |
 | Space | On foot: execute one contextual traversal route. In a vehicle: hold the handbrake to initiate or sustain a drift. |
 | Enter | Enter or exit a nearby/current vehicle. |
@@ -22,6 +22,7 @@ The implemented scheme keeps GTA2-style immediacy and contextual city traversal 
 | Q | Shadow Dash. |
 | R | Vampiric Whisper. |
 | F | Blood Sense. |
+| B | Give In to the Beast; voluntary short predator burst with Hunger and evidence risk. |
 | M | Mission panel. |
 | H | Pause/help and accessibility settings. |
 | Escape | Close UI or act as dialogue keyboard fallback. |

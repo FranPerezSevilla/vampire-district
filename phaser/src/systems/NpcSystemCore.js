@@ -97,6 +97,13 @@ export class NpcSystem {
       luredTimer: 0,
       lureFlash: 0,
       lureStopDistance: 24,
+      whisperCommand: null,
+      whisperCommandTimer: 0,
+      whisperTargetX: null,
+      whisperTargetY: null,
+      whisperCalmTimer: 0,
+      whisperPassengerVehicleId: null,
+      whisperPassengerBoarded: false,
       wait: def.behavior === "loiter" || def.behavior === "guard" || def.behavior === "hidden" ? 999 : 0.4 + Math.random() * 1.2,
       aiTimer: 0.6 + Math.random() * 1.8,
       container
@@ -151,6 +158,40 @@ export class NpcSystem {
       return;
     }
     npc.__nbdWtfLabel?.setVisible?.(false);
+
+    if (npc.whisperPassengerBoarded) {
+      this.stopNpc(npc);
+      return;
+    }
+
+    if (npc.whisperCommand === "walk_away" && npc.whisperCommandTimer > 0) {
+      const x = Number.isFinite(npc.whisperTargetX) ? npc.whisperTargetX : npc.x;
+      const y = Number.isFinite(npc.whisperTargetY) ? npc.whisperTargetY : npc.y;
+      const distance = Phaser.Math.Distance.Between(npc.x, npc.y, x, y);
+      if (distance > 10) this.moveTowardAtSpeed(npc, x, y, dt, Math.max(30, npc.speed || 0));
+      else this.stopNpc(npc);
+      return;
+    }
+
+    if (npc.whisperCommand === "get_in" && npc.whisperCommandTimer > 0) {
+      const vehicle = this.scene.vehicleSystem?.vehicle?.(npc.whisperPassengerVehicleId);
+      if (!vehicle) {
+        npc.whisperCommandTimer = 0;
+        npc.whisperPassengerVehicleId = null;
+        this.stopNpc(npc);
+        return;
+      }
+      const distance = Phaser.Math.Distance.Between(npc.x, npc.y, vehicle.x, vehicle.y);
+      if (distance <= 13) {
+        npc.whisperPassengerBoarded = true;
+        npc.x = vehicle.x;
+        npc.y = vehicle.y;
+        this.stopNpc(npc);
+      } else {
+        this.moveTowardAtSpeed(npc, vehicle.x, vehicle.y, dt, Math.max(34, npc.speed || 0));
+      }
+      return;
+    }
 
     if (state === AI_STATES.CHASING && npc.type === NPC_TYPES.THUG && npc.thugHostile) {
       if (npc.enemyAttack) {
@@ -385,7 +426,7 @@ export class NpcSystem {
   }
 
   isVisible(npc) {
-    if (npc.hiddenBody) return false;
+    if (npc.hiddenBody || npc.whisperPassengerBoarded) return false;
     if (npc.inactive && npc.type !== NPC_TYPES.RAT && !npc.intercepted) return false;
     return npc.layer === this.scene.currentLayer;
   }
@@ -510,6 +551,7 @@ export class NpcSystem {
         this.scene.addMapLabel("STUNNED", npc.x + 12, npc.y - 18, 0xfff2a8);
       }
       if (npc.luredTimer > 0) this.scene.addMapLabel("LURED", npc.x + 12, npc.y - 28, 0xff4bd8);
+      if (npc.whisperCommand === "walk_away" && npc.whisperCommandTimer > 0) this.scene.addMapLabel("COMPELLED", npc.x + 12, npc.y - 28, 0xff4bd8);
     }
   }
 

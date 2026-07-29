@@ -58,7 +58,7 @@ The old rooftop blocker teaching sequence is historical and no longer production
 
 - police, hunter and thug attack telegraphs;
 - incoming damage becomes Hunger;
-- hit stun, invulnerability and frenzy failure;
+- hit stun, invulnerability and readable critical Beast pressure without automatic control loss;
 - attack/drain interruption.
 
 ## Milestone 4 — Contextual right-click drain
@@ -503,7 +503,9 @@ Reference: `MILESTONE_15_6_HEAT_EXPOSURE_EVIDENCE.md`.
 
 ## Milestone 15.7 — Blood Sense, Whisper and the Beast
 
-**Status: 🔵 Active next phase**
+**Status: ✅ Complete**
+
+Reference: `MILESTONE_15_7_PREDATOR_POWERS.md`.
 
 ### Blood Sense
 
@@ -545,7 +547,7 @@ The game does not seize input without a readable cause. The Beast offers useful 
 
 ## Milestone 15.8 — Persistent hunter investigation
 
-**Status: ⬜ Planned**
+**Status: 🔵 Active next phase**
 
 Viceblood uses one named, persistent hunter before considering generic hunter populations.
 

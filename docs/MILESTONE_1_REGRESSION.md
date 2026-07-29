@@ -107,7 +107,7 @@ Inspect `GameScene.currentInputFrame.aimWorld` over known positions:
 - Journalist objective advances.
 - Handling journalist requires return to refuge.
 - Sire dialogue appears before final report.
-- Failure/arrest/frenzy screens lock world input.
+- Explicit failure and arrest screens lock world input; critical Hunger alone no longer opens a frenzy failure screen.
 
 ## Pass criteria
 

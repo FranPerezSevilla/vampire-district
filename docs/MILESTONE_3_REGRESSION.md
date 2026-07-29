@@ -61,10 +61,10 @@ Use this checklist before changing Milestone 3 from 🟡 to ✅. Record browser,
 
 ## Frenzy failure
 
-- Reaching 100 Hunger through damage triggers `FRENZY` failure.
+- Reaching 100 Hunger through damage triggers critical Beast pressure but does not fail the run or seize input.
 - The failure reason states that Hunger overwhelmed the player.
 - World input is locked by the failure screen.
-- The report/success finale cannot trigger after frenzy failure.
+- Critical Beast pressure remains compatible with normal mission/report flow until another explicit failure condition occurs.
 - Closing or restarting from the failure state does not retain enemy attack state.
 
 ## UI and dialogue ownership
@@ -93,6 +93,6 @@ Milestone 3 may be marked ✅ only when:
 - hit stun does not leave controls stuck;
 - overlapping enemies are controlled by invulnerability;
 - feeding clearly recovers combat pressure;
-- frenzy failure occurs only at the configured Hunger limit;
+- the configured Hunger limit produces critical Beast feedback without automatic failure;
 - the complete mission and finale still work;
 - failures are fixed or recorded as known limitations.

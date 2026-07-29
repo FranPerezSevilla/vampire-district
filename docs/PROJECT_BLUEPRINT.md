@@ -36,7 +36,7 @@ The accepted City Topology V2 foundation contains:
 
 - Phaser 3 browser runtime using native ES modules;
 - street, low-rooftop, high-rooftop and sewer layers;
-- mouse-directed combat, held predator feeding, Hunger and powers;
+- mouse-directed combat, held predator feeding, readable Beast pressure, Blood Sense, contextual Whisper and voluntary Give In;
 - witnesses, evidence, police search, wanted escalation and helicopter pressure;
 - arcade vehicles with persistent hull condition and trunks;
 - refuge garage repair and owned-wreck recovery;
@@ -212,6 +212,7 @@ Wheel           cycle owned weapons
 Q               Dash
 R               Whisper
 F               Blood Sense
+B               Give In to the Beast
 M               mission panel (empty when no contract)
 H               pause/help/accessibility
 ```

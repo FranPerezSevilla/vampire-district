@@ -93,6 +93,7 @@ The First Estate and The Gutter Crown are the accepted design names. Commercial 
 - Q: Shadow Dash.
 - R: Vampiric Whisper.
 - F: Blood Sense.
+- B: Give In to the Beast for a short speed, feeding and melee burst at Hunger/evidence cost.
 - M: mission panel; currently reports no active contract.
 - L: open the paused Night Ledger for faction and police consequences.
 - H: pause/help/accessibility settings.

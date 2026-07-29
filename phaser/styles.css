@@ -524,6 +524,22 @@ h1 {
   box-shadow: inset 0 0 0 3px rgba(120, 199, 163, .06), 0 0 9px rgba(120, 199, 163, .18);
 }
 
+.power-orb[data-power="beast"] > span {
+  border-color: #ff334f;
+  background: rgba(255, 51, 79, .12);
+  box-shadow: inset 0 0 0 3px rgba(255, 51, 79, .06), 0 0 9px rgba(255, 51, 79, .20);
+}
+
+.power-orb[data-power="beast"].active {
+  background: rgba(255, 51, 79, .10);
+  box-shadow: inset 0 0 18px rgba(255, 51, 79, .12);
+}
+
+.power-orb[data-power="beast"].active i,
+.power-orb[data-power="beast"][data-beast-state="critical"] i {
+  color: #ff8fa0;
+}
+
 .power-orb.cooldown {
   opacity: .58;
 }

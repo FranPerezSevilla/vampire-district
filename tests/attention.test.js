@@ -60,6 +60,18 @@ test("new Heat escalation remains stable during its short cooling grace", () => 
   assert.equal(heat.level(), 1);
 });
 
+test("Heat can be deliberately downgraded without touching Exposure", () => {
+  const targetScene = scene();
+  const heat = new HeatSystem(targetScene, { state: createHeatState() });
+  heat.addInDistrict("old-quarter", 80, "Active pursuit.", { persist: false });
+  const removed = heat.reduceInDistrict("old-quarter", 36, "A compromised officer calls units off.", { persist: false });
+  assert.equal(removed, 36);
+  assert.equal(Math.round(heat.valueFor("old-quarter")), 44);
+  assert.equal(heat.level(), 1);
+  assert.ok(targetScene.emitted.some(event => event.type === "heat:cooled"));
+  assert.ok(targetScene.emitted.some(event => event.type === "heat:wanted-changed"));
+});
+
 test("Heat state is district-local, bounded and serializable", () => {
   const sanitized = sanitizeHeatState({
     sequence: 4,

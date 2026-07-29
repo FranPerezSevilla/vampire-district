@@ -118,7 +118,8 @@ export class GameScene extends Phaser.Scene {
 
   updatePlayerMovement(dt, frame = this.currentInputFrame) {
     if (!frame?.hasMovementIntent) return;
-    const speed = movementSpeed(this.playerSpeed, frame.quietHeld);
+    const speed = movementSpeed(this.playerSpeed, frame.quietHeld)
+      * (this.powersSystem?.movementMultiplier?.() || 1);
     const nextX = this.player.x + frame.move.x * speed * dt;
     const nextY = this.player.y + frame.move.y * speed * dt;
 

@@ -32,12 +32,13 @@ The game should feel immediate, readable and systemic:
 | Aim / face | Mouse | Player faces the cursor's world position. |
 | Primary attack | Left mouse | Use equipped weapon in the aimed direction. |
 | Weapon selection | Mouse wheel | Previous/next owned weapon. |
-| Drain | Hold right mouse | Drain a valid aimed target while the channel remains valid. |
+| Feed | Hold right mouse | Release for Quick Bite or Full Feed, or continue to lethal Drain. |
 | Traverse | Space | Jump, climb, descend or enter/exit a sewer. No speed effect. |
 | Interact | E | Talk, collect, inspect and use non-traversal objects. |
 | Dash | Q | Shadow Dash. |
 | Whisper | R | Vampiric Whisper. |
-| Blood Sense | F | Reveal relevant supernatural/perception information. |
+| Blood Sense | F | Read heartbeats, wounds, feeding traces, drained bodies and learned marks through cover. |
+| Give In | B | Voluntary short Beast burst: faster movement/feeding and stronger melee at Hunger/evidence cost. |
 | Mission | M | Toggle mission information. |
 | Menu | H | Toggle menu/help. |
 | Dialogue | Left click / Escape | Advance one dialogue bubble. |
@@ -344,7 +345,7 @@ The player has no conventional health bar in the current slice.
 - hit stun: 260 ms;
 - invulnerability: 720 ms;
 - critical feedback: 85 Hunger;
-- frenzy failure: 100 Hunger.
+- Beast critical pressure: 100 Hunger; control remains with the player and no automatic frenzy failure occurs.
 
 Invulnerability prevents overlapping enemies from instantly filling Hunger. Feeding functions as recovery.
 

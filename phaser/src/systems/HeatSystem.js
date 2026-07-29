@@ -163,6 +163,49 @@ export class HeatSystem {
     return this.add(x, y, amount, reason, { ...options, districtId });
   }
 
+  reduceInDistrict(districtId, amount, reason = "Police response is downgraded.", {
+    source = "system",
+    persist = true
+  } = {}) {
+    const id = String(districtId || "").trim();
+    const delta = Math.max(0, finite(amount));
+    const district = this.districtState(id, false);
+    if (!district || !delta || !(district.value > 0)) return 0;
+    const before = district.value;
+    const levelBefore = heatLevelFromValue(before);
+    district.value = Math.max(0, before - delta);
+    district.lastReason = String(reason || "Police response is downgraded.");
+    district.updatedAt = this.now();
+    this.state.lastReason = district.lastReason;
+    if (district.value <= 0.1) delete this.state.districts[id];
+    const after = this.valueFor(id);
+    const levelAfter = heatLevelFromValue(after);
+    const removed = before - after;
+    this.emit(ATTENTION_EVENT_TYPES.HEAT_COOLED, {
+      districtId: id,
+      amount: removed,
+      valueBefore: before,
+      valueAfter: after,
+      levelBefore,
+      levelAfter,
+      reason: district.lastReason,
+      source: String(source || "system"),
+      timestamp: district.updatedAt
+    });
+    if (levelAfter !== levelBefore) {
+      this.emit(ATTENTION_EVENT_TYPES.HEAT_WANTED_CHANGED, {
+        districtId: id,
+        levelBefore,
+        levelAfter,
+        value: after,
+        reason: district.lastReason,
+        timestamp: district.updatedAt
+      });
+    }
+    if (persist) this.persist({ save: true });
+    return removed;
+  }
+
   forceLevel(level, reason = "Police response escalated.", options = {}) {
     const targetLevel = Math.max(0, Math.min(3, Math.trunc(finite(level))));
     const zone = options.districtId
