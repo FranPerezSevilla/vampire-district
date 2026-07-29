@@ -114,7 +114,7 @@ After reload:
 ## Failed-run retry
 
 - Capture a safe active checkpoint.
-- Fail through arrest, Veil break or frenzy.
+- Fail through arrest or Veil break; critical Hunger remains a playable Beast-pressure state.
 - Reload or begin a same-mission retry.
 - Confirm the failed record does not destroy the safe checkpoint.
 - Confirm restoration returns to the checkpoint's active objective.

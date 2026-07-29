@@ -199,7 +199,7 @@ export class PlayerDamageSystem {
     RawAudio.play("stun", { cooldown: 0.08 });
     this.scene.cameras?.main?.shake?.(120, 0.0022);
     this.scene.lastActionText = result.critical
-      ? `HIT: ${config.label}. Hunger +${result.gained}. HUNGER CRITICAL — feed before you lose control.`
+      ? `HIT: ${config.label}. Hunger +${result.gained}. HUNGER CRITICAL — feed or Give In; the Beast is pressing against your control.`
       : `HIT: ${config.label}. Hunger +${result.gained}.`;
 
     this.scene.events?.emit?.("player:damaged", {
@@ -217,15 +217,13 @@ export class PlayerDamageSystem {
       amount: result.gained
     });
 
-    if (result.frenzy && !this.scene.missionSystem?.failed) {
-      this.scene.missionSystem?.failRun?.(
-        "Hunger overwhelms you. You lose control before the order is complete.",
-        {
-          title: "FRENZY",
-          missionText: "FAILED · Hunger reached its limit and you lost control.",
-          audio: "masqueradeFail"
-        }
-      );
+    if (result.frenzy) {
+      this.scene.lastActionText = `HIT: ${config.label}. Hunger reached its limit. THE BEAST IS CRITICAL — feed or Give In, but control remains yours.`;
+      this.scene.events?.emit?.("beast:critical-pressure", {
+        source: "damage",
+        attackerId: attacker.id,
+        hunger: result.after
+      });
     }
 
     return true;
@@ -249,6 +247,7 @@ export class PlayerDamageSystem {
       dashPressed: false,
       whisperPressed: false,
       bloodSensePressed: false,
+      // Give In remains available during hit stun so the player can voluntarily trade subtlety for recovery.
       debugLayerPressed: 0
     };
   }

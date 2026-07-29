@@ -5,9 +5,10 @@ import { buildNightLedgerModel } from "../ui/NightLedgerModel.js";
 import { renderNightLedgerMarkup } from "../ui/NightLedgerView.js";
 
 const POWER_CONFIG = Object.freeze({
-  dash: { label: "Dash", max: 3.0 },
-  whisper: { label: "Whisper", max: 4.8 },
-  sense: { label: "Sense", max: 4.0 }
+  dash: { label: "Dash", max: 3.0, binding: "dash" },
+  whisper: { label: "Whisper", max: 4.8, binding: "whisper" },
+  sense: { label: "Sense", max: 4.0, binding: "sense" },
+  beast: { label: "Beast", max: 18.0, binding: "beast" }
 });
 
 const WANTED_LABELS = Object.freeze({
@@ -111,7 +112,8 @@ export class UIScene extends Phaser.Scene {
       powers: {
         dash: document.querySelector('[data-power="dash"]'),
         whisper: document.querySelector('[data-power="whisper"]'),
-        sense: document.querySelector('[data-power="sense"]')
+        sense: document.querySelector('[data-power="sense"]'),
+        beast: document.querySelector('[data-power="beast"]')
       }
     };
 
@@ -205,7 +207,7 @@ export class UIScene extends Phaser.Scene {
     this.updateMissionResult(data);
     this.renderHud(data, ledger);
     this.renderMission(data);
-    this.renderPowers(data.powersText);
+    this.renderPowers(data.powersText, data.inputBindings);
     this.renderPrompt(data);
     this.renderInteractionMenu(data.menu);
     this.renderNightLedger(ledger);
@@ -496,15 +498,26 @@ export class UIScene extends Phaser.Scene {
     }
   }
 
-  renderPowers(powersText) {
+  renderPowers(powersText, inputBindings = null) {
     const text = String(powersText || "");
+    const beastState = text.match(/BeastState\s+([A-Z]+)/i)?.[1]?.toUpperCase() || "CONTROLLED";
+    const beastActive = Number.parseFloat(text.match(/GiveIn\s+([0-9.]+)/i)?.[1] || "0") || 0;
     for (const [id, config] of Object.entries(POWER_CONFIG)) {
       const node = this.dom.powers[id];
       if (!node) continue;
+      const key = node.querySelector("span");
+      const code = inputBindings?.bindings?.[config.binding || id];
+      if (key && code) key.textContent = bindingLabel(code);
       const remaining = this.cooldownFor(text, config.label);
-      node.classList.toggle("cooldown", remaining > 0);
+      const active = id === "beast" && beastActive > 0;
+      node.classList.toggle("active", active);
+      node.classList.toggle("cooldown", remaining > 0 && !active);
       const state = node.querySelector(".power-state");
-      if (state) state.textContent = remaining > 0 ? `${remaining.toFixed(1)}s` : "Ready";
+      if (!state) continue;
+      if (active) state.textContent = `ACTIVE ${beastActive.toFixed(1)}s`;
+      else if (remaining > 0) state.textContent = `${remaining.toFixed(1)}s`;
+      else state.textContent = id === "beast" ? beastState : "Ready";
+      if (id === "beast") node.dataset.beastState = beastState.toLowerCase();
     }
   }
 
@@ -601,7 +614,7 @@ export class UIScene extends Phaser.Scene {
            Movement: ${key("w", "W")}/${key("a", "A")}/${key("s", "S")}/${key("d", "D")} or arrows run by default · hold ${key("quiet", "SHIFT")} for quiet movement<br>
            Combat: mouse aims · left-click uses equipped weapon · mouse wheel changes weapon · hold right-click to feed · release at a threshold or continue to Drain<br>
            Traversal: ${key("traverse", "SPACE")} near a route · Interact: ${key("interact", "E")} for dialogue, clues and evidence<br>
-           Powers: ${key("dash", "Q")} Dash · ${key("whisper", "R")} Whisper · ${key("sense", "F")} Blood Sense · M Mission · L Night Ledger</p>
+           Powers: ${key("dash", "Q")} Dash · ${key("whisper", "R")} Whisper · ${key("sense", "F")} Blood Sense · ${key("beast", "B")} Give In · M Mission · L Night Ledger</p>
          <p><strong>Stats</strong></p><pre>${this.escapeHtml(this.statsText(pauseData))}</pre>
          ${this.accessibilityMarkup()}`,
         "Close · H / Esc"

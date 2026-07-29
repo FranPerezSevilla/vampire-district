@@ -63,6 +63,7 @@ The same frame is consumed by movement, traversal, interactions, powers, weapon 
 - Q: Dash.
 - R: Whisper.
 - F: Blood Sense.
+- B: one-frame `beastPressed` / Give In.
 - Wheel: discrete `weaponStep` consumed by `WeaponSystem`.
 
 The old `sprintHeld` property is intentionally forced to `false` so stale consumers cannot accidentally restore dual-purpose Space behaviour. It can be deleted after the compatibility sweep in Milestone 10.
@@ -71,7 +72,7 @@ The old `sprintHeld` property is intentionally forced to `false` so stale consum
 
 | Mode | Allowed world actions |
 |---|---|
-| `full` | All implemented world actions, including weapon cycling. |
+| `full` | All implemented world actions, including weapon cycling and Give In. |
 | `movement` | Move, quiet modifier, aim and traversal. |
 | `drain` | Move, quiet modifier, aim, punch, right-click drain, traversal and limited tutorial interaction. Weapon cycling remains blocked. |
 | `tip` | Move, quiet modifier, aim, traversal and clue interaction. |

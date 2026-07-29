@@ -122,7 +122,7 @@ export class CombatSystem {
 
   startAttack() {
     const selected = this.currentAttackConfig();
-    const config = { ...selected };
+    const config = this.scene.powersSystem?.attackModifiers?.(selected) || { ...selected };
     if (this.scene.weaponSystem && !this.scene.weaponSystem.beginAttack(config)) return false;
 
     this.attackSerial += 1;

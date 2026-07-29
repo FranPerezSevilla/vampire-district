@@ -24,6 +24,7 @@ function activeFrame() {
     dashPressed: true,
     whisperPressed: true,
     bloodSensePressed: true,
+    beastPressed: true,
     debugLayerPressed: 3,
     menuConfirmPressed: true
   });
@@ -37,6 +38,7 @@ test("full control mode preserves world actions but neutralizes obsolete sprint 
   assert.equal(frame.traversePressed, true);
   assert.equal(frame.interactPressed, true);
   assert.equal(frame.dashPressed, true);
+  assert.equal(frame.beastPressed, true);
   assert.equal(frame.weaponStep, 1);
 });
 
@@ -62,6 +64,7 @@ test("rooftop combat tutorial mode allows punching and right-click drain but blo
   assert.equal(frame.traversePressed, true);
   assert.equal(frame.whisperPressed, false);
   assert.equal(frame.bloodSensePressed, false);
+  assert.equal(frame.beastPressed, false);
   assert.equal(frame.weaponStep, 0);
 });
 

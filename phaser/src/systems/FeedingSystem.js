@@ -164,7 +164,8 @@ export class FeedingSystem {
     }
 
     const feed = this.active;
-    feed.time = Math.min(feed.duration, feed.time + Math.max(0, Number(dt) || 0));
+    const speed = Math.max(0.1, Number(this.scene.powersSystem?.feedingSpeedMultiplier?.()) || 1);
+    feed.time = Math.min(feed.duration, feed.time + Math.max(0, Number(dt) || 0) * speed);
     this.updateReachedThresholds(feed);
     if (this.active === feed && feed.deepestDepth === FEEDING_DEPTHS.DRAIN) {
       this.resolveDepth(FEEDING_DEPTHS.DRAIN, { reason: "threshold", interrupted: false });

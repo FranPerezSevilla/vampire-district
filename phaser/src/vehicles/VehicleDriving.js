@@ -155,6 +155,7 @@ export function filterVehicleInputFrame(system, frame) {
     dashPressed: false,
     whisperPressed: false,
     bloodSensePressed: false,
+    beastPressed: false,
     vehicleActive: true
   };
 }

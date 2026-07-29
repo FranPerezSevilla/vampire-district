@@ -256,7 +256,7 @@ The player has no conventional health bar.
 - hit stun: 260 ms;
 - invulnerability: 720 ms;
 - critical Hunger: 85;
-- frenzy failure: 100.
+- Beast critical pressure: 100; no automatic run failure or input seizure.
 
 A confirmed hit:
 

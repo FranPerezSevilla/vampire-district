@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-29 — Predator powers and the Beast
+
+- Expanded Blood Sense into heartbeat, wound, feeding-trace, drained-body, blood-trail and heartbeat-absence readings through cover.
+- Added knowledge-limited protected-prey marks.
+- Replaced automatic Whisper lure with contextual Come Here, Walk Away, Stay Calm, Forget This, Open It, Get In and Call Them Off commands.
+- Added deterministic resistance, Hunger prices and witnessed/resisted power evidence.
+- Added four readable Beast pressure states and a remappable B / Give In burst.
+- Give In accelerates movement and feeding, strengthens melee, breaks hit stun and creates visible-power risk.
+- Removed automatic 100-Hunger frenzy failure; critical Hunger remains fully player-controlled.
+
 ## 2026-07-29 — Heat and evidence-backed Exposure
 
 - Separated ordinary police Heat from supernatural Veil Exposure.

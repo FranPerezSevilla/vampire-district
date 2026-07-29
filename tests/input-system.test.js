@@ -46,7 +46,7 @@ function key() {
 
 const keyboardKeys = [
   "up", "down", "left", "right", "w", "a", "s", "d", "shift", "interact",
-  "dash", "whisper", "sense", "enter", "escape", "space", "street", "roofLow",
+  "dash", "whisper", "sense", "beast", "enter", "escape", "space", "street", "roofLow",
   "roofHigh", "sewer", "five", "six", "seven", "eight", "nine"
 ];
 
@@ -122,6 +122,7 @@ test("InputSystem creates movement, quiet and traversal actions from one frame",
   keys.space.isDown = true;
   keys.space._justDown = true;
   keys.dash._justDown = true;
+  keys.beast._justDown = true;
 
   const frame = input.beginFrame();
   assert.deepEqual(frame.move, { x: 1, y: 0 });
@@ -130,11 +131,13 @@ test("InputSystem creates movement, quiet and traversal actions from one frame",
   assert.equal(frame.sprintHeld, false);
   assert.equal(frame.traversePressed, true);
   assert.equal(frame.dashPressed, true);
+  assert.equal(frame.beastPressed, true);
   assert.deepEqual(frame.aimWorld, { x: 460, y: 280 });
 
   const next = input.beginFrame();
   assert.equal(next.traversePressed, false);
   assert.equal(next.dashPressed, false);
+  assert.equal(next.beastPressed, false);
   input.destroy();
 });
 
