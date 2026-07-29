@@ -27,7 +27,7 @@ test("Blood Sense, contextual Whisper and Give In form one evidence-limited pred
     scene.heatSystem.clear("Predator-power regression baseline.");
     scene.exposureSystem.clear("Predator-power regression baseline.");
     scene.currentLayer = 0;
-    scene.player.setPosition(1490, 500);
+    const origin = { x: scene.player.x, y: scene.player.y };
     scene.feedingSystem.hunger = 10;
 
     const ids = ["civ_cross_1", "civ_east_1", "civ_church", "police_anchor"];
@@ -79,10 +79,10 @@ test("Blood Sense, contextual Whisper and Give In form one evidence-limited pred
       npc.inactive = true;
       npc.container?.setVisible?.(false);
     }
-    resetNpc(prey, 1520, 500);
-    resetNpc(memoryTarget, 1560, 500);
-    resetNpc(watcher, 1800, 500);
-    resetNpc(officer, 1600, 500);
+    resetNpc(prey, origin.x + 30, origin.y);
+    resetNpc(memoryTarget, origin.x + 70, origin.y);
+    resetNpc(watcher, origin.x + 310, origin.y);
+    resetNpc(officer, origin.x + 110, origin.y);
     memoryTarget.combat.resilience = 1;
     officer.noHeartbeat = true;
 
@@ -92,7 +92,7 @@ test("Blood Sense, contextual Whisper and Give In form one evidence-limited pred
       reason: "Known donor",
       source: "browser-predator-powers"
     });
-    scene.evidenceSystem.createBloodStain(1540, 520, 0, "browser-predator-powers");
+    scene.evidenceSystem.createBloodStain(origin.x + 50, origin.y + 20, 0, "browser-predator-powers");
     scene.npcSystem.rebuildSpatialIndex();
 
     const unknownProtection = window.NBD_PREDATOR_POWERS.bloodSenseReadings();
