@@ -1,0 +1,96 @@
+name: Apply Heat Exposure evidence implementation
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'agent/heat-exposure-evidence'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+
+    steps:
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+
+      - name: Detect pending payload
+        id: gate
+        shell: bash
+        run: |
+          if [ -f .github/heat-exposure-payload.part-01 ] && [ -f .github/heat-exposure-payload.part-02 ]; then
+            echo 'apply=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'apply=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node.js
+        if: steps.gate.outputs.apply == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Reconstruct and apply implementation
+        if: steps.gate.outputs.apply == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/heat-exposure-payload.part-01 .github/heat-exposure-payload.part-02 > /tmp/heat-exposure.b64
+          base64 -d /tmp/heat-exposure.b64 > /tmp/heat-exposure.patch.gz
+          gzip -t /tmp/heat-exposure.patch.gz
+          gzip -dc /tmp/heat-exposure.patch.gz > /tmp/heat-exposure.patch
+          git apply --check /tmp/heat-exposure.patch
+          git apply /tmp/heat-exposure.patch
+          rm -f \
+            .github/heat-exposure-payload.part-01 \
+            .github/heat-exposure-payload.part-02 \
+            .github/workflows/apply-heat-exposure-evidence.yml
+
+      - name: Install exact dependencies
+        if: steps.gate.outputs.apply == 'true'
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+
+      - name: Check JavaScript syntax
+        if: steps.gate.outputs.apply == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r file; do
+            node --check "$file"
+          done < <(find phaser tests tools -type f \( -name '*.js' -o -name '*.mjs' \) -print | sort)
+
+      - name: Run unit regression
+        if: steps.gate.outputs.apply == 'true'
+        run: npm test
+
+      - name: Validate and compile city
+        if: steps.gate.outputs.apply == 'true'
+        shell: bash
+        run: |
+          npm run city:validate
+          npm run city:compile -- --output-dir=/tmp/viceblood-heat-city
+          npm run city:foundry -- --output-dir=/tmp/viceblood-heat-foundry
+
+      - name: Verify patch quality
+        if: steps.gate.outputs.apply == 'true'
+        run: git diff --check
+
+      - name: Commit and publish implementation
+        if: steps.gate.outputs.apply == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Implement Heat, Exposure and concrete evidence'
+          git push origin "HEAD:${TARGET_BRANCH}"
