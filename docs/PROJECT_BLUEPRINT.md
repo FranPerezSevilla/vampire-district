@@ -265,6 +265,7 @@ Production does not instantiate campaign-entry or mission-board systems while th
 - `PoliceViolenceSystem`
 - `MotorizedPoliceSystem`
 - `HunterSystem`
+- `HeatSystem`
 - `ExposureSystem`
 - `EvidenceSystem`
 
@@ -310,6 +311,17 @@ normal GameplayRuntime frame
 Motorized police samples current macro/local road state, then any dismounted officers enter the existing normal NPC/police frame.
 
 Vehicle maintenance and campaign transactions remain event-driven outside the frame loop.
+
+
+## Heat and Veil evidence boundary
+
+```text
+HeatSystem      ordinary crime → search / pursuit / cruisers
+ExposureSystem  reported supernatural evidence → Veil pressure / hunter interest
+EvidenceSystem  physical scene facts and cleanup interactions
+```
+
+Heat and Exposure may diverge. Physical cleanup can resolve latent proof, but cannot erase a report already retained by an institution. Campaign schema v5 and checkpoint v3 persist both authorities.
 
 ## Vehicle and traffic boundaries
 

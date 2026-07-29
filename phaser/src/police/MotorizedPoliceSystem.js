@@ -119,7 +119,7 @@ export class MotorizedPoliceSystem {
   }
 
   wantedLevel() {
-    return Math.max(0, Math.min(3, Math.floor(finite(this.scene.exposureSystem?.level?.()))));
+    return Math.max(0, Math.min(3, Math.floor(finite(this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem?.level?.()))));
   }
 
   nowSeconds() {
@@ -460,8 +460,7 @@ export class MotorizedPoliceSystem {
       reason: "police cruiser collision"
     });
     this.damageUnit(unit.id, damage, { reason: "player-impact" });
-    this.scene.exposureSystem?.add?.(4, "High-speed collision with a police cruiser.");
-    this.scene.policeSystem?.addHeat?.(unit.x, unit.y, 12, "Police cruiser struck");
+    this.scene.policeSystem?.addHeat?.(unit.x, unit.y, 16, "High-speed collision with a police cruiser", { source: "police_cruiser_collision" });
     return true;
   }
 

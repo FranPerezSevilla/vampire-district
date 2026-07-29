@@ -221,6 +221,8 @@ export class UIScene extends Phaser.Scene {
       campaignMission: this.registry.get("campaignMission") || result?.mission || null,
       visibility: get("visibilityText", "Visibility unknown"),
       exposureText: get("exposureText", "Exposure unavailable"),
+      heatText: get("heatText", "Heat unavailable"),
+      wantedLevel: Math.max(0, Math.min(3, Number(get("wantedLevel", 0)) || 0)),
       policeText: get("policeText", "Police unavailable"),
       witnessText: get("witnessText", "Witnesses unavailable"),
       hunterText: get("hunterText", "Hunters dormant"),
@@ -276,22 +278,43 @@ export class UIScene extends Phaser.Scene {
 
   collectPoliceLedgerState(gameScene) {
     if (!gameScene) return {};
-    const exposure = gameScene.exposureSystem;
+    const heatSystem = gameScene.heatSystem;
+    const exposureSystem = gameScene.exposureSystem;
     const police = gameScene.policeSystem;
     const witnesses = gameScene.witnessSystem;
     const evidence = gameScene.evidenceSystem;
     const officers = police?.police?.() || [];
     const chasing = officers.filter(officer => officer.chasingPlayer).length;
-    const level = Math.max(0, Number(exposure?.level?.()) || 0);
-    const hottest = police?.hottestZone?.() || null;
-    const heat = hottest ? Number(police?.localHeat?.[hottest.id]) || 0 : 0;
+    const level = Math.max(0, Math.min(3, Number(heatSystem?.level?.()) || 0));
+    const hottest = heatSystem?.hottestZone?.() || police?.hottestZone?.() || null;
+    const hottestHeat = hottest
+      ? Number(heatSystem?.valueFor?.(hottest.id) ?? police?.localHeat?.[hottest.id]) || 0
+      : 0;
+    const heatSnapshot = heatSystem?.snapshot?.() || {};
+    const exposureSnapshot = exposureSystem?.snapshot?.() || {};
+    const exposureRecords = exposureSystem?.activeEvidence?.() || Object.values(exposureSnapshot.records || {});
     const motorized = gameScene.motorizedPoliceSystem?.snapshot?.() || {};
     const fleeing = witnesses?.alarmedWitnesses?.() || [];
     return {
       level,
-      exposureValue: Number(exposure?.value) || 0,
-      exposureMax: 125,
-      lastReason: exposure?.lastReason || "No active police escalation.",
+      heat: {
+        ...heatSnapshot,
+        level,
+        value: Number(heatSystem?.maximum?.()) || 0,
+        max: 100,
+        hottestZoneName: hottest?.name || "No hot zone",
+        hottestZoneHeat: hottestHeat,
+        incidents: heatSystem?.recent?.(10) || heatSnapshot.incidents || []
+      },
+      exposure: {
+        ...exposureSnapshot,
+        level: Math.max(0, Number(exposureSystem?.level?.()) || 0),
+        value: Number(exposureSystem?.value) || 0,
+        max: 125,
+        records: exposureRecords,
+        lastReason: exposureSystem?.lastReason || exposureSnapshot.lastReason || "No supernatural evidence is known."
+      },
+      lastReason: heatSnapshot.lastReason || "No active police escalation.",
       summary: police?.summary?.() || "Police status unavailable",
       footOfficers: officers.length,
       chasingOfficers: chasing,
@@ -305,7 +328,7 @@ export class UIScene extends Phaser.Scene {
       bodiesHidden: Number(evidence?.stats?.bodiesHidden) || 0,
       bloodEvidence: Array.isArray(evidence?.bloodStains) ? evidence.bloodStains.length : 0,
       hottestZoneName: hottest?.name || "No hot zone",
-      hottestZoneHeat: heat,
+      hottestZoneHeat: hottestHeat,
       hunterSummary: gameScene.hunterSystem?.summary?.() || "Hunters dormant"
     };
   }
@@ -316,7 +339,9 @@ export class UIScene extends Phaser.Scene {
       + model.latentViolationCount * 3
       + model.police.level * 4
       + model.police.witnessReports
-      + model.police.bodiesDiscovered;
+      + model.exposure.knownCount * 5
+      + model.exposure.latentCount
+      + model.exposure.bodiesDiscovered;
     if (this.ledgerSignalValue != null && value > this.ledgerSignalValue) {
       this.ledgerSignalUntil = (this.time?.now || 0) + 1900;
     }
@@ -388,7 +413,9 @@ export class UIScene extends Phaser.Scene {
     const hungerState = hunger >= 78 ? "critical" : hunger >= 52 ? "warning" : "safe";
     if (this.dom.vitals) this.dom.vitals.dataset.hungerState = hungerState;
 
-    const wantedLevel = this.wantedLevel(data.exposureText);
+    const wantedLevel = Number.isFinite(data.wantedLevel)
+      ? Phaser.Math.Clamp(data.wantedLevel, 0, 3)
+      : this.wantedLevel(data.heatText);
     if (this.dom.wanted) {
       this.dom.wanted.classList.remove("level-0", "level-1", "level-2", "level-3");
       this.dom.wanted.classList.add(`level-${wantedLevel}`);
@@ -730,7 +757,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   wantedLevel(text) {
-    const match = String(text).match(/Exposure\s+Lv\s*([0-9]+)/i);
+    const match = String(text).match(/Heat\s+Lv\s*([0-9]+)/i);
     return Phaser.Math.Clamp(Number.parseInt(match?.[1] || "0", 10) || 0, 0, 3);
   }
 
@@ -797,6 +824,7 @@ export class UIScene extends Phaser.Scene {
     return `Objective: ${data.mission}\n`
       + `Visibility: ${data.visibility}\n`
       + `${data.hungerText}\n`
+      + `${data.heatText}\n`
       + `${data.exposureText}\n`
       + `${data.powersText}\n`
       + `Weapon: ${weapon.name || "Unarmed"} · ammo ${weapon.ammoText || "∞"}\n`

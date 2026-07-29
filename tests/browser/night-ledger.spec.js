@@ -37,8 +37,20 @@ test("Night Ledger pauses play and connects faction relations, hidden poaching a
       wantedLevel: 0,
       source: "night-ledger-browser"
     });
-    game.exposureSystem.value = 50;
-    game.exposureSystem.lastReason = "A witness reports a violent feeding near Civic Centre.";
+    game.heatSystem.clear("Night Ledger baseline.");
+    game.exposureSystem.clear("Night Ledger baseline.");
+    game.heatSystem.forceLevel(2, "A witness reports a stolen vehicle.");
+    game.exposureSystem.registerEvidence({
+      kind: "visible_power_use",
+      x: game.player.x,
+      y: game.player.y,
+      layer: game.currentLayer,
+      sourceEvent: "night-ledger-browser",
+      subjectId: "player",
+      exposureWeight: 50,
+      knowledgeState: "institutional",
+      reason: "Police possess a clear account of visible power use."
+    });
     game.publishState();
     ui.ledgerRefreshAt = 0;
     return {
@@ -47,9 +59,9 @@ test("Night Ledger pauses play and connects faction relations, hidden poaching a
     };
   }, STORAGE_KEY);
 
-  expect(seeded.storedVersion).toBe(4);
+  expect(seeded.storedVersion).toBe(5);
   await expect(page.locator("#hud-ledger-button")).toHaveClass(/danger/);
-  await expect(page.locator("#hud-ledger-badge")).toHaveText("2");
+  await expect(page.locator("#hud-ledger-badge")).toHaveText("3");
 
   await page.locator("#hud-ledger-button").click();
   await expect(page.locator("#night-ledger")).toHaveClass(/open/);
@@ -65,7 +77,10 @@ test("Night Ledger pauses play and connects faction relations, hidden poaching a
   await expect(page.locator("#night-ledger-content")).toContainText("The First Estate");
   await expect(page.locator("#night-ledger-content")).toContainText("Favoured");
   await expect(page.locator("#night-ledger-content")).toContainText("The Gutter Crown");
+  await expect(page.locator("#night-ledger-content")).toContainText("POLICE / HEAT");
+  await expect(page.locator("#night-ledger-content")).toContainText("VEIL / EVIDENCE");
   await expect(page.locator("#night-ledger-content")).toContainText("PURSUIT");
+  await expect(page.locator("#night-ledger-content")).toContainText("VISIBLE POWER USE");
   await expect(page.locator("#night-ledger-content")).toContainText("POACHING");
   await expect(page.locator("#night-ledger-content")).toContainText("HIDDEN");
   const estateCard = page.locator('[data-ledger-faction="first_estate"]');
@@ -85,8 +100,8 @@ test("Night Ledger pauses play and connects faction relations, hidden poaching a
       witnessId: "ledger-test-witness",
       referenceId: "ledger-test-victim"
     });
-    game.exposureSystem.value = 0;
-    game.exposureSystem.lastReason = "Police pressure cools after the search.";
+    game.heatSystem.clear("Police pressure cools after the search.");
+    game.exposureSystem.clear("The visible-power account is discredited.");
     game.publishState();
     ui.ledgerRefreshAt = 0;
   }, seeded.assessmentId);

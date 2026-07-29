@@ -39,17 +39,17 @@ export class PoliceSystem extends PoliceSystemCore {
     return stream ? all.filter(cop => stream.shouldSimulateNpc(cop)) : all;
   }
 
-  desiredCount(level = this.scene.exposureSystem.level()) {
+  desiredCount(level = this.wantedLevel()) {
     return DESIRED_POLICE_BY_LEVEL[clampLevel(level)];
   }
 
-  footDesiredCount(level = this.scene.exposureSystem.level()) {
+  footDesiredCount(level = this.wantedLevel()) {
     const clamped = clampLevel(level);
     const reserved = this.scene.motorizedPoliceSystem?.reservedOfficerCount?.(clamped) || 0;
     return Math.max(2, this.desiredCount(clamped) - reserved);
   }
 
-  spawnForExposure(level = this.scene.exposureSystem.level()) {
+  spawnForExposure(level = this.wantedLevel()) {
     const clamped = clampLevel(level);
     if (clamped < 1) return;
     const desired = this.footDesiredCount(clamped);
@@ -59,7 +59,7 @@ export class PoliceSystem extends PoliceSystemCore {
     this.spawnedThisTick = 0;
   }
 
-  spawnPolice(level = this.scene.exposureSystem.level()) {
+  spawnPolice(level = this.wantedLevel()) {
     const clamped = clampLevel(level);
     this.spawnedThisTick++;
     this.spawned++;
@@ -220,7 +220,7 @@ export class PoliceSystem extends PoliceSystemCore {
     let best = null;
     let heat = 0;
     for (const zone of districtZones) {
-      const value = this.localHeat[zone.id] || 0;
+      const value = this.scene.heatSystem?.valueFor?.(zone.id) ?? this.localHeat[zone.id] ?? 0;
       if (value > heat) { best = zone; heat = value; }
     }
     return best;

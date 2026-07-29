@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-29 — Heat and evidence-backed Exposure
+
+- Separated ordinary police Heat from supernatural Veil Exposure.
+- Made persistent district Heat the sole authority for search, pursuit, cruisers and air support.
+- Added concrete witness, bite-mark, drained-body, unconscious-victim, blood-pattern and visible-power evidence.
+- Added latent, reported, institutional and resolved knowledge states.
+- Added crime-as-an-alibi support that can exchange Exposure for mundane Heat.
+- Persisted both domains through campaign schema v5 and checkpoint schema v3.
+- Split the Night Ledger into Police/Heat and Veil/Evidence explanations.
+
 ## 2026-07-24 — Foundry industrial road-block simplification
 
 - Removed the redundant Foundry Works Road, north-drop and east-link micro-grid.

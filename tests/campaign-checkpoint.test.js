@@ -99,7 +99,7 @@ function checkpointFor(campaign) {
   });
 }
 
-test("schema version four preserves checkpoint and territory migration while adding hunting-law defaults", () => {
+test("schema version five preserves checkpoint, territory and attention migration", () => {
   const migrated = migrateCampaignState({
     version: 1,
     revision: 4,
@@ -108,7 +108,7 @@ test("schema version four preserves checkpoint and territory migration while add
   }, { now: 2000 });
 
   assert.equal(migrated.version, CAMPAIGN_SCHEMA_VERSION);
-  assert.equal(migrated.version, 4);
+  assert.equal(migrated.version, 5);
   assert.equal(migrated.player.cash, 275);
   assert.deepEqual(migrated.checkpoints, { latest: null });
   assert.equal(migrated.sequences.checkpoint, 0);
@@ -126,7 +126,7 @@ test("checkpoint sanitization keeps an atomic mission, world and loadout snapsho
   assert.equal(checkpoint.loadout.selectedWeaponId, "pistol");
   assert.equal(checkpoint.loadout.ammo.pistol, 5);
   assert.deepEqual(checkpoint.world.brokenLights, ["lampClub"]);
-  assert.equal(checkpoint.version, 2);
+  assert.equal(checkpoint.version, 3);
   assert.equal(checkpoint.world.npcs.journalist.combat.state, "downed");
   assert.equal(checkpoint.world.npcs.journalist.combat.resilience, 0);
   assert.equal(checkpoint.world.npcs.journalist.feedingDepth, "full_feed");
@@ -172,7 +172,7 @@ test("campaign export and import preserve checkpoint mission rollback data", () 
   });
   restored.import(serialized, { persist: false });
 
-  assert.equal(restored.state.version, 4);
+  assert.equal(restored.state.version, 5);
   assert.equal(restored.missions.currentObjective().id, "return_to_refuge");
   assert.equal(restored.checkpoint().objectiveId, "neutralize_journalist");
   assert.equal(restored.checkpoint().mission.objectiveIndex, 3);

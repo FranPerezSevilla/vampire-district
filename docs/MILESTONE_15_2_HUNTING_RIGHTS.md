@@ -1,6 +1,6 @@
 # Milestone 15.2 — hunting rights and poaching
 
-_Last updated: 2026-07-28_
+_Last updated: 2026-07-29_
 
 ## Goal
 
@@ -103,17 +103,17 @@ The `L` key or the Ledger HUD button opens a modal overlay and pauses `GameScene
 - controlled districts and active hunting rights per faction;
 - hidden and discovered political violations;
 - independent House/contact count without inventing one global third faction;
-- current police alert, Exposure, officers, cruisers, witnesses, reports, discovered bodies and evidence;
+- separate Police/Heat and Veil/Evidence panels, plus officers, cruisers, witnesses, reports and physical scene state;
 - a recent incident stream combining hunting, territory, reputation and active police pressure.
 
 The Ledger button exposes a compact badge. Yellow indicates hidden violations or a police search; red indicates discovered political violations or active pursuit/air support. Opening the panel never advances simulation. It closes through its button, backdrop, `L`, or `Escape`, then resumes the same frame state and restores focus to the HUD button.
 
 ## Deliberate limits
 
-- no Quick Bite / Full Feed / Drain thresholds yet;
+- Quick Bite / Full Feed / Drain are now delivered by Milestone 15.5;
 - no autonomous district hunting-pressure simulation;
 - no faction retaliation squads or mission chain;
-- no camera network implementation;
+- no camera network implementation yet;
 - no favour/debt spending;
 - no new permanent resource bar;
 - no emotion or resonance system.

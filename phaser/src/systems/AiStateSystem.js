@@ -92,7 +92,7 @@ export class AiStateSystem {
 
     const state = resolveNpcAiState(npc, {
       now,
-      wantedLevel: Math.min(3, this.scene.exposureSystem?.level?.() || 0)
+      wantedLevel: Math.min(3, this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem?.level?.() ?? 0)
     });
     this.transition(npc, state, now);
     this.enforceState(npc, state);

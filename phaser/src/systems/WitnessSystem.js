@@ -99,6 +99,7 @@ export class WitnessSystem {
 
     feed.seenNotified = true;
     RawAudio.play("witnessWtf");
+    feed.witnessIds = witnesses.map(witness => witness.id);
     for (const witness of witnesses) {
       this.alarmWitness(witness, "a vampire feeding", 28, {
         masqueradeRisk: true,
@@ -109,10 +110,10 @@ export class WitnessSystem {
     this.scene.lastActionText = `VEIL RISK: ${witnesses.length} witness(es) saw the feeding. They freeze, then run to report.`;
   }
 
-  onFeedingResolved(victim, depth = FEEDING_DEPTHS.DRAIN, alreadyNotified = false) {
-    if (!victim || victim.type === NPC_TYPES.RAT) return { witnesses: 0 };
-    if (this.scene.currentLayer !== LAYERS.STREET) return { witnesses: 0 };
-    if (alreadyNotified) return { witnesses: 1 };
+  onFeedingResolved(victim, depth = FEEDING_DEPTHS.DRAIN, alreadyNotified = false, options = {}) {
+    if (!victim || victim.type === NPC_TYPES.RAT) return { witnesses: 0, witnessIds: [] };
+    if (this.scene.currentLayer !== LAYERS.STREET) return { witnesses: 0, witnessIds: [] };
+    if (alreadyNotified) return { witnesses: 1, witnessIds: options.witnessIds || [] };
 
     const radius = depth === FEEDING_DEPTHS.QUICK_BITE
       ? (this.scene.currentShadow() ? 88 : 132)
@@ -120,7 +121,7 @@ export class WitnessSystem {
         ? (this.scene.currentShadow() ? 98 : 146)
         : (this.scene.currentShadow() ? 105 : 155);
     const witnesses = this.witnessesSeeing(victim, radius);
-    if (!witnesses.length) return { witnesses: 0 };
+    if (!witnesses.length) return { witnesses: 0, witnessIds: [] };
 
     const severity = depth === FEEDING_DEPTHS.QUICK_BITE ? 20 : depth === FEEDING_DEPTHS.FULL_FEED ? 26 : 30;
     const reactionSeconds = depth === FEEDING_DEPTHS.QUICK_BITE ? 1.45 : depth === FEEDING_DEPTHS.FULL_FEED ? 1.8 : 2.1;
@@ -130,11 +131,12 @@ export class WitnessSystem {
       this.alarmWitness(witness, `a vampire ${label}`, severity, {
         masqueradeRisk: true,
         reactionSeconds,
-        source: victim
+        source: victim,
+        relatedEvidenceIds: options.relatedEvidenceIds || []
       });
     }
     this.scene.lastActionText = `VEIL RISK: witnesses saw the ${label}. Stop them before they report.`;
-    return { witnesses: witnesses.length };
+    return { witnesses: witnesses.length, witnessIds: witnesses.map(witness => witness.id) };
   }
 
   onDrainCompleted(victim, alreadyNotified = false) {
@@ -154,7 +156,6 @@ export class WitnessSystem {
         source: victim
       });
     }
-    this.scene.exposureSystem.add(Math.ceil(severity * 0.45) + witnesses.length, `Witnesses notice ${label}.`);
     return witnesses.length;
   }
 
@@ -211,6 +212,19 @@ export class WitnessSystem {
     witness.reactionTimer = Math.max(witness.reactionTimer || 0, options.reactionSeconds ?? 1.4);
     witness.witnessSource = options.source || null;
     witness.soundReactionTimer = 0;
+    if (witness.masqueradeRisk) {
+      const memory = this.scene.exposureSystem?.registerWitnessMemory?.(witness, {
+        reason: `Witness remembers ${reason}.`,
+        sourceEvent: options.sourceEvent || "witness_observed_supernatural_event",
+        subjectId: options.source?.id || options.subjectId || "player",
+        position: options.source || witness,
+        exposureWeight: Math.max(4, Math.ceil(severity * 0.55)),
+        relatedEvidenceIds: options.relatedEvidenceIds || []
+      });
+      if (memory?.id) {
+        this.scene.exposureSystem?.linkEvidence?.(memory.id, options.relatedEvidenceIds || []);
+      }
+    }
     witness.__nbdWtfLabel?.setVisible?.(false);
     witness.vx = 0;
     witness.vy = 0;
@@ -282,18 +296,46 @@ export class WitnessSystem {
     witness.alarmed = false;
     this.reports++;
     const targetName = witness.reportTarget?.name || "the district";
+    const source = witness.witnessSource;
+    if (source?.dead && !source.corpseDiscovered) {
+      source.corpseDiscovered = true;
+      if (this.scene.evidenceSystem?.stats) this.scene.evidenceSystem.stats.bodiesDiscovered++;
+    }
+    if (source?.feedingUnconscious && !source.dead) source.feedingEvidenceDiscovered = true;
+
+    const severity = Math.max(12, witness.reportSeverity || 14) + (witness.reportTarget?.severityBonus || 0);
+    const reason = `A witness reaches ${targetName} and reports ${witness.witnessReason || "you"}.`;
+    this.scene.policeSystem?.addHeat?.(witness.x, witness.y, Math.ceil(severity * 0.75), reason, {
+      source: witness.masqueradeRisk ? "supernatural_witness_report" : "witness_report"
+    });
+    this.scene.policeSystem?.rememberPlayerPosition?.();
 
     if (witness.masqueradeRisk) {
       this.masqueradeReports++;
       RawAudio.play("masqueradeFail");
-      this.scene.exposureSystem.forceLevel(5, `A witness reaches ${targetName} and reports a vampire drain.`);
-      this.scene.missionSystem.failMasquerade(`The veil is broken: a witness reported ${witness.witnessReason || "a vampire drain"}.`);
+      const memoryIds = [...new Set((witness.exposureEvidenceIds || []).map(String).filter(Boolean))];
+      const related = this.scene.exposureSystem?.relatedEvidence?.(memoryIds) || [];
+      const evidenceIds = [...new Set([...memoryIds, ...related.map(record => record.id)])];
+      this.scene.exposureSystem?.discoverLinked?.(evidenceIds, {
+        knowledgeState: witness.reportTarget?.id === "police" ? "institutional" : "reported",
+        reason,
+        source: "witness_report"
+      });
+      for (const id of witness.pendingHuntingAssessmentIds || []) {
+        this.scene.campaignSystem?.huntingLaw?.discover?.(id, {
+          source: "witness_report",
+          witnessId: witness.id,
+          referenceId: witness.witnessSource?.id || witness.id
+        });
+      }
+      witness.pendingHuntingAssessmentIds = [];
+      if ((this.scene.exposureSystem?.level?.() || 0) >= 5) {
+        this.scene.missionSystem?.failMasquerade?.(`The veil is broken: institutions possess overwhelming evidence of ${witness.witnessReason || "a vampire feeding"}.`);
+      }
       return;
     }
 
     RawAudio.play("witnessReport");
-    const severity = Math.max(12, witness.reportSeverity || 14) + (witness.reportTarget?.severityBonus || 0);
-    this.scene.exposureSystem.add(Math.ceil(severity * 0.75), `A witness reaches ${targetName} and reports ${witness.witnessReason || "you"}.`);
   }
 
   interceptWitness(witness) {
@@ -307,7 +349,15 @@ export class WitnessSystem {
     witness.vy = 0;
     witness.container.setAlpha(0.38);
     this.intercepts++;
-    this.scene.exposureSystem.add(witness.masqueradeRisk ? 2 : 3, witness.masqueradeRisk ? "You silence a veil witness before the report." : "You silence a fleeing witness, but the scuffle draws a little attention.");
+    if (witness.masqueradeRisk) {
+      this.scene.exposureSystem?.resolveLinked?.(witness.exposureEvidenceIds || [], {
+        reason: "The witness was intercepted before reporting their memory.",
+        source: "witness_intercepted",
+        onlyLatent: true
+      });
+      witness.pendingHuntingAssessmentIds = [];
+    }
+    this.scene.policeSystem?.addHeat?.(witness.x, witness.y, witness.masqueradeRisk ? 5 : 7, "A fleeing witness was violently intercepted.", { source: "witness_intercepted" });
     this.scene.lastActionText = witness.masqueradeRisk ? "Veil witness intercepted before they could report." : "Witness intercepted before they could report.";
     this.scene.aiStateSystem?.resolveNpc?.(witness);
   }

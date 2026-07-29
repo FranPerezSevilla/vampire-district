@@ -1,12 +1,12 @@
 # City Streaming 4F — graduated traffic impact consequences
 
-_Last updated: 2026-07-22_
+_Last updated: 2026-07-29_
 
 ## Status
 
 **Accepted and implemented.**
 
-City Streaming 4F separates ordinary soft traffic contact from genuinely dangerous high-speed impacts. It observes the contact already resolved by 4E and applies damage, noise, exposure and police heat only when configured impact-speed thresholds are exceeded.
+City Streaming 4F separates ordinary soft traffic contact from genuinely dangerous high-speed impacts. It observes the contact already resolved by 4E and applies damage, noise and police Heat only when configured impact-speed thresholds are exceeded.
 
 Ambient traffic remains pooled, non-enterable and non-persistent. Only the player-driven campaign vehicle receives hull damage.
 
@@ -16,7 +16,7 @@ Ambient traffic remains pooled, non-enterable and non-persistent. Only the playe
 - classify contacts deterministically as soft, hard or severe;
 - apply bounded hull damage to the player-driven vehicle on hard impacts;
 - apply stronger damage and a temporary ambient-traffic stall on severe impacts;
-- generate crash audio, exposure and local police heat only for hard or severe impacts;
+- generate crash audio and local police Heat only for hard or severe impacts;
 - suppress repeated consequences while the same proxy remains in contact across frames;
 - preserve macro-token and pool-slot identity;
 - persist player-vehicle damage without adding ambient-traffic persistence.
@@ -33,8 +33,8 @@ TrafficImpactConsequencesSystem
 VehicleSystem
   owns player-vehicle health and campaign persistence
 
-ExposureSystem / PoliceSystem
-  own visibility consequences and local response
+HeatSystem / PoliceSystem
+  own ordinary-crime pressure and local response
 ```
 
 4F wraps the public `VehicleSystem.updateDriving()` method after 4E has installed its own wrapper. The wrapper records the contact count before the frame, runs 4E, and processes a consequence only when a new physical contact was reported.
@@ -60,8 +60,7 @@ Soft contact remains entirely within 4E:
 - bounded proxy push or blocked contact;
 - player speed damping;
 - no hull damage;
-- no exposure;
-- no police heat;
+- no Heat;
 - no crash consequence event.
 
 ### Hard
@@ -71,8 +70,7 @@ A hard impact adds:
 - player-vehicle hull damage;
 - a stronger post-contact speed reduction;
 - crash audio;
-- low exposure gain;
-- local police heat;
+- a bounded Heat bonus plus local crash Heat;
 - a short ambient-traffic hold.
 
 ### Severe
@@ -81,7 +79,7 @@ A severe impact adds:
 
 - a higher minimum damage and damage multiplier;
 - stronger player-speed loss;
-- greater exposure and local heat;
+- greater Heat;
 - a temporary `impact-stalled` state for the ambient proxy;
 - explicit player feedback that police were alerted.
 
@@ -103,20 +101,20 @@ severe damage multiplier     1.35
 
 Only the player-driven persistent vehicle receives damage. The updated condition is persisted through the existing campaign vehicle service with no save-schema change.
 
-## Exposure and police response
+## Heat and police response
 
 Default profile:
 
 ```text
-hard exposure                2
-severe exposure              5
-maximum exposure             7
-hard local heat minimum      7
-severe local heat minimum    15
-maximum local heat           24
+hard Heat bonus             2
+severe Heat bonus           5
+maximum Heat bonus          7
+hard base Heat minimum      7
+severe base Heat minimum    15
+maximum base Heat           24
 ```
 
-Exposure continues to use `ExposureSystem.add()`. Local heat additionally uses `PoliceSystem.addHeat()` so nearby patrols can investigate the collision location before a global wanted-level transition is necessarily reached.
+Hard and severe impacts submit one ordinary-crime incident to `HeatSystem` through the compatibility `PoliceSystem.addHeat()` facade. Traffic collisions do not create supernatural Exposure. Nearby patrols investigate the collision district and wanted escalation follows the resulting Heat threshold.
 
 ## Cooldown and frame safety
 
@@ -126,7 +124,7 @@ A materialized proxy receives a consequence cooldown after a hard or severe impa
 impact cooldown              0.90 seconds
 ```
 
-Contacts reported during that cooldown still use 4E geometry and blocking but do not apply more damage, exposure, heat or audio. The diagnostic counter records these suppressed contacts.
+Contacts reported during that cooldown still use 4E geometry and blocking but do not apply more damage, Heat or audio. The diagnostic counter records these suppressed contacts.
 
 The cooldown belongs to the local token. It is discarded if the proxy dematerializes.
 
@@ -176,7 +174,7 @@ VehicleSystem driving frame
 window.NBD_TRAFFIC_IMPACTS.snapshot()
 window.NBD_TRAFFIC_IMPACTS.classify(speed)
 window.NBD_TRAFFIC_IMPACTS.damage(speed)
-window.NBD_TRAFFIC_IMPACTS.exposure(speed)
+window.NBD_TRAFFIC_IMPACTS.heatBonus(speed)
 window.NBD_TRAFFIC_IMPACTS.step(seconds)
 window.NBD_TRAFFIC_IMPACTS_READY
 ```
@@ -187,7 +185,7 @@ The snapshot exposes:
 - total soft, hard, severe and suppressed contacts;
 - cumulative hull damage;
 - active severe stalls;
-- the last impact tier, speed, damage, exposure, heat and disabled result;
+- the last impact tier, speed, damage, Heat and disabled result;
 - per-token cooldown, stall and impact history.
 
 ## Deliberately deferred
@@ -204,7 +202,7 @@ The snapshot exposes:
 
 ## Acceptance criteria
 
-- a soft contact produces no damage, exposure or heat;
+- a soft contact produces no damage or Heat;
 - a hard impact damages the player vehicle and creates local response;
 - a severe impact applies more damage and an `impact-stalled` proxy state;
 - repeated frame contact during cooldown cannot stack damage or alerts;
@@ -228,4 +226,4 @@ browser-systems    success
 browser-campaign   success
 ```
 
-The first browser matrix exposed a regression-fixture boundary rather than a product defect. The existing 4E soft-contact browser test started at `110` speed units and accelerated during the contact frame, correctly crossing 4F's hard-impact threshold and receiving the configured minimum damage. The accepted fixture starts at `70`, keeping the entire contact below `125`; the dedicated 4F browser regression remains at `170` and validates damage, exposure, local heat and cooldown suppression.
+The first browser matrix exposed a regression-fixture boundary rather than a product defect. The existing 4E soft-contact browser test started at `110` speed units and accelerated during the contact frame, correctly crossing 4F's hard-impact threshold and receiving the configured minimum damage. The accepted fixture starts at `70`, keeping the entire contact below `125`; the dedicated 4F browser regression remains at `170` and validates damage, Heat and cooldown suppression.

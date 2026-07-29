@@ -19,6 +19,7 @@ import { GameplayRuntime } from "../runtime/GameplayRuntime.js";
 import { RegistryPublisher } from "../runtime/RegistryPublisher.js";
 import { EvidenceSystem } from "../systems/EvidenceSystem.js";
 import { ExposureSystem } from "../systems/ExposureSystem.js";
+import { HeatSystem } from "../systems/HeatSystem.js";
 import { FeedingSystem } from "../systems/FeedingSystem.js";
 import { HunterSystem } from "../systems/HunterSystem.js";
 import { InteractionSystem } from "../systems/InteractionSystem.js";
@@ -74,6 +75,7 @@ export class GameScene extends Phaser.Scene {
     this.missionSystem = new MissionSystem(this);
     this.npcSystem = new NpcSystem(this);
     this.feedingSystem = new FeedingSystem(this);
+    this.heatSystem = new HeatSystem(this);
     this.exposureSystem = new ExposureSystem(this);
     this.witnessSystem = new WitnessSystem(this);
     this.evidenceSystem = new EvidenceSystem(this);
@@ -353,6 +355,8 @@ export class GameScene extends Phaser.Scene {
       hungerText: this.feedingSystem?.summary() || "Hunger loading",
       powersText: this.powersSystem?.summary() || "Powers loading",
       exposureText: this.exposureSystem?.summary() || "Exposure loading",
+      heatText: this.heatSystem?.summary() || "Heat loading",
+      wantedLevel: this.heatSystem?.level?.() || 0,
       witnessText: this.witnessSystem?.summary() || "Witnesses loading",
       evidenceText: this.evidenceSystem?.summary() || "Evidence loading",
       policeText: this.policeSystem?.summary() || "Police loading",

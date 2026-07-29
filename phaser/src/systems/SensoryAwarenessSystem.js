@@ -130,8 +130,7 @@ export class SensoryAwarenessSystem {
     cop.alarmed = true;
 
     const reason = `Police saw ${event.label}.`;
-    this.scene.exposureSystem?.forceLevel(1, reason);
-    this.scene.policeSystem?.addHeat(source.x, source.y, event.heat, reason);
+    this.scene.policeSystem?.addHeat(source.x, source.y, event.heat, reason, { source: "police_direct_sight" });
     const zone = this.scene.policeSystem?.zoneAt?.(source.x, source.y);
     if (this.scene.policeSystem) {
       this.scene.policeSystem.lastKnownPlayer = {

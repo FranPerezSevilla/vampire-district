@@ -28,8 +28,8 @@ test("refuge garage repairs once, blocks wanted recovery and tows an owned wreck
     const vehicle = scene.vehicleSystem.vehicle("refuge_compact");
     scene.vehicleSystem.exitVehicle({ force: true });
     scene.switchLayer(0, { x: garage.x - 24, y: garage.y }, "Vehicle maintenance browser test.");
-    scene.exposureSystem.value = 0;
-    scene.policeSystem.localHeat = Object.create(null);
+    scene.exposureSystem.clear("Maintenance baseline.");
+    scene.heatSystem.clear("Maintenance baseline.");
     campaign.wallet.credit(600, { source: "browser-test", reason: "maintenance-fixture" });
 
     vehicle.x = garage.x;
@@ -79,7 +79,7 @@ test("refuge garage repairs once, blocks wanted recovery and tows an owned wreck
       reason: "maintenance-recovery-test"
     });
 
-    scene.exposureSystem.value = 100;
+    scene.heatSystem.forceLevel(3, "Maintenance recovery blocked by active police Heat.");
     const balanceBeforeBlocked = campaign.wallet.balance();
     const blockedRecovery = api.recover(vehicle.id);
     const blockedState = {
@@ -89,7 +89,7 @@ test("refuge garage repairs once, blocks wanted recovery and tows an owned wreck
       y: vehicle.y
     };
 
-    scene.exposureSystem.value = 0;
+    scene.heatSystem.clear("Maintenance recovery test cleared.");
     const recovered = api.recover(vehicle.id);
     const liveRecovered = window.NBD_VEHICLES.snapshot().vehicles.find(item => item.id === vehicle.id);
     const campaignRecovered = campaign.vehicles.condition(vehicle);

@@ -88,7 +88,7 @@ mission-specific world adapter / TaskRevealSystem / HUD / TutorialDirector
 
 The compatibility `step` exposed by `MissionSystem` is derived from current objective metadata. It is not a second mutable progression value.
 
-## Campaign state version 4
+## Campaign state version 5
 
 Current storage key:
 
@@ -96,7 +96,7 @@ Current storage key:
 viceblood-campaign-v1
 ```
 
-The historical `vampire-district-campaign-v1` key is read only as a one-time compatibility alias. A valid old save is rewritten to the Viceblood key and the retired key is removed. The stored schema version is `4`. Version `2` saves receive territory, while version `3` saves receive hunting-law rights, protected-victim records, assessments and discoveries without losing any existing domain.
+The historical `vampire-district-campaign-v1` key is read only as a one-time compatibility alias. A valid old save is rewritten to the Viceblood key and the retired key is removed. The stored schema version is `5`. Version `2` saves receive territory, version `3` saves receive hunting-law rights, protected-victim records, assessments and discoveries, and version `4` saves receive independent district Heat plus evidence-backed Exposure without losing any existing domain. Legacy scalar Exposure is retained as one explicit institutional evidence record.
 
 Top-level structure:
 

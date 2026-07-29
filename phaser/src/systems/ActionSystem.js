@@ -140,8 +140,7 @@ export function resolveAction(scene, actionId, context = {}) {
 
   if (policeWitnesses.length) {
     const reason = `Police saw ${rule.label}.`;
-    scene.exposureSystem?.forceLevel(1, reason);
-    scene.policeSystem?.addHeat(subject.x, subject.y, rule.heat || 10, reason);
+    scene.policeSystem?.addHeat(subject.x, subject.y, rule.heat || 10, reason, { source: `police_saw:${actionId}` });
     RawAudio.play("police", { cooldown: 0.35 });
     scene.lastActionText = appendPoliceNotice(scene.lastActionText, rule.label, policeWitnesses.length);
   }
@@ -160,7 +159,6 @@ export function resolveAction(scene, actionId, context = {}) {
         source: subject
       });
     }
-    scene.exposureSystem?.add(Math.max(2, Math.ceil((rule.witnessSeverity || 8) * 0.25)), `A witness may report ${rule.label}.`);
     scene.lastActionText = appendWitnessNotice(scene.lastActionText, rule.label, felonyReporters.length);
   }
 

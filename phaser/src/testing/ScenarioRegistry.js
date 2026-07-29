@@ -16,10 +16,8 @@ const VEHICLE_CORE_LANE = Object.freeze({
 
 function clearTransientThreats(scene) {
   scene.campaignCheckpointSystem?.resetTransientThreats?.();
-  if (scene.exposureSystem) {
-    scene.exposureSystem.value = 0;
-    scene.exposureSystem.lastReason = "Scenario baseline.";
-  }
+  scene.heatSystem?.clear?.("Scenario baseline.");
+  scene.exposureSystem?.clear?.("Scenario baseline.");
   for (const npc of scene.npcSystem?.npcs || []) {
     npc.alarmed = false;
     npc.hasReported = false;
@@ -121,7 +119,7 @@ export class ScenarioRegistry {
       activeMissionId: this.scene.campaignSystem?.state?.missions?.activeMissionId || null,
       tutorialState: this.scene.tutorialDirector?.state || null,
       occupiedVehicleId: this.scene.vehicleSystem?.occupiedVehicleId || null,
-      wantedLevel: this.scene.exposureSystem?.level?.() || 0
+      wantedLevel: this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem?.level?.() ?? 0
     };
   }
 }

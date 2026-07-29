@@ -35,6 +35,8 @@ function attachCampaignRuntime() {
   if (scene.campaignCheckpointSystem) return;
 
   scene.campaignSystem = campaign;
+  scene.heatSystem?.restoreState?.(campaign.state.heat);
+  scene.exposureSystem?.restoreState?.(campaign.state.exposure);
   const deferredCheckpoint = campaignEntry.deferCheckpointRestore
     ? campaign.state.checkpoints.latest
     : null;

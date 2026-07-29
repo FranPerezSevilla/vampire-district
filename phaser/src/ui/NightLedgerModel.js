@@ -22,6 +22,51 @@ const FEEDING_DEPTH_LABELS = Object.freeze({
   drain: "DRAIN"
 });
 
+const EVIDENCE_LABELS = Object.freeze({
+  witness_memory: "WITNESS MEMORY",
+  bite_marks: "BITE MARKS",
+  drained_body: "DRAINED BODY",
+  unconscious_feeding_victim: "UNCONSCIOUS VICTIM",
+  blood_pattern: "BLOOD PATTERN",
+  visible_power_use: "VISIBLE POWER USE",
+  legacy_exposure: "LEGACY EXPOSURE"
+});
+
+function evidenceLabel(kind) {
+  return EVIDENCE_LABELS[kind] || titleCase(kind || "evidence").toUpperCase();
+}
+
+function evidenceIncident(record, now) {
+  if (!record) return null;
+  const state = text(record.knowledgeState, "latent");
+  const resolved = state === "resolved" || number(record.resolvedAt) > 0;
+  return {
+    id: `exposure:${record.id}`,
+    timestamp: number(record.resolvedAt || record.discoveredAt || record.createdAt),
+    timeLabel: incidentTimeLabel(record.resolvedAt || record.discoveredAt || record.createdAt, now),
+    kind: "exposure",
+    severity: resolved ? "stable" : state === "institutional" ? "danger" : state === "reported" ? "warning" : "stable",
+    title: evidenceLabel(record.kind),
+    detail: `${titleCase(record.districtId || "unknown")} · ${Math.round(number(record.exposureWeight))} exposure`,
+    status: resolved ? "RESOLVED" : state.toUpperCase()
+  };
+}
+
+function heatIncident(incident, now) {
+  if (!incident) return null;
+  const level = Math.max(0, Math.trunc(number(incident.levelAfter)));
+  return {
+    id: `heat:${incident.id}`,
+    timestamp: number(incident.timestamp),
+    timeLabel: incidentTimeLabel(incident.timestamp, now),
+    kind: "heat",
+    severity: level >= 2 ? "danger" : level >= 1 ? "warning" : "stable",
+    title: incident.amount < 0 ? "HEAT COOLED" : "HEAT ADDED",
+    detail: `${titleCase(incident.districtId)} · ${text(incident.reason, "Police attention changed")}`,
+    status: `LEVEL ${level}`
+  };
+}
+
 function plain(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
@@ -212,14 +257,33 @@ export function buildNightLedgerModel({
   const politicalAssessments = assessments.filter(assessment => Boolean(assessment.politicalViolation));
   const knownViolations = politicalAssessments.filter(assessment => currentDiscoveryState(assessment, huntingLaw) === "known");
   const latentViolations = politicalAssessments.filter(assessment => currentDiscoveryState(assessment, huntingLaw) !== "known");
-  const police = plain(policeState);
-  const level = Math.max(0, Math.trunc(number(police.level)));
-  const severity = knownViolations.length > 0 || level >= 2
+  const response = plain(policeState);
+  const heatSnapshot = plain(response.heat);
+  const exposureSnapshot = plain(response.exposure);
+  const level = Math.max(0, Math.min(3, Math.trunc(number(response.level, number(heatSnapshot.level, 0)))));
+  const heatMax = Math.max(1, number(heatSnapshot.max, 100));
+  const heatValue = clamp(number(heatSnapshot.value, number(response.hottestZoneHeat, 0)), 0, heatMax);
+  const rawEvidence = exposureSnapshot.records && !Array.isArray(exposureSnapshot.records)
+    ? Object.values(plain(exposureSnapshot.records))
+    : list(exposureSnapshot.records || response.evidenceRecords);
+  const activeEvidence = rawEvidence.filter(record => text(record.knowledgeState, "latent") !== "resolved" && !(number(record.resolvedAt) > 0));
+  const knownEvidence = activeEvidence.filter(record => ["reported", "institutional"].includes(text(record.knowledgeState)));
+  const latentEvidence = activeEvidence.filter(record => text(record.knowledgeState, "latent") === "latent");
+  const exposureMax = Math.max(1, number(exposureSnapshot.max, response.exposureMax || 125));
+  const exposureValue = clamp(number(exposureSnapshot.value, number(response.exposureValue, 0)), 0, exposureMax);
+  const exposureLevel = Math.max(0, Math.min(5, Math.trunc(number(exposureSnapshot.level, Math.floor(exposureValue / 25)))));
+
+  const severity = knownViolations.length > 0 || level >= 2 || exposureLevel >= 3
     ? "danger"
-    : latentViolations.length > 0 || level >= 1
+    : latentViolations.length > 0 || level >= 1 || exposureValue > 0 || latentEvidence.length > 0
       ? "warning"
       : "stable";
-  const alertCount = knownViolations.length + latentViolations.length + (level > 0 ? 1 : 0);
+  const alertCount = knownViolations.length
+    + latentViolations.length
+    + (level > 0 ? 1 : 0)
+    + knownEvidence.length
+    + (latentEvidence.length > 0 ? 1 : 0);
+
   const incidents = [
     ...(level > 0 ? [{
       id: "police-current",
@@ -228,15 +292,21 @@ export function buildNightLedgerModel({
       kind: "police",
       severity: level >= 2 ? "danger" : "warning",
       title: `POLICE ${wantedLabel(level)}`,
-      detail: text(police.lastReason, text(police.summary, "Police pressure active")),
+      detail: text(heatSnapshot.lastReason, text(response.lastReason, text(response.summary, "Police pressure active"))),
       status: "ACTIVE"
     }] : []),
+    ...list(heatSnapshot.incidents || response.heatIncidents).map(incident => heatIncident(incident, now)).filter(Boolean),
+    ...rawEvidence.map(record => evidenceIncident(record, now)).filter(Boolean),
     ...assessments.map(assessment => incidentFromAssessment(assessment, huntingLaw, now)).filter(Boolean),
     ...eventIncidents(snapshot?.state?.eventLog, snapshot.territory, now)
   ]
     .sort((left, right) => right.timestamp - left.timestamp || String(right.id).localeCompare(String(left.id)))
-    .slice(0, 8);
+    .slice(0, 10);
 
+  const evidenceByKind = {};
+  for (const record of activeEvidence) {
+    evidenceByKind[record.kind] = (evidenceByKind[record.kind] || 0) + 1;
+  }
   const contactEntries = Object.entries(plain(snapshot?.reputation?.contacts));
   return {
     ready: Boolean(campaignSnapshot),
@@ -265,25 +335,50 @@ export function buildNightLedgerModel({
     police: {
       level,
       stateLabel: wantedLabel(level),
-      exposureValue: clamp(police.exposureValue, 0, number(police.exposureMax, 125)),
-      exposureMax: Math.max(1, number(police.exposureMax, 125)),
-      exposurePercent: clamp((number(police.exposureValue) / Math.max(1, number(police.exposureMax, 125))) * 100, 0, 100),
-      lastReason: text(police.lastReason, "No active police escalation."),
-      summary: text(police.summary, "Police status unavailable"),
-      footOfficers: Math.max(0, Math.trunc(number(police.footOfficers))),
-      chasingOfficers: Math.max(0, Math.trunc(number(police.chasingOfficers))),
-      searchingOfficers: Math.max(0, Math.trunc(number(police.searchingOfficers))),
-      motorizedUnits: Math.max(0, Math.trunc(number(police.motorizedUnits))),
-      desiredMotorizedUnits: Math.max(0, Math.trunc(number(police.desiredMotorizedUnits))),
-      fleeingWitnesses: Math.max(0, Math.trunc(number(police.fleeingWitnesses))),
-      witnessReports: Math.max(0, Math.trunc(number(police.witnessReports))),
-      veilRiskWitnesses: Math.max(0, Math.trunc(number(police.veilRiskWitnesses))),
-      bodiesDiscovered: Math.max(0, Math.trunc(number(police.bodiesDiscovered))),
-      bodiesHidden: Math.max(0, Math.trunc(number(police.bodiesHidden))),
-      bloodEvidence: Math.max(0, Math.trunc(number(police.bloodEvidence))),
-      hottestZoneName: text(police.hottestZoneName, "No hot zone"),
-      hottestZoneHeat: Math.max(0, Math.round(number(police.hottestZoneHeat))),
-      hunterSummary: text(police.hunterSummary, "Hunters dormant")
+      heatValue,
+      heatMax,
+      heatPercent: clamp((heatValue / heatMax) * 100, 0, 100),
+      lastReason: text(heatSnapshot.lastReason, text(response.lastReason, "No active police escalation.")),
+      summary: text(response.summary, "Police status unavailable"),
+      footOfficers: Math.max(0, Math.trunc(number(response.footOfficers))),
+      chasingOfficers: Math.max(0, Math.trunc(number(response.chasingOfficers))),
+      searchingOfficers: Math.max(0, Math.trunc(number(response.searchingOfficers))),
+      motorizedUnits: Math.max(0, Math.trunc(number(response.motorizedUnits))),
+      desiredMotorizedUnits: Math.max(0, Math.trunc(number(response.desiredMotorizedUnits))),
+      fleeingWitnesses: Math.max(0, Math.trunc(number(response.fleeingWitnesses))),
+      witnessReports: Math.max(0, Math.trunc(number(response.witnessReports))),
+      hottestZoneName: text(heatSnapshot.hottestZoneName, text(response.hottestZoneName, "No hot zone")),
+      hottestZoneHeat: Math.max(0, Math.round(number(heatSnapshot.hottestZoneHeat, number(response.hottestZoneHeat, 0)))),
+      recentIncidents: list(heatSnapshot.incidents || response.heatIncidents)
+    },
+    exposure: {
+      level: exposureLevel,
+      value: exposureValue,
+      max: exposureMax,
+      percent: clamp((exposureValue / exposureMax) * 100, 0, 100),
+      lastReason: text(exposureSnapshot.lastReason, "No supernatural evidence is known."),
+      activeCount: activeEvidence.length,
+      knownCount: knownEvidence.length,
+      latentCount: latentEvidence.length,
+      institutionalCount: activeEvidence.filter(record => text(record.knowledgeState) === "institutional").length,
+      records: activeEvidence
+        .sort((left, right) => number(right.createdAt) - number(left.createdAt))
+        .slice(0, 8)
+        .map(record => ({
+          id: record.id,
+          kind: record.kind,
+          label: evidenceLabel(record.kind),
+          districtId: record.districtId,
+          districtName: titleCase(record.districtId),
+          state: text(record.knowledgeState, "latent"),
+          weight: Math.round(number(record.exposureWeight)),
+          sourceEvent: text(record.sourceEvent, "unknown")
+        })),
+      byKind: evidenceByKind,
+      bodiesDiscovered: Math.max(0, Math.trunc(number(response.bodiesDiscovered))),
+      bodiesHidden: Math.max(0, Math.trunc(number(response.bodiesHidden))),
+      bloodEvidence: Math.max(0, Math.trunc(number(response.bloodEvidence))),
+      hunterSummary: text(response.hunterSummary, "Hunters dormant")
     },
     incidents
   };

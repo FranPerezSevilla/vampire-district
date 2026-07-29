@@ -186,6 +186,8 @@ test("stealing a parked sedan persists ownership consequences and alarms witness
   const result = await page.evaluate(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const beforeExposure = scene.exposureSystem.value;
+    const beforeHeat = Object.values(scene.heatSystem.values())
+      .reduce((sum, value) => sum + (Number(value) || 0), 0);
     const sedan = scene.vehicleSystem.vehicle("market_sedan");
     const witness = scene.npcSystem.npcs.find(npc => npc.type === "civilian" && !npc.dead);
     if (witness) {
@@ -203,13 +205,17 @@ test("stealing a parked sedan persists ownership consequences and alarms witness
       status: window.NBD_VEHICLES.snapshot().vehicles.find(vehicle => vehicle.id === "market_sedan")?.status,
       exposureBefore: beforeExposure,
       exposureAfter: scene.exposureSystem.value,
+      heatBefore: beforeHeat,
+      heatAfter: Object.values(scene.heatSystem.values())
+        .reduce((sum, value) => sum + (Number(value) || 0), 0),
       witnessCount: scene.witnessSystem.alarmedWitnesses().length
     };
   });
 
   expect(result.entered).toBe(true);
   expect(result.status).toBe("stolen");
-  expect(result.exposureAfter).toBeGreaterThan(result.exposureBefore);
+  expect(result.exposureAfter).toBe(result.exposureBefore);
+  expect(result.heatAfter).toBeGreaterThan(result.heatBefore);
   expect(result.witnessCount).toBeGreaterThan(0);
 });
 

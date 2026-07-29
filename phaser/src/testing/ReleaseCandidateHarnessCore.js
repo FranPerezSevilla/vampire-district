@@ -204,28 +204,28 @@ export class ReleaseCandidateHarness {
         weaponId: "unarmed",
         downed: false
       });
-      levels.push(this.scene.exposureSystem.level());
+      levels.push(this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem.level());
 
       this.scene.events.emit("combat:hit", {
         targetId: first.id,
         weaponId: "unarmed",
         downed: true
       });
-      levels.push(this.scene.exposureSystem.level());
+      levels.push(this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem.level());
 
       this.scene.events.emit("combat:hit", {
         targetId: second.id,
         weaponId: "pipe",
         downed: true
       });
-      levels.push(this.scene.exposureSystem.level());
+      levels.push(this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem.level());
 
       this.scene.events.emit("combat:entity-neutralized", {
         targetId: first.id,
         weaponId: "drain",
         kind: "drained"
       });
-      const duplicateLevel = this.scene.exposureSystem.level();
+      const duplicateLevel = this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem.level();
 
       await this.waitFor(
         () => police.helicopter.active,
@@ -376,12 +376,12 @@ export class ReleaseCandidateHarness {
       CITY_ANCHORS.policeEntrance,
       "RC stress: central police response zone."
     );
-    this.scene.exposureSystem.forceLevel(3, "RC stress scenario: maximum police response.");
+    this.scene.heatSystem?.forceLevel?.(3, "RC stress scenario: maximum police response.");
     police.spawnForExposure(3);
     this.preparePoliceOfficers(6, CITY_ANCHORS.policeEntrance);
 
     await this.waitFor(
-      () => this.scene.exposureSystem.level() >= 3
+      () => (this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem.level()) >= 3
         && police.police().length >= 6
         && police.helicopter.active,
       { timeoutMs: 5_000, label: "level-three police response" }
@@ -399,7 +399,7 @@ export class ReleaseCandidateHarness {
   stressSnapshot() {
     const diagnostics = window.NBD_RUNTIME_DIAGNOSTICS?.snapshot?.() || null;
     return {
-      level: this.scene.exposureSystem.level(),
+      level: this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem.level(),
       police: this.scene.policeSystem.police().length,
       helicopter: Boolean(this.scene.policeSystem.helicopter.active),
       missionFailed: Boolean(this.scene.missionSystem.failed),

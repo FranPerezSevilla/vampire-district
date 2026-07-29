@@ -1,6 +1,6 @@
 # Roadmap
 
-_Last updated: 2026-07-28_
+_Last updated: 2026-07-29_
 
 This roadmap is ordered by dependency, not calendar date. A milestone is complete only when implementation, automated coverage, browser regression and documentation agree.
 
@@ -435,13 +435,13 @@ The First Estate controls clean institutional versions of this network. The Gutt
 
 ## Milestone 15.5 — Predator feeding and Hunger economy
 
-**Status: 🔵 Active in PR #43**
+**Status: ✅ Complete — merged through PR #43**
 
 Feeding becomes the central predatory decision rather than a health pickup.
 
 ### Feeding depth
 
-PR #43 gives the existing held right-click action clear thresholds while preserving direct control:
+The existing held right-click action has clear thresholds while preserving direct control:
 
 - **Quick bite**: small Hunger reduction, short exposure window, living victim, partial memory;
 - **Full feed**: substantial Hunger reduction, unconscious victim, visible marks and a scene that must be handled;
@@ -479,58 +479,31 @@ Acceptance:
 
 ## Milestone 15.6 — Heat, Exposure and concrete evidence
 
-**Status: ⬜ Planned**
+**Status: ✅ Complete — PR #45**
 
-Viceblood separates ordinary criminal attention from proof of the supernatural.
+Viceblood now separates ordinary criminal attention from proof of the supernatural.
 
 ```text
 Heat      → police believe the player committed human crime
 Exposure  → people or institutions possess evidence that something impossible exists
 ```
 
-### Evidence sources
+Delivered:
 
-- witnesses with a remembered event and reporting state;
-- camera, mobile, traffic or police recordings;
-- drained or abnormally damaged bodies;
-- visible use of powers;
-- repeated feeding patterns, vehicles, districts or methods;
-- hunter case material derived from the above.
+- district-local, persistent Heat is the sole authority for search, pursuit, cruisers and air support;
+- Exposure is calculated from serializable witness, bite-mark, drained-body, unconscious-victim, blood-pattern and visible-power records;
+- evidence moves through latent, reported, institutional and resolved knowledge states;
+- latent clues do not grant police, factions or hunters omniscient knowledge;
+- physical cleanup resolves only latent proof, not knowledge already reported or retained;
+- crime-as-an-alibi can deliberately exchange Exposure for ordinary Heat;
+- campaign schema v5 and checkpoint v3 persist both domains independently;
+- the Night Ledger explains Police/Heat and Veil/Evidence in separate panels.
 
-Heat and Exposure are summaries of concrete state, not unexplained punishment bars.
-
-### Crime as an alibi
-
-The player may deliberately accept more Heat to protect the Veil:
-
-- destroy a camera and turn supernatural evidence into vandalism;
-- steal an ambulance or hearse to remove a body;
-- stage a crash, robbery, gang attack or fire around an impossible death;
-- create an ordinary pursuit while a recording, witness or corpse is moved;
-- force institutions to treat the event as crime rather than the supernatural.
-
-This trade is a signature Viceblood rule: appearing to be a more obvious criminal can be safer than appearing to be a vampire.
-
-### Cleanup actions
-
-- intimidate, redirect or use Whisper on a witness;
-- steal or destroy recordings;
-- intercept a body before the morgue or forensics stage;
-- move evidence through a faction route;
-- call in a favour from a Cleaner, institution or compromised contact;
-- plant a mundane explanation or point investigators toward a rival.
-
-Acceptance:
-
-- the UI can explain which evidence currently drives Exposure;
-- removing the final supporting evidence lowers the corresponding Exposure pressure;
-- Heat and Exposure may rise, fall or diverge independently;
-- street, rooftop, sewer and vehicle choices all provide distinct cleanup options;
-- no hunter or faction gains unexplained perfect knowledge.
+Reference: `MILESTONE_15_6_HEAT_EXPOSURE_EVIDENCE.md`.
 
 ## Milestone 15.7 — Blood Sense, Whisper and the Beast
 
-**Status: ⬜ Planned**
+**Status: 🔵 Active next phase**
 
 ### Blood Sense
 
@@ -766,10 +739,10 @@ These details are not substitutes for the systemic milestones, but they must rei
 
 The smallest coherent sequence that materially changes how Viceblood feels is:
 
-1. use the completed Milestone 15.1 territory foundation;
-2. complete hunting rights, protected prey and discoverable poaching;
-3. add Quick bite / Full feed / Drain outcomes;
-4. separate Heat from evidence-driven Exposure and implement crime-as-an-alibi cleanup;
+1. ✅ use the completed Milestone 15.1 territory foundation;
+2. ✅ complete hunting rights, protected prey and discoverable poaching;
+3. ✅ add Quick Bite / Full Feed / Drain outcomes;
+4. ✅ separate Heat from evidence-driven Exposure and establish crime-as-an-alibi cleanup;
 5. expand Blood Sense and contextual Whisper without emotion systems;
 6. make the single hunter investigate concrete evidence and repeated habits;
 7. connect safehouses, stored blood and approaching dawn.

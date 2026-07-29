@@ -118,7 +118,6 @@ export class StreetFurnitureSystem {
     const reason = releasedBody
       ? `${prop.name} ruptures and ejects a hidden corpse into the street.`
       : `${prop.name} bursts open and scatters refuse across the road.`;
-    this.scene.exposureSystem?.add?.(releasedBody ? 12 : 5, reason);
     this.scene.policeSystem?.addHeat?.(
       prop.x,
       prop.y,

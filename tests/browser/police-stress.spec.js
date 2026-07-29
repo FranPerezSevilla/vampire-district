@@ -55,7 +55,7 @@ test("level-three police response stays structurally stable while pressure cools
     return snapshot;
   });
 
-  // Exposure is allowed to cool naturally during an endurance sample. The
+  // Heat is allowed to cool naturally during an endurance sample. The
   // structural invariant is that the runtime remains healthy while the
   // already-spawned response transitions out of its peak state.
   expect(finished.level).toBeGreaterThanOrEqual(2);

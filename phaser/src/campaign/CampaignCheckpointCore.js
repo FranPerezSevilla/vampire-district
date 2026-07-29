@@ -1,7 +1,8 @@
 import { FEEDING_DEPTHS } from "../data/feeding.js";
+import { createHeatState, sanitizeExposureState, sanitizeHeatState } from "../data/attention.js";
 import { CHECKPOINT_KINDS, MISSION_STATUS, OBJECTIVE_STATUS } from "./constants.js";
 
-export const CAMPAIGN_CHECKPOINT_VERSION = 2;
+export const CAMPAIGN_CHECKPOINT_VERSION = 3;
 
 function finite(value, fallback = 0) {
   const number = Number(value);
@@ -105,6 +106,8 @@ function sanitizeNpcState(id, value) {
     feedingEvidenceDiscovered: Boolean(source.feedingEvidenceDiscovered),
     huntingAssessmentId: source.huntingAssessmentId == null ? null : String(source.huntingAssessmentId),
     huntingAssessmentIds: uniqueStrings(source.huntingAssessmentIds),
+    exposureEvidenceIds: uniqueStrings(source.exposureEvidenceIds),
+    pendingHuntingAssessmentIds: uniqueStrings(source.pendingHuntingAssessmentIds),
     combat: {
       state: String(combat.state || "active"),
       resilience: Math.max(0, finite(combat.resilience, 0)),
@@ -123,7 +126,8 @@ function sanitizeBloodStain(value) {
     kind: String(source.kind || "blood"),
     age: Math.max(0, finite(source.age, 0)),
     life: Math.max(0, finite(source.life, 0)),
-    discovered: Boolean(source.discovered)
+    discovered: Boolean(source.discovered),
+    exposureEvidenceIds: uniqueStrings(source.exposureEvidenceIds)
   };
 }
 
@@ -170,7 +174,11 @@ export function sanitizeCampaignCheckpoint(candidate) {
       ammo: numericRecord(loadout.ammo)
     },
     world: {
-      exposure: Math.max(0, finite(world.exposure, 0)),
+      heat: sanitizeHeatState(world.heat || createHeatState()),
+      exposure: sanitizeExposureState(world.exposure, {
+        legacyValue: typeof world.exposure === "number" ? world.exposure : 0,
+        now: Math.max(0, integer(source.createdAt, 0))
+      }),
       brokenLights: uniqueStrings(world.brokenLights),
       npcs: npcStates,
       bloodStains: (Array.isArray(world.bloodStains) ? world.bloodStains : [])

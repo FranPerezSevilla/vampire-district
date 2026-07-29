@@ -1,4 +1,4 @@
-export const CAMPAIGN_SCHEMA_VERSION = 4;
+export const CAMPAIGN_SCHEMA_VERSION = 5;
 export const CAMPAIGN_STORAGE_KEY = "viceblood-campaign-v1";
 export const LEGACY_CAMPAIGN_STORAGE_KEYS = Object.freeze([
   "vampire-district-campaign-v1"
@@ -73,7 +73,14 @@ export const CAMPAIGN_EVENT_TYPES = Object.freeze({
   HUNTING_VICTIM_UNPROTECTED: "hunting:victim-unprotected",
   HUNTING_ASSESSED: "hunting:assessed",
   HUNTING_VIOLATION_DISCOVERED: "hunting:violation-discovered",
-  HUNTING_PROTECTED_VICTIM_HARMED: "hunting:protected-victim-harmed"
+  HUNTING_PROTECTED_VICTIM_HARMED: "hunting:protected-victim-harmed",
+  HEAT_ADDED: "heat:added",
+  HEAT_COOLED: "heat:cooled",
+  HEAT_WANTED_CHANGED: "heat:wanted-changed",
+  EVIDENCE_REGISTERED: "evidence:registered",
+  EVIDENCE_DISCOVERED: "evidence:discovered",
+  EVIDENCE_RESOLVED: "evidence:resolved",
+  EXPOSURE_CHANGED: "exposure:changed"
 });
 
 export const OBJECTIVE_EVENT_BY_TYPE = Object.freeze({

@@ -239,8 +239,7 @@ export class WeaponSystem {
       npc.chasingPlayer = true;
       npc.alarmed = true;
       const reason = `Police saw a ${weapon.name.toLowerCase()} fired.`;
-      this.scene.exposureSystem?.forceLevel?.(1, reason);
-      this.scene.policeSystem?.addHeat?.(source.x, source.y, weapon.policeHeat || 30, reason);
+      this.scene.policeSystem?.addHeat?.(source.x, source.y, weapon.policeHeat || 30, reason, { source: "police_saw_gunshot" });
       RawAudio.play("police", { cooldown: 0.35 });
       return;
     }

@@ -259,8 +259,8 @@ export class FeedingSystem {
     const alreadyDowned = npc.combat?.state === COMBAT_STATES.DOWNED;
     const outcome = feedingOutcomeFor(npc.type, depth, { alreadyDowned });
     const witnessResult = feed.seenNotified
-      ? { witnesses: Math.max(1, feed.maxWitnesses || 0) }
-      : this.scene.witnessSystem?.onFeedingResolved?.(npc, depth) || { witnesses: 0 };
+      ? { witnesses: Math.max(1, feed.maxWitnesses || 0), witnessIds: feed.witnessIds || [] }
+      : this.scene.witnessSystem?.onFeedingResolved?.(npc, depth) || { witnesses: 0, witnessIds: [] };
     const relief = this.reliefFor(npc, depth, feed.startingDepth);
     const hungerBefore = this.hunger;
     this.hunger = Math.max(0, this.hunger - relief);
@@ -295,12 +295,27 @@ export class FeedingSystem {
       npc.huntingAssessmentIds = [...new Set([...(npc.huntingAssessmentIds || []), huntingAssessment.id])];
     }
 
-    this.scene.evidenceSystem?.onFeedingResolved?.(npc, {
+    const evidenceIds = this.scene.evidenceSystem?.onFeedingResolved?.(npc, {
       ...result,
       huntingAssessmentId: huntingAssessment?.id || null,
       bloodStains: outcome.bloodStains,
       recoverableVictim: outcome.recoverableVictim
-    });
+    }) || [];
+    result.evidenceIds = [...evidenceIds];
+    const witnessIds = [...new Set((witnessResult.witnessIds || []).map(String).filter(Boolean))];
+    for (const witnessId of witnessIds) {
+      const witness = this.scene.npcSystem?.npcs?.find(candidate => candidate.id === witnessId);
+      if (!witness) continue;
+      for (const memoryId of witness.exposureEvidenceIds || []) {
+        this.scene.exposureSystem?.linkEvidence?.(memoryId, evidenceIds);
+      }
+      if (huntingAssessment?.id) {
+        witness.pendingHuntingAssessmentIds = [...new Set([
+          ...(witness.pendingHuntingAssessmentIds || []),
+          huntingAssessment.id
+        ])];
+      }
+    }
 
     if (outcome.neutralized && !feed.startingNeutralized && npc.type !== NPC_TYPES.RAT) {
       this.trackNeutralized(npc);
@@ -342,7 +357,8 @@ export class FeedingSystem {
       huntingAssessmentId: huntingAssessment?.id || null,
       huntingClassification: huntingAssessment?.classification || null,
       huntingPoliticalViolation: Boolean(huntingAssessment?.politicalViolation),
-      huntingDiscoveryState: huntingAssessment?.currentDiscoveryState || huntingAssessment?.discoveryState || null
+      huntingDiscoveryState: huntingAssessment?.currentDiscoveryState || huntingAssessment?.discoveryState || null,
+      evidenceIds: [...evidenceIds]
     };
     this.scene.events?.emit?.("feeding:resolved", eventPayload);
     // Compatibility event for existing AI/mission fixtures. New code should use feeding:resolved.
@@ -457,7 +473,7 @@ export class FeedingSystem {
         witnessCount,
         bodyEvidence: Boolean(result.bodyEvidence),
         biteEvidence: Boolean(result.biteEvidence),
-        wantedLevel: this.scene.exposureSystem?.level?.() || 0,
+        wantedLevel: this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem?.level?.() ?? 0,
         factionObserver: false,
         source: feed?.source || "system",
         eligibility: feed?.eligibility || "legacy",

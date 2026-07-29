@@ -1,6 +1,6 @@
 # Contextual predator feeding system
 
-_Status: Milestone 4 eligibility complete; Milestone 15.5 feeding-depth implementation active in PR #43._
+_Status: Milestone 4 eligibility and Milestone 15.5 feeding depths complete; evidence-backed Exposure integrated through Milestone 15.6._
 
 ## Purpose
 
@@ -13,7 +13,8 @@ Feeding is a dedicated vampire action owned by the right mouse button. It never 
 - `phaser/src/combat/DrainSystem.js` — right-button hold, runtime validation, progress feedback and heard-only reactions.
 - `phaser/src/systems/FeedingSystem.js` — progress authority, release resolution, incremental Hunger relief and events.
 - `phaser/src/systems/WitnessSystem.js` — active feeding sight and depth-specific witness response.
-- `phaser/src/systems/EvidenceSystemCore.js` — bite/blood/body evidence and unconscious-victim cleanup/discovery.
+- `phaser/src/systems/EvidenceSystemCore.js` — physical bite/blood/body evidence, latent cleanup and witness-driven discovery.
+- `phaser/src/systems/ExposureSystem.js` — concrete supernatural-evidence records and knowledge state.
 - `phaser/src/factions/HuntingLawSystem.js` — territory, permission and protected-prey assessment for the actual feeding depth.
 - `phaser/src/systems/AiStateSystem.js` — feeding priority and downed-recovery suppression.
 - `tests/drain.test.js` — pure eligibility and priority tests.
@@ -133,7 +134,7 @@ At resolution:
 - witness radius/severity increases from Quick Bite to Full Feed to Drain;
 - hunting law receives the real depth, victim outcome, memory and evidence profile;
 - protected prey overrides any general hunting permission;
-- evidence remains latent until a witness, protected marker, recovered victim/body or later investigation reveals it;
+- physical evidence remains latent until a witness report or later investigation reveals it;
 - the Night Ledger records the depth and discovery state.
 
 ## Feedback
@@ -161,7 +162,7 @@ Events contain identifiers and serializable values rather than runtime objects.
 
 ## Persistence
 
-The victim's cumulative feeding depth, memory/evidence markers, unconscious state and linked hunting assessments are included in checkpoint and chunk-delta projections. A reload cannot restore the victim's blood or grant the same Hunger again.
+The victim's cumulative feeding depth, memory/evidence markers, unconscious state, concrete evidence IDs and linked hunting assessments are included in checkpoint and chunk-delta projections. A reload cannot restore the victim's blood or grant the same Hunger again.
 
 ## Deliberate limits
 

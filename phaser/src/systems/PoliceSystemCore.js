@@ -58,7 +58,7 @@ function configForLevel(level) {
 export class PoliceSystem {
   constructor(scene) {
     this.scene = scene;
-    this.localHeat = Object.create(null);
+    this._legacyLocalHeat = Object.create(null);
     this.spawned = 0;
     this.spawnedThisTick = 0;
     this.previousLevel = 0;
@@ -81,9 +81,8 @@ export class PoliceSystem {
     if (this.arrestTriggered) return;
 
     this.ensurePatrolState();
-    this.coolHeat(dt);
 
-    const rawLevel = this.scene.exposureSystem.level();
+    const rawLevel = this.wantedLevel();
     const level = clampLevel(rawLevel);
     this.handleWantedLevelChange(level);
     this.spawnForExposure(level);
@@ -132,16 +131,36 @@ export class PoliceSystem {
     };
   }
 
-  addHeat(x, y, amount, reason = "disturbance") {
-    if (!amount || amount <= 0) return;
+  get localHeat() {
+    return this.scene.heatSystem?.values?.() || this._legacyLocalHeat;
+  }
+
+  set localHeat(values) {
+    if (this.scene.heatSystem?.replaceValues) this.scene.heatSystem.replaceValues(values || {});
+    else this._legacyLocalHeat = values && typeof values === "object" ? values : Object.create(null);
+  }
+
+  wantedLevel() {
+    return clampLevel(this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem?.level?.() ?? 0);
+  }
+
+  heatValue(zoneId) {
+    return this.scene.heatSystem?.valueFor?.(zoneId) ?? this._legacyLocalHeat?.[zoneId] ?? 0;
+  }
+
+  addHeat(x, y, amount, reason = "disturbance", options = {}) {
+    if (!amount || amount <= 0) return null;
     const zone = this.zoneAt(x, y);
-    const before = this.localHeat[zone.id] || 0;
-    this.localHeat[zone.id] = Math.min(100, before + amount);
-    if (before < 18 && this.localHeat[zone.id] >= 18) this.redirectNearbyPatrols(zone, Math.max(1, Math.ceil(amount / 16)));
-    if (before < 45 && this.localHeat[zone.id] >= 45) {
+    const before = this.heatValue(zone.id);
+    const incident = this.scene.heatSystem?.add?.(x, y, amount, reason, options) || null;
+    if (!this.scene.heatSystem) this._legacyLocalHeat[zone.id] = Math.min(100, before + amount);
+    const after = this.heatValue(zone.id);
+    if (before < 18 && after >= 18) this.redirectNearbyPatrols(zone, Math.max(1, Math.ceil(amount / 16)));
+    if (before < 45 && after >= 45) {
       RawAudio.play("police");
       this.scene.lastActionText = `${zone.name} heats up: ${reason}.`;
     }
+    return incident;
   }
 
   redirectNearbyPatrols(zone, count = 1) {
@@ -167,13 +186,15 @@ export class PoliceSystem {
   }
 
   coolHeat(dt) {
-    for (const id of Object.keys(this.localHeat)) {
-      this.localHeat[id] = Math.max(0, this.localHeat[id] - dt * 1.2);
-      if (this.localHeat[id] <= 0.1) delete this.localHeat[id];
+    if (this.scene.heatSystem?.cool) return this.scene.heatSystem.cool(dt);
+    for (const id of Object.keys(this._legacyLocalHeat)) {
+      this._legacyLocalHeat[id] = Math.max(0, this._legacyLocalHeat[id] - dt * 1.2);
+      if (this._legacyLocalHeat[id] <= 0.1) delete this._legacyLocalHeat[id];
     }
+    return 0;
   }
 
-  spawnForExposure(level = this.scene.exposureSystem.level()) {
+  spawnForExposure(level = this.wantedLevel()) {
     const clamped = clampLevel(level);
     if (clamped < 1) return;
     const desired = configForLevel(clamped).desired;
@@ -183,7 +204,7 @@ export class PoliceSystem {
     this.spawnedThisTick = 0;
   }
 
-  spawnPolice(level = this.scene.exposureSystem.level()) {
+  spawnPolice(level = this.wantedLevel()) {
     const clamped = clampLevel(level);
     this.spawnedThisTick++;
     this.spawned++;
@@ -365,7 +386,7 @@ export class PoliceSystem {
     if (cop.investigateTarget?.kind === "heat") return cop.investigateTarget;
 
     const hot = this.hottestZone();
-    if (hot && (this.localHeat[hot.id] || 0) >= 55 && Math.random() < 0.012) {
+    if (hot && this.heatValue(hot.id) >= 55 && Math.random() < 0.012) {
       this.assignInvestigation(cop, hot, cop.patrolOffsetIndex || 0);
       return cop.investigateTarget;
     }
@@ -618,7 +639,7 @@ export class PoliceSystem {
     let best = null;
     let heat = 0;
     for (const zone of LOCAL_ZONES) {
-      const value = this.localHeat[zone.id] || 0;
+      const value = this.heatValue(zone.id);
       if (value > heat) {
         best = zone;
         heat = value;
@@ -629,13 +650,13 @@ export class PoliceSystem {
 
   hottestPoint() {
     const best = this.hottestZone();
-    const heat = best ? this.localHeat[best.id] || 0 : 0;
+    const heat = best ? this.heatValue(best.id) : 0;
     if (!best || heat < 15) return { x: POLICE_STATION.x, y: POLICE_STATION.y, kind: "quiet" };
     return { x: best.x + best.w / 2, y: best.y + best.h / 2, kind: "heat", zoneId: best.id };
   }
 
   summary() {
-    const level = clampLevel(this.scene.exposureSystem.level());
+    const level = this.wantedLevel();
     const cops = this.police();
     const chasing = cops.filter(cop => cop.chasingPlayer).length;
     const searching = level >= 1 ? Math.max(0, cops.length - chasing) : 0;
