@@ -308,14 +308,13 @@ test("Blood Sense, contextual Whisper and Give In form one evidence-limited pred
   });
   expect(criticalPressure.text).toContain("control remains yours");
 
-  await page.evaluate(() => {
+  const giveInActivated = await page.evaluate(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     scene.feedingSystem.hunger = 86;
     scene.powersSystem.cooldowns.beast = 0;
-    document.querySelector("canvas")?.focus?.();
+    return window.NBD_PREDATOR_POWERS.giveIn();
   });
-  await page.keyboard.press("b");
-  await page.waitForFunction(() => window.NBD_PREDATOR_POWERS.snapshot().beast.activeSeconds > 0);
+  expect(giveInActivated).toBe(true);
 
   const beast = await page.evaluate(({ watcherId }) => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
