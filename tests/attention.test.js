@@ -39,6 +39,27 @@ test("Heat thresholds produce the four police response states", () => {
   assert.equal(heatLevelFromValue(999), 3);
 });
 
+test("new Heat escalation remains stable during its short cooling grace", () => {
+  const targetScene = scene();
+  const heat = new HeatSystem(targetScene, { state: createHeatState() });
+  let now = 1_000;
+  heat.now = () => now;
+
+  heat.forceLevel(2, "A fresh report starts a pursuit.");
+  const escalatedValue = heat.maximum();
+  assert.equal(heat.level(), 2);
+  assert.equal(escalatedValue, HEAT_LEVEL_THRESHOLDS[2]);
+
+  assert.equal(heat.cool(1), 0);
+  assert.equal(heat.maximum(), escalatedValue);
+  assert.equal(heat.level(), 2);
+
+  now += 2_001;
+  assert.ok(heat.cool(0.1) > 0);
+  assert.ok(heat.maximum() < escalatedValue);
+  assert.equal(heat.level(), 1);
+});
+
 test("Heat state is district-local, bounded and serializable", () => {
   const sanitized = sanitizeHeatState({
     sequence: 4,
