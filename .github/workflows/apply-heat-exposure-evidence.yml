@@ -8,11 +8,15 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: heat-exposure-publisher-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   apply:
     if: github.event_name == 'workflow_dispatch' || github.head_ref == 'agent/heat-exposure-evidence'
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     env:
       TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
 
@@ -23,15 +27,26 @@ jobs:
           ref: ${{ env.TARGET_BRANCH }}
           fetch-depth: 0
 
-      - name: Detect pending payload
+      - name: Detect complete clean payload
         id: gate
         shell: bash
         run: |
-          if [ -f .github/heat-exposure-payload.part-01 ] && [ -f .github/heat-exposure-payload.part-02 ]; then
-            echo 'apply=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'apply=false' >> "$GITHUB_OUTPUT"
-          fi
+          set -euo pipefail
+          required=(
+            .github/heat-exposure-final.part-01
+            .github/heat-exposure-final.part-02
+            .github/heat-exposure-final.part-03
+            .github/heat-exposure-final.part-04
+            .github/heat-exposure-final.part-05
+          )
+          for file in "${required[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo 'apply=false' >> "$GITHUB_OUTPUT"
+              echo "Waiting for $file"
+              exit 0
+            fi
+          done
+          echo 'apply=true' >> "$GITHUB_OUTPUT"
 
       - name: Set up Node.js
         if: steps.gate.outputs.apply == 'true'
@@ -39,21 +54,45 @@ jobs:
         with:
           node-version: 22
 
-      - name: Reconstruct and apply implementation
+      - name: Reconstruct, verify and apply implementation
         if: steps.gate.outputs.apply == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          cat .github/heat-exposure-payload.part-01 .github/heat-exposure-payload.part-02 > /tmp/heat-exposure.b64
+          cat \
+            .github/heat-exposure-final.part-01 \
+            .github/heat-exposure-final.part-02 \
+            .github/heat-exposure-final.part-03 \
+            .github/heat-exposure-final.part-04 \
+            .github/heat-exposure-final.part-05 \
+            > /tmp/heat-exposure.b64
+
+          test "$(wc -c < /tmp/heat-exposure.b64)" = '76488'
+          echo '61dc45af5c46a5e745d71818c5780422db0c29c28d6b605fb3eed437a02ed660  /tmp/heat-exposure.b64' | sha256sum -c -
+
           base64 -d /tmp/heat-exposure.b64 > /tmp/heat-exposure.patch.gz
+          test "$(wc -c < /tmp/heat-exposure.patch.gz)" = '57365'
+          echo '75b1b2dbe68633e4ca1817e33845e472c550cda535c138148cc6209ee2efb571  /tmp/heat-exposure.patch.gz' | sha256sum -c -
           gzip -t /tmp/heat-exposure.patch.gz
+
           gzip -dc /tmp/heat-exposure.patch.gz > /tmp/heat-exposure.patch
+          test "$(wc -c < /tmp/heat-exposure.patch)" = '224704'
+          echo '76ab10c0b76a7e11fbac6cd39ebd2d4c50260f7ed98df46b4ca974b51d164d25  /tmp/heat-exposure.patch' | sha256sum -c -
+
+          rm -f docs/MILESTONE_15_6_HEAT_EXPOSURE_EVIDENCE.md
           git apply --check /tmp/heat-exposure.patch
           git apply /tmp/heat-exposure.patch
+
           rm -f \
             .github/heat-exposure-payload.part-01 \
             .github/heat-exposure-payload.part-02 \
-            .github/workflows/apply-heat-exposure-evidence.yml
+            .github/heat-exposure-final.part-01 \
+            .github/heat-exposure-final.part-02 \
+            .github/heat-exposure-final.part-03 \
+            .github/heat-exposure-final.part-04 \
+            .github/heat-exposure-final.part-05 \
+            .github/workflows/apply-heat-exposure-evidence.yml \
+            .github/workflows/archive-heat-exposure-payload.yml
 
       - name: Install exact dependencies
         if: steps.gate.outputs.apply == 'true'
@@ -76,6 +115,7 @@ jobs:
         if: steps.gate.outputs.apply == 'true'
         shell: bash
         run: |
+          set -euo pipefail
           npm run city:validate
           npm run city:compile -- --output-dir=/tmp/viceblood-heat-city
           npm run city:foundry -- --output-dir=/tmp/viceblood-heat-foundry
