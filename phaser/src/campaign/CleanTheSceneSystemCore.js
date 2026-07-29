@@ -78,7 +78,7 @@ export class CleanTheSceneSystem {
     }
 
     if (objective.id === "lose_police_attention") {
-      const wantedLevel = this.scene.exposureSystem?.level?.() || 0;
+      const wantedLevel = this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem?.level?.() ?? 0;
       const witnesses = this.scene.witnessSystem?.alarmedWitnesses?.().length || 0;
       if (wantedLevel <= 0 && witnesses <= 0) {
         this.host.nextActionText = "Police attention fades. Return to the rooftop refuge for payment.";
@@ -118,9 +118,9 @@ export class CleanTheSceneSystem {
       targetId: "compromised_camera_roll",
       itemId: "compromised_camera_roll"
     });
-    const exposure = this.scene.exposureSystem;
-    if (exposure && exposure.value < 32) {
-      exposure.add(32 - exposure.value, "Recovering the camera roll draws a patrol toward the service alley.");
+    const heat = this.scene.heatSystem;
+    if (heat && heat.maximum() < 32) {
+      heat.add(this.scene.player.x, this.scene.player.y, 32 - heat.maximum(), "Recovering the camera roll draws a patrol toward the service alley.", { source: "camera_roll_recovery" });
     }
     RawAudio.play("confirm");
     this.syncWorld();

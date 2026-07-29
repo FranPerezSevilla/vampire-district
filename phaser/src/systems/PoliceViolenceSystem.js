@@ -1,4 +1,4 @@
-import { exposureNeededForPoliceLevel, policeViolenceTargetLevel } from "../data/police-alert.js";
+import { policeViolenceTargetLevel } from "../data/police-alert.js";
 import { NPC_TYPES } from "../data/npcs.js";
 
 export class PoliceViolenceSystem {
@@ -32,29 +32,34 @@ export class PoliceViolenceSystem {
 
   escalate(npc, { neutralized = false, weaponId = "unknown" } = {}) {
     if (!npc || npc.type !== NPC_TYPES.POLICE) return 0;
-    const exposure = this.scene.exposureSystem;
+    const heat = this.scene.heatSystem;
     const police = this.scene.policeSystem;
-    if (!exposure || !police) return 0;
+    if (!heat || !police) return 0;
 
     if (neutralized && npc.__nbdPoliceNeutralizationEscalated) {
-      return Math.min(3, exposure.level?.() || 0);
+      return Math.min(3, heat.level?.() || 0);
     }
 
-    const currentLevel = exposure.level();
+    const currentLevel = heat.level();
     const targetLevel = policeViolenceTargetLevel(currentLevel, { neutralized });
     const reason = neutralized
       ? `A police officer was neutralized with ${weaponId}.`
       : `A police officer was attacked with ${weaponId}.`;
-    const requiredExposure = exposureNeededForPoliceLevel(exposure.value, targetLevel);
+    const beforeHeat = heat.maximum();
 
-    if (requiredExposure > 0) exposure.add(requiredExposure, reason);
-    else exposure.lastReason = reason;
-
-    police.addHeat?.(npc.x, npc.y, neutralized ? 42 : 18, reason);
+    heat.forceLevel(targetLevel, reason, {
+      x: npc.x,
+      y: npc.y,
+      source: neutralized ? "police_neutralized" : "police_assault"
+    });
+    police.addHeat?.(npc.x, npc.y, neutralized ? 18 : 8, reason, {
+      source: neutralized ? "police_neutralized" : "police_assault"
+    });
     police.rememberPlayerPosition?.();
     if (neutralized) npc.__nbdPoliceNeutralizationEscalated = true;
 
-    const finalLevel = Math.min(3, exposure.level());
+    const finalLevel = Math.min(3, heat.level());
+    const heatAdded = Math.max(0, heat.maximum() - beforeHeat);
     this.scene.lastActionText = neutralized
       ? `POLICE DOWN: alert rises to level ${finalLevel}. More units converge on the district.`
       : `POLICE ASSAULT: alert is now level ${finalLevel}.`;
@@ -65,7 +70,7 @@ export class PoliceViolenceSystem {
       previousLevel: currentLevel,
       targetLevel,
       level: finalLevel,
-      exposureAdded: requiredExposure
+      heatAdded
     });
     return finalLevel;
   }

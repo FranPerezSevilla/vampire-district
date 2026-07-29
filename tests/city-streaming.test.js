@@ -239,7 +239,9 @@ test("chunk delta serialization indexes bodies, evidence, broken props and vehic
     feedingBiteEvidence: true,
     feedingEvidenceDiscovered: false,
     huntingAssessmentId: "hunt-2",
-    huntingAssessmentIds: ["hunt-1", "hunt-2"]
+    huntingAssessmentIds: ["hunt-1", "hunt-2"],
+    exposureEvidenceIds: [],
+    pendingHuntingAssessmentIds: []
   });
   assert.equal(delta.evidence.length, 1);
   assert.equal(delta.streetProps.length, 1);

@@ -191,8 +191,7 @@ export function handleVehicleWorldCollision(system, vehicle, impactSpeed) {
   if (impact >= 44 && system.crashCooldown <= 0) {
     system.crashCooldown = 0.48;
     RawAudio.play("bodyDrop", { cooldown: 0.4 });
-    system.scene.exposureSystem?.add?.(Math.min(7, Math.max(2, Math.ceil(impact / 46))), `${vehicle.name} crashes into the streetscape. The impact carries through the district.`);
-    system.scene.policeSystem?.addHeat?.(vehicle.x, vehicle.y, Math.min(20, impact * 0.09), "vehicle crash");
+    system.scene.policeSystem?.addHeat?.(vehicle.x, vehicle.y, Math.min(24, Math.max(4, impact * 0.12)), `${vehicle.name} crashes into the streetscape`, { source: "vehicle_crash" });
     system.scene.lastActionText = `${vehicle.name} collision · hull ${vehicleHealthPercent(vehicle.health, vehicle.archetype.maxHealth)}%.`;
   }
 }

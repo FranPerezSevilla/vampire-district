@@ -210,6 +210,7 @@ export class GameplayRuntime {
       }
 
       scene.evidenceSystem.update(dt);
+      scene.heatSystem?.cool?.(dt);
       scene.exposureSystem.cool(dt);
       scene.policeSystem.update(dt);
       scene.hunterSystem.update(dt);

@@ -32,7 +32,7 @@ wanted 3  → 7 officers
 ## Authority model
 
 ```text
-ExposureSystem
+HeatSystem
   → wanted level
   → MotorizedPoliceSystem response count
 
@@ -164,7 +164,7 @@ Visible cruisers:
 - remain obstacles after crew deployment;
 - take high-speed impact damage;
 - damage and slow the player vehicle;
-- add exposure and local police heat;
+- add ordinary-crime Heat;
 - use a per-unit cooldown.
 
 A disabled cruiser:

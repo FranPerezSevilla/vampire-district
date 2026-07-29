@@ -49,13 +49,6 @@ export function registerVehicleTheft(system, vehicle, previousStatus) {
     );
   }
 
-  const exposure = policeVehicle ? 14 : factionVehicle ? 8 : 5;
-  system.scene.exposureSystem?.add?.(
-    exposure + Math.min(4, witnesses.length),
-    policeVehicle
-      ? "Stealing a police cruiser triggers an immediate district alert."
-      : `Vehicle theft draws ${witnesses.length || "nearby"} witness attention.`
-  );
   system.scene.policeSystem?.addHeat?.(
     vehicle.x,
     vehicle.y,
@@ -140,10 +133,6 @@ export function collideVehicleWithPedestrians(system, vehicle) {
       npc,
       lethal ? "a fatal vehicle impact" : "a vehicle striking a pedestrian",
       severity
-    );
-    system.scene.exposureSystem?.add?.(
-      lethal ? 15 : 8,
-      lethal ? "A pedestrian is crushed by the vehicle." : "A pedestrian is struck by the vehicle."
     );
     system.scene.policeSystem?.addHeat?.(vehicle.x, vehicle.y, lethal ? 32 : 18, "vehicle-pedestrian collision");
     system.damageVehicle(vehicle.id, lethal ? 5 : 2, { reason: "pedestrian-impact", persist: false });

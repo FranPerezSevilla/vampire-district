@@ -1,4 +1,5 @@
 import { COMBAT_STATES } from "../data/combat.js";
+import { createHeatState } from "../data/attention.js";
 import { npcDefinitions, NPC_TYPES } from "../data/npcs.js";
 import {
   checkpointCanResume,
@@ -208,7 +209,7 @@ export class CampaignCheckpointSystem {
       feedingActive: Boolean(this.scene.feedingSystem?.isActive?.()),
       combatBusy: Boolean(this.scene.combatSystem?.isBusy?.()),
       hitStunned: Boolean(this.scene.playerDamageSystem?.isHitStunned?.()),
-      wantedLevel: this.scene.exposureSystem?.level?.() || 0,
+      wantedLevel: this.scene.heatSystem?.level?.() || 0,
       alarmedWitnesses: this.scene.witnessSystem?.alarmedWitnesses?.().length || 0,
       activePursuers
     };
@@ -244,7 +245,10 @@ export class CampaignCheckpointSystem {
       },
       loadout: this.captureLoadout(),
       world: {
-        exposure: kind === CHECKPOINT_KINDS.MISSION_COMPLETE ? 0 : this.scene.exposureSystem?.value || 0,
+        heat: kind === CHECKPOINT_KINDS.MISSION_COMPLETE
+          ? createHeatState()
+          : clone(this.scene.heatSystem?.snapshot?.() || this.campaign.state.heat || {}),
+        exposure: clone(this.scene.exposureSystem?.snapshot?.() || this.campaign.state.exposure || {}),
         brokenLights: [...(this.scene.brokenLights || [])],
         npcs: npcStates,
         bloodStains: clone(this.scene.evidenceSystem?.bloodStains || []),
@@ -305,6 +309,12 @@ export class CampaignCheckpointSystem {
       feedingEvidenceDiscovered: Boolean(npc.feedingEvidenceDiscovered),
       huntingAssessmentId: npc.huntingAssessmentId || null,
       huntingAssessmentIds: [...new Set((Array.isArray(npc.huntingAssessmentIds) ? npc.huntingAssessmentIds : [])
+        .map(value => String(value || "").trim())
+        .filter(Boolean))],
+      exposureEvidenceIds: [...new Set((Array.isArray(npc.exposureEvidenceIds) ? npc.exposureEvidenceIds : [])
+        .map(value => String(value || "").trim())
+        .filter(Boolean))],
+      pendingHuntingAssessmentIds: [...new Set((Array.isArray(npc.pendingHuntingAssessmentIds) ? npc.pendingHuntingAssessmentIds : [])
         .map(value => String(value || "").trim())
         .filter(Boolean))],
       combat: {
@@ -378,6 +388,8 @@ export class CampaignCheckpointSystem {
       feedingEvidenceDiscovered: false,
       huntingAssessmentId: null,
       huntingAssessmentIds: [],
+      exposureEvidenceIds: [],
+      pendingHuntingAssessmentIds: [],
       combat: { state: COMBAT_STATES.ACTIVE, resilience: 0, maxResilience: 0 }
     };
     return {
@@ -419,10 +431,8 @@ export class CampaignCheckpointSystem {
       Object.assign(this.scene.feedingSystem.stats, checkpoint.world.feedingStats || {});
     }
     this.scene.weaponSystem?.restoreState?.(checkpoint.loadout);
-    if (this.scene.exposureSystem) {
-      this.scene.exposureSystem.value = checkpoint.world.exposure;
-      this.scene.exposureSystem.lastReason = "Restored from a safe checkpoint.";
-    }
+    this.scene.heatSystem?.restoreState?.(checkpoint.world.heat);
+    this.scene.exposureSystem?.restoreState?.(checkpoint.world.exposure);
 
     this.scene.brokenLights = new Set(checkpoint.world.brokenLights || []);
     for (const prop of this.scene.propDamageSystem?.props || []) {
@@ -483,6 +493,12 @@ export class CampaignCheckpointSystem {
     npc.huntingAssessmentIds = [...new Set((Array.isArray(state.huntingAssessmentIds) ? state.huntingAssessmentIds : [])
       .map(value => String(value || "").trim())
       .filter(Boolean))];
+    npc.exposureEvidenceIds = [...new Set((Array.isArray(state.exposureEvidenceIds) ? state.exposureEvidenceIds : [])
+      .map(value => String(value || "").trim())
+      .filter(Boolean))];
+    npc.pendingHuntingAssessmentIds = [...new Set((Array.isArray(state.pendingHuntingAssessmentIds) ? state.pendingHuntingAssessmentIds : [])
+      .map(value => String(value || "").trim())
+      .filter(Boolean))];
     npc.alarmed = false;
     npc.chasingPlayer = false;
     npc.enemyAttack = null;
@@ -518,7 +534,6 @@ export class CampaignCheckpointSystem {
   resetTransientThreats() {
     const police = this.scene.policeSystem;
     if (police) {
-      police.localHeat = Object.create(null);
       police.lastKnownPlayer = null;
       police.arrestTriggered = false;
       police.attackLeaderId = null;

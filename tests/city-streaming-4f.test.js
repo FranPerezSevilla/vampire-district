@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { RawAudio } from "../phaser/src/systems/RawAudioSystem.js";
 import {
   trafficImpactDamage,
-  trafficImpactExposure,
+  trafficImpactHeatBonus,
   trafficImpactTier,
   TrafficImpactConsequencesSystem
 } from "../phaser/src/streaming/TrafficImpactConsequencesSystem.js";
@@ -51,9 +51,9 @@ function fakeScene(impactSpeed = 160) {
           hardMinimumDamage: 4,
           severeMinimumDamage: 16,
           severeDamageMultiplier: 1.35,
-          hardExposure: 2,
-          severeExposure: 5,
-          maximumExposure: 7,
+          hardHeatBonus: 2,
+          severeHeatBonus: 5,
+          maximumHeatBonus: 7,
           hardHeatMinimum: 7,
           severeHeatMinimum: 15,
           maximumHeat: 24,
@@ -128,8 +128,8 @@ test("impact helpers preserve the soft, hard and severe boundaries", () => {
   assert.equal(trafficImpactDamage(100), 0);
   assert.ok(trafficImpactDamage(160) >= 4);
   assert.ok(trafficImpactDamage(230) > trafficImpactDamage(160));
-  assert.equal(trafficImpactExposure(100), 0);
-  assert.ok(trafficImpactExposure(230) > trafficImpactExposure(160));
+  assert.equal(trafficImpactHeatBonus(100), 0);
+  assert.ok(trafficImpactHeatBonus(230) > trafficImpactHeatBonus(160));
 });
 
 test("soft traffic contact stays inside 4E without damage, exposure or heat", async () => withMutedAudio(async () => {
@@ -166,8 +166,9 @@ test("hard impact damages once and suppresses repeated frame contact during cool
   assert.equal(afterFirst.totalHardImpacts, 1);
   assert.equal(afterFirst.totalSevereImpacts, 0);
   assert.ok(healthAfterFirst < 88);
-  assert.ok(exposureAfterFirst > 0);
+  assert.equal(exposureAfterFirst, 0);
   assert.ok(heatAfterFirst > 0);
+  assert.ok(afterFirst.lastImpact.heatBonus > 0);
   assert.ok(Math.abs(scene.driven.speed) < 150);
   assert.equal(scene.driven.persisted, true);
 

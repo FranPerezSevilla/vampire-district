@@ -164,7 +164,7 @@ export class VehicleMaintenanceUiSystem {
   }
 
   wantedLevel() {
-    return this.scene.exposureSystem?.level?.() || 0;
+    return this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem?.level?.() ?? 0;
   }
 
   distanceToGarage() {

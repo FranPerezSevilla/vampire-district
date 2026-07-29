@@ -209,7 +209,7 @@ test("latent poaching becomes known exactly once when the body is recovered", ()
   assert.equal(huntingLaw.lastAssessment().currentDiscoveryState, HUNTING_DISCOVERY.KNOWN);
 });
 
-test("version-three saves gain hunting-law state without losing territory or campaign data", () => {
+test("version-three saves gain hunting-law and attention state without losing campaign data", () => {
   const migrated = migrateCampaignState({
     version: 3,
     player: { cash: 725 },
@@ -228,8 +228,8 @@ test("version-three saves gain hunting-law state without losing territory or cam
     world: { ownedVehicles: ["refuge_compact"], flags: { retained: true } }
   }, { now: 9000 });
 
-  assert.equal(CAMPAIGN_SCHEMA_VERSION, 4);
-  assert.equal(migrated.version, 4);
+  assert.equal(CAMPAIGN_SCHEMA_VERSION, 5);
+  assert.equal(migrated.version, 5);
   assert.equal(migrated.player.cash, 725);
   assert.equal(migrated.reputation.factions.first_estate, 19);
   assert.equal(migrated.territory.districts["old-quarter"].ownerId, CAMPAIGN_FACTIONS.FIRST_ESTATE);

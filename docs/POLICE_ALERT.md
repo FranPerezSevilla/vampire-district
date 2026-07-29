@@ -1,6 +1,6 @@
 # Police violence alert escalation
 
-_Status: implemented; browser regression remains pending._
+_Status: implemented and migrated to Heat authority; automated regression active._
 
 ## Purpose
 
@@ -17,17 +17,17 @@ Violence against police must escalate the wanted state rather than repeatedly fo
 
 ## Stable thresholds
 
-Alert levels use 25 exposure points per level. Police-violence escalation targets six points above the exact boundary:
+Police violence now targets Heat levels directly:
 
-- level 1 target: 31 exposure;
-- level 2 target: 56 exposure;
-- level 3 target: 81 exposure.
+- level 1 target: 18 Heat;
+- level 2 target: 45 Heat;
+- level 3 target: 75 Heat.
 
-The buffer prevents a forced alert from falling back one level immediately when the player is standing in darkness and exposure cooling runs on the next frame.
+Heat is district-local and decays independently of supernatural evidence. Standing in darkness does not erase police knowledge or reported crime.
 
 ## Local response
 
-Police violence also adds local district heat:
+Police violence submits district-local Heat incidents:
 
 - confirmed assault: 18 local heat;
 - officer neutralized: 42 local heat.
@@ -70,7 +70,7 @@ Containment radii are 43, 49 and 55 units at alert levels 1, 2 and 3. The existi
   previousLevel,
   targetLevel,
   level,
-  exposureAdded
+  heatAdded
 }
 ```
 
@@ -86,7 +86,7 @@ Additional role/state events come from Milestone 8:
 - assault establishes level 1;
 - neutralization raises the wanted level progressively;
 - escalation stops at level 3;
-- the stability buffer is included in required exposure.
+- the required Heat threshold is calculated deterministically.
 
 `tests/ai.test.js` verifies deterministic attack leadership, containment geometry and police recovery timing/resilience.
 
@@ -98,4 +98,4 @@ Additional role/state events come from Milestone 8:
 4. Confirm that one officer attacks while others contain rather than all telegraphing together.
 5. Drain or kill an already-accounted downed officer: the same officer does not increase the level twice.
 6. Leave a downed officer unresolved: a replacement may arrive and the original rises after about 18 seconds.
-7. Repeat while standing in a broken-light shadow: the new level does not disappear on the next frame.
+7. Repeat while standing in a concealed route: the new level does not disappear on the next frame.

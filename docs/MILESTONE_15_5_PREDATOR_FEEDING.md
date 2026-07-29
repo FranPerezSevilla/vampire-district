@@ -1,6 +1,8 @@
 # Milestone 15.5 — predator feeding depths
 
-_Last updated: 2026-07-28_
+_Last updated: 2026-07-29_
+
+**Status: complete through PR #43; evidence registry integration completed in PR #45.**
 
 ## Goal
 
@@ -91,7 +93,7 @@ The hold must communicate the next meaningful release point without becoming a t
 - clear labels for `QUICK BITE`, `FULL FEED` and `DRAIN`;
 - release resolves the deepest threshold already reached;
 - interruption explains why feeding stopped;
-- the Night Ledger records the resolved depth and political discovery state.
+- the Night Ledger records the resolved depth, political discovery state and concrete evidence knowledge state.
 
 ## Initial tuning targets
 

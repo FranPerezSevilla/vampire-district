@@ -65,6 +65,15 @@ test("a real drain is assessed as poaching and a recovered body discovers the vi
     scene.npcSystem.rebuildSpatialIndex();
     scene.evidenceSystem.updateCorpseDiscovery();
 
+    const afterSight = window.NBD_HUNTING_LAW.lastAssessment();
+    const pendingReport = {
+      alarmed: watcher.alarmed,
+      masqueradeRisk: watcher.masqueradeRisk,
+      assessmentIds: [...(watcher.pendingHuntingAssessmentIds || [])],
+      corpseDiscovered: victim.corpseDiscovered
+    };
+    scene.witnessSystem.reportWitness(watcher);
+
     const known = window.NBD_HUNTING_LAW.lastAssessment();
     const storedAfterDiscovery = JSON.parse(localStorage.getItem(storageKey));
     const discoveryEvents = scene.campaignSystem.state.eventLog
@@ -86,6 +95,8 @@ test("a real drain is assessed as poaching and a recovered body discovers the vi
       completionText,
       assessmentIdOnBody,
       storedAfterFeed: storedAfterFeed.huntingLaw,
+      afterSight,
+      pendingReport,
       known,
       corpseDiscovered: victim.corpseDiscovered,
       storedAfterDiscovery: storedAfterDiscovery.huntingLaw,
@@ -116,6 +127,16 @@ test("a real drain is assessed as poaching and a recovered body discovers the vi
     discoveryState: "latent"
   });
 
+  expect(result.afterSight).toMatchObject({
+    id: result.latent.id,
+    currentDiscoveryState: "latent"
+  });
+  expect(result.pendingReport).toMatchObject({
+    alarmed: true,
+    masqueradeRisk: true,
+    corpseDiscovered: false
+  });
+  expect(result.pendingReport.assessmentIds).toContain(result.latent.id);
   expect(result.corpseDiscovered).toBe(true);
   expect(result.known).toMatchObject({
     id: result.latent.id,

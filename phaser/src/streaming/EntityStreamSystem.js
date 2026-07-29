@@ -49,7 +49,7 @@ export class EntityStreamSystem {
   npcDecision(npc) {
     const chunk = this.chunkStateAt(npc?.x, npc?.y);
     return {
-      ...npcStreamDecision(npc, { ...chunk, exposureLevel: this.scene.exposureSystem?.level?.() || 0 }),
+      ...npcStreamDecision(npc, { ...chunk, exposureLevel: this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem?.level?.() ?? 0 }),
       chunkId: chunk.id,
       chunkState: chunk.chunkState
     };

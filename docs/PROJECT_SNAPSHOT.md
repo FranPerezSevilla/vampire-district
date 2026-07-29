@@ -1,6 +1,6 @@
 # Project snapshot
 
-_Last updated: 2026-07-28_
+_Last updated: 2026-07-29_
 
 Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) first for the canonical project-wide map. This snapshot summarizes the current playable state, persistence boundaries and immediate priority.
 
@@ -48,7 +48,7 @@ The current foundation provides:
 - `10 × 8` asynchronous chunk streaming, district packs and dormant simulation;
 - macro traffic and ten pooled civilian traffic proxies;
 - motorized police pursuit, partial roadblock and crew transfer to foot AI;
-- 305 passing unit tests with hunting law and predator-feeding depth coverage, plus browser boot/systems/campaign domains.
+- 315 passing unit tests with territory, hunting law, feeding-depth and Heat/Exposure coverage, plus browser boot/systems/campaign domains.
 
 Production remains persistent missionless free roam. Archived mission definitions are explicit framework fixtures only.
 
@@ -59,15 +59,16 @@ Normal boot opens persistent free roam directly on the street.
 Available systems include:
 
 - walking, aiming, combat and Quick Bite / Full Feed / Drain feeding;
+- independent Police Heat and evidence-backed Veil Exposure;
+- a paused Night Ledger that explains factions, Heat and concrete evidence;
 - rooftop/sewer traversal;
 - vehicles, trunks and maintenance;
 - civilian traffic and pedestrians;
 - foot and motorized police;
-- evidence, witnesses and exposure;
+- witnesses, physical evidence, district Heat and Veil Exposure;
 - campaign wallet, reputation and save state;
 - persistent faction influence and ownership across all fourteen semantic districts;
 - feeding assessments for hunting rights, protected prey, poaching and evidence-driven discovery;
-- paused Night Ledger for faction relations, hunting-law status, police pressure and recent incidents.
 
 The mission panel reports that no contract is active and publishes no objective marker.
 
@@ -91,6 +92,7 @@ Preserved:
 - inventory;
 - authored vehicle ownership/condition/trunks;
 - unlocked refuges;
+- district Heat, Heat incidents and concrete Exposure evidence;
 - unrelated world flags and persistent world state.
 
 The cleaned state is saved immediately in persistent normal mode.
@@ -111,7 +113,7 @@ Q               Dash
 R               Whisper
 F               Blood Sense
 M               mission panel (empty without a contract)
-L               paused Night Ledger: factions, hunting law and police pressure
+L               paused Night Ledger: factions, Heat, evidence and hunting law
 H               pause/help/accessibility
 ```
 
@@ -341,6 +343,6 @@ Mission-specific browser golden paths are removed because those contracts are no
 
 ## Immediate priority
 
-Complete **Milestone 15.5 predator feeding depths** in PR #43: make held right-click resolve intentional Quick Bite, Full Feed or Drain outcomes with distinct Hunger, victim, evidence and political consequences.
+Implement **Milestone 15.7 Blood Sense, contextual Whisper and the Beast**: make predation readable through the world, add small systemic commands, and turn high Hunger into a tempting loss-of-subtlety trade rather than random input seizure.
 
 Future geometry work may add arbitrary-angle curves and polygonal ordinary parcels, but must preserve graph IDs, landmark sites, traffic/police integration and the hard no-overlap contracts.

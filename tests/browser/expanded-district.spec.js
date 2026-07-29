@@ -97,6 +97,18 @@ test("a dumpster corpse stays exposed, can be dragged, and can be recontained wi
     body.hiddenSpotId = "dumpsterClubRear";
     body.hiddenSpotName = "club rear dumpster";
     body.container.setVisible(false);
+    const bodyEvidence = scene.exposureSystem.registerEvidence({
+      kind: "drained_body",
+      x: body.x,
+      y: body.y,
+      layer: body.layer,
+      sourceEvent: "browser-dumpster-rupture",
+      subjectId: body.id,
+      exposureWeight: 26,
+      knowledgeState: "latent",
+      reason: "A hidden drained body remains physically present."
+    });
+    body.exposureEvidenceIds = [bodyEvidence.id];
     const exposureBefore = scene.exposureSystem.value;
     const broken = window.NBD_STREET_PROPS.impact(
       "refuge_compact",
@@ -163,7 +175,7 @@ test("a dumpster corpse stays exposed, can be dragged, and can be recontained wi
   expect(result.recontained.releasedState).toBeNull();
   expect(result.recontained.persistedProp).toBeNull();
   expect(result.ruptureBlood).toBeGreaterThanOrEqual(7);
-  expect(result.exposureAfter).toBeGreaterThan(result.exposureBefore);
+  expect(result.exposureAfter).toBe(result.exposureBefore);
 });
 
 test("a lethal vehicle impact leaves persistent visible blood evidence", async ({ page }) => {

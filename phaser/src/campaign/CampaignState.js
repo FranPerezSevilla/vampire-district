@@ -10,6 +10,12 @@ import {
 import { sanitizeCampaignCheckpoint } from "./CampaignCheckpoint.js";
 import { createTerritoryState, sanitizeTerritoryState } from "../factions/TerritoryModel.js";
 import { createHuntingLawState, sanitizeHuntingLawState } from "../factions/HuntingLawModel.js";
+import {
+  createExposureState,
+  createHeatState,
+  sanitizeExposureState,
+  sanitizeHeatState
+} from "../data/attention.js";
 
 function finiteNumber(value, fallback = 0) {
   const number = Number(value);
@@ -144,6 +150,8 @@ export function createCampaignState({ now = 0 } = {}) {
     },
     territory: createTerritoryState({ now: timestamp }),
     huntingLaw: createHuntingLawState(),
+    heat: createHeatState(),
+    exposure: createExposureState(),
     inventory: {
       carried: {
         meleeWeaponId: null,
@@ -263,6 +271,13 @@ export function sanitizeCampaignState(candidate, { now = 0 } = {}) {
     },
     territory: sanitizeTerritoryState(source.territory, { now: timestamp }),
     huntingLaw: sanitizeHuntingLawState(source.huntingLaw, { now: timestamp }),
+    heat: sanitizeHeatState(source.heat),
+    exposure: sanitizeExposureState(source.exposure, {
+      legacyValue: typeof source.exposure === "number"
+        ? source.exposure
+        : finiteNumber(plainRecord(source.world).exposure, 0),
+      now: timestamp
+    }),
     inventory: {
       carried: {
         meleeWeaponId: plainRecord(plainRecord(source.inventory).carried).meleeWeaponId == null
@@ -309,8 +324,10 @@ export function migrateCampaignState(candidate, { now = 0 } = {}) {
 
   // Versions zero and one did not persist a world checkpoint. Version two did
   // not persist district territory. Version three did not persist hunting-law
-  // rights, victim protection, assessments or discoveries. Sanitisation keeps
-  // every existing campaign domain while supplying the missing collections.
+  // rights, victim protection, assessments or discoveries. Version four used
+  // police-local Heat plus a free-floating Exposure scalar. Sanitisation keeps
+  // every existing campaign domain while supplying independent Heat and
+  // evidence-backed Exposure collections.
   return sanitizeCampaignState(source, { now });
 }
 

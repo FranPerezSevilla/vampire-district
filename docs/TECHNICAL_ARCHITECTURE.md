@@ -130,6 +130,7 @@ Campaign-entry and mission-board source modules remain available for future expl
 - `MotorizedPoliceSystem`
 - `MotorizedPoliceLocalPolicy`
 - `HunterSystem`
+- `HeatSystem`
 - `ExposureSystem`
 - `EvidenceSystem`
 
@@ -430,7 +431,7 @@ Local 4C–4F:
 - `TrafficMaterializationSystem`: ten pooled containers and lane sampling;
 - `TrafficLocalBehaviorSystem`: following, queues, braking and junction priority;
 - `TrafficPhysicalConsequencesSystem`: soft push/block and lane offsets;
-- `TrafficImpactConsequencesSystem`: hard/severe damage, exposure, heat, stalls and cooldown.
+- `TrafficImpactConsequencesSystem`: hard/severe damage, Heat, stalls and cooldown.
 
 ## 14. Motorized police architecture
 
@@ -495,6 +496,9 @@ Geometry v4 is axis-aligned. A future version may add arbitrary polyline offsets
 | civilian slot | `TrafficMaterializationSystem` | campaign vehicles |
 | motorized response unit | `MotorizedPoliceSystem` | civilian traffic/campaign |
 | dismounted officer AI | `PoliceSystem` / `NpcSystem` | cruiser state |
+| police wanted/search authority | `HeatSystem` | `ExposureSystem` / HUD scalar |
+| supernatural proof authority | `ExposureSystem` evidence registry | `HeatSystem` / physical scene alone |
+| physical evidence interaction | `EvidenceSystem` | global Exposure mutation |
 | road input | `city-road-graph-v1.js` nodes/edges | generated rectangle patches |
 | road output | clipped segments + junction/transition surfaces | overlapping render strips |
 | pedestrian network | generated sidewalks/crosswalks/routes | decorative crossings |

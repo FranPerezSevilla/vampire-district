@@ -81,6 +81,8 @@ export class NpcSystem {
       feedingEvidenceDiscovered: false,
       huntingAssessmentId: null,
       huntingAssessmentIds: [],
+      exposureEvidenceIds: [],
+      pendingHuntingAssessmentIds: [],
       alarmed: false,
       intercepted: false,
       hasReported: false,

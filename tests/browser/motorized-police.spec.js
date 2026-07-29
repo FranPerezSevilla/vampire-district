@@ -39,7 +39,9 @@ test("wanted levels deploy cruisers, reserve officers, form a partial roadblock 
       vehicle.container?.setPosition?.(vehicle.x, vehicle.y);
     }
 
-    scene.exposureSystem.forceLevel(2, "Motorized police level-two test.");
+    scene.heatSystem.clear("Motorized police baseline.");
+    scene.exposureSystem.clear("Motorized police baseline.");
+    scene.heatSystem.forceLevel(2, "Motorized police level-two test.");
     window.NBD_MOTORIZED_POLICE.reconcile();
     const levelTwoInitial = window.NBD_MOTORIZED_POLICE.snapshot();
     const totalTargetAtTwo = scene.policeSystem.desiredCount(2);
@@ -51,7 +53,7 @@ test("wanted levels deploy cruisers, reserve officers, form a partial roadblock 
       .filter(cop => cop.motorizedUnitId === pursuit.id)
       .map(cop => ({ id: cop.id, chasingPlayer: cop.chasingPlayer, unitId: cop.motorizedUnitId }));
 
-    scene.exposureSystem.forceLevel(3, "Motorized police level-three test.");
+    scene.heatSystem.forceLevel(3, "Motorized police level-three test.");
     window.NBD_MOTORIZED_POLICE.reconcile();
     const levelThreeInitial = window.NBD_MOTORIZED_POLICE.snapshot();
     const totalTargetAtThree = scene.policeSystem.desiredCount(3);

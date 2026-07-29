@@ -129,27 +129,48 @@ test("Night Ledger promotes active police pursuit into the alert badge and incid
     },
     policeState: {
       level: 2,
-      exposureValue: 64,
-      exposureMax: 125,
-      lastReason: "A witness reports a stolen vehicle.",
+      heat: {
+        level: 2,
+        value: 43,
+        max: 100,
+        lastReason: "A witness reports a stolen vehicle.",
+        hottestZoneName: "Civic Centre",
+        hottestZoneHeat: 43,
+        incidents: []
+      },
+      exposure: {
+        level: 2,
+        value: 64,
+        max: 125,
+        lastReason: "Police recovered a drained body.",
+        records: [{
+          id: "evidence-1",
+          kind: "drained_body",
+          districtId: "civic-center",
+          knowledgeState: "institutional",
+          exposureWeight: 64,
+          createdAt: 9000,
+          discoveredAt: 9000,
+          resolvedAt: 0
+        }]
+      },
       footOfficers: 6,
       chasingOfficers: 2,
       motorizedUnits: 1,
       desiredMotorizedUnits: 1,
       fleeingWitnesses: 1,
       witnessReports: 2,
-      bodiesDiscovered: 1,
-      hottestZoneName: "Civic Centre",
-      hottestZoneHeat: 43
+      bodiesDiscovered: 1
     },
     now: 10_000
   });
 
   assert.equal(wantedLabel(2), "PURSUIT");
   assert.equal(model.severity, "danger");
-  assert.equal(model.alertCount, 1);
+  assert.equal(model.alertCount, 2);
   assert.equal(model.police.stateLabel, "PURSUIT");
-  assert.equal(Math.round(model.police.exposurePercent), 51);
+  assert.equal(Math.round(model.exposure.percent), 51);
+  assert.equal(model.exposure.knownCount, 1);
   assert.equal(model.incidents[0].title, "POLICE PURSUIT");
   assert.equal(model.incidents[0].status, "ACTIVE");
 });

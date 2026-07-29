@@ -37,6 +37,12 @@ function bodyDelta(body) {
     huntingAssessmentId: body.huntingAssessmentId || null,
     huntingAssessmentIds: [...new Set((Array.isArray(body.huntingAssessmentIds) ? body.huntingAssessmentIds : [])
       .map(value => String(value || "").trim())
+      .filter(Boolean))],
+    exposureEvidenceIds: [...new Set((Array.isArray(body.exposureEvidenceIds) ? body.exposureEvidenceIds : [])
+      .map(value => String(value || "").trim())
+      .filter(Boolean))],
+    pendingHuntingAssessmentIds: [...new Set((Array.isArray(body.pendingHuntingAssessmentIds) ? body.pendingHuntingAssessmentIds : [])
+      .map(value => String(value || "").trim())
       .filter(Boolean))]
   };
 }
@@ -50,7 +56,10 @@ function evidenceDelta(stain) {
     kind: String(stain.kind || "blood"),
     age: finite(stain.age),
     life: finite(stain.life),
-    discovered: Boolean(stain.discovered)
+    discovered: Boolean(stain.discovered),
+    exposureEvidenceIds: [...new Set((Array.isArray(stain.exposureEvidenceIds) ? stain.exposureEvidenceIds : [])
+      .map(value => String(value || "").trim())
+      .filter(Boolean))]
   };
 }
 
@@ -103,6 +112,7 @@ export class ChunkDeltaStore {
       if ([1, 2].includes(value?.version)) this.memory.set(id, value);
     }
     this.applyStoredBodies();
+    this.applyStoredEvidence();
   }
 
   applyStoredBodies() {
@@ -122,6 +132,40 @@ export class ChunkDeltaStore {
       this.scene.npcSystem?.rebuildSpatialIndex?.();
       this.scene.npcSystem?.refreshVisibility?.();
     }
+    return restored;
+  }
+
+
+  applyStoredEvidence() {
+    const evidenceSystem = this.scene.evidenceSystem;
+    if (!evidenceSystem || !this.memory.size) return 0;
+    const byId = new Map((evidenceSystem.bloodStains || []).map(stain => [String(stain.id), stain]));
+    let restored = 0;
+    for (const delta of this.memory.values()) {
+      for (const value of delta.evidence || []) {
+        const id = String(value.id || "").trim();
+        if (!id || byId.has(id) || finite(value.life) <= 0) continue;
+        const numericId = Number(id);
+        const stain = {
+          id: Number.isFinite(numericId) ? numericId : id,
+          x: finite(value.x),
+          y: finite(value.y),
+          layer: finite(value.layer),
+          kind: String(value.kind || "blood"),
+          age: Math.max(0, finite(value.age)),
+          life: Math.max(0, finite(value.life)),
+          discovered: Boolean(value.discovered),
+          exposureEvidenceIds: [...new Set((Array.isArray(value.exposureEvidenceIds) ? value.exposureEvidenceIds : [])
+            .map(item => String(item || "").trim())
+            .filter(Boolean))]
+        };
+        evidenceSystem.bloodStains.push(stain);
+        byId.set(id, stain);
+        restored++;
+      }
+    }
+    const numericIds = evidenceSystem.bloodStains.map(stain => Number(stain.id)).filter(Number.isFinite);
+    evidenceSystem.nextBloodId = Math.max(Number(evidenceSystem.nextBloodId) || 1, 1 + Math.max(0, ...numericIds));
     return restored;
   }
 
@@ -153,6 +197,12 @@ export class ChunkDeltaStore {
     npc.huntingAssessmentIds = [...new Set((Array.isArray(body.huntingAssessmentIds) ? body.huntingAssessmentIds : [])
       .map(value => String(value || "").trim())
       .filter(Boolean))];
+    npc.exposureEvidenceIds = [...new Set((Array.isArray(body.exposureEvidenceIds) ? body.exposureEvidenceIds : [])
+      .map(value => String(value || "").trim())
+      .filter(Boolean))];
+    npc.pendingHuntingAssessmentIds = [...new Set((Array.isArray(body.pendingHuntingAssessmentIds) ? body.pendingHuntingAssessmentIds : [])
+      .map(value => String(value || "").trim())
+      .filter(Boolean))];
 
     if (npc.feedingUnconscious) {
       if (npc.combat) {
@@ -181,6 +231,7 @@ export class ChunkDeltaStore {
         || body.corpseDiscovered
         || body.exposedAfterContainment
         || body.feedingUnconscious
+        || (Array.isArray(body.exposureEvidenceIds) && body.exposureEvidenceIds.length > 0)
         || String(body.feedingDepth || FEEDING_DEPTHS.NONE) !== FEEDING_DEPTHS.NONE
       ))
       .map(bodyDelta);

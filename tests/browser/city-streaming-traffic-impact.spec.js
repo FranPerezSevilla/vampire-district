@@ -148,7 +148,7 @@ test("a hard traffic impact damages once, alerts police and keeps the pooled slo
   expect(result.firstImpact.lastImpact.damage).toBeGreaterThan(0);
   expect(result.firstImpact.lastImpact.suppressed).toBe(false);
   expect(result.healthAfterFirst).toBeLessThan(result.healthBefore);
-  expect(result.exposureAfterFirst).toBeGreaterThan(result.exposureBefore);
+  expect(result.exposureAfterFirst).toBe(result.exposureBefore);
   expect(result.heatAfterFirst).toBeGreaterThan(result.heatBefore);
   expect(result.assignmentAfterFirst.slotIndex).toBe(result.assignmentBefore.slotIndex);
 

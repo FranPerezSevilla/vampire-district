@@ -2,7 +2,7 @@ import { CITY_ANCHORS, LAYERS } from "../data/district.js";
 import { ReleaseCandidateHarness as ReleaseCandidateHarnessCore } from "./ReleaseCandidateHarnessCore.js";
 
 export class ReleaseCandidateHarness extends ReleaseCandidateHarnessCore {
-  effectivePolicePressure(level = this.scene.exposureSystem.level()) {
+  effectivePolicePressure(level = this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem.level()) {
     const police = this.scene.policeSystem;
     const footPolice = police.police().length;
     const reservedPolice = this.scene.motorizedPoliceSystem?.reservedOfficerCount?.(level) || 0;
@@ -39,7 +39,7 @@ export class ReleaseCandidateHarness extends ReleaseCandidateHarnessCore {
       CITY_ANCHORS.policeEntrance,
       "RC stress: central police response zone."
     );
-    this.scene.exposureSystem.forceLevel(3, "RC stress scenario: maximum police response.");
+    this.scene.heatSystem?.forceLevel?.(3, "RC stress scenario: maximum police response.");
     const desired = police.desiredCount?.(3) || 7;
     police.spawnForExposure(3);
     this.preparePoliceOfficers(desired, CITY_ANCHORS.policeEntrance);
@@ -48,7 +48,7 @@ export class ReleaseCandidateHarness extends ReleaseCandidateHarnessCore {
     police.updateHelicopter?.(0.016, 3);
 
     await this.waitFor(
-      () => this.scene.exposureSystem.level() >= 3
+      () => (this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem.level()) >= 3
         && this.effectivePolicePressure(3).total >= desired
         && police.helicopter.active,
       { timeoutMs: 3_000, label: "level-three police response" }

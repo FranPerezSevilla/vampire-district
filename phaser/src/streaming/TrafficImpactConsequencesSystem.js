@@ -48,29 +48,32 @@ export function trafficImpactDamage(speed, {
   return round(Math.max(base, Math.max(0, finite(hardMinimumDamage, 4))), 1);
 }
 
-export function trafficImpactExposure(speed, {
+export function trafficImpactHeatBonus(speed, {
   hardThreshold = 125,
   severeThreshold = 210,
-  hardExposure = 2,
-  severeExposure = 5,
-  maximumExposure = 7
+  hardHeatBonus = 2,
+  severeHeatBonus = 5,
+  maximumHeatBonus = 7
 } = {}) {
   const impact = Math.abs(finite(speed));
   const tier = trafficImpactTier(impact, { hardThreshold, severeThreshold });
   if (tier === "soft") return 0;
   if (tier === "severe") {
     return clamp(
-      Math.max(1, finite(severeExposure, 5)) + Math.floor(Math.max(0, impact - severeThreshold) / 70),
+      Math.max(1, finite(severeHeatBonus, 5)) + Math.floor(Math.max(0, impact - severeThreshold) / 70),
       1,
-      Math.max(1, finite(maximumExposure, 7))
+      Math.max(1, finite(maximumHeatBonus, 7))
     );
   }
   return clamp(
-    Math.max(1, finite(hardExposure, 2)) + Math.floor(Math.max(0, impact - hardThreshold) / 60),
+    Math.max(1, finite(hardHeatBonus, 2)) + Math.floor(Math.max(0, impact - hardThreshold) / 60),
     1,
-    Math.max(1, finite(maximumExposure, 7))
+    Math.max(1, finite(maximumHeatBonus, 7))
   );
 }
+
+// Historical alias retained for test/plugin compatibility; this value now adds ordinary Heat only.
+export const trafficImpactExposure = trafficImpactHeatBonus;
 
 export class TrafficImpactConsequencesSystem {
   constructor(scene, options = {}) {
@@ -89,9 +92,9 @@ export class TrafficImpactConsequencesSystem {
     this.hardMinimumDamage = 4;
     this.severeMinimumDamage = 16;
     this.severeDamageMultiplier = 1.35;
-    this.hardExposure = 2;
-    this.severeExposure = 5;
-    this.maximumExposure = 7;
+    this.hardHeatBonus = 2;
+    this.severeHeatBonus = 5;
+    this.maximumHeatBonus = 7;
     this.hardHeatMinimum = 7;
     this.severeHeatMinimum = 15;
     this.maximumHeat = 24;
@@ -135,9 +138,9 @@ export class TrafficImpactConsequencesSystem {
     this.hardMinimumDamage = Math.max(0, option("hardMinimumDamage", 4));
     this.severeMinimumDamage = Math.max(this.hardMinimumDamage, option("severeMinimumDamage", 16));
     this.severeDamageMultiplier = Math.max(1, option("severeDamageMultiplier", 1.35));
-    this.hardExposure = Math.max(1, option("hardExposure", 2));
-    this.severeExposure = Math.max(this.hardExposure, option("severeExposure", 5));
-    this.maximumExposure = Math.max(this.severeExposure, option("maximumExposure", 7));
+    this.hardHeatBonus = Math.max(1, option("hardHeatBonus", option("hardExposure", 2)));
+    this.severeHeatBonus = Math.max(this.hardHeatBonus, option("severeHeatBonus", option("severeExposure", 5)));
+    this.maximumHeatBonus = Math.max(this.severeHeatBonus, option("maximumHeatBonus", option("maximumExposure", 7)));
     this.hardHeatMinimum = Math.max(1, option("hardHeatMinimum", 7));
     this.severeHeatMinimum = Math.max(this.hardHeatMinimum, option("severeHeatMinimum", 15));
     this.maximumHeat = Math.max(this.severeHeatMinimum, option("maximumHeat", 24));
@@ -182,7 +185,7 @@ export class TrafficImpactConsequencesSystem {
         lastTier: "soft",
         lastImpactSpeed: 0,
         lastDamage: 0,
-        lastExposure: 0,
+        lastHeatBonus: 0,
         lastHeat: 0,
         lastVehicleId: null,
         hardImpacts: 0,
@@ -213,13 +216,13 @@ export class TrafficImpactConsequencesSystem {
     });
   }
 
-  exposureFor(speed) {
-    return trafficImpactExposure(speed, {
+  heatBonusFor(speed) {
+    return trafficImpactHeatBonus(speed, {
       hardThreshold: this.hardThreshold,
       severeThreshold: this.severeThreshold,
-      hardExposure: this.hardExposure,
-      severeExposure: this.severeExposure,
-      maximumExposure: this.maximumExposure
+      hardHeatBonus: this.hardHeatBonus,
+      severeHeatBonus: this.severeHeatBonus,
+      maximumHeatBonus: this.maximumHeatBonus
     });
   }
 
@@ -263,7 +266,7 @@ export class TrafficImpactConsequencesSystem {
         tier,
         impactSpeed,
         damage: 0,
-        exposure: 0,
+        heatBonus: 0,
         heat: 0,
         suppressed: false
       };
@@ -280,7 +283,7 @@ export class TrafficImpactConsequencesSystem {
         tier,
         impactSpeed,
         damage: 0,
-        exposure: 0,
+        heatBonus: 0,
         heat: 0,
         suppressed: true
       };
@@ -289,7 +292,7 @@ export class TrafficImpactConsequencesSystem {
     }
 
     const damage = this.damageFor(impactSpeed);
-    const exposure = this.exposureFor(impactSpeed);
+    const heatBonus = this.heatBonusFor(impactSpeed);
     const heat = this.heatFor(impactSpeed, tier);
     state.cooldownSeconds = this.impactCooldownSeconds;
     state.stallSeconds = Math.max(
@@ -299,7 +302,7 @@ export class TrafficImpactConsequencesSystem {
     state.lastTier = tier;
     state.lastImpactSpeed = impactSpeed;
     state.lastDamage = damage;
-    state.lastExposure = exposure;
+    state.lastHeatBonus = heatBonus;
     state.lastHeat = heat;
     state.lastVehicleId = vehicle.id;
     if (tier === "severe") {
@@ -329,8 +332,7 @@ export class TrafficImpactConsequencesSystem {
     const reason = tier === "severe"
       ? `${vehicle.name} slams into traffic at high speed.`
       : `${vehicle.name} collides hard with traffic.`;
-    this.scene.exposureSystem?.add?.(exposure, reason);
-    this.scene.policeSystem?.addHeat?.(vehicle.x, vehicle.y, heat, tier === "severe" ? "severe traffic collision" : "traffic collision");
+    this.scene.policeSystem?.addHeat?.(vehicle.x, vehicle.y, heat + heatBonus, reason, { source: tier === "severe" ? "severe_traffic_collision" : "traffic_collision" });
     RawAudio.play("bodyDrop", { cooldown: 0.4 });
 
     const health = vehicleHealthPercent(vehicle.health, vehicle.archetype.maxHealth);
@@ -343,8 +345,8 @@ export class TrafficImpactConsequencesSystem {
       tier,
       impactSpeed,
       damage,
-      exposure,
-      heat,
+      heatBonus,
+      heat: heat + heatBonus,
       suppressed: false,
       disabled: Boolean(vehicle.disabled)
     };
@@ -386,7 +388,7 @@ export class TrafficImpactConsequencesSystem {
         lastTier: state.lastTier,
         lastImpactSpeed: round(state.lastImpactSpeed),
         lastDamage: round(state.lastDamage, 1),
-        lastExposure: round(state.lastExposure),
+        lastHeatBonus: round(state.lastHeatBonus),
         lastHeat: round(state.lastHeat, 1),
         lastVehicleId: state.lastVehicleId,
         hardImpacts: state.hardImpacts,
@@ -437,7 +439,8 @@ export class TrafficImpactConsequencesSystem {
       snapshot: () => this.snapshot(),
       classify: speed => this.tierFor(speed),
       damage: speed => this.damageFor(speed),
-      exposure: speed => this.exposureFor(speed),
+      heatBonus: speed => this.heatBonusFor(speed),
+      exposure: speed => this.heatBonusFor(speed),
       step: (seconds = 0.1) => {
         let remaining = Math.max(0, finite(seconds, 0.1));
         while (remaining > 0.0001) {
