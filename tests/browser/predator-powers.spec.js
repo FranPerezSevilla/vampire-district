@@ -202,6 +202,12 @@ test("Blood Sense, contextual Whisper and Give In form one evidence-limited pred
     });
     officer.compromised = true;
     officer.whisperAuthority = true;
+    officer.alarmed = false;
+    officer.hasReported = false;
+    officer.reportTarget = null;
+    officer.reactionTimer = 0;
+    officer.soundReactionTimer = 0;
+    officer.whisperResistance = 3;
     officer.chasingPlayer = false;
     officer.enemyAttack = null;
     scene.aiStateSystem.resolveNpc(officer);
