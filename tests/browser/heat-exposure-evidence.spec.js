@@ -105,7 +105,7 @@ test("Heat and evidence-backed Exposure diverge, persist and remain explainable 
   await expect(page.locator("#night-ledger-content")).toContainText("VEIL / EVIDENCE");
   await expect(page.locator('[data-ledger-police-state="CLEAR"]')).toBeVisible();
   const knownEvidence = page.locator('[data-ledger-evidence="drained_body"]');
-  await expect(knownEvidence).toContainText("Drained Body");
+  await expect(knownEvidence).toContainText("DRAINED BODY");
   await expect(knownEvidence).toContainText("INSTITUTIONAL");
   await page.keyboard.press("Escape");
 
