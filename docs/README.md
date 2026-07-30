@@ -4,6 +4,7 @@ This directory is the project source of truth for design, implementation and pla
 
 ## Start here
 
+- [Agent development workflow](AGENT_DEVELOPMENT.md) — short operational map, affected-test commands and bounded implementation workflow for AI-assisted changes.
 - [Project blueprint](PROJECT_BLUEPRINT.md) — canonical product, campaign, runtime, vehicle, city-streaming and production-priority map.
 - [Project snapshot](PROJECT_SNAPSHOT.md) — concise current playable state, controls, locked decisions, risks and immediate priority.
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — authoritative runtime ownership, update order, persistence boundaries and testing contracts.
