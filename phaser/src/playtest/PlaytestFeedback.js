@@ -6,6 +6,16 @@ function clean(value) {
   return String(value ?? "").trim();
 }
 
+function isTextEntryTarget(target) {
+  const tag = String(target?.tagName || "").toUpperCase();
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || Boolean(target?.isContentEditable);
+}
+
+function isActivatableTarget(target) {
+  const tag = String(target?.tagName || "").toUpperCase();
+  return tag === "BUTTON" || tag === "A" || tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA";
+}
+
 export function buildPlaytestFeedbackPayload({ values = {}, session = null, result = null, client = {} } = {}) {
   const sessionSnapshot = session && typeof session === "object" ? session : {};
   const resultSnapshot = result && typeof result === "object" ? result : null;
@@ -92,7 +102,8 @@ export class PlaytestFeedback {
     this.bind();
     window.NBD_PLAYTEST_FEEDBACK = Object.freeze({
       open: reason => this.open(reason),
-      close: () => this.close()
+      close: () => this.close(),
+      downloadBackup: () => this.downloadQueuedFeedback()
     });
   }
 
@@ -147,7 +158,7 @@ export class PlaytestFeedback {
               </select>
             </label>
             <label>Name / handle <span>(optional)</span>
-              <input type="text" name="playerName" maxlength="120" autocomplete="off">
+              <textarea name="playerName" rows="1" maxlength="120" autocomplete="off"></textarea>
             </label>
             <label>Bug or extra comment <span>(optional)</span>
               <textarea name="extra" rows="3" maxlength="1600"></textarea>
@@ -156,6 +167,7 @@ export class PlaytestFeedback {
             <div class="playtest-feedback-actions">
               <button class="playtest-primary" type="submit">Send feedback</button>
               <button class="playtest-secondary" type="button" data-feedback-close>Not now</button>
+              <button id="playtest-feedback-download" class="playtest-secondary" type="button">Download local backup</button>
             </div>
             <p id="playtest-feedback-status" class="playtest-feedback-status" role="status" aria-live="polite"></p>
           </form>
@@ -166,6 +178,7 @@ export class PlaytestFeedback {
     this.overlay = document.getElementById("playtest-feedback-overlay");
     this.form = document.getElementById("playtest-feedback-form");
     this.status = document.getElementById("playtest-feedback-status");
+    this.downloadButton = document.getElementById("playtest-feedback-download");
   }
 
   bind() {
@@ -173,6 +186,7 @@ export class PlaytestFeedback {
     this.overlay?.querySelectorAll?.("[data-feedback-close]").forEach(button => {
       button.addEventListener("click", () => this.close());
     });
+    this.downloadButton?.addEventListener("click", () => this.downloadQueuedFeedback());
     this.overlay?.addEventListener("pointerdown", event => {
       if (event.target === this.overlay) this.close();
     });
@@ -181,14 +195,29 @@ export class PlaytestFeedback {
       void this.submit();
     });
     this.onKeyDown = event => {
-      const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(String(event.target?.tagName || "").toUpperCase());
-      if (!typing && event.code === "KeyP") {
-        event.preventDefault();
-        this.opened ? this.close() : this.open("hotkey");
-      } else if (event.code === "Escape" && this.opened) {
-        event.preventDefault();
-        this.close();
+      const typing = isTextEntryTarget(event.target);
+      if (!this.opened) {
+        if (!typing && event.code === "KeyP") {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          this.open("hotkey");
+        }
+        return;
       }
+
+      if (event.code === "Escape" || (!typing && event.code === "KeyP")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        this.close();
+        return;
+      }
+
+      const allowDefault = typing
+        || event.code === "Tab"
+        || (isActivatableTarget(event.target)
+          && ["Enter", "Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code));
+      if (!allowDefault) event.preventDefault();
+      event.stopImmediatePropagation();
     };
     window.addEventListener("keydown", this.onKeyDown, true);
   }
@@ -249,6 +278,25 @@ export class PlaytestFeedback {
       this.setStatus("The network request failed. A local backup was saved in this browser.", "warn");
       console.warn("Viceblood playtest feedback submission failed", error);
     }
+  }
+
+  downloadQueuedFeedback() {
+    const items = queuedFeedback();
+    if (!items.length) {
+      this.setStatus("There is no local feedback backup in this browser.", "warn");
+      return false;
+    }
+    const blob = new Blob([JSON.stringify(items, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `viceblood-playtest-feedback-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    this.setStatus(`Downloaded ${items.length} local feedback item${items.length === 1 ? "" : "s"}.`, "ok");
+    return true;
   }
 
   setStatus(message, kind = "") {
