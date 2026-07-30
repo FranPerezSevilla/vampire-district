@@ -15,6 +15,11 @@ function setTextIfChanged(node, value) {
   if (node && node.textContent !== text) node.textContent = text;
 }
 
+function isActivatableTarget(target) {
+  const tag = String(target?.tagName || "").toUpperCase();
+  return tag === "BUTTON" || tag === "A" || tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA";
+}
+
 function playtestStep(snapshot) {
   if (snapshot?.status === "complete") return "DONE";
   if (snapshot?.status === "failed") return "FAIL";
@@ -100,7 +105,7 @@ export class PlaytestUi {
           <p id="playtest-result-subtitle" class="playtest-lead"></p>
           <div id="playtest-result-stats" class="playtest-result-stats"></div>
           <div class="playtest-result-actions">
-            <button id="playtest-restart" class="playtest-primary" type="button">Play again · Enter</button>
+            <button id="playtest-restart" class="playtest-primary" type="button">Play again</button>
             <button id="playtest-result-feedback" class="playtest-secondary" type="button">Send feedback</button>
           </div>
         </section>
@@ -146,6 +151,7 @@ export class PlaytestUi {
 
   pauseForIntro() {
     if (this.gameScene?.sys?.isActive?.()) this.gameScene.scene.pause();
+    window.requestAnimationFrame?.(() => this.startButton?.focus?.());
   }
 
   bind() {
@@ -153,15 +159,23 @@ export class PlaytestUi {
     this.restartButton?.addEventListener("click", () => this.session.restart());
     this.feedbackButton?.addEventListener("click", () => this.feedback.open("result"));
     this.onKeyDown = event => {
-      const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(String(event.target?.tagName || "").toUpperCase());
-      if (typing || event.repeat) return;
-      if (event.code === "Enter" && this.intro?.classList.contains("open")) {
+      if (event.repeat || this.feedback?.opened) return;
+      const introOpen = Boolean(this.intro?.classList.contains("open"));
+      const resultOpen = Boolean(this.resultOverlay?.classList.contains("open"));
+      if (!introOpen && !resultOpen) return;
+
+      if (event.code === "Enter" && !isActivatableTarget(event.target)) {
         event.preventDefault();
-        this.start();
-      } else if (event.code === "Enter" && this.resultOverlay?.classList.contains("open") && !this.feedback.opened) {
-        event.preventDefault();
-        this.session.restart();
+        event.stopImmediatePropagation();
+        if (introOpen) this.start();
+        else this.session.restart();
+        return;
       }
+
+      const allowDefault = event.code === "Tab"
+        || (isActivatableTarget(event.target) && (event.code === "Enter" || event.code === "Space"));
+      if (!allowDefault) event.preventDefault();
+      event.stopImmediatePropagation();
     };
     window.addEventListener("keydown", this.onKeyDown, true);
   }
