@@ -1,4 +1,5 @@
 import { PLAYER } from "../data/balance.js";
+import { NPC_TYPES } from "../data/npcs.js";
 import {
   PLAYTEST_CONFIG,
   PLAYTEST_STATUS,
@@ -14,6 +15,8 @@ const FEEDING_DEPTH_KEYS = Object.freeze({
   full_feed: "fullFeeds",
   drain: "drains"
 });
+const PREY_COLOR = 0xff4bd8;
+const REFUGE_COLOR = 0x78c7a3;
 
 function clampDelta(value) {
   return Math.min(0.25, Math.max(0, Number(value) || 0));
@@ -29,6 +32,10 @@ function frozenSnapshot(state, refuge) {
     objectives: Object.freeze(state.objectives.map(objective => Object.freeze({ ...objective }))),
     objectiveText: playtestObjectiveText(state)
   });
+}
+
+function distanceBetween(a, b) {
+  return Math.hypot((Number(a?.x) || 0) - (Number(b?.x) || 0), (Number(a?.y) || 0) - (Number(b?.y) || 0));
 }
 
 export class PlaytestSessionSystem {
@@ -85,7 +92,7 @@ export class PlaytestSessionSystem {
   observation(dt) {
     const scene = this.scene;
     const player = scene.player || this.refuge;
-    const distanceFromRefuge = Math.hypot(player.x - this.refuge.x, player.y - this.refuge.y);
+    const distanceFromRefuge = distanceBetween(player, this.refuge);
     const currentLayer = Number(scene.currentLayer) || 0;
     const nearRefuge = currentLayer === this.refuge.layer && distanceFromRefuge <= this.config.safeRadius;
     return {
@@ -107,7 +114,7 @@ export class PlaytestSessionSystem {
       const previousStatus = this.state.status;
       this.state = advancePlaytestSession(this.state, this.observation(dt));
       this.publishElapsed += dt;
-      this.drawRefugeMarker();
+      this.drawGuidanceMarker();
       const transitioned = previousStatus !== this.state.status;
       if (transitioned || this.publishElapsed >= 0.1) {
         this.publishElapsed = 0;
@@ -119,15 +126,97 @@ export class PlaytestSessionSystem {
     this.marker.clear().setVisible(false);
   }
 
-  drawRefugeMarker() {
-    const returning = this.state.objectiveIndex === 2 && this.state.status === PLAYTEST_STATUS.ACTIVE;
-    this.marker.clear().setVisible(returning);
-    if (!returning || this.scene.currentLayer !== this.refuge.layer) return;
+  nearestPrey() {
+    const player = this.scene.player;
+    const layer = Number(this.scene.currentLayer) || 0;
+    const candidates = this.scene.npcSystem?.npcs || [];
+    let nearest = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    for (const npc of candidates) {
+      if (!npc
+        || npc.type !== NPC_TYPES.CIVILIAN
+        || npc.layer !== layer
+        || npc.dead
+        || npc.inactive
+        || npc.intercepted
+        || npc.hiddenBody) continue;
+      const distance = distanceBetween(player, npc);
+      if (distance >= nearestDistance) continue;
+      nearest = npc;
+      nearestDistance = distance;
+    }
+    return nearest;
+  }
+
+  drawGuidanceMarker() {
+    const active = this.state.status === PLAYTEST_STATUS.ACTIVE;
+    const returning = this.state.objectiveIndex === 2;
+    const target = returning ? this.refuge : this.nearestPrey();
+    this.marker.clear().setVisible(Boolean(active && target));
+    if (!active || !target) return;
+
+    const color = returning ? REFUGE_COLOR : PREY_COLOR;
     const pulse = (Math.sin((this.scene.time?.now || 0) * 0.008) + 1) * 0.5;
-    const radius = this.config.safeRadius + pulse * 8;
-    this.marker.fillStyle(0x05060b, 0.42).fillCircle(this.refuge.x, this.refuge.y, 16);
-    this.marker.lineStyle(3, 0x78c7a3, 0.72 + pulse * 0.22).strokeCircle(this.refuge.x, this.refuge.y, radius);
-    this.marker.lineStyle(1, 0xf1e6ff, 0.74).strokeCircle(this.refuge.x, this.refuge.y, 18 + pulse * 3);
+    if (target.layer === this.scene.currentLayer) {
+      if (returning) {
+        this.marker.lineStyle(3, color, 0.68 + pulse * 0.24)
+          .strokeCircle(target.x, target.y, this.config.safeRadius + pulse * 8);
+      } else {
+        this.marker.fillStyle(0x05060b, 0.5).fillCircle(target.x, target.y, 15 + pulse * 2);
+        this.marker.lineStyle(2, color, 0.78 + pulse * 0.2).strokeCircle(target.x, target.y, 20 + pulse * 4);
+      }
+    }
+    this.drawDirectionArrow(target, color, pulse);
+  }
+
+  drawDirectionArrow(target, color, pulse) {
+    const player = this.scene.player;
+    const dx = target.x - player.x;
+    const dy = target.y - player.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance < 28) return;
+
+    const ux = dx / distance;
+    const uy = dy / distance;
+    const px = -uy;
+    const py = ux;
+    const startDistance = 19;
+    const endDistance = Math.min(82 + pulse * 4, Math.max(34, distance - 12));
+    const endX = player.x + ux * endDistance;
+    const endY = player.y + uy * endDistance;
+    const headLength = 14;
+    const headWidth = 8;
+    const stemX = endX - ux * (headLength - 1);
+    const stemY = endY - uy * (headLength - 1);
+    const baseX = endX - ux * headLength;
+    const baseY = endY - uy * headLength;
+
+    this.marker.lineStyle(6, 0x05060b, 0.76)
+      .beginPath()
+      .moveTo(player.x + ux * startDistance, player.y + uy * startDistance)
+      .lineTo(stemX, stemY)
+      .strokePath();
+    this.marker.lineStyle(3, color, 0.94)
+      .beginPath()
+      .moveTo(player.x + ux * startDistance, player.y + uy * startDistance)
+      .lineTo(stemX, stemY)
+      .strokePath();
+    this.marker.fillStyle(0x05060b, 0.84).fillTriangle(
+      endX + ux * 2,
+      endY + uy * 2,
+      baseX + px * (headWidth + 2),
+      baseY + py * (headWidth + 2),
+      baseX - px * (headWidth + 2),
+      baseY - py * (headWidth + 2)
+    );
+    this.marker.fillStyle(color, 1).fillTriangle(
+      endX,
+      endY,
+      baseX + px * headWidth,
+      baseY + py * headWidth,
+      baseX - px * headWidth,
+      baseY - py * headWidth
+    );
   }
 
   publish(force = false) {
