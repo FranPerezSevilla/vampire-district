@@ -10,6 +10,12 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function playtestStep(snapshot) {
+  if (snapshot?.status === "complete") return "DONE";
+  if (snapshot?.status === "failed") return "FAIL";
+  return `${Math.max(0, Number(snapshot?.objectiveIndex) || 0) + 1}/3`;
+}
+
 function resultStatsMarkup(result) {
   const stats = result?.stats || {};
   return [
@@ -31,12 +37,14 @@ export class PlaytestUi {
   constructor(session, gameScene) {
     this.session = session;
     this.gameScene = gameScene;
+    this.uiScene = gameScene?.scene?.get?.("UIScene") || null;
     this.resultShown = false;
     this.mount();
     this.feedback = new PlaytestFeedback(session, gameScene);
     this.unsubscribe = session.subscribe((snapshot, result) => this.render(snapshot, result));
     this.pauseForIntro();
     this.bind();
+    this.bindUiPostUpdate();
     this.render(session.snapshot(), session.result());
   }
 
@@ -131,6 +139,14 @@ export class PlaytestUi {
     window.addEventListener("keydown", this.onKeyDown, true);
   }
 
+  bindUiPostUpdate() {
+    this.onUiPostUpdate = () => {
+      const snapshot = this.session?.snapshot?.();
+      if (snapshot) this.renderMissionSurface(snapshot, playtestStep(snapshot));
+    };
+    this.uiScene?.events?.on?.(Phaser.Scenes.Events.POST_UPDATE, this.onUiPostUpdate);
+  }
+
   start() {
     if (!this.intro?.classList.contains("open")) return;
     this.intro.classList.remove("open");
@@ -144,13 +160,18 @@ export class PlaytestUi {
   render(snapshot, result = null) {
     if (!snapshot) return;
     const objective = snapshot.objectives[snapshot.objectiveIndex] || snapshot.objectives.at(-1);
-    const step = snapshot.status === "complete" ? "DONE" : snapshot.status === "failed" ? "FAIL" : `${snapshot.objectiveIndex + 1}/3`;
+    const step = playtestStep(snapshot);
     if (this.step) this.step.textContent = step;
     if (this.objectiveTitle) this.objectiveTitle.textContent = snapshot.objectiveText || objective?.label || snapshot.title;
     if (this.objectiveHint) this.objectiveHint.textContent = objective?.hint || "";
     if (this.timer) this.timer.textContent = formatPlaytestDuration(snapshot.timeRemainingSeconds);
     this.objective?.classList.toggle("danger", snapshot.timeRemainingSeconds <= 120);
+    this.renderMissionSurface(snapshot, step);
 
+    if (result && !this.resultShown) this.showResult(result);
+  }
+
+  renderMissionSurface(snapshot, step) {
     const missionCurrent = document.getElementById("mission-current");
     const missionLast = document.getElementById("mission-last");
     const missionStep = document.getElementById("hud-mission-step");
@@ -164,8 +185,6 @@ export class PlaytestUi {
         return `<li class="${escapeHtml(item.state)}">${icon} ${escapeHtml(item.label)}</li>`;
       }).join("");
     }
-
-    if (result && !this.resultShown) this.showResult(result);
   }
 
   showResult(result) {
@@ -182,6 +201,7 @@ export class PlaytestUi {
 
   destroy() {
     window.removeEventListener("keydown", this.onKeyDown, true);
+    this.uiScene?.events?.off?.(Phaser.Scenes.Events.POST_UPDATE, this.onUiPostUpdate);
     this.unsubscribe?.();
     this.feedback?.destroy?.();
     this.intro?.remove?.();
