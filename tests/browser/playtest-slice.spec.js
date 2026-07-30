@@ -16,6 +16,7 @@ test("playtest mode delivers a start, objective loop, result and feedback path",
 
   await page.waitForFunction(() => window.NBD_PLAYTEST_SESSION?.snapshot?.().status === "active");
   await expect(page.locator("#playtest-objective")).toHaveClass(/open/);
+  await expect(page.locator("#playtest-objective-hint")).toContainText("prey pulse");
   await expect(page.locator("#hud-hunger-value")).toContainText("72%");
   await expect(page.locator("#mission-current")).toContainText("1/3 HUNT");
 
@@ -38,6 +39,9 @@ test("playtest mode delivers a start, objective loop, result and feedback path",
   await expect(page.locator("#playtest-result-title")).toHaveText("NIGHT SURVIVED");
   await expect(page.locator("#playtest-result-stats")).toContainText("Victims fed upon");
   await expect(page.locator("#playtest-result-feedback")).toBeVisible();
+  await expect(page.locator("#ui-modal")).not.toHaveClass(/open/);
+  await expect.poll(() => page.evaluate(() => window.NBD_PLAYTEST_SESSION.snapshot().objectiveText))
+    .toContain("NIGHT SURVIVED");
 
   await page.locator("#playtest-result-feedback").click();
   await expect(page.locator("#playtest-feedback-overlay")).toHaveClass(/open/);
