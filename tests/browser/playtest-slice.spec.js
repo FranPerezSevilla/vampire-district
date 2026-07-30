@@ -30,6 +30,18 @@ test("playtest mode delivers a start, objective loop, result and feedback path",
   await expect(page.locator("#mission-checklist")).toContainText("Find prey and feed");
   await expect(page.locator("#mission-checklist")).not.toContainText("rooftop blocker");
 
+  const guidance = await page.evaluate(() => {
+    const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
+    const session = scene.playtestSessionSystem;
+    session.update(0.1);
+    return {
+      preyId: session.nearestPrey()?.id || null,
+      markerVisible: Boolean(session.marker?.visible)
+    };
+  });
+  expect(guidance.preyId).toBeTruthy();
+  expect(guidance.markerVisible).toBe(true);
+
   await page.evaluate(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const session = scene.playtestSessionSystem;
