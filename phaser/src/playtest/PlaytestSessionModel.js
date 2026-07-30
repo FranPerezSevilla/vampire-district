@@ -19,12 +19,12 @@ const OBJECTIVE_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: "feed",
     label: "Find prey and feed",
-    hint: "Press F to read nearby life. Hold right mouse on a valid victim and release at a feeding threshold."
+    hint: "Follow the prey pulse, press F to read nearby life, then hold right mouse and release at a feeding threshold."
   }),
   Object.freeze({
     id: "hunger",
     label: "Lower Hunger to 25% or less",
-    hint: "Quick Bite is safer; Full Feed and Drain provide more blood but leave a worse scene."
+    hint: "Follow another prey pulse or continue feeding. Quick Bite is safer; deeper feeding leaves a worse scene."
   }),
   Object.freeze({
     id: "return",
@@ -171,8 +171,8 @@ export function advancePlaytestSession(state, observation = {}) {
 export function playtestObjectiveText(state) {
   if (!state) return "Playtest unavailable.";
   if (state.status === PLAYTEST_STATUS.READY) return "PLAYTEST READY · Hunt, feed and return safely.";
-  if (state.status === PLAYTEST_STATUS.COMPLETE) return "COMPLETE · Night survived.";
-  if (state.status === PLAYTEST_STATUS.FAILED) return `FAILED · ${state.failureReason || "The run is over."}`;
+  if (state.status === PLAYTEST_STATUS.COMPLETE) return "NIGHT SURVIVED · Run complete.";
+  if (state.status === PLAYTEST_STATUS.FAILED) return `NIGHT LOST · ${state.failureReason || "The run is over."}`;
 
   if (state.objectiveIndex === 0) return "1/3 HUNT · Find prey and complete a feeding action.";
   if (state.objectiveIndex === 1) {
