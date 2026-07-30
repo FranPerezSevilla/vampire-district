@@ -12,6 +12,7 @@ test("normal boot keeps persistence but enters missionless street free roam", ()
   assert.equal(profile.showCampaignEntry, false);
   assert.equal(profile.skipTutorial, true);
   assert.equal(profile.startOnStreet, true);
+  assert.equal(profile.playtestSession, false);
   assert.deepEqual(profile.spawn, { x: 1540, y: 1515, layer: 0 });
   assert.equal(profile.enableHarness, false);
 });
@@ -24,6 +25,20 @@ test("explore boot is isolated, missionless and starts on the street", () => {
   assert.equal(profile.showCampaignEntry, false);
   assert.equal(profile.skipTutorial, true);
   assert.equal(profile.startOnStreet, true);
+  assert.equal(profile.playtestSession, false);
+  assert.deepEqual(profile.spawn, { x: 1540, y: 1515, layer: 0 });
+});
+
+test("playtest boot is an isolated street session without campaign persistence", () => {
+  const profile = createBootProfile("?mode=playtest");
+  assert.equal(profile.mode, BOOT_MODES.PLAYTEST);
+  assert.equal(profile.persistentCampaign, false);
+  assert.equal(profile.autoLoadCampaign, false);
+  assert.equal(profile.autoSaveCampaign, false);
+  assert.equal(profile.autoStartOpeningMission, false);
+  assert.equal(profile.skipTutorial, true);
+  assert.equal(profile.startOnStreet, true);
+  assert.equal(profile.playtestSession, true);
   assert.deepEqual(profile.spawn, { x: 1540, y: 1515, layer: 0 });
 });
 
@@ -36,4 +51,5 @@ test("a test scenario implies isolated RC harness mode", () => {
   assert.equal(profile.rcTest, true);
   assert.equal(profile.skipTutorial, true);
   assert.equal(profile.startOnStreet, false);
+  assert.equal(profile.playtestSession, false);
 });
