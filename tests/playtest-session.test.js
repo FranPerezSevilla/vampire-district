@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { buildPlaytestFeedbackPayload } from "../phaser/src/playtest/PlaytestFeedback.js";
 import {
   PLAYTEST_STATUS,
   advancePlaytestSession,
@@ -118,6 +119,7 @@ test("feeding, escaping and returning on foot completes the playtest", () => {
   assert.equal(state.metrics.maxExposure, 37);
   assert.equal(state.metrics.vehicleUsed, true);
   assert.equal(state.metrics.alternateRouteUsed, true);
+  assert.equal(playtestObjectiveText(state).startsWith("COMPLETE"), false);
 
   const result = playtestResult(state);
   assert.equal(result.title, "NIGHT SURVIVED");
@@ -130,5 +132,49 @@ test("the session fails cleanly when the time limit expires", () => {
   state = advancePlaytestSession(state, observation({ dt: 1 }));
   assert.equal(state.status, PLAYTEST_STATUS.FAILED);
   assert.match(state.failureReason, /playtest window ended/i);
+  assert.equal(playtestObjectiveText(state).startsWith("FAILED"), false);
   assert.equal(playtestResult(state).title, "NIGHT LOST");
+});
+
+test("feedback payload preserves the existing Google Sheets contract", () => {
+  const payload = buildPlaytestFeedbackPayload({
+    values: {
+      reason: "result",
+      rating: "4",
+      understood: "mostly",
+      mostFun: "Feeding and the getaway",
+      frustration: "I lost the refuge marker once",
+      systemsClarity: "mixed",
+      playAgain: "yes",
+      playerName: "tester-7",
+      extra: "No blocking bugs"
+    },
+    session: {
+      status: "complete",
+      elapsedSeconds: 521,
+      objectiveText: "NIGHT SURVIVED · Run complete.",
+      metrics: { finalHunger: 18, maxExposure: 33 },
+      current: { layer: 0 }
+    },
+    result: { status: "complete" },
+    client: {
+      pageUrl: "https://example.test/?mode=playtest",
+      viewport: "1440x900",
+      userAgent: "test-browser",
+      timestamp: "2026-07-30T15:00:00.000Z"
+    }
+  });
+
+  assert.equal(payload.rating, 4);
+  assert.equal(payload.liked, "Feeding and the getaway");
+  assert.equal(payload.disliked, "I lost the refuge marker once");
+  assert.equal(payload.playerName, "tester-7");
+  assert.match(payload.missing, /Objective understood: mostly/);
+  assert.match(payload.missing, /Systems clarity: mixed/);
+  assert.equal(payload.snapshot.buildVersion, "playtest-0.1-hunt-feed-escape");
+  assert.equal(payload.snapshot.missionVerdict, "complete");
+  assert.equal(payload.snapshot.exposure, 33);
+  assert.equal(payload.snapshot.hunger, 18);
+  assert.equal(payload.snapshot.timePlayedSeconds, 521);
+  assert.equal(payload.snapshot.pageUrl, "https://example.test/?mode=playtest");
 });
