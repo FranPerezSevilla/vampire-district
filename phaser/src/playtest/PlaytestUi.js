@@ -136,6 +136,7 @@ export class PlaytestUi {
     this.intro.classList.remove("open");
     this.intro.setAttribute("aria-hidden", "true");
     this.session.start();
+    this.gameScene?.inputSystem?.resetWorldEdges?.();
     this.gameScene?.scene?.resume?.();
     this.objective?.classList.add("open");
   }
