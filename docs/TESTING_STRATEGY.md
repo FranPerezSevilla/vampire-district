@@ -1,6 +1,6 @@
 # Testing strategy
 
-_Last updated: 2026-07-23_
+_Last updated: 2026-07-30_
 
 ## Goal
 
@@ -13,6 +13,7 @@ The application resolves one boot profile before campaign state or Phaser scenes
 ```text
 normal    persistent campaign, zero production missions, direct street free roam
 explore   isolated state, zero missions, street free roam
+playtest  isolated bounded Hunt, Feed, Escape session
 scenario  isolated deterministic test state
 ```
 
@@ -40,6 +41,25 @@ Exploration mode:
 - uses in-memory campaign state;
 - never mutates the normal save;
 - keeps vehicles, pedestrians, traffic, police, witnesses, combat and evidence active.
+
+### Playtest mode
+
+Direct route:
+
+```text
+?mode=playtest
+```
+
+Playtest mode:
+
+- starts from the same accepted street spawn as free roam;
+- uses in-memory campaign state and never mutates the normal save;
+- keeps the real feeding, Hunger, powers, witnesses, Heat, Exposure, police, vehicle and layer systems active;
+- adds one bounded session observer rather than registering a campaign mission;
+- provides onboarding, a three-step objective loop, a result report, reliable restart and embedded feedback;
+- is covered by `tests/browser/playtest-slice.spec.js` inside the `browser-boot` domain.
+
+Detailed contract: [`PLAYTEST_SLICE_0_1.md`](PLAYTEST_SLICE_0_1.md).
 
 ### Browser scenarios
 
@@ -79,7 +99,8 @@ Run on every commit and own pure rules:
 - police population and motorized routing/reservation;
 - traffic/materialization/contact/impact rules;
 - City Compiler validation and topology metadata;
-- source ownership and boot ordering.
+- source ownership and boot ordering;
+- playtest objective progression, completion, timeout and result statistics.
 
 Archived journalist/`Clean the Scene` definitions remain valid fixture data but are never assumed as production defaults.
 
@@ -89,7 +110,8 @@ Three independent jobs run after unit tests.
 
 ```text
 browser-boot
-  runtime composition, normal free-roam boot, routes, render quality, accessibility
+  runtime composition, normal free-roam boot, routes, render quality, accessibility,
+  isolated playtest start/objectives/result/feedback
 
 browser-systems
   vehicles, city/streaming, traffic, maintenance, evidence, perception, police, input locks
@@ -136,9 +158,9 @@ Implemented pure compiler/geometry coverage protects:
 1. Prefer pure unit tests when rendering/input is unnecessary.
 2. A browser test should verify one gameplay loop or authority boundary.
 3. Add a scenario when preparation is longer than the behaviour tested.
-4. Never mutate the user's persistent save from explore/scenario mode.
+4. Never mutate the user's persistent save from explore, playtest or scenario mode.
 5. Do not mock the system under test; prepare real systems deterministically.
-6. Keep normal-boot coverage for player-facing entry surfaces.
+6. Keep normal-boot coverage for player-facing production entry surfaces.
 7. Production tests must not silently rely on archived mission definitions.
 8. Mission framework tests must pass definitions explicitly.
 9. Add narrative golden paths only for active production content.
