@@ -145,8 +145,8 @@ export class PlaytestUi {
     const objective = snapshot.objectives[snapshot.objectiveIndex] || snapshot.objectives.at(-1);
     const step = snapshot.status === "complete" ? "DONE" : snapshot.status === "failed" ? "FAIL" : `${snapshot.objectiveIndex + 1}/3`;
     if (this.step) this.step.textContent = step;
-    if (this.objectiveTitle) this.objectiveTitle.textContent = objective?.label || snapshot.title;
-    if (this.objectiveHint) this.objectiveHint.textContent = snapshot.objectiveText || objective?.hint || "";
+    if (this.objectiveTitle) this.objectiveTitle.textContent = snapshot.objectiveText || objective?.label || snapshot.title;
+    if (this.objectiveHint) this.objectiveHint.textContent = objective?.hint || "";
     if (this.timer) this.timer.textContent = formatPlaytestDuration(snapshot.timeRemainingSeconds);
     this.objective?.classList.toggle("danger", snapshot.timeRemainingSeconds <= 120);
 
