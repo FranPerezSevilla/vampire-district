@@ -1,10 +1,11 @@
 import { CITY_ANCHORS } from "../data/generated/city-topology-v2.js";
 
-export const BOOT_PROFILE_VERSION = 3;
+export const BOOT_PROFILE_VERSION = 4;
 
 export const BOOT_MODES = Object.freeze({
   NORMAL: "normal",
   EXPLORE: "explore",
+  PLAYTEST: "playtest",
   SCENARIO: "scenario"
 });
 
@@ -31,9 +32,11 @@ export function createBootProfile(search = globalThis?.location?.search || "") {
   const requestedMode = String(params.get("mode") || "").toLowerCase();
   const mode = scenarioId
     ? BOOT_MODES.SCENARIO
-    : requestedMode === BOOT_MODES.EXPLORE
-      ? BOOT_MODES.EXPLORE
-      : BOOT_MODES.NORMAL;
+    : requestedMode === BOOT_MODES.PLAYTEST
+      ? BOOT_MODES.PLAYTEST
+      : requestedMode === BOOT_MODES.EXPLORE
+        ? BOOT_MODES.EXPLORE
+        : BOOT_MODES.NORMAL;
   const isolated = mode !== BOOT_MODES.NORMAL;
   const rcTest = params.has("rcTest") || mode === BOOT_MODES.SCENARIO;
 
@@ -50,6 +53,7 @@ export function createBootProfile(search = globalThis?.location?.search || "") {
     autoStartOpeningMission: false,
     skipTutorial: true,
     startOnStreet: mode !== BOOT_MODES.SCENARIO,
+    playtestSession: mode === BOOT_MODES.PLAYTEST,
     spawn: DEFAULT_EXPLORE_SPAWN
   });
 }
