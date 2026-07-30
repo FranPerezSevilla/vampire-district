@@ -10,10 +10,23 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function setTextIfChanged(node, value) {
+  const text = String(value ?? "");
+  if (node && node.textContent !== text) node.textContent = text;
+}
+
 function playtestStep(snapshot) {
   if (snapshot?.status === "complete") return "DONE";
   if (snapshot?.status === "failed") return "FAIL";
   return `${Math.max(0, Number(snapshot?.objectiveIndex) || 0) + 1}/3`;
+}
+
+function playtestChecklist(snapshot) {
+  return (snapshot?.objectives || []).map(item => ({
+    text: item.label,
+    state: item.state,
+    icon: item.state === "done" ? "✓" : item.state === "active" ? "▸" : item.state === "failed" ? "×" : "○"
+  }));
 }
 
 function resultStatsMarkup(result) {
@@ -40,11 +53,11 @@ export class PlaytestUi {
     this.uiScene = gameScene?.scene?.get?.("UIScene") || null;
     this.resultShown = false;
     this.mount();
+    this.installUiAdapter();
     this.feedback = new PlaytestFeedback(session, gameScene);
     this.unsubscribe = session.subscribe((snapshot, result) => this.render(snapshot, result));
     this.pauseForIntro();
     this.bind();
-    this.bindUiPostUpdate();
     this.render(session.snapshot(), session.result());
   }
 
@@ -117,6 +130,20 @@ export class PlaytestUi {
     if (drawerTitle) drawerTitle.textContent = "Hunt, Feed, Escape";
   }
 
+  installUiAdapter() {
+    if (!this.uiScene) return;
+    this.originalMissionProgressLabel = this.uiScene.missionProgressLabel;
+    this.originalMissionChecklist = this.uiScene.missionChecklist;
+    this.uiScene.missionProgressLabel = () => playtestStep(this.session.snapshot());
+    this.uiScene.missionChecklist = () => playtestChecklist(this.session.snapshot());
+  }
+
+  restoreUiAdapter() {
+    if (!this.uiScene) return;
+    if (this.originalMissionProgressLabel) this.uiScene.missionProgressLabel = this.originalMissionProgressLabel;
+    if (this.originalMissionChecklist) this.uiScene.missionChecklist = this.originalMissionChecklist;
+  }
+
   pauseForIntro() {
     if (this.gameScene?.sys?.isActive?.()) this.gameScene.scene.pause();
   }
@@ -139,14 +166,6 @@ export class PlaytestUi {
     window.addEventListener("keydown", this.onKeyDown, true);
   }
 
-  bindUiPostUpdate() {
-    this.onUiPostUpdate = () => {
-      const snapshot = this.session?.snapshot?.();
-      if (snapshot) this.renderMissionSurface(snapshot, playtestStep(snapshot));
-    };
-    this.uiScene?.events?.on?.(Phaser.Scenes.Events.POST_UPDATE, this.onUiPostUpdate);
-  }
-
   start() {
     if (!this.intro?.classList.contains("open")) return;
     this.intro.classList.remove("open");
@@ -161,10 +180,10 @@ export class PlaytestUi {
     if (!snapshot) return;
     const objective = snapshot.objectives[snapshot.objectiveIndex] || snapshot.objectives.at(-1);
     const step = playtestStep(snapshot);
-    if (this.step) this.step.textContent = step;
-    if (this.objectiveTitle) this.objectiveTitle.textContent = snapshot.objectiveText || objective?.label || snapshot.title;
-    if (this.objectiveHint) this.objectiveHint.textContent = objective?.hint || "";
-    if (this.timer) this.timer.textContent = formatPlaytestDuration(snapshot.timeRemainingSeconds);
+    setTextIfChanged(this.step, step);
+    setTextIfChanged(this.objectiveTitle, snapshot.objectiveText || objective?.label || snapshot.title);
+    setTextIfChanged(this.objectiveHint, objective?.hint || "");
+    setTextIfChanged(this.timer, formatPlaytestDuration(snapshot.timeRemainingSeconds));
     this.objective?.classList.toggle("danger", snapshot.timeRemainingSeconds <= 120);
     this.renderMissionSurface(snapshot, step);
 
@@ -173,17 +192,15 @@ export class PlaytestUi {
 
   renderMissionSurface(snapshot, step) {
     const missionCurrent = document.getElementById("mission-current");
-    const missionLast = document.getElementById("mission-last");
     const missionStep = document.getElementById("hud-mission-step");
     const checklist = document.getElementById("mission-checklist");
-    if (missionCurrent) missionCurrent.textContent = snapshot.objectiveText;
-    if (missionLast) missionLast.textContent = `Time left: ${formatPlaytestDuration(snapshot.timeRemainingSeconds)}`;
-    if (missionStep) missionStep.textContent = step;
+    setTextIfChanged(missionCurrent, snapshot.objectiveText);
+    setTextIfChanged(missionStep, step);
     if (checklist) {
-      checklist.innerHTML = snapshot.objectives.map(item => {
-        const icon = item.state === "done" ? "✓" : item.state === "active" ? "▸" : item.state === "failed" ? "×" : "○";
-        return `<li class="${escapeHtml(item.state)}">${icon} ${escapeHtml(item.label)}</li>`;
-      }).join("");
+      const markup = playtestChecklist(snapshot)
+        .map(item => `<li class="${escapeHtml(item.state)}">${escapeHtml(item.icon)} ${escapeHtml(item.text)}</li>`)
+        .join("");
+      if (checklist.innerHTML !== markup) checklist.innerHTML = markup;
     }
   }
 
@@ -191,8 +208,8 @@ export class PlaytestUi {
     this.resultShown = true;
     this.objective?.classList.remove("open");
     this.gameScene?.scene?.pause?.();
-    if (this.resultTitle) this.resultTitle.textContent = result.title;
-    if (this.resultSubtitle) this.resultSubtitle.textContent = result.subtitle;
+    setTextIfChanged(this.resultTitle, result.title);
+    setTextIfChanged(this.resultSubtitle, result.subtitle);
     if (this.resultStats) this.resultStats.innerHTML = resultStatsMarkup(result);
     this.resultOverlay?.classList.add("open");
     this.resultOverlay?.setAttribute("aria-hidden", "false");
@@ -201,7 +218,7 @@ export class PlaytestUi {
 
   destroy() {
     window.removeEventListener("keydown", this.onKeyDown, true);
-    this.uiScene?.events?.off?.(Phaser.Scenes.Events.POST_UPDATE, this.onUiPostUpdate);
+    this.restoreUiAdapter();
     this.unsubscribe?.();
     this.feedback?.destroy?.();
     this.intro?.remove?.();
