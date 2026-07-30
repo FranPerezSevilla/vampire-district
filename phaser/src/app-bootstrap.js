@@ -97,6 +97,7 @@ try {
   // Campaign entry and the refuge mission board are intentionally not booted
   // while the production mission registry is empty.
   await import("./vehicles/maintenance-bootstrap.js");
+  if (bootProfile.mode === BOOT_MODES.PLAYTEST) await import("./playtest/bootstrap.js");
   if (bootProfile.enableHarness) await import("./testing/bootstrap.js");
   if (bootProfile.mode === BOOT_MODES.SCENARIO) await import("./testing/scenario-bootstrap.js");
   window.NBD_APP_READY = true;
