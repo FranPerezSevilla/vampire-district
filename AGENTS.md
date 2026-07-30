@@ -4,6 +4,21 @@
 
 These instructions apply to the entire repository.
 
+## Orientation and implementation
+
+- Start with `docs/AGENT_DEVELOPMENT.md`, then inspect only the affected authority, its composition point and focused tests.
+- Before editing, state the authoritative system, intended files, acceptance criteria and explicit non-goals.
+- Use `rg` to locate symbols and composition. Do not scan or rewrite the whole repository to understand one subsystem.
+- Do not introduce a second gameplay loop, persistence owner, input reader or generated-city authority.
+- For broad requests, use `docs/templates/AGENT_TASK.md` to define a single bounded implementation before changing code.
+
+## Validation
+
+- Run `npm run check:fast` before the first push.
+- Review `npm run check:affected:plan -- --base=origin/main`, then run `npm run check:affected -- --base=origin/main`.
+- Treat the affected-test plan as a conservative minimum. Add a focused test manually when a change crosses a boundary that filenames cannot reveal.
+- Run `npm run test:rc` only for cross-cutting/test-infrastructure changes, release candidates or an explicit request.
+
 ## Pull requests
 
 - Keep each pull request focused on one concern. Do not mix gameplay, generated city changes, documentation cleanup, and CI maintenance unless the task explicitly requires it.
