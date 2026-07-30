@@ -12,8 +12,15 @@ test("playtest mode delivers a start, objective loop, result and feedback path",
   await expect(page.locator("#playtest-intro")).toHaveClass(/open/);
   await expect(page.locator("#playtest-intro-title")).toHaveText("Hunt. Feed. Escape.");
   await expect(page.locator("#playtest-start")).toBeVisible();
-  await page.locator("#playtest-start").click();
 
+  await page.keyboard.press("h");
+  await page.keyboard.press("m");
+  await page.keyboard.press("l");
+  await expect(page.locator("#ui-modal")).not.toHaveClass(/open/);
+  await expect(page.locator("#mission-drawer")).not.toHaveClass(/open/);
+  await expect(page.locator("#night-ledger")).not.toHaveClass(/open/);
+
+  await page.locator("#playtest-start").click();
   await page.waitForFunction(() => window.NBD_PLAYTEST_SESSION?.snapshot?.().status === "active");
   await expect(page.locator("#playtest-objective")).toHaveClass(/open/);
   await expect(page.locator("#playtest-objective-hint")).toContainText("prey pulse");
@@ -49,6 +56,8 @@ test("playtest mode delivers a start, objective loop, result and feedback path",
   await page.locator("#playtest-result-feedback").click();
   await expect(page.locator("#playtest-feedback-overlay")).toHaveClass(/open/);
   await expect(page.locator("#playtest-feedback-title")).toContainText("how the loop felt");
+  await page.keyboard.press("h");
+  await expect(page.locator("#ui-modal")).not.toHaveClass(/open/);
   await page.locator("[data-feedback-close]").first().click();
   await expect(page.locator("#playtest-feedback-overlay")).not.toHaveClass(/open/);
 
