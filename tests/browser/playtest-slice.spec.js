@@ -18,7 +18,10 @@ test("playtest mode delivers a start, objective loop, result and feedback path",
   await expect(page.locator("#playtest-objective")).toHaveClass(/open/);
   await expect(page.locator("#playtest-objective-hint")).toContainText("prey pulse");
   await expect(page.locator("#hud-hunger-value")).toContainText("72%");
+  await expect(page.locator("#hud-mission-step")).toHaveText("1/3");
   await expect(page.locator("#mission-current")).toContainText("1/3 HUNT");
+  await expect(page.locator("#mission-checklist")).toContainText("Find prey and feed");
+  await expect(page.locator("#mission-checklist")).not.toContainText("rooftop blocker");
 
   await page.evaluate(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
