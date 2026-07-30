@@ -2,7 +2,7 @@
 
 _Last updated: 2026-07-30_
 
-**Status: active implementation.**
+**Status: 🔵 Draft PR #50 — implementation complete; automated and manual validation pending.**
 
 ## Product question
 
@@ -63,7 +63,8 @@ The social playtest build must provide:
 
 - a dedicated title/start screen with the goal and four essential controls;
 - a three-step objective coach and countdown;
-- a visible refuge return marker;
+- a contextual pulse/arrow toward the nearest active civilian while hunting or feeding;
+- a visible refuge zone and directional marker during the return step;
 - the existing mission drawer repurposed as the run checklist;
 - a deterministic end screen with run statistics;
 - `Play again` and `Send feedback` actions;
@@ -81,7 +82,7 @@ The result report records:
 - whether a vehicle was used;
 - whether a rooftop or sewer layer was used.
 
-## Feedback questions
+## Feedback questions and collector contract
 
 The embedded form asks:
 
@@ -91,15 +92,17 @@ The embedded form asks:
 4. where the player felt lost or frustrated;
 5. whether Hunger, Heat and Exposure were understandable;
 6. whether the player would play another run or longer version;
-7. optional bug notes or contact handle.
+7. optional name or handle;
+8. optional bug or extra comment.
 
-A technical snapshot of the run and browser is submitted with the answers.
+A technical snapshot of the run and browser is submitted with the answers. The payload keeps the existing Google Apps Script fields (`liked`, `disliked`, `missing`, `playerName` and `snapshot`) so the current Sheet continues receiving meaningful columns, while retaining the richer structured answers for a future collector migration.
 
 ## Readiness gate for a social-media call
 
 Before the link is posted publicly:
 
 - ten consecutive runs can start, complete or fail, restart and submit feedback without a blocker;
+- one real submission is verified in the configured Google Sheet;
 - three blind testers receive no verbal explanation;
 - at least two understand the goal within the first minute;
 - at least two complete the run or correctly understand why they failed;
