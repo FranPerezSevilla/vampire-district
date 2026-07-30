@@ -2,6 +2,68 @@ const ENDPOINT = "https://script.google.com/macros/s/AKfycbx2bwgRkz2kA1l19wOnLQ-
 const STORAGE_KEY = "viceblood-playtest-feedback-queue";
 const BUILD_VERSION = "playtest-0.1-hunt-feed-escape";
 
+function clean(value) {
+  return String(value ?? "").trim();
+}
+
+export function buildPlaytestFeedbackPayload({ values = {}, session = null, result = null, client = {} } = {}) {
+  const sessionSnapshot = session && typeof session === "object" ? session : {};
+  const resultSnapshot = result && typeof result === "object" ? result : null;
+  const metrics = sessionSnapshot.metrics || {};
+  const current = sessionSnapshot.current || {};
+  const understood = clean(values.understood);
+  const systemsClarity = clean(values.systemsClarity);
+  const playAgain = clean(values.playAgain);
+  const extra = clean(values.extra);
+  const missing = [
+    understood ? `Objective understood: ${understood}` : "",
+    systemsClarity ? `Systems clarity: ${systemsClarity}` : "",
+    playAgain ? `Would play again: ${playAgain}` : "",
+    extra ? `Extra: ${extra}` : ""
+  ].filter(Boolean).join(" · ");
+
+  const legacySnapshot = {
+    buildVersion: BUILD_VERSION,
+    missionVerdict: clean(resultSnapshot?.status || sessionSnapshot.status),
+    exposure: Math.round(Number(metrics.maxExposure) || 0),
+    hunger: Math.round(Number(metrics.finalHunger) || 0),
+    objective: clean(sessionSnapshot.objectiveText),
+    layer: Number.isFinite(Number(current.layer)) ? Number(current.layer) : "",
+    visibility: clean(client.visibility),
+    lastMessage: extra,
+    timePlayedSeconds: Math.max(0, Math.round(Number(sessionSnapshot.elapsedSeconds) || 0)),
+    pageUrl: clean(client.pageUrl),
+    userAgent: clean(client.userAgent),
+    viewport: clean(client.viewport),
+    timestampClient: clean(client.timestamp)
+  };
+
+  return {
+    schemaVersion: 2,
+    buildVersion: BUILD_VERSION,
+    reason: clean(values.reason || client.reason || "manual"),
+    rating: Number(values.rating) || 0,
+
+    // Compatibility fields consumed by the existing Google Apps Script sheet.
+    liked: clean(values.mostFun),
+    disliked: clean(values.frustration),
+    missing,
+    playerName: clean(values.playerName),
+    snapshot: legacySnapshot,
+
+    // Structured fields retained for a future collector migration.
+    understood,
+    mostFun: clean(values.mostFun),
+    frustration: clean(values.frustration),
+    systemsClarity,
+    playAgain,
+    extra,
+    session: sessionSnapshot,
+    result: resultSnapshot,
+    client: { ...client }
+  };
+}
+
 function queuedFeedback() {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "[]");
@@ -84,9 +146,13 @@ export class PlaytestFeedback {
                 <option value="no">No</option>
               </select>
             </label>
-            <label>Bug, extra comment or handle <span>(optional)</span>
+            <label>Name / handle <span>(optional)</span>
+              <input type="text" name="playerName" maxlength="120" autocomplete="off">
+            </label>
+            <label>Bug or extra comment <span>(optional)</span>
               <textarea name="extra" rows="3" maxlength="1600"></textarea>
             </label>
+            <p class="playtest-feedback-privacy">A technical snapshot of this run and browser is included. Name or handle is optional.</p>
             <div class="playtest-feedback-actions">
               <button class="playtest-primary" type="submit">Send feedback</button>
               <button class="playtest-secondary" type="button" data-feedback-close>Not now</button>
@@ -148,25 +214,21 @@ export class PlaytestFeedback {
 
   payload() {
     const values = Object.fromEntries(new FormData(this.form).entries());
-    return {
-      buildVersion: BUILD_VERSION,
-      reason: this.reason || "manual",
-      rating: Number(values.rating) || 0,
-      understood: values.understood || "",
-      mostFun: values.mostFun || "",
-      frustration: values.frustration || "",
-      systemsClarity: values.systemsClarity || "",
-      playAgain: values.playAgain || "",
-      extra: values.extra || "",
+    return buildPlaytestFeedbackPayload({
+      values: {
+        ...values,
+        reason: this.reason || "manual"
+      },
       session: this.session.snapshot(),
       result: this.session.result(),
       client: {
+        reason: this.reason || "manual",
         pageUrl: window.location.href,
         viewport: `${window.innerWidth}x${window.innerHeight}`,
         userAgent: navigator.userAgent,
         timestamp: new Date().toISOString()
       }
-    };
+    });
   }
 
   async submit() {
