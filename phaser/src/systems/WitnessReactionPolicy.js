@@ -1,6 +1,11 @@
 import { AI_STATES } from "../data/ai.js";
 import { COMBAT_STATES } from "../data/combat.js";
-import { LAYERS, pedestrianRoutes, pointOnPedestrianSurface } from "../data/district.js";
+import {
+  LAYERS,
+  pedestrianRoutes,
+  pointOnPanicEscapeSurface,
+  pointOnPedestrianSurface
+} from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 import { RawAudio } from "./RawAudioSystem.js";
 
@@ -224,8 +229,11 @@ export class WitnessReactionPolicy {
 
     const source = witness.witnessSource || this.scene.player || witness;
     const reportTarget = witness.reportTarget || { x: witness.x, y: witness.y, name: "a reporting point" };
+    const panicPlan = witness.masqueradeRisk
+      ? this.fallbackPlan(witness, source, reportTarget)
+      : null;
     const routePlan = buildWitnessReportPlan(witness, source, reportTarget);
-    const fallback = routePlan || this.fallbackPlan(witness, source, reportTarget);
+    const fallback = panicPlan || routePlan || this.fallbackPlan(witness, source, reportTarget);
     const waypoints = fallback?.waypoints?.map(point => ({ ...point })) || [];
 
     witness.reportNavigation = {
@@ -238,6 +246,7 @@ export class WitnessReactionPolicy {
       blockedSeconds: 0,
       alternateUsed: false,
       remoteReport: false,
+      panicRoadAllowed: Boolean(witness.masqueradeRisk),
       complete: false
     };
     if (witness.reactionTimer > 0) {
@@ -371,11 +380,12 @@ export class WitnessReactionPolicy {
     this.scene.events?.emit?.("witness:fleeing", {
       witnessId: witness.id,
       masqueradeRisk: Boolean(witness.masqueradeRisk),
-      routeId: navigation.routeId
+      routeId: navigation.routeId,
+      panicRoadAllowed: Boolean(navigation.panicRoadAllowed)
     });
     this.scene.lastActionText = witness.masqueradeRisk
-      ? "A terrified witness bolts along the pavement to report the vampire."
-      : "A frightened witness bolts along the pavement to report what they saw.";
+      ? "A terrified witness bolts by the shortest escape, even into traffic."
+      : "A frightened witness bolts through pedestrian space to report what they saw.";
   }
 
   advance(witness, navigation, dt, speed) {
@@ -427,10 +437,15 @@ export class WitnessReactionPolicy {
   }
 
   canStandAt(witness, x, y) {
+    if (witness.layer === LAYERS.STREET) {
+      const surfaceAllowed = witness.masqueradeRisk
+        ? pointOnPanicEscapeSurface(x, y)
+        : pointOnPedestrianSurface(x, y);
+      if (!surfaceAllowed) return false;
+    }
     if (this.scene.npcSystem?.canNpcStandAt) {
       return Boolean(this.scene.npcSystem.canNpcStandAt(witness, x, y));
     }
-    if (witness.layer === LAYERS.STREET) return pointOnPedestrianSurface(x, y);
     return true;
   }
 
@@ -508,6 +523,7 @@ export class WitnessReactionPolicy {
       shocked: active.filter(witness => witness.reactionTimer > 0).length,
       reporting: active.filter(witness => witness.reactionTimer <= 0).length,
       routed: active.filter(witness => Boolean(witness.reportNavigation?.routeId)).length,
+      panickedIntoTraffic: active.filter(witness => Boolean(witness.reportNavigation?.panicRoadAllowed)).length,
       remoteFallbacks: active.filter(witness => Boolean(witness.reportNavigation?.remoteReport)).length
     };
   }
