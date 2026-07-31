@@ -3,6 +3,7 @@ import { MotorizedPoliceSystem } from "../police/MotorizedPoliceSystem.js";
 import { PedestrianSystem } from "../systems/PedestrianSystem.js";
 import { StreetFurnitureSystem } from "../systems/StreetFurnitureSystem.js";
 import { TrafficOccupantWitnessSystem } from "../systems/TrafficOccupantWitnessSystem.js";
+import { WitnessReactionPolicy } from "../systems/WitnessReactionPolicy.js";
 import { TerritoryRuntimeSystem } from "../factions/TerritoryRuntimeSystem.js";
 import { HuntingLawRuntimeSystem } from "../factions/HuntingLawRuntimeSystem.js";
 import { installBuildingSidewalkClearancePolicy } from "../streaming/BuildingSidewalkClearancePolicy.js";
@@ -36,6 +37,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.diagnostics.claim("MacroTrafficPoliceSystem.update", "MacroTrafficPoliceSystem");
     this.diagnostics.claim("TrafficMaterializationSystem.update", "TrafficMaterializationSystem");
     this.diagnostics.claim("TrafficOccupantWitnessSystem.update", "TrafficOccupantWitnessSystem");
+    this.diagnostics.claim("WitnessReactionPolicy.update", "WitnessReactionPolicy");
     this.diagnostics.claim("TrafficLocalBehaviorSystem.update", "TrafficLocalBehaviorSystem");
     this.diagnostics.claim("TrafficPhysicalConsequencesSystem.update", "TrafficPhysicalConsequencesSystem");
     this.diagnostics.claim("TrafficImpactConsequencesSystem.update", "TrafficImpactConsequencesSystem");
@@ -53,6 +55,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.diagnostics.registerSystem("MacroTrafficPoliceSystem");
     this.diagnostics.registerSystem("TrafficMaterializationSystem");
     this.diagnostics.registerSystem("TrafficOccupantWitnessSystem");
+    this.diagnostics.registerSystem("WitnessReactionPolicy");
     this.diagnostics.registerSystem("TrafficLocalBehaviorSystem");
     this.diagnostics.registerSystem("TrafficPhysicalConsequencesSystem");
     this.diagnostics.registerSystem("TrafficImpactConsequencesSystem");
@@ -78,6 +81,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.macroTrafficPoliceSystem = new MacroTrafficPoliceSystem(scene);
     scene.trafficMaterializationSystem = new TrafficMaterializationSystem(scene);
     scene.trafficOccupantWitnessSystem = new TrafficOccupantWitnessSystem(scene);
+    scene.witnessReactionPolicy = new WitnessReactionPolicy(scene);
     scene.trafficLocalAssignmentPolicy = installTrafficLocalAssignmentPolicy(scene);
     scene.trafficLocalBehaviorSystem = new TrafficLocalBehaviorSystem(scene);
     scene.trafficPhysicalConsequencesSystem = new TrafficPhysicalConsequencesSystem(scene);
@@ -173,6 +177,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.scene.trafficLocalBehaviorSystem = null;
     this.scene.trafficLocalAssignmentPolicy?.destroy?.();
     this.scene.trafficLocalAssignmentPolicy = null;
+    this.scene.witnessReactionPolicy?.destroy?.();
+    this.scene.witnessReactionPolicy = null;
     this.scene.trafficOccupantWitnessSystem?.destroy?.();
     this.scene.trafficOccupantWitnessSystem = null;
     this.scene.trafficMaterializationSystem?.destroy?.();
