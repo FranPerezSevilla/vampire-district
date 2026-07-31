@@ -42,6 +42,36 @@ test("playtest mode delivers a start, objective loop, result and feedback path",
   expect(guidance.preyId).toBeTruthy();
   expect(guidance.markerVisible).toBe(true);
 
+  await page.waitForFunction(() => Boolean(
+    window.NBD_PEDESTRIANS_READY
+    && window.NBD_TRAFFIC_WITNESSES_READY
+  ));
+  await page.waitForFunction(() => (window.NBD_TRAFFIC?.snapshot?.().materializedCount || 0) > 0, null, {
+    timeout: 20_000
+  });
+  const cityConsequences = await page.evaluate(async () => {
+    const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
+    await scene.trafficMaterializationSystem.initialization;
+    scene.trafficMaterializationSystem.reconcile(true);
+    const activeCops = scene.policeSystem.allPolice().filter(cop => !cop.inactive && !cop.dead);
+    const patrolRoutes = activeCops.flatMap(cop => {
+      const zone = scene.policeSystem.zoneAt(cop.x, cop.y);
+      return scene.policeSystem.districtPatrolRoutes(zone.id);
+    });
+    return {
+      pedestrianCount: window.NBD_PEDESTRIANS.snapshot().count,
+      ambientCount: scene.npcSystem.npcs.filter(npc => npc.ambientPopulation && !npc.inactive).length,
+      trafficWitnessCount: window.NBD_TRAFFIC_WITNESSES.snapshot().candidateCount,
+      sidewalkPatrols: patrolRoutes.filter(route => route.surface === "sidewalk").length,
+      roadFallbacks: patrolRoutes.filter(route => route.surface === "road-fallback").length
+    };
+  });
+  expect(cityConsequences.pedestrianCount).toBeGreaterThanOrEqual(30);
+  expect(cityConsequences.ambientCount).toBeGreaterThanOrEqual(30);
+  expect(cityConsequences.trafficWitnessCount).toBeGreaterThan(0);
+  expect(cityConsequences.sidewalkPatrols).toBeGreaterThan(0);
+  expect(cityConsequences.roadFallbacks).toBe(0);
+
   await page.evaluate(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const session = scene.playtestSessionSystem;
