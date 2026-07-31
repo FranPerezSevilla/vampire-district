@@ -26,6 +26,13 @@ function nearestPointIndex(route, npc) {
   return best;
 }
 
+export function isActiveFeedingVictim(scene, npc) {
+  return Boolean(
+    npc
+    && (npc.drainVictim || scene?.feedingSystem?.active?.npc === npc)
+  );
+}
+
 export class PedestrianSystem {
   constructor(scene) {
     if (!scene?.npcSystem) throw new TypeError("PedestrianSystem requires a scene with NpcSystem.");
@@ -64,6 +71,7 @@ export class PedestrianSystem {
       && !npc.chasingPlayer
       && !npc.enemyAttack
       && !npc.dragged
+      && !isActiveFeedingVictim(this.scene, npc)
       && npc.stunnedTimer <= 0
       && npc.layer === LAYERS.STREET
       && !this.scene.registry?.get?.("uiPaused")
@@ -77,6 +85,12 @@ export class PedestrianSystem {
     if (!seconds) return;
 
     for (const npc of this.pedestrians) {
+      if (isActiveFeedingVictim(this.scene, npc)) {
+        npc.vx = 0;
+        npc.vy = 0;
+        npc.container?.setPosition?.(npc.x, npc.y);
+        continue;
+      }
       if (!this.canMove(npc)) continue;
       const state = npc.pedestrian;
       const route = routeById(state.routeId);
