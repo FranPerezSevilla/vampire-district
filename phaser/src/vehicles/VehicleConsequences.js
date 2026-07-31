@@ -2,6 +2,7 @@ import { CAMPAIGN_EVENT_TYPES } from "../campaign/constants.js";
 import { LAYERS } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 import { VEHICLE_OWNERSHIP } from "../data/vehicles.js";
+import { planVehiclePedestrianImpactHeat } from "./VehiclePedestrianImpactPolicy.js";
 
 const PEDESTRIAN_TYPES = new Set([
   NPC_TYPES.CIVILIAN,
@@ -10,6 +11,11 @@ const PEDESTRIAN_TYPES = new Set([
   NPC_TYPES.HUNTER,
   NPC_TYPES.THUG
 ]);
+
+function finite(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
 
 export function vehicleTheftWitnesses(system, vehicle) {
   const candidates = system.scene.npcSystem?.queryRadius?.(
@@ -91,6 +97,28 @@ function createVehicleImpactBlood(system, npc, vehicle, lethal) {
   return count;
 }
 
+function pedestrianImpactHeatPlan(system, vehicle, lethal) {
+  const heatSystem = system.scene.heatSystem;
+  const policeSystem = system.scene.policeSystem;
+  const zone = heatSystem?.districtAt?.(vehicle.x, vehicle.y)
+    || policeSystem?.zoneAt?.(vehicle.x, vehicle.y)
+    || { id: "district" };
+  const districtId = String(zone.id || "district");
+  const currentHeat = heatSystem?.valueFor?.(districtId)
+    ?? policeSystem?.heatValue?.(districtId)
+    ?? 0;
+  const sceneNow = Number(system.scene.time?.now);
+  const nowMs = Number.isFinite(sceneNow) ? sceneNow : Date.now();
+  const plan = planVehiclePedestrianImpactHeat(system.pedestrianImpactBurst, {
+    nowMs,
+    districtId,
+    currentHeat: finite(currentHeat),
+    lethal
+  });
+  system.pedestrianImpactBurst = plan.state;
+  return { ...plan, districtId };
+}
+
 export function collideVehicleWithPedestrians(system, vehicle) {
   const impactSpeed = Math.abs(vehicle.speed);
   if (impactSpeed < 18) return;
@@ -134,7 +162,18 @@ export function collideVehicleWithPedestrians(system, vehicle) {
       lethal ? "a fatal vehicle impact" : "a vehicle striking a pedestrian",
       severity
     );
-    system.scene.policeSystem?.addHeat?.(vehicle.x, vehicle.y, lethal ? 32 : 18, "vehicle-pedestrian collision");
+
+    const heatPlan = pedestrianImpactHeatPlan(system, vehicle, lethal);
+    if (heatPlan.heat > 0) {
+      system.scene.policeSystem?.addHeat?.(
+        vehicle.x,
+        vehicle.y,
+        heatPlan.heat,
+        lethal ? "vehicle homicide" : "vehicle-pedestrian collision",
+        { source: lethal ? "vehicle_homicide" : "vehicle_pedestrian_collision" }
+      );
+    }
+
     system.damageVehicle(vehicle.id, lethal ? 5 : 2, { reason: "pedestrian-impact", persist: false });
     vehicle.speed *= lethal ? 0.58 : 0.76;
     system.scene.events?.emit?.("vehicle:pedestrian-hit", {
@@ -142,10 +181,14 @@ export function collideVehicleWithPedestrians(system, vehicle) {
       npcId: npc.id,
       lethal,
       speed: impactSpeed,
-      bloodStains
+      bloodStains,
+      heat: heatPlan.heat,
+      heatSuppressed: heatPlan.suppressedHeat,
+      impactChain: heatPlan.chainCount,
+      heatCeiling: heatPlan.ceiling
     });
     system.scene.lastActionText = lethal
-      ? `VEHICLE HOMICIDE: ${vehicle.name} crushes ${npc.id}. Blood marks the road and police pressure rises.`
+      ? `VEHICLE HOMICIDE: ${vehicle.name} crushes ${npc.id}. Blood marks the road; police pressure builds.`
       : `${vehicle.name} strikes ${npc.id}. Blood and witnesses mark the impact.`;
   }
 }
