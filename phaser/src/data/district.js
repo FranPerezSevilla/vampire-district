@@ -118,9 +118,36 @@ export function pointInCitySurface(x, y, area) {
     : pointInRect(x, y, area);
 }
 
+function pointInsideWorld(x, y) {
+  const width = Number(CITY_WORLD?.width ?? CITY_WORLD?.w) || 0;
+  const height = Number(CITY_WORLD?.height ?? CITY_WORLD?.h) || 0;
+  const originX = Number(CITY_WORLD?.x) || 0;
+  const originY = Number(CITY_WORLD?.y) || 0;
+  return width > 0 && height > 0
+    ? x >= originX && x <= originX + width && y >= originY && y <= originY + height
+    : true;
+}
+
+export function pointOnRoadSurface(x, y) {
+  return roads.some(area => pointInCitySurface(x, y, area))
+    || roadSegments.some(area => pointInCitySurface(x, y, area))
+    || roadJunctions.some(area => pointInCitySurface(x, y, area))
+    || roadTransitions.some(area => pointInCitySurface(x, y, area));
+}
+
+export function pointInsideBuilding(x, y) {
+  return buildings.some(area => pointInCitySurface(x, y, area));
+}
+
 export function pointOnPedestrianSurface(x, y) {
-  return sidewalks.some(area => pointInCitySurface(x, y, area))
-    || crosswalks.some(area => pointInCitySurface(x, y, area));
+  if (!pointInsideWorld(x, y) || pointInsideBuilding(x, y)) return false;
+  if (crosswalks.some(area => pointInCitySurface(x, y, area))) return true;
+  if (sidewalks.some(area => pointInCitySurface(x, y, area))) return true;
+  return !pointOnRoadSurface(x, y);
+}
+
+export function pointOnPanicEscapeSurface(x, y) {
+  return pointInsideWorld(x, y) && !pointInsideBuilding(x, y);
 }
 
 export function districtZoneAt(x, y) {
