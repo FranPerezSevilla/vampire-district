@@ -51,12 +51,11 @@ function uniqueStreetPoints(points = []) {
   }));
 }
 
-export function sidewalkPatrolRoutesForZone(zoneId) {
+function allSidewalkPatrolRoutes() {
   return pedestrianRoutes
     .map(route => {
       const points = uniqueStreetPoints(route.points || []);
-      const touchesZone = points.some(point => districtZoneAt(point.x, point.y).id === zoneId);
-      return touchesZone && points.length >= 2
+      return points.length >= 2
         ? {
             id: route.id,
             points,
@@ -65,6 +64,12 @@ export function sidewalkPatrolRoutesForZone(zoneId) {
         : null;
     })
     .filter(Boolean);
+}
+
+export function sidewalkPatrolRoutesForZone(zoneId) {
+  return allSidewalkPatrolRoutes().filter(route => (
+    route.points.some(point => districtZoneAt(point.x, point.y).id === zoneId)
+  ));
 }
 
 export class PoliceSystem extends PoliceSystemCore {
@@ -216,6 +221,10 @@ export class PoliceSystem extends PoliceSystemCore {
   districtPatrolRoutes(zoneId) {
     const sidewalkRoutes = sidewalkPatrolRoutesForZone(zoneId);
     if (sidewalkRoutes.length) return sidewalkRoutes;
+
+    const nearestSidewalkRoutes = allSidewalkPatrolRoutes();
+    if (nearestSidewalkRoutes.length) return nearestSidewalkRoutes;
+
     const fallback = uniqueStreetPoints(
       streetNavigationPoints.filter(point => districtZoneAt(point.x, point.y).id === zoneId)
     );
