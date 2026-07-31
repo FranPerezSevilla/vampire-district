@@ -6,6 +6,7 @@ import { registerVehicleTheft } from "./VehicleConsequences.js";
 
 const ENTER_RADIUS = 30;
 const EXIT_SPEED_LIMIT = 12;
+const EXIT_ESCAPE_PROBE = 10;
 
 export function vehicleStatusLabel(vehicle) {
   switch (vehicle.status) {
@@ -20,6 +21,34 @@ export function vehicleStatusLabel(vehicle) {
 export function vehicleTrunkLabel(system, vehicle) {
   const trunk = system.campaign.vehicles.trunkSnapshot(vehicle.id, vehicle.archetype.trunkCapacity);
   return `limited mobile storage · ${trunk.used}/${trunk.capacity}`;
+}
+
+function exitDirections(vehicle, point) {
+  const dx = Number(point?.x) - Number(vehicle?.x);
+  const dy = Number(point?.y) - Number(vehicle?.y);
+  const length = Math.hypot(dx, dy) || 1;
+  const outward = { x: dx / length, y: dy / length };
+  const tangent = { x: -outward.y, y: outward.x };
+  return [
+    outward,
+    tangent,
+    { x: -tangent.x, y: -tangent.y },
+    { x: -outward.x, y: -outward.y }
+  ];
+}
+
+export function vehicleExitPointHasClearStep(system, vehicle, point, probe = EXIT_ESCAPE_PROBE) {
+  if (!point || !system?.scene?.canStandAt?.(point.x, point.y)) return false;
+  const distance = Math.max(4, Number(probe) || EXIT_ESCAPE_PROBE);
+  return exitDirections(vehicle, point).some(direction => system.scene.canStandAt(
+    point.x + direction.x * distance,
+    point.y + direction.y * distance
+  ));
+}
+
+export function chooseVehicleExitPoint(system, vehicle) {
+  return vehicleExitOffsets(vehicle, vehicle.archetype)
+    .find(point => vehicleExitPointHasClearStep(system, vehicle, point)) || null;
 }
 
 export function collectVehicleInteractions(system) {
@@ -151,23 +180,26 @@ export function exitVehicle(system, { force = false } = {}) {
     return false;
   }
 
-  const exit = vehicleExitOffsets(vehicle, vehicle.archetype)
-    .find(point => system.scene.canStandAt(point.x, point.y));
+  const exit = chooseVehicleExitPoint(system, vehicle);
   if (!exit && !force) {
-    system.scene.lastActionText = `No safe space to exit ${vehicle.name}. Reposition the vehicle.`;
+    system.scene.lastActionText = `No clear space to exit ${vehicle.name}. Reposition the vehicle.`;
     RawAudio.play("cancel");
     return false;
   }
+  const forcedFallback = !exit
+    ? vehicleExitOffsets(vehicle, vehicle.archetype)
+      .find(point => system.scene.canStandAt(point.x, point.y))
+    : null;
+  const exitPoint = exit || forcedFallback || { x: vehicle.x, y: vehicle.y };
 
   vehicle.speed = 0;
   vehicle.parked = true;
   vehicle.handbrake = false;
   system.handbrakeActive = false;
   system.currentVehicleId = null;
-  system.scene.player.setVisible(true).setPosition(exit?.x ?? vehicle.x, exit?.y ?? vehicle.y);
+  system.scene.player.setVisible(true).setPosition(exitPoint.x, exitPoint.y);
   system.scene.cameras.main.startFollow(system.scene.player, true, 0.12, 0.12);
   system.scene.registry?.set?.("vehicleOccupied", null);
-  system.scene.inputSystem?.resetWorldEdges?.();
   system.persistVehicle(vehicle);
   system.hud.setVisible(false);
   system.scene.lastActionText = vehicle.disabled
@@ -175,7 +207,13 @@ export function exitVehicle(system, { force = false } = {}) {
     : `${vehicle.name} parked. You return to street movement.`;
   RawAudio.play("confirm");
   system.publish();
-  system.scene.events?.emit?.("vehicle:exited", { vehicleId: vehicle.id, disabled: vehicle.disabled });
+  system.scene.events?.emit?.("vehicle:exited", {
+    vehicleId: vehicle.id,
+    disabled: vehicle.disabled,
+    x: exitPoint.x,
+    y: exitPoint.y,
+    clearStep: Boolean(exit)
+  });
   return true;
 }
 
