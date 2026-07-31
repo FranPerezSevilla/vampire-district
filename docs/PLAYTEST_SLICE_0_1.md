@@ -1,8 +1,8 @@
 # Playtest Slice 0.1 — Hunt, Feed, Escape
 
-_Last updated: 2026-07-30_
+_Last updated: 2026-07-31_
 
-**Status: 🔵 Draft PR #50 — implementation complete; automated and manual validation pending.**
+**Status: 🔵 Draft PR #50 — first manual run complete; consequence-density follow-up under automated validation.**
 
 ## Product question
 
@@ -82,6 +82,19 @@ The result report records:
 - whether a vehicle was used;
 - whether a rooftop or sewer layer was used.
 
+## Consequence density
+
+The playtest cannot validate feeding consequences if the streets are effectively empty or if obvious observers do not participate in perception.
+
+- every authored pedestrian route receives four distributed ambient civilians, capped only when a route has fewer valid points;
+- route populations start at separate valid pedestrian points rather than stacking at one shared origin;
+- materialized civilian traffic contributes one witness group per occupied vehicle, retaining the actual occupant count for feedback without multiplying one report into several Heat events;
+- traffic witnesses use the existing visibility, evidence, Heat, Exposure and hunting-law boundaries rather than an isolated playtest rule;
+- a visible feeding, violent act or power use beside occupied traffic may therefore create a concrete delayed report;
+- idle foot-police patrol targets use continuous pedestrian-route loops on sidewalks, with road navigation points retained only as an emergency fallback when no pedestrian route exists.
+
+These are baseline sandbox behaviours. Playtest mode changes neither the witness rules nor the police AI authority.
+
 ## Feedback questions and collector contract
 
 The embedded form asks:
@@ -107,6 +120,9 @@ Before the link is posted publicly:
 - at least two understand the goal within the first minute;
 - at least two complete the run or correctly understand why they failed;
 - no tester is blocked because they cannot discover how to feed;
+- ordinary street feeding is not routinely consequence-free merely because the city lacks observers;
+- a visible act beside occupied traffic can produce a report;
+- idle foot patrols do not wander along carriageway navigation nodes when a sidewalk route is available;
 - the supported desktop browsers and keyboard/mouse requirement are stated in the post;
 - the generated itch.io ZIP contains `index.html` at its root and runs without repository setup.
 
