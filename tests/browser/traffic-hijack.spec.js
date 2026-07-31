@@ -12,7 +12,7 @@ async function waitForTraffic(page) {
 
 test.describe.configure({ timeout: 90_000 });
 
-test("civilian traffic spawns off camera, can be hijacked and ejects bounded WTF occupants", async ({ page }) => {
+test("civilian traffic spawns off camera, can be hijacked and ejects bounded shocked occupants", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
@@ -128,7 +128,7 @@ test("civilian traffic spawns off camera, can be hijacked and ejects bounded WTF
   expect(result.sourceTokenStillMaterialized).toBe(false);
   expect(result.occupants.length).toBeGreaterThanOrEqual(1);
   expect(result.occupants.length).toBeLessThanOrEqual(2);
-  expect(result.occupants.every(occupant => occupant.wtfVisible && occupant.reactionTimer > 0 && occupant.intent === "carjacked-wtf")).toBe(true);
+  expect(result.occupants.every(occupant => occupant.wtfVisible && occupant.reactionTimer > 0 && occupant.intent === "heard-sound")).toBe(true);
   expect(result.transientVehicleFlags).toEqual([]);
   expect(result.authoredCanEnter).toBe(true);
   expect(result.authoredEntered).toBe(true);
