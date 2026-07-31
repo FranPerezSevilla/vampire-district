@@ -18,6 +18,8 @@ const PHASER_SCRIPT_SOURCES = Object.freeze([
   })
 ]);
 
+let playtestBootCover = null;
+
 function publishPhaserSource({ kind, src = null, version = PHASER_VERSION }) {
   const detail = Object.freeze({ kind, src, version });
   window.NBD_PHASER_SOURCE_DETAIL = detail;
@@ -72,6 +74,34 @@ async function ensurePhaser() {
   throw lastError || new Error("Phaser could not be loaded.");
 }
 
+async function preparePlaytestEntry() {
+  if (bootProfile.mode !== BOOT_MODES.PLAYTEST) return;
+  playtestBootCover = await import("./playtest/PlaytestBootCover.js");
+  playtestBootCover.showPlaytestBootCover();
+}
+
+function installPlaytestIntroPolicy(UIScene) {
+  const prototype = UIScene?.prototype;
+  if (!prototype || prototype.__nbdPlaytestIntroPolicy) return;
+  const originalOpenModal = prototype.openModal;
+  if (typeof originalOpenModal !== "function") return;
+
+  prototype.openModal = function playtestAwareOpenModal(type) {
+    if (type === "intro" && bootProfile.playtestSession) {
+      this.introOpen = false;
+      this.pauseOpen = false;
+      this.resultOpen = false;
+      this.ledgerOpen = false;
+      return false;
+    }
+    return originalOpenModal.call(this, type);
+  };
+  Object.defineProperty(prototype, "__nbdPlaytestIntroPolicy", {
+    value: true,
+    configurable: true
+  });
+}
+
 function renderBootFailure(error) {
   console.error("Viceblood failed to boot", error);
   const root = document.getElementById("game-root");
@@ -87,8 +117,13 @@ function renderBootFailure(error) {
 }
 
 try {
+  await preparePlaytestEntry();
   const phaser = await ensurePhaser();
   await import("./campaign/preload.js");
+  if (bootProfile.mode === BOOT_MODES.PLAYTEST) {
+    const { UIScene } = await import("./scenes/UIScene.js");
+    installPlaytestIntroPolicy(UIScene);
+  }
   await import("./main.js");
   await import("./ui/AccessibilityKeyboardBridge.js");
   await import("./responsive-layout.js");
@@ -113,5 +148,6 @@ try {
 } catch (error) {
   window.NBD_APP_READY = false;
   window.NBD_APP_ERROR = error;
+  playtestBootCover?.failPlaytestBootCover?.(error);
   renderBootFailure(error);
 }
