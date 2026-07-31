@@ -1,14 +1,31 @@
 import { BOOT_MODES, bootProfile } from "../boot/BootProfile.js";
+import { CAMERA } from "../data/balance.js";
+import { LAYERS } from "../data/district.js";
+import {
+  failPlaytestBootCover,
+  finishPlaytestBootCover,
+  installPlaytestStylesheet,
+  showPlaytestBootCover
+} from "./PlaytestBootCover.js";
 import { PlaytestSessionSystem } from "./PlaytestSessionSystem.js";
 import { PlaytestUi } from "./PlaytestUi.js";
 
-function installStylesheet() {
-  if (document.querySelector('link[data-viceblood-playtest="true"]')) return;
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = new URL("../../playtest.css", import.meta.url).href;
-  link.dataset.vicebloodPlaytest = "true";
-  document.head.appendChild(link);
+function cameraZoomForLayer(layer) {
+  if (layer === LAYERS.ROOF_HIGH) return CAMERA.roofHighZoom;
+  if (layer === LAYERS.ROOF_LOW) return CAMERA.roofLowZoom;
+  if (layer === LAYERS.SEWER) return CAMERA.sewerZoom;
+  return CAMERA.streetZoom;
+}
+
+function settlePlaytestCamera(scene) {
+  const camera = scene?.cameras?.main;
+  const player = scene?.player;
+  if (!camera || !player) return;
+  const renderScale = Number(window.NBD_RESOLUTION_PRESET?.renderScale) || 1;
+  camera.stopFollow?.();
+  camera.setZoom?.(cameraZoomForLayer(scene.currentLayer) * renderScale);
+  camera.centerOn?.(player.x, player.y);
+  camera.startFollow?.(player, true, 0.12, 0.12);
 }
 
 function attachPlaytest() {
@@ -25,24 +42,39 @@ function attachPlaytest() {
     window.setTimeout(attachPlaytest, 16);
     return;
   }
-  if (scene.playtestSessionSystem) return;
+  if (scene.playtestSessionSystem) {
+    finishPlaytestBootCover();
+    return;
+  }
 
-  installStylesheet();
-  const session = new PlaytestSessionSystem(scene);
-  const ui = new PlaytestUi(session, scene);
-  scene.playtestUi = ui;
-  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => ui.destroy());
+  try {
+    settlePlaytestCamera(scene);
+    const session = new PlaytestSessionSystem(scene);
+    const ui = new PlaytestUi(session, scene);
+    scene.playtestUi = ui;
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => ui.destroy());
 
-  window.NBD_PLAYTEST_SESSION = Object.freeze({
-    start: () => session.start(),
-    snapshot: () => session.snapshot(),
-    result: () => session.result(),
-    restart: () => session.restart()
-  });
-  window.NBD_PLAYTEST_READY = true;
-  window.dispatchEvent(new CustomEvent("nbd:playtest-ready", {
-    detail: { id: session.config.id, mode: bootProfile.mode }
-  }));
+    window.NBD_PLAYTEST_SESSION = Object.freeze({
+      start: () => session.start(),
+      snapshot: () => session.snapshot(),
+      result: () => session.result(),
+      restart: () => session.restart()
+    });
+    window.NBD_PLAYTEST_READY = true;
+    finishPlaytestBootCover();
+    window.dispatchEvent(new CustomEvent("nbd:playtest-ready", {
+      detail: { id: session.config.id, mode: bootProfile.mode }
+    }));
+  } catch (error) {
+    window.NBD_PLAYTEST_READY = false;
+    window.NBD_PLAYTEST_ERROR = error;
+    console.error("Viceblood playtest failed to attach", error);
+    failPlaytestBootCover(error);
+  }
 }
 
-attachPlaytest();
+if (bootProfile.mode === BOOT_MODES.PLAYTEST) {
+  installPlaytestStylesheet();
+  showPlaytestBootCover();
+  attachPlaytest();
+}
