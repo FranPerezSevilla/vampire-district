@@ -105,3 +105,169 @@ test("playtest mode delivers a start, objective loop, result and feedback path",
 
   expect(pageErrors).toEqual([]);
 });
+
+test("an alarmed pedestrian reacts briefly, then commits to one report run", async ({ page }) => {
+  const pageErrors = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
+
+  await page.goto("/?mode=playtest&rcTest=1", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => Boolean(
+    window.NBD_APP_READY
+    && window.NBD_PLAYTEST_READY
+    && window.NBD_PEDESTRIANS_READY
+  ));
+  await page.locator("#playtest-start").click();
+  await page.waitForFunction(() => window.NBD_PLAYTEST_SESSION?.snapshot?.().status === "active");
+
+  const result = await page.evaluate(() => {
+    const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
+    const witness = (scene.pedestrianSystem?.pedestrians || []).find(npc => Boolean(
+      npc
+      && npc.pedestrian?.routeId
+      && !npc.dead
+      && !npc.inactive
+      && (scene.entityStreamSystem?.shouldSimulateNpc?.(npc) ?? true)
+    ));
+    if (!witness) return { missing: true };
+
+    const zone = scene.policeSystem.zoneAt(witness.x, witness.y);
+    const route = scene.policeSystem
+      .districtPatrolRoutes(zone.id)
+      .find(candidate => candidate.id === witness.pedestrian.routeId);
+    if (!route?.points?.length) {
+      return { missing: false, missingRoute: true, routeId: witness.pedestrian.routeId };
+    }
+
+    let startIndex = 0;
+    let bestDistance = Infinity;
+    route.points.forEach((point, index) => {
+      const candidate = Math.hypot(point.x - witness.x, point.y - witness.y);
+      if (candidate < bestDistance) {
+        startIndex = index;
+        bestDistance = candidate;
+      }
+    });
+    const start = route.points[startIndex];
+    const nextIndex = (startIndex + 1) % route.points.length;
+    const next = route.points[nextIndex];
+    const forwardX = next.x - start.x;
+    const forwardY = next.y - start.y;
+    const forwardLength = Math.hypot(forwardX, forwardY) || 1;
+
+    witness.x = start.x;
+    witness.y = start.y;
+    witness.container?.setPosition?.(witness.x, witness.y);
+    witness.pedestrian.pointIndex = nextIndex;
+    witness.alarmed = false;
+    witness.hasReported = false;
+    witness.intercepted = false;
+    witness.inactive = false;
+    witness.dead = false;
+    witness.drainVictim = false;
+    witness.stunnedTimer = 0;
+    witness.reactionTimer = 0;
+    witness.soundReactionTimer = 0;
+    witness.reportTarget = null;
+    witness.reportNavigation = null;
+    witness.witnessSource = null;
+    witness.masqueradeRisk = false;
+    if (witness.ai) {
+      witness.ai.role = "none";
+      witness.ai.intent = "idle";
+    }
+
+    const source = {
+      id: "browser-danger",
+      x: start.x - (forwardX / forwardLength) * 24,
+      y: start.y - (forwardY / forwardLength) * 24,
+      layer: witness.layer
+    };
+    witness.reportTarget = {
+      id: "browser-report-point",
+      name: "a nearby reporting corner",
+      x: next.x,
+      y: next.y,
+      severityBonus: 0
+    };
+
+    const reportsBefore = scene.witnessSystem.reports;
+    const alarmed = scene.witnessSystem.alarmWitness(
+      witness,
+      "a violent supernatural act",
+      18,
+      {
+        reactionSeconds: 1.8,
+        masqueradeRisk: false,
+        source
+      }
+    );
+    const reactionAtAlarm = witness.reactionTimer;
+    const plannedRouteId = witness.reportNavigation?.routeId || null;
+    const startPosition = { x: witness.x, y: witness.y };
+    let previous = { ...startPosition };
+    let previousDirection = null;
+    let firstMoveFrame = null;
+    let directionReversals = 0;
+    let stationaryFramesAfterShock = 0;
+    let movedDistance = 0;
+
+    for (let frame = 0; frame < 320 && !witness.hasReported; frame++) {
+      scene.npcSystem.update(0.05);
+      scene.witnessSystem.update(0.05);
+
+      const moveX = witness.x - previous.x;
+      const moveY = witness.y - previous.y;
+      const step = Math.hypot(moveX, moveY);
+      if (step > 0.001) {
+        if (firstMoveFrame === null) firstMoveFrame = frame;
+        const direction = { x: moveX / step, y: moveY / step };
+        if (previousDirection) {
+          const dot = previousDirection.x * direction.x + previousDirection.y * direction.y;
+          if (dot < -0.35) directionReversals++;
+        }
+        previousDirection = direction;
+        movedDistance += step;
+      } else if (witness.reactionTimer <= 0 && !witness.hasReported) {
+        stationaryFramesAfterShock++;
+      }
+      previous = { x: witness.x, y: witness.y };
+    }
+
+    return {
+      missing: false,
+      missingRoute: false,
+      alarmed,
+      reactionAtAlarm,
+      plannedRouteId,
+      pedestrianRouteId: witness.pedestrian.routeId,
+      firstMoveFrame,
+      directionReversals,
+      stationaryFramesAfterShock,
+      movedDistance,
+      displacement: Math.hypot(
+        witness.x - startPosition.x,
+        witness.y - startPosition.y
+      ),
+      reported: witness.hasReported,
+      reportDelta: scene.witnessSystem.reports - reportsBefore,
+      navigationComplete: Boolean(witness.reportNavigation?.complete)
+    };
+  });
+
+  expect(result.missing).toBe(false);
+  expect(result.missingRoute).toBe(false);
+  expect(result.alarmed).toBe(true);
+  expect(result.reactionAtAlarm).toBeGreaterThan(0);
+  expect(result.reactionAtAlarm).toBeLessThanOrEqual(0.65);
+  expect(result.plannedRouteId).toBe(result.pedestrianRouteId);
+  expect(result.firstMoveFrame).not.toBeNull();
+  expect(result.firstMoveFrame).toBeLessThanOrEqual(15);
+  expect(result.directionReversals).toBe(0);
+  expect(result.stationaryFramesAfterShock).toBeLessThanOrEqual(4);
+  expect(result.movedDistance).toBeGreaterThan(24);
+  expect(result.displacement).toBeGreaterThan(20);
+  expect(result.reported).toBe(true);
+  expect(result.reportDelta).toBe(1);
+  expect(result.navigationComplete).toBe(true);
+  expect(pageErrors).toEqual([]);
+});
