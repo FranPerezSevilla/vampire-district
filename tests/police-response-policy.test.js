@@ -5,6 +5,7 @@ import {
   desiredFootPolice,
   desiredPoliceTotal
 } from "../phaser/src/police/PoliceResponsePolicy.js";
+import { surplusPoliceCount } from "../phaser/src/systems/PoliceSystem.js";
 
 test("wanted levels escalate from local foot response to district saturation", () => {
   assert.equal(desiredPoliceTotal(0), 2);
@@ -15,6 +16,15 @@ test("wanted levels escalate from local foot response to district saturation", (
   assert.equal(desiredFootPolice(2, 4), 4);
   assert.equal(desiredFootPolice(3, 6), 6);
   assert.equal(desiredFootPolice(3, 2), 10);
+});
+
+test("surplus response officers withdraw when wanted pressure falls", () => {
+  assert.equal(surplusPoliceCount(12, 12), 0);
+  assert.equal(surplusPoliceCount(12, 8), 4);
+  assert.equal(surplusPoliceCount(8, 4), 4);
+  assert.equal(surplusPoliceCount(4, 2), 2);
+  assert.equal(surplusPoliceCount(2, 0), 2);
+  assert.equal(surplusPoliceCount(1, 2), 0);
 });
 
 test("foot response chooses nearby separated approaches instead of a distant global entry", () => {
