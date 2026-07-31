@@ -1,6 +1,7 @@
 import { BOOT_MODES, bootProfile } from "../boot/BootProfile.js";
 import { CAMERA } from "../data/balance.js";
 import { LAYERS } from "../data/district.js";
+import { AmbientViolenceResponseSystem } from "./AmbientViolenceResponseSystem.js";
 import {
   failPlaytestBootCover,
   finishPlaytestBootCover,
@@ -28,6 +29,19 @@ function settlePlaytestCamera(scene) {
   camera.startFollow?.(player, true, 0.12, 0.12);
 }
 
+function polishPlaytestIntro() {
+  const panel = document.querySelector("#playtest-intro .playtest-intro-panel");
+  if (!panel) return;
+  panel.classList.add("playtest-story-intro");
+  panel.innerHTML = `
+    <p class="playtest-kicker">VICEBLOOD · ONE BAD NIGHT</p>
+    <h2 id="playtest-intro-title">The city smells alive.</h2>
+    <blockquote class="playtest-character-line">“One clean feed. Then home before the sirens learn my name.”</blockquote>
+    <p class="playtest-story-goal">Hunt. Feed. Lose the police. Return to the refuge.</p>
+    <p class="playtest-story-controls"><kbd>WASD</kbd> move · <kbd>RMB</kbd> feed · <kbd>F</kbd> Blood Sense</p>
+    <button id="playtest-start" class="playtest-primary" type="button">Step into the night · Enter</button>`;
+}
+
 function attachPlaytest() {
   if (bootProfile.mode !== BOOT_MODES.PLAYTEST) return;
   const game = window.NBD_PHASER_GAME;
@@ -51,8 +65,17 @@ function attachPlaytest() {
     settlePlaytestCamera(scene);
     const session = new PlaytestSessionSystem(scene);
     const ui = new PlaytestUi(session, scene);
+    polishPlaytestIntro();
+    ui.intro = document.getElementById("playtest-intro");
+    ui.startButton = document.getElementById("playtest-start");
+    ui.startButton?.addEventListener("click", () => ui.start());
     scene.playtestUi = ui;
-    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => ui.destroy());
+    scene.playtestAmbientViolenceSystem = new AmbientViolenceResponseSystem(scene);
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      scene.playtestAmbientViolenceSystem?.destroy?.();
+      scene.playtestAmbientViolenceSystem = null;
+      ui.destroy();
+    });
 
     window.NBD_PLAYTEST_SESSION = Object.freeze({
       start: () => session.start(),
