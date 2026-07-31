@@ -1,4 +1,11 @@
-import { districtEntryPoints, districtZones, districtZoneAt, LAYERS, streetNavigationPoints } from "../data/district.js";
+import {
+  districtEntryPoints,
+  districtZones,
+  districtZoneAt,
+  LAYERS,
+  pedestrianRoutes,
+  streetNavigationPoints
+} from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 import { PoliceSystem as PoliceSystemCore } from "./PoliceSystemCore.js";
 
@@ -26,6 +33,38 @@ function nearestPointIndex(points, x, y) {
     }
   });
   return bestIndex;
+}
+
+function uniqueStreetPoints(points = []) {
+  const seen = new Set();
+  return points.filter(point => {
+    if (!point || (point.layer ?? LAYERS.STREET) !== LAYERS.STREET) return false;
+    const key = `${Math.round(Number(point.x) || 0)}:${Math.round(Number(point.y) || 0)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).map(point => ({
+    x: Number(point.x) || 0,
+    y: Number(point.y) || 0,
+    layer: LAYERS.STREET,
+    crosswalk: Boolean(point.crosswalk)
+  }));
+}
+
+export function sidewalkPatrolRoutesForZone(zoneId) {
+  return pedestrianRoutes
+    .map(route => {
+      const points = uniqueStreetPoints(route.points || []);
+      const touchesZone = points.some(point => districtZoneAt(point.x, point.y).id === zoneId);
+      return touchesZone && points.length >= 2
+        ? {
+            id: route.id,
+            points,
+            surface: "sidewalk"
+          }
+        : null;
+    })
+    .filter(Boolean);
 }
 
 export class PoliceSystem extends PoliceSystemCore {
@@ -174,8 +213,43 @@ export class PoliceSystem extends PoliceSystemCore {
     }
   }
 
+  districtPatrolRoutes(zoneId) {
+    const sidewalkRoutes = sidewalkPatrolRoutesForZone(zoneId);
+    if (sidewalkRoutes.length) return sidewalkRoutes;
+    const fallback = uniqueStreetPoints(
+      streetNavigationPoints.filter(point => districtZoneAt(point.x, point.y).id === zoneId)
+    );
+    return fallback.length
+      ? [{ id: `road-fallback-${zoneId}`, points: fallback, surface: "road-fallback" }]
+      : [];
+  }
+
   districtPatrolPoints(zoneId) {
-    return streetNavigationPoints.filter(point => districtZoneAt(point.x, point.y).id === zoneId);
+    return this.districtPatrolRoutes(zoneId).flatMap(route => route.points);
+  }
+
+  patrolRouteForCop(cop, zoneId) {
+    const routes = this.districtPatrolRoutes(zoneId);
+    if (!routes.length) return null;
+    const assigned = routes.find(route => route.id === cop.districtPatrolRouteId);
+    if (assigned) return assigned;
+
+    let bestRoute = routes[0];
+    let bestIndex = 0;
+    let bestDistance = Infinity;
+    for (const route of routes) {
+      const index = nearestPointIndex(route.points, cop.x, cop.y);
+      const point = route.points[index];
+      const distance = Math.hypot(point.x - cop.x, point.y - cop.y);
+      if (distance < bestDistance) {
+        bestRoute = route;
+        bestIndex = index;
+        bestDistance = distance;
+      }
+    }
+    cop.districtPatrolRouteId = bestRoute.id;
+    cop.districtPatrolIndex = bestIndex;
+    return bestRoute;
   }
 
   targetForCop(cop, level, cfg) {
@@ -183,18 +257,21 @@ export class PoliceSystem extends PoliceSystemCore {
     if (!target || target.kind !== "patrol") return target;
     const zone = this.zoneAt(cop.x, cop.y);
     if (!zone) return target;
-    const points = this.districtPatrolPoints(zone.id);
-    if (!points.length) return target;
     if (cop.districtPatrolZoneId !== zone.id) {
       cop.districtPatrolZoneId = zone.id;
-      cop.districtPatrolIndex = nearestPointIndex(points, cop.x, cop.y);
+      cop.districtPatrolRouteId = null;
+      cop.districtPatrolIndex = 0;
     }
-    const point = points[(cop.districtPatrolIndex || 0) % points.length];
+    const route = this.patrolRouteForCop(cop, zone.id);
+    if (!route?.points?.length) return target;
+    const point = route.points[(cop.districtPatrolIndex || 0) % route.points.length];
     return {
       x: point.x,
       y: point.y,
       kind: "patrol",
       districtPatrol: true,
+      districtPatrolRouteId: route.id,
+      patrolSurface: route.surface,
       zoneId: zone.id
     };
   }
@@ -203,9 +280,11 @@ export class PoliceSystem extends PoliceSystemCore {
     if (target?.districtPatrol) {
       const distance = Phaser.Math.Distance.Between(cop.x, cop.y, target.x, target.y);
       if (distance < 18) {
-        const points = this.districtPatrolPoints(target.zoneId);
-        cop.districtPatrolIndex = points.length
-          ? ((cop.districtPatrolIndex || 0) + 1) % points.length
+        const routes = this.districtPatrolRoutes(target.zoneId);
+        const route = routes.find(candidate => candidate.id === target.districtPatrolRouteId)
+          || routes[0];
+        cop.districtPatrolIndex = route?.points?.length
+          ? ((cop.districtPatrolIndex || 0) + 1) % route.points.length
           : 0;
         cop.patrolPause = 0.35 + Math.random() * 0.55;
       }
