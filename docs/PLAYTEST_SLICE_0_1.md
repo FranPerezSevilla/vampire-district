@@ -2,7 +2,7 @@
 
 _Last updated: 2026-07-31_
 
-**Status: 🔵 Draft PR #50 — first manual run complete; consequence-density follow-up under automated validation.**
+**Status: 🔵 Draft PR #50 — first manual run complete; consequence-density and police-pressure follow-up under validation.**
 
 ## Product question
 
@@ -95,6 +95,17 @@ The playtest cannot validate feeding consequences if the streets are effectively
 
 These are baseline sandbox behaviours. Playtest mode changes neither the witness rules nor the police AI authority.
 
+## Police pressure contract
+
+Police escalation must become dangerous early without introducing hunters or arbitrary playtest-only enemies.
+
+- **Wanted 0:** two ambient foot patrols remain in the city;
+- **Wanted 1:** four foot officers are active, with new responders entering from nearby, separated sidewalk approaches and immediately investigating the reported area;
+- **Wanted 2:** two pursuit cruisers support the foot search, for a target response of eight officers once both crews deploy;
+- **Wanted 3:** a third cruiser forms the roadblock while two pursuit cars, up to twelve officers and the existing helicopter saturate the district.
+
+Cruisers choose the closest valid external district approaches rather than deliberately starting from the far side of the city. The escalation is a baseline police contract shared by normal free roam and playtest mode.
+
 ## Feedback questions and collector contract
 
 The embedded form asks:
@@ -122,6 +133,8 @@ Before the link is posted publicly:
 - no tester is blocked because they cannot discover how to feed;
 - ordinary street feeding is not routinely consequence-free merely because the city lacks observers;
 - a visible act beside occupied traffic can produce a report;
+- Wanted 1 produces a nearby foot response instead of making the player wait for distant patrols;
+- Wanted 2 visibly introduces multiple response cruisers and Wanted 3 adds the final roadblock/helicopter saturation step;
 - idle foot patrols do not wander along carriageway navigation nodes when a sidewalk route is available;
 - the supported desktop browsers and keyboard/mouse requirement are stated in the post;
 - the generated itch.io ZIP contains `index.html` at its root and runs without repository setup.

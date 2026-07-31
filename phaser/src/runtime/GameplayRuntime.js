@@ -93,7 +93,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.trafficPhysicalConsequencesSystem = new TrafficPhysicalConsequencesSystem(scene);
     scene.trafficImpactConsequencesSystem = new TrafficImpactConsequencesSystem(scene);
     scene.vehicleCollisionSofteningPolicy = installVehicleCollisionSofteningPolicy(scene);
-    scene.motorizedPoliceSystem = new MotorizedPoliceSystem(scene);
+    scene.motorizedPoliceSystem = new MotorizedPoliceSystem(scene, { maxUnits: 3 });
     scene.motorizedPoliceLocalPolicy = installMotorizedPoliceLocalPolicy(scene.motorizedPoliceSystem);
     scene.territoryRuntimeSystem = new TerritoryRuntimeSystem(scene);
     scene.huntingLawRuntimeSystem = new HuntingLawRuntimeSystem(scene);

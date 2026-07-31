@@ -14,13 +14,13 @@ export function clamp01(value) {
 
 export function desiredMotorizedUnits(level) {
   const wanted = Math.max(0, Math.floor(finite(level)));
-  if (wanted >= 3) return 2;
-  if (wanted >= 2) return 1;
+  if (wanted >= 3) return 3;
+  if (wanted >= 2) return 2;
   return 0;
 }
 
 export function motorizedRole(index, level) {
-  if (desiredMotorizedUnits(level) >= 2 && Number(index) === 1) {
+  if (Math.max(0, Math.floor(finite(level))) >= 3 && Number(index) === 2) {
     return MOTORIZED_POLICE_ROLES.ROADBLOCK;
   }
   return MOTORIZED_POLICE_ROLES.PURSUIT;
@@ -52,7 +52,7 @@ export function edgeBetween(graph, fromId, toId) {
     .map(id => graph.edges?.[id])
     .find(edge => edge && (
       (edge.a === fromId && edge.b === toId)
-      || (edge.a === toId && edge.b === fromId)
+      || (edge.b === fromId && edge.a === toId)
     )) || null;
 }
 
@@ -161,7 +161,7 @@ export function chooseResponseOrigin(graph, targetId, index = 0, preferred = [])
     .map(id => ({ id, path: shortestDistrictPath(graph, id, targetId) }))
     .filter(candidate => candidate.path.length >= 2)
     .sort((left, right) => (
-      right.path.length - left.path.length
+      left.path.length - right.path.length
       || left.id.localeCompare(right.id)
     ));
   if (!candidates.length) return targetId;

@@ -7,9 +7,13 @@ import {
   streetNavigationPoints
 } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
+import {
+  chooseFootResponsePoint,
+  clampWantedLevel,
+  desiredFootPolice,
+  desiredPoliceTotal
+} from "../police/PoliceResponsePolicy.js";
 import { PoliceSystem as PoliceSystemCore } from "./PoliceSystemCore.js";
-
-const DESIRED_POLICE_BY_LEVEL = Object.freeze({ 0: 2, 1: 3, 2: 5, 3: 7 });
 
 const DISTRICT_ENTRY_POINTS = districtEntryPoints;
 
@@ -19,8 +23,6 @@ const MOTORIZED_OFFICER_OFFSETS = Object.freeze([
   Object.freeze({ x: -18, y: 14 }),
   Object.freeze({ x: 18, y: -14 })
 ]);
-
-function clampLevel(level) { return Math.max(0, Math.min(3, Math.floor(Number(level) || 0))); }
 
 function nearestPointIndex(points, x, y) {
   let bestIndex = 0;
@@ -84,17 +86,17 @@ export class PoliceSystem extends PoliceSystemCore {
   }
 
   desiredCount(level = this.wantedLevel()) {
-    return DESIRED_POLICE_BY_LEVEL[clampLevel(level)];
+    return desiredPoliceTotal(level);
   }
 
   footDesiredCount(level = this.wantedLevel()) {
-    const clamped = clampLevel(level);
+    const clamped = clampWantedLevel(level);
     const reserved = this.scene.motorizedPoliceSystem?.reservedOfficerCount?.(clamped) || 0;
-    return Math.max(2, this.desiredCount(clamped) - reserved);
+    return desiredFootPolice(clamped, reserved);
   }
 
   spawnForExposure(level = this.wantedLevel()) {
-    const clamped = clampLevel(level);
+    const clamped = clampWantedLevel(level);
     if (clamped < 1) return;
     const desired = this.footDesiredCount(clamped);
     const existingPolice = this.allPolice().length;
@@ -103,11 +105,32 @@ export class PoliceSystem extends PoliceSystemCore {
     this.spawnedThisTick = 0;
   }
 
+  responseSpawnPoint(level = this.wantedLevel()) {
+    const clamped = clampWantedLevel(level);
+    const player = this.scene.player;
+    const zone = this.zoneAt(player.x, player.y);
+    const sidewalkPoints = this.districtPatrolPoints(zone.id);
+    const targetDistance = clamped === 1 ? 430 : clamped === 2 ? 520 : 610;
+    const maxDistance = clamped === 1 ? 760 : clamped === 2 ? 920 : 1080;
+    return chooseFootResponsePoint(
+      [...sidewalkPoints, ...DISTRICT_ENTRY_POINTS],
+      player,
+      Math.max(0, this.spawned - 1),
+      {
+        minDistance: 260,
+        targetDistance,
+        maxDistance,
+        sectorCount: 8
+      }
+    );
+  }
+
   spawnPolice(level = this.wantedLevel()) {
-    const clamped = clampLevel(level);
+    const clamped = clampWantedLevel(level);
     this.spawnedThisTick++;
     this.spawned++;
-    const point = DISTRICT_ENTRY_POINTS[this.spawned % DISTRICT_ENTRY_POINTS.length];
+    const fallback = DISTRICT_ENTRY_POINTS[this.spawned % DISTRICT_ENTRY_POINTS.length];
+    const point = this.responseSpawnPoint(clamped) || fallback;
     const offset = (this.spawned % 3 - 1) * 14;
     const cop = this.scene.npcSystem.createNpc({
       id: `police_${this.spawned}`,
@@ -119,7 +142,7 @@ export class PoliceSystem extends PoliceSystemCore {
       speed: 28,
       dirX: -1,
       dirY: 0,
-      patrolRoute: point.patrolRoute,
+      patrolRoute: point.patrolRoute || fallback.patrolRoute,
       patrolIndex: 0,
       patrolOffsetIndex: this.spawned % 8,
       searchIndex: this.spawned % 8
@@ -134,9 +157,11 @@ export class PoliceSystem extends PoliceSystemCore {
     this.scene.npcSystem.npcs.push(cop);
     this.scene.entityStreamSystem?.applyNpcState?.(cop, 0);
     this.scene.npcSystem.rebuildSpatialIndex?.();
-    this.scene.lastActionText = clamped >= 2
-      ? "Police reinforcements enter from separated district approaches."
-      : "One additional patrol joins the active search.";
+    this.scene.lastActionText = clamped >= 3
+      ? "Police flood the district from multiple street approaches."
+      : clamped >= 2
+        ? "Additional foot units close in while response cruisers converge."
+        : "Nearby foot patrols converge on the reported area.";
   }
 
   spawnMotorizedOfficers(unitId, {
@@ -210,11 +235,15 @@ export class PoliceSystem extends PoliceSystemCore {
   }
 
   handleWantedLevelChange(level) {
+    const previous = this.previousLevel;
     super.handleWantedLevelChange(level);
-    if (level === 2) {
-      this.scene.lastActionText = "WANTED LEVEL 2: a response cruiser enters the district while foot units close on the last known area.";
+    if (level <= previous) return;
+    if (level === 1) {
+      this.scene.lastActionText = "WANTED LEVEL 1: nearby foot patrols respond immediately and converge on the last known area.";
+    } else if (level === 2) {
+      this.scene.lastActionText = "WANTED LEVEL 2: two response cruisers support the foot search from separate approaches.";
     } else if (level >= 3) {
-      this.scene.lastActionText = "WANTED LEVEL 3: pursuit cruisers, a partial roadblock and helicopter pressure converge on the district.";
+      this.scene.lastActionText = "WANTED LEVEL 3: three cruisers, a roadblock, massed foot units and helicopter pressure saturate the district.";
     }
   }
 
