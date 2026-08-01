@@ -2,9 +2,9 @@ export const MAX_DISTRICT_HEAT = 100;
 export const MAX_EXPOSURE = 125;
 
 export const HEAT_LEVEL_THRESHOLDS = Object.freeze({
-  1: 18,
-  2: 45,
-  3: 75
+  1: 22,
+  2: 55,
+  3: 85
 });
 
 export const KNOWLEDGE_STATES = Object.freeze({
