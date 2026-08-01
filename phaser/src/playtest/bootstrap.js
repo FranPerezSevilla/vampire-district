@@ -1,6 +1,7 @@
 import { BOOT_MODES, bootProfile } from "../boot/BootProfile.js";
 import { CAMERA } from "../data/balance.js";
 import { LAYERS } from "../data/district.js";
+import { PoliceKnowledgePolicy } from "../police/PoliceKnowledgePolicy.js";
 import { AmbientViolenceResponseSystem } from "./AmbientViolenceResponseSystem.js";
 import {
   failPlaytestBootCover,
@@ -71,7 +72,10 @@ function attachPlaytest() {
     ui.startButton?.addEventListener("click", () => ui.start());
     scene.playtestUi = ui;
     scene.playtestAmbientViolenceSystem = new AmbientViolenceResponseSystem(scene);
+    scene.playtestPoliceKnowledgePolicy = new PoliceKnowledgePolicy(scene);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      scene.playtestPoliceKnowledgePolicy?.destroy?.();
+      scene.playtestPoliceKnowledgePolicy = null;
       scene.playtestAmbientViolenceSystem?.destroy?.();
       scene.playtestAmbientViolenceSystem = null;
       ui.destroy();
@@ -81,7 +85,8 @@ function attachPlaytest() {
       start: () => session.start(),
       snapshot: () => session.snapshot(),
       result: () => session.result(),
-      restart: () => session.restart()
+      restart: () => session.restart(),
+      policeKnowledge: () => scene.playtestPoliceKnowledgePolicy?.snapshot?.() || null
     });
     window.NBD_PLAYTEST_READY = true;
     finishPlaytestBootCover();
