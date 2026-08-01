@@ -7,8 +7,8 @@ import {
 export const PEDESTRIAN_IMPACT_BURST_WINDOW_MS = 4500;
 
 const IMPACT_HEAT_STEPS = Object.freeze({
-  nonlethal: Object.freeze([10, 6, 4, 2]),
-  lethal: Object.freeze([18, 10, 6, 4])
+  nonlethal: Object.freeze([7, 4, 3, 2]),
+  lethal: Object.freeze([14, 8, 5, 3])
 });
 
 function finite(value, fallback = 0) {
