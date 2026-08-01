@@ -2,7 +2,7 @@ import { LAYERS } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 
 const INCIDENT_WINDOW_MS = 6500;
-const HEAT_BY_DEATH_IN_BURST = Object.freeze([6, 7, 8, 6]);
+const HEAT_BY_DEATH_IN_BURST = Object.freeze([4, 5, 6, 4]);
 const ELIGIBLE_TYPES = new Set([
   NPC_TYPES.CIVILIAN,
   NPC_TYPES.POLICE,
