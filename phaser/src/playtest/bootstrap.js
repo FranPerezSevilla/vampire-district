@@ -36,8 +36,8 @@ function polishPlaytestIntro() {
   panel.classList.add("playtest-story-intro");
   panel.innerHTML = `
     <p class="playtest-kicker">VICEBLOOD · ONE MORE NIGHT</p>
-    <h2 id="playtest-intro-title">Immortality was never the luxury you imagined.</h2>
-    <blockquote class="playtest-character-line">You were turned into a vampire decades ago. Since then, clan wars and keeping the Veil intact before human eyes have become the work of every night.</blockquote>
+    <h2 id="playtest-intro-title">Immortality was never<br>the luxury you imagined.</h2>
+    <p class="playtest-character-line">You were turned into a vampire decades ago. Since then, clan wars and keeping the Veil hidden from humanity have defined every night of your existence.</p>
     <p class="playtest-story-goal">Tonight, hunger comes first. Feed, lose the police, and return to the refuge.</p>
     <p class="playtest-story-controls"><kbd>WASD</kbd> move · <kbd>RMB</kbd> feed · <kbd>F</kbd> Blood Sense</p>
     <button id="playtest-start" class="playtest-primary" type="button">Step into the night · Enter</button>`;
