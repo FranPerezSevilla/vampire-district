@@ -3,17 +3,30 @@ import fs from "node:fs";
 import test from "node:test";
 
 const bootstrapSource = fs.readFileSync("phaser/src/playtest/bootstrap.js", "utf8");
+const bootCoverSource = fs.readFileSync("phaser/src/playtest/PlaytestBootCover.js", "utf8");
 
-test("playtest intro establishes the vampire premise in one short beat", () => {
-  assert.match(bootstrapSource, /VICEBLOOD · ONE MORE NIGHT/);
-  assert.match(bootstrapSource, /Immortality was never/);
-  assert.match(bootstrapSource, /the luxury you imagined\./);
-  assert.match(bootstrapSource, /turned into a vampire decades ago/);
-  assert.match(bootstrapSource, /clan wars and keeping the Veil hidden from humanity/);
-  assert.match(bootstrapSource, /defined every night of your existence/);
-  assert.match(bootstrapSource, /Feed, lose the police, and return to the refuge\./);
+const narrativeContracts = [
+  /VICEBLOOD · ONE MORE NIGHT/,
+  /Immortality was never/,
+  /the luxury you imagined\./,
+  /turned into a vampire decades ago/,
+  /clan wars and keeping the Veil hidden from humanity/,
+  /defined every night of your existence/,
+  /Feed, lose the police, and return to the refuge\./
+];
+
+test("boot cover and interactive intro share one vampire narrative", () => {
+  for (const contract of narrativeContracts) {
+    assert.match(bootstrapSource, contract);
+    assert.match(bootCoverSource, contract);
+  }
   assert.match(bootstrapSource, /Step into the night/);
-  assert.doesNotMatch(bootstrapSource, /Early browser build\. Art and audio are unfinished/);
+  assert.match(bootCoverSource, /Preparing the city/);
+  for (const source of [bootstrapSource, bootCoverSource]) {
+    assert.doesNotMatch(source, /Hunt\. Feed\. Escape\./);
+    assert.doesNotMatch(source, /EARLY PLAYTEST 0\.1/);
+    assert.doesNotMatch(source, /Early browser build\. Art and audio are unfinished/);
+  }
 });
 
 test("three unwitnessed street deaths create restrained local attention without Exposure", async () => {
