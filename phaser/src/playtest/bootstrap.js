@@ -41,6 +41,27 @@ function polishPlaytestIntro() {
     <p class="playtest-story-goal">Tonight, hunger comes first. Feed, lose the police, and return to the refuge.</p>
     <p class="playtest-story-controls"><kbd>WASD</kbd> move · <kbd>RMB</kbd> feed · <kbd>F</kbd> Blood Sense</p>
     <button id="playtest-start" class="playtest-primary" type="button">Step into the night · Enter</button>`;
+
+  const title = panel.querySelector("h2");
+  const story = panel.querySelector(".playtest-character-line");
+  const goal = panel.querySelector(".playtest-story-goal");
+  if (title) {
+    title.style.fontSize = "clamp(34px, 4.2vw, 46px)";
+    title.style.lineHeight = "1.04";
+    title.style.letterSpacing = "-.025em";
+  }
+  if (story) {
+    story.style.margin = "18px 0 0";
+    story.style.maxWidth = "610px";
+    story.style.color = "#d8d0e3";
+    story.style.fontSize = "16px";
+    story.style.lineHeight = "1.5";
+  }
+  if (goal) {
+    goal.style.margin = "20px 0 16px";
+    goal.style.maxWidth = "610px";
+    goal.style.lineHeight = "1.5";
+  }
 }
 
 function attachPlaytest() {
