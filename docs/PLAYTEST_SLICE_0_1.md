@@ -42,11 +42,18 @@ Player-facing copy:
 >
 > **Immortality was never the luxury you imagined.**
 >
-> You were turned into a vampire decades ago. Since then, clan wars and keeping the Veil intact before human eyes have become the work of every night.
+> You were turned into a vampire decades ago. Since then, clan wars and keeping the Veil hidden from humanity have defined every night of your existence.
 >
 > Tonight, hunger comes first. Feed, lose the police, and return to the refuge.
 
-The intro must establish vampire identity, clan conflict and the Veil, then move immediately into play. It must not become a lore dump.
+Presentation contract:
+
+- the title is deliberately broken into two balanced lines;
+- all copy shares one left edge;
+- the headline is slightly smaller than the first iteration so it does not dominate the whole panel;
+- the narrative paragraph is ordinary body copy, not an indented quotation;
+- the intro must establish vampire identity, clan conflict and the Veil, then move immediately into play;
+- it must not become a lore dump.
 
 ## Launch mode
 
