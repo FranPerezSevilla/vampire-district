@@ -4,14 +4,17 @@ import test from "node:test";
 
 const bootstrapSource = fs.readFileSync("phaser/src/playtest/bootstrap.js", "utf8");
 
-test("playtest intro is a single short character beat", () => {
-  assert.match(bootstrapSource, /The city smells alive\./);
-  assert.match(bootstrapSource, /One clean feed\. Then home before the sirens learn my name\./);
+test("playtest intro establishes the vampire premise in one short beat", () => {
+  assert.match(bootstrapSource, /VICEBLOOD · ONE MORE NIGHT/);
+  assert.match(bootstrapSource, /Immortality was never the luxury you imagined\./);
+  assert.match(bootstrapSource, /turned into a vampire decades ago/);
+  assert.match(bootstrapSource, /clan wars and keeping the Veil intact/);
+  assert.match(bootstrapSource, /Feed, lose the police, and return to the refuge\./);
   assert.match(bootstrapSource, /Step into the night/);
   assert.doesNotMatch(bootstrapSource, /Early browser build\. Art and audio are unfinished/);
 });
 
-test("three unwitnessed street deaths create local police attention without Exposure", async () => {
+test("three unwitnessed street deaths create restrained local attention without Exposure", async () => {
   globalThis.Phaser = {
     Scenes: { Events: { POST_UPDATE: "postupdate", SHUTDOWN: "shutdown" } }
   };
@@ -48,8 +51,8 @@ test("three unwitnessed street deaths create local police attention without Expo
   system.update();
 
   assert.equal(heat.length, 3);
-  assert.deepEqual(heat.map(entry => entry.amount), [6, 7, 8]);
-  assert.equal(heat.reduce((sum, entry) => sum + entry.amount, 0), 21);
+  assert.deepEqual(heat.map(entry => entry.amount), [4, 5, 6]);
+  assert.equal(heat.reduce((sum, entry) => sum + entry.amount, 0), 15);
   assert.ok(heat.every(entry => entry.options.witnessed === false));
   assert.ok(heat.every(entry => entry.options.supernatural === false));
   assert.match(heat.at(-1).reason, /multiple gunshots and bodies reported/);
