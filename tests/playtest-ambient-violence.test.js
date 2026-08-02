@@ -6,9 +6,11 @@ const bootstrapSource = fs.readFileSync("phaser/src/playtest/bootstrap.js", "utf
 
 test("playtest intro establishes the vampire premise in one short beat", () => {
   assert.match(bootstrapSource, /VICEBLOOD · ONE MORE NIGHT/);
-  assert.match(bootstrapSource, /Immortality was never the luxury you imagined\./);
+  assert.match(bootstrapSource, /Immortality was never/);
+  assert.match(bootstrapSource, /the luxury you imagined\./);
   assert.match(bootstrapSource, /turned into a vampire decades ago/);
-  assert.match(bootstrapSource, /clan wars and keeping the Veil intact/);
+  assert.match(bootstrapSource, /clan wars and keeping the Veil hidden from humanity/);
+  assert.match(bootstrapSource, /defined every night of your existence/);
   assert.match(bootstrapSource, /Feed, lose the police, and return to the refuge\./);
   assert.match(bootstrapSource, /Step into the night/);
   assert.doesNotMatch(bootstrapSource, /Early browser build\. Art and audio are unfinished/);
