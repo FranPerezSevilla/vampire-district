@@ -1,6 +1,6 @@
 const BOOT_COVER_ID = "playtest-boot-cover";
 const CRITICAL_STYLE_ID = "playtest-boot-cover-critical";
-let blockBootKeyDown = null;
+const GLOBAL_BLOCKER_KEY = "__NBD_PLAYTEST_BOOT_KEY_BLOCKER__";
 
 function installCriticalStyle() {
   if (document.getElementById(CRITICAL_STYLE_ID)) return;
@@ -102,18 +102,22 @@ export function installPlaytestStylesheet() {
 }
 
 function installBootInputBlocker() {
-  if (blockBootKeyDown || typeof window === "undefined") return;
-  blockBootKeyDown = event => {
+  if (typeof window === "undefined") return;
+  if (window[GLOBAL_BLOCKER_KEY]) return;
+  const blocker = event => {
     event.preventDefault();
     event.stopImmediatePropagation();
   };
-  window.addEventListener("keydown", blockBootKeyDown, true);
+  window[GLOBAL_BLOCKER_KEY] = blocker;
+  window.addEventListener("keydown", blocker, true);
 }
 
 function removeBootInputBlocker() {
-  if (!blockBootKeyDown || typeof window === "undefined") return;
-  window.removeEventListener("keydown", blockBootKeyDown, true);
-  blockBootKeyDown = null;
+  if (typeof window === "undefined") return;
+  const blocker = window[GLOBAL_BLOCKER_KEY];
+  if (!blocker) return;
+  window.removeEventListener("keydown", blocker, true);
+  delete window[GLOBAL_BLOCKER_KEY];
 }
 
 export function showPlaytestBootCover() {
