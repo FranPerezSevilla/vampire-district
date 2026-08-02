@@ -52,6 +52,9 @@ Presentation contract:
 - all copy shares one left edge;
 - the headline is slightly smaller than the first iteration so it does not dominate the whole panel;
 - the narrative paragraph is ordinary body copy, not an indented quotation;
+- the boot-time cover and the interactive intro must use the same narrative, typography and layout;
+- the boot-time cover may only replace the final button text with `Preparing the city…` while loading;
+- old `Hunt. Feed. Escape.` / `EARLY PLAYTEST 0.1` copy must never appear during startup;
 - the intro must establish vampire identity, clan conflict and the Veil, then move immediately into play;
 - it must not become a lore dump.
 
@@ -210,6 +213,7 @@ Required before public recruitment:
 
 - [ ] latest-head GitHub Actions is green;
 - [ ] ten consecutive runs can start, complete or fail, restart and submit feedback without a blocker;
+- [ ] startup shows one consistent narrative intro without an old boot screen flashing first;
 - [ ] repeated vehicle entry and exit cannot immobilize the player;
 - [ ] Heat pacing feels readable across ordinary feeding, gunfire, traffic impacts and police violence;
 - [ ] Wanted 1 searches last-known positions rather than tracking telepathically;
