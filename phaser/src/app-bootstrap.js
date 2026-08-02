@@ -1,7 +1,7 @@
 import { BOOT_MODES, bootProfile } from "./boot/BootProfile.js";
 
 const PHASER_VERSION = "3.90.0";
-const PLAYTEST_ASSET_VERSION = "2026-08-02-intro-2";
+const PLAYTEST_ASSET_VERSION = "2026-08-02-intro-3";
 window.NBD_RC_TEST_MODE = bootProfile.enableHarness;
 window.NBD_PLAYTEST_ASSET_VERSION = PLAYTEST_ASSET_VERSION;
 
@@ -78,7 +78,7 @@ async function ensurePhaser() {
 
 async function preparePlaytestEntry() {
   if (bootProfile.mode !== BOOT_MODES.PLAYTEST) return;
-  playtestBootCover = await import(`./playtest/PlaytestBootCover.js?v=${PLAYTEST_ASSET_VERSION}`);
+  playtestBootCover = await import("./playtest/PlaytestBootCover.js");
   playtestBootCover.showPlaytestBootCover();
 }
 
