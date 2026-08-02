@@ -1,7 +1,9 @@
 import { BOOT_MODES, bootProfile } from "./boot/BootProfile.js";
 
 const PHASER_VERSION = "3.90.0";
+const PLAYTEST_ASSET_VERSION = "2026-08-02-intro-2";
 window.NBD_RC_TEST_MODE = bootProfile.enableHarness;
+window.NBD_PLAYTEST_ASSET_VERSION = PLAYTEST_ASSET_VERSION;
 
 const PHASER_SCRIPT_SOURCES = Object.freeze([
   Object.freeze({
@@ -76,7 +78,7 @@ async function ensurePhaser() {
 
 async function preparePlaytestEntry() {
   if (bootProfile.mode !== BOOT_MODES.PLAYTEST) return;
-  playtestBootCover = await import("./playtest/PlaytestBootCover.js");
+  playtestBootCover = await import(`./playtest/PlaytestBootCover.js?v=${PLAYTEST_ASSET_VERSION}`);
   playtestBootCover.showPlaytestBootCover();
 }
 
@@ -132,7 +134,9 @@ try {
   // Campaign entry and the refuge mission board are intentionally not booted
   // while the production mission registry is empty.
   await import("./vehicles/maintenance-bootstrap.js");
-  if (bootProfile.mode === BOOT_MODES.PLAYTEST) await import("./playtest/bootstrap.js");
+  if (bootProfile.mode === BOOT_MODES.PLAYTEST) {
+    await import(`./playtest/bootstrap.js?v=${PLAYTEST_ASSET_VERSION}`);
+  }
   if (bootProfile.enableHarness) await import("./testing/bootstrap.js");
   if (bootProfile.mode === BOOT_MODES.SCENARIO) await import("./testing/scenario-bootstrap.js");
   window.NBD_APP_READY = true;
@@ -142,7 +146,8 @@ try {
       campaign: true,
       registeredMissions: 0,
       rcTest: bootProfile.rcTest,
-      bootProfile
+      bootProfile,
+      playtestAssetVersion: bootProfile.mode === BOOT_MODES.PLAYTEST ? PLAYTEST_ASSET_VERSION : null
     }
   }));
 } catch (error) {
