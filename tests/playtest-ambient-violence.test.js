@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 
+const appBootstrapSource = fs.readFileSync("phaser/src/app-bootstrap.js", "utf8");
 const bootstrapSource = fs.readFileSync("phaser/src/playtest/bootstrap.js", "utf8");
 const bootCoverSource = fs.readFileSync("phaser/src/playtest/PlaytestBootCover.js", "utf8");
 
@@ -27,6 +28,14 @@ test("boot cover and interactive intro share one vampire narrative", () => {
     assert.doesNotMatch(source, /EARLY PLAYTEST 0\.1/);
     assert.doesNotMatch(source, /Early browser build\. Art and audio are unfinished/);
   }
+});
+
+test("playtest boot uses one shared keyboard blocker module instance", () => {
+  assert.match(appBootstrapSource, /import\("\.\/playtest\/PlaytestBootCover\.js"\)/);
+  assert.doesNotMatch(appBootstrapSource, /PlaytestBootCover\.js\?v=/);
+  assert.match(bootCoverSource, /GLOBAL_BLOCKER_KEY/);
+  assert.match(bootCoverSource, /window\[GLOBAL_BLOCKER_KEY\]/);
+  assert.match(bootCoverSource, /delete window\[GLOBAL_BLOCKER_KEY\]/);
 });
 
 test("three unwitnessed street deaths create restrained local attention without Exposure", async () => {
