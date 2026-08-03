@@ -60,9 +60,14 @@ test("hidden-body container identity survives checkpoints and can be exposed by 
   assert.equal(furnitureCore.includes("dumpster-rupture"), true);
 });
 
-test("expanded police baseline is sparse and reinforcements use separated district approaches", async () => {
+test("expanded police baseline stays sparse while wanted response uses nearby separated approaches", async () => {
   const police = await source("phaser/src/systems/PoliceSystem.js");
-  assert.equal(police.includes("0: 2"), true);
-  assert.equal(police.includes("1: 3"), true);
+  const response = await source("phaser/src/police/PoliceResponsePolicy.js");
+  assert.equal(response.includes("0: 2"), true);
+  assert.equal(response.includes("1: 4"), true);
+  assert.equal(response.includes("2: 8"), true);
+  assert.equal(response.includes("3: 12"), true);
+  assert.equal(police.includes("chooseFootResponsePoint"), true);
+  assert.equal(police.includes("districtPatrolPoints"), true);
   assert.equal(police.includes("DISTRICT_ENTRY_POINTS"), true);
 });

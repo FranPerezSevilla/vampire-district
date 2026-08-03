@@ -12,7 +12,11 @@ import {
   roads,
   sidewalks
 } from "../phaser/src/data/district.js";
-import { npcDefinitions, NPC_TYPES } from "../phaser/src/data/npcs.js";
+import {
+  AMBIENT_PEDESTRIANS_PER_ROUTE,
+  npcDefinitions,
+  NPC_TYPES
+} from "../phaser/src/data/npcs.js";
 import { vehicleDefinitions } from "../phaser/src/data/vehicles.js";
 
 test("expanded district is at least five times the original area without enlarging the viewport", () => {
@@ -68,12 +72,29 @@ test("every civilian route remains on sidewalks and crosses roads only at author
   }
 });
 
-test("baseline street population is sparse across the enlarged district", () => {
+test("baseline street population covers every pedestrian route without stacking at one origin", () => {
   const civilians = npcDefinitions.filter(npc => npc.type === NPC_TYPES.CIVILIAN && !npc.inactive);
+  const ambient = civilians.filter(npc => npc.ambientPopulation);
   const police = npcDefinitions.filter(npc => npc.type === NPC_TYPES.POLICE && !npc.inactive);
-  assert.ok(civilians.length <= 6);
+  const expectedAmbient = pedestrianRoutes.reduce(
+    (total, route) => total + Math.min(AMBIENT_PEDESTRIANS_PER_ROUTE, route.points.length),
+    0
+  );
+
+  assert.equal(ambient.length, expectedAmbient);
   assert.equal(police.length, 2);
-  assert.ok(civilians.filter(npc => npc.pedestrianRouteId).length >= 5);
+  assert.deepEqual(
+    new Set(ambient.map(npc => npc.pedestrianRouteId)),
+    new Set(pedestrianRoutes.map(route => route.id))
+  );
+  for (const route of pedestrianRoutes) {
+    const routePopulation = ambient.filter(npc => npc.pedestrianRouteId === route.id);
+    assert.equal(
+      new Set(routePopulation.map(npc => `${npc.x}:${npc.y}`)).size,
+      routePopulation.length,
+      `${route.id} should distribute its population across separate route points`
+    );
+  }
 });
 
 test("every dumpster is a real hiding spot and vehicles are distributed across the map", () => {

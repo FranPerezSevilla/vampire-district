@@ -9,6 +9,7 @@ This directory is the project source of truth for design, implementation and pla
 - [Project snapshot](PROJECT_SNAPSHOT.md) — concise current playable state, controls, locked decisions, risks and immediate priority.
 - [Technical architecture](TECHNICAL_ARCHITECTURE.md) — authoritative runtime ownership, update order, persistence boundaries and testing contracts.
 - [Roadmap](ROADMAP.md) — completed, active and planned milestones ordered by dependency.
+- [Playtest Slice 0.1](PLAYTEST_SLICE_0_1.md) — isolated 10–15 minute Hunt, Feed, Escape build, acceptance gate and feedback contract.
 
 ## Product and campaign
 

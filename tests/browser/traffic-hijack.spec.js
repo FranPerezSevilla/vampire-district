@@ -12,7 +12,7 @@ async function waitForTraffic(page) {
 
 test.describe.configure({ timeout: 90_000 });
 
-test("civilian traffic spawns off camera, can be hijacked and ejects bounded WTF occupants", async ({ page }) => {
+test("civilian traffic spawns off camera, can be hijacked and ejects bounded shocked occupants", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
@@ -56,7 +56,23 @@ test("civilian traffic spawns off camera, can be hijacked and ejects bounded WTF
     const transientVehicleFlags = Object.keys(scene.campaignSystem.state.world.flags)
       .filter(key => key.startsWith(`vehicle.${vehicle?.id}.`));
 
-    scene.vehicleSystem.exitVehicle({ force: true });
+    scene.inputSystem.keys.w.isDown = true;
+    const hijackExitSucceeded = scene.vehicleSystem.exitVehicle({ force: true });
+    const heldMovementPreserved = scene.inputSystem.keys.w.isDown;
+    const exitPosition = { x: scene.player.x, y: scene.player.y };
+    const probe = 10;
+    const exitHasMovementOption = [
+      { x: probe, y: 0 },
+      { x: -probe, y: 0 },
+      { x: 0, y: probe },
+      { x: 0, y: -probe },
+      { x: probe * 0.7, y: probe * 0.7 },
+      { x: -probe * 0.7, y: probe * 0.7 },
+      { x: probe * 0.7, y: -probe * 0.7 },
+      { x: -probe * 0.7, y: -probe * 0.7 }
+    ].some(offset => scene.canStandAt(exitPosition.x + offset.x, exitPosition.y + offset.y));
+    scene.inputSystem.keys.w.isDown = false;
+
     const authored = scene.vehicleSystem.vehicle("market_sedan");
     scene.player.setPosition(authored.x, authored.y);
     const authoredCanEnter = scene.vehicleSystem.canEnter(authored);
@@ -105,6 +121,9 @@ test("civilian traffic spawns off camera, can be hijacked and ejects bounded WTF
       sourceTokenStillMaterialized: afterTheft.materialized.some(item => item.tokenId === selected.tokenId),
       occupants: occupantState,
       transientVehicleFlags,
+      hijackExitSucceeded,
+      heldMovementPreserved,
+      exitHasMovementOption,
       authoredCanEnter,
       authoredEntered,
       authoredStatus,
@@ -128,8 +147,11 @@ test("civilian traffic spawns off camera, can be hijacked and ejects bounded WTF
   expect(result.sourceTokenStillMaterialized).toBe(false);
   expect(result.occupants.length).toBeGreaterThanOrEqual(1);
   expect(result.occupants.length).toBeLessThanOrEqual(2);
-  expect(result.occupants.every(occupant => occupant.wtfVisible && occupant.reactionTimer > 0 && occupant.intent === "carjacked-wtf")).toBe(true);
+  expect(result.occupants.every(occupant => occupant.wtfVisible && occupant.reactionTimer > 0 && occupant.intent === "heard-sound")).toBe(true);
   expect(result.transientVehicleFlags).toEqual([]);
+  expect(result.hijackExitSucceeded).toBe(true);
+  expect(result.heldMovementPreserved).toBe(true);
+  expect(result.exitHasMovementOption).toBe(true);
   expect(result.authoredCanEnter).toBe(true);
   expect(result.authoredEntered).toBe(true);
   expect(result.authoredStatus).toBe("stolen");

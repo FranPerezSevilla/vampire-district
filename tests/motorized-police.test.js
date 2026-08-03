@@ -45,13 +45,16 @@ const lanes = Object.freeze({
   }
 });
 
-test("wanted levels reserve one pursuit cruiser at two and a roadblock unit at three", () => {
+test("wanted levels deploy two pursuit cruisers at two and add a roadblock cruiser at three", () => {
   assert.equal(desiredMotorizedUnits(0), 0);
   assert.equal(desiredMotorizedUnits(1), 0);
-  assert.equal(desiredMotorizedUnits(2), 1);
-  assert.equal(desiredMotorizedUnits(3), 2);
+  assert.equal(desiredMotorizedUnits(2), 2);
+  assert.equal(desiredMotorizedUnits(3), 3);
+  assert.equal(motorizedRole(0, 2), MOTORIZED_POLICE_ROLES.PURSUIT);
+  assert.equal(motorizedRole(1, 2), MOTORIZED_POLICE_ROLES.PURSUIT);
   assert.equal(motorizedRole(0, 3), MOTORIZED_POLICE_ROLES.PURSUIT);
-  assert.equal(motorizedRole(1, 3), MOTORIZED_POLICE_ROLES.ROADBLOCK);
+  assert.equal(motorizedRole(1, 3), MOTORIZED_POLICE_ROLES.PURSUIT);
+  assert.equal(motorizedRole(2, 3), MOTORIZED_POLICE_ROLES.ROADBLOCK);
 });
 
 test("shortest district routing and lane direction are deterministic", () => {
@@ -67,9 +70,10 @@ test("shortest district routing and lane direction are deterministic", () => {
   assert.deepEqual(route[0].points, lanes.edges["c:d"].reverse);
 });
 
-test("response origins prefer the farthest available district path", () => {
-  assert.equal(chooseResponseOrigin(graph, "a", 0, ["b", "d", "c"]), "d");
+test("response origins prefer the closest available external district paths", () => {
+  assert.equal(chooseResponseOrigin(graph, "a", 0, ["b", "d", "c"]), "b");
   assert.equal(chooseResponseOrigin(graph, "a", 1, ["b", "d", "c"]), "c");
+  assert.equal(chooseResponseOrigin(graph, "a", 2, ["b", "d", "c"]), "d");
 });
 
 test("route advancement crosses legs and respects a partial final roadblock phase", () => {
@@ -92,14 +96,16 @@ test("route advancement crosses legs and respects a partial final roadblock phas
 });
 
 test("officer reservation ends only after each cruiser has dismounted", () => {
-  assert.equal(reservedOfficerCount(2, [], 2), 2);
-  assert.equal(reservedOfficerCount(3, [], 2), 4);
+  assert.equal(reservedOfficerCount(2, [], 2), 4);
+  assert.equal(reservedOfficerCount(3, [], 2), 6);
   assert.equal(reservedOfficerCount(3, [
     { index: 0, officersDismounted: true },
-    { index: 1, officersDismounted: false }
-  ], 2), 2);
+    { index: 1, officersDismounted: false },
+    { index: 2, officersDismounted: false }
+  ], 2), 4);
   assert.equal(reservedOfficerCount(3, [
     { index: 0, officersDismounted: true },
-    { index: 1, officersDismounted: true }
+    { index: 1, officersDismounted: true },
+    { index: 2, officersDismounted: true }
   ], 2), 0);
 });

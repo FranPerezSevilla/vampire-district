@@ -1,7 +1,9 @@
 import { BOOT_MODES, bootProfile } from "./boot/BootProfile.js";
 
 const PHASER_VERSION = "3.90.0";
+const PLAYTEST_ASSET_VERSION = "2026-08-03-vehicle-incidents-1";
 window.NBD_RC_TEST_MODE = bootProfile.enableHarness;
+window.NBD_PLAYTEST_ASSET_VERSION = PLAYTEST_ASSET_VERSION;
 
 const PHASER_SCRIPT_SOURCES = Object.freeze([
   Object.freeze({
@@ -17,6 +19,8 @@ const PHASER_SCRIPT_SOURCES = Object.freeze([
     src: `https://unpkg.com/phaser@${PHASER_VERSION}/dist/phaser.min.js`
   })
 ]);
+
+let playtestBootCover = null;
 
 function publishPhaserSource({ kind, src = null, version = PHASER_VERSION }) {
   const detail = Object.freeze({ kind, src, version });
@@ -72,6 +76,34 @@ async function ensurePhaser() {
   throw lastError || new Error("Phaser could not be loaded.");
 }
 
+async function preparePlaytestEntry() {
+  if (bootProfile.mode !== BOOT_MODES.PLAYTEST) return;
+  playtestBootCover = await import("./playtest/PlaytestBootCover.js");
+  playtestBootCover.showPlaytestBootCover();
+}
+
+function installPlaytestIntroPolicy(UIScene) {
+  const prototype = UIScene?.prototype;
+  if (!prototype || prototype.__nbdPlaytestIntroPolicy) return;
+  const originalOpenModal = prototype.openModal;
+  if (typeof originalOpenModal !== "function") return;
+
+  prototype.openModal = function playtestAwareOpenModal(type) {
+    if (type === "intro" && bootProfile.playtestSession) {
+      this.introOpen = false;
+      this.pauseOpen = false;
+      this.resultOpen = false;
+      this.ledgerOpen = false;
+      return false;
+    }
+    return originalOpenModal.call(this, type);
+  };
+  Object.defineProperty(prototype, "__nbdPlaytestIntroPolicy", {
+    value: true,
+    configurable: true
+  });
+}
+
 function renderBootFailure(error) {
   console.error("Viceblood failed to boot", error);
   const root = document.getElementById("game-root");
@@ -87,8 +119,14 @@ function renderBootFailure(error) {
 }
 
 try {
+  await preparePlaytestEntry();
   const phaser = await ensurePhaser();
   await import("./campaign/preload.js");
+  await import("./police/VehicleIncidentPoliceWitnessPolicy.js");
+  if (bootProfile.mode === BOOT_MODES.PLAYTEST) {
+    const { UIScene } = await import("./scenes/UIScene.js");
+    installPlaytestIntroPolicy(UIScene);
+  }
   await import("./main.js");
   await import("./ui/AccessibilityKeyboardBridge.js");
   await import("./responsive-layout.js");
@@ -97,6 +135,9 @@ try {
   // Campaign entry and the refuge mission board are intentionally not booted
   // while the production mission registry is empty.
   await import("./vehicles/maintenance-bootstrap.js");
+  if (bootProfile.mode === BOOT_MODES.PLAYTEST) {
+    await import(`./playtest/bootstrap.js?v=${PLAYTEST_ASSET_VERSION}`);
+  }
   if (bootProfile.enableHarness) await import("./testing/bootstrap.js");
   if (bootProfile.mode === BOOT_MODES.SCENARIO) await import("./testing/scenario-bootstrap.js");
   window.NBD_APP_READY = true;
@@ -106,11 +147,13 @@ try {
       campaign: true,
       registeredMissions: 0,
       rcTest: bootProfile.rcTest,
-      bootProfile
+      bootProfile,
+      playtestAssetVersion: bootProfile.mode === BOOT_MODES.PLAYTEST ? PLAYTEST_ASSET_VERSION : null
     }
   }));
 } catch (error) {
   window.NBD_APP_READY = false;
   window.NBD_APP_ERROR = error;
+  playtestBootCover?.failPlaytestBootCover?.(error);
   renderBootFailure(error);
 }

@@ -14,7 +14,7 @@ async function waitForMotorizedPolice(page) {
 
 test.describe.configure({ timeout: 90_000 });
 
-test("wanted levels deploy cruisers, reserve officers, form a partial roadblock and continue on foot", async ({ page }) => {
+test("wanted levels bring nearby foot police, multiple cruisers and final district saturation", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
@@ -24,7 +24,7 @@ test("wanted levels deploy cruisers, reserve officers, form a partial roadblock 
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const district = await import("/phaser/src/data/district.js");
     const focus = district.CITY_ANCHORS.foundryStreet;
-    scene.switchLayer(0, focus, "Motorized police regression: Foundry interception.");
+    scene.switchLayer(0, focus, "Police response regression: Foundry interception.");
     await window.NBD_CITY_STREAM.forceFocus(focus.x, focus.y);
 
     // Keep the local-road portion deterministic. Distant macro movement no
@@ -39,9 +39,21 @@ test("wanted levels deploy cruisers, reserve officers, form a partial roadblock 
       vehicle.container?.setPosition?.(vehicle.x, vehicle.y);
     }
 
-    scene.heatSystem.clear("Motorized police baseline.");
-    scene.exposureSystem.clear("Motorized police baseline.");
-    scene.heatSystem.forceLevel(2, "Motorized police level-two test.");
+    scene.heatSystem.clear("Police response baseline.");
+    scene.exposureSystem.clear("Police response baseline.");
+
+    scene.heatSystem.forceLevel(1, "Police response level-one test.");
+    scene.policeSystem.spawnForExposure(1);
+    const levelOnePolice = scene.policeSystem.allPolice();
+    const levelOneSpawned = levelOnePolice
+      .filter(cop => /^police_\d+$/.test(cop.id))
+      .map(cop => ({
+        id: cop.id,
+        distance: Math.hypot(cop.x - focus.x, cop.y - focus.y),
+        targetKind: cop.investigateTarget?.kind || null
+      }));
+
+    scene.heatSystem.forceLevel(2, "Police response level-two test.");
     window.NBD_MOTORIZED_POLICE.reconcile();
     const levelTwoInitial = window.NBD_MOTORIZED_POLICE.snapshot();
     const totalTargetAtTwo = scene.policeSystem.desiredCount(2);
@@ -49,15 +61,18 @@ test("wanted levels deploy cruisers, reserve officers, form a partial roadblock 
     const levelTwoAfterTravel = window.NBD_MOTORIZED_POLICE.step(12);
     const pursuit = levelTwoAfterTravel.units[0];
     const pursuitSeparation = Math.hypot(pursuit.x - focus.x, pursuit.y - focus.y);
-    const pursuitOfficers = scene.policeSystem.allPolice()
-      .filter(cop => cop.motorizedUnitId === pursuit.id)
-      .map(cop => ({ id: cop.id, chasingPlayer: cop.chasingPlayer, unitId: cop.motorizedUnitId }));
+    const levelTwoOfficerCounts = levelTwoAfterTravel.units.map(unit => ({
+      unitId: unit.id,
+      role: unit.role,
+      officers: scene.policeSystem.allPolice().filter(cop => cop.motorizedUnitId === unit.id).length
+    }));
 
-    scene.heatSystem.forceLevel(3, "Motorized police level-three test.");
+    scene.heatSystem.forceLevel(3, "Police response level-three test.");
     window.NBD_MOTORIZED_POLICE.reconcile();
     const levelThreeInitial = window.NBD_MOTORIZED_POLICE.snapshot();
     const totalTargetAtThree = scene.policeSystem.desiredCount(3);
     const desiredFootAtThree = scene.policeSystem.footDesiredCount(3);
+    scene.policeSystem.spawnForExposure(3);
     const levelThreeAfterTravel = window.NBD_MOTORIZED_POLICE.step(14);
     const roadblock = levelThreeAfterTravel.units.find(unit => unit.role === "roadblock");
     const roadblockOfficers = scene.policeSystem.allPolice()
@@ -85,13 +100,16 @@ test("wanted levels deploy cruisers, reserve officers, form a partial roadblock 
 
     return {
       focus,
+      levelOneDesired: scene.policeSystem.desiredCount(1),
+      levelOnePoliceCount: levelOnePolice.length,
+      levelOneSpawned,
       levelTwoInitial,
       totalTargetAtTwo,
       desiredFootAtTwo,
       levelTwoAfterTravel,
       pursuit,
       pursuitSeparation,
-      pursuitOfficers,
+      levelTwoOfficerCounts,
       levelThreeInitial,
       totalTargetAtThree,
       desiredFootAtThree,
@@ -106,23 +124,32 @@ test("wanted levels deploy cruisers, reserve officers, form a partial roadblock 
     };
   });
 
-  expect(result.levelTwoInitial.desiredUnits).toBe(1);
-  expect(result.levelTwoInitial.reservedOfficers).toBe(2);
-  expect(result.totalTargetAtTwo).toBe(5);
-  expect(result.desiredFootAtTwo).toBe(3);
+  expect(result.levelOneDesired).toBe(4);
+  expect(result.levelOnePoliceCount).toBeGreaterThanOrEqual(4);
+  expect(result.levelOneSpawned).toHaveLength(2);
+  expect(result.levelOneSpawned.every(cop => cop.targetKind === "heat")).toBe(true);
+  expect(result.levelOneSpawned.every(cop => cop.distance >= 220 && cop.distance <= 1_100)).toBe(true);
+
+  expect(result.levelTwoInitial.desiredUnits).toBe(2);
+  expect(result.levelTwoInitial.reservedOfficers).toBe(4);
+  expect(result.levelTwoInitial.units.every(unit => unit.role === "pursuit")).toBe(true);
+  expect(result.totalTargetAtTwo).toBe(8);
+  expect(result.desiredFootAtTwo).toBe(4);
   expect(result.pursuit.role).toBe("pursuit");
   expect(result.pursuit.visible).toBe(true);
   expect(
     result.pursuit.officersDismounted,
     JSON.stringify({ focus: result.focus, pursuit: result.pursuit, separation: result.pursuitSeparation }, null, 2)
   ).toBe(true);
-  expect(result.pursuitOfficers).toHaveLength(2);
-  expect(result.pursuitOfficers.every(officer => officer.unitId === result.pursuit.id)).toBe(true);
+  expect(result.levelTwoOfficerCounts).toHaveLength(2);
+  expect(result.levelTwoOfficerCounts.every(unit => unit.role === "pursuit")).toBe(true);
+  expect(result.levelTwoOfficerCounts.every(unit => unit.officers === 2)).toBe(true);
 
-  expect(result.levelThreeInitial.desiredUnits).toBe(2);
-  expect(result.levelThreeInitial.units.some(unit => unit.role === "roadblock")).toBe(true);
-  expect(result.totalTargetAtThree).toBe(7);
-  expect(result.desiredFootAtThree).toBe(5);
+  expect(result.levelThreeInitial.desiredUnits).toBe(3);
+  expect(result.levelThreeInitial.units.filter(unit => unit.role === "pursuit")).toHaveLength(2);
+  expect(result.levelThreeInitial.units.filter(unit => unit.role === "roadblock")).toHaveLength(1);
+  expect(result.totalTargetAtThree).toBe(12);
+  expect(result.desiredFootAtThree).toBe(result.totalTargetAtThree - result.levelThreeInitial.reservedOfficers);
   expect(result.roadblock.arrived).toBe(true);
   expect(result.roadblock.status).toBe("officers-deployed");
   expect(result.roadblock.officersDismounted).toBe(true);
@@ -134,9 +161,9 @@ test("wanted levels deploy cruisers, reserve officers, form a partial roadblock 
   expect(result.disabled.disabled).toBe(true);
   expect(result.disabled.status).toBe("disabled");
   expect(result.disabled.officerIds).toHaveLength(2);
-  expect(result.rooftop.activeUnits).toBe(2);
+  expect(result.rooftop.activeUnits).toBe(3);
   expect(result.rooftop.units.every(unit => unit.visible === false)).toBe(true);
   expect(result.abandonedMemory.vehicleId).toBe("refuge_compact");
-  expect(result.totalPolice).toBeGreaterThanOrEqual(6);
+  expect(result.totalPolice).toBeGreaterThanOrEqual(12);
   expect(pageErrors).toEqual([]);
 });

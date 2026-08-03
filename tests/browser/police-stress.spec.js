@@ -39,7 +39,7 @@ test("level-three police response stays structurally stable while pressure cools
   const started = await page.evaluate(() => window.NBD_RC_HARNESS.startPoliceStress());
 
   expect(started.level).toBeGreaterThanOrEqual(3);
-  expect(started.desiredPolice).toBe(7);
+  expect(started.desiredPolice).toBe(12);
   expect(started.police).toBeGreaterThanOrEqual(started.desiredPolice);
   expect(started.helicopter).toBe(true);
   expect(started.missionFailed).toBe(false);
@@ -59,7 +59,7 @@ test("level-three police response stays structurally stable while pressure cools
   // structural invariant is that the runtime remains healthy while the
   // already-spawned response transitions out of its peak state.
   expect(finished.level).toBeGreaterThanOrEqual(2);
-  expect(finished.police).toBeGreaterThanOrEqual(5);
+  expect(finished.police).toBeGreaterThanOrEqual(8);
   expect(finished.missionFailed).toBe(false);
   expect(finished.dialogueNodes).toBe(1);
   expect(finished.taskRevealNodes).toBe(1);

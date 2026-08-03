@@ -1,10 +1,22 @@
-import { districtEntryPoints, districtZones, districtZoneAt, LAYERS, streetNavigationPoints } from "../data/district.js";
+import {
+  districtEntryPoints,
+  districtZones,
+  districtZoneAt,
+  LAYERS,
+  pedestrianRoutes,
+  streetNavigationPoints
+} from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
+import {
+  chooseFootResponsePoint,
+  clampWantedLevel,
+  desiredFootPolice,
+  desiredPoliceTotal
+} from "../police/PoliceResponsePolicy.js";
 import { PoliceSystem as PoliceSystemCore } from "./PoliceSystemCore.js";
 
-const DESIRED_POLICE_BY_LEVEL = Object.freeze({ 0: 2, 1: 3, 2: 5, 3: 7 });
-
 const DISTRICT_ENTRY_POINTS = districtEntryPoints;
+const RETIRE_ARRIVAL_RADIUS = 34;
 
 const MOTORIZED_OFFICER_OFFSETS = Object.freeze([
   Object.freeze({ x: -15, y: -11 }),
@@ -12,8 +24,6 @@ const MOTORIZED_OFFICER_OFFSETS = Object.freeze([
   Object.freeze({ x: -18, y: 14 }),
   Object.freeze({ x: 18, y: -14 })
 ]);
-
-function clampLevel(level) { return Math.max(0, Math.min(3, Math.floor(Number(level) || 0))); }
 
 function nearestPointIndex(points, x, y) {
   let bestIndex = 0;
@@ -28,6 +38,47 @@ function nearestPointIndex(points, x, y) {
   return bestIndex;
 }
 
+function uniqueStreetPoints(points = []) {
+  const seen = new Set();
+  return points.filter(point => {
+    if (!point || (point.layer ?? LAYERS.STREET) !== LAYERS.STREET) return false;
+    const key = `${Math.round(Number(point.x) || 0)}:${Math.round(Number(point.y) || 0)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).map(point => ({
+    x: Number(point.x) || 0,
+    y: Number(point.y) || 0,
+    layer: LAYERS.STREET,
+    crosswalk: Boolean(point.crosswalk)
+  }));
+}
+
+function allSidewalkPatrolRoutes() {
+  return pedestrianRoutes
+    .map(route => {
+      const points = uniqueStreetPoints(route.points || []);
+      return points.length >= 2
+        ? {
+            id: route.id,
+            points,
+            surface: "pedestrian"
+          }
+        : null;
+    })
+    .filter(Boolean);
+}
+
+export function sidewalkPatrolRoutesForZone(zoneId) {
+  return allSidewalkPatrolRoutes().filter(route => (
+    route.points.some(point => districtZoneAt(point.x, point.y).id === zoneId)
+  ));
+}
+
+export function surplusPoliceCount(current, desired) {
+  return Math.max(0, Math.floor(Number(current) || 0) - Math.max(0, Math.floor(Number(desired) || 0)));
+}
+
 export class PoliceSystem extends PoliceSystemCore {
   allPolice() {
     return super.police();
@@ -39,31 +90,63 @@ export class PoliceSystem extends PoliceSystemCore {
     return stream ? all.filter(cop => stream.shouldSimulateNpc(cop)) : all;
   }
 
+  update(dt) {
+    const level = clampWantedLevel(this.wantedLevel());
+    this.cancelRequiredRetirements(level);
+    super.update(dt);
+    this.reconcilePolicePopulation(level);
+  }
+
   desiredCount(level = this.wantedLevel()) {
-    return DESIRED_POLICE_BY_LEVEL[clampLevel(level)];
+    return desiredPoliceTotal(level);
   }
 
   footDesiredCount(level = this.wantedLevel()) {
-    const clamped = clampLevel(level);
+    const clamped = clampWantedLevel(level);
     const reserved = this.scene.motorizedPoliceSystem?.reservedOfficerCount?.(clamped) || 0;
-    return Math.max(2, this.desiredCount(clamped) - reserved);
+    return desiredFootPolice(clamped, reserved);
+  }
+
+  responsePolice() {
+    return this.allPolice().filter(cop => !cop.retiringFromResponse);
   }
 
   spawnForExposure(level = this.wantedLevel()) {
-    const clamped = clampLevel(level);
+    const clamped = clampWantedLevel(level);
     if (clamped < 1) return;
     const desired = this.footDesiredCount(clamped);
-    const existingPolice = this.allPolice().length;
+    const existingPolice = this.responsePolice().length;
     this.spawnedThisTick = 0;
     while (existingPolice + this.spawnedThisTick < desired) this.spawnPolice(clamped);
     this.spawnedThisTick = 0;
   }
 
+  responseSpawnPoint(level = this.wantedLevel()) {
+    const clamped = clampWantedLevel(level);
+    const player = this.scene.player;
+    const zone = this.zoneAt(player.x, player.y);
+    const sidewalkPoints = this.districtPatrolPoints(zone.id);
+    const targetDistance = clamped === 1 ? 430 : clamped === 2 ? 520 : 610;
+    const maxDistance = clamped === 1 ? 760 : clamped === 2 ? 920 : 1080;
+    return chooseFootResponsePoint(
+      [...sidewalkPoints, ...DISTRICT_ENTRY_POINTS],
+      player,
+      Math.max(0, this.spawned - 1),
+      {
+        minDistance: 260,
+        targetDistance,
+        maxDistance,
+        sectorCount: 8
+      }
+    );
+  }
+
   spawnPolice(level = this.wantedLevel()) {
-    const clamped = clampLevel(level);
+    const clamped = clampWantedLevel(level);
     this.spawnedThisTick++;
     this.spawned++;
-    const point = DISTRICT_ENTRY_POINTS[this.spawned % DISTRICT_ENTRY_POINTS.length];
+    const fallback = DISTRICT_ENTRY_POINTS[this.spawned % DISTRICT_ENTRY_POINTS.length];
+    const point = this.responseSpawnPoint(clamped) || fallback;
     const offset = (this.spawned % 3 - 1) * 14;
     const cop = this.scene.npcSystem.createNpc({
       id: `police_${this.spawned}`,
@@ -75,12 +158,14 @@ export class PoliceSystem extends PoliceSystemCore {
       speed: 28,
       dirX: -1,
       dirY: 0,
-      patrolRoute: point.patrolRoute,
+      patrolRoute: point.patrolRoute || fallback.patrolRoute,
       patrolIndex: 0,
       patrolOffsetIndex: this.spawned % 8,
       searchIndex: this.spawned % 8
     });
     cop.active = true;
+    cop.deploymentKind = "foot-response";
+    cop.responseWantedLevel = clamped;
     cop.investigateTarget = clamped >= 1 ? {
       x: this.scene.player.x,
       y: this.scene.player.y,
@@ -90,9 +175,11 @@ export class PoliceSystem extends PoliceSystemCore {
     this.scene.npcSystem.npcs.push(cop);
     this.scene.entityStreamSystem?.applyNpcState?.(cop, 0);
     this.scene.npcSystem.rebuildSpatialIndex?.();
-    this.scene.lastActionText = clamped >= 2
-      ? "Police reinforcements enter from separated district approaches."
-      : "One additional patrol joins the active search.";
+    this.scene.lastActionText = clamped >= 3
+      ? "Police flood the district from multiple street approaches."
+      : clamped >= 2
+        ? "Additional foot units close in while response cruisers converge."
+        : "Nearby foot patrols converge on the reported area.";
   }
 
   spawnMotorizedOfficers(unitId, {
@@ -166,46 +253,176 @@ export class PoliceSystem extends PoliceSystemCore {
   }
 
   handleWantedLevelChange(level) {
+    const previous = this.previousLevel;
     super.handleWantedLevelChange(level);
-    if (level === 2) {
-      this.scene.lastActionText = "WANTED LEVEL 2: a response cruiser enters the district while foot units close on the last known area.";
+    if (level <= previous) return;
+    if (level === 1) {
+      this.scene.lastActionText = "WANTED LEVEL 1: nearby foot patrols respond immediately and converge on the last known area.";
+    } else if (level === 2) {
+      this.scene.lastActionText = "WANTED LEVEL 2: two response cruisers support the foot search from separate approaches.";
     } else if (level >= 3) {
-      this.scene.lastActionText = "WANTED LEVEL 3: pursuit cruisers, a partial roadblock and helicopter pressure converge on the district.";
+      this.scene.lastActionText = "WANTED LEVEL 3: three cruisers, a roadblock, massed foot units and helicopter pressure saturate the district.";
     }
   }
 
+  isTemporaryResponseCop(cop) {
+    return Boolean(cop?.deploymentKind === "foot-response" || cop?.deploymentKind === "motorized" || cop?.motorizedUnitId);
+  }
+
+  retirementPointFor(cop, index = 0) {
+    const player = this.scene.player;
+    const ordered = [...DISTRICT_ENTRY_POINTS].sort((a, b) => {
+      const aDistance = Math.hypot(a.x - player.x, a.y - player.y);
+      const bDistance = Math.hypot(b.x - player.x, b.y - player.y);
+      return bDistance - aDistance;
+    });
+    return ordered[(index + (cop.searchIndex || 0)) % Math.max(1, ordered.length)] || DISTRICT_ENTRY_POINTS[0];
+  }
+
+  beginRetirement(cop, index = 0) {
+    if (!cop || cop.retiringFromResponse) return;
+    const exit = this.retirementPointFor(cop, index);
+    cop.retiringFromResponse = true;
+    cop.retirementTarget = { x: exit.x, y: exit.y, kind: "retire" };
+    cop.chasingPlayer = false;
+    cop.enemyAttack = false;
+    cop.investigateTarget = null;
+    cop.patrolPause = 0;
+  }
+
+  cancelRequiredRetirements(level) {
+    const desired = this.desiredCount(level);
+    const available = this.allPolice().filter(cop => !cop.retiringFromResponse).length;
+    let needed = Math.max(0, desired - available);
+    if (!needed) return;
+    const retiring = this.allPolice()
+      .filter(cop => cop.retiringFromResponse)
+      .sort((a, b) => Phaser.Math.Distance.Between(a.x, a.y, this.scene.player.x, this.scene.player.y)
+        - Phaser.Math.Distance.Between(b.x, b.y, this.scene.player.x, this.scene.player.y));
+    for (const cop of retiring) {
+      if (needed <= 0) break;
+      cop.retiringFromResponse = false;
+      cop.retirementTarget = null;
+      needed--;
+    }
+  }
+
+  reconcilePolicePopulation(level) {
+    const desired = this.desiredCount(level);
+    const active = this.allPolice();
+    const alreadyRetiring = active.filter(cop => cop.retiringFromResponse).length;
+    const surplus = surplusPoliceCount(active.length - alreadyRetiring, desired);
+    if (!surplus) return;
+
+    const candidates = active
+      .filter(cop => !cop.retiringFromResponse && this.isTemporaryResponseCop(cop))
+      .sort((a, b) => {
+        const motorizedPriority = Number(Boolean(b.motorizedUnitId)) - Number(Boolean(a.motorizedUnitId));
+        if (motorizedPriority) return motorizedPriority;
+        return Phaser.Math.Distance.Between(b.x, b.y, this.scene.player.x, this.scene.player.y)
+          - Phaser.Math.Distance.Between(a.x, a.y, this.scene.player.x, this.scene.player.y);
+      });
+
+    for (let index = 0; index < Math.min(surplus, candidates.length); index++) {
+      this.beginRetirement(candidates[index], index);
+    }
+  }
+
+  finishRetirement(cop) {
+    cop.retiringFromResponse = false;
+    cop.retirementTarget = null;
+    cop.inactive = true;
+    cop.active = false;
+    cop.chasingPlayer = false;
+    cop.vx = 0;
+    cop.vy = 0;
+    cop.container?.setVisible?.(false);
+    this.scene.events?.emit?.("police:response-retired", { officerId: cop.id });
+    this.scene.npcSystem.rebuildSpatialIndex?.();
+  }
+
+  districtPatrolRoutes(zoneId) {
+    const sidewalkRoutes = sidewalkPatrolRoutesForZone(zoneId);
+    if (sidewalkRoutes.length) return sidewalkRoutes;
+
+    const nearestSidewalkRoutes = allSidewalkPatrolRoutes();
+    if (nearestSidewalkRoutes.length) return nearestSidewalkRoutes;
+
+    const fallback = uniqueStreetPoints(
+      streetNavigationPoints.filter(point => districtZoneAt(point.x, point.y).id === zoneId)
+    );
+    return fallback.length
+      ? [{ id: `road-fallback-${zoneId}`, points: fallback, surface: "road-fallback" }]
+      : [];
+  }
+
   districtPatrolPoints(zoneId) {
-    return streetNavigationPoints.filter(point => districtZoneAt(point.x, point.y).id === zoneId);
+    return this.districtPatrolRoutes(zoneId).flatMap(route => route.points);
+  }
+
+  patrolRouteForCop(cop, zoneId) {
+    const routes = this.districtPatrolRoutes(zoneId);
+    if (!routes.length) return null;
+    const assigned = routes.find(route => route.id === cop.districtPatrolRouteId);
+    if (assigned) return assigned;
+
+    let bestRoute = routes[0];
+    let bestIndex = 0;
+    let bestDistance = Infinity;
+    for (const route of routes) {
+      const index = nearestPointIndex(route.points, cop.x, cop.y);
+      const point = route.points[index];
+      const distance = Math.hypot(point.x - cop.x, point.y - cop.y);
+      if (distance < bestDistance) {
+        bestRoute = route;
+        bestIndex = index;
+        bestDistance = distance;
+      }
+    }
+    cop.districtPatrolRouteId = bestRoute.id;
+    cop.districtPatrolIndex = bestIndex;
+    return bestRoute;
   }
 
   targetForCop(cop, level, cfg) {
+    if (cop.retiringFromResponse && cop.retirementTarget) return cop.retirementTarget;
     const target = super.targetForCop(cop, level, cfg);
     if (!target || target.kind !== "patrol") return target;
     const zone = this.zoneAt(cop.x, cop.y);
     if (!zone) return target;
-    const points = this.districtPatrolPoints(zone.id);
-    if (!points.length) return target;
     if (cop.districtPatrolZoneId !== zone.id) {
       cop.districtPatrolZoneId = zone.id;
-      cop.districtPatrolIndex = nearestPointIndex(points, cop.x, cop.y);
+      cop.districtPatrolRouteId = null;
+      cop.districtPatrolIndex = 0;
     }
-    const point = points[(cop.districtPatrolIndex || 0) % points.length];
+    const route = this.patrolRouteForCop(cop, zone.id);
+    if (!route?.points?.length) return target;
+    const point = route.points[(cop.districtPatrolIndex || 0) % route.points.length];
     return {
       x: point.x,
       y: point.y,
       kind: "patrol",
       districtPatrol: true,
+      districtPatrolRouteId: route.id,
+      patrolSurface: route.surface,
       zoneId: zone.id
     };
   }
 
   resolveTargetArrival(cop, target, level) {
+    if (target?.kind === "retire") {
+      const distance = Phaser.Math.Distance.Between(cop.x, cop.y, target.x, target.y);
+      if (distance < RETIRE_ARRIVAL_RADIUS) this.finishRetirement(cop);
+      return;
+    }
     if (target?.districtPatrol) {
       const distance = Phaser.Math.Distance.Between(cop.x, cop.y, target.x, target.y);
       if (distance < 18) {
-        const points = this.districtPatrolPoints(target.zoneId);
-        cop.districtPatrolIndex = points.length
-          ? ((cop.districtPatrolIndex || 0) + 1) % points.length
+        const routes = this.districtPatrolRoutes(target.zoneId);
+        const route = routes.find(candidate => candidate.id === target.districtPatrolRouteId)
+          || routes[0];
+        cop.districtPatrolIndex = route?.points?.length
+          ? ((cop.districtPatrolIndex || 0) + 1) % route.points.length
           : 0;
         cop.patrolPause = 0.35 + Math.random() * 0.55;
       }
@@ -230,8 +447,10 @@ export class PoliceSystem extends PoliceSystemCore {
     const active = this.police();
     const total = this.allPolice();
     const motorized = total.filter(cop => cop.motorizedUnitId).length;
+    const retiring = total.filter(cop => cop.retiringFromResponse).length;
     const base = super.summary();
     const streamed = total.length === active.length ? base : `${base} · streamed ${active.length}/${total.length}`;
-    return motorized ? `${streamed} · motorized officers ${motorized}` : streamed;
+    const deployments = motorized ? `${streamed} · motorized officers ${motorized}` : streamed;
+    return retiring ? `${deployments} · withdrawing ${retiring}` : deployments;
   }
 }

@@ -19,7 +19,7 @@ const SENSE_CONFIG = Object.freeze({
 });
 
 const SOUND_EVENTS = Object.freeze({
-  roofDrop: { label: "a heavy fall from the rooftops", hearing: 192, visual: 165, severity: 11, heat: 20, reaction: 2.5 }
+  roofDrop: { label: "a heavy fall from the rooftops", hearing: 192, visual: 165, severity: 11, heat: 20, reaction: 1.0 }
 });
 
 function stableFacing(npc) {
@@ -103,7 +103,7 @@ export class SensoryAwarenessSystem {
     const notices = [];
     if (policeSaw) notices.push(`${policeSaw} police officer(s) saw it`);
     if (civiliansSaw) notices.push(`${civiliansSaw} civilian witness(es) saw it`);
-    if (heardOnly) notices.push(`${heardOnly} nearby NPC(s) heard it and turned toward the sound`);
+    if (heardOnly) notices.push(`${heardOnly} nearby NPC(s) only heard it and checked the sound`);
     return notices.length ? notices.join(" · ") : "No one nearby noticed";
   }
 
@@ -163,13 +163,17 @@ export class SensoryAwarenessSystem {
   }
 
   startHeardOnlyReaction(npc, source, event) {
-    if (npc.alarmed || npc.chasingPlayer || npc.enemyAttack) return false;
+    if (npc.alarmed || npc.chasingPlayer || npc.enemyAttack || npc.soundReactionTimer > 0) return false;
     npc.soundReactionTimer = Math.max(npc.soundReactionTimer || 0, event.reaction);
     npc.soundSourceX = source.x;
     npc.soundSourceY = source.y;
     npc.vx = 0;
     npc.vy = 0;
     npc.chasingPlayer = false;
+    if (npc.ai) {
+      npc.ai.role = "investigate";
+      npc.ai.intent = "heard-sound";
+    }
     this.turnToward(npc, source.x, source.y);
     this.ensureWtfLabel(npc).setPosition(npc.x, npc.y - 26).setVisible(true);
     return true;
@@ -187,13 +191,13 @@ export class SensoryAwarenessSystem {
 
   ensureWtfLabel(npc) {
     if (npc.__nbdWtfLabel) return npc.__nbdWtfLabel;
-    npc.__nbdWtfLabel = this.scene.add.text(npc.x, npc.y - 28, "WTF", {
+    npc.__nbdWtfLabel = this.scene.add.text(npc.x, npc.y - 28, "?", {
       fontFamily: "Arial, Helvetica, sans-serif",
-      fontSize: "12px",
+      fontSize: "14px",
       fontStyle: "bold",
       color: "#ffd58b",
       backgroundColor: "rgba(5, 6, 11, .78)",
-      padding: { x: 4, y: 2 }
+      padding: { x: 5, y: 2 }
     }).setOrigin(0.5, 1).setDepth(72).setVisible(false);
     npc.__nbdWtfLabel.setResolution?.(3);
     npc.__nbdWtfLabel.setStroke?.("#05060b", 2);
