@@ -1,4 +1,5 @@
 import { WORLD } from "./data/balance.js";
+import { installVampireVeilPolicy } from "./policies/VampireVeilPolicy.js";
 import { BootScene } from "./scenes/BootScene.js";
 import { GameScene } from "./scenes/GameScene.js";
 import { UIScene } from "./scenes/UIScene.js";
@@ -63,6 +64,7 @@ function patchReadableCanvasText() {
 
 bindResolutionSelector();
 patchReadableCanvasText();
+installVampireVeilPolicy();
 
 const config = {
   type: Phaser.AUTO,
