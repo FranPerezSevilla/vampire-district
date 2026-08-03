@@ -29,13 +29,15 @@ export const ACTION_RULES = Object.freeze({
     witnessSeverity: 9
   },
   roofDrop: {
-    label: "falling from a roof",
-    breaksMasquerade: false,
-    isFelony: true,
-    heat: 18,
-    policeRadius: 165,
-    witnessRadius: 135,
-    witnessSeverity: 9
+    label: "an impossible fall from a rooftop",
+    breaksMasquerade: true,
+    exposesVeil: true,
+    isFelony: false,
+    heat: 0,
+    policeRadius: 0,
+    witnessRadius: 150,
+    witnessSeverity: 22,
+    exposureWeight: 18
   },
   breakLight: {
     label: "streetlight vandalism",
@@ -162,10 +164,31 @@ export function resolveAction(scene, actionId, context = {}) {
     scene.lastActionText = appendWitnessNotice(scene.lastActionText, rule.label, felonyReporters.length);
   }
 
+  const veilResult = rule.exposesVeil
+    ? scene.witnessSystem?.onSuspiciousPower?.(
+        rule.label,
+        rule.witnessSeverity || 16,
+        rule.witnessRadius || 140,
+        {
+          source: subject,
+          exclude: context.exclude || [],
+          sourceEvent: actionId,
+          exposureWeight: rule.exposureWeight || 12,
+          reactionSeconds: context.reactionSeconds ?? 0.75
+        }
+      ) || { witnesses: 0, witnessIds: [], evidenceId: null, institutionalObservers: 0 }
+    : { witnesses: 0, witnessIds: [], evidenceId: null, institutionalObservers: 0 };
+
+  if (veilResult.witnesses > 0) {
+    scene.lastActionText = appendVeilNotice(scene.lastActionText, rule.label, veilResult.witnesses);
+  }
+
   return {
     rule,
     policeWitnesses,
     felonyReporters,
+    veilWitnesses: veilResult.witnessIds || [],
+    veilEvidenceId: veilResult.evidenceId || null,
     breaksMasquerade: rule.breaksMasquerade,
     isFelony: rule.isFelony
   };
@@ -232,5 +255,13 @@ function appendWitnessNotice(text, label, count) {
   const suffix = `${count} civilian witness(es) may report ${label}.`;
   if (!base) return suffix;
   if (base.includes("civilian witness")) return base;
+  return `${base} ${suffix}`;
+}
+
+function appendVeilNotice(text, label, count) {
+  const base = text || "";
+  const suffix = `VEIL RISK: ${count} witness(es) saw ${label}.`;
+  if (!base) return suffix;
+  if (base.includes("VEIL RISK")) return base;
   return `${base} ${suffix}`;
 }

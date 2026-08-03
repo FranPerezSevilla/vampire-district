@@ -54,6 +54,28 @@ function installCriticalStyle() {
       line-height: 1.55;
       font-style: normal;
     }
+    #${BOOT_COVER_ID} .playtest-master-call {
+      max-width: 590px;
+      margin: 16px 0 0;
+      border-left: 3px solid #a75cff;
+      padding: 10px 14px;
+      background: rgba(167, 92, 255, .08);
+      color: #eee5ff;
+      font-size: 15px;
+      line-height: 1.55;
+    }
+    #${BOOT_COVER_ID} .playtest-master-call span {
+      display: block;
+      margin-bottom: 5px;
+      color: #b8a8ca;
+      font-size: 12px;
+      font-style: italic;
+    }
+    #${BOOT_COVER_ID} .playtest-master-call strong {
+      color: #f2d9ff;
+      font-style: italic;
+      font-weight: 700;
+    }
     #${BOOT_COVER_ID} .playtest-story-goal {
       margin: 18px 0 0;
       color: #f1e6ff;
@@ -64,7 +86,7 @@ function installCriticalStyle() {
       margin: 14px 0 0;
       color: #c9bfd7;
       font-size: 14px;
-      line-height: 1.5;
+      line-height: 1.65;
     }
     #${BOOT_COVER_ID} kbd {
       padding: 3px 7px;
@@ -137,8 +159,9 @@ export function showPlaytestBootCover() {
         <p class="playtest-kicker">VICEBLOOD · ONE MORE NIGHT</p>
         <h2 id="playtest-boot-title">Immortality was never<br>the luxury you imagined.</h2>
         <p class="playtest-character-line">You were turned into a vampire decades ago. Since then, clan wars and keeping the Veil hidden from humanity have defined every night of your existence.</p>
-        <p class="playtest-story-goal">Tonight, hunger comes first. Feed, lose the police, and return to the refuge.</p>
-        <p class="playtest-story-controls"><kbd>WASD</kbd> move · <kbd>RMB</kbd> feed · <kbd>F</kbd> Blood Sense</p>
+        <blockquote class="playtest-master-call"><span>I feel my master calling. His voice is already inside my head.</span><strong>“You are too weak. Feed, then return to the refuge... but do not make the mistake of leaving witnesses.”</strong></blockquote>
+        <p class="playtest-story-goal">Tonight, hunger comes first. Hunt, feed, survive the police response and return to the refuge.</p>
+        <p class="playtest-story-controls"><kbd>WASD</kbd> move · <kbd>LMB</kbd> attack · <kbd>RMB</kbd> feed · <kbd>R</kbd> Whisper · <kbd>F</kbd> Blood Sense · <kbd>ENTER</kbd> vehicle<br><kbd>H</kbd> opens the pause menu and full controls at any time.</p>
         <button type="button" disabled>Preparing the city…</button>
       </section>
     </div>`;
