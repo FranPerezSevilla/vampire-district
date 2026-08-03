@@ -46,6 +46,16 @@ export function npcAwareOfPlayer(npc) {
   );
 }
 
+function isCompelledForFeeding(npc) {
+  return Boolean(
+    npc
+    && !npc.alarmed
+    && npc.whisperCommand === "come_here"
+    && npc.whisperCommandTimer > 0
+    && npc.luredTimer > 0
+  );
+}
+
 export function evaluateDrainCandidate(
   player,
   aimDirection,
@@ -84,6 +94,12 @@ export function evaluateDrainCandidate(
 
   if (downed) {
     return { eligible: true, reason: "downed", kind: DRAIN_KINDS.DOWNED, distance, aimAngle };
+  }
+
+  // A target actively obeying COME HERE is willingly yielding to the vampire.
+  // Feeding should not require circling behind them or exploiting their facing.
+  if (isCompelledForFeeding(npc)) {
+    return { eligible: true, reason: "compelled", kind: DRAIN_KINDS.REAR, distance, aimAngle };
   }
 
   if (npcAwareOfPlayer(npc)) {
