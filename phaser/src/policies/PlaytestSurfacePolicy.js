@@ -31,7 +31,46 @@ function removeUnavailableHelp(body) {
   if (html !== body.innerHTML) body.innerHTML = html;
 }
 
+function enhancePlaytestIntro(root = document) {
+  const intro = root.querySelector?.("#playtest-intro");
+  if (!intro || intro.dataset.controlsEnhanced === "true") return false;
+
+  const grid = intro.querySelector(".playtest-control-grid");
+  if (grid) {
+    grid.innerHTML = `
+      <span><kbd>WASD</kbd> Move</span>
+      <span><kbd>LMB</kbd> Attack</span>
+      <span><kbd>RMB</kbd> Hold to feed</span>
+      <span><kbd>WHEEL</kbd> Change weapon</span>
+      <span><kbd>R</kbd> Whisper</span>
+      <span><kbd>F</kbd> Blood Sense</span>
+      <span><kbd>ENTER</kbd> Enter / leave vehicle</span>
+      <span><kbd>H</kbd> Pause + full controls</span>
+    `;
+  }
+
+  const note = intro.querySelector(".playtest-note");
+  if (note) {
+    note.innerHTML = `Experiment with weapons, feeding depths, vehicles and vampiric powers. Press <kbd>H</kbd> at any time to reopen the pause menu and review every control.`;
+  }
+
+  intro.dataset.controlsEnhanced = "true";
+  return true;
+}
+
+function watchForPlaytestIntro() {
+  if (typeof document === "undefined") return;
+  if (enhancePlaytestIntro(document)) return;
+  const observer = new MutationObserver(() => {
+    if (!enhancePlaytestIntro(document)) return;
+    observer.disconnect();
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+}
+
 export function installPlaytestSurfacePolicy() {
+  watchForPlaytestIntro();
+
   if (!InteractionSystem.prototype.__nbdHiddenTraversalPolicy) {
     const originalSortOptions = InteractionSystem.prototype.sortOptions;
     InteractionSystem.prototype.sortOptions = function hiddenTraversalSort(options = []) {
