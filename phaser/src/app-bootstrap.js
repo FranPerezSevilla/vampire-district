@@ -1,7 +1,7 @@
 import { BOOT_MODES, bootProfile } from "./boot/BootProfile.js";
 
 const PHASER_VERSION = "3.90.0";
-const PLAYTEST_ASSET_VERSION = "2026-08-02-intro-3";
+const PLAYTEST_ASSET_VERSION = "2026-08-03-vehicle-incidents-1";
 window.NBD_RC_TEST_MODE = bootProfile.enableHarness;
 window.NBD_PLAYTEST_ASSET_VERSION = PLAYTEST_ASSET_VERSION;
 
@@ -122,6 +122,7 @@ try {
   await preparePlaytestEntry();
   const phaser = await ensurePhaser();
   await import("./campaign/preload.js");
+  await import("./police/VehicleIncidentPoliceWitnessPolicy.js");
   if (bootProfile.mode === BOOT_MODES.PLAYTEST) {
     const { UIScene } = await import("./scenes/UIScene.js");
     installPlaytestIntroPolicy(UIScene);
