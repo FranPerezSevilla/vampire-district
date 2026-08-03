@@ -1,3 +1,4 @@
+import { PlaytestUi } from "../playtest/PlaytestUi.js";
 import { UIScene } from "../scenes/UIScene.js";
 import { InteractionSystem } from "../systems/InteractionSystem.js";
 
@@ -35,19 +36,7 @@ function enhancePlaytestIntro(root = document) {
   const intro = root.querySelector?.("#playtest-intro");
   if (!intro || intro.dataset.controlsEnhanced === "true") return false;
 
-  const lead = intro.querySelector(".playtest-lead");
-  if (lead && !intro.querySelector(".playtest-master-call")) {
-    const masterCall = document.createElement("blockquote");
-    masterCall.className = "playtest-master-call";
-    masterCall.style.margin = "16px 0";
-    masterCall.style.padding = "11px 14px";
-    masterCall.style.borderLeft = "3px solid #a75cff";
-    masterCall.style.background = "rgba(167, 92, 255, .08)";
-    masterCall.style.color = "#eee5ff";
-    masterCall.style.lineHeight = "1.55";
-    masterCall.innerHTML = `<span style="display:block;margin-bottom:5px;color:#b8a8ca;font-size:12px;font-style:italic">I feel my master calling. His voice is already inside my head.</span><strong style="color:#f2d9ff;font-style:italic">“You are too weak. Feed, then return to the refuge... but do not make the mistake of leaving witnesses.”</strong>`;
-    lead.insertAdjacentElement("afterend", masterCall);
-  }
+  intro.querySelector(".playtest-master-call")?.remove();
 
   const grid = intro.querySelector(".playtest-control-grid");
   if (grid) {
@@ -82,8 +71,70 @@ function watchForPlaytestIntro() {
   observer.observe(document.documentElement, { childList: true, subtree: true });
 }
 
+function showThoughtBubble(scene, text, { master = false, duration = 3000 } = {}) {
+  if (!scene?.add || !scene?.player) return null;
+
+  const label = scene.add.text(0, 0, text, {
+    fontFamily: "Arial, Helvetica, sans-serif",
+    fontSize: "13px",
+    fontStyle: master ? "italic bold" : "italic",
+    color: master ? "#f2d9ff" : "#f4eef8",
+    align: "center",
+    wordWrap: { width: 280, useAdvancedWrap: true },
+    padding: { x: 14, y: 10 }
+  }).setOrigin(0.5, 1).setResolution?.(3);
+
+  const width = Math.max(190, label.width + 12);
+  const height = label.height + 8;
+  const background = scene.add.graphics();
+  background.fillStyle(master ? 0x21152f : 0x10131b, 0.94);
+  background.lineStyle(2, master ? 0xa75cff : 0xd8cfdf, 0.92);
+  background.fillRoundedRect(-width / 2, -height, width, height, 10);
+  background.strokeRoundedRect(-width / 2, -height, width, height, 10);
+  background.fillTriangle(-10, 0, 10, 0, 0, 12);
+
+  const bubble = scene.add.container(scene.player.x, scene.player.y - 34, [background, label]).setDepth(120);
+  const follow = () => bubble?.active && bubble.setPosition(scene.player.x, scene.player.y - 34);
+  scene.events?.on?.("update", follow);
+
+  scene.time?.delayedCall?.(duration, () => {
+    scene.events?.off?.("update", follow);
+    bubble?.destroy?.(true);
+  });
+  return bubble;
+}
+
+function playMasterVoiceSequence(scene) {
+  if (!scene || scene.__nbdMasterVoicePlayed) return;
+  scene.__nbdMasterVoicePlayed = true;
+
+  scene.time?.delayedCall?.(350, () => {
+    showThoughtBubble(scene, "I feel my master's call... His voice is already inside my head.", {
+      duration: 2900
+    });
+  });
+
+  scene.time?.delayedCall?.(3450, () => {
+    showThoughtBubble(scene, "You are too weak. Feed, then return to the refuge... but do not make the mistake of leaving witnesses.", {
+      master: true,
+      duration: 4200
+    });
+  });
+}
+
 export function installPlaytestSurfacePolicy() {
   watchForPlaytestIntro();
+
+  if (!PlaytestUi.prototype.__nbdMasterVoiceAfterIntro) {
+    const originalStart = PlaytestUi.prototype.start;
+    PlaytestUi.prototype.start = function startWithMasterVoice() {
+      const wasOpen = Boolean(this.intro?.classList.contains("open"));
+      const result = originalStart.call(this);
+      if (wasOpen) playMasterVoiceSequence(this.gameScene);
+      return result;
+    };
+    Object.defineProperty(PlaytestUi.prototype, "__nbdMasterVoiceAfterIntro", { value: true });
+  }
 
   if (!InteractionSystem.prototype.__nbdHiddenTraversalPolicy) {
     const originalSortOptions = InteractionSystem.prototype.sortOptions;
