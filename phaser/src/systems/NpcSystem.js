@@ -8,6 +8,30 @@ export class NpcSystem extends NpcSystemCore {
     return npc;
   }
 
+  updateNpc(npc, dt) {
+    const obeyingComeHere = Boolean(
+      npc
+      && !npc.dead
+      && !npc.inactive
+      && !npc.intercepted
+      && !npc.alarmed
+      && npc.whisperCommand === "come_here"
+      && npc.whisperCommandTimer > 0
+      && npc.luredTimer > 0
+    );
+
+    // Whisper obedience must take priority over patrol/guard/passive AI states.
+    // Otherwise pedestrians and guards can keep following their normal route
+    // even after a successful COME HERE command.
+    if (obeyingComeHere) {
+      npc.luredTimer = Math.max(0, npc.luredTimer - dt);
+      this.followPlayerUnderWhisper(npc, dt);
+      return;
+    }
+
+    super.updateNpc(npc, dt);
+  }
+
   update(dt) {
     const stream = this.scene.entityStreamSystem;
     if (!stream) {
