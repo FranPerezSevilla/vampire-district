@@ -35,6 +35,20 @@ function enhancePlaytestIntro(root = document) {
   const intro = root.querySelector?.("#playtest-intro");
   if (!intro || intro.dataset.controlsEnhanced === "true") return false;
 
+  const lead = intro.querySelector(".playtest-lead");
+  if (lead && !intro.querySelector(".playtest-master-call")) {
+    const masterCall = document.createElement("blockquote");
+    masterCall.className = "playtest-master-call";
+    masterCall.style.margin = "16px 0";
+    masterCall.style.padding = "11px 14px";
+    masterCall.style.borderLeft = "3px solid #a75cff";
+    masterCall.style.background = "rgba(167, 92, 255, .08)";
+    masterCall.style.color = "#eee5ff";
+    masterCall.style.lineHeight = "1.55";
+    masterCall.innerHTML = `<span style="display:block;margin-bottom:5px;color:#b8a8ca;font-size:12px;font-style:italic">I feel my master calling. His voice is already inside my head.</span><strong style="color:#f2d9ff;font-style:italic">“You are too weak. Feed, then return to the refuge... but do not make the mistake of leaving witnesses.”</strong>`;
+    lead.insertAdjacentElement("afterend", masterCall);
+  }
+
   const grid = intro.querySelector(".playtest-control-grid");
   if (grid) {
     grid.innerHTML = `
