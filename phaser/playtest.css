@@ -29,7 +29,14 @@
   color: #f1e6ff;
 }
 
-.playtest-kicker,
+.playtest-kicker {
+  margin: 0 0 10px;
+  color: #78c7a3;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
 .playtest-panel-header p {
   margin: 0 0 7px;
   color: #78c7a3;
