@@ -1,5 +1,6 @@
 import { WORLD } from "./data/balance.js";
 import { installPlaytestSurfacePolicy } from "./policies/PlaytestSurfacePolicy.js";
+import { installTrafficPlaytestPolicy } from "./policies/TrafficPlaytestPolicy.js";
 import { installVampireVeilPolicy } from "./policies/VampireVeilPolicy.js";
 import { BootScene } from "./scenes/BootScene.js";
 import { GameScene } from "./scenes/GameScene.js";
@@ -67,6 +68,7 @@ bindResolutionSelector();
 patchReadableCanvasText();
 installVampireVeilPolicy();
 installPlaytestSurfacePolicy();
+installTrafficPlaytestPolicy();
 
 const config = {
   type: Phaser.AUTO,
