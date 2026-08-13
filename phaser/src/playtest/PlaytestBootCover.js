@@ -30,61 +30,13 @@ function installCriticalStyle() {
       box-shadow: 0 28px 90px rgba(0, 0, 0, .58);
       text-align: left;
     }
-    #${BOOT_COVER_ID} h2 {
-      max-width: 610px;
-      margin: 0;
-      font-size: clamp(34px, 4.15vw, 48px);
-      line-height: 1.02;
-      letter-spacing: -.025em;
-    }
-    #${BOOT_COVER_ID} .playtest-kicker {
-      margin: 0 0 10px;
-      color: #78c7a3;
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing: .15em;
-    }
-    #${BOOT_COVER_ID} .playtest-character-line {
-      max-width: 590px;
-      margin: 18px 0 0;
-      border: 0;
-      padding: 0;
-      color: #d8cfdf;
-      font-size: 16px;
-      line-height: 1.55;
-      font-style: normal;
-    }
-    #${BOOT_COVER_ID} .playtest-story-goal {
-      margin: 18px 0 0;
-      color: #f1e6ff;
-      font-size: 16px;
-      line-height: 1.5;
-    }
-    #${BOOT_COVER_ID} .playtest-story-controls {
-      margin: 14px 0 0;
-      color: #c9bfd7;
-      font-size: 14px;
-      line-height: 1.65;
-    }
-    #${BOOT_COVER_ID} kbd {
-      padding: 3px 7px;
-      border: 1px solid rgba(241, 230, 255, .28);
-      border-radius: 5px;
-      background: #05060b;
-      color: #f1e6ff;
-      font: 800 11px/1.2 Arial, sans-serif;
-    }
-    #${BOOT_COVER_ID} button {
-      min-height: 42px;
-      margin-top: 16px;
-      border: 0;
-      border-radius: 10px;
-      padding: 10px 16px;
-      background: #78c7a3;
-      color: #07120e;
-      font: 900 13px/1 Arial, sans-serif;
-      opacity: .78;
-    }
+    #${BOOT_COVER_ID} h2 { max-width: 610px; margin: 0; font-size: clamp(34px, 4.15vw, 48px); line-height: 1.02; letter-spacing: -.025em; }
+    #${BOOT_COVER_ID} .playtest-kicker { margin: 0 0 10px; color: #78c7a3; font-size: 12px; font-weight: 900; letter-spacing: .15em; }
+    #${BOOT_COVER_ID} .playtest-character-line { max-width: 590px; margin: 18px 0 0; border: 0; padding: 0; color: #d8cfdf; font-size: 16px; line-height: 1.55; font-style: normal; }
+    #${BOOT_COVER_ID} .playtest-story-goal { margin: 18px 0 0; color: #f1e6ff; font-size: 16px; line-height: 1.5; }
+    #${BOOT_COVER_ID} .playtest-story-controls { margin: 14px 0 0; color: #c9bfd7; font-size: 14px; line-height: 1.65; }
+    #${BOOT_COVER_ID} kbd { padding: 3px 7px; border: 1px solid rgba(241, 230, 255, .28); border-radius: 5px; background: #05060b; color: #f1e6ff; font: 800 11px/1.2 Arial, sans-serif; }
+    #${BOOT_COVER_ID} button { min-height: 42px; margin-top: 16px; border: 0; border-radius: 10px; padding: 10px 16px; background: #78c7a3; color: #07120e; font: 900 13px/1 Arial, sans-serif; opacity: .78; }
   `;
   document.head.appendChild(style);
 }
@@ -102,12 +54,8 @@ export function installPlaytestStylesheet() {
 }
 
 function installBootInputBlocker() {
-  if (typeof window === "undefined") return;
-  if (window[GLOBAL_BLOCKER_KEY]) return;
-  const blocker = event => {
-    event.preventDefault();
-    event.stopImmediatePropagation();
-  };
+  if (typeof window === "undefined" || window[GLOBAL_BLOCKER_KEY]) return;
+  const blocker = event => { event.preventDefault(); event.stopImmediatePropagation(); };
   window[GLOBAL_BLOCKER_KEY] = blocker;
   window.addEventListener("keydown", blocker, true);
 }
@@ -126,10 +74,8 @@ export function showPlaytestBootCover() {
   installPlaytestStylesheet();
   document.body.classList.add("playtest-mode", "playtest-booting");
   installBootInputBlocker();
-
   let cover = document.getElementById(BOOT_COVER_ID);
   if (cover) return cover;
-
   const wrapper = document.createElement("div");
   wrapper.innerHTML = `
     <div id="${BOOT_COVER_ID}" class="playtest-overlay open" role="dialog" aria-modal="true" aria-labelledby="playtest-boot-title" aria-busy="true">
@@ -137,8 +83,8 @@ export function showPlaytestBootCover() {
         <p class="playtest-kicker">VICEBLOOD · ONE MORE NIGHT</p>
         <h2 id="playtest-boot-title">Immortality was never<br>the luxury you imagined.</h2>
         <p class="playtest-character-line">You were turned into a vampire decades ago. Since then, clan wars and keeping the Veil hidden from humanity have defined every night of your existence.</p>
-        <p class="playtest-story-goal">Tonight, hunger comes first. Hunt, feed, survive the police response and return to the refuge.</p>
-        <p class="playtest-story-controls"><kbd>WASD</kbd> move · <kbd>LMB</kbd> attack · <kbd>RMB</kbd> feed · <kbd>R</kbd> Whisper · <kbd>F</kbd> Blood Sense · <kbd>ENTER</kbd> vehicle<br><kbd>H</kbd> opens the pause menu and full controls at any time.</p>
+        <p class="playtest-story-goal">Feed, lose the police, and return to the refuge.</p>
+        <p class="playtest-story-controls"><kbd>WASD</kbd> move · <kbd>LMB</kbd> attack · <kbd>RMB</kbd> feed · <kbd>R</kbd> Whisper · <kbd>ENTER</kbd> vehicle<br><kbd>H</kbd> opens the pause menu and full controls at any time.</p>
         <button type="button" disabled>Preparing the city…</button>
       </section>
     </div>`;
