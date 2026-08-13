@@ -1,4 +1,5 @@
 import { WORLD } from "./data/balance.js";
+import { installDistrictGunfireHeatPolicy } from "./policies/DistrictGunfireHeatPolicy.js";
 import { installPlaytestSurfacePolicy } from "./policies/PlaytestSurfacePolicy.js";
 import { installTrafficPlaytestPolicy } from "./policies/TrafficPlaytestPolicy.js";
 import { installVampireVeilPolicy } from "./policies/VampireVeilPolicy.js";
@@ -69,6 +70,7 @@ patchReadableCanvasText();
 installVampireVeilPolicy();
 installPlaytestSurfacePolicy();
 installTrafficPlaytestPolicy();
+installDistrictGunfireHeatPolicy();
 
 const config = {
   type: Phaser.AUTO,
