@@ -1,6 +1,7 @@
 import { PlaytestUi } from "../playtest/PlaytestUi.js";
 import { UIScene } from "../scenes/UIScene.js";
 import { InteractionSystem } from "../systems/InteractionSystem.js";
+import { PowersSystem } from "../systems/PowersSystem.js";
 
 const HIDDEN_TRAVERSAL_TYPES = new Set([
   "fireEscapeUp",
@@ -23,12 +24,20 @@ function hideNode(node) {
   node.style?.setProperty?.("display", "none", "important");
 }
 
+function hidePlaytestPowerNodes(root = document) {
+  root.querySelectorAll?.('[data-power="dash"], [data-power="sense"]').forEach(hideNode);
+}
+
 function removeUnavailableHelp(body) {
   if (!body) return;
   const html = String(body.innerHTML || "")
     .replace(/\s*Traversal:[\s\S]*?<br>\s*/i, "")
     .replace(/\s*·\s*L Night Ledger/gi, "")
-    .replace(/\s*L Night Ledger\s*·?/gi, "");
+    .replace(/\s*L Night Ledger\s*·?/gi, "")
+    .replace(/\s*·?\s*Q\s+(?:Shadow\s+)?Dash\s*·?/gi, "")
+    .replace(/\s*·?\s*F\s+Blood\s+Sense\s*·?/gi, "")
+    .replace(/\s*<[^>]+>Q<\/[^>]+>\s*(?:Shadow\s+)?Dash\s*/gi, "")
+    .replace(/\s*<[^>]+>F<\/[^>]+>\s*Blood\s+Sense\s*/gi, "");
   if (html !== body.innerHTML) body.innerHTML = html;
 }
 
@@ -46,7 +55,6 @@ function enhancePlaytestIntro(root = document) {
       <span><kbd>RMB</kbd> Hold to feed</span>
       <span><kbd>WHEEL</kbd> Change weapon</span>
       <span><kbd>R</kbd> Whisper</span>
-      <span><kbd>F</kbd> Blood Sense</span>
       <span><kbd>ENTER</kbd> Enter / leave vehicle</span>
       <span><kbd>H</kbd> Pause + full controls</span>
     `;
@@ -54,7 +62,7 @@ function enhancePlaytestIntro(root = document) {
 
   const note = intro.querySelector(".playtest-note");
   if (note) {
-    note.innerHTML = `Experiment with weapons, feeding depths, vehicles and vampiric powers. Press <kbd>H</kbd> at any time to reopen the pause menu and review every control.`;
+    note.innerHTML = `Experiment with weapons, feeding, vehicles and Vampiric Whisper. Press <kbd>H</kbd> at any time to reopen the pause menu and review every available control.`;
   }
 
   intro.dataset.controlsEnhanced = "true";
@@ -63,8 +71,10 @@ function enhancePlaytestIntro(root = document) {
 
 function watchForPlaytestIntro() {
   if (typeof document === "undefined") return;
+  hidePlaytestPowerNodes(document);
   if (enhancePlaytestIntro(document)) return;
   const observer = new MutationObserver(() => {
+    hidePlaytestPowerNodes(document);
     if (!enhancePlaytestIntro(document)) return;
     observer.disconnect();
   });
@@ -122,8 +132,28 @@ function playMasterVoiceSequence(scene) {
   });
 }
 
+function installPlaytestPowerPolicy() {
+  if (PowersSystem.prototype.__nbdSimplifiedPlaytestPowers) return;
+
+  PowersSystem.prototype.useDash = function disabledPlaytestDash() {
+    return false;
+  };
+
+  PowersSystem.prototype.useBloodSense = function disabledPlaytestBloodSense() {
+    this.senseTimer = 0;
+    this.lastSenseReadings = [];
+    return false;
+  };
+
+  Object.defineProperty(PowersSystem.prototype, "__nbdSimplifiedPlaytestPowers", {
+    value: true,
+    configurable: true
+  });
+}
+
 export function installPlaytestSurfacePolicy() {
   watchForPlaytestIntro();
+  installPlaytestPowerPolicy();
 
   if (!PlaytestUi.prototype.__nbdMasterVoiceAfterIntro) {
     const originalStart = PlaytestUi.prototype.start;
@@ -166,13 +196,14 @@ export function installPlaytestSurfacePolicy() {
       hideNode(this.dom?.ledgerBadge);
       hideNode(this.dom?.ledger);
       hideNode(this.dom?.ledgerScrim);
+      hidePlaytestPowerNodes(document);
       this.ledgerOpen = false;
       return result;
     };
 
     const originalHandleDomKeyDown = UIScene.prototype.handleDomKeyDown;
     UIScene.prototype.handleDomKeyDown = function simplifiedKeyDown(event) {
-      if (event?.code === "KeyL") {
+      if (["KeyL", "KeyQ", "KeyF"].includes(event?.code)) {
         event.preventDefault?.();
         event.stopPropagation?.();
         return;
