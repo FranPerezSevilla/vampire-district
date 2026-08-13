@@ -9,7 +9,7 @@ export const NPC_TYPES = Object.freeze({
   RAT: "rat"
 });
 
-export const AMBIENT_PEDESTRIANS_PER_ROUTE = 4;
+export const AMBIENT_PEDESTRIANS_PER_ROUTE = 6;
 
 const TYPE_BY_ID = Object.freeze({
   civilian: NPC_TYPES.CIVILIAN,
