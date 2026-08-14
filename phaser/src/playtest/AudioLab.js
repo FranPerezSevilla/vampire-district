@@ -1,5 +1,7 @@
 import { SAMPLE_AUDIO_IDS, sampleAudioDefinition } from "../audio/SampleAudioCatalog.js";
 
+const RAW_AUDIO_MASTER_GAIN = 0.20;
+
 export class AudioLab {
   constructor(scene) {
     this.scene = scene;
@@ -35,13 +37,13 @@ export class AudioLab {
           <div>
             <p class="playtest-audio-kicker">PLAYTEST TROUBLESHOOTING</p>
             <h2 id="playtest-audio-title">Audio Lab</h2>
-            <p>Direct sample preview. No combat, witnesses, Heat or gameplay cooldowns.</p>
+            <p>Direct sample preview at the same ×${RAW_AUDIO_MASTER_GAIN.toFixed(2)} master gain used by RawAudio. No combat, witnesses, Heat or gameplay cooldowns.</p>
           </div>
           <button class="playtest-audio-close" type="button" aria-label="Close Audio Lab">×</button>
         </header>
         <div class="playtest-audio-toolbar">
-          <label>Preview volume <strong class="playtest-audio-volume-label">100%</strong></label>
-          <input class="playtest-audio-volume" type="range" min="0" max="1.5" value="1" step="0.05" aria-label="Audio Lab preview volume">
+          <label>Preview volume <strong class="playtest-audio-volume-label">100%</strong> <span>(100% = gameplay baseline)</span></label>
+          <input class="playtest-audio-volume" type="range" min="0" max="3" value="1" step="0.05" aria-label="Audio Lab preview volume">
         </div>
         <div class="playtest-audio-list"></div>
         <p class="playtest-audio-status" aria-live="polite">Choose an event or an exact variant.</p>
@@ -138,13 +140,13 @@ export class AudioLab {
       const source = context.createBufferSource();
       const gain = context.createGain();
       source.buffer = buffer;
-      gain.gain.value = Math.max(0, Number(definition.volume ?? 1)) * this.labVolume;
+      gain.gain.value = Math.max(0, Number(definition.volume ?? 1)) * RAW_AUDIO_MASTER_GAIN * this.labVolume;
       source.connect(gain);
       gain.connect(context.destination);
       this.activeSources.add(source);
       source.onended = () => this.activeSources.delete(source);
       source.start();
-      this.setStatus(`Played ${id} · ${String(index + 1).padStart(2, "0")} · ${file}`);
+      this.setStatus(`Played ${id} · ${String(index + 1).padStart(2, "0")} · ${file} · preview ${Math.round(this.labVolume * 100)}%`);
     } catch (error) {
       this.setStatus(`ERROR · ${id} · ${error?.message || String(error)}`);
     }
@@ -177,7 +179,7 @@ export class AudioLab {
     this.opened = true;
     this.overlay.hidden = false;
     this.launcher?.setAttribute("aria-expanded", "true");
-    this.pausedByLab = Boolean(this.scene?.scene?.isActive?.());
+    this.pausedByLab = Boolean(this.scene?.sys?.isActive?.());
     if (this.pausedByLab) this.scene.scene.pause();
     this.overlay.querySelector(".playtest-audio-play")?.focus();
   }
