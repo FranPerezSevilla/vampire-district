@@ -4,6 +4,7 @@ import { LAYERS } from "../data/district.js";
 import { PoliceKnowledgePolicy } from "../police/PoliceKnowledgePolicy.js";
 import { AmbientViolenceResponseSystem } from "./AmbientViolenceResponseSystem.js";
 import { AudioLab } from "./AudioLab.js";
+import { FeedingAudioLoopPolicy } from "./FeedingAudioLoopPolicy.js";
 import {
   failPlaytestBootCover,
   finishPlaytestBootCover,
@@ -89,12 +90,14 @@ function attachPlaytest() {
     const session = new PlaytestSessionSystem(scene);
     const ui = new PlaytestUi(session, scene);
     const audioLab = new AudioLab(scene);
+    const feedingAudioPolicy = new FeedingAudioLoopPolicy(scene);
     polishPlaytestIntro();
     ui.intro = document.getElementById("playtest-intro");
     ui.startButton = document.getElementById("playtest-start");
     ui.startButton?.addEventListener("click", () => ui.start());
     scene.playtestUi = ui;
     scene.playtestAudioLab = audioLab;
+    scene.playtestFeedingAudioPolicy = feedingAudioPolicy;
     scene.playtestAmbientViolenceSystem = new AmbientViolenceResponseSystem(scene);
     scene.playtestPoliceKnowledgePolicy = new PoliceKnowledgePolicy(scene);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -102,6 +105,8 @@ function attachPlaytest() {
       scene.playtestPoliceKnowledgePolicy = null;
       scene.playtestAmbientViolenceSystem?.destroy?.();
       scene.playtestAmbientViolenceSystem = null;
+      scene.playtestFeedingAudioPolicy?.destroy?.();
+      scene.playtestFeedingAudioPolicy = null;
       scene.playtestAudioLab?.destroy?.();
       scene.playtestAudioLab = null;
       ui.destroy();
