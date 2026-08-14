@@ -46,6 +46,7 @@ Work on one sound family at a time unless explicitly asked to batch them.
    - Typical variation may combine very small pitch, EQ, transient, timing or gain changes.
    - Do not generate variants mechanically for long ambience, music-like beds or loops unless the design specifically benefits from them.
    - Keep processing deterministic/reproducible where practical.
+   - If the source's basic loudness/timbre is uncertain, it is acceptable to stop after one representative processed sample and use the Audio Lab acceptance gate before spending time on the complete variant family.
 
 6. **Name and place files**
    - Runtime path: `phaser/assets/audio/<category>/`.
@@ -58,6 +59,8 @@ Work on one sound family at a time unless explicitly asked to batch them.
 7. **Upload binaries safely**
    - Treat audio as binary, not UTF-8 text.
    - Prefer Git blob/tree/commit operations (base64 when required by the connector) for binary files.
+   - On audio branches, `.github/workflows/materialize-audio-assets.yml` may be used as a narrow transport helper: stage a valid `*.ogg.b64`, let the workflow decode and verify the `OggS` header, and verify that the resulting `.ogg` replaced the staging file.
+   - Never treat the staging helper as audio processing; processing/inspection happens before staging.
    - Keep binary upload separate from subsequent text/code edits when that reduces failure risk.
    - Verify the repository actually contains each expected binary before declaring the asset uploaded.
 
@@ -70,14 +73,22 @@ Work on one sound family at a time unless explicitly asked to batch them.
    - Register all runtime variants under the audio layer/catalogue rather than using separate gameplay IDs.
    - Preserve the procedural fallback until the sample-backed path has been validated unless there is a clear reason to remove it.
 
-10. **Wire the real gameplay event**
+10. **Audio Lab acceptance gate**
+    - In `?mode=playtest`, press **F8** or use **AUDIO LAB**.
+    - The Audio Lab reads `SampleAudioCatalog.js` directly and can play an event or an exact numbered variant without causing combat, witnesses, Heat or gameplay cooldowns.
+    - Judge the sample at **100% first**. That preview uses the same ×0.20 master gain as `RawAudioSystem`; the 0–300% lab slider is diagnostic only.
+    - Compare repeated plays and variants for transient, body, harshness and relative loudness.
+    - If a sample is weak/overpowering at the baseline, adjust processing or catalogue gain before gameplay wiring.
+    - Do not call a family gameplay-integrated merely because it is present in Audio Lab; this gate can intentionally precede final variants and gameplay wiring.
+
+11. **Wire the real gameplay event**
     - Locate the actual gameplay authority that produces the event.
     - Trigger the sample-backed event there once per real action/state transition.
     - For loops, explicitly start and stop with state changes; never retrigger every frame.
 
-11. **Validate**
+12. **Validate**
     - Confirm final files decode and have sensible duration/levels.
-    - Confirm the event is reachable from real gameplay, not only from a test helper.
+    - Confirm the event is reachable from real gameplay, not only from Audio Lab or a test helper.
     - Confirm variant selection does not change gameplay behavior.
     - Run/inspect relevant tests when available.
     - Verify the PR head contains binaries, attribution and code before reporting completion.
@@ -108,14 +119,17 @@ Default starting points, not hard requirements:
 
 ## Failure/recovery rules
 
-- Never claim an audio family is integrated until the final binary files are verified in the PR branch.
+- Never claim an audio family is integrated until the final binary files are verified in the PR branch and real gameplay wiring has been validated.
+- A family may instead be explicitly labelled **Audio Lab candidate** when only provenance, processing, binary upload, attribution and catalogue mapping are complete.
 - If a binary upload fails, leave text/code changes untouched until the binary state is known; then retry the binary operation rather than guessing.
-- If processing is interrupted, report exactly which of these stages are complete: provenance, processing, binary upload, attribution, mapping, gameplay wiring, validation.
+- If processing is interrupted, report exactly which of these stages are complete: provenance, processing, binary upload, attribution, mapping, Audio Lab acceptance, gameplay wiring, validation.
 - One sound family should be independently finishable, so an interruption does not corrupt the rest of the audio pass.
 
 ## Automation policy
 
 Do not build a large GitHub Actions audio factory before the manual pipeline has been validated on several representative assets.
+
+The narrow `materialize-audio-assets.yml` helper exists only to make binary transport reliable when the connector cannot directly write the processed OGG. It must not make creative or processing decisions.
 
 After the process is stable, extract repeatable processing into `tools/audio/` (using `ffmpeg`) and optionally add a manual `workflow_dispatch` action. Automation should handle conversion/normalization/variant generation/validation; human/agent judgement should still choose the source, licence metadata, event mapping and suitable processing profile.
 
@@ -132,5 +146,16 @@ The first end-to-end pilot is implemented on PR #55:
 - Gameplay wiring: the pistol calls `RawAudio.play("weaponFire")` from `WeaponSystem`.
 - Fallback: the previous procedural pistol sound remains available if the sample has not loaded or cannot decode.
 - Binary validation: all three OGG files are present in the PR branch with non-placeholder sizes and covered by `tests/audio-sample-catalog.test.js`.
+- Human listening acceptance: accepted in the playtest preview.
 
-Manual listening/balance in the browser remains part of acceptance before treating the mix level as final. Once this pilot and a few other representative families have been heard in-game, extract only the stable repetitive parts into reusable audio tooling.
+## Current acceptance candidate: `bulletHitBody`
+
+- Event: `bulletHitBody`
+- Source file supplied by the human: `u_68csiaifb5-bulletimpact2-442718.mp3`
+- Source page: `https://pixabay.com/es/sound-effects/pel%C3%ADculas-y-efectos-especiales-bulletimpact2-442718/`
+- Current runtime reference: `phaser/assets/audio/combat/bullet-hit-body-02.ogg`
+- Mapping: registered in `SampleAudioCatalog.js` at catalogue gain ×1.15.
+- Acceptance: available in Audio Lab so its relative loudness/body can be judged against `weaponFire` at the real RawAudio master level.
+- Pending: human acceptance, final 3-variant family, procedural fallback decision, real successful-body-hit wiring and final gameplay validation.
+
+Do not advance `bulletHitBody` from **acceptance candidate** to **integrated** until those pending steps are complete.
