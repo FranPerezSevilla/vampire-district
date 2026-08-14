@@ -2,6 +2,8 @@
 
 This is the working checklist for replacing prototype WebAudio tones with real sound assets. The catalogue uses stable event IDs: gameplay should trigger IDs, never hard-code filenames.
 
+**Durable production procedure:** read [`AUDIO_ASSET_PIPELINE.md`](AUDIO_ASSET_PIPELINE.md) before integrating any sourced audio. That document defines the human/assistant handoff, binary-upload rules, variant policy, attribution requirements and recovery procedure between sessions.
+
 ## Current state
 
 `phaser/src/systems/RawAudioSystem.js` already provides procedural prototype feedback for a subset of events such as footsteps, Whisper, feeding, witnesses, police pressure and UI actions. These fallbacks are useful while real samples are sourced, but they are not the target sound design.
