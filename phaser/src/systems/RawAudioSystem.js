@@ -14,6 +14,8 @@ class RawAudioBus {
     this.sampleBuffers = new Map();
     this.sampleLoads = new Map();
     this.sampleCursor = Object.create(null);
+    this.sampleLoops = new Map();
+    this.sampleLoopWanted = new Set();
   }
 
   ensureListeners() {
@@ -102,6 +104,57 @@ class RawAudioBus {
     } catch {
       return false;
     }
+  }
+
+  startSampleLoop(name, options = {}) {
+    const definition = sampleAudioDefinition(name);
+    if (!definition?.loop) return false;
+    this.ensureListeners();
+    const ctx = this.unlock();
+    if (!ctx || !this.master) return false;
+
+    this.sampleLoopWanted.add(name);
+    if (this.sampleLoops.has(name)) return true;
+
+    const buffers = this.sampleBuffers.get(name);
+    if (!buffers?.length) {
+      this.loadSampleEvent(name)?.then(() => {
+        if (this.sampleLoopWanted.has(name)) this.startSampleLoop(name, options);
+      });
+      return false;
+    }
+
+    try {
+      const source = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      source.buffer = buffers[0];
+      source.loop = true;
+      gain.gain.value = Math.max(0, Number(options.sampleVolume ?? definition.volume) || 0);
+      source.connect(gain);
+      gain.connect(this.master);
+      const handle = { source, gain };
+      this.sampleLoops.set(name, handle);
+      source.onended = () => {
+        if (this.sampleLoops.get(name) === handle) this.sampleLoops.delete(name);
+      };
+      const delay = Math.max(0, Number(options.delay) || 0);
+      source.start(ctx.currentTime + delay);
+      return true;
+    } catch {
+      this.sampleLoops.delete(name);
+      return false;
+    }
+  }
+
+  stopSampleLoop(name) {
+    this.sampleLoopWanted.delete(name);
+    const handle = this.sampleLoops.get(name);
+    if (!handle) return false;
+    this.sampleLoops.delete(name);
+    try { handle.source.stop(); } catch {}
+    try { handle.source.disconnect(); } catch {}
+    try { handle.gain.disconnect(); } catch {}
+    return true;
   }
 
   startStepLoop() {
