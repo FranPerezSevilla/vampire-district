@@ -8,6 +8,7 @@ on:
       - ".github/workflows/materialize-audio-assets.yml"
       - "phaser/assets/audio/**/*.ogg"
       - "phaser/assets/audio/**/*.ogg.b64"
+      - "phaser/assets/audio/**/*.ogg.b64.part-*"
 
 permissions:
   contents: write
@@ -30,6 +31,39 @@ jobs:
           ffmpeg -version | head -n 1
           ffprobe -version | head -n 1
 
+      - name: Reassemble chunked binary payloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          mapfile -t groups < <(
+            find phaser/assets/audio -type f -name '*.ogg.b64.part-*' -print \
+              | sed -E 's/\.part-[0-9]+$//' \
+              | sort -u
+          )
+
+          for prefix in "${groups[@]}"; do
+            parts=("${prefix}.part-"*)
+            if [[ "${#parts[@]}" -eq 0 ]]; then
+              continue
+            fi
+
+            # Connector-safe staging may live in an _staging directory so the
+            # individual text chunks do not trigger this workflow. Reassemble
+            # beside the final audio asset, then let the normal decoder own it.
+            if [[ "$(basename "$(dirname "$prefix")")" == "_staging" ]]; then
+              target="$(dirname "$(dirname "$prefix")")/$(basename "$prefix")"
+            else
+              target="$prefix"
+            fi
+
+            cat "${parts[@]}" > "$target"
+            rm -f "${parts[@]}"
+            echo "Reassembled $target from ${#parts[@]} chunk(s)"
+          done
+
+          find phaser/assets/audio -type d -name '_staging' -empty -delete
+
       - name: Decode staged OGG payloads
         shell: bash
         run: |
@@ -43,6 +77,7 @@ jobs:
               echo "Invalid OGG payload: $staged" >&2
               exit 1
             fi
+            ffprobe -v error -select_streams a:0 -show_entries stream=codec_name,sample_rate,channels -of csv=p=0 "$output"
             rm "$staged"
             echo "Materialized $output"
           done < <(find phaser/assets/audio -type f -name '*.ogg.b64' -print0)
