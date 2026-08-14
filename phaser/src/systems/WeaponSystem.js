@@ -30,6 +30,7 @@ export class WeaponSystem {
       if (weapon.ammoCapacity != null) this.ammo[id] = weapon.ammoCapacity;
     }
     this.scene.inputSystem?.setWheelCaptureEnabled?.(true);
+    this.scene.events?.on?.("combat:hit", this.onCombatHit, this);
     this.publish();
     scene.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, this.destroy, this);
   }
@@ -140,6 +141,12 @@ export class WeaponSystem {
     if (weapon.id === WEAPON_IDS.PISTOL) {
       RawAudio.play("weaponFire");
     }
+  }
+
+  onCombatHit(event = {}) {
+    const weapon = weaponById(event.weaponId);
+    if (weapon?.attackType !== WEAPON_TYPES.HITSCAN) return;
+    RawAudio.play("bulletHitBody", { cooldown: 0.04 });
   }
 
   onMeleeImpact(weapon, victim) {
@@ -339,6 +346,7 @@ export class WeaponSystem {
   }
 
   destroy() {
+    this.scene.events?.off?.("combat:hit", this.onCombatHit, this);
     this.scene.inputSystem?.setWheelCaptureEnabled?.(false);
   }
 }
