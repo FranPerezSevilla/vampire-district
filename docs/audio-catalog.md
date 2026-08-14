@@ -14,6 +14,7 @@ The old audio catalogue lived in PR #44 (`agent/expand-audio-catalog`). That PR 
 
 - `weaponFire` — **integrated on PR #55**: three processed handgun variants under `phaser/assets/audio/combat/`, sample-backed playback through one stable event ID, WebKit-compatible MP3 runtime mirrors, and the previous procedural pistol sound retained as a loading/decoding fallback.
 - `bulletHitBody` — **integrated on PR #55**: the accepted processed impact sample plays only from the confirmed `combat:hit` path for hitscan weapons. Props/world geometry and vehicles do not emit that event, so they never receive the body-impact sound. The current family has one accepted runtime variant; extra variants are polish, not a blocker.
+- `drainStart` / `drainLoop` / `drainComplete` — **wired candidate on PR #55, pending listening acceptance**: one coherent KatjaSavia/Pixabay performance is split into a masculine-shifted start breath, an original-pitch bite loop and a masculine-shifted release. Runtime files are committed, the bite uses a stateful PCM WAV loop, and gameplay starts/stops it with the feeding lifecycle rather than retriggering it every frame.
 
 ## Audio Lab
 
@@ -51,10 +52,10 @@ Do not try to fill the full production catalogue before testing. For the current
 
 ### Feeding
 
-- `drainStart` — bite/contact moment
-- `drainLoop` — low wet/pulse layer while feeding; loop cleanly
-- `drainComplete` — release/end of feeding
-- `drainCancel` — interrupted feeding
+- `drainStart` — **wired candidate:** masculine-shifted breath/contact cue from the supplied source
+- `drainLoop` — **wired candidate:** original-pitch bite section, state-driven PCM WAV loop
+- `drainComplete` — **wired candidate:** masculine-shifted release from the same performance
+- `drainCancel` — interrupted feeding; procedural fallback remains for now
 
 ### Civilians / witnesses
 
@@ -97,14 +98,15 @@ The current playtest disables Shadow Dash and Blood Sense, and rooftop/sewer tra
 
 ## Asset rules
 
-1. Keep a high-quality processed OGG derivative when useful, but use a WebKit-compatible MP3 mirror for the current browser runtime catalogue.
-2. Put runtime files under `phaser/assets/audio/<category>/`.
-3. Keep filenames lowercase and descriptive, for example `combat/weapon-fire-01.mp3`.
-4. Record every third-party source and licence in `phaser/assets/audio/ATTRIBUTION.md` before merge.
-5. Prefer CC0 or licences that explicitly allow commercial use and modification. Avoid unclear ownership.
-6. Keep stable catalogue/event IDs even when the underlying file changes.
-7. Loops must have clean loop points; do not restart them every frame.
-8. Variants should be selected by the audio layer, not by scattering different event IDs through gameplay code.
+1. Keep a high-quality processed OGG derivative when useful, but use a WebKit-compatible MP3 mirror for current browser one-shots.
+2. Short state-driven loops may use PCM WAV when gapless repetition matters and MP3 encoder padding would be audible.
+3. Put runtime files under `phaser/assets/audio/<category>/`.
+4. Keep filenames lowercase and descriptive, for example `combat/weapon-fire-01.mp3`.
+5. Record every third-party source and licence in `phaser/assets/audio/ATTRIBUTION.md` before merge.
+6. Prefer CC0 or licences that explicitly allow commercial use and modification. Avoid unclear ownership.
+7. Keep stable catalogue/event IDs even when the underlying file changes.
+8. Loops must have clean loop points and explicit lifecycle ownership; do not restart them every frame.
+9. Variants should be selected by the audio layer, not by scattering different event IDs through gameplay code.
 
 ## Suggested first sourcing batch
 
@@ -112,4 +114,4 @@ The original first batch was:
 
 `step`, `weaponFire`, `bulletHitBody`, `drainStart`, `drainLoop`, `drainComplete`, `whisper`, `civilianScream`, `policeSirenLoop`, `vehicleEngineDrive`, `vehicleCollisionHeavy`, `ambienceStreetNight`.
 
-`weaponFire` and `bulletHitBody` are integrated. Continue with `drainStart`, then `drainLoop` and `drainComplete` so the next completed audio loop is the vampire feeding interaction. After that, prioritize `civilianScream`, `policeSirenLoop` and `ambienceStreetNight`. `bulletHitWorld` remains a separate firearm-material family and must never reuse `bulletHitBody`.
+`weaponFire` and `bulletHitBody` are integrated. The feeding family is fully materialized and wired but still needs human listening acceptance before it is marked done. Once accepted, continue with `civilianScream`, then `policeSirenLoop` and `ambienceStreetNight`. `bulletHitWorld` remains a separate firearm-material family and must never reuse `bulletHitBody`.
