@@ -1,0 +1,55 @@
+name: Materialize staged audio assets
+
+on:
+  push:
+    branches:
+      - "audio/**"
+    paths:
+      - "phaser/assets/audio/**/*.ogg.b64"
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decode staged OGG payloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          found=0
+          while IFS= read -r -d '' staged; do
+            found=1
+            output="${staged%.b64}"
+            base64 --decode "$staged" > "$output"
+            if [[ "$(head -c 4 "$output")" != "OggS" ]]; then
+              echo "Invalid OGG payload: $staged" >&2
+              exit 1
+            fi
+            rm "$staged"
+            echo "Materialized $output"
+          done < <(find phaser/assets/audio -type f -name '*.ogg.b64' -print0)
+
+          if [[ "$found" -eq 0 ]]; then
+            echo "No staged OGG payloads found."
+          fi
+
+      - name: Commit materialized binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add phaser/assets/audio
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+          git commit -m "Materialize staged OGG audio assets"
+          git push
