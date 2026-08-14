@@ -1,3 +1,5 @@
+import { SAMPLE_AUDIO_IDS, sampleAudioDefinition } from "../audio/SampleAudioCatalog.js";
+
 const KEY_SET = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d", "W", "A", "S", "D"]);
 
 class RawAudioBus {
@@ -9,6 +11,9 @@ class RawAudioBus {
     this.stepTimer = null;
     this.lastStep = 0;
     this.listenersReady = false;
+    this.sampleBuffers = new Map();
+    this.sampleLoads = new Map();
+    this.sampleCursor = Object.create(null);
   }
 
   ensureListeners() {
@@ -37,9 +42,66 @@ class RawAudioBus {
       this.master = this.ctx.createGain();
       this.master.gain.value = 0.20;
       this.master.connect(this.ctx.destination);
+      this.preloadRegisteredSamples();
     }
     if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
     return this.ctx;
+  }
+
+  preloadRegisteredSamples() {
+    if (!this.ctx || typeof fetch !== "function") return;
+    for (const id of SAMPLE_AUDIO_IDS) this.loadSampleEvent(id);
+  }
+
+  loadSampleEvent(name) {
+    const definition = sampleAudioDefinition(name);
+    if (!definition || !this.ctx || typeof fetch !== "function") return null;
+    if (this.sampleBuffers.has(name)) return Promise.resolve(this.sampleBuffers.get(name));
+    if (this.sampleLoads.has(name)) return this.sampleLoads.get(name);
+
+    const context = this.ctx;
+    const task = Promise.all(definition.files.map(async file => {
+      const response = await fetch(file);
+      if (!response.ok) throw new Error(`Audio sample failed to load: ${file}`);
+      const encoded = await response.arrayBuffer();
+      return context.decodeAudioData(encoded);
+    })).then(buffers => {
+      if (this.ctx !== context) return [];
+      this.sampleBuffers.set(name, buffers);
+      return buffers;
+    }).catch(() => {
+      this.sampleLoads.delete(name);
+      return [];
+    });
+
+    this.sampleLoads.set(name, task);
+    return task;
+  }
+
+  playSample(name, options = {}) {
+    const definition = sampleAudioDefinition(name);
+    if (!definition || !this.ctx || !this.master) return false;
+    const buffers = this.sampleBuffers.get(name);
+    if (!buffers?.length) {
+      this.loadSampleEvent(name);
+      return false;
+    }
+
+    try {
+      const cursor = this.sampleCursor[name] || 0;
+      const buffer = buffers[cursor % buffers.length];
+      this.sampleCursor[name] = (cursor + 1) % buffers.length;
+      const source = this.ctx.createBufferSource();
+      const gain = this.ctx.createGain();
+      source.buffer = buffer;
+      gain.gain.value = Math.max(0, Number(options.sampleVolume ?? definition.volume) || 0);
+      source.connect(gain);
+      gain.connect(this.master);
+      source.start();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   startStepLoop() {
@@ -69,6 +131,8 @@ class RawAudioBus {
     if (this.cooldowns[name] && this.cooldowns[name] > now) return;
     this.cooldowns[name] = now + gap;
 
+    if (this.playSample(name, options)) return;
+
     switch (name) {
       case "step": return this.step(false);
       case "sprintStep": return this.step(true);
@@ -77,6 +141,7 @@ class RawAudioBus {
       case "whisper": return this.whisper(false);
       case "whisperFail": return this.fail(280);
       case "sense": return this.sense();
+      case "weaponFire": return this.weaponFireFallback();
       case "stun": return this.hit(120, 0.055, 0.12);
       case "kill": return this.hit(70, 0.10, 0.18);
       case "drainStart": return this.drainStart();
@@ -175,6 +240,12 @@ class RawAudioBus {
   sense() {
     this.tone(110, 0.25, { to: 220, volume: 0.035, type: "sine", filter: 800 });
     this.tone(880, 0.12, { delay: 0.06, to: 440, volume: 0.025, type: "triangle", filter: 2400 });
+  }
+
+  weaponFireFallback() {
+    this.noise(0.10, { volume: 0.12, filter: 1650, filterType: "highpass" });
+    this.tone(190, 0.13, { to: 58, volume: 0.082, type: "square", filter: 1500 });
+    this.tone(820, 0.05, { delay: 0.01, to: 210, volume: 0.035, type: "sawtooth", filter: 2500 });
   }
 
   hit(freq, vol, dur) {
