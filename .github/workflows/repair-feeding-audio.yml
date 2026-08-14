@@ -1,0 +1,112 @@
+name: Repair feeding audio materialization
+
+on:
+  push:
+    branches:
+      - audio/playtest-p0
+    paths:
+      - .github/workflows/repair-feeding-audio.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout audio branch
+        uses: actions/checkout@v4
+        with:
+          ref: audio/playtest-p0
+          fetch-depth: 0
+
+      - name: Install FFmpeg
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+
+      - name: Acquire supplied Pixabay source
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/viceblood-feeding"
+          mkdir -p "$work"
+          page='https://pixabay.com/es/sound-effects/horror-female-vampire-bite-218083/'
+          curl -L --fail --retry 3 -A 'Mozilla/5.0' "$page" -o "$work/page.html"
+          WORK="$work" python3 - <<'PY'
+          import html, os, re
+          from pathlib import Path
+          work = Path(os.environ['WORK'])
+          text = html.unescape((work / 'page.html').read_text(errors='ignore')).replace('\\/', '/')
+          patterns = [
+              r'https://cdn\.pixabay\.com/download/audio/[^"\'<> ]+',
+              r'https://cdn\.pixabay\.com/audio/[^"\'<> ]+',
+              r'https://cdn\.pixabay\.com/[^"\'<> ]+\.mp3[^"\'<> ]*',
+          ]
+          candidates = []
+          for pattern in patterns:
+              candidates.extend(re.findall(pattern, text))
+          candidates = [u.rstrip('\\') for u in candidates]
+          preferred = [u for u in candidates if '218083' in u]
+          chosen = (preferred or candidates)
+          if not chosen:
+              raise SystemExit('Could not locate the Pixabay MP3 URL in the supplied page')
+          (work / 'source-url.txt').write_text(chosen[0])
+          print(chosen[0])
+          PY
+          curl -L --fail --retry 3 -A 'Mozilla/5.0' "$(cat "$work/source-url.txt")" -o "$work/source.mp3"
+          ffprobe -v error -show_entries format=duration,size -of default=nw=1 "$work/source.mp3"
+
+      - name: Rebuild feeding derivatives
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/viceblood-feeding"
+          src="$work/source.mp3"
+          out='phaser/assets/audio/feeding'
+          mkdir -p "$out"
+
+          ffmpeg -nostdin -hide_banner -loglevel error -y -ss 0.23 -to 2.18 -i "$src" -ac 1 -ar 48000 "$work/sigh-source.wav"
+          ffmpeg -nostdin -hide_banner -loglevel error -y -ss 2.15 -to 4.70 -i "$src" -ac 1 -ar 48000 "$work/bites-source.wav"
+
+          pitch='0.816496581'
+          tempo='1.224744871'
+          if ffmpeg -hide_banner -filters 2>/dev/null | grep -q rubberband; then
+            ffmpeg -nostdin -hide_banner -loglevel error -y -i "$work/sigh-source.wav" \
+              -af "rubberband=pitch=${pitch}:formant=shifted,highpass=f=65,lowpass=f=8200,equalizer=f=180:t=q:w=1:g=1.5,equalizer=f=3600:t=q:w=1:g=-1.5,loudnorm=I=-18:TP=-1.5:LRA=7" \
+              -ac 1 -ar 48000 "$work/sigh-male.wav"
+          else
+            ffmpeg -nostdin -hide_banner -loglevel error -y -i "$work/sigh-source.wav" \
+              -af "asetrate=48000*${pitch},aresample=48000,atempo=${tempo},highpass=f=65,lowpass=f=8200,equalizer=f=180:t=q:w=1:g=1.5,equalizer=f=3600:t=q:w=1:g=-1.5,loudnorm=I=-18:TP=-1.5:LRA=7" \
+              -ac 1 -ar 48000 "$work/sigh-male.wav"
+          fi
+
+          ffmpeg -nostdin -hide_banner -loglevel error -y -ss 0.00 -to 0.82 -i "$work/sigh-male.wav" \
+            -af 'afade=t=in:st=0:d=0.015,afade=t=out:st=0.70:d=0.12' \
+            -ar 44100 -ac 1 -codec:a libvorbis -q:a 5 "$out/drain-start-01.ogg"
+
+          ffmpeg -nostdin -hide_banner -loglevel error -y -ss 0.65 -to 1.55 -i "$work/sigh-male.wav" \
+            -af 'afade=t=in:st=0:d=0.025,afade=t=out:st=0.72:d=0.18' \
+            -ar 44100 -ac 1 -codec:a libvorbis -q:a 5 "$out/drain-complete-01.ogg"
+
+          ffmpeg -nostdin -hide_banner -loglevel error -y -i "$work/bites-source.wav" \
+            -af 'afade=t=in:st=0:d=0.012,afade=t=out:st=2.50:d=0.05' \
+            -ar 44100 -ac 1 -codec:a libvorbis -q:a 5 "$out/drain-loop-01.ogg"
+
+          for f in "$out"/drain-*.ogg; do
+            test "$(head -c 4 "$f")" = 'OggS'
+            ffprobe -v error -show_entries format=duration,size -of default=nw=1 "$f"
+          done
+
+      - name: Commit repaired derivatives
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/repair-feeding-audio.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A phaser/assets/audio/feeding .github/workflows/repair-feeding-audio.yml
+          git commit -m 'Repair feeding audio derivatives'
+          git push origin HEAD:audio/playtest-p0
