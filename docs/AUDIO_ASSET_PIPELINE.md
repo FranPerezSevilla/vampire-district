@@ -50,9 +50,9 @@ Work on one sound family at a time unless explicitly asked to batch them.
 6. **Name and place files**
    - Runtime path: `phaser/assets/audio/<category>/`.
    - Lowercase descriptive filenames with numbered variants, e.g.:
-     - `weapon/weapon-fire-01.ogg`
-     - `weapon/weapon-fire-02.ogg`
-     - `weapon/weapon-fire-03.ogg`
+     - `combat/weapon-fire-01.ogg`
+     - `combat/weapon-fire-02.ogg`
+     - `combat/weapon-fire-03.ogg`
    - Variants share the same stable gameplay event ID.
 
 7. **Upload binaries safely**
@@ -119,14 +119,18 @@ Do not build a large GitHub Actions audio factory before the manual pipeline has
 
 After the process is stable, extract repeatable processing into `tools/audio/` (using `ffmpeg`) and optionally add a manual `workflow_dispatch` action. Automation should handle conversion/normalization/variant generation/validation; human/agent judgement should still choose the source, licence metadata, event mapping and suitable processing profile.
 
-## Current pilot
+## Current pilot: `weaponFire`
 
-The first end-to-end pilot is:
+The first end-to-end pilot is implemented on PR #55:
 
 - Event: `weaponFire`
 - Source file supplied by the human: `universfield-gunshot-352466.mp3`
 - Source page: `https://pixabay.com/es/sound-effects/pel%C3%ADculas-y-efectos-especiales-gunshot-352466/`
-- Intended processing: one cleaned runtime master plus 2–3 subtle one-shot variants
-- Target family: `phaser/assets/audio/weapon/weapon-fire-XX.ogg`
+- Runtime family: `phaser/assets/audio/combat/weapon-fire-01.ogg` through `weapon-fire-03.ogg`
+- Processing: mono 44.1 kHz OGG/Vorbis, high-pass cleanup and conservative gain/limiting; variants 02–03 use subtle pitch/EQ changes while preserving the same handgun identity.
+- Mapping: one stable `weaponFire` event in `SampleAudioCatalog.js`; the audio layer chooses between the three files.
+- Gameplay wiring: the pistol calls `RawAudio.play("weaponFire")` from `WeaponSystem`.
+- Fallback: the previous procedural pistol sound remains available if the sample has not loaded or cannot decode.
+- Binary validation: all three OGG files are present in the PR branch with non-placeholder sizes and covered by `tests/audio-sample-catalog.test.js`.
 
-Complete this pilot before generalizing the processing into reusable automation.
+Manual listening/balance in the browser remains part of acceptance before treating the mix level as final. Once this pilot and a few other representative families have been heard in-game, extract only the stable repetitive parts into reusable audio tooling.
