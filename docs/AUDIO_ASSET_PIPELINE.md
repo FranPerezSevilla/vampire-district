@@ -175,7 +175,7 @@ The first end-to-end pilot is implemented on PR #55:
 - Variant status: one accepted runtime sample is enough for the current playtest; additional subtle variants remain optional polish.
 - Regression coverage: `tests/audio-sample-catalog.test.js` asserts the MP3 mapping, the human-hit event wiring and the separation from prop/world hits.
 
-## Wired candidate: `civilianScream`
+## Integrated pilot: `civilianScream`
 
 - Event: `civilianScream`
 - Source file supplied by the human: `universfield-man-scream-04-252034.mp3`
@@ -187,11 +187,11 @@ The first end-to-end pilot is implemented on PR #55:
 - Binary integrity: the transported processed master was reconstructed with mandatory SHA256 `bd635361663446d6093d2fb8a1ab2b84df2feb90d42d73c516c082fa1544c78b` before generating runtime assets.
 - Mapping: one stable `civilianScream` event owns all six MP3 variants; `RawAudioSystem` chooses the next variant and retains a procedural gasp fallback if sample playback is unavailable.
 - Gameplay wiring: `WitnessSystem` plays the event once when an alarmed civilian finishes its shock timer and transitions into the report/flee phase; it is not retriggered every frame.
-- Human listening acceptance: pending in Audio Lab / playtest preview.
+- Human listening acceptance: accepted in Audio Lab on 2026-08-14, including the female-sounding DSP variants.
 
 ## Next sourcing order
 
-Continue one family at a time after the currently wired candidates are listening-accepted:
+Continue one family at a time:
 
 1. `policeSirenLoop`
 2. `ambienceStreetNight`
