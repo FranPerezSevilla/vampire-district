@@ -55,7 +55,7 @@ test("playtest Audio Lab previews catalogue events and exact variants without ga
   assert.match(labSource, /sampleAudioDefinition/);
   assert.match(labSource, /const RAW_AUDIO_MASTER_GAIN = 0\.20/);
   assert.match(labSource, /RAW_AUDIO_MASTER_GAIN \* this\.labVolume/);
-  assert.match(labSource, /max=\\?"3\\?"/);
+  assert.match(labSource, /max="3"/);
   assert.match(labSource, /playEvent\(id\)/);
   assert.match(labSource, /playVariant\(id, index\)/);
   assert.match(labSource, /fetch\(file\)/);
