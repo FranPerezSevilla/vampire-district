@@ -14,6 +14,22 @@ The old audio catalogue lived in PR #44 (`agent/expand-audio-catalog`). That PR 
 
 - `weaponFire` — **integrated on PR #55**: three processed handgun variants under `phaser/assets/audio/combat/`, sample-backed playback through one stable event ID, and the previous procedural pistol sound retained as a loading/decoding fallback.
 
+### Troubleshooting candidates
+
+- `bulletHitBody` — the supplied Pixabay source has one processed reference sample registered as `combat/bullet-hit-body-02.ogg` at catalogue gain ×1.15. It is intentionally exposed in the Audio Lab before finalizing the full 3-variant family and gameplay wiring, because its perceived loudness/body needs acceptance first.
+
+## Audio Lab
+
+In playtest mode, press **F8** or use the **AUDIO LAB** button to open a sample-backed catalogue soundboard. The lab pauses gameplay and lets a tester:
+
+- play the next variant for an event with **EVENT**;
+- play an exact numbered variant directly;
+- see the concrete runtime filename being played;
+- compare events without combat, witnesses, Heat or gameplay cooldowns; and
+- adjust preview volume from 0–300%, where 100% uses the same ×0.20 master gain as `RawAudioSystem`.
+
+Use 100% first when judging game mix. Temporary boosts above 100% are diagnostic only; if a sound needs a permanent gain adjustment, change the catalogue definition rather than relying on the lab control.
+
 ## Playtest P0 — source these first
 
 Do not try to fill the full production catalogue before testing. For the current Hunt → Feed → Escape loop, the first pass is:
@@ -31,7 +47,7 @@ Do not try to fill the full production catalogue before testing. For the current
 - `attackHitBody` — melee body impact; 3–4 variants
 - `weaponFire` — **done for the current handgun:** 3 sample-backed variants
 - `weaponDryFire` — empty trigger / failed shot
-- `bulletHitBody` — projectile body impact; 3 variants
+- `bulletHitBody` — **in Audio Lab acceptance:** 1 reference sample now; target 3 variants after loudness/timbre approval
 - `bulletHitWorld` — concrete/brick impact; 3 variants
 - `bulletRicochet` — occasional metal ricochet; 2–3 variants
 - `kill` — restrained lethal/downed impact accent; avoid arcade reward tone
@@ -99,4 +115,4 @@ The original first batch was:
 
 `step`, `weaponFire`, `bulletHitBody`, `drainStart`, `drainLoop`, `drainComplete`, `whisper`, `civilianScream`, `policeSirenLoop`, `vehicleEngineDrive`, `vehicleCollisionHeavy`, `ambienceStreetNight`.
 
-`weaponFire` is now integrated. Continue one sound family at a time using `AUDIO_ASSET_PIPELINE.md`; the next high-impact candidate is `bulletHitBody` or `drainStart`.
+`weaponFire` is integrated. `bulletHitBody` is now at the Audio Lab acceptance gate; once its reference sample is approved, finalize its variants and real hit wiring, then continue with `drainStart`.
