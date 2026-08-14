@@ -1,0 +1,157 @@
+name: Finish feeding audio wiring
+
+on:
+  push:
+    branches: [audio/playtest-p0]
+    paths:
+      - ".github/workflows/finish-feeding-audio.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  finish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout audio branch
+        uses: actions/checkout@v4
+        with:
+          ref: audio/playtest-p0
+          fetch-depth: 0
+
+      - name: Wire stateful feeding sample loop
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          raw_path = Path("phaser/src/systems/RawAudioSystem.js")
+          raw = raw_path.read_text()
+
+          if "this.sampleLoops = new Map();" not in raw:
+              marker = "    this.sampleCursor = Object.create(null);\n"
+              if marker not in raw:
+                  raise SystemExit("RawAudio constructor marker changed")
+              raw = raw.replace(
+                  marker,
+                  marker + "    this.sampleLoops = new Map();\n    this.sampleLoopWanted = new Set();\n",
+                  1,
+              )
+
+          if "  startSampleLoop(name, options = {}) {" not in raw:
+              marker = "  startStepLoop() {\n"
+              if marker not in raw:
+                  raise SystemExit("RawAudio method marker changed")
+              methods = '''  startSampleLoop(name, options = {}) {
+    const definition = sampleAudioDefinition(name);
+    if (!definition?.loop) return false;
+    this.ensureListeners();
+    const ctx = this.unlock();
+    if (!ctx || !this.master) return false;
+
+    this.sampleLoopWanted.add(name);
+    if (this.sampleLoops.has(name)) return true;
+
+    const buffers = this.sampleBuffers.get(name);
+    if (!buffers?.length) {
+      this.loadSampleEvent(name)?.then(() => {
+        if (this.sampleLoopWanted.has(name)) this.startSampleLoop(name, options);
+      });
+      return false;
+    }
+
+    try {
+      const source = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      source.buffer = buffers[0];
+      source.loop = true;
+      gain.gain.value = Math.max(0, Number(options.sampleVolume ?? definition.volume) || 0);
+      source.connect(gain);
+      gain.connect(this.master);
+      const handle = { source, gain };
+      this.sampleLoops.set(name, handle);
+      source.onended = () => {
+        if (this.sampleLoops.get(name) === handle) this.sampleLoops.delete(name);
+      };
+      const delay = Math.max(0, Number(options.delay) || 0);
+      source.start(ctx.currentTime + delay);
+      return true;
+    } catch {
+      this.sampleLoops.delete(name);
+      return false;
+    }
+  }
+
+  stopSampleLoop(name) {
+    this.sampleLoopWanted.delete(name);
+    const handle = this.sampleLoops.get(name);
+    if (!handle) return false;
+    this.sampleLoops.delete(name);
+    try { handle.source.stop(); } catch {}
+    try { handle.source.disconnect(); } catch {}
+    try { handle.gain.disconnect(); } catch {}
+    return true;
+  }
+
+'''
+              raw = raw.replace(marker, methods + marker, 1)
+
+          raw_path.write_text(raw)
+
+          feeding_path = Path("phaser/src/systems/FeedingSystem.js")
+          feeding = feeding_path.read_text()
+
+          if 'RawAudio.startSampleLoop?.("drainLoop", { delay: 0.45 });' not in feeding:
+              marker = '    RawAudio.play("drainStart");\n    resolveAction'
+              replacement = '    RawAudio.play("drainStart");\n    RawAudio.startSampleLoop?.("drainLoop", { delay: 0.45 });\n    resolveAction'
+              if marker not in feeding:
+                  raise SystemExit("Feeding start marker changed")
+              feeding = feeding.replace(marker, replacement, 1)
+
+          simple_cancel = '    if (feed) RawAudio.play("drainCancel");'
+          if simple_cancel in feeding:
+              feeding = feeding.replace(
+                  simple_cancel,
+                  '    if (feed) {\n      RawAudio.stopSampleLoop?.("drainLoop");\n      RawAudio.play("drainCancel");\n    }',
+                  1,
+              )
+
+          final_play = '    RawAudio.play(depth === FEEDING_DEPTHS.DRAIN ? "drainComplete" : "drainCancel", { cooldown: 0.05 });'
+          final_stop = '    RawAudio.stopSampleLoop?.("drainLoop");\n' + final_play
+          if final_stop not in feeding:
+              if final_play not in feeding:
+                  raise SystemExit("Feeding resolve marker changed")
+              feeding = feeding.replace(final_play, final_stop, 1)
+
+          feeding_path.write_text(feeding)
+          PY
+
+      - name: Validate focused feeding audio coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/audio-sample-catalog.test.js
+          git diff --check
+
+      - name: Remove one-off repair debris
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f \
+            .github/workflows/finish-feeding-audio.yml \
+            .github/workflows/repair-feeding-audio.yml \
+            _tmp_audio_fix_note.txt \
+            _tmp_audio_start.b64 \
+            _tmp_connector_probe.txt
+          find phaser/assets/audio/feeding -type d -name '_staging' -empty -delete
+
+      - name: Commit final feeding integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Wire feeding sample loop"
+          git push origin HEAD:audio/playtest-p0
