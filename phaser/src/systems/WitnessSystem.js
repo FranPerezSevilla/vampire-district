@@ -355,7 +355,7 @@ export class WitnessSystem {
         witness.vx = 0;
         witness.vy = 0;
         witness.container?.setPosition?.(witness.x, witness.y);
-        if (wasReacting > 0 && witness.reactionTimer <= 0) RawAudio.play("witnessRun");
+        if (wasReacting > 0 && witness.reactionTimer <= 0) RawAudio.play("civilianScream", { cooldown: 0.55 });
         continue;
       }
 

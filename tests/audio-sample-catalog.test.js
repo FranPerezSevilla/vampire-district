@@ -25,6 +25,15 @@ const DRAIN_COMPLETE_FILES = [
   "phaser/assets/audio/feeding/drain-complete-01.mp3"
 ];
 
+const CIVILIAN_SCREAM_FILES = [
+  "phaser/assets/audio/civilians/civilian-scream-01.mp3",
+  "phaser/assets/audio/civilians/civilian-scream-02.mp3",
+  "phaser/assets/audio/civilians/civilian-scream-03.mp3",
+  "phaser/assets/audio/civilians/civilian-scream-04.mp3",
+  "phaser/assets/audio/civilians/civilian-scream-05.mp3",
+  "phaser/assets/audio/civilians/civilian-scream-06.mp3"
+];
+
 function repoFile(path) {
   return new URL(`../${path}`, import.meta.url);
 }
@@ -115,6 +124,23 @@ test("feeding lifecycle starts one stateful bite loop and stops it on every exit
     feedingSource,
     /RawAudio\.stopSampleLoop\?\.\("drainLoop"\);\s*RawAudio\.play\(depth === FEEDING_DEPTHS\.DRAIN \? "drainComplete" : "drainCancel"/
   );
+});
+
+test("civilianScream registers six browser-compatible panic variants under one event", () => {
+  assert.deepEqual(SAMPLE_AUDIO_CATALOG.civilianScream.files, CIVILIAN_SCREAM_FILES);
+  assert.equal(SAMPLE_AUDIO_CATALOG.civilianScream.volume, 1.0);
+  assertMp3Files(CIVILIAN_SCREAM_FILES);
+});
+
+test("civilianScream fires once when an alarmed witness leaves shock and starts fleeing", () => {
+  const witnessSource = readFileSync(repoFile("phaser/src/systems/WitnessSystem.js"), "utf8");
+  assert.match(
+    witnessSource,
+    /wasReacting > 0 && witness\.reactionTimer <= 0\) RawAudio\.play\("civilianScream", \{ cooldown: 0\.55 \}\);/
+  );
+
+  const rawAudioSource = readFileSync(repoFile("phaser/src/systems/RawAudioSystem.js"), "utf8");
+  assert.match(rawAudioSource, /case "civilianScream": return this\.gasp\(\);/);
 });
 
 test("playtest Audio Lab previews catalogue events and exact variants without gameplay", () => {

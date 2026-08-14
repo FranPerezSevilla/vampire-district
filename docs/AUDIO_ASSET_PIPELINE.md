@@ -175,15 +175,25 @@ The first end-to-end pilot is implemented on PR #55:
 - Variant status: one accepted runtime sample is enough for the current playtest; additional subtle variants remain optional polish.
 - Regression coverage: `tests/audio-sample-catalog.test.js` asserts the MP3 mapping, the human-hit event wiring and the separation from prop/world hits.
 
+## Wired candidate: `civilianScream`
+
+- Event: `civilianScream`
+- Source file supplied by the human: `universfield-man-scream-04-252034.mp3`
+- Source page: `https://pixabay.com/es/sound-effects/gente-man-scream-04-252034/`
+- Author/source credit: Universfield / Pixabay Content License, verified 2026-08-14.
+- Runtime family: `phaser/assets/audio/civilians/civilian-scream-01.mp3` through `civilian-scream-06.mp3`; matching OGG working derivatives remain beside them.
+- Voice treatment: 01–03 preserve the masculine source performance with subtle pitch/EQ variation. 04–06 are deliberately female-sounding DSP derivatives using higher pitch/formant treatment; they are **not** independent recordings by a female performer. If authentic sex-specific casting is needed later, source separate performers rather than mislabelling these derivatives.
+- Processing: trimmed/downmixed to mono 44.1 kHz, loudness-aligned around the same target, with conservative true-peak headroom. Variant 06 also uses a tiny tempo change.
+- Binary integrity: the transported processed master was reconstructed with mandatory SHA256 `bd635361663446d6093d2fb8a1ab2b84df2feb90d42d73c516c082fa1544c78b` before generating runtime assets.
+- Mapping: one stable `civilianScream` event owns all six MP3 variants; `RawAudioSystem` chooses the next variant and retains a procedural gasp fallback if sample playback is unavailable.
+- Gameplay wiring: `WitnessSystem` plays the event once when an alarmed civilian finishes its shock timer and transitions into the report/flee phase; it is not retriggered every frame.
+- Human listening acceptance: pending in Audio Lab / playtest preview.
+
 ## Next sourcing order
 
-Continue one family at a time:
+Continue one family at a time after the currently wired candidates are listening-accepted:
 
-1. `drainStart`
-2. `drainLoop`
-3. `drainComplete`
-4. `civilianScream`
-5. `policeSirenLoop`
-6. `ambienceStreetNight`
+1. `policeSirenLoop`
+2. `ambienceStreetNight`
 
 `bulletHitWorld` remains a separate material family for later firearm polish. Never substitute `bulletHitBody` for wall, prop or vehicle impacts.

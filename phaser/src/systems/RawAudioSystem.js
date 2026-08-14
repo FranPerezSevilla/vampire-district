@@ -208,6 +208,7 @@ class RawAudioBus {
       case "routeClimb": return this.climb();
       case "routeSewer": return this.sewer();
       case "witnessWtf": return this.gasp();
+      case "civilianScream": return this.gasp();
       case "witnessRun": return this.alarmBlip(520);
       case "witnessReport": return this.report();
       case "masqueradeFail": return this.masqueradeFail();
@@ -224,7 +225,7 @@ class RawAudioBus {
   defaultCooldown(name) {
     if (name === "step" || name === "sprintStep") return 0.05;
     if (name === "police" || name === "hunter") return 1.2;
-    if (name === "witnessWtf" || name === "witnessRun") return 0.9;
+    if (name === "witnessWtf" || name === "witnessRun" || name === "civilianScream") return 0.9;
     return 0.12;
   }
 
