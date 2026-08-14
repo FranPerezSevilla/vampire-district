@@ -9,8 +9,20 @@ const WEAPON_FIRE_FILES = [
   "phaser/assets/audio/combat/weapon-fire-03.ogg"
 ];
 
+const BULLET_HIT_BODY_FILES = [
+  "phaser/assets/audio/combat/bullet-hit-body-02.ogg"
+];
+
 function repoFile(path) {
   return new URL(`../${path}`, import.meta.url);
+}
+
+function assertOggFiles(paths) {
+  for (const path of paths) {
+    const data = readFileSync(repoFile(path));
+    assert.ok(data.length > 10_000, `${path} should contain the processed sample, not a placeholder`);
+    assert.equal(data.subarray(0, 4).toString("ascii"), "OggS", `${path} should be an Ogg container`);
+  }
 }
 
 test("weaponFire registers one stable event with three runtime variants", () => {
@@ -19,11 +31,7 @@ test("weaponFire registers one stable event with three runtime variants", () => 
 });
 
 test("weaponFire runtime variants are committed Ogg/Vorbis binaries", () => {
-  for (const path of WEAPON_FIRE_FILES) {
-    const data = readFileSync(repoFile(path));
-    assert.ok(data.length > 10_000, `${path} should contain the processed sample, not a placeholder`);
-    assert.equal(data.subarray(0, 4).toString("ascii"), "OggS", `${path} should be an Ogg container`);
-  }
+  assertOggFiles(WEAPON_FIRE_FILES);
 });
 
 test("pistol fire routes through the sample-backed weaponFire event", () => {
@@ -33,4 +41,26 @@ test("pistol fire routes through the sample-backed weaponFire event", () => {
   const rawAudioSource = readFileSync(repoFile("phaser/src/systems/RawAudioSystem.js"), "utf8");
   assert.match(rawAudioSource, /if \(this\.playSample\(name, options\)\) return;/);
   assert.match(rawAudioSource, /case "weaponFire": return this\.weaponFireFallback\(\);/);
+});
+
+test("bulletHitBody is registered as a real sample for direct troubleshooting", () => {
+  assert.deepEqual(SAMPLE_AUDIO_CATALOG.bulletHitBody.files, BULLET_HIT_BODY_FILES);
+  assert.equal(SAMPLE_AUDIO_CATALOG.bulletHitBody.volume, 1.15);
+  assertOggFiles(BULLET_HIT_BODY_FILES);
+});
+
+test("playtest Audio Lab previews catalogue events and exact variants without gameplay", () => {
+  const labSource = readFileSync(repoFile("phaser/src/playtest/AudioLab.js"), "utf8");
+  assert.match(labSource, /SAMPLE_AUDIO_IDS/);
+  assert.match(labSource, /sampleAudioDefinition/);
+  assert.match(labSource, /playEvent\(id\)/);
+  assert.match(labSource, /playVariant\(id, index\)/);
+  assert.match(labSource, /fetch\(file\)/);
+  assert.match(labSource, /decodeAudioData/);
+  assert.match(labSource, /event\.key === "F8"/);
+
+  const bootstrapSource = readFileSync(repoFile("phaser/src/playtest/bootstrap.js"), "utf8");
+  assert.match(bootstrapSource, /import \{ AudioLab \} from "\.\/AudioLab\.js"/);
+  assert.match(bootstrapSource, /new AudioLab\(scene\)/);
+  assert.match(bootstrapSource, /openAudioLab: \(\) => audioLab\.open\(\)/);
 });
