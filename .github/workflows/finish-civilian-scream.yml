@@ -1,0 +1,107 @@
+name: Finish civilian scream wiring
+
+on:
+  push:
+    branches:
+      - audio/playtest-p0
+    paths:
+      - .github/workflows/finish-civilian-scream.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout audio branch
+        uses: actions/checkout@v4
+        with:
+          ref: audio/playtest-p0
+          fetch-depth: 0
+
+      - name: Wire civilian scream runtime and coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new, label):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f"marker changed: {label}")
+              p.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              "phaser/src/systems/RawAudioSystem.js",
+              '      case "witnessWtf": return this.gasp();\n      case "witnessRun": return this.alarmBlip(520);',
+              '      case "witnessWtf": return this.gasp();\n      case "civilianScream": return this.gasp();\n      case "witnessRun": return this.alarmBlip(520);',
+              "RawAudio fallback"
+          )
+          replace_once(
+              "phaser/src/systems/RawAudioSystem.js",
+              '    if (name === "witnessWtf" || name === "witnessRun") return 0.9;',
+              '    if (name === "witnessWtf" || name === "witnessRun" || name === "civilianScream") return 0.9;',
+              "RawAudio cooldown"
+          )
+          replace_once(
+              "phaser/src/systems/WitnessSystem.js",
+              '        if (wasReacting > 0 && witness.reactionTimer <= 0) RawAudio.play("witnessRun");',
+              '        if (wasReacting > 0 && witness.reactionTimer <= 0) RawAudio.play("civilianScream", { cooldown: 0.55 });',
+              "witness panic transition"
+          )
+
+          test_path = Path("tests/audio-sample-catalog.test.js")
+          tests = test_path.read_text()
+          constants_marker = '''const DRAIN_COMPLETE_FILES = [\n  "phaser/assets/audio/feeding/drain-complete-01.mp3"\n];\n'''
+          constants_add = constants_marker + '''\nconst CIVILIAN_SCREAM_FILES = [\n  "phaser/assets/audio/civilians/civilian-scream-01.mp3",\n  "phaser/assets/audio/civilians/civilian-scream-02.mp3",\n  "phaser/assets/audio/civilians/civilian-scream-03.mp3",\n  "phaser/assets/audio/civilians/civilian-scream-04.mp3",\n  "phaser/assets/audio/civilians/civilian-scream-05.mp3",\n  "phaser/assets/audio/civilians/civilian-scream-06.mp3"\n];\n'''
+          if "const CIVILIAN_SCREAM_FILES" not in tests:
+              if constants_marker not in tests:
+                  raise SystemExit("audio test constants marker changed")
+              tests = tests.replace(constants_marker, constants_add, 1)
+
+          lab_marker = 'test("playtest Audio Lab previews catalogue events and exact variants without gameplay", () => {'
+          scream_tests = '''test("civilianScream registers six browser-compatible panic variants under one event", () => {\n  assert.deepEqual(SAMPLE_AUDIO_CATALOG.civilianScream.files, CIVILIAN_SCREAM_FILES);\n  assert.equal(SAMPLE_AUDIO_CATALOG.civilianScream.volume, 1.0);\n  assertMp3Files(CIVILIAN_SCREAM_FILES);\n});\n\ntest("civilianScream fires once when an alarmed witness leaves shock and starts fleeing", () => {\n  const witnessSource = readFileSync(repoFile("phaser/src/systems/WitnessSystem.js"), "utf8");\n  assert.match(\n    witnessSource,\n    /wasReacting > 0 && witness\\.reactionTimer <= 0\\) RawAudio\\.play\\("civilianScream", \\{ cooldown: 0\\.55 \\}\\);/\n  );\n\n  const rawAudioSource = readFileSync(repoFile("phaser/src/systems/RawAudioSystem.js"), "utf8");\n  assert.match(rawAudioSource, /case "civilianScream": return this\\.gasp\\(\\);/);\n});\n\n'''
+          if 'test("civilianScream registers six browser-compatible panic variants under one event"' not in tests:
+              if lab_marker not in tests:
+                  raise SystemExit("audio test insertion marker changed")
+              tests = tests.replace(lab_marker, scream_tests + lab_marker, 1)
+          test_path.write_text(tests)
+
+          pipeline_path = Path("docs/AUDIO_ASSET_PIPELINE.md")
+          pipeline = pipeline_path.read_text()
+          next_marker = "## Next sourcing order\n"
+          scream_section = '''## Wired candidate: `civilianScream`\n\n- Event: `civilianScream`\n- Source file supplied by the human: `universfield-man-scream-04-252034.mp3`\n- Source page: `https://pixabay.com/es/sound-effects/gente-man-scream-04-252034/`\n- Author/source credit: Universfield / Pixabay Content License, verified 2026-08-14.\n- Runtime family: `phaser/assets/audio/civilians/civilian-scream-01.mp3` through `civilian-scream-06.mp3`; matching OGG working derivatives remain beside them.\n- Voice treatment: 01–03 preserve the masculine source performance with subtle pitch/EQ variation. 04–06 are deliberately female-sounding DSP derivatives using higher pitch/formant treatment; they are **not** independent recordings by a female performer. If authentic sex-specific casting is needed later, source separate performers rather than mislabelling these derivatives.\n- Processing: trimmed/downmixed to mono 44.1 kHz, loudness-aligned around the same target, with conservative true-peak headroom. Variant 06 also uses a tiny tempo change.\n- Binary integrity: the transported processed master was reconstructed with mandatory SHA256 `bd635361663446d6093d2fb8a1ab2b84df2feb90d42d73c516c082fa1544c78b` before generating runtime assets.\n- Mapping: one stable `civilianScream` event owns all six MP3 variants; `RawAudioSystem` chooses the next variant and retains a procedural gasp fallback if sample playback is unavailable.\n- Gameplay wiring: `WitnessSystem` plays the event once when an alarmed civilian finishes its shock timer and transitions into the report/flee phase; it is not retriggered every frame.\n- Human listening acceptance: pending in Audio Lab / playtest preview.\n\n'''
+          if "## Wired candidate: `civilianScream`" not in pipeline:
+              if next_marker not in pipeline:
+                  raise SystemExit("pipeline next marker changed")
+              pipeline = pipeline.replace(next_marker, scream_section + next_marker, 1)
+
+          old_order = '''Continue one family at a time:\n\n1. `drainStart`\n2. `drainLoop`\n3. `drainComplete`\n4. `civilianScream`\n5. `policeSirenLoop`\n6. `ambienceStreetNight`\n'''
+          new_order = '''Continue one family at a time after the currently wired candidates are listening-accepted:\n\n1. `policeSirenLoop`\n2. `ambienceStreetNight`\n'''
+          if old_order in pipeline:
+              pipeline = pipeline.replace(old_order, new_order, 1)
+          else:
+              raise SystemExit("pipeline sourcing order marker changed")
+          pipeline_path.write_text(pipeline)
+          PY
+
+      - name: Validate focused audio coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/audio-sample-catalog.test.js
+          git diff --check
+
+      - name: Remove one-off workflow and commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/finish-civilian-scream.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "Wire civilian scream panic audio"
+          git push origin HEAD:audio/playtest-p0
