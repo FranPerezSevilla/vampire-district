@@ -15,6 +15,14 @@ The assistant/agent owns the rest of the integration from that point onward.
 
 Do not ask the human to rename files, edit metadata, generate variants, convert formats, update attribution, wire gameplay code or upload final runtime files unless a tool limitation makes a specific step impossible.
 
+## Runtime compatibility rule
+
+The current browser playtest must use **MP3 files in `SampleAudioCatalog.js`** for sample-backed one-shots. Do not point the runtime catalogue at Ogg/Vorbis assets as its only source: older WebKit/Safari builds used by playtesters can fail `decodeAudioData()` on Ogg/Vorbis and silently force `RawAudioSystem` back to its procedural fallback.
+
+Processed OGG derivatives may remain beside the MP3 runtime mirrors for audio work, archival comparison and future targets. The compatibility mirror must preserve the same audible processing/variant identity. `.github/workflows/materialize-audio-assets.yml` currently generates mono 44.1 kHz MP3 mirrors from committed OGG derivatives and validates them with FFmpeg/FFprobe.
+
+When browser support changes later, the runtime format policy may be revisited deliberately. Do not change it incidentally while integrating a new sound family.
+
 ## Per-asset procedure
 
 Work on one sound family at a time unless explicitly asked to batch them.
@@ -34,11 +42,12 @@ Work on one sound family at a time unless explicitly asked to batch them.
    - Preserve the source file locally during processing; shipped runtime files may be derived copies.
 
 4. **Process for runtime**
-   - Prefer `.ogg` for shipped compressed runtime audio unless a technical reason requires another format.
+   - Process a high-quality derivative first; OGG remains acceptable as an intermediate/working derivative.
+   - For the current browser playtest, generate the corresponding MP3 compatibility mirror and point `SampleAudioCatalog.js` at the MP3 file.
    - Trim unnecessary leading/trailing silence.
    - Apply sensible gain/normalization without destroying transient character.
    - Avoid clipping.
-   - For loops, create/test clean loop boundaries rather than applying one-shot processing.
+   - For loops, create/test clean loop boundaries rather than applying one-shot processing; validate loop behavior separately before choosing the final browser runtime encoding.
 
 5. **Generate variants only when useful**
    - One-shots that repeat often (gunshots, impacts, screams, footsteps, horns) should usually receive several subtle variants.
@@ -51,18 +60,19 @@ Work on one sound family at a time unless explicitly asked to batch them.
 6. **Name and place files**
    - Runtime path: `phaser/assets/audio/<category>/`.
    - Lowercase descriptive filenames with numbered variants, e.g.:
-     - `combat/weapon-fire-01.ogg`
-     - `combat/weapon-fire-02.ogg`
-     - `combat/weapon-fire-03.ogg`
+     - `combat/weapon-fire-01.mp3`
+     - `combat/weapon-fire-02.mp3`
+     - `combat/weapon-fire-03.mp3`
+   - A matching `.ogg` working derivative may live beside each MP3 when useful.
    - Variants share the same stable gameplay event ID.
 
 7. **Upload binaries safely**
    - Treat audio as binary, not UTF-8 text.
    - Prefer Git blob/tree/commit operations (base64 when required by the connector) for binary files.
-   - On audio branches, `.github/workflows/materialize-audio-assets.yml` may be used as a narrow transport helper: stage a valid `*.ogg.b64`, let the workflow decode and verify the `OggS` header, and verify that the resulting `.ogg` replaced the staging file.
-   - Never treat the staging helper as audio processing; processing/inspection happens before staging.
+   - On audio branches, `.github/workflows/materialize-audio-assets.yml` may be used as a narrow transport/compatibility helper: it can decode a staged valid `*.ogg.b64`, verify the `OggS` header, and generate verified MP3 mirrors from committed OGG derivatives.
+   - Creative processing/inspection still happens before staging. The workflow's MP3 conversion is a deterministic browser-compatibility derivative, not a substitute for source selection or mix judgement.
    - Keep binary upload separate from subsequent text/code edits when that reduces failure risk.
-   - Verify the repository actually contains each expected binary before declaring the asset uploaded.
+   - Verify the repository actually contains each expected runtime MP3 before declaring the asset uploaded.
 
 8. **Update attribution**
    - Add a row to `phaser/assets/audio/ATTRIBUTION.md` containing catalogue ID, runtime file/family, description, author, original source URL, licence and all processing changes.
@@ -71,6 +81,7 @@ Work on one sound family at a time unless explicitly asked to batch them.
 9. **Update catalogue/audio mapping**
    - Keep the stable event ID unchanged.
    - Register all runtime variants under the audio layer/catalogue rather than using separate gameplay IDs.
+   - For the current browser playtest, register the MP3 compatibility mirrors, not OGG-only paths.
    - Preserve the procedural fallback until the sample-backed path has been validated unless there is a clear reason to remove it.
 
 10. **Audio Lab acceptance gate**
@@ -79,6 +90,7 @@ Work on one sound family at a time unless explicitly asked to batch them.
     - Judge the sample at **100% first**. That preview uses the same ×0.20 master gain as `RawAudioSystem`; the 0–300% lab slider is diagnostic only.
     - Compare repeated plays and variants for transient, body, harshness and relative loudness.
     - If a sample is weak/overpowering at the baseline, adjust processing or catalogue gain before gameplay wiring.
+    - A decode error in Audio Lab is a release-blocking compatibility failure for that sample; do not rely on the procedural fallback to hide it.
     - Do not call a family gameplay-integrated merely because it is present in Audio Lab; this gate can intentionally precede final variants and gameplay wiring.
 
 11. **Wire the real gameplay event**
@@ -87,7 +99,7 @@ Work on one sound family at a time unless explicitly asked to batch them.
     - For loops, explicitly start and stop with state changes; never retrigger every frame.
 
 12. **Validate**
-    - Confirm final files decode and have sensible duration/levels.
+    - Confirm final runtime MP3 files decode and have sensible duration/levels.
     - Confirm the event is reachable from real gameplay, not only from Audio Lab or a test helper.
     - Confirm variant selection does not change gameplay behavior.
     - Run/inspect relevant tests when available.
@@ -129,7 +141,7 @@ Default starting points, not hard requirements:
 
 Do not build a large GitHub Actions audio factory before the manual pipeline has been validated on several representative assets.
 
-The narrow `materialize-audio-assets.yml` helper exists only to make binary transport reliable when the connector cannot directly write the processed OGG. It must not make creative or processing decisions.
+The narrow `materialize-audio-assets.yml` helper exists to make binary transport and browser-compatible MP3 mirroring reliable when the connector cannot directly write the processed binary. It may perform deterministic validation/transcoding, but it must not make creative source, mix or variant decisions.
 
 After the process is stable, extract repeatable processing into `tools/audio/` (using `ffmpeg`) and optionally add a manual `workflow_dispatch` action. Automation should handle conversion/normalization/variant generation/validation; human/agent judgement should still choose the source, licence metadata, event mapping and suitable processing profile.
 
@@ -140,20 +152,21 @@ The first end-to-end pilot is implemented on PR #55:
 - Event: `weaponFire`
 - Source file supplied by the human: `universfield-gunshot-352466.mp3`
 - Source page: `https://pixabay.com/es/sound-effects/pel%C3%ADculas-y-efectos-especiales-gunshot-352466/`
-- Runtime family: `phaser/assets/audio/combat/weapon-fire-01.ogg` through `weapon-fire-03.ogg`
-- Processing: mono 44.1 kHz OGG/Vorbis, high-pass cleanup and conservative gain/limiting; variants 02–03 use subtle pitch/EQ changes while preserving the same handgun identity.
-- Mapping: one stable `weaponFire` event in `SampleAudioCatalog.js`; the audio layer chooses between the three files.
+- Runtime family: `phaser/assets/audio/combat/weapon-fire-01.mp3` through `weapon-fire-03.mp3`.
+- Working derivatives: matching OGG/Vorbis files remain beside the MP3 mirrors.
+- Processing: mono 44.1 kHz, high-pass cleanup and conservative gain/limiting; variants 02–03 use subtle pitch/EQ changes while preserving the same handgun identity. Runtime MP3 mirrors are generated from the processed OGG derivatives.
+- Mapping: one stable `weaponFire` event in `SampleAudioCatalog.js`; the audio layer chooses between the three MP3 files.
 - Gameplay wiring: the pistol calls `RawAudio.play("weaponFire")` from `WeaponSystem`.
 - Fallback: the previous procedural pistol sound remains available if the sample has not loaded or cannot decode.
-- Binary validation: all three OGG files are present in the PR branch with non-placeholder sizes and covered by `tests/audio-sample-catalog.test.js`.
-- Human listening acceptance: accepted in the playtest preview.
+- Binary validation: all three runtime MP3 files are present in the PR branch with non-placeholder sizes and covered by `tests/audio-sample-catalog.test.js`.
+- Human listening acceptance: accepted in the playtest preview before the WebKit format issue was discovered; re-check after the compatibility conversion.
 
 ## Current acceptance candidate: `bulletHitBody`
 
 - Event: `bulletHitBody`
 - Source file supplied by the human: `u_68csiaifb5-bulletimpact2-442718.mp3`
 - Source page: `https://pixabay.com/es/sound-effects/pel%C3%ADculas-y-efectos-especiales-bulletimpact2-442718/`
-- Current runtime reference: `phaser/assets/audio/combat/bullet-hit-body-02.ogg`
+- Current runtime reference: `phaser/assets/audio/combat/bullet-hit-body-02.mp3`; matching OGG derivative remains for audio work.
 - Mapping: registered in `SampleAudioCatalog.js` at catalogue gain ×1.15.
 - Acceptance: available in Audio Lab so its relative loudness/body can be judged against `weaponFire` at the real RawAudio master level.
 - Pending: human acceptance, final 3-variant family, procedural fallback decision, real successful-body-hit wiring and final gameplay validation.
