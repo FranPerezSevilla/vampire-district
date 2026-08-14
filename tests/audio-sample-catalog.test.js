@@ -45,10 +45,25 @@ test("pistol fire routes through the sample-backed weaponFire event", () => {
   assert.match(rawAudioSource, /case "weaponFire": return this\.weaponFireFallback\(\);/);
 });
 
-test("bulletHitBody is registered as a WebKit-compatible sample for direct troubleshooting", () => {
+test("bulletHitBody is registered as a WebKit-compatible runtime sample", () => {
   assert.deepEqual(SAMPLE_AUDIO_CATALOG.bulletHitBody.files, BULLET_HIT_BODY_FILES);
   assert.equal(SAMPLE_AUDIO_CATALOG.bulletHitBody.volume, 1.15);
   assertMp3Files(BULLET_HIT_BODY_FILES);
+});
+
+test("bulletHitBody plays only after a confirmed hitscan hit on a human NPC", () => {
+  const weaponSource = readFileSync(repoFile("phaser/src/systems/WeaponSystem.js"), "utf8");
+  assert.match(weaponSource, /events\?\.on\?\.\("combat:hit", this\.onCombatHit, this\)/);
+  assert.match(
+    weaponSource,
+    /onCombatHit\(event = \{\}\)[\s\S]*?weaponById\(event\.weaponId\)[\s\S]*?attackType !== WEAPON_TYPES\.HITSCAN[\s\S]*?RawAudio\.play\("bulletHitBody"/
+  );
+  assert.match(weaponSource, /events\?\.off\?\.\("combat:hit", this\.onCombatHit, this\)/);
+
+  const combatSource = readFileSync(repoFile("phaser/src/combat/CombatSystem.js"), "utf8");
+  assert.match(combatSource, /if \(candidate\.kind === "npc"\) this\.applyHit\(candidate\.entity, config\);/);
+  assert.match(combatSource, /if \(candidate\.kind === "prop"\) \{[\s\S]*?propDamageSystem\?\.damage/);
+  assert.equal((combatSource.match(/"combat:hit"/g) || []).length, 1, "combat:hit should remain the human-NPC hit event");
 });
 
 test("playtest Audio Lab previews catalogue events and exact variants without gameplay", () => {
