@@ -56,6 +56,7 @@ Work on one sound family at a time unless explicitly asked to batch them.
    - Do not generate variants mechanically for long ambience, music-like beds or loops unless the design specifically benefits from them.
    - Keep processing deterministic/reproducible where practical.
    - If the source's basic loudness/timbre is uncertain, it is acceptable to stop after one representative processed sample and use the Audio Lab acceptance gate before spending time on the complete variant family.
+   - A single accepted variant may be integrated for a playtest when repetition is acceptable; extra variants then remain polish rather than blocking real gameplay wiring.
 
 6. **Name and place files**
    - Runtime path: `phaser/assets/audio/<category>/`.
@@ -96,6 +97,7 @@ Work on one sound family at a time unless explicitly asked to batch them.
 11. **Wire the real gameplay event**
     - Locate the actual gameplay authority that produces the event.
     - Trigger the sample-backed event there once per real action/state transition.
+    - Material-specific events must remain specific: for example `bulletHitBody` belongs only to confirmed human-body hits and must not be reused for props, walls or vehicles.
     - For loops, explicitly start and stop with state changes; never retrigger every frame.
 
 12. **Validate**
@@ -145,7 +147,7 @@ The narrow `materialize-audio-assets.yml` helper exists to make binary transport
 
 After the process is stable, extract repeatable processing into `tools/audio/` (using `ffmpeg`) and optionally add a manual `workflow_dispatch` action. Automation should handle conversion/normalization/variant generation/validation; human/agent judgement should still choose the source, licence metadata, event mapping and suitable processing profile.
 
-## Current pilot: `weaponFire`
+## Integrated pilot: `weaponFire`
 
 The first end-to-end pilot is implemented on PR #55:
 
@@ -159,16 +161,29 @@ The first end-to-end pilot is implemented on PR #55:
 - Gameplay wiring: the pistol calls `RawAudio.play("weaponFire")` from `WeaponSystem`.
 - Fallback: the previous procedural pistol sound remains available if the sample has not loaded or cannot decode.
 - Binary validation: all three runtime MP3 files are present in the PR branch with non-placeholder sizes and covered by `tests/audio-sample-catalog.test.js`.
-- Human listening acceptance: accepted in the playtest preview before the WebKit format issue was discovered; re-check after the compatibility conversion.
+- Human listening acceptance: accepted again in the playtest preview after the WebKit-compatible MP3 conversion.
 
-## Current acceptance candidate: `bulletHitBody`
+## Integrated pilot: `bulletHitBody`
 
 - Event: `bulletHitBody`
 - Source file supplied by the human: `u_68csiaifb5-bulletimpact2-442718.mp3`
 - Source page: `https://pixabay.com/es/sound-effects/pel%C3%ADculas-y-efectos-especiales-bulletimpact2-442718/`
 - Current runtime reference: `phaser/assets/audio/combat/bullet-hit-body-02.mp3`; matching OGG derivative remains for audio work.
 - Mapping: registered in `SampleAudioCatalog.js` at catalogue gain ×1.15.
-- Acceptance: available in Audio Lab so its relative loudness/body can be judged against `weaponFire` at the real RawAudio master level.
-- Pending: human acceptance, final 3-variant family, procedural fallback decision, real successful-body-hit wiring and final gameplay validation.
+- Human listening acceptance: accepted through Audio Lab after the WebKit-compatible MP3 conversion.
+- Gameplay wiring: `WeaponSystem` listens to the authoritative `combat:hit` event and plays `bulletHitBody` only when the originating weapon is hitscan. `CombatSystem` emits that event from its human-NPC `applyHit` path; prop hits use `propDamageSystem` and do not emit it. Vehicle/world hits therefore do not receive the body sample.
+- Variant status: one accepted runtime sample is enough for the current playtest; additional subtle variants remain optional polish.
+- Regression coverage: `tests/audio-sample-catalog.test.js` asserts the MP3 mapping, the human-hit event wiring and the separation from prop/world hits.
 
-Do not advance `bulletHitBody` from **acceptance candidate** to **integrated** until those pending steps are complete.
+## Next sourcing order
+
+Continue one family at a time:
+
+1. `drainStart`
+2. `drainLoop`
+3. `drainComplete`
+4. `civilianScream`
+5. `policeSirenLoop`
+6. `ambienceStreetNight`
+
+`bulletHitWorld` remains a separate material family for later firearm polish. Never substitute `bulletHitBody` for wall, prop or vehicle impacts.
