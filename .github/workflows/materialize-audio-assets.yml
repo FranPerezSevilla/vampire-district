@@ -51,7 +51,7 @@ jobs:
             echo "No staged OGG payloads found."
           fi
 
-      - name: Generate WebKit-compatible MP3 mirrors
+      - name: Generate browser-compatible runtime mirrors
         shell: bash
         run: |
           set -euo pipefail
@@ -69,6 +69,22 @@ jobs:
               "$mp3"
             ffprobe -v error -select_streams a:0 -show_entries stream=codec_name,sample_rate,channels -of csv=p=0 "$mp3"
             echo "Generated $mp3"
+
+            # Short state-driven loops use PCM WAV in the Web Audio runtime.
+            # This keeps older WebKit compatibility while avoiding MP3 encoder
+            # padding at the loop boundary. OGG remains the working derivative.
+            if [[ "$ogg" == *-loop-*.ogg ]]; then
+              wav="${ogg%.ogg}.wav"
+              ffmpeg -nostdin -hide_banner -loglevel error -y \
+                -i "$ogg" \
+                -map_metadata -1 \
+                -ac 1 \
+                -ar 44100 \
+                -codec:a pcm_s16le \
+                "$wav"
+              ffprobe -v error -select_streams a:0 -show_entries stream=codec_name,sample_rate,channels -of csv=p=0 "$wav"
+              echo "Generated $wav"
+            fi
           done < <(find phaser/assets/audio -type f -name '*.ogg' -print0)
 
           if [[ "$found" -eq 0 ]]; then
@@ -86,5 +102,5 @@ jobs:
             echo "Nothing to commit."
             exit 0
           fi
-          git commit -m "Generate WebKit-compatible MP3 audio mirrors"
+          git commit -m "Generate browser-compatible audio mirrors"
           git push
