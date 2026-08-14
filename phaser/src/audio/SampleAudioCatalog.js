@@ -15,7 +15,10 @@ export const SAMPLE_AUDIO_CATALOG = Object.freeze({
     "phaser/assets/audio/combat/weapon-fire-01.ogg",
     "phaser/assets/audio/combat/weapon-fire-02.ogg",
     "phaser/assets/audio/combat/weapon-fire-03.ogg"
-  ], { volume: 0.95 })
+  ], { volume: 0.95 }),
+  bulletHitBody: sampleEvent([
+    "phaser/assets/audio/combat/bullet-hit-body-02.ogg"
+  ], { volume: 1.15 })
 });
 
 export const SAMPLE_AUDIO_IDS = Object.freeze(Object.keys(SAMPLE_AUDIO_CATALOG));
