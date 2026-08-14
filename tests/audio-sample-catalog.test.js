@@ -4,34 +4,36 @@ import { readFileSync } from "node:fs";
 import { SAMPLE_AUDIO_CATALOG } from "../phaser/src/audio/SampleAudioCatalog.js";
 
 const WEAPON_FIRE_FILES = [
-  "phaser/assets/audio/combat/weapon-fire-01.ogg",
-  "phaser/assets/audio/combat/weapon-fire-02.ogg",
-  "phaser/assets/audio/combat/weapon-fire-03.ogg"
+  "phaser/assets/audio/combat/weapon-fire-01.mp3",
+  "phaser/assets/audio/combat/weapon-fire-02.mp3",
+  "phaser/assets/audio/combat/weapon-fire-03.mp3"
 ];
 
 const BULLET_HIT_BODY_FILES = [
-  "phaser/assets/audio/combat/bullet-hit-body-02.ogg"
+  "phaser/assets/audio/combat/bullet-hit-body-02.mp3"
 ];
 
 function repoFile(path) {
   return new URL(`../${path}`, import.meta.url);
 }
 
-function assertOggFiles(paths) {
+function assertMp3Files(paths) {
   for (const path of paths) {
     const data = readFileSync(repoFile(path));
-    assert.ok(data.length > 10_000, `${path} should contain the processed sample, not a placeholder`);
-    assert.equal(data.subarray(0, 4).toString("ascii"), "OggS", `${path} should be an Ogg container`);
+    assert.ok(data.length > 8_000, `${path} should contain the processed sample, not a placeholder`);
+    const hasId3 = data.subarray(0, 3).toString("ascii") === "ID3";
+    const hasFrameSync = data[0] === 0xff && (data[1] & 0xe0) === 0xe0;
+    assert.ok(hasId3 || hasFrameSync, `${path} should be an MP3 stream`);
   }
 }
 
-test("weaponFire registers one stable event with three runtime variants", () => {
+test("weaponFire registers one stable event with three WebKit-compatible runtime variants", () => {
   assert.deepEqual(SAMPLE_AUDIO_CATALOG.weaponFire.files, WEAPON_FIRE_FILES);
   assert.equal(SAMPLE_AUDIO_CATALOG.weaponFire.volume, 0.95);
 });
 
-test("weaponFire runtime variants are committed Ogg/Vorbis binaries", () => {
-  assertOggFiles(WEAPON_FIRE_FILES);
+test("weaponFire runtime variants are committed MP3 binaries", () => {
+  assertMp3Files(WEAPON_FIRE_FILES);
 });
 
 test("pistol fire routes through the sample-backed weaponFire event", () => {
@@ -43,10 +45,10 @@ test("pistol fire routes through the sample-backed weaponFire event", () => {
   assert.match(rawAudioSource, /case "weaponFire": return this\.weaponFireFallback\(\);/);
 });
 
-test("bulletHitBody is registered as a real sample for direct troubleshooting", () => {
+test("bulletHitBody is registered as a WebKit-compatible sample for direct troubleshooting", () => {
   assert.deepEqual(SAMPLE_AUDIO_CATALOG.bulletHitBody.files, BULLET_HIT_BODY_FILES);
   assert.equal(SAMPLE_AUDIO_CATALOG.bulletHitBody.volume, 1.15);
-  assertOggFiles(BULLET_HIT_BODY_FILES);
+  assertMp3Files(BULLET_HIT_BODY_FILES);
 });
 
 test("playtest Audio Lab previews catalogue events and exact variants without gameplay", () => {
