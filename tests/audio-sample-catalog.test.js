@@ -13,6 +13,18 @@ const BULLET_HIT_BODY_FILES = [
   "phaser/assets/audio/combat/bullet-hit-body-02.mp3"
 ];
 
+const DRAIN_START_FILES = [
+  "phaser/assets/audio/feeding/drain-start-01.mp3"
+];
+
+const DRAIN_LOOP_FILES = [
+  "phaser/assets/audio/feeding/drain-loop-01.wav"
+];
+
+const DRAIN_COMPLETE_FILES = [
+  "phaser/assets/audio/feeding/drain-complete-01.mp3"
+];
+
 function repoFile(path) {
   return new URL(`../${path}`, import.meta.url);
 }
@@ -24,6 +36,15 @@ function assertMp3Files(paths) {
     const hasId3 = data.subarray(0, 3).toString("ascii") === "ID3";
     const hasFrameSync = data[0] === 0xff && (data[1] & 0xe0) === 0xe0;
     assert.ok(hasId3 || hasFrameSync, `${path} should be an MP3 stream`);
+  }
+}
+
+function assertWavFiles(paths) {
+  for (const path of paths) {
+    const data = readFileSync(repoFile(path));
+    assert.ok(data.length > 20_000, `${path} should contain the processed loop, not a placeholder`);
+    assert.equal(data.subarray(0, 4).toString("ascii"), "RIFF");
+    assert.equal(data.subarray(8, 12).toString("ascii"), "WAVE");
   }
 }
 
@@ -64,6 +85,36 @@ test("bulletHitBody plays only after a confirmed hitscan hit on a human NPC", ()
   assert.match(combatSource, /if \(candidate\.kind === "npc"\) this\.applyHit\(candidate\.entity, config\);/);
   assert.match(combatSource, /if \(candidate\.kind === "prop"\) \{[\s\S]*?propDamageSystem\?\.damage/);
   assert.equal((combatSource.match(/"combat:hit"/g) || []).length, 1, "combat:hit should remain the human-NPC hit event");
+});
+
+test("feeding family registers browser-compatible one-shots and a PCM loop", () => {
+  assert.deepEqual(SAMPLE_AUDIO_CATALOG.drainStart.files, DRAIN_START_FILES);
+  assert.deepEqual(SAMPLE_AUDIO_CATALOG.drainLoop.files, DRAIN_LOOP_FILES);
+  assert.deepEqual(SAMPLE_AUDIO_CATALOG.drainComplete.files, DRAIN_COMPLETE_FILES);
+  assert.equal(SAMPLE_AUDIO_CATALOG.drainLoop.loop, true);
+  assertMp3Files([...DRAIN_START_FILES, ...DRAIN_COMPLETE_FILES]);
+  assertWavFiles(DRAIN_LOOP_FILES);
+});
+
+test("feeding lifecycle starts one stateful bite loop and stops it on every exit path", () => {
+  const rawAudioSource = readFileSync(repoFile("phaser/src/systems/RawAudioSystem.js"), "utf8");
+  assert.match(rawAudioSource, /startSampleLoop\(name, options = \{\}\)/);
+  assert.match(rawAudioSource, /source\.loop = true/);
+  assert.match(rawAudioSource, /stopSampleLoop\(name\)/);
+
+  const feedingSource = readFileSync(repoFile("phaser/src/systems/FeedingSystem.js"), "utf8");
+  assert.match(
+    feedingSource,
+    /RawAudio\.play\("drainStart"\);\s*RawAudio\.startSampleLoop\?\.\("drainLoop", \{ delay: 0\.45 \}\);/
+  );
+  assert.match(
+    feedingSource,
+    /cancel\([\s\S]*?RawAudio\.stopSampleLoop\?\.\("drainLoop"\)[\s\S]*?RawAudio\.play\("drainCancel"\)/
+  );
+  assert.match(
+    feedingSource,
+    /RawAudio\.stopSampleLoop\?\.\("drainLoop"\);\s*RawAudio\.play\(depth === FEEDING_DEPTHS\.DRAIN \? "drainComplete" : "drainCancel"/
+  );
 });
 
 test("playtest Audio Lab previews catalogue events and exact variants without gameplay", () => {
