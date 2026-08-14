@@ -2,9 +2,10 @@ name: Finish feeding audio wiring
 
 on:
   push:
-    branches: [audio/playtest-p0]
+    branches:
+      - audio/playtest-p0
     paths:
-      - ".github/workflows/finish-feeding-audio.yml"
+      - .github/workflows/finish-feeding-audio.yml
 
 permissions:
   contents: write
@@ -23,109 +24,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          raw_path = Path("phaser/src/systems/RawAudioSystem.js")
-          raw = raw_path.read_text()
-
-          if "this.sampleLoops = new Map();" not in raw:
-              marker = "    this.sampleCursor = Object.create(null);\n"
-              if marker not in raw:
-                  raise SystemExit("RawAudio constructor marker changed")
-              raw = raw.replace(
-                  marker,
-                  marker + "    this.sampleLoops = new Map();\n    this.sampleLoopWanted = new Set();\n",
-                  1,
-              )
-
-          if "  startSampleLoop(name, options = {}) {" not in raw:
-              marker = "  startStepLoop() {\n"
-              if marker not in raw:
-                  raise SystemExit("RawAudio method marker changed")
-              methods = '''  startSampleLoop(name, options = {}) {
-    const definition = sampleAudioDefinition(name);
-    if (!definition?.loop) return false;
-    this.ensureListeners();
-    const ctx = this.unlock();
-    if (!ctx || !this.master) return false;
-
-    this.sampleLoopWanted.add(name);
-    if (this.sampleLoops.has(name)) return true;
-
-    const buffers = this.sampleBuffers.get(name);
-    if (!buffers?.length) {
-      this.loadSampleEvent(name)?.then(() => {
-        if (this.sampleLoopWanted.has(name)) this.startSampleLoop(name, options);
-      });
-      return false;
-    }
-
-    try {
-      const source = ctx.createBufferSource();
-      const gain = ctx.createGain();
-      source.buffer = buffers[0];
-      source.loop = true;
-      gain.gain.value = Math.max(0, Number(options.sampleVolume ?? definition.volume) || 0);
-      source.connect(gain);
-      gain.connect(this.master);
-      const handle = { source, gain };
-      this.sampleLoops.set(name, handle);
-      source.onended = () => {
-        if (this.sampleLoops.get(name) === handle) this.sampleLoops.delete(name);
-      };
-      const delay = Math.max(0, Number(options.delay) || 0);
-      source.start(ctx.currentTime + delay);
-      return true;
-    } catch {
-      this.sampleLoops.delete(name);
-      return false;
-    }
-  }
-
-  stopSampleLoop(name) {
-    this.sampleLoopWanted.delete(name);
-    const handle = this.sampleLoops.get(name);
-    if (!handle) return false;
-    this.sampleLoops.delete(name);
-    try { handle.source.stop(); } catch {}
-    try { handle.source.disconnect(); } catch {}
-    try { handle.gain.disconnect(); } catch {}
-    return true;
-  }
-
-'''
-              raw = raw.replace(marker, methods + marker, 1)
-
-          raw_path.write_text(raw)
-
-          feeding_path = Path("phaser/src/systems/FeedingSystem.js")
-          feeding = feeding_path.read_text()
-
-          if 'RawAudio.startSampleLoop?.("drainLoop", { delay: 0.45 });' not in feeding:
-              marker = '    RawAudio.play("drainStart");\n    resolveAction'
-              replacement = '    RawAudio.play("drainStart");\n    RawAudio.startSampleLoop?.("drainLoop", { delay: 0.45 });\n    resolveAction'
-              if marker not in feeding:
-                  raise SystemExit("Feeding start marker changed")
-              feeding = feeding.replace(marker, replacement, 1)
-
-          simple_cancel = '    if (feed) RawAudio.play("drainCancel");'
-          if simple_cancel in feeding:
-              feeding = feeding.replace(
-                  simple_cancel,
-                  '    if (feed) {\n      RawAudio.stopSampleLoop?.("drainLoop");\n      RawAudio.play("drainCancel");\n    }',
-                  1,
-              )
-
-          final_play = '    RawAudio.play(depth === FEEDING_DEPTHS.DRAIN ? "drainComplete" : "drainCancel", { cooldown: 0.05 });'
-          final_stop = '    RawAudio.stopSampleLoop?.("drainLoop");\n' + final_play
-          if final_stop not in feeding:
-              if final_play not in feeding:
-                  raise SystemExit("Feeding resolve marker changed")
-              feeding = feeding.replace(final_play, final_stop, 1)
-
-          feeding_path.write_text(feeding)
-          PY
+          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgpyYXdfcGF0aCA9IFBhdGgoInBoYXNlci9zcmMvc3lzdGVtcy9SYXdBdWRpb1N5c3RlbS5qcyIpCnJhdyA9IHJhd19wYXRoLnJlYWRfdGV4dCgpCgppZiAidGhpcy5zYW1wbGVMb29wcyA9IG5ldyBNYXAoKTsiIG5vdCBpbiByYXc6CiAgICBtYXJrZXIgPSAiICAgIHRoaXMuc2FtcGxlQ3Vyc29yID0gT2JqZWN0LmNyZWF0ZShudWxsKTtcbiIKICAgIGlmIG1hcmtlciBub3QgaW4gcmF3OgogICAgICAgIHJhaXNlIFN5c3RlbUV4aXQoIlJhd0F1ZGlvIGNvbnN0cnVjdG9yIG1hcmtlciBjaGFuZ2VkIikKICAgIHJhdyA9IHJhdy5yZXBsYWNlKAogICAgICAgIG1hcmtlciwKICAgICAgICBtYXJrZXIgKyAiICAgIHRoaXMuc2FtcGxlTG9vcHMgPSBuZXcgTWFwKCk7XG4gICAgdGhpcy5zYW1wbGVMb29wV2FudGVkID0gbmV3IFNldCgpO1xuIiwKICAgICAgICAxLAogICAgKQoKaWYgIiAgc3RhcnRTYW1wbGVMb29wKG5hbWUsIG9wdGlvbnMgPSB7fSkgeyIgbm90IGluIHJhdzoKICAgIG1hcmtlciA9ICIgIHN0YXJ0U3RlcExvb3AoKSB7XG4iCiAgICBpZiBtYXJrZXIgbm90IGluIHJhdzoKICAgICAgICByYWlzZSBTeXN0ZW1FeGl0KCJSYXdBdWRpbyBtZXRob2QgbWFya2VyIGNoYW5nZWQiKQogICAgbWV0aG9kcyA9ICIiIiAgc3RhcnRTYW1wbGVMb29wKG5hbWUsIG9wdGlvbnMgPSB7fSkgewogICAgY29uc3QgZGVmaW5pdGlvbiA9IHNhbXBsZUF1ZGlvRGVmaW5pdGlvbihuYW1lKTsKICAgIGlmICghZGVmaW5pdGlvbj8ubG9vcCkgcmV0dXJuIGZhbHNlOwogICAgdGhpcy5lbnN1cmVMaXN0ZW5lcnMoKTsKICAgIGNvbnN0IGN0eCA9IHRoaXMudW5sb2NrKCk7CiAgICBpZiAoIWN0eCB8fCAhdGhpcy5tYXN0ZXIpIHJldHVybiBmYWxzZTsKCiAgICB0aGlzLnNhbXBsZUxvb3BXYW50ZWQuYWRkKG5hbWUpOwogICAgaWYgKHRoaXMuc2FtcGxlTG9vcHMuaGFzKG5hbWUpKSByZXR1cm4gdHJ1ZTsKCiAgICBjb25zdCBidWZmZXJzID0gdGhpcy5zYW1wbGVCdWZmZXJzLmdldChuYW1lKTsKICAgIGlmICghYnVmZmVycz8ubGVuZ3RoKSB7CiAgICAgIHRoaXMubG9hZFNhbXBsZUV2ZW50KG5hbWUpPy50aGVuKCgpID0+IHsKICAgICAgICBpZiAodGhpcy5zYW1wbGVMb29wV2FudGVkLmhhcyhuYW1lKSkgdGhpcy5zdGFydFNhbXBsZUxvb3AobmFtZSwgb3B0aW9ucyk7CiAgICAgIH0pOwogICAgICByZXR1cm4gZmFsc2U7CiAgICB9CgogICAgdHJ5IHsKICAgICAgY29uc3Qgc291cmNlID0gY3R4LmNyZWF0ZUJ1ZmZlclNvdXJjZSgpOwogICAgICBjb25zdCBnYWluID0gY3R4LmNyZWF0ZUdhaW4oKTsKICAgICAgc291cmNlLmJ1ZmZlciA9IGJ1ZmZlcnNbMF07CiAgICAgIHNvdXJjZS5sb29wID0gdHJ1ZTsKICAgICAgZ2Fpbi5nYWluLnZhbHVlID0gTWF0aC5tYXgoMCwgTnVtYmVyKG9wdGlvbnMuc2FtcGxlVm9sdW1lID8/IGRlZmluaXRpb24udm9sdW1lKSB8fCAwKTsKICAgICAgc291cmNlLmNvbm5lY3QoZ2Fpbik7CiAgICAgIGdhaW4uY29ubmVjdCh0aGlzLm1hc3Rlcik7CiAgICAgIGNvbnN0IGhhbmRsZSA9IHsgc291cmNlLCBnYWluIH07CiAgICAgIHRoaXMuc2FtcGxlTG9vcHMuc2V0KG5hbWUsIGhhbmRsZSk7CiAgICAgIHNvdXJjZS5vbmVuZGVkID0gKCkgPT4gewogICAgICAgIGlmICh0aGlzLnNhbXBsZUxvb3BzLmdldChuYW1lKSA9PT0gaGFuZGxlKSB0aGlzLnNhbXBsZUxvb3BzLmRlbGV0ZShuYW1lKTsKICAgICAgfTsKICAgICAgY29uc3QgZGVsYXkgPSBNYXRoLm1heCgwLCBOdW1iZXIob3B0aW9ucy5kZWxheSkgfHwgMCk7CiAgICAgIHNvdXJjZS5zdGFydChjdHguY3VycmVudFRpbWUgKyBkZWxheSk7CiAgICAgIHJldHVybiB0cnVlOwogICAgfSBjYXRjaCB7CiAgICAgIHRoaXMuc2FtcGxlTG9vcHMuZGVsZXRlKG5hbWUpOwogICAgICByZXR1cm4gZmFsc2U7CiAgICB9CiAgfQoKICBzdG9wU2FtcGxlTG9vcChuYW1lKSB7CiAgICB0aGlzLnNhbXBsZUxvb3BXYW50ZWQuZGVsZXRlKG5hbWUpOwogICAgY29uc3QgaGFuZGxlID0gdGhpcy5zYW1wbGVMb29wcy5nZXQobmFtZSk7CiAgICBpZiAoIWhhbmRsZSkgcmV0dXJuIGZhbHNlOwogICAgdGhpcy5zYW1wbGVMb29wcy5kZWxldGUobmFtZSk7CiAgICB0cnkgeyBoYW5kbGUuc291cmNlLnN0b3AoKTsgfSBjYXRjaCB7fQogICAgdHJ5IHsgaGFuZGxlLnNvdXJjZS5kaXNjb25uZWN0KCk7IH0gY2F0Y2gge30KICAgIHRyeSB7IGhhbmRsZS5nYWluLmRpc2Nvbm5lY3QoKTsgfSBjYXRjaCB7fQogICAgcmV0dXJuIHRydWU7CiAgfQoKIiIiCiAgICByYXcgPSByYXcucmVwbGFjZShtYXJrZXIsIG1ldGhvZHMgKyBtYXJrZXIsIDEpCgpyYXdfcGF0aC53cml0ZV90ZXh0KHJhdykKCmZlZWRpbmdfcGF0aCA9IFBhdGgoInBoYXNlci9zcmMvc3lzdGVtcy9GZWVkaW5nU3lzdGVtLmpzIikKZmVlZGluZyA9IGZlZWRpbmdfcGF0aC5yZWFkX3RleHQoKQoKaWYgJ1Jhd0F1ZGlvLnN0YXJ0U2FtcGxlTG9vcD8uKCJkcmFpbkxvb3AiLCB7IGRlbGF5OiAwLjQ1IH0pOycgbm90IGluIGZlZWRpbmc6CiAgICBtYXJrZXIgPSAnICAgIFJhd0F1ZGlvLnBsYXkoImRyYWluU3RhcnQiKTtcbiAgICByZXNvbHZlQWN0aW9uJwogICAgcmVwbGFjZW1lbnQgPSAnICAgIFJhd0F1ZGlvLnBsYXkoImRyYWluU3RhcnQiKTtcbiAgICBSYXdBdWRpby5zdGFydFNhbXBsZUxvb3A/LigiZHJhaW5Mb29wIiwgeyBkZWxheTogMC40NSB9KTtcbiAgICByZXNvbHZlQWN0aW9uJwogICAgaWYgbWFya2VyIG5vdCBpbiBmZWVkaW5nOgogICAgICAgIHJhaXNlIFN5c3RlbUV4aXQoIkZlZWRpbmcgc3RhcnQgbWFya2VyIGNoYW5nZWQiKQogICAgZmVlZGluZyA9IGZlZWRpbmcucmVwbGFjZShtYXJrZXIsIHJlcGxhY2VtZW50LCAxKQoKc2ltcGxlX2NhbmNlbCA9ICcgICAgaWYgKGZlZWQpIFJhd0F1ZGlvLnBsYXkoImRyYWluQ2FuY2VsIik7JwppZiBzaW1wbGVfY2FuY2VsIGluIGZlZWRpbmc6CiAgICBmZWVkaW5nID0gZmVlZGluZy5yZXBsYWNlKAogICAgICAgIHNpbXBsZV9jYW5jZWwsCiAgICAgICAgJyAgICBpZiAoZmVlZCkge1xuICAgICAgUmF3QXVkaW8uc3RvcFNhbXBsZUxvb3A/LigiZHJhaW5Mb29wIik7XG4gICAgICBSYXdBdWRpby5wbGF5KCJkcmFpbkNhbmNlbCIpO1xuICAgIH0nLAogICAgICAgIDEsCiAgICApCgpmaW5hbF9wbGF5ID0gJyAgICBSYXdBdWRpby5wbGF5KGRlcHRoID09PSBGRUVESU5HX0RFUFRIUy5EUkFJTiA/ICJkcmFpbkNvbXBsZXRlIiA6ICJkcmFpbkNhbmNlbCIsIHsgY29vbGRvd246IDAuMDUgfSk7JwpmaW5hbF9zdG9wID0gJyAgICBSYXdBdWRpby5zdG9wU2FtcGxlTG9vcD8uKCJkcmFpbkxvb3AiKTtcbicgKyBmaW5hbF9wbGF5CmlmIGZpbmFsX3N0b3Agbm90IGluIGZlZWRpbmc6CiAgICBpZiBmaW5hbF9wbGF5IG5vdCBpbiBmZWVkaW5nOgogICAgICAgIHJhaXNlIFN5c3RlbUV4aXQoIkZlZWRpbmcgcmVzb2x2ZSBtYXJrZXIgY2hhbmdlZCIpCiAgICBmZWVkaW5nID0gZmVlZGluZy5yZXBsYWNlKGZpbmFsX3BsYXksIGZpbmFsX3N0b3AsIDEpCgpmZWVkaW5nX3BhdGgud3JpdGVfdGV4dChmZWVkaW5nKQo=' | base64 --decode > /tmp/finish-feeding.py
+          python3 /tmp/finish-feeding.py
 
       - name: Validate focused feeding audio coverage
         shell: bash
@@ -138,20 +38,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -f \
-            .github/workflows/finish-feeding-audio.yml \
-            .github/workflows/repair-feeding-audio.yml \
-            _tmp_audio_fix_note.txt \
-            _tmp_audio_start.b64 \
-            _tmp_connector_probe.txt
-          find phaser/assets/audio/feeding -type d -name '_staging' -empty -delete
+          rm -f .github/workflows/finish-feeding-audio.yml
+          rm -f .github/workflows/repair-feeding-audio.yml
+          rm -f _tmp_audio_fix_note.txt
+          rm -f _tmp_audio_start.b64
+          rm -f _tmp_connector_probe.txt
+          find phaser/assets/audio/feeding -type d -name _staging -empty -delete
 
       - name: Commit final feeding integration
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A
           git commit -m "Wire feeding sample loop"
           git push origin HEAD:audio/playtest-p0
