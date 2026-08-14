@@ -34,6 +34,14 @@ export const SAMPLE_AUDIO_CATALOG = Object.freeze({
   ], { volume: 0.9, loop: true }),
   drainComplete: sampleEvent([
     "phaser/assets/audio/feeding/drain-complete-01.mp3"
+  ], { volume: 1.0 }),
+  civilianScream: sampleEvent([
+    "phaser/assets/audio/civilians/civilian-scream-01.mp3",
+    "phaser/assets/audio/civilians/civilian-scream-02.mp3",
+    "phaser/assets/audio/civilians/civilian-scream-03.mp3",
+    "phaser/assets/audio/civilians/civilian-scream-04.mp3",
+    "phaser/assets/audio/civilians/civilian-scream-05.mp3",
+    "phaser/assets/audio/civilians/civilian-scream-06.mp3"
   ], { volume: 1.0 })
 });
 
