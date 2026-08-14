@@ -3,6 +3,7 @@ import { CAMERA } from "../data/balance.js";
 import { LAYERS } from "../data/district.js";
 import { PoliceKnowledgePolicy } from "../police/PoliceKnowledgePolicy.js";
 import { AmbientViolenceResponseSystem } from "./AmbientViolenceResponseSystem.js";
+import { AudioLab } from "./AudioLab.js";
 import {
   failPlaytestBootCover,
   finishPlaytestBootCover,
@@ -87,11 +88,13 @@ function attachPlaytest() {
     settlePlaytestCamera(scene);
     const session = new PlaytestSessionSystem(scene);
     const ui = new PlaytestUi(session, scene);
+    const audioLab = new AudioLab(scene);
     polishPlaytestIntro();
     ui.intro = document.getElementById("playtest-intro");
     ui.startButton = document.getElementById("playtest-start");
     ui.startButton?.addEventListener("click", () => ui.start());
     scene.playtestUi = ui;
+    scene.playtestAudioLab = audioLab;
     scene.playtestAmbientViolenceSystem = new AmbientViolenceResponseSystem(scene);
     scene.playtestPoliceKnowledgePolicy = new PoliceKnowledgePolicy(scene);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -99,6 +102,8 @@ function attachPlaytest() {
       scene.playtestPoliceKnowledgePolicy = null;
       scene.playtestAmbientViolenceSystem?.destroy?.();
       scene.playtestAmbientViolenceSystem = null;
+      scene.playtestAudioLab?.destroy?.();
+      scene.playtestAudioLab = null;
       ui.destroy();
     });
 
@@ -107,6 +112,7 @@ function attachPlaytest() {
       snapshot: () => session.snapshot(),
       result: () => session.result(),
       restart: () => session.restart(),
+      openAudioLab: () => audioLab.open(),
       policeKnowledge: () => scene.playtestPoliceKnowledgePolicy?.snapshot?.() || null
     });
     window.NBD_PLAYTEST_READY = true;
