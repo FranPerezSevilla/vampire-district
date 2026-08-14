@@ -15,6 +15,7 @@ The old audio catalogue lived in PR #44 (`agent/expand-audio-catalog`). That PR 
 - `weaponFire` — **integrated on PR #55**: three processed handgun variants under `phaser/assets/audio/combat/`, sample-backed playback through one stable event ID, WebKit-compatible MP3 runtime mirrors, and the previous procedural pistol sound retained as a loading/decoding fallback.
 - `bulletHitBody` — **integrated on PR #55**: the accepted processed impact sample plays only from the confirmed `combat:hit` path for hitscan weapons. Props/world geometry and vehicles do not emit that event, so they never receive the body-impact sound. The current family has one accepted runtime variant; extra variants are polish, not a blocker.
 - `drainStart` / `drainLoop` / `drainComplete` — **wired candidate on PR #55, pending listening acceptance**: one coherent KatjaSavia/Pixabay performance is split into a masculine-shifted start breath, an original-pitch bite loop and a masculine-shifted release. Runtime files are committed, the bite uses a stateful PCM WAV loop, and gameplay starts/stops it with the feeding lifecycle rather than retriggering it every frame.
+- `civilianScream` — **wired candidate on PR #55, pending listening acceptance**: six WebKit-compatible MP3 runtime variants share one stable event ID. Variants 01–03 remain masculine; 04–06 are deliberately female-sounding DSP derivatives of the same Universfield male performance, not separate female recordings. Gameplay fires the scream once as an alarmed civilian finishes the shock reaction and starts fleeing.
 
 ## Audio Lab
 
@@ -60,9 +61,9 @@ Do not try to fill the full production catalogue before testing. For the current
 ### Civilians / witnesses
 
 - `witnessWtf` — startled gasp/reaction
-- `witnessRun` — panic onset accent; not a literal UI beep in final audio
+- `witnessRun` — old procedural panic accent; superseded by `civilianScream` at the actual panic-to-flee transition
 - `witnessReport` — report/call consequence cue
-- `civilianScream` — 3–4 variants
+- `civilianScream` — **wired candidate:** 6 variants, 01–03 masculine and 04–06 female-sounding derivatives; pending Audio Lab listening acceptance
 
 ### Police
 
@@ -114,4 +115,4 @@ The original first batch was:
 
 `step`, `weaponFire`, `bulletHitBody`, `drainStart`, `drainLoop`, `drainComplete`, `whisper`, `civilianScream`, `policeSirenLoop`, `vehicleEngineDrive`, `vehicleCollisionHeavy`, `ambienceStreetNight`.
 
-`weaponFire` and `bulletHitBody` are integrated. The feeding family is fully materialized and wired but still needs human listening acceptance before it is marked done. Once accepted, continue with `civilianScream`, then `policeSirenLoop` and `ambienceStreetNight`. `bulletHitWorld` remains a separate firearm-material family and must never reuse `bulletHitBody`.
+`weaponFire` and `bulletHitBody` are integrated. The feeding family and `civilianScream` are fully materialized and wired but still need human listening acceptance before they are marked done. Continue sourcing with `policeSirenLoop`, then `ambienceStreetNight`. `bulletHitWorld` remains a separate firearm-material family and must never reuse `bulletHitBody`.
