@@ -1,0 +1,108 @@
+name: Process civilian scream family
+
+on:
+  push:
+    branches:
+      - audio/playtest-p0
+    paths:
+      - .github/workflows/process-civilian-scream.yml
+
+permissions:
+  contents: write
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout audio branch
+        uses: actions/checkout@v4
+        with:
+          ref: audio/playtest-p0
+          fetch-depth: 0
+
+      - name: Install audio toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          ffmpeg -hide_banner -filters 2>&1 | grep -q rubberband
+          ffmpeg -version | head -n 1
+
+      - name: Rebuild and verify processed master
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          parts=(phaser/assets/audio/civilians/_source/civilian-scream-master.source.b64.part-*)
+          if [[ ${#parts[@]} -lt 9 ]]; then
+            echo "Incomplete civilian scream staging: ${#parts[@]} parts" >&2
+            exit 1
+          fi
+          cat "${parts[@]}" > /tmp/civilian-scream-master.b64
+          base64 --decode /tmp/civilian-scream-master.b64 > /tmp/civilian-scream-master.ogg
+          echo "bd635361663446d6093d2fb8a1ab2b84df2feb90d42d73c516c082fa1544c78b  /tmp/civilian-scream-master.ogg" | sha256sum -c -
+          [[ "$(head -c 4 /tmp/civilian-scream-master.ogg)" == "OggS" ]]
+          ffprobe -v error -select_streams a:0 -show_entries stream=codec_name,sample_rate,channels:format=duration -of default=nw=1 /tmp/civilian-scream-master.ogg
+
+      - name: Generate six runtime variants
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=phaser/assets/audio/civilians
+          mkdir -p "$out"
+
+          cp /tmp/civilian-scream-master.ogg "$out/civilian-scream-01.ogg"
+
+          make_variant() {
+            local number="$1"
+            local filter="$2"
+            ffmpeg -hide_banner -loglevel error -y \
+              -i /tmp/civilian-scream-master.ogg \
+              -af "${filter},loudnorm=I=-19:TP=-2.5:LRA=7" \
+              -ar 44100 -ac 1 -c:a libvorbis -q:a 5 \
+              "$out/civilian-scream-${number}.ogg"
+          }
+
+          make_variant 02 "rubberband=pitch=0.968:formant=shifted:pitchq=quality:transients=mixed,equalizer=f=900:t=q:w=1:g=1.2,equalizer=f=3600:t=q:w=1:g=-1.0"
+          make_variant 03 "rubberband=pitch=1.038:formant=shifted:pitchq=quality:transients=mixed,equalizer=f=2500:t=q:w=1:g=1.0,equalizer=f=180:t=q:w=1:g=-0.8"
+          make_variant 04 "rubberband=pitch=1.205:formant=shifted:pitchq=quality:transients=mixed,equalizer=f=180:t=q:w=1:g=-2.2,equalizer=f=3200:t=q:w=1:g=1.4"
+          make_variant 05 "rubberband=pitch=1.270:formant=shifted:pitchq=quality:transients=mixed,equalizer=f=160:t=q:w=1:g=-2.8,equalizer=f=3800:t=q:w=1:g=1.8"
+          make_variant 06 "rubberband=tempo=1.025:pitch=1.165:formant=shifted:pitchq=quality:transients=mixed,equalizer=f=220:t=q:w=1:g=-1.8,equalizer=f=2800:t=q:w=1:g=1.0"
+
+          for ogg in "$out"/civilian-scream-0{1..6}.ogg; do
+            mp3="${ogg%.ogg}.mp3"
+            ffmpeg -hide_banner -loglevel error -y -i "$ogg" -ar 44100 -ac 1 -c:a libmp3lame -b:a 160k "$mp3"
+          done
+
+      - name: Validate runtime binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in 01 02 03 04 05 06; do
+            mp3="phaser/assets/audio/civilians/civilian-scream-${n}.mp3"
+            ogg="phaser/assets/audio/civilians/civilian-scream-${n}.ogg"
+            test -s "$mp3"
+            test -s "$ogg"
+            test "$(stat -c%s "$mp3")" -gt 10000
+            test "$(stat -c%s "$ogg")" -gt 10000
+            ffprobe -v error -select_streams a:0 -show_entries stream=codec_name,sample_rate,channels:format=duration -of csv=p=0 "$mp3"
+          done
+
+      - name: Remove transport staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf phaser/assets/audio/civilians/_source
+          rm -f .github/workflows/process-civilian-scream.yml
+
+      - name: Commit civilian scream family
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git diff --cached --check
+          git commit -m "Materialize civilian scream family"
+          git push origin HEAD:audio/playtest-p0
