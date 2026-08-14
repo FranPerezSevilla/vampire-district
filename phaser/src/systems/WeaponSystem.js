@@ -138,9 +138,7 @@ export class WeaponSystem {
     }
 
     if (weapon.id === WEAPON_IDS.PISTOL) {
-      RawAudio.noise?.(0.10, { volume: 0.12, filter: 1650, filterType: "highpass" });
-      RawAudio.tone?.(190, 0.13, { to: 58, volume: 0.082, type: "square", filter: 1500 });
-      RawAudio.tone?.(820, 0.05, { delay: 0.01, to: 210, volume: 0.035, type: "sawtooth", filter: 2500 });
+      RawAudio.play("weaponFire");
     }
   }
 
