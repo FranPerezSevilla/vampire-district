@@ -21,10 +21,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verify FFmpeg toolchain
+      - name: Install FFmpeg toolchain
         shell: bash
         run: |
           set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
           ffmpeg -version | head -n 1
           ffprobe -version | head -n 1
 
