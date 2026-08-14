@@ -59,7 +59,7 @@ jobs:
           while IFS= read -r -d '' ogg; do
             found=1
             mp3="${ogg%.ogg}.mp3"
-            ffmpeg -hide_banner -loglevel error -y \
+            ffmpeg -nostdin -hide_banner -loglevel error -y \
               -i "$ogg" \
               -map_metadata -1 \
               -ac 1 \
