@@ -6,9 +6,13 @@ This is the working checklist for replacing prototype WebAudio tones with real s
 
 ## Current state
 
-`phaser/src/systems/RawAudioSystem.js` already provides procedural prototype feedback for a subset of events such as footsteps, Whisper, feeding, witnesses, police pressure and UI actions. These fallbacks are useful while real samples are sourced, but they are not the target sound design.
+`phaser/src/systems/RawAudioSystem.js` already provides procedural prototype feedback for a subset of events such as footsteps, Whisper, feeding, witnesses, police pressure and UI actions. These fallbacks remain useful while real samples are sourced.
 
-The old audio catalogue lived in PR #44 (`agent/expand-audio-catalog`). That PR is now stale against `main`; this branch supersedes it and narrows the immediate work to the current public playtest.
+The old audio catalogue lived in PR #44 (`agent/expand-audio-catalog`). That PR is stale against `main`; PR #55 supersedes it and narrows the immediate work to the current public playtest.
+
+### Integrated P0 families
+
+- `weaponFire` — **integrated on PR #55**: three processed handgun variants under `phaser/assets/audio/combat/`, sample-backed playback through one stable event ID, and the previous procedural pistol sound retained as a loading/decoding fallback.
 
 ## Playtest P0 — source these first
 
@@ -25,7 +29,7 @@ Do not try to fill the full production catalogue before testing. For the current
 
 - `attackSwing` — melee swing
 - `attackHitBody` — melee body impact; 3–4 variants
-- `weaponFire` — handgun/firearm report; 3 variants preferred
+- `weaponFire` — **done for the current handgun:** 3 sample-backed variants
 - `weaponDryFire` — empty trigger / failed shot
 - `bulletHitBody` — projectile body impact; 3 variants
 - `bulletHitWorld` — concrete/brick impact; 3 variants
@@ -91,8 +95,8 @@ The current playtest disables Shadow Dash and Blood Sense, and rooftop/sewer tra
 
 ## Suggested first sourcing batch
 
-If only one short session is available, source these 12 families first because they change the perceived quality most:
+The original first batch was:
 
 `step`, `weaponFire`, `bulletHitBody`, `drainStart`, `drainLoop`, `drainComplete`, `whisper`, `civilianScream`, `policeSirenLoop`, `vehicleEngineDrive`, `vehicleCollisionHeavy`, `ambienceStreetNight`.
 
-That is enough to make the playtest feel substantially less silent before the full catalogue is populated.
+`weaponFire` is now integrated. Continue one sound family at a time using `AUDIO_ASSET_PIPELINE.md`; the next high-impact candidate is `bulletHitBody` or `drainStart`.
