@@ -1,5 +1,6 @@
 import { CAMERA, WORLD } from "../data/balance.js";
 import { buildings } from "../data/district.js";
+import { NPC_TYPES } from "../data/npcs.js";
 import { RawAudio } from "../systems/RawAudioSystem.js";
 import {
   interpolateVehicleState,
@@ -17,6 +18,71 @@ import { collideVehicleWithPedestrians } from "./VehicleConsequences.js";
 const VEHICLE_COLLISION_RADIUS_PADDING = 1;
 const PERSIST_INTERVAL_SECONDS = 1.8;
 const CONTACT_SEARCH_STEPS = 10;
+const AGGRESSIVE_SKID_THRESHOLD = 0.28;
+const AGGRESSIVE_SKID_PULSE_SECONDS = 0.22;
+
+export function aggressiveDrivingSkidIntensity(vehicle, frame = {}) {
+  const speed = Math.abs(Number(vehicle?.speed) || 0);
+  if (speed < 28) return 0;
+
+  const drift = Math.abs(Number(vehicle?.driftAngle) || 0);
+  const steer = Math.abs(Number(frame?.move?.x) || 0);
+  const handbrake = Boolean(vehicle?.handbrake || frame?.handbrakeHeld);
+  const driftScore = Math.min(1, drift / 0.20);
+  const handbrakeScore = handbrake && steer >= 0.28
+    ? Math.min(1, Math.max(0, speed - 20) / 50)
+    : 0;
+  return Math.max(driftScore, handbrakeScore);
+}
+
+export function panicCiviliansFromAggressiveDriving(system, vehicle, intensity = 0) {
+  if (!system?.scene || !vehicle) return 0;
+  const strength = Math.max(0, Math.min(1, Number(intensity) || 0));
+  const radius = 95 + strength * 70;
+  const candidates = system.scene.npcSystem?.queryRadius?.(
+    vehicle.x,
+    vehicle.y,
+    radius,
+    system.scene.currentLayer,
+    npc => [NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)
+  ) || [];
+
+  let newlyPanicked = 0;
+  for (const npc of candidates) {
+    if (!npc || npc.dead || npc.inactive || npc.hiddenBody || npc.intercepted || npc.drainVictim) continue;
+    if (npc.alarmed || npc.chasingPlayer || npc.enemyAttack) continue;
+    if (Number.isFinite(npc.stunnedTimer) && npc.stunnedTimer > 0) continue;
+
+    const wasPanicking = (npc.panicTimer || 0) > 0;
+    npc.panicTimer = Math.max(npc.panicTimer || 0, 1.35 + strength * 1.25);
+    npc.panicSourceX = vehicle.x;
+    npc.panicSourceY = vehicle.y;
+    npc.soundReactionTimer = 0;
+    npc.vx = 0;
+    npc.vy = 0;
+    system.scene.aiStateSystem?.resolveNpc?.(npc);
+    if (!wasPanicking) newlyPanicked++;
+  }
+
+  if (newlyPanicked) RawAudio.play("civilianScream", { cooldown: 0.75 });
+  system.scene.events?.emit?.("vehicle:aggressive-driving", {
+    vehicleId: vehicle.id,
+    x: vehicle.x,
+    y: vehicle.y,
+    intensity: strength,
+    radius,
+    panickedCivilians: newlyPanicked
+  });
+  return newlyPanicked;
+}
+
+function emitAggressiveDrivingNoise(system, vehicle, frame) {
+  const intensity = aggressiveDrivingSkidIntensity(vehicle, frame);
+  if (intensity < AGGRESSIVE_SKID_THRESHOLD || (system.skidNoiseCooldown || 0) > 0) return 0;
+  system.skidNoiseCooldown = AGGRESSIVE_SKID_PULSE_SECONDS;
+  RawAudio.play("vehicleSkidLoop", { cooldown: 0.16 });
+  return panicCiviliansFromAggressiveDriving(system, vehicle, intensity);
+}
 
 function pointInRect(point, rect) {
   return point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h;
@@ -201,6 +267,7 @@ export function updateVehicleDriving(system, dt, frame) {
   const vehicle = system.currentVehicle();
   if (!vehicle) return false;
   system.crashCooldown = Math.max(0, system.crashCooldown - dt);
+  system.skidNoiseCooldown = Math.max(0, (system.skidNoiseCooldown || 0) - dt);
   for (const [npcId, remaining] of system.pedestrianCooldowns) {
     const next = remaining - dt;
     if (next <= 0) system.pedestrianCooldowns.delete(npcId);
@@ -229,6 +296,7 @@ export function updateVehicleDriving(system, dt, frame) {
   vehicle.visual.label.setRotation(-vehicle.angle);
   system.scene.player.setPosition(vehicle.x, vehicle.y);
   collideVehicleWithPedestrians(system, vehicle);
+  emitAggressiveDrivingNoise(system, vehicle, frame);
   system.persistTimer += dt;
   if (system.persistTimer >= PERSIST_INTERVAL_SECONDS) {
     system.persistTimer %= PERSIST_INTERVAL_SECONDS;
