@@ -126,6 +126,21 @@ jobs:
             echo "No OGG runtime assets found."
           fi
 
+      # TEMP_SKID_INTEGRATION_BEGIN
+      - name: Integrate real vehicle skid loop
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/_tmp-integrate-skid.mjs
+          node --test tests/aggressive-driving-panic.test.js tests/vehicle-skid-audio.test.js tests/audio-sample-catalog.test.js
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Integrate real vehicle skid loop"
+          git push
+      # TEMP_SKID_INTEGRATION_END
+
       - name: Commit generated audio binaries
         shell: bash
         run: |
