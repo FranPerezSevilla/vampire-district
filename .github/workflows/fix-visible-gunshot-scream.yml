@@ -1,0 +1,69 @@
+name: Fix visible gunshot scream timing
+
+on:
+  push:
+    branches:
+      - audio/playtest-p0
+    paths:
+      - .github/workflows/fix-visible-gunshot-scream.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout audio branch
+        uses: actions/checkout@v4
+        with:
+          ref: audio/playtest-p0
+          fetch-depth: 0
+
+      - name: Make first visible gunshot scream immediately
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('phaser/src/systems/WeaponSystem.js')
+          src = path.read_text()
+          old = '''    if ([NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)) {
+      this.scene.witnessSystem?.alarmWitness?.(npc, "a gunshot", weapon.witnessSeverity || 18, {
+'''
+          new = '''    if ([NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)) {
+      if (!npc.alarmed) RawAudio.play("civilianScream", { cooldown: 0.75 });
+      this.scene.witnessSystem?.alarmWitness?.(npc, "a gunshot", weapon.witnessSeverity || 18, {
+'''
+          if old not in src:
+              raise SystemExit('visible gunshot civilian marker changed')
+          src = src.replace(old, new, 1)
+          path.write_text(src)
+
+          test = Path('tests/civilian-gunshot-scream.test.js')
+          text = test.read_text()
+          marker = '  assert.match(source, /else if \\(heardOnly\\) RawAudio\\.play\\("witnessWtf", \\{ cooldown: 0\\.4 \\}\\);/);\n'
+          addition = marker + '  assert.match(source, /if \\(!npc\\.alarmed\\) RawAudio\\.play\\("civilianScream", \\{ cooldown: 0\\.75 \\}\\);/);\n'
+          if marker not in text:
+              raise SystemExit('focused scream test marker changed')
+          test.write_text(text.replace(marker, addition, 1))
+          PY
+
+      - name: Validate focused audio behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/civilian-gunshot-scream.test.js tests/audio-sample-catalog.test.js
+          git diff --check
+
+      - name: Commit fix and remove one-off workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/fix-visible-gunshot-scream.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add phaser/src/systems/WeaponSystem.js tests/civilian-gunshot-scream.test.js .github/workflows/fix-visible-gunshot-scream.yml
+          git commit -m "Make gunfire panic screams immediate"
+          git push origin HEAD:audio/playtest-p0
