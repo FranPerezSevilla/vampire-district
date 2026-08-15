@@ -133,6 +133,12 @@ export function resolveNpcAiState(npc, { now = 0, wantedLevel = 0 } = {}) {
   if (npc.type === NPC_TYPES.THUG && npc.thugHostile) return AI_STATES.CHASING;
 
   if ([NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)
+    && (npc.panicTimer || 0) > 0
+    && !npc.alarmed) {
+    return AI_STATES.FLEEING;
+  }
+
+  if ([NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)
     && npc.alarmed
     && npc.reportTarget
     && !npc.hasReported) {
