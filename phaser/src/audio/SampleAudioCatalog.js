@@ -1,7 +1,8 @@
 const sampleEvent = (files, options = {}) => Object.freeze({
   files: Object.freeze([...files]),
   volume: options.volume ?? 1,
-  loop: Boolean(options.loop)
+  loop: Boolean(options.loop),
+  bus: options.bus || "world"
 });
 
 /**
@@ -28,13 +29,13 @@ export const SAMPLE_AUDIO_CATALOG = Object.freeze({
   ], { volume: 1.15 }),
   drainStart: sampleEvent([
     "phaser/assets/audio/feeding/drain-start-01.mp3"
-  ], { volume: 1.0 }),
+  ], { volume: 1.10, bus: "narrative" }),
   drainLoop: sampleEvent([
     "phaser/assets/audio/feeding/drain-loop-01.wav"
-  ], { volume: 0.9, loop: true }),
+  ], { volume: 0.96, loop: true, bus: "narrative" }),
   drainComplete: sampleEvent([
     "phaser/assets/audio/feeding/drain-complete-01.mp3"
-  ], { volume: 1.0 }),
+  ], { volume: 1.10, bus: "narrative" }),
   civilianScream: sampleEvent([
     "phaser/assets/audio/civilians/civilian-scream-01.mp3",
     "phaser/assets/audio/civilians/civilian-scream-02.mp3",

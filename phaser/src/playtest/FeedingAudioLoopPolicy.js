@@ -3,6 +3,8 @@ import { RawAudio } from "../systems/RawAudioSystem.js";
 
 const FEED_LOOP_EVENT = "drainLoop";
 const FEED_LOOP_DELAY_MS = 450;
+const FEED_DUCK_KEY = "feeding";
+const FEED_DUCK_RELEASE_MS = 320;
 
 export class FeedingAudioLoopPolicy {
   constructor(scene) {
@@ -10,6 +12,7 @@ export class FeedingAudioLoopPolicy {
     this.source = null;
     this.gain = null;
     this.timer = null;
+    this.duckReleaseTimer = null;
     this.generation = 0;
 
     scene.events?.on?.("feeding:started", this.onFeedingStarted, this);
@@ -20,6 +23,11 @@ export class FeedingAudioLoopPolicy {
 
   onFeedingStarted() {
     this.stopLoop();
+    if (this.duckReleaseTimer != null) {
+      window.clearTimeout(this.duckReleaseTimer);
+      this.duckReleaseTimer = null;
+    }
+    RawAudio.beginNarrativeDuck?.(FEED_DUCK_KEY);
     const generation = ++this.generation;
     this.timer = window.setTimeout(() => {
       this.timer = null;
@@ -30,6 +38,11 @@ export class FeedingAudioLoopPolicy {
   onFeedingStopped() {
     this.generation += 1;
     this.stopLoop();
+    if (this.duckReleaseTimer != null) window.clearTimeout(this.duckReleaseTimer);
+    this.duckReleaseTimer = window.setTimeout(() => {
+      this.duckReleaseTimer = null;
+      RawAudio.endNarrativeDuck?.(FEED_DUCK_KEY);
+    }, FEED_DUCK_RELEASE_MS);
   }
 
   async startLoop(generation) {
@@ -52,7 +65,7 @@ export class FeedingAudioLoopPolicy {
       source.loop = true;
       gain.gain.value = Math.max(0, Number(definition.volume) || 0);
       source.connect(gain);
-      gain.connect(RawAudio.master);
+      gain.connect(RawAudio.sampleDestination?.(FEED_LOOP_EVENT) || RawAudio.master);
       source.onended = () => {
         if (this.source === source) {
           this.source = null;
@@ -87,6 +100,11 @@ export class FeedingAudioLoopPolicy {
   destroy() {
     this.generation += 1;
     this.stopLoop();
+    if (this.duckReleaseTimer != null) {
+      window.clearTimeout(this.duckReleaseTimer);
+      this.duckReleaseTimer = null;
+    }
+    RawAudio.endNarrativeDuck?.(FEED_DUCK_KEY);
     this.scene.events?.off?.("feeding:started", this.onFeedingStarted, this);
     this.scene.events?.off?.("feeding:resolved", this.onFeedingStopped, this);
     this.scene.events?.off?.("feeding:cancelled", this.onFeedingStopped, this);

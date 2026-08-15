@@ -28,7 +28,9 @@ const archetype = {
   height: 14,
   maxSpeed: 310,
   gearCount: 5,
-  gearShiftDuration: 0.10,
+  gearShiftDuration: 0.14,
+  gearHoldDuration: 0.28,
+  firstGearHoldDuration: 0.26,
   cameraLookAhead: 72,
   reverseSpeed: 92,
   acceleration: 330,
@@ -134,19 +136,25 @@ test("handbrake creates a controlled slide and normal grip recovers it", () => {
 });
 
 
-test("automatic gearbox climbs through up to five gears with a brief torque cut", () => {
+test("automatic gearbox climbs through five gears without rapid-fire upshifts", () => {
   let state = createVehicleState(definition, archetype);
   const seen = new Set([state.gear]);
-  let shiftFrames = 0;
+  const shifts = [];
+  let previousGear = state.gear;
   for (let index = 0; index < 90; index++) {
     state = stepVehicleKinematics(state, { move: { x: 0, y: -1 } }, 0.05, archetype);
     seen.add(state.gear);
-    if (state.gearShiftTimer > 0) shiftFrames++;
+    if (state.gear > previousGear) shifts.push((index + 1) * 0.05);
+    previousGear = state.gear;
   }
   assert.equal(vehicleGearCount(archetype), 5);
   assert.deepEqual([...seen], [1, 2, 3, 4, 5]);
   assert.equal(state.gear, 5);
-  assert.ok(shiftFrames >= 4);
+  assert.equal(shifts.length, 4);
+  assert.ok(shifts[0] >= 0.25, "first gear should breathe before the first upshift");
+  for (let index = 1; index < shifts.length; index++) {
+    assert.ok(shifts[index] - shifts[index - 1] >= 0.40, "successive upshifts should have an audible dwell");
+  }
   assert.ok(state.speed <= archetype.maxSpeed);
 });
 

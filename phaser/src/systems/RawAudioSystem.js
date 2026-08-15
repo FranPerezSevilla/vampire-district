@@ -1,6 +1,8 @@
 import { SAMPLE_AUDIO_IDS, sampleAudioDefinition } from "../audio/SampleAudioCatalog.js";
 
 const KEY_SET = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d", "W", "A", "S", "D"]);
+const RAW_AUDIO_MASTER_GAIN = 0.20;
+const NARRATIVE_DUCK_FACTOR = 0.54;
 const MAX_VEHICLE_ENGINE_VOICES = 10;
 const VEHICLE_ENGINE_PROFILES = Object.freeze({
   compact: Object.freeze({ idleHz: 48, redlineHz: 126, filterBase: 520, filterRange: 1050, volume: 0.115, wave: "sawtooth", harmonic: 0.18 }),
@@ -13,6 +15,8 @@ class RawAudioBus {
   constructor() {
     this.ctx = null;
     this.master = null;
+    this.narrativeMaster = null;
+    this.narrativeDuckKeys = new Set();
     this.cooldowns = Object.create(null);
     this.keysDown = new Set();
     this.stepTimer = null;
@@ -54,12 +58,47 @@ class RawAudioBus {
       if (!Ctx) return null;
       this.ctx = new Ctx();
       this.master = this.ctx.createGain();
-      this.master.gain.value = 0.20;
+      this.master.gain.value = RAW_AUDIO_MASTER_GAIN;
       this.master.connect(this.ctx.destination);
+      this.narrativeMaster = this.ctx.createGain();
+      this.narrativeMaster.gain.value = RAW_AUDIO_MASTER_GAIN;
+      this.narrativeMaster.connect(this.ctx.destination);
       this.preloadRegisteredSamples();
     }
     if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
     return this.ctx;
+  }
+
+  sampleDestination(name) {
+    const definition = sampleAudioDefinition(name);
+    return definition?.bus === "narrative"
+      ? (this.narrativeMaster || this.master)
+      : this.master;
+  }
+
+  updateNarrativeDuck(timeConstant = 0.04) {
+    if (!this.ctx || !this.master) return false;
+    const target = RAW_AUDIO_MASTER_GAIN * (this.narrativeDuckKeys.size ? NARRATIVE_DUCK_FACTOR : 1);
+    const now = this.ctx.currentTime;
+    try {
+      this.master.gain.cancelScheduledValues(now);
+      this.master.gain.setTargetAtTime(target, now, Math.max(0.015, Number(timeConstant) || 0.04));
+    } catch {
+      this.master.gain.value = target;
+    }
+    return true;
+  }
+
+  beginNarrativeDuck(key = "default") {
+    this.ensureListeners();
+    this.unlock();
+    this.narrativeDuckKeys.add(String(key || "default"));
+    return this.updateNarrativeDuck(0.035);
+  }
+
+  endNarrativeDuck(key = "default") {
+    this.narrativeDuckKeys.delete(String(key || "default"));
+    return this.updateNarrativeDuck(0.12);
   }
 
   preloadRegisteredSamples() {
@@ -110,7 +149,7 @@ class RawAudioBus {
       source.buffer = buffer;
       gain.gain.value = Math.max(0, Number(options.sampleVolume ?? definition.volume) || 0);
       source.connect(gain);
-      gain.connect(this.master);
+      gain.connect(this.sampleDestination(name));
       source.start();
       return true;
     } catch {
@@ -143,7 +182,7 @@ class RawAudioBus {
       source.loop = true;
       gain.gain.value = Math.max(0, Number(options.sampleVolume ?? definition.volume) || 0);
       source.connect(gain);
-      gain.connect(this.master);
+      gain.connect(this.sampleDestination(name));
       const handle = { source, gain };
       this.sampleLoops.set(name, handle);
       source.onended = () => {

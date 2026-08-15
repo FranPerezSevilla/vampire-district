@@ -70,6 +70,20 @@ export function vehicleGearCount(archetype) {
   return Math.round(clamp(Number(archetype?.gearCount) || 5, 1, 5));
 }
 
+export function vehicleGearShiftTiming(archetype = {}) {
+  return {
+    shiftDuration: clamp(Number(archetype?.gearShiftDuration) || 0.14, 0.06, 0.28),
+    holdDuration: clamp(Number(archetype?.gearHoldDuration) || 0.28, 0.10, 0.50),
+    firstGearHoldDuration: clamp(Number(archetype?.firstGearHoldDuration) || 0.26, 0.12, 0.50)
+  };
+}
+
+export function vehicleGearShiftActive(gear, gearShiftTimer, archetype = {}) {
+  const timing = vehicleGearShiftTiming(archetype);
+  return Math.max(1, Math.round(Number(gear) || 1)) > 1
+    && Math.max(0, Number(gearShiftTimer) || 0) > timing.holdDuration;
+}
+
 function vehicleGearUpshiftRatio(gear, gearCount) {
   const count = Math.max(1, Math.round(Number(gearCount) || 1));
   return clamp((Math.max(1, Number(gear) || 1) / count) * 0.93, 0.14, 0.88);
@@ -114,7 +128,7 @@ export function stepVehicleKinematics(state, frame, dt, archetype) {
   const normalGrip = Math.max(0.1, Number(archetype?.grip) || 8);
   const handbrakeGrip = Math.max(0.1, Number(archetype?.handbrakeGrip) || 1.4);
   const gearCount = vehicleGearCount(archetype);
-  const gearShiftDuration = clamp(Number(archetype?.gearShiftDuration) || 0.11, 0.06, 0.22);
+  const gearTiming = vehicleGearShiftTiming(archetype);
 
   let speed = Number(state?.speed) || 0;
   let gear = Math.round(clamp(Number(state?.gear) || 1, 1, gearCount));
@@ -122,11 +136,18 @@ export function stepVehicleKinematics(state, frame, dt, archetype) {
   const incomingRatio = clamp(Math.abs(speed) / maxSpeed, 0, 1);
   const launchMultiplier = 1 + launchBoost * Math.pow(1 - incomingRatio, 2.1);
 
+  // First gear gets a short dwell without a torque cut. This prevents the
+  // gearbox from immediately stepping through 1→2 as soon as launch torque
+  // pushes the car over the first speed threshold.
+  if (gear === 1 && Math.abs(speed) < 0.5 && state?.parked && input.throttle > 0.05 && gearShiftTimer <= 0) {
+    gearShiftTimer = gearTiming.firstGearHoldDuration;
+  }
+
   if (speed >= 0) {
     const targetGear = vehicleGearForSpeed(speed, archetype, gear);
     if (targetGear > gear && gearShiftTimer <= 0 && input.throttle > 0.05) {
       gear = Math.min(targetGear, gear + 1);
-      gearShiftTimer = gearShiftDuration;
+      gearShiftTimer = gearTiming.shiftDuration + gearTiming.holdDuration;
     } else if (targetGear < gear) {
       gear = targetGear;
       gearShiftTimer = 0;
@@ -136,7 +157,7 @@ export function stepVehicleKinematics(state, frame, dt, archetype) {
     gearShiftTimer = 0;
   }
   const gearTorque = vehicleGearTorqueMultiplier(gear, gearCount);
-  const shiftTorque = gearShiftTimer > 0 ? 0.78 : 1;
+  const shiftTorque = vehicleGearShiftActive(gear, gearShiftTimer, archetype) ? 0.78 : 1;
 
   if (state?.disabled) {
     speed = approach(speed, 0, brake * seconds);

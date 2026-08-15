@@ -1,4 +1,4 @@
-import { vehicleGearCount, vehicleGearForSpeed } from "./VehicleModel.js";
+import { vehicleGearCount, vehicleGearForSpeed, vehicleGearShiftActive, vehicleGearShiftTiming } from "./VehicleModel.js";
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, Number(value) || 0));
@@ -15,7 +15,7 @@ export function stepPresentationTransmission(state = {}, speed = 0, dt = 0, arch
   const effective = effectiveArchetype(archetype, maxSpeed);
   const count = vehicleGearCount(effective);
   const seconds = clamp(dt, 0, 0.25);
-  const shiftDuration = clamp(Number(archetype?.gearShiftDuration) || 0.11, 0.06, 0.22);
+  const timing = vehicleGearShiftTiming(archetype);
   let gear = Math.round(clamp(Number(state?.gear) || 1, 1, count));
   let gearShiftTimer = Math.max(0, (Number(state?.gearShiftTimer) || 0) - seconds);
 
@@ -23,7 +23,7 @@ export function stepPresentationTransmission(state = {}, speed = 0, dt = 0, arch
   const target = vehicleGearForSpeed(Math.abs(Number(speed) || 0), effective, gear);
   if (target > gear && gearShiftTimer <= 0) {
     gear = Math.min(target, gear + 1);
-    gearShiftTimer = shiftDuration;
+    gearShiftTimer = timing.shiftDuration + timing.holdDuration;
   } else if (target < gear) {
     gear = target;
     gearShiftTimer = 0;
@@ -71,7 +71,7 @@ export function vehicleEngineTelemetry({
     maxSpeed: maximum,
     gear: selectedGear,
     gearCount: count,
-    shifting: Number(gearShiftTimer) > 0
+    shifting: vehicleGearShiftActive(selectedGear, gearShiftTimer, archetype)
   });
   const load = clamp(0.12 + Math.abs(Number(throttle) || 0) * 0.88, 0.12, 1);
 
