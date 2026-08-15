@@ -253,6 +253,7 @@ export class WeaponSystem {
     }
 
     if ([NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)) {
+      if (!npc.alarmed) RawAudio.play("civilianScream", { cooldown: 0.75 });
       this.scene.witnessSystem?.alarmWitness?.(npc, "a gunshot", weapon.witnessSeverity || 18, {
         masqueradeRisk: false,
         reactionSeconds: 0.55,
