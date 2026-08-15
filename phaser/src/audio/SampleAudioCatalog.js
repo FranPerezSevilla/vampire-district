@@ -42,7 +42,7 @@ export const SAMPLE_AUDIO_CATALOG = Object.freeze({
     "phaser/assets/audio/civilians/civilian-scream-04.mp3",
     "phaser/assets/audio/civilians/civilian-scream-05.mp3",
     "phaser/assets/audio/civilians/civilian-scream-06.mp3"
-  ], { volume: 1.0 })
+  ], { volume: 0.82 })
 });
 
 export const SAMPLE_AUDIO_IDS = Object.freeze(Object.keys(SAMPLE_AUDIO_CATALOG));
