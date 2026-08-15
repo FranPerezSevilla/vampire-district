@@ -1,0 +1,351 @@
+name: Integrate vehicle gears and camera
+
+on:
+  push:
+    branches:
+      - audio/playtest-p0
+    paths:
+      - .github/workflows/integrate-vehicle-gears-camera.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Record pre-change fast-check baseline
+        shell: bash
+        run: |
+          set +e
+          npm run check:fast
+          status=$?
+          echo "Pre-change check:fast exit code: $status"
+          exit 0
+
+      - name: Apply automatic gears and directional camera
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if new in text:
+                  return
+              if old not in text:
+                  raise RuntimeError(f"anchor not found in {path}: {old[:80]!r}")
+              p.write_text(text.replace(old, new, 1))
+
+          # Per-archetype transmission/camera character. Gears are automatic.
+          vehicles = Path("phaser/src/data/vehicles.js")
+          text = vehicles.read_text()
+          replacements = [
+              ("maxSpeed: 310, reverseSpeed: 92", "maxSpeed: 310, gearCount: 5, gearShiftDuration: 0.10, cameraLookAhead: 72, reverseSpeed: 92"),
+              ("maxSpeed: 330, reverseSpeed: 98", "maxSpeed: 330, gearCount: 5, gearShiftDuration: 0.11, cameraLookAhead: 76, reverseSpeed: 98"),
+              ("maxSpeed: 275, reverseSpeed: 82", "maxSpeed: 275, gearCount: 4, gearShiftDuration: 0.13, cameraLookAhead: 64, reverseSpeed: 82"),
+              ("maxSpeed: 365, reverseSpeed: 106", "maxSpeed: 365, gearCount: 5, gearShiftDuration: 0.085, cameraLookAhead: 84, reverseSpeed: 106")
+          ]
+          for old, new in replacements:
+              if new not in text:
+                  if old not in text:
+                      raise RuntimeError(f"vehicle archetype anchor missing: {old}")
+                  text = text.replace(old, new, 1)
+          vehicles.write_text(text)
+
+          model = Path("phaser/src/vehicles/VehicleModel.js")
+          text = model.read_text()
+          if "gearShiftTimer: 0" not in text:
+              old = "    velocityY: 0,\n    speed: 0,\n    health:"
+              new = "    velocityY: 0,\n    speed: 0,\n    gear: 1,\n    gearShiftTimer: 0,\n    health:"
+              if old not in text:
+                  raise RuntimeError("vehicle state anchor missing")
+              text = text.replace(old, new, 1)
+
+          helpers = '''export function vehicleGearCount(archetype) {
+            return Math.round(clamp(Number(archetype?.gearCount) || 5, 1, 5));
+          }
+
+          function vehicleGearUpshiftRatio(gear, gearCount) {
+            const count = Math.max(1, Math.round(Number(gearCount) || 1));
+            return clamp((Math.max(1, Number(gear) || 1) / count) * 0.93, 0.14, 0.88);
+          }
+
+          export function vehicleGearForSpeed(speed, archetype, currentGear = 1) {
+            const count = vehicleGearCount(archetype);
+            const velocity = Math.max(0, Number(speed) || 0);
+            if (velocity <= 0.5 || count <= 1) return 1;
+            const maximum = Math.max(1, Number(archetype?.maxSpeed) || 1);
+            const ratio = clamp(velocity / maximum, 0, 1);
+            const hysteresis = 0.055;
+            let gear = Math.round(clamp(Number(currentGear) || 1, 1, count));
+            while (gear < count && ratio >= vehicleGearUpshiftRatio(gear, count)) gear++;
+            while (gear > 1 && ratio < vehicleGearUpshiftRatio(gear - 1, count) - hysteresis) gear--;
+            return gear;
+          }
+
+          export function vehicleGearTorqueMultiplier(gear, gearCount = 5) {
+            const count = Math.max(1, Math.round(Number(gearCount) || 1));
+            const selected = Math.round(clamp(Number(gear) || 1, 1, count));
+            if (count <= 1) return 1;
+            const progress = (selected - 1) / (count - 1);
+            return 1.20 - 0.34 * progress;
+          }
+
+          '''
+          if "export function vehicleGearCount" not in text:
+              anchor = "export function stepVehicleKinematics(state, frame, dt, archetype) {"
+              if anchor not in text:
+                  raise RuntimeError("stepVehicleKinematics anchor missing")
+              text = text.replace(anchor, helpers + anchor, 1)
+
+          old = "  const handbrakeGrip = Math.max(0.1, Number(archetype?.handbrakeGrip) || 1.4);\n\n  let speed = Number(state?.speed) || 0;\n  const incomingRatio = clamp(Math.abs(speed) / maxSpeed, 0, 1);\n  const launchMultiplier = 1 + launchBoost * Math.pow(1 - incomingRatio, 2.1);\n"
+          new = "  const handbrakeGrip = Math.max(0.1, Number(archetype?.handbrakeGrip) || 1.4);\n  const gearCount = vehicleGearCount(archetype);\n  const gearShiftDuration = clamp(Number(archetype?.gearShiftDuration) || 0.11, 0.06, 0.22);\n\n  let speed = Number(state?.speed) || 0;\n  let gear = Math.round(clamp(Number(state?.gear) || 1, 1, gearCount));\n  let gearShiftTimer = Math.max(0, (Number(state?.gearShiftTimer) || 0) - seconds);\n  const incomingRatio = clamp(Math.abs(speed) / maxSpeed, 0, 1);\n  const launchMultiplier = 1 + launchBoost * Math.pow(1 - incomingRatio, 2.1);\n\n  if (speed >= 0) {\n    const targetGear = vehicleGearForSpeed(speed, archetype, gear);\n    if (targetGear > gear && gearShiftTimer <= 0 && input.throttle > 0.05) {\n      gear = Math.min(targetGear, gear + 1);\n      gearShiftTimer = gearShiftDuration;\n    } else if (targetGear < gear) {\n      gear = targetGear;\n      gearShiftTimer = 0;\n    }\n  } else {\n    gear = 1;\n    gearShiftTimer = 0;\n  }\n  const gearTorque = vehicleGearTorqueMultiplier(gear, gearCount);\n  const shiftTorque = gearShiftTimer > 0 ? 0.78 : 1;\n"
+          if "const gearCount = vehicleGearCount(archetype);" not in text:
+              if old not in text:
+                  raise RuntimeError("kinematics gear insertion anchor missing")
+              text = text.replace(old, new, 1)
+
+          text = text.replace(
+              "speed += acceleration * launchMultiplier * handbrakeThrottleFactor * input.throttle * seconds;",
+              "speed += acceleration * launchMultiplier * gearTorque * shiftTorque * handbrakeThrottleFactor * input.throttle * seconds;",
+              1
+          )
+          text = text.replace(
+              ": speed + acceleration * launchMultiplier * input.throttle * seconds;",
+              ": speed + acceleration * launchMultiplier * gearTorque * shiftTorque * input.throttle * seconds;",
+              1
+          )
+          if "    gearShiftTimer,\n    parked:" not in text:
+              old = "    velocityY,\n    speed,\n    parked:"
+              new = "    velocityY,\n    speed,\n    gear,\n    gearShiftTimer,\n    parked:"
+              if old not in text:
+                  raise RuntimeError("kinematic return anchor missing")
+              text = text.replace(old, new, 1)
+
+          camera_helper = '''export function vehicleCameraLookAhead(state, frame, archetype) {
+            const speed = Number(state?.speed) || 0;
+            const maximum = Math.max(1, Number(archetype?.maxSpeed) || 1);
+            if (speed <= 18) return { x: 0, y: 0, strength: 0 };
+
+            const input = normalizeVehicleInput(frame);
+            const speedRatio = clamp(speed / maximum, 0, 1);
+            const speedProgress = clamp((speedRatio - 0.16) / 0.70, 0, 1);
+            const speedWeight = speedProgress * speedProgress * (3 - 2 * speedProgress);
+            const steeringSuppression = clamp((Math.abs(input.steer) - 0.08) / 0.42, 0, 1);
+            const driftSuppression = clamp((Math.abs(Number(state?.driftAngle) || 0) - 0.035) / 0.22, 0, 1);
+            const braking = input.throttle < -0.08;
+            const unstable = braking || input.handbrake || Boolean(state?.handbrake);
+            const stability = unstable ? 0 : (1 - steeringSuppression) * (1 - driftSuppression);
+            const strength = clamp(speedWeight * stability, 0, 1);
+            const distance = clamp(Number(archetype?.cameraLookAhead) || 72, 0, 120) * strength;
+            const direction = Number.isFinite(Number(state?.travelAngle)) ? Number(state.travelAngle) : Number(state?.angle) || 0;
+            return {
+              x: Math.cos(direction) * distance,
+              y: Math.sin(direction) * distance,
+              strength
+            };
+          }
+
+          '''
+          if "export function vehicleCameraLookAhead" not in text:
+              anchor = "export function vehicleCameraZoom(baseZoom, speed, archetype) {"
+              if anchor not in text:
+                  raise RuntimeError("vehicleCameraZoom anchor missing")
+              text = text.replace(anchor, camera_helper + anchor, 1)
+          model.write_text(text)
+
+          driving = Path("phaser/src/vehicles/VehicleDriving.js")
+          text = driving.read_text()
+          if "vehicleCameraLookAhead," not in text:
+              old = "  stepVehicleKinematics,\n  vehicleCameraZoom,"
+              new = "  stepVehicleKinematics,\n  vehicleCameraLookAhead,\n  vehicleCameraZoom,"
+              if old not in text:
+                  raise RuntimeError("VehicleDriving import anchor missing")
+              text = text.replace(old, new, 1)
+          if "vehicle.gearShiftTimer" not in text:
+              old = "  vehicle.speed = next.speed;\n  vehicle.parked = next.parked;"
+              new = "  vehicle.speed = next.speed;\n  vehicle.gear = Math.max(1, Math.round(Number(next.gear) || 1));\n  vehicle.gearShiftTimer = Math.max(0, Number(next.gearShiftTimer) || 0);\n  vehicle.parked = next.parked;"
+              if old not in text:
+                  raise RuntimeError("applyKinematicState anchor missing")
+              text = text.replace(old, new, 1)
+
+          old_camera = '''export function updateVehicleCamera(system) {
+            const vehicle = system.currentVehicle();
+            if (!vehicle) return false;
+            const renderScale = typeof window !== "undefined" ? window.NBD_RESOLUTION_PRESET?.renderScale || 1 : 1;
+            const baseZoom = CAMERA.streetZoom * renderScale;
+            const targetZoom = vehicleCameraZoom(baseZoom, vehicle.speed, vehicle.archetype);
+            const camera = system.scene.cameras.main;
+            camera.setZoom(Phaser.Math.Linear(camera.zoom, targetZoom, 0.10));
+            return true;
+          }
+'''
+          new_camera = '''export function updateVehicleCamera(system) {
+            const vehicle = system.currentVehicle();
+            if (!vehicle) return false;
+            const renderScale = typeof window !== "undefined" ? window.NBD_RESOLUTION_PRESET?.renderScale || 1 : 1;
+            const baseZoom = CAMERA.streetZoom * renderScale;
+            const targetZoom = vehicleCameraZoom(baseZoom, vehicle.speed, vehicle.archetype);
+            const camera = system.scene.cameras.main;
+            camera.setZoom(Phaser.Math.Linear(camera.zoom, targetZoom, 0.10));
+
+            const lookAhead = vehicleCameraLookAhead(vehicle, system.scene.currentInputFrame, vehicle.archetype);
+            const recentering = lookAhead.strength < 0.08;
+            const response = recentering ? 0.28 : 0.10;
+            system.cameraLookAheadX = Phaser.Math.Linear(Number(system.cameraLookAheadX) || 0, lookAhead.x, response);
+            system.cameraLookAheadY = Phaser.Math.Linear(Number(system.cameraLookAheadY) || 0, lookAhead.y, response);
+            camera.setFollowOffset(-system.cameraLookAheadX, -system.cameraLookAheadY);
+            return true;
+          }
+'''
+          if "camera.setFollowOffset(-system.cameraLookAheadX" not in text:
+              if old_camera not in text:
+                  raise RuntimeError("updateVehicleCamera anchor missing")
+              text = text.replace(old_camera, new_camera, 1)
+          driving.write_text(text)
+
+          view = Path("phaser/src/vehicles/VehicleView.js")
+          text = view.read_text()
+          if "vehicleGearCount" not in text.splitlines()[2]:
+              old = 'import { vehicleHealthPercent, vehicleSpeedKph } from "./VehicleModel.js";'
+              new = 'import { vehicleGearCount, vehicleHealthPercent, vehicleSpeedKph } from "./VehicleModel.js";'
+              if old not in text:
+                  raise RuntimeError("VehicleView import anchor missing")
+              text = text.replace(old, new, 1)
+          if "gearCount: vehicleGearCount(archetype)" not in text:
+              old = "    speed: vehicle.speed,\n    speedKph: vehicleSpeedKph(vehicle.speed),\n    health:"
+              new = "    speed: vehicle.speed,\n    speedKph: vehicleSpeedKph(vehicle.speed),\n    gear: Math.max(1, Math.round(Number(vehicle.gear) || 1)),\n    gearCount: vehicleGearCount(archetype),\n    shifting: (Number(vehicle.gearShiftTimer) || 0) > 0,\n    health:"
+              if old not in text:
+                  raise RuntimeError("plainVehicle gear anchor missing")
+              text = text.replace(old, new, 1)
+          if "const gearText =" not in text:
+              old = "  const drift = driftDegrees(vehicle);\n  const driftText = drift >= 7 && Math.abs(vehicle.speed) > 24 ? ` · DRIFT ${drift}°` : \"\";"
+              new = "  const drift = driftDegrees(vehicle);\n  const gear = Math.max(1, Math.round(Number(vehicle.gear) || 1));\n  const gearText = vehicle.speed < -0.5 ? \"R\" : `G${gear}/${vehicleGearCount(vehicle.archetype)}${(vehicle.gearShiftTimer || 0) > 0 ? \"↑\" : \"\"}`;\n  const driftText = drift >= 7 && Math.abs(vehicle.speed) > 24 ? ` · DRIFT ${drift}°` : \"\";"
+              if old not in text:
+                  raise RuntimeError("HUD gear anchor missing")
+              text = text.replace(old, new, 1)
+              old2 = "    `${vehicle.name.toUpperCase()} · ${vehicleSpeedKph(vehicle.speed)} km/h${driftText} · hull"
+              new2 = "    `${vehicle.name.toUpperCase()} · ${gearText} · ${vehicleSpeedKph(vehicle.speed)} km/h${driftText} · hull"
+              if old2 not in text:
+                  raise RuntimeError("HUD text anchor missing")
+              text = text.replace(old2, new2, 1)
+          if " · G${Math.max(1, Math.round(Number(vehicle.gear) || 1))}" not in text:
+              old = "  return `${vehicle.name} · ${vehicleSpeedKph(vehicle.speed)} km/h${drift >= 7 ? ` · drift ${drift}°` : \"\"} · hull"
+              new = "  return `${vehicle.name} · G${Math.max(1, Math.round(Number(vehicle.gear) || 1))} · ${vehicleSpeedKph(vehicle.speed)} km/h${drift >= 7 ? ` · drift ${drift}°` : \"\"} · hull"
+              if old not in text:
+                  raise RuntimeError("summary gear anchor missing")
+              text = text.replace(old, new, 1)
+          view.write_text(text)
+
+          tests = Path("tests/vehicle-model.test.js")
+          text = tests.read_text()
+          if "vehicleCameraLookAhead," not in text:
+              text = text.replace("  stepVehicleKinematics,\n  vehicleCameraZoom,", "  stepVehicleKinematics,\n  vehicleCameraLookAhead,\n  vehicleCameraZoom,\n  vehicleGearCount,", 1)
+          if "gearCount: 5" not in text:
+              text = text.replace("  maxSpeed: 310,\n  reverseSpeed: 92,", "  maxSpeed: 310,\n  gearCount: 5,\n  gearShiftDuration: 0.10,\n  cameraLookAhead: 72,\n  reverseSpeed: 92,", 1)
+
+          new_tests = '''
+          test("automatic gearbox climbs through up to five gears with a brief torque cut", () => {
+            let state = createVehicleState(definition, archetype);
+            const seen = new Set([state.gear]);
+            let shiftFrames = 0;
+            for (let index = 0; index < 90; index++) {
+              state = stepVehicleKinematics(state, { move: { x: 0, y: -1 } }, 0.05, archetype);
+              seen.add(state.gear);
+              if (state.gearShiftTimer > 0) shiftFrames++;
+            }
+            assert.equal(vehicleGearCount(archetype), 5);
+            assert.deepEqual([...seen], [1, 2, 3, 4, 5]);
+            assert.equal(state.gear, 5);
+            assert.ok(shiftFrames >= 4, "each upshift should create a short perceptible power interruption");
+            assert.ok(state.speed <= archetype.maxSpeed);
+          });
+
+          test("directional vehicle camera looks ahead only during stable forward travel", () => {
+            const stable = vehicleCameraLookAhead({
+              ...createVehicleState(definition, archetype),
+              speed: 250,
+              travelAngle: 0,
+              driftAngle: 0,
+              handbrake: false
+            }, { move: { x: 0, y: -1 } }, archetype);
+            const turning = vehicleCameraLookAhead({
+              ...createVehicleState(definition, archetype),
+              speed: 250,
+              travelAngle: 0,
+              driftAngle: 0,
+              handbrake: false
+            }, { move: { x: 1, y: -1 } }, archetype);
+            const braking = vehicleCameraLookAhead({
+              ...createVehicleState(definition, archetype),
+              speed: 250,
+              travelAngle: 0,
+              driftAngle: 0,
+              handbrake: false
+            }, { move: { x: 0, y: 1 } }, archetype);
+            const drifting = vehicleCameraLookAhead({
+              ...createVehicleState(definition, archetype),
+              speed: 250,
+              travelAngle: 0,
+              driftAngle: 0.30,
+              handbrake: true
+            }, { move: { x: 0.7, y: -1 }, handbrakeHeld: true }, archetype);
+
+            assert.ok(stable.x > 25);
+            assert.ok(stable.strength > 0.4);
+            assert.ok(Math.abs(turning.x) < stable.x * 0.2);
+            assert.equal(braking.strength, 0);
+            assert.equal(drifting.strength, 0);
+          });
+
+          '''
+          if "automatic gearbox climbs through up to five gears" not in text:
+              anchor = 'test("collision slide candidates search many distances and steering nudges", () => {'
+              if anchor not in text:
+                  raise RuntimeError("vehicle-model test insertion anchor missing")
+              text = text.replace(anchor, new_tests + anchor, 1)
+          tests.write_text(text)
+
+          runtime_test = Path("tests/vehicle-runtime-source.test.js")
+          text = runtime_test.read_text()
+          if 'driving.includes("vehicleCameraLookAhead")' not in text:
+              old = '  assert.equal(driving.includes("applyKinematicState(vehicle, next)"), true);\n'
+              new = old + '  assert.equal(driving.includes("vehicleCameraLookAhead"), true);\n  assert.equal(driving.includes("setFollowOffset"), true);\n  assert.equal(view.includes("gearCount"), true);\n'
+              if old not in text:
+                  raise RuntimeError("vehicle runtime source anchor missing")
+              text = text.replace(old, new, 1)
+          if 'definitions.includes("gearCount")' not in text:
+              old = '  assert.equal(definitions.includes("trunkCapacity"), true);\n'
+              new = '  assert.equal(definitions.includes("trunkCapacity"), true);\n  assert.equal(definitions.includes("gearCount"), true);\n  assert.equal(definitions.includes("cameraLookAhead"), true);\n'
+              if old not in text:
+                  raise RuntimeError("vehicle definitions test anchor missing")
+              text = text.replace(old, new, 1)
+          runtime_test.write_text(text)
+          PY
+
+      - name: Validate focused vehicle behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/vehicle-model.test.js tests/vehicle-runtime-source.test.js tests/aggressive-driving-panic.test.js tests/vehicle-skid-audio.test.js
+          git diff --check
+          npm run check:affected:plan -- --base=origin/main || true
+
+      - name: Commit vehicle feature and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/integrate-vehicle-gears-camera.yml
+          git add phaser/src/data/vehicles.js phaser/src/vehicles/VehicleModel.js phaser/src/vehicles/VehicleDriving.js phaser/src/vehicles/VehicleView.js tests/vehicle-model.test.js tests/vehicle-runtime-source.test.js
+          git commit -m "Add automatic gears and directional vehicle camera"
+          git push
