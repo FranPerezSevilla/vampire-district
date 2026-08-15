@@ -16,6 +16,7 @@ The old audio catalogue lived in PR #44 (`agent/expand-audio-catalog`). That PR 
 - `bulletHitBody` — **integrated on PR #55**: the accepted processed impact sample plays only from the confirmed `combat:hit` path for hitscan weapons. Props/world geometry and vehicles do not emit that event, so they never receive the body-impact sound. The current family has one accepted runtime variant; extra variants are polish, not a blocker.
 - `drainStart` / `drainLoop` / `drainComplete` — **wired candidate on PR #55, pending listening acceptance**: one coherent KatjaSavia/Pixabay performance is split into a masculine-shifted start breath, an original-pitch bite loop and a masculine-shifted release. Runtime files are committed, the bite uses a stateful PCM WAV loop, and gameplay starts/stops it with the feeding lifecycle rather than retriggering it every frame.
 - `civilianScream` — **integrated + listening accepted on PR #55**: six WebKit-compatible MP3 runtime variants share one stable event ID. Variants 01–03 remain masculine; 04–06 are deliberately female-sounding DSP derivatives of the same Universfield male performance, not separate female recordings. Panic audio reacts to gunfire and vehicle-pedestrian impacts: a civilian who sees their first gunshot screams immediately, nearby civilians who only hear gunfire can also scream without becoming visual witnesses, an alarmed civilian can still scream as shock ends and flight/reporting begins, and a pedestrian struck by the player's vehicle screams at the confirmed impact. Visual bystanders to an atropello continue through the existing mundane-violence shock/flight path. The shared event cooldown prevents crowds from becoming an uncontrolled scream stack.
+- `policeSirenLoop` — **integrated candidate on PR #55, pending listening acceptance**: the supplied szpury/Freesound siren is kept at its authored loop boundaries and materialized as a PCM WAV runtime loop. Each motorized police cruiser owns an independent instance with distance attenuation and stereo pan. The loop can become audible before the cruiser is rendered locally, grows as the unit approaches, remains attached to the cruiser after officers dismount, and stops when the unit retires, is disabled, leaves audible range, the player leaves street level, or UI pause owns the scene.
 
 ## Audio Lab
 
@@ -68,7 +69,7 @@ Do not try to fill the full production catalogue before testing. For the current
 ### Police
 
 - `police` — wanted/response escalation cue
-- `policeSirenLoop` — spatial police-car siren loop
+- `policeSirenLoop` — **integrated candidate:** one spatial PCM loop per active response cruiser; pending in-game listening acceptance
 - `policeRadio` — short radio bursts; 4–6 variants
 - `policeSpotPlayer` — officer acquisition/recognition cue
 
@@ -80,7 +81,7 @@ Do not try to fill the full production catalogue before testing. For the current
 - `vehicleEngineDrive` — seamless loop or layered acceleration bed
 - `vehicleEngineBrake`
 - `vehicleHandbrake`
-- `vehicleSkidLoop`
+- `vehicleSkidLoop` — currently procedural and gameplay-wired to aggressive driving; replace with a real tyre-skid loop next
 - `vehicleCollisionLight` — 3–4 variants
 - `vehicleCollisionHeavy` — 3 variants
 - `vehicleHitPedestrian` — 2–3 variants; future material-impact layer, separate from the existing human scream reaction
@@ -115,4 +116,4 @@ The original first batch was:
 
 `step`, `weaponFire`, `bulletHitBody`, `drainStart`, `drainLoop`, `drainComplete`, `whisper`, `civilianScream`, `policeSirenLoop`, `vehicleEngineDrive`, `vehicleCollisionHeavy`, `ambienceStreetNight`.
 
-`weaponFire`, `bulletHitBody` and `civilianScream` are integrated and listening accepted. The feeding family is fully materialized and wired but still needs human listening acceptance before it is marked done. Continue sourcing with `policeSirenLoop`, then `ambienceStreetNight`. `bulletHitWorld` remains a separate firearm-material family and must never reuse `bulletHitBody`.
+`weaponFire`, `bulletHitBody` and `civilianScream` are integrated and listening accepted. `policeSirenLoop` is integrated and awaits in-game listening acceptance. The feeding family is fully materialized and wired but still needs human listening acceptance before it is marked done. Given the newly gameplay-wired aggressive-driving panic, source `vehicleSkidLoop` next, then `ambienceStreetNight`. `bulletHitWorld` remains a separate firearm-material family and must never reuse `bulletHitBody`.
