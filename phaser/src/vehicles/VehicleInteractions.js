@@ -203,11 +203,16 @@ export function exitVehicle(system, { force = false } = {}) {
   vehicle.speed = 0;
   vehicle.velocityX = 0;
   vehicle.velocityY = 0;
+  vehicle.gear = 1;
+  vehicle.gearShiftTimer = 0;
   vehicle.parked = true;
   vehicle.handbrake = false;
   system.handbrakeActive = false;
   system.currentVehicleId = null;
   restoreStreetControl(system.scene, exitPoint);
+  system.cameraLookAheadX = 0;
+  system.cameraLookAheadY = 0;
+  system.scene.cameras.main.setFollowOffset(0, 0);
   system.scene.cameras.main.startFollow(system.scene.player, true, 0.12, 0.12);
   system.persistVehicle(vehicle);
   system.hud.setVisible(false);

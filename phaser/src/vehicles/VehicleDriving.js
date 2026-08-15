@@ -7,6 +7,7 @@ import {
   normalizeAngle,
   rotateTowardAngle,
   stepVehicleKinematics,
+  vehicleCameraLookAhead,
   vehicleCameraZoom,
   vehicleFootprintPoints,
   vehicleHealthPercent,
@@ -107,6 +108,8 @@ function applyKinematicState(vehicle, next) {
   vehicle.velocityX = next.velocityX || 0;
   vehicle.velocityY = next.velocityY || 0;
   vehicle.speed = next.speed;
+  vehicle.gear = Math.max(1, Math.round(Number(next.gear) || 1));
+  vehicle.gearShiftTimer = Math.max(0, Number(next.gearShiftTimer) || 0);
   vehicle.parked = next.parked;
   vehicle.handbrake = Boolean(next.handbrake);
   return vehicle;
@@ -275,6 +278,7 @@ export function updateVehicleDriving(system, dt, frame) {
   }
 
   system.handbrakeActive = Boolean(frame?.handbrakeHeld && !vehicle.disabled);
+  const previousGear = Math.max(1, Math.round(Number(vehicle.gear) || 1));
   const next = stepVehicleKinematics(vehicle, frame, dt, vehicle.archetype);
   const furniture = system.scene.streetFurnitureSystem?.resolveVehicleMove?.(vehicle, next) || { blocked: false, impacts: [] };
   if (vehicle.disabled) {
@@ -290,6 +294,15 @@ export function updateVehicleDriving(system, dt, frame) {
     applyKinematicState(vehicle, next);
   } else if (!slideAlongWorld(system, vehicle, next)) {
     handleVehicleWorldCollision(system, vehicle, next.speed);
+  }
+
+  if (vehicle.gear > previousGear) {
+    system.scene.events?.emit?.("vehicle:gear-shift", {
+      vehicleId: vehicle.id,
+      fromGear: previousGear,
+      toGear: vehicle.gear,
+      speed: vehicle.speed
+    });
   }
 
   vehicle.container.setPosition(vehicle.x, vehicle.y).setRotation(vehicle.angle);
@@ -315,5 +328,12 @@ export function updateVehicleCamera(system) {
   const targetZoom = vehicleCameraZoom(baseZoom, vehicle.speed, vehicle.archetype);
   const camera = system.scene.cameras.main;
   camera.setZoom(Phaser.Math.Linear(camera.zoom, targetZoom, 0.10));
+
+  const lookAhead = vehicleCameraLookAhead(vehicle, system.scene.currentInputFrame, vehicle.archetype);
+  const recentering = lookAhead.strength < 0.08;
+  const response = recentering ? 0.28 : 0.10;
+  system.cameraLookAheadX = Phaser.Math.Linear(Number(system.cameraLookAheadX) || 0, lookAhead.x, response);
+  system.cameraLookAheadY = Phaser.Math.Linear(Number(system.cameraLookAheadY) || 0, lookAhead.y, response);
+  camera.setFollowOffset(-system.cameraLookAheadX, -system.cameraLookAheadY);
   return true;
 }

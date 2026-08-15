@@ -5,7 +5,9 @@ import {
   createVehicleState,
   interpolateVehicleState,
   stepVehicleKinematics,
+  vehicleCameraLookAhead,
   vehicleCameraZoom,
+  vehicleGearCount,
   vehicleExitOffsets,
   vehicleFootprintPoints,
   vehicleImpactDamage,
@@ -25,6 +27,9 @@ const archetype = {
   width: 28,
   height: 14,
   maxSpeed: 310,
+  gearCount: 5,
+  gearShiftDuration: 0.10,
+  cameraLookAhead: 72,
   reverseSpeed: 92,
   acceleration: 330,
   reverseAcceleration: 126,
@@ -126,6 +131,47 @@ test("handbrake creates a controlled slide and normal grip recovers it", () => {
     state = stepVehicleKinematics(state, { move: { x: 0, y: -1 } }, 0.05, archetype);
   }
   assert.ok(Math.abs(state.driftAngle) < driftAtRelease, "normal tyre grip should progressively align the velocity vector");
+});
+
+
+test("automatic gearbox climbs through up to five gears with a brief torque cut", () => {
+  let state = createVehicleState(definition, archetype);
+  const seen = new Set([state.gear]);
+  let shiftFrames = 0;
+  for (let index = 0; index < 90; index++) {
+    state = stepVehicleKinematics(state, { move: { x: 0, y: -1 } }, 0.05, archetype);
+    seen.add(state.gear);
+    if (state.gearShiftTimer > 0) shiftFrames++;
+  }
+  assert.equal(vehicleGearCount(archetype), 5);
+  assert.deepEqual([...seen], [1, 2, 3, 4, 5]);
+  assert.equal(state.gear, 5);
+  assert.ok(shiftFrames >= 4);
+  assert.ok(state.speed <= archetype.maxSpeed);
+});
+
+test("directional vehicle camera looks ahead only during stable forward travel", () => {
+  const base = {
+    ...createVehicleState(definition, archetype),
+    speed: 250,
+    travelAngle: 0,
+    driftAngle: 0,
+    handbrake: false
+  };
+  const stable = vehicleCameraLookAhead(base, { move: { x: 0, y: -1 } }, archetype);
+  const turning = vehicleCameraLookAhead(base, { move: { x: 1, y: -1 } }, archetype);
+  const braking = vehicleCameraLookAhead(base, { move: { x: 0, y: 1 } }, archetype);
+  const drifting = vehicleCameraLookAhead(
+    { ...base, driftAngle: 0.30, handbrake: true },
+    { move: { x: 0.7, y: -1 }, handbrakeHeld: true },
+    archetype
+  );
+
+  assert.ok(stable.x > 25);
+  assert.ok(stable.strength > 0.4);
+  assert.ok(Math.abs(turning.x) < stable.x * 0.2);
+  assert.equal(braking.strength, 0);
+  assert.equal(drifting.strength, 0);
 });
 
 test("collision slide candidates search many distances and steering nudges", () => {

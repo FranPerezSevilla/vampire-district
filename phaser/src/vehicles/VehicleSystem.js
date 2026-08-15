@@ -15,6 +15,8 @@ export class VehicleSystem {
     this.persistTimer = 0;
     this.crashCooldown = 0;
     this.handbrakeActive = false;
+    this.cameraLookAheadX = 0;
+    this.cameraLookAheadY = 0;
     this.pedestrianCooldowns = new Map();
     this.transientSequence = 0;
     this.destroyed = false;
@@ -187,6 +189,8 @@ export class VehicleSystem {
     if (vehicle.health <= 0) {
       vehicle.disabled = true;
       vehicle.speed = 0;
+      vehicle.gear = 1;
+      vehicle.gearShiftTimer = 0;
       vehicle.handbrake = false;
       vehicle.parked = true;
       this.handbrakeActive = false;
@@ -219,6 +223,8 @@ export class VehicleSystem {
     vehicle.velocityX = 0;
     vehicle.velocityY = 0;
     vehicle.speed = 0;
+    vehicle.gear = 1;
+    vehicle.gearShiftTimer = 0;
     vehicle.health = condition.health;
     vehicle.disabled = condition.disabled;
     vehicle.parked = condition.parked;
