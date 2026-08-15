@@ -1,0 +1,72 @@
+name: Fix civilian gunshot screams
+
+on:
+  push:
+    branches:
+      - audio/playtest-p0
+    paths:
+      - .github/workflows/fix-civilian-gunshot-screams.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout audio branch
+        uses: actions/checkout@v4
+        with:
+          ref: audio/playtest-p0
+          fetch-depth: 0
+
+      - name: Patch heard-only civilian panic audio
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('phaser/src/systems/WeaponSystem.js')
+          src = path.read_text()
+
+          old = '    let visualWitnesses = 0;\n    let heardOnly = 0;\n'
+          new = '    let visualWitnesses = 0;\n    let heardOnly = 0;\n    let heardOnlyCivilians = 0;\n'
+          if old not in src:
+              raise SystemExit('gunshot counters marker changed')
+          src = src.replace(old, new, 1)
+
+          old = '      this.startHeardOnlyReaction(npc, source, 1.9);\n      heardOnly++;\n'
+          new = '      this.startHeardOnlyReaction(npc, source, 1.9);\n      heardOnly++;\n      if ([NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)) heardOnlyCivilians++;\n'
+          if old not in src:
+              raise SystemExit('heard-only reaction marker changed')
+          src = src.replace(old, new, 1)
+
+          old = '    if (heardOnly) RawAudio.play("witnessWtf", { cooldown: 0.4 });\n'
+          new = '    if (heardOnlyCivilians) RawAudio.play("civilianScream", { cooldown: 0.75 });\n    else if (heardOnly) RawAudio.play("witnessWtf", { cooldown: 0.4 });\n'
+          if old not in src:
+              raise SystemExit('gunshot heard-only audio marker changed')
+          src = src.replace(old, new, 1)
+          path.write_text(src)
+
+          test = Path('tests/civilian-gunshot-scream.test.js')
+          test.write_text('''import test from "node:test";\nimport assert from "node:assert/strict";\nimport { readFileSync } from "node:fs";\n\nconst source = readFileSync(new URL("../phaser/src/systems/WeaponSystem.js", import.meta.url), "utf8");\n\ntest("heard-only civilians can scream at nearby gunfire without becoming visual witnesses", () => {\n  assert.match(source, /let heardOnlyCivilians = 0;/);\n  assert.match(source, /\[NPC_TYPES\.CIVILIAN, NPC_TYPES\.TARGET\]\.includes\(npc\.type\)\) heardOnlyCivilians\+\+;/);\n  assert.match(source, /if \(heardOnlyCivilians\) RawAudio\.play\("civilianScream", \{ cooldown: 0\.75 \}\);/);\n  assert.match(source, /else if \(heardOnly\) RawAudio\.play\("witnessWtf", \{ cooldown: 0\.4 \}\);/);\n});\n''')
+          PY
+
+      - name: Validate focused audio behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/civilian-gunshot-scream.test.js tests/audio-sample-catalog.test.js
+          git diff --check
+
+      - name: Commit fix and remove one-off workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/fix-civilian-gunshot-screams.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add phaser/src/systems/WeaponSystem.js tests/civilian-gunshot-scream.test.js .github/workflows/fix-civilian-gunshot-screams.yml
+          git commit -m "Let nearby civilians scream at gunfire"
+          git push origin HEAD:audio/playtest-p0
