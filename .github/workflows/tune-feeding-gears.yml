@@ -1,0 +1,59 @@
+name: Tune feeding mix and gearbox cadence
+
+on:
+  push:
+    branches:
+      - audio/playtest-p0
+    paths:
+      - .github/workflows/tune-feeding-gears.yml
+      - tools/_tmp-tune-feeding-gears.py
+
+permissions:
+  contents: write
+
+jobs:
+  tune:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply feeding and gearbox tuning
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/_tmp-tune-feeding-gears.py
+
+      - name: Remove one-off helpers
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm tools/_tmp-tune-feeding-gears.py
+          rm .github/workflows/tune-feeding-gears.yml
+
+      - name: Validate focused audio and driving behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test \
+            tests/feeding-narrative-mix.test.js \
+            tests/feeding-audio-sample.test.js \
+            tests/audio-sample-catalog.test.js \
+            tests/vehicle-model.test.js \
+            tests/vehicle-engine-audio.test.js \
+            tests/vehicle-gears-camera.test.js \
+            tests/vehicle-runtime-source.test.js
+          git diff --check
+          npm run check:affected:plan -- --base=origin/main
+
+      - name: Commit tuning
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Tune feeding narrative mix and gearbox cadence"
+          git push
