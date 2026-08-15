@@ -55,6 +55,7 @@ const workflowPath = ".github/workflows/materialize-audio-assets.yml";
 let workflow = read(workflowPath);
 const marker = `\n      # TEMP_SKID_INTEGRATION_BEGIN\n      - name: Integrate real vehicle skid loop\n        shell: bash\n        run: node tools/_tmp-integrate-skid.mjs\n      # TEMP_SKID_INTEGRATION_END\n`;
 if (!workflow.includes(marker)) throw new Error("temporary materializer marker missing");
-workflow = workflow.replace(marker, "\n");nwrite(workflowPath, workflow);
+workflow = workflow.replace(marker, "\n");
+write(workflowPath, workflow);
 
 fs.unlinkSync("tools/_tmp-integrate-skid.mjs");
