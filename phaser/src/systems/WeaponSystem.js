@@ -170,6 +170,7 @@ export class WeaponSystem {
     ) || this.scene.npcSystem?.npcs || [];
     let visualWitnesses = 0;
     let heardOnly = 0;
+    let heardOnlyCivilians = 0;
 
     for (const npc of candidates) {
       if (!this.validObserver(npc, source.layer)) continue;
@@ -189,9 +190,11 @@ export class WeaponSystem {
       if (distance > weapon.soundRadius || npc.alarmed || npc.chasingPlayer || npc.enemyAttack) continue;
       this.startHeardOnlyReaction(npc, source, 1.9);
       heardOnly++;
+      if ([NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)) heardOnlyCivilians++;
     }
 
-    if (heardOnly) RawAudio.play("witnessWtf", { cooldown: 0.4 });
+    if (heardOnlyCivilians) RawAudio.play("civilianScream", { cooldown: 0.75 });
+    else if (heardOnly) RawAudio.play("witnessWtf", { cooldown: 0.4 });
     this.scene.lastActionText = `GUNSHOT: ${weapon.name} fired · ${this.ammoRemaining(weapon.id)}/${weapon.ammoCapacity} rounds.${visualWitnesses ? ` ${visualWitnesses} observer(s) saw the shot.` : ""}${heardOnly ? ` ${heardOnly} NPC(s) heard it.` : ""}`;
     this.scene.events?.emit?.("noise:emitted", {
       kind: "gunshot",
