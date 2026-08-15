@@ -20,6 +20,17 @@ test("vehicle pedestrian impacts trigger civilian panic audio once through the s
   assert.match(consequences, /witnessSystem\?\.onMundaneViolence\?\./);
 });
 
+test("nearby civilians can react to hearing an atropello without becoming visual witnesses", () => {
+  assert.match(consequences, /function reactToHeardPedestrianImpact\(system, victim, impactSpeed\)/);
+  assert.match(consequences, /\[NPC_TYPES\.CIVILIAN, NPC_TYPES\.TARGET\]\.includes\(npc\.type\)/);
+  assert.match(consequences, /const sawImpact = Boolean\(system\.scene\.witnessSystem\?\.canWitnessSee\?\./);
+  assert.match(consequences, /if \(sawImpact\) continue;/);
+  assert.match(consequences, /npc\.soundReactionTimer = Math\.max/);
+  assert.match(consequences, /system\.scene\.aiStateSystem\?\.resolveNpc\?\.\(npc\);/);
+  assert.match(consequences, /heardOnlyCivilians = reactToHeardPedestrianImpact\(system, npc, impactSpeed\);/);
+  assert.doesNotMatch(consequences, /reactToHeardPedestrianImpact[\s\S]*?alarmWitness/);
+});
+
 test("world and streetscape collisions do not reuse civilian scream audio", () => {
   const worldCollision = driving.match(/export function handleVehicleWorldCollision[\s\S]*?\n}\n\nexport function updateVehicleDriving/);
   assert.ok(worldCollision, "expected authoritative world-collision function");
