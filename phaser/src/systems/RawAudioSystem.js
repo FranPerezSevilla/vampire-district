@@ -202,6 +202,7 @@ class RawAudioBus {
       case "drainCancel": return this.fail(120);
       case "bodyDrag": return this.scrape();
       case "bodyDrop": return this.hit(85, 0.045, 0.10);
+      case "vehicleSkidLoop": return this.vehicleSkid();
       case "bodyHide": return this.hide();
       case "breakLight": return this.glass();
       case "routeRoof": return this.roofJump();
@@ -224,6 +225,7 @@ class RawAudioBus {
 
   defaultCooldown(name) {
     if (name === "step" || name === "sprintStep") return 0.05;
+    if (name === "vehicleSkidLoop") return 0.16;
     if (name === "police" || name === "hunter") return 1.2;
     if (name === "witnessWtf" || name === "witnessRun" || name === "civilianScream") return 0.9;
     return 0.12;
@@ -320,6 +322,12 @@ class RawAudioBus {
 
   scrape() {
     this.noise(0.20, { volume: 0.040, filter: 260, filterType: "bandpass", q: 1.8 });
+  }
+
+  vehicleSkid() {
+    this.noise(0.22, { volume: 0.050, filter: 1850, filterType: "bandpass", q: 1.35 });
+    this.noise(0.16, { delay: 0.025, volume: 0.026, filter: 2800, filterType: "highpass", q: 0.9 });
+    this.tone(1180, 0.16, { to: 720, volume: 0.014, type: "sawtooth", filter: 2400 });
   }
 
   hide() {
