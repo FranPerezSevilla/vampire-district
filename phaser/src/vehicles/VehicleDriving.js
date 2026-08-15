@@ -15,12 +15,34 @@ import {
   vehicleSlideCandidates
 } from "./VehicleModel.js";
 import { collideVehicleWithPedestrians } from "./VehicleConsequences.js";
+import { vehicleEngineTelemetry } from "./VehicleEngineModel.js";
 
 const VEHICLE_COLLISION_RADIUS_PADDING = 1;
 const PERSIST_INTERVAL_SECONDS = 1.8;
 const CONTACT_SEARCH_STEPS = 10;
 const AGGRESSIVE_SKID_THRESHOLD = 0.28;
 const AGGRESSIVE_SKID_PULSE_SECONDS = 0.22;
+
+function updateDrivenVehicleEngine(system, vehicle, frame) {
+  if (!vehicle || vehicle.disabled) {
+    if (vehicle?.id) RawAudio.stopVehicleEngine(`player:${vehicle.id}`);
+    return false;
+  }
+  const throttle = Math.max(0, -(Number(frame?.move?.y) || 0));
+  const telemetry = vehicleEngineTelemetry({
+    speed: vehicle.speed,
+    archetype: vehicle.archetype,
+    gear: vehicle.gear,
+    gearShiftTimer: vehicle.gearShiftTimer,
+    throttle,
+    x: vehicle.x,
+    y: vehicle.y,
+    listener: vehicle,
+    ownVehicle: true,
+    maxDistance: 1
+  });
+  return RawAudio.updateVehicleEngine(`player:${vehicle.id}`, { ...telemetry, priority: 3 });
+}
 
 export function aggressiveDrivingSkidIntensity(vehicle, frame = {}) {
   const speed = Math.abs(Number(vehicle?.speed) || 0);
@@ -283,6 +305,7 @@ export function updateVehicleDriving(system, dt, frame) {
   const furniture = system.scene.streetFurnitureSystem?.resolveVehicleMove?.(vehicle, next) || { blocked: false, impacts: [] };
   if (vehicle.disabled) {
     vehicle.handbrake = false;
+    RawAudio.stopVehicleEngine(`player:${vehicle.id}`);
     system.updateHud();
     system.publish();
     return false;
@@ -309,6 +332,7 @@ export function updateVehicleDriving(system, dt, frame) {
   vehicle.visual.label.setRotation(-vehicle.angle);
   system.scene.player.setPosition(vehicle.x, vehicle.y);
   collideVehicleWithPedestrians(system, vehicle);
+  updateDrivenVehicleEngine(system, vehicle, frame);
   emitAggressiveDrivingNoise(system, vehicle, frame);
   system.persistTimer += dt;
   if (system.persistTimer >= PERSIST_INTERVAL_SECONDS) {

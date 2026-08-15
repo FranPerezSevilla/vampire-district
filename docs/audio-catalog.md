@@ -17,7 +17,8 @@ The old audio catalogue lived in PR #44 (`agent/expand-audio-catalog`). That PR 
 - `drainStart` / `drainLoop` / `drainComplete` — **wired candidate on PR #55, pending listening acceptance**: one coherent KatjaSavia/Pixabay performance is split into a masculine-shifted start breath, an original-pitch bite loop and a masculine-shifted release. Runtime files are committed, the bite uses a stateful PCM WAV loop, and gameplay starts/stops it with the feeding lifecycle rather than retriggering it every frame.
 - `civilianScream` — **integrated + listening accepted on PR #55**: six WebKit-compatible MP3 runtime variants share one stable event ID. Variants 01–03 remain masculine; 04–06 are deliberately female-sounding DSP derivatives of the same Universfield male performance, not separate female recordings. Panic audio reacts to gunfire and vehicle-pedestrian impacts: a civilian who sees their first gunshot screams immediately, nearby civilians who only hear gunfire can also scream without becoming visual witnesses, an alarmed civilian can still scream as shock ends and flight/reporting begins, and a pedestrian struck by the player's vehicle screams at the confirmed impact. Visual bystanders to an atropello continue through the existing mundane-violence shock/flight path. The shared event cooldown prevents crowds from becoming an uncontrolled scream stack.
 - `policeSirenLoop` — **integrated candidate on PR #55, pending listening acceptance**: the supplied szpury/Freesound siren is kept at its authored loop boundaries and materialized as a PCM WAV runtime loop. Each motorized police cruiser owns an independent instance with distance attenuation and stereo pan. The loop can become audible before the cruiser is rendered locally, grows as the unit approaches, remains attached to the cruiser after officers dismount, and stops when the unit retires, is disabled, leaves audible range, the player leaves street level, or UI pause owns the scene.
-- `vehicleSkidLoop` — **integrated candidate on PR #55, pending listening acceptance**: the supplied MagiaZ tyre skid is trimmed into a gap-sensitive PCM WAV loop. Aggressive-driving pulses sustain one stateful loop while the drift continues and let it stop shortly after the skid ends; civilian panic remains a separate non-reporting reaction with no Heat.
+- `vehicleSkidLoop` — **integrated + listening accepted on PR #55**: the supplied MagiaZ tyre skid is trimmed into a gap-sensitive PCM WAV loop. Aggressive-driving pulses sustain one stateful loop while the drift continues and let it stop shortly after the skid ends; civilian panic remains a separate non-reporting reaction with no Heat.
+- `vehicleEngine` — **procedural systemic candidate on PR #55, pending driving-mix acceptance**: player vehicles, materialized civilian traffic and motorized police share gear-aware RPM telemetry. RawAudio owns up to ten prioritized spatial engine voices so nearby cars create the city soundscape without a fixed ambience bed. The current oscillator voice is a placeholder transport layer; a future sourced engine recording can replace the timbre without changing gearbox/RPM ownership.
 
 ## Audio Lab
 
@@ -82,18 +83,19 @@ Do not try to fill the full production catalogue before testing. For the current
 - `vehicleEngineDrive` — seamless loop or layered acceleration bed
 - `vehicleEngineBrake`
 - `vehicleHandbrake`
-- `vehicleSkidLoop` — **integrated candidate:** real gap-sensitive PCM loop sustained while aggressive drifting continues; pending listening acceptance
+- `vehicleSkidLoop` — **done for the current playtest:** real gap-sensitive PCM loop sustained while aggressive drifting continues; listening accepted
+- `vehicleEngine` — **systemic candidate:** automatic gears drive RPM/pitch for the player, local civilian traffic and police cruisers; current timbre is procedural until a real engine source is supplied
 - `vehicleCollisionLight` — 3–4 variants
 - `vehicleCollisionHeavy` — 3 variants
 - `vehicleHitPedestrian` — 2–3 variants; future material-impact layer, separate from the existing human scream reaction
 - `vehicleHorn` — 3–4 variants
 
-### UI / city bed
+### UI / systemic city soundscape
 
 - `confirm`, `cancel`, `menu`
 - `objectiveUpdated`
-- `ambienceStreetNight` — seamless night-city bed
-- `trafficAmbience` — distant moving-traffic layer
+
+Viceblood intentionally has **no continuous `ambienceStreetNight` or `trafficAmbience` bed** in the current direction. Urban ambience must emerge from spatial systemic sources: player/NPC engines, gear changes, tyres, sirens, civilians, combat, police and future world props. Silence between events is part of the mix rather than a missing layer.
 
 ## Explicitly deferred from the playtest P0
 
@@ -115,6 +117,6 @@ The current playtest disables Shadow Dash and Blood Sense, and rooftop/sewer tra
 
 The original first batch was:
 
-`step`, `weaponFire`, `bulletHitBody`, `drainStart`, `drainLoop`, `drainComplete`, `whisper`, `civilianScream`, `policeSirenLoop`, `vehicleEngineDrive`, `vehicleCollisionHeavy`, `ambienceStreetNight`.
+`step`, `weaponFire`, `bulletHitBody`, `drainStart`, `drainLoop`, `drainComplete`, `whisper`, `civilianScream`, `policeSirenLoop`, `vehicleEngineDrive`, `vehicleCollisionHeavy`.
 
-`weaponFire`, `bulletHitBody` and `civilianScream` are integrated and listening accepted. `policeSirenLoop` is integrated and awaits in-game listening acceptance. The feeding family is fully materialized and wired but still needs human listening acceptance before it is marked done. With `policeSirenLoop` and `vehicleSkidLoop` now wired as listening candidates, continue sourcing with `ambienceStreetNight`. `bulletHitWorld` remains a separate firearm-material family and must never reuse `bulletHitBody`.
+`weaponFire`, `bulletHitBody`, `civilianScream` and `vehicleSkidLoop` are integrated and listening accepted. `policeSirenLoop` is integrated and awaits in-game listening acceptance. The feeding family is fully materialized and wired but still needs human listening acceptance before it is marked done. `vehicleEngine` now has systemic gear/RPM wiring for player, civilian traffic and police, but still needs a sourced engine recording if the procedural timbre is to be replaced. There is deliberately no fixed city/traffic ambience sourcing task. `bulletHitWorld` remains a separate firearm-material family and must never reuse `bulletHitBody`.

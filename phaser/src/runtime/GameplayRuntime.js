@@ -19,6 +19,7 @@ import { TrafficImpactConsequencesSystem } from "../streaming/TrafficImpactConse
 import { TrafficLocalBehaviorSystem } from "../streaming/TrafficLocalBehaviorSystem.js";
 import { TrafficMaterializationSystem } from "../streaming/TrafficMaterializationSystem.js";
 import { TrafficPhysicalConsequencesSystem } from "../streaming/TrafficPhysicalConsequencesSystem.js";
+import { RawAudio } from "../systems/RawAudioSystem.js";
 import { installVehicleCollisionSofteningPolicy } from "../vehicles/VehicleCollisionSofteningPolicy.js";
 import { VehicleSystem } from "../vehicles/VehicleSystem.js";
 import { GameplayRuntime as GameplayRuntimeCore } from "./GameplayRuntimeCore.js";
@@ -108,6 +109,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     const originalBeginFrame = input?.beginFrame;
     const originalCollectInteractions = scene.collectInteractions;
     const dt = Math.min(Math.max(0, Number(deltaMs) || 0) / 1000, 0.05);
+    RawAudio.beginVehicleEngineFrame({ paused: Boolean(scene.registry?.get?.("uiPaused")) });
 
     scene.cityStreamSystem?.update?.();
     scene.districtPackSystem?.update?.();
@@ -153,6 +155,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     } finally {
       if (input && originalBeginFrame) input.beginFrame = originalBeginFrame;
       if (originalCollectInteractions) scene.collectInteractions = originalCollectInteractions;
+      RawAudio.endVehicleEngineFrame();
     }
     scene.territoryRuntimeSystem?.update?.();
   }
@@ -165,6 +168,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
   }
 
   destroy() {
+    RawAudio.stopAllVehicleEngines();
     this.scene.huntingLawRuntimeSystem?.destroy?.();
     this.scene.huntingLawRuntimeSystem = null;
     this.scene.territoryRuntimeSystem?.destroy?.();

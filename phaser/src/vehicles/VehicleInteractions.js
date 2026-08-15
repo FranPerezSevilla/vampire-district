@@ -209,6 +209,7 @@ export function exitVehicle(system, { force = false } = {}) {
   vehicle.handbrake = false;
   system.handbrakeActive = false;
   system.currentVehicleId = null;
+  RawAudio.stopVehicleEngine(`player:${vehicle.id}`);
   restoreStreetControl(system.scene, exitPoint);
   system.cameraLookAheadX = 0;
   system.cameraLookAheadY = 0;

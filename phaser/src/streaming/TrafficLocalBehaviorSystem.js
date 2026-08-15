@@ -1,4 +1,6 @@
 import { LAYERS } from "../data/district.js";
+import { RawAudio } from "../systems/RawAudioSystem.js";
+import { stepPresentationTransmission, vehicleEngineTelemetry } from "../vehicles/VehicleEngineModel.js";
 
 function finite(value, fallback = 0) {
   if (value === null || value === undefined || value === "") return fallback;
@@ -197,7 +199,11 @@ export class TrafficLocalBehaviorSystem {
         gap: null,
         lag: 0,
         stoppedSeconds: 0,
-        junctionId: null
+        junctionId: null,
+        engineSpeed: 0,
+        engineGear: 1,
+        engineGearShiftTimer: 0,
+        engineRpm: 0.18
       };
       this.states.set(token.tokenId, state);
     }
@@ -372,6 +378,18 @@ export class TrafficLocalBehaviorSystem {
     const travelSeconds = Math.max(1, finite(edge?.travelSeconds, 6));
     const available = Math.max(0, state.authorityTravel - state.visualTravel);
     const advance = Math.min(available, seconds / travelSeconds * Math.max(0, state.speedFactor));
+    const cruiseSpeed = decision.lane ? decision.lane.length / travelSeconds : 60;
+    const measuredSpeed = seconds > 0.0001 && decision.lane
+      ? advance * decision.lane.length / seconds
+      : state.engineSpeed;
+    state.engineSpeed = moveToward(state.engineSpeed, measuredSpeed, Math.max(50, cruiseSpeed * 4) * seconds);
+    const engineMaxSpeed = Math.max(45, cruiseSpeed * Math.max(1.12, this.catchUpSpeed) * 1.08);
+    const transmission = stepPresentationTransmission({
+      gear: state.engineGear,
+      gearShiftTimer: state.engineGearShiftTimer
+    }, state.engineSpeed, seconds, slot.archetype, { maxSpeed: engineMaxSpeed });
+    state.engineGear = transmission.gear;
+    state.engineGearShiftTimer = transmission.gearShiftTimer;
     state.visualTravel += advance;
     state.lag = Math.max(0, state.authorityTravel - state.visualTravel);
 
@@ -398,6 +416,28 @@ export class TrafficLocalBehaviorSystem {
       .setActive(true)
       .setVisible(this.scene.currentLayer === LAYERS.STREET);
     slot.visual?.label?.setRotation?.(-slot.angle);
+    const listener = this.vehicleSystem.currentVehicle?.() || this.scene.player || { x: slot.x, y: slot.y };
+    const throttle = state.desiredSpeedFactor > state.speedFactor + 0.02
+      ? 0.82
+      : state.speedFactor <= 0.03 ? 0.10 : 0.38;
+    const engine = vehicleEngineTelemetry({
+      speed: state.engineSpeed,
+      archetype: slot.archetype,
+      gear: state.engineGear,
+      gearShiftTimer: state.engineGearShiftTimer,
+      throttle,
+      x: slot.x,
+      y: slot.y,
+      listener,
+      maxSpeed: engineMaxSpeed,
+      maxDistance: 560
+    });
+    state.engineRpm = engine.rpm;
+    slot.engineSpeed = state.engineSpeed;
+    slot.gear = state.engineGear;
+    slot.gearShiftTimer = state.engineGearShiftTimer;
+    slot.engineRpm = state.engineRpm;
+    RawAudio.updateVehicleEngine(`traffic:${state.tokenId}`, { ...engine, priority: 0 });
     return slot;
   }
 
@@ -442,7 +482,10 @@ export class TrafficLocalBehaviorSystem {
       activeIds.add(token.tokenId);
     }
     for (const tokenId of this.states.keys()) {
-      if (!activeIds.has(tokenId)) this.states.delete(tokenId);
+      if (!activeIds.has(tokenId)) {
+        this.states.delete(tokenId);
+        RawAudio.stopVehicleEngine(`traffic:${tokenId}`);
+      }
     }
 
     const decisions = active.map(item => ({ ...item, decision: this.decisionFor(item.slot, item.state, item.token, active) }));
@@ -475,7 +518,10 @@ export class TrafficLocalBehaviorSystem {
         gap: state.gap === null ? null : round(state.gap, 1),
         blockerId: state.blockerId || null,
         junctionId: state.junctionId || null,
-        stoppedSeconds: round(state.stoppedSeconds, 2)
+        stoppedSeconds: round(state.stoppedSeconds, 2),
+        engineSpeed: round(state.engineSpeed, 1),
+        gear: state.engineGear,
+        engineRpm: round(state.engineRpm, 3)
       }))
       .sort((left, right) => left.slotIndex - right.slotIndex);
     return {
@@ -533,6 +579,7 @@ export class TrafficLocalBehaviorSystem {
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
+    for (const tokenId of this.states.keys()) RawAudio.stopVehicleEngine(`traffic:${tokenId}`);
     this.states.clear();
     this.laneCache.clear();
     this.junctionProjectionCache.clear();

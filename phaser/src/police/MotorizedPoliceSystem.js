@@ -1,6 +1,8 @@
 import { LAYERS } from "../data/district.js";
 import { vehicleArchetype } from "../data/vehicles.js";
 import { pointAlongPolyline } from "../streaming/TrafficMaterializationSystem.js";
+import { RawAudio } from "../systems/RawAudioSystem.js";
+import { stepPresentationTransmission, vehicleEngineTelemetry } from "../vehicles/VehicleEngineModel.js";
 import { paintVehicle } from "../vehicles/VehicleView.js";
 import {
   advancePoliceRoute,
@@ -40,6 +42,15 @@ function distance(a, b) {
 
 function cloneMemory(memory) {
   return memory ? { ...memory } : null;
+}
+
+function polylineLength(points) {
+  const list = Array.isArray(points) ? points : [];
+  let total = 0;
+  for (let index = 0; index < list.length - 1; index++) {
+    total += Math.hypot(finite(list[index + 1]?.x) - finite(list[index]?.x), finite(list[index + 1]?.y) - finite(list[index]?.y));
+  }
+  return total;
 }
 
 export class MotorizedPoliceSystem {
@@ -255,6 +266,10 @@ export class MotorizedPoliceSystem {
       blockedSeconds: 0,
       impactCooldown: 0,
       visible: false,
+      engineSpeed: 0,
+      engineGear: 1,
+      engineGearShiftTimer: 0,
+      engineRpm: 0.18,
       deploymentReason: level >= 3 ? "wanted-three" : "wanted-two"
     };
     this.routeUnit(unit, targetDistrictId, { force: true });
@@ -376,6 +391,49 @@ export class MotorizedPoliceSystem {
     return visible;
   }
 
+  engineReferenceSpeed(unit, level) {
+    const leg = unit?.legs?.[unit.legIndex];
+    if (!leg) return 80;
+    const base = polylineLength(leg.points) / Math.max(0.25, finite(leg.travelSeconds, 6));
+    return Math.max(65, base * (2.35 + Math.max(0, finite(level)) * 0.15));
+  }
+
+  updateEngineAudio(unit, dt, level, previousPoint = null) {
+    const archetype = this.slots[unit.index]?.archetype || vehicleArchetype("police");
+    if (!unit || !archetype || unit.disabled) {
+      if (unit?.id) RawAudio.stopVehicleEngine(`police:${unit.id}`);
+      return false;
+    }
+    const seconds = Math.max(0, finite(dt));
+    const moved = previousPoint && seconds > 0.0001
+      ? Math.hypot(unit.x - previousPoint.x, unit.y - previousPoint.y) / seconds
+      : 0;
+    const movingSpeed = unit.officersDismounted || unit.arrived ? 0 : moved;
+    const referenceSpeed = this.engineReferenceSpeed(unit, level);
+    const transmission = stepPresentationTransmission({
+      gear: unit.engineGear,
+      gearShiftTimer: unit.engineGearShiftTimer
+    }, movingSpeed, seconds, archetype, { maxSpeed: referenceSpeed });
+    unit.engineSpeed = movingSpeed;
+    unit.engineGear = transmission.gear;
+    unit.engineGearShiftTimer = transmission.gearShiftTimer;
+    const listener = this.vehicleSystem.currentVehicle?.() || this.scene.player || { x: unit.x, y: unit.y };
+    const engine = vehicleEngineTelemetry({
+      speed: unit.engineSpeed,
+      archetype,
+      gear: unit.engineGear,
+      gearShiftTimer: unit.engineGearShiftTimer,
+      throttle: unit.engineSpeed > 1 ? 0.78 : 0.10,
+      x: unit.x,
+      y: unit.y,
+      listener,
+      maxSpeed: referenceSpeed,
+      maxDistance: 720
+    });
+    unit.engineRpm = engine.rpm;
+    return RawAudio.updateVehicleEngine(`police:${unit.id}`, { ...engine, priority: 2 });
+  }
+
   releaseSlot(index) {
     const slot = this.slots[index];
     if (!slot) return false;
@@ -386,10 +444,12 @@ export class MotorizedPoliceSystem {
 
   updateUnit(unit, dt, level, focus, targetDistrictId) {
     unit.impactCooldown = Math.max(0, finite(unit.impactCooldown) - dt);
+    const previousPoint = { x: unit.x, y: unit.y };
 
     if (unit.officersDismounted || unit.disabled) {
       unit.status = unit.disabled ? "disabled" : "officers-deployed";
       this.updateSlot(unit, focus);
+      this.updateEngineAudio(unit, dt, level, previousPoint);
       if (unit.disabled && !unit.officersDismounted) this.dismountUnit(unit.id, "disabled-cruiser");
       this.processPlayerImpact(unit);
       return;
@@ -430,6 +490,7 @@ export class MotorizedPoliceSystem {
     }
 
     this.updateSlot(unit, focus);
+    this.updateEngineAudio(unit, dt, level, previousPoint);
     this.processPlayerImpact(unit);
 
     if (!unit.visible || this.scene.currentLayer !== LAYERS.STREET) return;
@@ -579,7 +640,10 @@ export class MotorizedPoliceSystem {
         visible: unit.visible,
         blockedSeconds: round(unit.blockedSeconds, 3),
         officersDismounted: unit.officersDismounted,
-        officerIds: [...unit.officerIds]
+        officerIds: [...unit.officerIds],
+        engineSpeed: round(unit.engineSpeed, 1),
+        gear: unit.engineGear,
+        engineRpm: round(unit.engineRpm, 3)
       })),
       initializationError: this.initializationError ? String(this.initializationError.message || this.initializationError) : null
     };
@@ -619,6 +683,7 @@ export class MotorizedPoliceSystem {
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
+    for (const unit of this.units) RawAudio.stopVehicleEngine(`police:${unit.id}`);
     if (this.vehicleSystem && this.vehicleSystem.canOccupy === this.motorizedAwareCanOccupy) {
       this.vehicleSystem.canOccupy = this.originalVehicleCanOccupy;
     }
