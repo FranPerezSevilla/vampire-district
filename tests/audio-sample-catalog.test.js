@@ -34,6 +34,10 @@ const CIVILIAN_SCREAM_FILES = [
   "phaser/assets/audio/civilians/civilian-scream-06.mp3"
 ];
 
+const POLICE_SIREN_FILES = [
+  "phaser/assets/audio/police/police-siren-loop-01.wav"
+];
+
 function repoFile(path) {
   return new URL(`../${path}`, import.meta.url);
 }
@@ -141,6 +145,22 @@ test("civilianScream fires once when an alarmed witness leaves shock and starts 
 
   const rawAudioSource = readFileSync(repoFile("phaser/src/systems/RawAudioSystem.js"), "utf8");
   assert.match(rawAudioSource, /case "civilianScream": return this\.gasp\(\);/);
+});
+
+test("policeSirenLoop is a gap-safe spatial police-car runtime loop", () => {
+  assert.deepEqual(SAMPLE_AUDIO_CATALOG.policeSirenLoop.files, POLICE_SIREN_FILES);
+  assert.equal(SAMPLE_AUDIO_CATALOG.policeSirenLoop.volume, 0.72);
+  assert.equal(SAMPLE_AUDIO_CATALOG.policeSirenLoop.loop, true);
+  assertWavFiles(POLICE_SIREN_FILES);
+
+  const policySource = readFileSync(repoFile("phaser/src/police/MotorizedPoliceLocalPolicy.js"), "utf8");
+  assert.match(policySource, /POLICE_SIREN_AUDIBLE_RADIUS = 1080/);
+  assert.match(policySource, /RawAudio\.sampleBuffers\?\.get\?\.\(POLICE_SIREN_EVENT\)/);
+  assert.match(policySource, /source\.loop = true/);
+  assert.match(policySource, /createStereoPanner/);
+  assert.match(policySource, /Math\.pow\(proximity, 1\.35\)/);
+  assert.match(policySource, /if \(!unit \|\| unit\.disabled\) continue;/);
+  assert.doesNotMatch(policySource, /addHeat/);
 });
 
 test("playtest Audio Lab previews catalogue events and exact variants without gameplay", () => {
