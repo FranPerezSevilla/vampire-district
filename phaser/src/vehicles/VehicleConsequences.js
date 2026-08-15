@@ -2,6 +2,7 @@ import { CAMPAIGN_EVENT_TYPES } from "../campaign/constants.js";
 import { LAYERS } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 import { VEHICLE_OWNERSHIP } from "../data/vehicles.js";
+import { RawAudio } from "../systems/RawAudioSystem.js";
 import { planVehiclePedestrianImpactHeat } from "./VehiclePedestrianImpactPolicy.js";
 
 const PEDESTRIAN_TYPES = new Set([
@@ -137,6 +138,7 @@ export function collideVehicleWithPedestrians(system, vehicle) {
     system.pedestrianCooldowns.set(npc.id, 1.25);
 
     const lethal = impactSpeed >= 82;
+    RawAudio.play("civilianScream", { cooldown: 0.75 });
     if (lethal) {
       system.scene.npcSystem?.markKilled?.(npc);
       system.scene.evidenceSystem?.onKillCompleted?.(npc);
