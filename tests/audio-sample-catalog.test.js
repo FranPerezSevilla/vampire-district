@@ -128,7 +128,7 @@ test("feeding lifecycle starts one stateful bite loop and stops it on every exit
 
 test("civilianScream registers six browser-compatible panic variants under one event", () => {
   assert.deepEqual(SAMPLE_AUDIO_CATALOG.civilianScream.files, CIVILIAN_SCREAM_FILES);
-  assert.equal(SAMPLE_AUDIO_CATALOG.civilianScream.volume, 1.0);
+  assert.equal(SAMPLE_AUDIO_CATALOG.civilianScream.volume, 0.82);
   assertMp3Files(CIVILIAN_SCREAM_FILES);
 });
 
