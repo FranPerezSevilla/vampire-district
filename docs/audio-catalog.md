@@ -15,7 +15,7 @@ The old audio catalogue lived in PR #44 (`agent/expand-audio-catalog`). That PR 
 - `weaponFire` — **integrated on PR #55**: three processed handgun variants under `phaser/assets/audio/combat/`, sample-backed playback through one stable event ID, WebKit-compatible MP3 runtime mirrors, and the previous procedural pistol sound retained as a loading/decoding fallback.
 - `bulletHitBody` — **integrated on PR #55**: the accepted processed impact sample plays only from the confirmed `combat:hit` path for hitscan weapons. Props/world geometry and vehicles do not emit that event, so they never receive the body-impact sound. The current family has one accepted runtime variant; extra variants are polish, not a blocker.
 - `drainStart` / `drainLoop` / `drainComplete` — **wired candidate on PR #55, pending listening acceptance**: one coherent KatjaSavia/Pixabay performance is split into a masculine-shifted start breath, an original-pitch bite loop and a masculine-shifted release. Runtime files are committed, the bite uses a stateful PCM WAV loop, and gameplay starts/stops it with the feeding lifecycle rather than retriggering it every frame.
-- `civilianScream` — **integrated + listening accepted on PR #55**: six WebKit-compatible MP3 runtime variants share one stable event ID. Variants 01–03 remain masculine; 04–06 are deliberately female-sounding DSP derivatives of the same Universfield male performance, not separate female recordings. Panic audio now reacts to gunfire in three useful places: a civilian who sees their first gunshot screams immediately, nearby civilians who only hear gunfire can also scream without becoming visual witnesses, and an alarmed civilian can still scream as shock ends and flight/reporting begins. The shared event cooldown prevents a crowd from becoming an uncontrolled scream stack.
+- `civilianScream` — **integrated + listening accepted on PR #55**: six WebKit-compatible MP3 runtime variants share one stable event ID. Variants 01–03 remain masculine; 04–06 are deliberately female-sounding DSP derivatives of the same Universfield male performance, not separate female recordings. Panic audio reacts to gunfire and vehicle-pedestrian impacts: a civilian who sees their first gunshot screams immediately, nearby civilians who only hear gunfire can also scream without becoming visual witnesses, an alarmed civilian can still scream as shock ends and flight/reporting begins, and a pedestrian struck by the player's vehicle screams at the confirmed impact. Visual bystanders to an atropello continue through the existing mundane-violence shock/flight path. The shared event cooldown prevents crowds from becoming an uncontrolled scream stack.
 
 ## Audio Lab
 
@@ -63,7 +63,7 @@ Do not try to fill the full production catalogue before testing. For the current
 - `witnessWtf` — startled gasp/reaction
 - `witnessRun` — old procedural panic accent; superseded by `civilianScream` for real civilian panic
 - `witnessReport` — report/call consequence cue
-- `civilianScream` — **done for the current playtest:** 6 accepted variants, 01–03 masculine and 04–06 female-sounding derivatives; reacts to first visible gunfire, nearby heard-only gunfire, and panic-to-flee transition with cooldown protection
+- `civilianScream` — **done for the current playtest:** 6 accepted variants, 01–03 masculine and 04–06 female-sounding derivatives; reacts to first visible gunfire, nearby heard-only gunfire, panic-to-flee transition and confirmed vehicle-pedestrian impacts, with cooldown protection
 
 ### Police
 
@@ -83,7 +83,7 @@ Do not try to fill the full production catalogue before testing. For the current
 - `vehicleSkidLoop`
 - `vehicleCollisionLight` — 3–4 variants
 - `vehicleCollisionHeavy` — 3 variants
-- `vehicleHitPedestrian` — 2–3 variants
+- `vehicleHitPedestrian` — 2–3 variants; future material-impact layer, separate from the existing human scream reaction
 - `vehicleHorn` — 3–4 variants
 
 ### UI / city bed
