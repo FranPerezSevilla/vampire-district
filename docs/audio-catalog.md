@@ -85,8 +85,8 @@ Do not try to fill the full production catalogue before testing. For the current
 - `vehicleHandbrake`
 - `vehicleSkidLoop` — **done for the current playtest:** real gap-sensitive PCM loop sustained while aggressive drifting continues; listening accepted
 - `vehicleEngine` — **systemic candidate:** automatic gears drive RPM/pitch for the player, local civilian traffic and police cruisers; current timbre is procedural until a real engine source is supplied
-- `vehicleCollisionLight` — 3–4 variants
-- `vehicleCollisionHeavy` — 3 variants
+- `vehicleCollisionLight` — **procedural candidate on PR #55:** dedicated light bodywork/metal feedback now replaces the unrelated `bodyDrop` placeholder; real 3–4 sample variants remain a sourcing task
+- `vehicleCollisionHeavy` — **procedural candidate on PR #55:** impact-speed classification selects a heavier crash fallback; real 3 sample variants remain a sourcing task
 - `vehicleHitPedestrian` — 2–3 variants; future material-impact layer, separate from the existing human scream reaction
 - `vehicleHorn` — 3–4 variants
 
@@ -95,7 +95,7 @@ Do not try to fill the full production catalogue before testing. For the current
 - `confirm`, `cancel`, `menu`
 - `objectiveUpdated`
 
-Viceblood intentionally has **no continuous `ambienceStreetNight` or `trafficAmbience` bed** in the current direction. Urban ambience must emerge from spatial systemic sources: player/NPC engines, gear changes, tyres, sirens, civilians, combat, police and future world props. Silence between events is part of the mix rather than a missing layer.
+Viceblood intentionally has **no continuous `ambienceStreetNight` or `trafficAmbience` bed** in the current direction. Urban ambience must emerge from spatial systemic sources: player/NPC engines, gear changes, tyres, sirens, civilians, combat, police and future world props. Silence between events is part of the mix rather than a missing layer. Ordinary car-to-car contact is treated as mundane traffic and does not create Heat; colliding with a police vehicle remains an explicit exception.
 
 ## Explicitly deferred from the playtest P0
 

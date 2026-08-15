@@ -15,6 +15,7 @@ import {
   vehicleSlideCandidates
 } from "./VehicleModel.js";
 import { collideVehicleWithPedestrians } from "./VehicleConsequences.js";
+import { vehicleCollisionAudioEvent } from "./VehicleCollisionAudioModel.js";
 import { vehicleEngineTelemetry } from "./VehicleEngineModel.js";
 
 const VEHICLE_COLLISION_RADIUS_PADDING = 1;
@@ -271,6 +272,7 @@ export function canVehicleOccupy(system, vehicle, x, y, angle) {
 
 export function handleVehicleWorldCollision(system, vehicle, impactSpeed) {
   const impact = Math.abs(Number(impactSpeed) || 0);
+  const contact = system.vehicleCollisionContact || null;
   const direction = Math.sign(vehicle.speed || impactSpeed || 1);
   vehicle.speed = direction * Math.min(5, impact * 0.025);
   vehicle.travelAngle = rotateTowardAngle(vehicle.travelAngle ?? vehicle.angle, vehicle.angle, 0.12);
@@ -280,11 +282,32 @@ export function handleVehicleWorldCollision(system, vehicle, impactSpeed) {
 
   const damage = vehicleImpactDamage(impact, { threshold: 36, scale: 0.11 });
   if (damage > 0) system.damageVehicle(vehicle.id, damage, { reason: "collision", persist: false });
-  if (impact >= 44 && system.crashCooldown <= 0) {
+  const collisionEvent = vehicleCollisionAudioEvent(impact);
+  if (collisionEvent && system.crashCooldown <= 0) {
     system.crashCooldown = 0.48;
-    RawAudio.play("bodyDrop", { cooldown: 0.4 });
-    system.scene.policeSystem?.addHeat?.(vehicle.x, vehicle.y, Math.min(24, Math.max(4, impact * 0.12)), `${vehicle.name} crashes into the streetscape`, { source: "vehicle_crash" });
-    system.scene.lastActionText = `${vehicle.name} collision · hull ${vehicleHealthPercent(vehicle.health, vehicle.archetype.maxHealth)}%.`;
+    // VehicleCollisionSofteningPolicy owns car-to-car sound and consequences
+    // because it knows the concrete target. This path owns walls/streetscape.
+    if (!contact) {
+      RawAudio.play(collisionEvent, { cooldown: 0.28 });
+      system.scene.policeSystem?.addHeat?.(
+        vehicle.x,
+        vehicle.y,
+        Math.min(24, Math.max(4, impact * 0.12)),
+        `${vehicle.name} crashes into the streetscape`,
+        { source: "vehicle_crash" }
+      );
+    }
+    system.scene.events?.emit?.("vehicle:collision", {
+      vehicleId: vehicle.id,
+      targetId: contact?.targetId || null,
+      targetKind: contact?.targetKind || "world",
+      policeTarget: Boolean(contact?.police),
+      impactSpeed: impact,
+      audioEvent: collisionEvent
+    });
+    system.scene.lastActionText = contact
+      ? `${vehicle.name} vehicle contact · hull ${vehicleHealthPercent(vehicle.health, vehicle.archetype.maxHealth)}%.`
+      : `${vehicle.name} collision · hull ${vehicleHealthPercent(vehicle.health, vehicle.archetype.maxHealth)}%.`;
   }
 }
 
