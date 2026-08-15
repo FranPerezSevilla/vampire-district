@@ -18,7 +18,7 @@ The old audio catalogue lived in PR #44 (`agent/expand-audio-catalog`). That PR 
 - `civilianScream` — **integrated + listening accepted on PR #55**: six WebKit-compatible MP3 runtime variants share one stable event ID. Variants 01–03 remain masculine; 04–06 are deliberately female-sounding DSP derivatives of the same Universfield male performance, not separate female recordings. Panic audio reacts to gunfire and vehicle-pedestrian impacts: a civilian who sees their first gunshot screams immediately, nearby civilians who only hear gunfire can also scream without becoming visual witnesses, an alarmed civilian can still scream as shock ends and flight/reporting begins, and a pedestrian struck by the player's vehicle screams at the confirmed impact. Visual bystanders to an atropello continue through the existing mundane-violence shock/flight path. The shared event cooldown prevents crowds from becoming an uncontrolled scream stack.
 - `policeSirenLoop` — **integrated candidate on PR #55, pending listening acceptance**: the supplied szpury/Freesound siren is kept at its authored loop boundaries and materialized as a PCM WAV runtime loop. Each motorized police cruiser owns an independent instance with distance attenuation and stereo pan. The loop can become audible before the cruiser is rendered locally, grows as the unit approaches, remains attached to the cruiser after officers dismount, and stops when the unit retires, is disabled, leaves audible range, the player leaves street level, or UI pause owns the scene.
 - `vehicleSkidLoop` — **integrated + listening accepted on PR #55**: the supplied MagiaZ tyre skid is trimmed into a gap-sensitive PCM WAV loop. Aggressive-driving pulses sustain one stateful loop while the drift continues and let it stop shortly after the skid ends; civilian panic remains a separate non-reporting reaction with no Heat.
-- `vehicleEngine` — **procedural systemic candidate on PR #55, pending driving-mix acceptance**: player vehicles, materialized civilian traffic and motorized police share gear-aware RPM telemetry. RawAudio owns up to ten prioritized spatial engine voices so nearby cars create the city soundscape without a fixed ambience bed. The current oscillator voice is a placeholder transport layer; a future sourced engine recording can replace the timbre without changing gearbox/RPM ownership.
+- `vehicleEngine` — **systemic mix accepted, gearbox cadence retuned on PR #55**: player vehicles, materialized civilian traffic and motorized police share gear-aware RPM telemetry. RawAudio owns up to ten prioritized spatial engine voices so nearby cars create the city soundscape without a fixed ambience bed. Playtest feedback accepted the systemic car-audio management but found the automatic upshifts too rapid, so each archetype now separates a short torque/RPM cut from a longer per-gear dwell and adds a short first-gear hold. The current oscillator timbre remains replaceable later without changing gearbox/RPM ownership.
 
 ## Audio Lab
 
@@ -56,9 +56,9 @@ Do not try to fill the full production catalogue before testing. For the current
 
 ### Feeding
 
-- `drainStart` — **wired candidate:** masculine-shifted breath/contact cue from the supplied source
-- `drainLoop` — **wired candidate:** original-pitch bite section, state-driven PCM WAV loop
-- `drainComplete` — **wired candidate:** masculine-shifted release from the same performance
+- `drainStart` — **listening accepted:** masculine-shifted breath/contact cue; slightly lifted in the narrative mix
+- `drainLoop` — **listening accepted:** original-pitch bite section, state-driven PCM WAV loop on the narrative bus
+- `drainComplete` — **listening accepted:** masculine-shifted release; slightly lifted in the narrative mix
 - `drainCancel` — interrupted feeding; procedural fallback remains for now
 
 ### Civilians / witnesses
@@ -84,7 +84,7 @@ Do not try to fill the full production catalogue before testing. For the current
 - `vehicleEngineBrake`
 - `vehicleHandbrake`
 - `vehicleSkidLoop` — **done for the current playtest:** real gap-sensitive PCM loop sustained while aggressive drifting continues; listening accepted
-- `vehicleEngine` — **systemic candidate:** automatic gears drive RPM/pitch for the player, local civilian traffic and police cruisers; current timbre is procedural until a real engine source is supplied
+- `vehicleEngine` — **systemic mix accepted, cadence retuned:** automatic gears drive RPM/pitch for the player, local civilian traffic and police cruisers; current timbre remains procedural and replaceable later
 - `vehicleCollisionLight` — **procedural candidate on PR #55:** dedicated light bodywork/metal feedback now replaces the unrelated `bodyDrop` placeholder; real 3–4 sample variants remain a sourcing task
 - `vehicleCollisionHeavy` — **procedural candidate on PR #55:** impact-speed classification selects a heavier crash fallback; real 3 sample variants remain a sourcing task
 - `vehicleHitPedestrian` — 2–3 variants; future material-impact layer, separate from the existing human scream reaction
@@ -119,4 +119,4 @@ The original first batch was:
 
 `step`, `weaponFire`, `bulletHitBody`, `drainStart`, `drainLoop`, `drainComplete`, `whisper`, `civilianScream`, `policeSirenLoop`, `vehicleEngineDrive`, `vehicleCollisionHeavy`.
 
-`weaponFire`, `bulletHitBody`, `civilianScream` and `vehicleSkidLoop` are integrated and listening accepted. `policeSirenLoop` is integrated and awaits in-game listening acceptance. The feeding family is fully materialized and wired but still needs human listening acceptance before it is marked done. `vehicleEngine` now has systemic gear/RPM wiring for player, civilian traffic and police. After playtest feedback that automatic upshifts were effectively rapid-fire, each archetype now separates the short torque/RPM shift cut from a longer per-gear dwell, including a first-gear hold, without reducing the established arcade acceleration. It still needs a sourced engine recording only if the procedural timbre itself is to be replaced. There is deliberately no fixed city/traffic ambience sourcing task. `bulletHitWorld` remains a separate firearm-material family and must never reuse `bulletHitBody`.
+`weaponFire`, `bulletHitBody`, `civilianScream`, `vehicleSkidLoop` and the feeding sound character are listening accepted. `policeSirenLoop` is integrated and awaits in-game listening acceptance. Feeding now needs only a quick confirmation of the new narrative ducking/level balance. The systemic vehicle-engine mix is accepted; after feedback that automatic upshifts were effectively rapid-fire, each archetype now separates the short torque/RPM shift cut from a longer per-gear dwell, including a first-gear hold, without reducing the established arcade acceleration. The procedural engine recording only needs replacement later if its timbre itself becomes a problem. There is deliberately no fixed city/traffic ambience sourcing task. `bulletHitWorld` remains a separate firearm-material family and must never reuse `bulletHitBody`.
