@@ -16,6 +16,7 @@ class RawAudioBus {
     this.sampleCursor = Object.create(null);
     this.sampleLoops = new Map();
     this.sampleLoopWanted = new Set();
+    this.sampleLoopTimers = new Map();
   }
 
   ensureListeners() {
@@ -146,8 +147,27 @@ class RawAudioBus {
     }
   }
 
+  pulseSampleLoop(name, options = {}) {
+    const hold = Math.max(0.16, Number(options.hold) || 0.34);
+    const started = this.startSampleLoop(name, options);
+    const previousTimer = this.sampleLoopTimers.get(name);
+    if (previousTimer && typeof window !== "undefined") window.clearTimeout(previousTimer);
+    if (typeof window !== "undefined") {
+      const timer = window.setTimeout(() => {
+        this.sampleLoopTimers.delete(name);
+        this.stopSampleLoop(name);
+      }, hold * 1000);
+      this.sampleLoopTimers.set(name, timer);
+    }
+    if (!started && name === "vehicleSkidLoop") this.vehicleSkid();
+    return started;
+  }
+
   stopSampleLoop(name) {
     this.sampleLoopWanted.delete(name);
+    const timer = this.sampleLoopTimers.get(name);
+    if (timer && typeof window !== "undefined") window.clearTimeout(timer);
+    this.sampleLoopTimers.delete(name);
     const handle = this.sampleLoops.get(name);
     if (!handle) return false;
     this.sampleLoops.delete(name);
@@ -183,6 +203,11 @@ class RawAudioBus {
     const gap = options.cooldown ?? this.defaultCooldown(name);
     if (this.cooldowns[name] && this.cooldowns[name] > now) return;
     this.cooldowns[name] = now + gap;
+
+    if (name === "vehicleSkidLoop" && sampleAudioDefinition(name)?.loop) {
+      this.pulseSampleLoop(name, { ...options, hold: 0.34 });
+      return;
+    }
 
     if (this.playSample(name, options)) return;
 
