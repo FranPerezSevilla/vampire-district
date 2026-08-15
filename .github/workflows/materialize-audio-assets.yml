@@ -1,5 +1,4 @@
 name: Materialize staged audio assets
-# Temporary retry hook for the skid integration; removed after this run.
 
 on:
   push:
@@ -42,18 +41,27 @@ jobs:
               | sed -E 's/\.part-[0-9]+$//' \
               | sort -u
           )
+
           for prefix in "${groups[@]}"; do
             parts=("${prefix}.part-"*)
-            if [[ "${#parts[@]}" -eq 0 ]]; then continue; fi
+            if [[ "${#parts[@]}" -eq 0 ]]; then
+              continue
+            fi
+
+            # Connector-safe staging may live in an _staging directory so the
+            # individual text chunks do not trigger this workflow. Reassemble
+            # beside the final audio asset, then let the normal decoder own it.
             if [[ "$(basename "$(dirname "$prefix")")" == "_staging" ]]; then
               target="$(dirname "$(dirname "$prefix")")/$(basename "$prefix")"
             else
               target="$prefix"
             fi
+
             cat "${parts[@]}" > "$target"
             rm -f "${parts[@]}"
             echo "Reassembled $target from ${#parts[@]} chunk(s)"
           done
+
           find phaser/assets/audio -type d -name '_staging' -empty -delete
 
       - name: Decode staged OGG payloads
@@ -73,7 +81,10 @@ jobs:
             rm "$staged"
             echo "Materialized $output"
           done < <(find phaser/assets/audio -type f -name '*.ogg.b64' -print0)
-          if [[ "$found" -eq 0 ]]; then echo "No staged OGG payloads found."; fi
+
+          if [[ "$found" -eq 0 ]]; then
+            echo "No staged OGG payloads found."
+          fi
 
       - name: Generate browser-compatible runtime mirrors
         shell: bash
@@ -83,30 +94,37 @@ jobs:
           while IFS= read -r -d '' ogg; do
             found=1
             mp3="${ogg%.ogg}.mp3"
-            ffmpeg -nostdin -hide_banner -loglevel error -y -i "$ogg" -map_metadata -1 -ac 1 -ar 44100 -codec:a libmp3lame -q:a 4 "$mp3"
+            ffmpeg -nostdin -hide_banner -loglevel error -y \
+              -i "$ogg" \
+              -map_metadata -1 \
+              -ac 1 \
+              -ar 44100 \
+              -codec:a libmp3lame \
+              -q:a 4 \
+              "$mp3"
             ffprobe -v error -select_streams a:0 -show_entries stream=codec_name,sample_rate,channels -of csv=p=0 "$mp3"
+            echo "Generated $mp3"
+
+            # Short state-driven loops use PCM WAV in the Web Audio runtime.
+            # This keeps older WebKit compatibility while avoiding MP3 encoder
+            # padding at the loop boundary. OGG remains the working derivative.
             if [[ "$ogg" == *-loop-*.ogg ]]; then
               wav="${ogg%.ogg}.wav"
-              ffmpeg -nostdin -hide_banner -loglevel error -y -i "$ogg" -map_metadata -1 -ac 1 -ar 44100 -codec:a pcm_s16le "$wav"
+              ffmpeg -nostdin -hide_banner -loglevel error -y \
+                -i "$ogg" \
+                -map_metadata -1 \
+                -ac 1 \
+                -ar 44100 \
+                -codec:a pcm_s16le \
+                "$wav"
               ffprobe -v error -select_streams a:0 -show_entries stream=codec_name,sample_rate,channels -of csv=p=0 "$wav"
+              echo "Generated $wav"
             fi
           done < <(find phaser/assets/audio -type f -name '*.ogg' -print0)
-          if [[ "$found" -eq 0 ]]; then echo "No OGG runtime assets found."; fi
 
-      # TEMP_SKID_INTEGRATION_BEGIN
-      - name: Integrate real vehicle skid loop
-        shell: bash
-        run: |
-          set -euo pipefail
-          node tools/_tmp-integrate-skid.mjs
-          node --test tests/aggressive-driving-panic.test.js tests/vehicle-skid-audio.test.js tests/audio-sample-catalog.test.js
-          git diff --check
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Integrate real vehicle skid loop"
-          git push
-      # TEMP_SKID_INTEGRATION_END
+          if [[ "$found" -eq 0 ]]; then
+            echo "No OGG runtime assets found."
+          fi
 
       - name: Commit generated audio binaries
         shell: bash
