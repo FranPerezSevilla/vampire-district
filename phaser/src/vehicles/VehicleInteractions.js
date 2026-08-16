@@ -8,6 +8,7 @@ const ENTER_RADIUS = 30;
 const EXIT_SPEED_LIMIT = 12;
 const EXIT_ESCAPE_PROBE = 18;
 const EXIT_CORRIDOR_STEPS = Object.freeze([0, 0.5, 1]);
+const VEHICLE_DOOR_CLOSE_DELAY = 0.52;
 
 export function vehicleStatusLabel(vehicle) {
   switch (vehicle.status) {
@@ -176,6 +177,7 @@ export function enterVehicle(system, vehicleId, { force = false } = {}) {
   }
 
   RawAudio.play("vehicleDoorOpen");
+  RawAudio.play("vehicleDoorClose", { delay: VEHICLE_DOOR_CLOSE_DELAY, cooldown: 0 });
   system.updateHud();
   system.publish();
   system.scene.events?.emit?.("vehicle:entered", { vehicleId: vehicle.id, status: vehicle.status });
@@ -219,6 +221,7 @@ export function exitVehicle(system, { force = false } = {}) {
   system.hud.setVisible(false);
   system.scene.lastActionText = vehicle.disabled ? `You climb out of the disabled ${vehicle.name}.` : `${vehicle.name} parked. You return to street movement.`;
   RawAudio.play("vehicleDoorOpen");
+  RawAudio.play("vehicleDoorClose", { delay: VEHICLE_DOOR_CLOSE_DELAY, cooldown: 0 });
   system.publish();
   system.scene.events?.emit?.("vehicle:exited", {
     vehicleId: vehicle.id,

@@ -150,7 +150,8 @@ class RawAudioBus {
       gain.gain.value = Math.max(0, Number(options.sampleVolume ?? definition.volume) || 0);
       source.connect(gain);
       gain.connect(this.sampleDestination(name));
-      source.start();
+      const delay = Math.max(0, Number(options.delay) || 0);
+      source.start(this.ctx.currentTime + delay);
       return true;
     } catch {
       return false;
@@ -424,6 +425,7 @@ class RawAudioBus {
       case "bodyDrag": return this.scrape();
       case "bodyDrop": return this.hit(85, 0.045, 0.10);
       case "vehicleDoorOpen": return this.vehicleDoorOpen();
+      case "vehicleDoorClose": return this.vehicleDoorClose(options.delay);
       case "vehicleCollisionLight": return this.vehicleCollision(false);
       case "vehicleCollisionHeavy": return this.vehicleCollision(true);
       case "vehicleSkidLoop": return this.vehicleSkid();
@@ -551,6 +553,12 @@ class RawAudioBus {
   vehicleDoorOpen() {
     this.noise(0.10, { volume: 0.026, filter: 1180, filterType: "bandpass", q: 1.05 });
     this.tone(132, 0.13, { delay: 0.035, to: 66, volume: 0.026, type: "triangle", filter: 560 });
+  }
+
+  vehicleDoorClose(delay = 0) {
+    const baseDelay = Math.max(0, Number(delay) || 0);
+    this.noise(0.12, { delay: baseDelay, volume: 0.040, filter: 760, filterType: "bandpass", q: 0.82 });
+    this.tone(96, 0.17, { delay: baseDelay + 0.015, to: 44, volume: 0.045, type: "triangle", filter: 420 });
   }
 
   vehicleSkid() {
