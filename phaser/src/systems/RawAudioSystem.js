@@ -423,6 +423,7 @@ class RawAudioBus {
       case "drainCancel": return this.fail(120);
       case "bodyDrag": return this.scrape();
       case "bodyDrop": return this.hit(85, 0.045, 0.10);
+      case "vehicleDoorOpen": return this.vehicleDoorOpen();
       case "vehicleCollisionLight": return this.vehicleCollision(false);
       case "vehicleCollisionHeavy": return this.vehicleCollision(true);
       case "vehicleSkidLoop": return this.vehicleSkid();
@@ -545,6 +546,11 @@ class RawAudioBus {
 
   scrape() {
     this.noise(0.20, { volume: 0.040, filter: 260, filterType: "bandpass", q: 1.8 });
+  }
+
+  vehicleDoorOpen() {
+    this.noise(0.10, { volume: 0.026, filter: 1180, filterType: "bandpass", q: 1.05 });
+    this.tone(132, 0.13, { delay: 0.035, to: 66, volume: 0.026, type: "triangle", filter: 560 });
   }
 
   vehicleSkid() {

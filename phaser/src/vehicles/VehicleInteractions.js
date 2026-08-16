@@ -175,7 +175,7 @@ export function enterVehicle(system, vehicleId, { force = false } = {}) {
     system.scene.lastActionText = `You enter ${vehicle.name}. W/S accelerate and brake · A/D steer · Space handbrake · Enter exits.`;
   }
 
-  RawAudio.play("confirm");
+  RawAudio.play("vehicleDoorOpen");
   system.updateHud();
   system.publish();
   system.scene.events?.emit?.("vehicle:entered", { vehicleId: vehicle.id, status: vehicle.status });
@@ -218,7 +218,7 @@ export function exitVehicle(system, { force = false } = {}) {
   system.persistVehicle(vehicle);
   system.hud.setVisible(false);
   system.scene.lastActionText = vehicle.disabled ? `You climb out of the disabled ${vehicle.name}.` : `${vehicle.name} parked. You return to street movement.`;
-  RawAudio.play("confirm");
+  RawAudio.play("vehicleDoorOpen");
   system.publish();
   system.scene.events?.emit?.("vehicle:exited", {
     vehicleId: vehicle.id,

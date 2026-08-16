@@ -38,6 +38,10 @@ const POLICE_SIREN_FILES = [
   "phaser/assets/audio/police/police-siren-loop-01.wav"
 ];
 
+const VEHICLE_DOOR_OPEN_FILES = [
+  "phaser/assets/audio/vehicles/vehicle-door-open-01.mp3"
+];
+
 function repoFile(path) {
   return new URL(`../${path}`, import.meta.url);
 }
@@ -145,6 +149,29 @@ test("civilianScream fires once when an alarmed witness leaves shock and starts 
 
   const rawAudioSource = readFileSync(repoFile("phaser/src/systems/RawAudioSystem.js"), "utf8");
   assert.match(rawAudioSource, /case "civilianScream": return this\.gasp\(\);/);
+});
+
+test("vehicleDoorOpen is a real one-shot used by successful enter and exit actions", () => {
+  assert.deepEqual(SAMPLE_AUDIO_CATALOG.vehicleDoorOpen.files, VEHICLE_DOOR_OPEN_FILES);
+  assert.equal(SAMPLE_AUDIO_CATALOG.vehicleDoorOpen.volume, 0.92);
+  assert.equal(SAMPLE_AUDIO_CATALOG.vehicleDoorOpen.loop, false);
+
+  const data = readFileSync(repoFile(VEHICLE_DOOR_OPEN_FILES[0]));
+  assert.ok(data.length > 6_000, "vehicle door opening should contain the processed sample, not a placeholder");
+  const hasId3 = data.subarray(0, 3).toString("ascii") === "ID3";
+  const hasFrameSync = data[0] === 0xff && (data[1] & 0xe0) === 0xe0;
+  assert.ok(hasId3 || hasFrameSync, "vehicle door opening should be an MP3 stream");
+
+  const interactionsSource = readFileSync(repoFile("phaser/src/vehicles/VehicleInteractions.js"), "utf8");
+  assert.equal(
+    (interactionsSource.match(/RawAudio\.play\("vehicleDoorOpen"\)/g) || []).length,
+    2,
+    "successful vehicle entry and exit should both own the opening sound"
+  );
+  assert.doesNotMatch(interactionsSource, /RawAudio\.play\("confirm"\)/);
+
+  const rawAudioSource = readFileSync(repoFile("phaser/src/systems/RawAudioSystem.js"), "utf8");
+  assert.match(rawAudioSource, /case "vehicleDoorOpen": return this\.vehicleDoorOpen\(\);/);
 });
 
 test("policeSirenLoop is a gap-safe spatial police-car runtime loop", () => {
