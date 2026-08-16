@@ -1,0 +1,63 @@
+name: Integrate vehicle door opening audio
+
+on:
+  push:
+    branches:
+      - audio/playtest-p0
+    paths:
+      - tools/_tmp-integrate-vehicle-door-open.py
+      - .github/workflows/integrate-vehicle-door-open.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: integrate-vehicle-door-open-audio
+  cancel-in-progress: false
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Integrate catalogue, gameplay and attribution
+        run: |
+          set -euo pipefail
+          python3 tools/_tmp-integrate-vehicle-door-open.py
+
+      - name: Remove one-off helpers
+        run: |
+          set -euo pipefail
+          rm -f tools/_tmp-integrate-vehicle-door-open.py
+          rm -f .github/workflows/integrate-vehicle-door-open.yml
+
+      - name: Validate focused audio behavior
+        run: |
+          set -euo pipefail
+          node --test tests/audio-sample-catalog.test.js
+          git diff --check
+          npm run check:affected:plan -- --base=origin/main
+
+      - name: Commit integration
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add phaser/src/audio/SampleAudioCatalog.js \
+                  phaser/src/systems/RawAudioSystem.js \
+                  phaser/src/vehicles/VehicleInteractions.js \
+                  phaser/assets/audio/ATTRIBUTION.md \
+                  docs/audio-catalog.md \
+                  tests/audio-sample-catalog.test.js \
+                  tools/_tmp-integrate-vehicle-door-open.py \
+                  .github/workflows/integrate-vehicle-door-open.yml
+          if git diff --cached --quiet; then
+            echo "No vehicle door integration changes to commit."
+            exit 0
+          fi
+          git commit -m "Integrate real vehicle door opening audio"
+          git push origin HEAD:audio/playtest-p0
