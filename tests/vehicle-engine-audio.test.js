@@ -54,5 +54,5 @@ test("the canonical audio plan has no fixed city or distant traffic ambience bed
   const catalogue = source("docs/audio-catalog.md");
   assert.match(catalogue, /no continuous `ambienceStreetNight` or `trafficAmbience` bed/);
   assert.match(catalogue, /Urban ambience must emerge from spatial systemic sources/);
-  assert.match(catalogue, /vehicleEngine.*procedural systemic candidate/s);
+  assert.match(catalogue, /vehicleEngine.*systemic mix accepted/s);
 });

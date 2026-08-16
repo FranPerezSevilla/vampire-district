@@ -8,6 +8,7 @@ import {
   vehicleCameraLookAhead,
   vehicleCameraZoom,
   vehicleGearCount,
+  vehicleHighSpeedAccelerationMultiplier,
   vehicleExitOffsets,
   vehicleFootprintPoints,
   vehicleImpactDamage,
@@ -29,8 +30,8 @@ const archetype = {
   maxSpeed: 310,
   gearCount: 5,
   gearShiftDuration: 0.14,
-  gearHoldDuration: 0.28,
-  firstGearHoldDuration: 0.26,
+  gearHoldDuration: 0.42,
+  firstGearHoldDuration: 0.30,
   cameraLookAhead: 72,
   reverseSpeed: 92,
   acceleration: 330,
@@ -153,9 +154,28 @@ test("automatic gearbox climbs through five gears without rapid-fire upshifts", 
   assert.equal(shifts.length, 4);
   assert.ok(shifts[0] >= 0.25, "first gear should breathe before the first upshift");
   for (let index = 1; index < shifts.length; index++) {
-    assert.ok(shifts[index] - shifts[index - 1] >= 0.40, "successive upshifts should have an audible dwell");
+    assert.ok(shifts[index] - shifts[index - 1] >= 0.55, "successive upshifts should have a clearly audible dwell");
   }
   assert.ok(state.speed <= archetype.maxSpeed);
+});
+
+test("upper gears stretch the run to top speed without dulling the launch", () => {
+  let state = createVehicleState(definition, archetype);
+  let halfSecondSpeed = 0;
+  let timeToNinetyNine = null;
+  for (let index = 0; index < 120; index++) {
+    state = stepVehicleKinematics(state, { move: { x: 0, y: -1 } }, 0.05, archetype);
+    const elapsed = (index + 1) * 0.05;
+    if (index === 9) halfSecondSpeed = state.speed;
+    if (timeToNinetyNine == null && state.speed >= archetype.maxSpeed * 0.99) {
+      timeToNinetyNine = elapsed;
+    }
+  }
+  assert.ok(halfSecondSpeed > 190 && halfSecondSpeed < 235, "launch character should remain lively");
+  assert.ok(timeToNinetyNine >= 3.0, "maximum speed should take several seconds to build");
+  assert.ok(timeToNinetyNine <= 5.5, "the arcade car should still reach its performance envelope");
+  assert.equal(vehicleHighSpeedAccelerationMultiplier(archetype.maxSpeed * 0.50, archetype.maxSpeed), 1);
+  assert.ok(vehicleHighSpeedAccelerationMultiplier(archetype.maxSpeed * 0.95, archetype.maxSpeed) < 0.08);
 });
 
 test("directional vehicle camera looks ahead only during stable forward travel", () => {

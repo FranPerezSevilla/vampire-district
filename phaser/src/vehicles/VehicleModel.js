@@ -107,7 +107,20 @@ export function vehicleGearTorqueMultiplier(gear, gearCount = 5) {
   const selected = Math.round(clamp(Number(gear) || 1, 1, count));
   if (count <= 1) return 1;
   const progress = (selected - 1) / (count - 1);
-  return 1.20 - 0.34 * progress;
+  // Keep the launch punch, then let higher gears trade torque for a longer,
+  // readable build toward top speed instead of sprinting through the box.
+  return 1.20 - 0.62 * Math.pow(progress, 0.82);
+}
+
+export function vehicleHighSpeedAccelerationMultiplier(speed, maxSpeed) {
+  const maximum = Math.max(1, Number(maxSpeed) || 1);
+  const ratio = clamp(Math.abs(Number(speed) || 0) / maximum, 0, 1);
+  const taperStart = 0.58;
+  if (ratio <= taperStart) return 1;
+  const remaining = clamp((1 - ratio) / (1 - taperStart), 0, 1);
+  // Near maximum speed the car should keep gaining speed, but slowly enough
+  // that 4th/5th gear have time to exist as an audible/driving state.
+  return 0.02 + 0.98 * Math.pow(remaining, 1.5);
 }
 
 export function stepVehicleKinematics(state, frame, dt, archetype) {
@@ -158,12 +171,13 @@ export function stepVehicleKinematics(state, frame, dt, archetype) {
   }
   const gearTorque = vehicleGearTorqueMultiplier(gear, gearCount);
   const shiftTorque = vehicleGearShiftActive(gear, gearShiftTimer, archetype) ? 0.78 : 1;
+  const accelerationTaper = vehicleHighSpeedAccelerationMultiplier(speed, maxSpeed);
 
   if (state?.disabled) {
     speed = approach(speed, 0, brake * seconds);
   } else if (input.handbrake) {
     if (input.throttle > 0 && speed >= 0) {
-      speed += acceleration * launchMultiplier * gearTorque * shiftTorque * handbrakeThrottleFactor * input.throttle * seconds;
+      speed += acceleration * launchMultiplier * gearTorque * shiftTorque * accelerationTaper * handbrakeThrottleFactor * input.throttle * seconds;
     } else if (input.throttle < 0 && speed <= 0) {
       speed -= reverseAcceleration * handbrakeThrottleFactor * Math.abs(input.throttle) * seconds;
     }
@@ -171,7 +185,7 @@ export function stepVehicleKinematics(state, frame, dt, archetype) {
   } else if (input.throttle > 0) {
     speed = speed < 0
       ? approach(speed, 0, brake * input.throttle * seconds)
-      : speed + acceleration * launchMultiplier * gearTorque * shiftTorque * input.throttle * seconds;
+      : speed + acceleration * launchMultiplier * gearTorque * shiftTorque * accelerationTaper * input.throttle * seconds;
   } else if (input.throttle < 0) {
     const pressure = Math.abs(input.throttle);
     speed = speed > 0
