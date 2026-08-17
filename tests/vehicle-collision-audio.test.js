@@ -62,6 +62,20 @@ test("vehicle contacts are target-aware: ordinary cars stay mundane, police cars
 });
 
 
+
+test("real light collision family is registered with four committed variants", () => {
+  const files = [
+    "phaser/assets/audio/vehicles/vehicle-collision-light-01.mp3",
+    "phaser/assets/audio/vehicles/vehicle-collision-light-02.mp3",
+    "phaser/assets/audio/vehicles/vehicle-collision-light-03.mp3",
+    "phaser/assets/audio/vehicles/vehicle-collision-light-04.mp3"
+  ];
+  assert.deepEqual(SAMPLE_AUDIO_CATALOG.vehicleCollisionLight.files, files);
+  assert.equal(SAMPLE_AUDIO_CATALOG.vehicleCollisionLight.volume, 0.72);
+  assert.equal(SAMPLE_AUDIO_CATALOG.vehicleCollisionLight.loop, false);
+  files.forEach(assertMp3);
+});
+
 test("real heavy collision family is registered with three committed variants", () => {
   const files = [
     "phaser/assets/audio/vehicles/vehicle-collision-heavy-01.mp3",
