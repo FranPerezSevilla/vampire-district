@@ -1,0 +1,64 @@
+name: Integrate bullet hit world audio
+
+on:
+  push:
+    branches:
+      - audio/playtest-p0
+    paths:
+      - ".github/workflows/integrate-bullet-hit-world.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: audio/playtest-p0
+          fetch-depth: 0
+
+      - name: Recover verified integration script
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -fsSL \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/FranPerezSevilla/vampire-district/git/blobs/f95443c77d1ae2e285b41fa882ad4b616febd3a0" \
+            -o /tmp/bullet-world-script.json
+          python3 - <<'PY'
+          import base64
+          import gzip
+          import json
+          from pathlib import Path
+          blob = json.loads(Path('/tmp/bullet-world-script.json').read_text())
+          packed_text = base64.b64decode(blob['content']).decode('utf-8')
+          script = gzip.decompress(base64.b64decode(packed_text))
+          Path('/tmp/integrate_bullet_hit_world.py').write_bytes(script)
+          PY
+
+      - name: Materialize and wire bullet world impact
+        run: python3 /tmp/integrate_bullet_hit_world.py
+
+      - name: Run focused tests
+        run: |
+          node --test \
+            tests/bullet-hit-world-audio.test.js \
+            tests/audio-sample-catalog.test.js \
+            tests/combat.test.js
+
+      - name: Remove one-off workflows
+        run: |
+          rm -f .github/workflows/integrate-bullet-hit-world.yml
+          rm -f .github/workflows/integrate-footsteps.yml
+
+      - name: Commit integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Integrate real bullet world impact audio"
+          git push origin HEAD:audio/playtest-p0
