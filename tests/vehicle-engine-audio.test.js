@@ -55,7 +55,7 @@ test("real start and PCM idle loop back the systemic engine voices", () => {
   assert.deepEqual(SAMPLE_AUDIO_CATALOG.vehicleEngineLoop.files, [loopFile]);
   assert.equal(SAMPLE_AUDIO_CATALOG.vehicleEngineLoop.loop, true);
   assert.equal(SAMPLE_AUDIO_CATALOG.vehicleEngineStart.volume, 0.88);
-  assert.equal(SAMPLE_AUDIO_CATALOG.vehicleSkidLoop.volume, 0.60);
+  assert.equal(SAMPLE_AUDIO_CATALOG.vehicleSkidLoop.volume, 0.50);
   assertMp3(startFile);
   assertWav(loopFile);
 

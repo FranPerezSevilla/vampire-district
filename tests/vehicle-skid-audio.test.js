@@ -9,7 +9,7 @@ test("vehicleSkidLoop is a committed PCM loop sustained by aggressive-driving pu
   const definition = SAMPLE_AUDIO_CATALOG.vehicleSkidLoop;
   assert.deepEqual(definition.files, ["phaser/assets/audio/vehicles/vehicle-skid-loop-01.wav"]);
   assert.equal(definition.loop, true);
-  assert.equal(definition.volume, 0.68);
+  assert.equal(definition.volume, 0.50);
   const wav = readFileSync(repoFile(definition.files[0]));
   assert.ok(wav.length > 50_000);
   assert.equal(wav.subarray(0, 4).toString("ascii"), "RIFF");
