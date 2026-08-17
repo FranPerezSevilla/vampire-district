@@ -106,23 +106,35 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     const scene = this.scene;
     const input = scene.inputSystem;
     const vehicle = scene.vehicleSystem;
+    const diagnostics = this.diagnostics;
     const originalBeginFrame = input?.beginFrame;
     const originalCollectInteractions = scene.collectInteractions;
     const dt = Math.min(Math.max(0, Number(deltaMs) || 0) / 1000, 0.05);
     RawAudio.beginVehicleEngineFrame({ paused: Boolean(scene.registry?.get?.("uiPaused")) });
 
+    let profileMark = diagnostics.beginSystem("StreamingPipeline");
     scene.cityStreamSystem?.update?.();
     scene.districtPackSystem?.update?.();
     scene.entityStreamSystem?.update?.(dt);
     scene.distantSimulationSystem?.update?.(dt);
+    diagnostics.endSystem("StreamingPipeline", profileMark);
+
+    profileMark = diagnostics.beginSystem("TrafficPipeline");
     scene.macroTrafficPoliceSystem?.update?.(dt);
     scene.trafficMaterializationSystem?.update?.(dt);
     scene.trafficOccupantWitnessSystem?.update?.(dt);
     scene.trafficLocalBehaviorSystem?.update?.(dt);
     scene.trafficPhysicalConsequencesSystem?.update?.(dt);
     scene.trafficImpactConsequencesSystem?.update?.(dt);
+    diagnostics.endSystem("TrafficPipeline", profileMark);
+
+    profileMark = diagnostics.beginSystem("MotorizedPoliceSystem");
     scene.motorizedPoliceSystem?.update?.(dt);
+    diagnostics.endSystem("MotorizedPoliceSystem", profileMark);
+
+    profileMark = diagnostics.beginSystem("PedestrianSystem");
     scene.pedestrianSystem?.update?.(dt);
+    diagnostics.endSystem("PedestrianSystem", profileMark);
 
     if (input && originalBeginFrame) {
       input.beginFrame = function vehicleAwareInputFrame() {
@@ -150,14 +162,19 @@ export class GameplayRuntime extends GameplayRuntimeCore {
       };
     }
 
+    profileMark = diagnostics.beginSystem("GameplayRuntimeCore");
     try {
       super.update(time, deltaMs);
     } finally {
+      diagnostics.endSystem("GameplayRuntimeCore", profileMark);
       if (input && originalBeginFrame) input.beginFrame = originalBeginFrame;
       if (originalCollectInteractions) scene.collectInteractions = originalCollectInteractions;
       RawAudio.endVehicleEngineFrame();
     }
+
+    profileMark = diagnostics.beginSystem("TerritoryRuntimeSystem");
     scene.territoryRuntimeSystem?.update?.();
+    diagnostics.endSystem("TerritoryRuntimeSystem", profileMark);
   }
 
   finishFrame() {
