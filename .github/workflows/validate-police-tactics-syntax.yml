@@ -1,0 +1,46 @@
+name: Validate police tactics syntax
+
+on:
+  push:
+    branches:
+      - audio/playtest-p0
+    paths:
+      - .github/workflows/validate-police-tactics-syntax.yml
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: audio/playtest-p0
+          fetch-depth: 0
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check phaser/src/police/MotorizedPolicePolicy.js
+          node --check phaser/src/police/MotorizedPoliceSystem.js
+          node --check tests/police-vehicle-tactics.test.js
+
+      - name: Run focused tactical tests
+        run: |
+          node --test \
+            tests/motorized-police.test.js \
+            tests/motorized-police-local-policy.test.js \
+            tests/police-vehicle-tactics.test.js \
+            tests/ballistic-projectile.test.js
+
+      - name: Remove validation workflow
+        shell: bash
+        run: |
+          rm .github/workflows/validate-police-tactics-syntax.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/validate-police-tactics-syntax.yml
+          git commit -m "Validate police vehicle tactics syntax"
+          git push origin HEAD:audio/playtest-p0
