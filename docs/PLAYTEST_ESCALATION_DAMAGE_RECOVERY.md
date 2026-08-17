@@ -14,7 +14,7 @@ This is the ordered implementation contract for the combat, police, death and re
 
 ## Slice 1 — vehicle audio rebalance
 
-**State: implemented on PR #55; pending listening acceptance.**
+**State: implemented on PR #55; ready for in-game validation.**
 
 - Lower `vehicleSkidLoop` catalogue gain from **0.60 to 0.50**.
 - Raise the real engine sample gain by roughly 14–16% for compact, sedan, van and police profiles.
