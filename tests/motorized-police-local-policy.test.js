@@ -12,7 +12,8 @@ test("distant macro cruisers ignore local blockers until the candidate materiali
       originalCalls++;
       return false;
     },
-    dismountUnit() { return []; }
+    dismountUnit() { return []; },
+    update() { return false; }
   };
   const policy = installMotorizedPoliceLocalPolicy(system);
 
@@ -42,7 +43,8 @@ test("roadblock officers wait for arrival unless the cruiser is locally trapped"
     dismountUnit(unitId, reason) {
       calls.push({ unitId, reason });
       return ["officer-1", "officer-2"];
-    }
+    },
+    update() { return false; }
   };
   const policy = installMotorizedPoliceLocalPolicy(system);
 

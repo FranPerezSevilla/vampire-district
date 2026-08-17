@@ -51,7 +51,9 @@ The current firearm collision query receives `scene.vehicleSystem.vehicles`. Amb
 
 ## Slice 3 — police vehicle tactics
 
-**State: documented backlog.**
+**State: implemented on PR #55; pending grouped in-game validation.**
+
+Pursuit cruisers now switch from district routing to local tactical states when they become visible. On foot, they lead the player's motion; at wanted level 3 the first cruiser visibly telegraphs a committed ram before deploying officers. While driving, the two pursuit cruisers pressure opposite rear quarters; at wanted level 3 the lead unit telegraphs a controlled PIT attempt with a cooldown. The third unit keeps its route-informed roadblock role, offsets across the lane to leave a risky escape gap, and cannot materialize inside the player's immediate safety radius.
 
 ### Player on foot
 
@@ -72,6 +74,15 @@ The current firearm collision query receives `scene.vehicleSystem.vehicles`. Amb
 - Police tactics differ clearly between an on-foot target and a vehicle target.
 - A single unit pursues; multiple units may coordinate without stacking into one tile.
 - Tactics remain recoverable through driving skill and do not create unavoidable chain collisions.
+
+### Grouped playtest checks
+
+- On foot at wanted level 2, visible cruisers lead the player's movement and deploy officers when they complete the intercept.
+- On foot at wanted level 3, the lead cruiser shows **RAM!**, commits to a short fixed line, shoves on contact and then deploys officers; changing direction during the telegraph should open an escape lane.
+- In a vehicle at wanted level 2, the two cruisers settle on opposite rear quarters instead of stacking directly behind the player.
+- In a vehicle at wanted level 3, the lead cruiser shows **PIT!**, makes one controlled contact that slows and yaws the player, then waits through its cooldown.
+- The roadblock cruiser appears ahead on its route, sits across the road with a visible **BLOCK** marker, and leaves a narrow but usable side gap.
+- No cruiser materializes directly on top of the player, and trapped/disabled cruisers deploy officers rather than pushing indefinitely.
 
 ## Slice 4 — armed police on foot
 
