@@ -163,3 +163,20 @@ At wanted level 2, one eligible chasing officer may visibly aim and fire control
 4. Armed foot police.
 5. Vehicle explosion + player vitality/death.
 6. Master popup + hospital reset/recovery.
+
+## Follow-up — citywide pedestrian-route expansion
+
+**State: implemented on PR #55; pending in-game validation.**
+
+- Pedestrian route count grows from **11 to 18** without raising `AMBIENT_PEDESTRIANS_PER_ROUTE`.
+- Seven distinct loops extend pedestrian coverage through Hospital Ward, West Market, Old Quarter, University, Canal West, North Harbor and South Harbor instead of concentrating extra NPCs on the existing loops.
+- Every added route publishes its points into `streetNavigationPoints`, so the new route origins/destinations join the existing navigation authority rather than existing only as population decoration.
+- Authored routed civilians reserve their route start before ambient population is placed. The result is **72 routed civilians across 72 distinct initial route points**, with no route-point spawn stacking and no increase in per-route point density.
+- Pedestrian route geometry now reaches all **14 semantic districts** while remaining on valid pedestrian surfaces.
+
+### Acceptance
+
+- Newly covered districts visibly carry pedestrian movement instead of concentrating extra NPCs on old loops.
+- No two routed civilians begin on the same tile.
+- Existing routes do not gain extra occupants beyond their available route points.
+- Performance must be observed before any further population increase; the dedicated performance slice still owns profiling and optimization.
