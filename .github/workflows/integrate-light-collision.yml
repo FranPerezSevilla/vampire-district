@@ -1,0 +1,50 @@
+name: Integrate light vehicle collision audio
+
+on:
+  push:
+    branches:
+      - audio/playtest-p0
+    paths:
+      - ".github/audio-staging/light/**"
+      - ".github/workflows/integrate-light-collision.yml"
+      - "tools/integrate_light_collision.py"
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install FFmpeg
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+
+      - name: Materialize and register light collision family
+        run: python tools/integrate_light_collision.py
+
+      - name: Run focused collision tests
+        run: node --test tests/vehicle-collision-audio.test.js tests/audio-sample-catalog.test.js
+
+      - name: Remove one-off staging
+        run: |
+          set -euo pipefail
+          rm -rf .github/audio-staging/light
+          rm -f .github/workflows/integrate-light-collision.yml
+          rm -f tools/integrate_light_collision.py
+
+      - name: Commit integration
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Integrate real light vehicle collision audio"
+          git push
