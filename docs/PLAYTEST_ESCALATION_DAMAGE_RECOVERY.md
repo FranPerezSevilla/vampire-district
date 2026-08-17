@@ -34,6 +34,7 @@ The current firearm collision query receives `scene.vehicleSystem.vehicles`. Amb
 - Replace the full-length instantaneous line with a short, bright ballistic particle/tracer.
 - Use a fast projectile with swept segment collision so it cannot tunnel through thin or fast-moving targets.
 - Query all relevant collision authorities: buildings, authored/parked vehicles, player-driveable vehicles, motorized police and currently materialized traffic slots.
+- `TrafficLocalBehaviorSystem` must expose stable collidable snapshots; combat must not depend directly on rendering internals.
 - Resolve only the first collision along each movement segment.
 - Trigger damage, impact particle and `bulletHitBody` / `bulletHitWorld` when the projectile reaches the collision, not at trigger pull.
 - Open-space shots expire at range without inventing an impact.
