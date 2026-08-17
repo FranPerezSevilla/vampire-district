@@ -104,7 +104,7 @@ At wanted level 2, one eligible chasing officer may visibly aim and fire control
 - Existing hit-stun and short invulnerability remain the overlap-protection rules for incoming damage.
 - Police firearm damage is amplified by **1.5× at exactly 100% Hunger**. Reaching 100% Hunger alone never changes Vitality or kills the player.
 - Passive Vitality recovery begins only after a **3.5 s damage-free delay**, at **4 Vitality/s**, and is disabled while Hunger is 100%.
-- Reaching zero Vitality creates one authoritative `dead` state, emits `player:died` once, cancels active enemy attacks and locks world input through the central input frame. Slice 6 will own the visible death beat and recovery transition rather than creating a second death authority.
+- Reaching zero Vitality creates one authoritative `dead` state, emits `player:died` once, cancels active enemy attacks and locks world input through the central input frame. Slice 6 owns the visible death beat and recovery transition rather than creating a second death authority.
 - Runtime state publishes a Vitality summary for HUD/recovery integration.
 
 ### Implemented increment — vehicle critical damage and explosion
@@ -126,7 +126,7 @@ At wanted level 2, one eligible chasing officer may visibly aim and fire control
 
 ## Slice 6 — master death beat and hospital recovery
 
-**State: in progress on PR #55; master death beat implemented, hospital reset/recovery pending.**
+**State: implemented on PR #55; pending grouped in-game validation.**
 
 ### Implemented increment — master death beat and fade
 
@@ -135,18 +135,18 @@ At wanted level 2, one eligible chasing officer may visibly aim and fire control
 - A fixed screen-space master popup shows **“Pathetic.”** for 1.1 seconds.
 - The scene then fades to full black over 0.9 seconds while the RawAudio world and narrative masters ramp down together; active vehicle-engine, skid and feeding loops are stopped before the fade.
 - The death presentation continues updating even after `worldEnabled` is false, so the lethal input lock cannot freeze the transition itself.
-- On reaching full black the system emits one `death:fade-complete` event. The next increment will consume that edge to clear transient city response state and perform hospital recovery rather than adding another death authority.
+- On reaching full black the system emits one `death:fade-complete` event and the same recovery owner consumes that edge exactly once.
 
-### Remaining recovery flow
+### Implemented increment — hospital reset and recovery
 
-1. Reset the active city runtime: clear Heat and active police response, rebuild transient traffic/NPC alarm state and remove temporary combat debris. Preserve durable campaign progression.
-2. Respawn the player at the hospital with a brief police reacquisition grace period.
-3. Place a lackey beside the player with the initial English line:
+- Full black clears Heat, temporary foot/motorized response, active firearm/combat projectiles and transient NPC alarm state while durable campaign progression is preserved.
+- The player respawns at a valid Hospital Ward street candidate with **35 Vitality** and a **7-second police reacquisition grace** honored by foot, firearm and motorized police authorities.
+- A static lackey appears beside the player with the recovery line:
 
-   **“You made quite a mess. We pulled you out of the morgue. Drink this blood bag. The car outside is yours.”**
+  **“You made quite a mess. We pulled you out of the morgue. Drink this blood bag. The car outside is yours.”**
 
-4. Grant one blood bag and place a usable replacement car immediately outside/in front of the hospital.
-5. The blood bag restores the player to a recoverable state but does not erase every consequence or fully satisfy Hunger by default.
+- A world-interactable blood bag restores **30 Vitality** and relieves up to **35 Hunger**; it deliberately does not reset Hunger to zero.
+- An **owned transient compact** is placed on the hospital emergency approach as a usable replacement vehicle.
 
 ### Acceptance
 
