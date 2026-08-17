@@ -1,4 +1,5 @@
 import { CombatSystem } from "../combat/CombatSystem.js";
+import { DeathRecoverySystem } from "../combat/DeathRecoverySystem.js";
 import { DrainSystem } from "../combat/DrainSystem.js";
 import { PlayerDamageSystem } from "../combat/PlayerDamageSystem.js";
 import { PoliceFirearmSystem } from "../combat/PoliceFirearmSystem.js";
@@ -45,6 +46,7 @@ export class GameplayRuntime {
     scene.weaponSystem = new WeaponSystem(scene);
     scene.combatSystem = new CombatSystem(scene);
     scene.playerDamageSystem = new PlayerDamageSystem(scene);
+    scene.deathRecoverySystem = new DeathRecoverySystem(scene);
     scene.policeFirearmSystem = new PoliceFirearmSystem(scene);
     scene.drainSystem = new DrainSystem(scene);
     scene.movementNoiseSystem = new MovementNoiseSystem(scene);
@@ -95,6 +97,7 @@ export class GameplayRuntime {
       "WeaponSystem",
       "CombatSystem",
       "PlayerDamageSystem",
+      "DeathRecoverySystem",
       "PoliceFirearmSystem",
       "DrainSystem",
       "MovementNoiseSystem",
@@ -116,6 +119,7 @@ export class GameplayRuntime {
     const scene = this.scene;
     const dt = Math.min(Math.max(0, Number(deltaMs) || 0) / 1000, 0.05);
     this.diagnostics.beginFrame();
+    scene.deathRecoverySystem?.update?.(dt);
 
     const rawFrame = scene.inputSystem?.beginFrame() || createEmptyInputFrame();
     scene.playerDamageSystem?.preUpdate(rawFrame);
@@ -274,6 +278,8 @@ export class GameplayRuntime {
   }
 
   destroy() {
+    this.scene.deathRecoverySystem?.destroy?.();
+    this.scene.deathRecoverySystem = null;
     this.scene.policeFirearmSystem?.destroy?.();
     this.scene.policeFirearmSystem = null;
     this.scene.traversalPromptLabel?.destroy?.();
