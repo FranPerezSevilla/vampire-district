@@ -1,13 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { SAMPLE_AUDIO_CATALOG } from "../phaser/src/audio/SampleAudioCatalog.js";
 
 import {
   VEHICLE_COLLISION_AUDIO_THRESHOLDS,
   vehicleCollisionAudioEvent
 } from "../phaser/src/vehicles/VehicleCollisionAudioModel.js";
 
-const source = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+const repoFile = path => new URL(`../${path}`, import.meta.url);
+const source = path => readFileSync(repoFile(path), "utf8");
+
+function assertMp3(path) {
+  const data = readFileSync(repoFile(path));
+  assert.ok(data.length > 5_000, `${path} should contain a processed sample`);
+  const hasId3 = data.subarray(0, 3).toString("ascii") === "ID3";
+  const hasFrameSync = data[0] === 0xff && (data[1] & 0xe0) === 0xe0;
+  assert.ok(hasId3 || hasFrameSync, `${path} should be an MP3 stream`);
+}
 
 test("vehicle collision audio severity follows impact speed", () => {
   assert.equal(VEHICLE_COLLISION_AUDIO_THRESHOLDS.minimumSpeed, 44);
@@ -49,4 +59,17 @@ test("vehicle contacts are target-aware: ordinary cars stay mundane, police cars
   assert.match(policy, /source: "vehicle_police_collision"/);
   assert.match(driving, /if \(!contact\) \{[\s\S]*?source: "vehicle_crash"/);
   assert.doesNotMatch(policy, /source: "vehicle_crash"/);
+});
+
+
+test("real heavy collision family is registered with three committed variants", () => {
+  const files = [
+    "phaser/assets/audio/vehicles/vehicle-collision-heavy-01.mp3",
+    "phaser/assets/audio/vehicles/vehicle-collision-heavy-02.mp3",
+    "phaser/assets/audio/vehicles/vehicle-collision-heavy-03.mp3"
+  ];
+  assert.deepEqual(SAMPLE_AUDIO_CATALOG.vehicleCollisionHeavy.files, files);
+  assert.equal(SAMPLE_AUDIO_CATALOG.vehicleCollisionHeavy.volume, 0.82);
+  assert.equal(SAMPLE_AUDIO_CATALOG.vehicleCollisionHeavy.loop, false);
+  files.forEach(assertMp3);
 });
