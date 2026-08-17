@@ -21,7 +21,7 @@ jobs:
           ref: audio/playtest-p0
           fetch-depth: 0
 
-      - name: Apply original patch with indentation-tolerant anchors
+      - name: Apply tactical patch with indentation-tolerant anchors
         shell: bash
         run: |
           python3 - <<'PY'
@@ -67,6 +67,57 @@ jobs:
           exec(compile(script, 'police-vehicle-tactics-patch', 'exec'))
           PY
 
+      - name: Repair local-policy test fixtures
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tests/motorized-police-local-policy.test.js')
+          text = path.read_text()
+          first = '''    dismountUnit() { return []; }
+          };'''
+          first_new = '''    dismountUnit() { return []; },
+            update() { return false; }
+          };'''
+          if first not in text:
+              first = '''    dismountUnit() { return []; }
+  };'''
+              first_new = '''    dismountUnit() { return []; },
+    update() { return false; }
+  };'''
+          if first not in text:
+              raise SystemExit('first local-policy fixture anchor missing')
+          text = text.replace(first, first_new, 1)
+
+          second = '''    dismountUnit(unitId, reason) {
+              calls.push({ unitId, reason });
+              return ["officer-1", "officer-2"];
+            }
+          };'''
+          second_new = '''    dismountUnit(unitId, reason) {
+              calls.push({ unitId, reason });
+              return ["officer-1", "officer-2"];
+            },
+            update() { return false; }
+          };'''
+          if second not in text:
+              second = '''    dismountUnit(unitId, reason) {
+      calls.push({ unitId, reason });
+      return ["officer-1", "officer-2"];
+    }
+  };'''
+              second_new = '''    dismountUnit(unitId, reason) {
+      calls.push({ unitId, reason });
+      return ["officer-1", "officer-2"];
+    },
+    update() { return false; }
+  };'''
+          if second not in text:
+              raise SystemExit('second local-policy fixture anchor missing')
+          text = text.replace(second, second_new, 1)
+          path.write_text(text)
+          PY
+
       - name: Run focused tactical tests
         run: |
           node --test \
@@ -80,15 +131,18 @@ jobs:
         run: |
           rm .github/workflows/apply-police-vehicle-tactics.yml
           rm .github/workflows/retry-police-vehicle-tactics.yml
+          rm .github/workflows/finalize-police-vehicle-tactics.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
             phaser/src/police/MotorizedPolicePolicy.js \
             phaser/src/police/MotorizedPoliceSystem.js \
             tests/motorized-police.test.js \
+            tests/motorized-police-local-policy.test.js \
             tests/police-vehicle-tactics.test.js \
             docs/PLAYTEST_ESCALATION_DAMAGE_RECOVERY.md \
             .github/workflows/apply-police-vehicle-tactics.yml \
-            .github/workflows/retry-police-vehicle-tactics.yml
+            .github/workflows/retry-police-vehicle-tactics.yml \
+            .github/workflows/finalize-police-vehicle-tactics.yml
           git commit -m "Add telegraphed police vehicle tactics"
           git push origin HEAD:audio/playtest-p0
