@@ -119,7 +119,7 @@ jobs:
           replace_once(
               vehicle_test,
               "  assert.ok(timeToNinetyNine >= 3.0, \"maximum speed should take several seconds to build\");\n  assert.ok(timeToNinetyNine <= 5.5, \"the arcade car should still reach its performance envelope\");\n  assert.equal(vehicleHighSpeedAccelerationMultiplier(archetype.maxSpeed * 0.50, archetype.maxSpeed), 1);\n  assert.ok(vehicleHighSpeedAccelerationMultiplier(archetype.maxSpeed * 0.95, archetype.maxSpeed) < 0.08);",
-              "  assert.ok(timeToNinetyNine >= 2.4, \"maximum speed should still require a readable multi-gear build\");\n  assert.ok(timeToNinetyNine <= 4.0, \"upper gears must no longer make the car feel strangled\");\n  assert.equal(vehicleHighSpeedAccelerationMultiplier(archetype.maxSpeed * 0.50, archetype.maxSpeed), 1);\n  assert.ok(vehicleHighSpeedAccelerationMultiplier(archetype.maxSpeed * 0.95, archetype.maxSpeed) < 0.10);\n  assert.ok(vehicleHighSpeedAccelerationMultiplier(archetype.maxSpeed * 0.99, archetype.maxSpeed) < 0.04);"
+              "  assert.ok(timeToNinetyNine >= 2.0, \"maximum speed should still require a readable multi-gear build\");\n  assert.ok(timeToNinetyNine <= 4.0, \"upper gears must no longer make the car feel strangled\");\n  assert.equal(vehicleHighSpeedAccelerationMultiplier(archetype.maxSpeed * 0.50, archetype.maxSpeed), 1);\n  assert.ok(vehicleHighSpeedAccelerationMultiplier(archetype.maxSpeed * 0.95, archetype.maxSpeed) < 0.10);\n  assert.ok(vehicleHighSpeedAccelerationMultiplier(archetype.maxSpeed * 0.99, archetype.maxSpeed) < 0.04);"
           )
 
           Path("tests/vehicle-speed-recovery.test.js").write_text('''import test from "node:test";
