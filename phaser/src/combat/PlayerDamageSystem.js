@@ -246,6 +246,41 @@ export class PlayerDamageSystem {
     return true;
   }
 
+  revive({ vitality = 35, source = "hospital-recovery" } = {}) {
+    const maximum = Math.max(1, Number(this.state.maxVitality) || PLAYER_DAMAGE.maxVitality);
+    const restored = Math.max(1, Math.min(maximum, Number(vitality) || 1));
+    this.state.vitality = restored;
+    this.state.dead = false;
+    this.state.critical = restored <= PLAYER_DAMAGE.criticalVitalityThreshold;
+    this.state.hitStunUntil = 0;
+    this.state.invulnerableUntil = 0;
+    this.state.feedbackUntil = 0;
+    this.state.lastDamageAt = Number.NEGATIVE_INFINITY;
+    this.state.lastDamage = 0;
+    this.state.lastSourceId = null;
+    this.state.lastLabel = "";
+    this.state.lastDamageKind = null;
+    this.state.deathSourceId = null;
+    this.state.deathLabel = "";
+    this.scene.player?.setAlpha?.(1);
+    this.scene.events?.emit?.("player:revived", { vitality: restored, vitalityMax: maximum, source });
+    this.syncPlayerFeedback();
+    return restored;
+  }
+
+  restoreVitality(amount, source = "recovery") {
+    if (this.isDead()) return 0;
+    const before = Math.max(0, Number(this.state.vitality) || 0);
+    const maximum = Math.max(1, Number(this.state.maxVitality) || PLAYER_DAMAGE.maxVitality);
+    const after = Math.min(maximum, before + Math.max(0, Number(amount) || 0));
+    this.state.vitality = after;
+    this.state.critical = after > 0 && after <= PLAYER_DAMAGE.criticalVitalityThreshold;
+    const restored = after - before;
+    if (restored > 0) this.scene.events?.emit?.("player:vitality-restored", { before, after, restored, source });
+    this.syncPlayerFeedback();
+    return restored;
+  }
+
   recoverVitality(dt) {
     if (this.isDead()) return false;
     const result = recoverPlayerVitalityState(

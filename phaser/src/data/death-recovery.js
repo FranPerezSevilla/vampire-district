@@ -10,6 +10,28 @@ export const DEATH_BEAT = Object.freeze({
   fadeMs: 900
 });
 
+export const HOSPITAL_RECOVERY = Object.freeze({
+  lackeyId: "hospital-recovery-lackey",
+  replacementVehicleId: "hospital-recovery-car",
+  reviveVitality: 35,
+  bloodBagVitality: 30,
+  bloodBagHungerRelief: 35,
+  policeGraceMs: 7000,
+  interactionRadius: 34,
+  lackeyLine: "You made quite a mess. We pulled you out of the morgue. Drink this blood bag. The car outside is yours.",
+  playerCandidates: Object.freeze([
+    Object.freeze({ x: 898, y: 446 }),
+    Object.freeze({ x: 898, y: 486 }),
+    Object.freeze({ x: 938, y: 430 }),
+    Object.freeze({ x: 878, y: 430 })
+  ]),
+  vehicleCandidates: Object.freeze([
+    Object.freeze({ x: 1018, y: 466, angle: 0 }),
+    Object.freeze({ x: 1062, y: 466, angle: 0 }),
+    Object.freeze({ x: 918, y: 520, angle: Math.PI / 2 })
+  ])
+});
+
 function finite(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;

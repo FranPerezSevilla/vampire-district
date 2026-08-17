@@ -84,7 +84,7 @@ export class PoliceFirearmSystem {
 
   wantedLevel() {
     return Math.max(0, Math.min(3, Math.floor(finite(
-      this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem?.level?.()
+      this.scene.policeSystem?.wantedLevel?.() ?? this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem?.level?.()
     ))));
   }
 

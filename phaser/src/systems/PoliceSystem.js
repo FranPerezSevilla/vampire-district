@@ -80,6 +80,43 @@ export function surplusPoliceCount(current, desired) {
 }
 
 export class PoliceSystem extends PoliceSystemCore {
+  inReacquisitionGrace() {
+    const until = Number(this.scene.registry?.get?.("policeReacquisitionGraceUntil")) || 0;
+    return (Number(this.scene.time?.now) || 0) < until;
+  }
+
+  wantedLevel() {
+    return this.inReacquisitionGrace() ? 0 : super.wantedLevel();
+  }
+
+  resetAfterPlayerDeath(graceMs = 7000) {
+    const now = Number(this.scene.time?.now) || 0;
+    const until = now + Math.max(0, Number(graceMs) || 0);
+    this.scene.registry?.set?.("policeReacquisitionGraceUntil", until);
+    this.previousLevel = 0;
+    this.attackLeaderId = null;
+    this.lastKnownPlayer = null;
+    this.arrestTriggered = false;
+    this.helicopter.active = false;
+    this.helicopter.lock = 0;
+
+    for (const cop of this.allPolice()) {
+      cop.enemyAttack = null;
+      cop.chasingPlayer = false;
+      cop.alarmed = false;
+      cop.investigateTarget = null;
+      cop.reportTarget = null;
+      cop.reportSeverity = 0;
+      cop.witnessReason = "";
+      cop.reactionTimer = 0;
+      cop.soundReactionTimer = 0;
+      cop.hasReported = false;
+      if (this.isTemporaryResponseCop(cop)) this.finishRetirement(cop);
+    }
+    this.scene.npcSystem?.rebuildSpatialIndex?.();
+    return until;
+  }
+
   allPolice() {
     return super.police();
   }

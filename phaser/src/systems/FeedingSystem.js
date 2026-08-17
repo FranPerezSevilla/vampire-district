@@ -51,6 +51,18 @@ export class FeedingSystem {
     return [];
   }
 
+  relieveHunger(amount, source = "external") {
+    const before = Math.max(0, Math.min(100, Number(this.hunger) || 0));
+    const relief = Math.max(0, Number(amount) || 0);
+    const after = Math.max(0, before - relief);
+    this.hunger = after;
+    const applied = before - after;
+    if (applied > 0) {
+      this.scene.events?.emit?.("hunger:changed", { source, before, after, amount: -applied });
+    }
+    return { before, after, relief: applied };
+  }
+
   addPassiveHunger(dt) {
     if (!dt || this.scene.missionSystem?.failed) return;
     const before = this.hunger;

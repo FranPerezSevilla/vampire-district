@@ -50,6 +50,7 @@ export class GameScene extends GameSceneCore {
     if (!this.feedingSystem?.isActive?.()) {
       options.push(...(this.vehicleSystem?.collectInteractions?.() || []));
       options.push(...(this.trafficMaterializationSystem?.collectInteractions?.() || []));
+      options.push(...(this.deathRecoverySystem?.collectInteractions?.() || []));
     }
     return options;
   }
