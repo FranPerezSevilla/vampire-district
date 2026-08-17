@@ -27,6 +27,8 @@ jobs:
           sed -n "/python3 - <<'PY'/,/^          PY$/p" .github/workflows/apply-traffic-visibility-lifecycle.yml \
             | sed '1d;$d;s/^          //' \
             | python3
+      - name: Remove temporary applicators before validation
+        run: rm -f .github/workflows/apply-traffic-visibility-lifecycle.yml .github/workflows/apply-traffic-visibility-lifecycle-v2.yml
       - name: Install exact dependencies
         run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
       - name: Run focused traffic regression
