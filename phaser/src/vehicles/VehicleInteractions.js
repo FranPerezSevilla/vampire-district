@@ -9,6 +9,8 @@ const EXIT_SPEED_LIMIT = 12;
 const EXIT_ESCAPE_PROBE = 18;
 const EXIT_CORRIDOR_STEPS = Object.freeze([0, 0.5, 1]);
 const VEHICLE_DOOR_CLOSE_DELAY = 0.52;
+const VEHICLE_ENGINE_START_DELAY = 0.58;
+const VEHICLE_ENGINE_LOOP_REVEAL = 2.05;
 
 export function vehicleStatusLabel(vehicle) {
   switch (vehicle.status) {
@@ -178,6 +180,10 @@ export function enterVehicle(system, vehicleId, { force = false } = {}) {
 
   RawAudio.play("vehicleDoorOpen");
   RawAudio.play("vehicleDoorClose", { delay: VEHICLE_DOOR_CLOSE_DELAY, cooldown: 0 });
+  RawAudio.beginVehicleEngineStart(`player:${vehicle.id}`, {
+    delay: VEHICLE_ENGINE_START_DELAY,
+    revealAfter: VEHICLE_ENGINE_LOOP_REVEAL
+  });
   system.updateHud();
   system.publish();
   system.scene.events?.emit?.("vehicle:entered", { vehicleId: vehicle.id, status: vehicle.status });

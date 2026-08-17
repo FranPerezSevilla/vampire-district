@@ -5,10 +5,10 @@ const RAW_AUDIO_MASTER_GAIN = 0.20;
 const NARRATIVE_DUCK_FACTOR = 0.54;
 const MAX_VEHICLE_ENGINE_VOICES = 10;
 const VEHICLE_ENGINE_PROFILES = Object.freeze({
-  compact: Object.freeze({ idleHz: 48, redlineHz: 126, filterBase: 520, filterRange: 1050, volume: 0.115, wave: "sawtooth", harmonic: 0.18 }),
-  sedan: Object.freeze({ idleHz: 43, redlineHz: 112, filterBase: 470, filterRange: 930, volume: 0.112, wave: "sawtooth", harmonic: 0.17 }),
-  van: Object.freeze({ idleHz: 35, redlineHz: 88, filterBase: 390, filterRange: 760, volume: 0.125, wave: "square", harmonic: 0.14 }),
-  police: Object.freeze({ idleHz: 47, redlineHz: 128, filterBase: 540, filterRange: 1100, volume: 0.118, wave: "sawtooth", harmonic: 0.19 })
+  compact: Object.freeze({ idleHz: 48, redlineHz: 126, filterBase: 520, filterRange: 1050, volume: 0.115, wave: "sawtooth", harmonic: 0.18, samplePitch: 1.06, sampleVolume: 0.34, sampleFilterBase: 1500, sampleFilterRange: 4300 }),
+  sedan: Object.freeze({ idleHz: 43, redlineHz: 112, filterBase: 470, filterRange: 930, volume: 0.112, wave: "sawtooth", harmonic: 0.17, samplePitch: 0.98, sampleVolume: 0.36, sampleFilterBase: 1400, sampleFilterRange: 3800 }),
+  van: Object.freeze({ idleHz: 35, redlineHz: 88, filterBase: 390, filterRange: 760, volume: 0.125, wave: "square", harmonic: 0.14, samplePitch: 0.84, sampleVolume: 0.40, sampleFilterBase: 1050, sampleFilterRange: 3000 }),
+  police: Object.freeze({ idleHz: 47, redlineHz: 128, filterBase: 540, filterRange: 1100, volume: 0.118, wave: "sawtooth", harmonic: 0.19, samplePitch: 1.08, sampleVolume: 0.36, sampleFilterBase: 1600, sampleFilterRange: 4500 })
 });
 
 class RawAudioBus {
@@ -32,6 +32,7 @@ class RawAudioBus {
     this.vehicleEngineFrame = 0;
     this.vehicleEngineFrameOpen = false;
     this.vehicleEnginePaused = false;
+    this.vehicleEngineStartDeadlines = new Map();
   }
 
   ensureListeners() {
@@ -249,6 +250,29 @@ class RawAudioBus {
     return VEHICLE_ENGINE_PROFILES[String(profileId || "")] || VEHICLE_ENGINE_PROFILES.sedan;
   }
 
+  beginVehicleEngineStart(id, { delay = 0.58, revealAfter = 2.05 } = {}) {
+    const key = String(id || "");
+    if (!key) return false;
+    this.ensureListeners();
+    const ctx = this.unlock();
+    if (!ctx || !this.master) return false;
+
+    const safeDelay = Math.max(0, Number(delay) || 0);
+    const startAt = ctx.currentTime + safeDelay;
+    this.vehicleEngineStartDeadlines.set(key, startAt + Math.max(0.4, Number(revealAfter) || 2.05));
+
+    const playWhenReady = () => {
+      const remaining = Math.max(0, startAt - (this.ctx?.currentTime || startAt));
+      if (!this.playSample("vehicleEngineStart", { delay: remaining })) {
+        this.vehicleEngineStartFallback(remaining);
+      }
+    };
+    const ready = this.sampleBuffers.get("vehicleEngineStart");
+    if (ready?.length) playWhenReady();
+    else this.loadSampleEvent("vehicleEngineStart")?.then(playWhenReady);
+    return true;
+  }
+
   createVehicleEngineVoice(id, profileId, priority = 0, audibility = 0) {
     const ctx = this.ctx;
     if (!ctx || !this.master) return null;
@@ -261,6 +285,40 @@ class RawAudioBus {
       const quietestScore = (quietest?.priority || 0) * 2 + (quietest?.audibility || 0);
       if (!quietestId || quietestScore >= incomingScore) return null;
       this.stopVehicleEngine(quietestId);
+    }
+
+    const connectOutput = (filter, gain, panner) => {
+      filter.connect(gain);
+      if (panner) {
+        gain.connect(panner);
+        panner.connect(this.master);
+      } else {
+        gain.connect(this.master);
+      }
+    };
+
+    const engineBuffers = this.sampleBuffers.get("vehicleEngineLoop");
+    if (engineBuffers?.length) {
+      try {
+        const source = ctx.createBufferSource();
+        const filter = ctx.createBiquadFilter();
+        const gain = ctx.createGain();
+        const panner = typeof ctx.createStereoPanner === "function" ? ctx.createStereoPanner() : null;
+        source.buffer = engineBuffers[0];
+        source.loop = true;
+        filter.type = "lowpass";
+        filter.Q.value = 0.62;
+        gain.gain.value = 0.0001;
+        source.connect(filter);
+        connectOutput(filter, gain, panner);
+        const voice = { mode: "sample", id, profileId, profile, source, filter, gain, panner, frame: this.vehicleEngineFrame, priority, audibility };
+        this.vehicleEngineVoices.set(id, voice);
+        source.start();
+        return voice;
+      } catch {
+      }
+    } else {
+      this.loadSampleEvent("vehicleEngineLoop");
     }
 
     try {
@@ -279,14 +337,8 @@ class RawAudioBus {
       primary.connect(filter);
       secondary.connect(harmonicGain);
       harmonicGain.connect(filter);
-      filter.connect(gain);
-      if (panner) {
-        gain.connect(panner);
-        panner.connect(this.master);
-      } else {
-        gain.connect(this.master);
-      }
-      const voice = { id, profileId, profile, primary, secondary, harmonicGain, filter, gain, panner, frame: this.vehicleEngineFrame, priority, audibility };
+      connectOutput(filter, gain, panner);
+      const voice = { mode: "procedural", id, profileId, profile, primary, secondary, harmonicGain, filter, gain, panner, frame: this.vehicleEngineFrame, priority, audibility };
       this.vehicleEngineVoices.set(id, voice);
       primary.start();
       secondary.start();
@@ -310,22 +362,44 @@ class RawAudioBus {
     if (!ctx || !this.master) return false;
     const priority = Math.max(0, Number(options.priority) || 0);
     let voice = this.vehicleEngineVoices.get(key);
+    if (voice?.mode === "procedural" && this.sampleBuffers.get("vehicleEngineLoop")?.length) {
+      this.stopVehicleEngine(key, { preserveStartDeadline: true });
+      voice = null;
+    }
     if (!voice) voice = this.createVehicleEngineVoice(key, options.profileId, priority, audibility);
     if (!voice) return false;
 
     const profile = voice.profile;
     const rpm = Math.max(0.18, Math.min(1, Number(options.rpm) || 0.18));
     const load = Math.max(0.12, Math.min(1, Number(options.load) || 0.12));
-    const frequency = profile.idleHz + (profile.redlineHz - profile.idleHz) * rpm;
-    const gainTarget = Math.max(0.0001, profile.volume * audibility * (0.42 + rpm * 0.36 + load * 0.22));
-    const filterTarget = profile.filterBase + profile.filterRange * (0.30 + rpm * 0.70);
     const panTarget = Math.max(-1, Math.min(1, Number(options.pan) || 0));
     const now = ctx.currentTime;
+    const revealAt = this.vehicleEngineStartDeadlines.get(key) || 0;
+    const revealed = !revealAt || now >= revealAt;
+    if (revealAt && revealed) this.vehicleEngineStartDeadlines.delete(key);
 
-    voice.primary.frequency.setTargetAtTime(Math.max(24, frequency), now, 0.035);
-    voice.secondary.frequency.setTargetAtTime(Math.max(35, frequency * 2.01), now, 0.040);
-    voice.filter.frequency.setTargetAtTime(Math.max(120, filterTarget), now, 0.055);
-    voice.gain.gain.setTargetAtTime(gainTarget, now, 0.045);
+    if (voice.mode === "sample") {
+      const playbackRate = Math.max(0.72, Math.min(2.20, profile.samplePitch * (0.80 + rpm * 1.18)));
+      const gainTarget = revealed
+        ? Math.max(0.0001, profile.sampleVolume * audibility * (0.48 + rpm * 0.22 + load * 0.30))
+        : 0.0001;
+      const filterTarget = profile.sampleFilterBase + profile.sampleFilterRange * (0.22 + rpm * 0.58 + load * 0.20);
+      voice.source.playbackRate.setTargetAtTime(playbackRate, now, 0.055);
+      voice.filter.frequency.setTargetAtTime(Math.max(320, filterTarget), now, 0.065);
+      voice.gain.gain.setTargetAtTime(gainTarget, now, revealed ? 0.075 : 0.025);
+      voice.playbackRate = playbackRate;
+    } else {
+      const frequency = profile.idleHz + (profile.redlineHz - profile.idleHz) * rpm;
+      const gainTarget = revealed
+        ? Math.max(0.0001, profile.volume * audibility * (0.42 + rpm * 0.36 + load * 0.22))
+        : 0.0001;
+      const filterTarget = profile.filterBase + profile.filterRange * (0.30 + rpm * 0.70);
+      voice.primary.frequency.setTargetAtTime(Math.max(24, frequency), now, 0.035);
+      voice.secondary.frequency.setTargetAtTime(Math.max(35, frequency * 2.01), now, 0.040);
+      voice.filter.frequency.setTargetAtTime(Math.max(120, filterTarget), now, 0.055);
+      voice.gain.gain.setTargetAtTime(gainTarget, now, revealed ? 0.045 : 0.025);
+    }
+
     voice.panner?.pan?.setTargetAtTime?.(panTarget, now, 0.055);
     voice.frame = this.vehicleEngineFrame;
     voice.priority = priority;
@@ -336,25 +410,31 @@ class RawAudioBus {
     return true;
   }
 
-  stopVehicleEngine(id) {
+  stopVehicleEngine(id, { preserveStartDeadline = false } = {}) {
     const key = String(id || "");
     const voice = this.vehicleEngineVoices.get(key);
+    if (!preserveStartDeadline) this.vehicleEngineStartDeadlines.delete(key);
     if (!voice) return false;
     this.vehicleEngineVoices.delete(key);
     const ctx = this.ctx;
-    const when = (ctx?.currentTime || 0) + 0.10;
-    try { voice.gain.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.025); } catch {}
-    try { voice.primary.stop(when); } catch {}
-    try { voice.secondary.stop(when); } catch {}
+    const now = ctx?.currentTime || 0;
+    const when = now + 0.10;
+    try { voice.gain.gain.setTargetAtTime(0.0001, now, 0.025); } catch {}
+    try { voice.source?.stop(when); } catch {}
+    try { voice.primary?.stop(when); } catch {}
+    try { voice.secondary?.stop(when); } catch {}
     const disconnect = () => {
-      try { voice.primary.disconnect(); } catch {}
-      try { voice.secondary.disconnect(); } catch {}
-      try { voice.harmonicGain.disconnect(); } catch {}
-      try { voice.filter.disconnect(); } catch {}
-      try { voice.gain.disconnect(); } catch {}
+      try { voice.source?.disconnect(); } catch {}
+      try { voice.primary?.disconnect(); } catch {}
+      try { voice.secondary?.disconnect(); } catch {}
+      try { voice.harmonicGain?.disconnect(); } catch {}
+      try { voice.filter?.disconnect(); } catch {}
+      try { voice.gain?.disconnect(); } catch {}
       try { voice.panner?.disconnect?.(); } catch {}
     };
-    voice.primary.onended = disconnect;
+    const owner = voice.source || voice.primary;
+    if (owner) owner.onended = disconnect;
+    else disconnect();
     return true;
   }
 
@@ -366,6 +446,7 @@ class RawAudioBus {
     return [...this.vehicleEngineVoices.values()].map(voice => ({
       id: voice.id,
       profileId: voice.profileId,
+      mode: voice.mode || "procedural",
       rpm: Number(voice.rpm) || 0,
       load: Number(voice.load) || 0,
       pan: Number(voice.pan) || 0,
@@ -426,6 +507,7 @@ class RawAudioBus {
       case "bodyDrop": return this.hit(85, 0.045, 0.10);
       case "vehicleDoorOpen": return this.vehicleDoorOpen();
       case "vehicleDoorClose": return this.vehicleDoorClose(options.delay);
+      case "vehicleEngineStart": return this.vehicleEngineStartFallback(options.delay);
       case "vehicleCollisionLight": return this.vehicleCollision(false);
       case "vehicleCollisionHeavy": return this.vehicleCollision(true);
       case "vehicleSkidLoop": return this.vehicleSkid();
@@ -548,6 +630,13 @@ class RawAudioBus {
 
   scrape() {
     this.noise(0.20, { volume: 0.040, filter: 260, filterType: "bandpass", q: 1.8 });
+  }
+
+  vehicleEngineStartFallback(delay = 0) {
+    const baseDelay = Math.max(0, Number(delay) || 0);
+    this.tone(118, 0.08, { delay: baseDelay, to: 72, volume: 0.024, type: "triangle", filter: 700 });
+    this.noise(0.92, { delay: baseDelay + 0.12, volume: 0.045, filter: 430, filterType: "bandpass", q: 0.72 });
+    this.tone(58, 1.05, { delay: baseDelay + 0.16, to: 92, volume: 0.040, type: "sawtooth", filter: 520 });
   }
 
   vehicleDoorOpen() {
