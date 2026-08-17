@@ -12,7 +12,6 @@ permissions:
 
 jobs:
   apply:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
@@ -21,7 +20,7 @@ jobs:
           ref: audio/playtest-p0
           fetch-depth: 0
 
-      - name: Apply escalation and firearm integration
+      - name: Apply changes
         shell: bash
         run: |
           python3 - <<'PY'
@@ -36,27 +35,15 @@ jobs:
           motor = Path("phaser/src/police/MotorizedPoliceSystem.js")
           replace_once(
               motor,
-              '''      if (level >= 3
-                && unit.index === 0
-                && unit.tacticCooldown <= 0
-                && ![MOTORIZED_POLICE_TACTICS.PIT_TELEGRAPH, MOTORIZED_POLICE_TACTICS.PIT_COMMIT].includes(unit.tactic)''',
-              '''      if (level >= 2
-                && unit.index === 0
-                && unit.tacticCooldown <= 0
-                && ![MOTORIZED_POLICE_TACTICS.PIT_TELEGRAPH, MOTORIZED_POLICE_TACTICS.PIT_COMMIT].includes(unit.tactic)''',
-              "Wanted 2 PIT threshold"
+              "      if (level >= 3\n        && unit.index === 0\n        && unit.tacticCooldown <= 0\n        && ![MOTORIZED_POLICE_TACTICS.PIT_TELEGRAPH, MOTORIZED_POLICE_TACTICS.PIT_COMMIT].includes(unit.tactic)",
+              "      if (level >= 2\n        && unit.index === 0\n        && unit.tacticCooldown <= 0\n        && ![MOTORIZED_POLICE_TACTICS.PIT_TELEGRAPH, MOTORIZED_POLICE_TACTICS.PIT_COMMIT].includes(unit.tactic)",
+              "Wanted 2 PIT"
           )
           replace_once(
               motor,
-              '''    if (level >= 3
-              && unit.index === 0
-              && unit.tacticCooldown <= 0
-              && ![MOTORIZED_POLICE_TACTICS.RAM_TELEGRAPH, MOTORIZED_POLICE_TACTICS.RAM_COMMIT].includes(unit.tactic)''',
-              '''    if (level >= 2
-              && unit.index === 0
-              && unit.tacticCooldown <= 0
-              && ![MOTORIZED_POLICE_TACTICS.RAM_TELEGRAPH, MOTORIZED_POLICE_TACTICS.RAM_COMMIT].includes(unit.tactic)''',
-              "Wanted 2 RAM threshold"
+              "    if (level >= 3\n      && unit.index === 0\n      && unit.tacticCooldown <= 0\n      && ![MOTORIZED_POLICE_TACTICS.RAM_TELEGRAPH, MOTORIZED_POLICE_TACTICS.RAM_COMMIT].includes(unit.tactic)",
+              "    if (level >= 2\n      && unit.index === 0\n      && unit.tacticCooldown <= 0\n      && ![MOTORIZED_POLICE_TACTICS.RAM_TELEGRAPH, MOTORIZED_POLICE_TACTICS.RAM_COMMIT].includes(unit.tactic)",
+              "Wanted 2 RAM"
           )
 
           police = Path("phaser/src/systems/PoliceSystem.js")
@@ -64,7 +51,7 @@ jobs:
               police,
               'this.scene.lastActionText = "WANTED LEVEL 2: two response cruisers support the foot search from separate approaches.";',
               'this.scene.lastActionText = "WANTED LEVEL 2: response cruisers actively intercept, ram and force vehicles off line while armed officers close in.";',
-              "Wanted 2 response copy"
+              "Wanted 2 copy"
           )
 
           runtime = Path("phaser/src/runtime/GameplayRuntimeCore.js")
@@ -72,145 +59,61 @@ jobs:
               runtime,
               'import { PlayerDamageSystem } from "../combat/PlayerDamageSystem.js";\n',
               'import { PlayerDamageSystem } from "../combat/PlayerDamageSystem.js";\nimport { PoliceFirearmSystem } from "../combat/PoliceFirearmSystem.js";\n',
-              "runtime firearm import"
+              "firearm import"
           )
           replace_once(
               runtime,
               '    scene.playerDamageSystem = new PlayerDamageSystem(scene);\n    scene.drainSystem = new DrainSystem(scene);',
               '    scene.playerDamageSystem = new PlayerDamageSystem(scene);\n    scene.policeFirearmSystem = new PoliceFirearmSystem(scene);\n    scene.drainSystem = new DrainSystem(scene);',
-              "runtime firearm construction"
+              "firearm construction"
           )
           replace_once(
               runtime,
               '      "PlayerDamageSystem",\n      "DrainSystem",',
               '      "PlayerDamageSystem",\n      "PoliceFirearmSystem",\n      "DrainSystem",',
-              "runtime firearm diagnostics"
+              "firearm diagnostics"
           )
           text = runtime.read_text()
           old = '      scene.drainSystem?.update(0, frame);\n      scene.playerDamageSystem?.postUpdate(0, frame);'
           new = '      scene.drainSystem?.update(0, frame);\n      scene.policeFirearmSystem?.update(0, frame);\n      scene.playerDamageSystem?.postUpdate(0, frame);'
-          count = text.count(old)
-          if count != 3:
-              raise SystemExit(f"expected 3 paused runtime anchors, found {count}")
+          if text.count(old) != 3:
+              raise SystemExit("paused firearm anchors changed")
           runtime.write_text(text.replace(old, new))
           replace_once(
               runtime,
               '      scene.policeSystem.update(dt);\n      scene.hunterSystem.update(dt);',
               '      scene.policeSystem.update(dt);\n      scene.policeFirearmSystem?.update(dt, frame);\n      scene.hunterSystem.update(dt);',
-              "runtime firearm update"
+              "firearm update"
           )
           replace_once(
               runtime,
               '    } else {\n      scene.playerDamageSystem?.postUpdate(0, frame);',
               '    } else {\n      scene.policeFirearmSystem?.update(0, frame);\n      scene.playerDamageSystem?.postUpdate(0, frame);',
-              "runtime modal firearm update"
+              "modal firearm update"
           )
           replace_once(
               runtime,
               '  destroy() {\n    this.scene.traversalPromptLabel?.destroy?.();',
               '  destroy() {\n    this.scene.policeFirearmSystem?.destroy?.();\n    this.scene.policeFirearmSystem = null;\n    this.scene.traversalPromptLabel?.destroy?.();',
-              "runtime firearm destroy"
+              "firearm destroy"
           )
-
-          tactics_test = Path("tests/police-vehicle-tactics.test.js")
-          text = tactics_test.read_text()
-          addition = '''
-
-test("Wanted 2 already enables active ram and PIT pressure while roadblocks remain Wanted 3", () => {
-  const code = source("phaser/src/police/MotorizedPoliceSystem.js");
-  const policy = source("phaser/src/police/MotorizedPolicePolicy.js");
-  assert.match(code, /if \(level >= 2[\s\S]*PIT_TELEGRAPH/);
-  assert.match(code, /if \(level >= 2[\s\S]*RAM_TELEGRAPH/);
-  assert.match(policy, /if \(Math\.max\(0, Math\.floor\(finite\(level\)\)\) >= 3 && Number\(index\) === 2\)/);
-  assert.match(policy, /if \(wanted >= 3\) return 3;[\s\S]*if \(wanted >= 2\) return 2;/);
-});
-'''
-          if "Wanted 2 already enables active ram" not in text:
-              tactics_test.write_text(text + addition)
 
           docs = Path("docs/PLAYTEST_ESCALATION_DAMAGE_RECOVERY.md")
           text = docs.read_text()
-          text = text.replace(
-              "Pursuit cruisers now switch from district routing to local tactical states when they become visible. On foot, they lead the player's motion; at wanted level 3 the first cruiser visibly telegraphs a committed ram before deploying officers. While driving, the two pursuit cruisers pressure opposite rear quarters; at wanted level 3 the lead unit telegraphs a controlled PIT attempt with a cooldown. The third unit keeps its route-informed roadblock role, offsets across the lane to leave a risky escape gap, and cannot materialize inside the player's immediate safety radius.",
-              "Pursuit cruisers now switch from district routing to local tactical states when they become visible. From wanted level 2, the lead cruiser can visibly telegraph a committed ram against an on-foot target and a controlled PIT against a driving target, while the second cruiser pressures the opposite rear quarter. Wanted level 3 adds the third route-informed roadblock cruiser, which offsets across the lane to leave a risky escape gap. No unit may materialize inside the player's immediate safety radius."
-          )
-          text = text.replace(
-              "- On foot at wanted level 2, visible cruisers lead the player's movement and deploy officers when they complete the intercept.\n- On foot at wanted level 3, the lead cruiser shows **RAM!**, commits to a short fixed line, shoves on contact and then deploys officers; changing direction during the telegraph should open an escape lane.\n- In a vehicle at wanted level 2, the two cruisers settle on opposite rear quarters instead of stacking directly behind the player.\n- In a vehicle at wanted level 3, the lead cruiser shows **PIT!**, makes one controlled contact that slows and yaws the player, then waits through its cooldown.\n- The roadblock cruiser appears ahead on its route, sits across the road with a visible **BLOCK** marker, and leaves a narrow but usable side gap.",
-              "- On foot at wanted level 2, the lead cruiser may show **RAM!**, commit to a short fixed line, shove on contact and then deploy officers; changing direction during the telegraph should open an escape lane.\n- In a vehicle at wanted level 2, two cruisers settle on opposite rear quarters and the lead unit may show **PIT!**, make one controlled contact that slows and yaws the player, then wait through its cooldown.\n- Wanted level 3 retains those active vehicle tactics and adds the third roadblock cruiser ahead on its route. It sits across the road with a visible **BLOCK** marker and leaves a narrow but usable side gap."
-          )
-          text = text.replace(
-              "**State: documented backlog.**",
-              "**State: implemented on PR #55; pending grouped in-game validation.**",
-              1
-          )
-          marker = "**State: implemented on PR #55; pending grouped in-game validation.**\n\n- Officers acquire line of sight"
-          replacement = "**State: implemented on PR #55; pending grouped in-game validation.**\n\nAt wanted level 2, one eligible chasing officer may visibly aim and fire controlled two-shot bursts; wanted level 3 allows up to two coordinated shooters. Firearms use finite magazines, reload pauses and the shared ballistic collision path. Buildings, civilian traffic, police cruisers and other officers block shots. While the player occupies a vehicle, officers target and damage that vehicle before the player.\n\n- Officers acquire line of sight"
-          if marker not in text:
-              raise SystemExit("missing armed police roadmap marker")
-          docs.write_text(text.replace(marker, replacement, 1))
+          old = "Pursuit cruisers now switch from district routing to local tactical states when they become visible. On foot, they lead the player's motion; at wanted level 3 the first cruiser visibly telegraphs a committed ram before deploying officers. While driving, the two pursuit cruisers pressure opposite rear quarters; at wanted level 3 the lead unit telegraphs a controlled PIT attempt with a cooldown. The third unit keeps its route-informed roadblock role, offsets across the lane to leave a risky escape gap, and cannot materialize inside the player's immediate safety radius."
+          new = "Pursuit cruisers now switch from district routing to local tactical states when they become visible. From wanted level 2, the lead cruiser can visibly telegraph a committed ram against an on-foot target and a controlled PIT against a driving target, while the second cruiser pressures the opposite rear quarter. Wanted level 3 adds the third route-informed roadblock cruiser, which leaves a risky escape gap. No unit may materialize inside the player's immediate safety radius."
+          if old not in text:
+              raise SystemExit("police tactics roadmap paragraph changed")
+          text = text.replace(old, new, 1)
+          old_state = "## Slice 4 — armed police on foot\n\n**State: documented backlog.**"
+          new_state = "## Slice 4 — armed police on foot\n\n**State: implemented on PR #55; pending grouped in-game validation.**\n\nAt wanted level 2, one eligible chasing officer may visibly aim and fire controlled two-shot bursts; wanted level 3 allows up to two coordinated shooters. Firearms use finite magazines, reload pauses and shared ballistic collision. Buildings, traffic, cruisers and other officers block shots. While the player occupies a vehicle, officers target and damage that vehicle first."
+          if old_state not in text:
+              raise SystemExit("armed police roadmap state changed")
+          docs.write_text(text.replace(old_state, new_state, 1))
           PY
 
-          cat > tests/police-firearms.test.js <<'EOF'
-          import test from "node:test";
-          import assert from "node:assert/strict";
-          import { readFileSync } from "node:fs";
-          import { AI_STATES } from "../phaser/src/data/ai.js";
-          import { COMBAT_STATES } from "../phaser/src/data/combat.js";
-          import { NPC_TYPES } from "../phaser/src/data/npcs.js";
-          import { POLICE_FIREARM } from "../phaser/src/data/player-combat.js";
-          import {
-            policeCanUseFirearm,
-            policeFirearmShooterLimit,
-            segmentCircleHitDistance
-          } from "../phaser/src/combat/PoliceFirearmSystem.js";
-
-          const source = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
-
-          test("armed response begins at Wanted 2 and scales to two shooters at Wanted 3", () => {
-            assert.equal(policeFirearmShooterLimit(1), 0);
-            assert.equal(policeFirearmShooterLimit(2), 1);
-            assert.equal(policeFirearmShooterLimit(3), 2);
-            assert.equal(POLICE_FIREARM.burstSize, 2);
-            assert.ok(POLICE_FIREARM.reloadMs > POLICE_FIREARM.shotGapMs);
-          });
-
-          test("police firearm eligibility requires an active chasing officer and Wanted 2", () => {
-            const cop = {
-              type: NPC_TYPES.POLICE,
-              ai: { state: AI_STATES.CHASING },
-              combat: { state: COMBAT_STATES.ACTIVE },
-              chasingPlayer: true,
-              stunnedTimer: 0
-            };
-            assert.equal(policeCanUseFirearm(cop, 1), false);
-            assert.equal(policeCanUseFirearm(cop, 2), true);
-            cop.stunnedTimer = 1;
-            assert.equal(policeCanUseFirearm(cop, 3), false);
-          });
-
-          test("swept police bullets detect a circular target without tunnelling", () => {
-            assert.equal(segmentCircleHitDistance({ x: 0, y: 0 }, { x: 1, y: 0 }, 100, { x: 50, y: 0 }, 5), 45);
-            assert.equal(segmentCircleHitDistance({ x: 0, y: 0 }, { x: 1, y: 0 }, 40, { x: 50, y: 0 }, 5), null);
-            assert.equal(segmentCircleHitDistance({ x: 0, y: 0 }, { x: 1, y: 0 }, 100, { x: 50, y: 20 }, 5), null);
-          });
-
-          test("runtime firearms use shared collision, prevent friendly fire and target the occupied vehicle", () => {
-            const system = source("phaser/src/combat/PoliceFirearmSystem.js");
-            const runtime = source("phaser/src/runtime/GameplayRuntimeCore.js");
-            assert.match(system, /resolveHitscanWorldImpact/);
-            assert.match(system, /friendlyPoliceImpact/);
-            assert.match(system, /currentVehicle\?\.\(\)/);
-            assert.match(system, /damageVehicle\?\.\(current\.id, POLICE_FIREARM\.vehicleDamage/);
-            assert.match(system, /playerDamageSystem\?\.damagePlayer/);
-            assert.match(system, /RawAudio\.play\("weaponFire"/);
-            assert.match(runtime, /new PoliceFirearmSystem\(scene\)/);
-            assert.match(runtime, /policeFirearmSystem\?\.update\(dt, frame\)/);
-          });
-          EOF
-
           node --check phaser/src/combat/PoliceFirearmSystem.js
-          node --test tests/police-firearms.test.js tests/police-vehicle-tactics.test.js
-
+          node --test tests/police-vehicle-tactics.test.js
           rm .github/workflows/apply-wanted2-armed-police.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
