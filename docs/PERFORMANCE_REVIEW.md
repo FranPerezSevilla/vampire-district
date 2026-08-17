@@ -24,4 +24,39 @@ The runtime exposes `pairChecks`, `metricPairChecks` and `broadphase` in the ped
 
 ### Regression contract
 
-The deterministic 72-pedestrian benchmark must remain below 10% of the old all-pairs candidate count while preserving zero-overlap behavior. Existing pedestrian collision, route expansion and entity streaming tests must remain valid. If in-game hitching remains after this pass, the next performance increment should add per-system wall-time sampling before changing another subsystem.
+The deterministic 72-pedestrian benchmark must remain below 10% of the old all-pairs candidate count while preserving zero-overlap behavior. Existing pedestrian collision, route expansion and entity streaming tests must remain valid.
+
+## Pass 2 — bounded outer-pipeline wall-time sampling
+
+**State: implemented; pending in-game browser capture and ranking.**
+
+### Why this pass exists
+
+Pass 1 proved that pedestrian broadphase scaled badly, but it did not establish whether pedestrians are still the dominant cause of the intermittent hitching after that optimization. Before changing another gameplay subsystem, the runtime now measures the major outer pipelines directly so traffic, streaming, pedestrians and the core gameplay loop can be compared on the same browser clock.
+
+### Instrumentation
+
+`RuntimeDiagnostics` samples named sections with `performance.now()` at a bounded cadence: **one sample every 6 invocations per named pipeline**. Cadence is tracked independently for each name, so call ordering cannot cause one subsystem to monopolize the samples.
+
+The first coarse categories are:
+
+- `StreamingPipeline`: chunk stream, district packs, entity streaming and distant simulation.
+- `TrafficPipeline`: macro traffic, materialization, vehicle witnesses, local traffic behavior and physical/impact consequences.
+- `MotorizedPoliceSystem`.
+- `PedestrianSystem`.
+- `GameplayRuntimeCore`: the existing input/combat/NPC/witness/police/mission/presentation loop as one coarse owner.
+- `TerritoryRuntimeSystem`.
+
+Each runtime snapshot now exposes per-pipeline call count, sample count, average sampled wall time, recent sampled maximum and lifetime sampled maximum, plus a ranked `slowestSystems` list. If `GameplayRuntimeCore` wins consistently, the next pass should drill into that loop rather than guessing which internal system is responsible.
+
+### Diagnostic allocation pressure
+
+The nested runtime diagnostics object is cached for **250 ms**. `GameplayRuntimeCore` may continue asking for a snapshot every frame, but calls inside that window reuse the same object instead of rebuilding maps, sorted arrays and timing records. At a 60 FPS target this bounds heavy snapshot construction to roughly **4 times per second instead of 60**, a **93.3% reduction** in those diagnostic object rebuilds. Frame samples themselves are still recorded every frame.
+
+### Playtest capture
+
+In a hitch-prone area, let the game run normally for several seconds and inspect `window.NBD_RUNTIME_DIAGNOSTICS.snapshot({ force: true })`. Compare `slowestSystems`, `systemTimings`, `averageFrameMs` and `recentMaxFrameMs`. The next optimization must target the top repeatable pipeline from that capture; if the ranking changes wildly between captures, gather a longer sample before modifying gameplay behavior.
+
+### Regression contract
+
+Pipeline timing must remain observational: it cannot alter system update order or gameplay cadence. Sampling must stay bounded, snapshots must reuse their heavy object inside the 250 ms cache window, and the pedestrian broadphase regression benchmark from Pass 1 must continue to pass.
