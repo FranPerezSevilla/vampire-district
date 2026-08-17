@@ -1,4 +1,5 @@
 name: Integrate real vehicle engine audio
+# Re-run after replacing the truncated loop prefix with verified Git blobs.
 
 on:
   push:
