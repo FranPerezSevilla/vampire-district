@@ -29,6 +29,33 @@ function vehicleRadius(archetype) {
   return Math.max(finite(archetype?.width, 28), finite(archetype?.height, 14)) * 0.43;
 }
 
+export function civilianTrafficPlayerImpact(slot, player, speed) {
+  if (!slot || !player) return null;
+  const width = Math.max(18, finite(slot.archetype?.width, 28));
+  const height = Math.max(10, finite(slot.archetype?.height, 14));
+  const playerRadius = 7;
+  const angle = finite(slot.angle);
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const dx = finite(player.x) - finite(slot.x);
+  const dy = finite(player.y) - finite(slot.y);
+  const localX = dx * cos + dy * sin;
+  const localY = -dx * sin + dy * cos;
+  if (Math.abs(localX) > width * 0.5 + playerRadius || Math.abs(localY) > height * 0.5 + playerRadius) return null;
+
+  const impactSpeed = Math.max(0, finite(speed));
+  if (impactSpeed < 18) {
+    return { speed: impactSpeed, damage: 0, pushDistance: 0, direction: { x: cos, y: sin } };
+  }
+  const severity = clamp((impactSpeed - 18) / 70, 0, 1);
+  return {
+    speed: impactSpeed,
+    damage: round(7 + severity * 15, 1),
+    pushDistance: round(5 + severity * 13, 1),
+    direction: { x: cos, y: sin }
+  };
+}
+
 function laneKey(edgeId, direction) {
   return `${String(edgeId || "")}:${String(direction || "forward")}`;
 }
@@ -203,7 +230,8 @@ export class TrafficLocalBehaviorSystem {
         engineSpeed: 0,
         engineGear: 1,
         engineGearShiftTimer: 0,
-        engineRpm: 0.18
+        engineRpm: 0.18,
+        playerImpactCooldownUntil: 0
       };
       this.states.set(token.tokenId, state);
     }
@@ -441,6 +469,51 @@ export class TrafficLocalBehaviorSystem {
     return slot;
   }
 
+  processPlayerImpact(slot, state) {
+  if (this.scene.currentLayer !== LAYERS.STREET || this.vehicleSystem.isDriving?.()) return false;
+  const player = this.scene.player;
+  if (!player || this.scene.playerDamageSystem?.isDead?.()) return false;
+  const now = finite(this.scene.time?.now);
+  if (now < finite(state.playerImpactCooldownUntil)) return false;
+
+  const impact = civilianTrafficPlayerImpact(slot, player, state.engineSpeed);
+  if (!impact) return false;
+
+  state.desiredSpeedFactor = 0;
+  state.speedFactor = Math.min(state.speedFactor, impact.damage > 0 ? 0.12 : 0);
+  state.engineSpeed = Math.min(state.engineSpeed, impact.speed * 0.42);
+  slot.desiredSpeedFactor = state.desiredSpeedFactor;
+  slot.speedFactor = state.speedFactor;
+
+  if (impact.damage <= 0) return true;
+  state.playerImpactCooldownUntil = now + 900;
+
+  const pushX = player.x + impact.direction.x * impact.pushDistance;
+  const pushY = player.y + impact.direction.y * impact.pushDistance;
+  if (!this.scene.canStandAt || this.scene.canStandAt(pushX, player.y)) player.x = pushX;
+  if (!this.scene.canStandAt || this.scene.canStandAt(player.x, pushY)) player.y = pushY;
+
+  const applied = Boolean(this.scene.playerDamageSystem?.damagePlayer?.(
+    { id: `traffic:${state.tokenId}` },
+    {
+      vitalityDamage: impact.damage,
+      label: "civilian vehicle impact",
+      damageKind: "vehicle"
+    }
+  ));
+  this.scene.events?.emit?.("traffic:player-impact", {
+    tokenId: state.tokenId,
+    vehicleId: `traffic:${state.tokenId}`,
+    speed: impact.speed,
+    attemptedDamage: impact.damage,
+    damage: applied ? impact.damage : 0,
+    pushed: impact.pushDistance,
+    x: player.x,
+    y: player.y
+  });
+  return true;
+}
+
   sampleLane(lane, phase) {
     const points = lane?.points || [];
     if (!points.length) return { x: 0, y: 0, angle: 0 };
@@ -489,7 +562,10 @@ export class TrafficLocalBehaviorSystem {
     }
 
     const decisions = active.map(item => ({ ...item, decision: this.decisionFor(item.slot, item.state, item.token, active) }));
-    for (const item of decisions) this.applyDecision(item.slot, item.state, item.token, item.decision, dt);
+    for (const item of decisions) {
+    this.applyDecision(item.slot, item.state, item.token, item.decision, dt);
+    this.processPlayerImpact(item.slot, item.state);
+  }
     this.publish(force);
     return active.length > 0;
   }

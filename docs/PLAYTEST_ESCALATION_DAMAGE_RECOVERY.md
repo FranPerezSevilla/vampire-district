@@ -180,3 +180,22 @@ At wanted level 2, one eligible chasing officer may visibly aim and fire control
 - No two routed civilians begin on the same tile.
 - Existing routes do not gain extra occupants beyond their available route points.
 - Performance must be observed before any further population increase; the dedicated performance slice still owns profiling and optimization.
+
+
+## Follow-up — accidental civilian-traffic player impacts
+
+**State: implemented on PR #55; pending in-game validation.**
+
+- Civilian traffic keeps the existing on-foot player look-ahead blocker, so normal drivers try to brake rather than target or pursue the player.
+- A real geometric overlap is now resolved after local traffic movement. Contacts below **18 px/s** remain harmless stopping contact; faster fortuitous impacts produce bounded Vitality damage and a forward shove scaled by measured traffic speed.
+- Damage is routed exclusively through `PlayerDamageSystem`, so invulnerability, death authority and later hospital recovery remain single-owner systems.
+- The shove uses `GameScene.canStandAt()` independently on each axis to avoid pushing the player through buildings or world bounds.
+- The striking traffic proxy immediately sheds speed and owns a short per-vehicle impact cooldown, preventing one overlap from stacking damage every traffic tick.
+- A stable `traffic:player-impact` event exposes speed, attempted/applied damage and displacement for future telemetry and tuning.
+
+### Acceptance
+
+- Standing in front of an approaching civilian car normally makes it brake to a stop.
+- Stepping into a moving car, or otherwise causing an unavoidable fortuitous contact, can knock the player aside and reduce Vitality.
+- Civilian traffic never begins chasing the player after contact.
+- Low-speed nudges do not chip Vitality, and one collision cannot apply damage every frame.
