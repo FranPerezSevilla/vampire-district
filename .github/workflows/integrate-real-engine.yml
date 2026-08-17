@@ -28,6 +28,17 @@ jobs:
       - name: Reconstruct verified engine derivatives
         run: |
           set -euo pipefail
+          echo "Staged fragment diagnostics:"
+          for staged in .github/audio-staging/engine/*.part-*; do
+            printf '%s bytes=' "$staged"
+            wc -c < "$staged" | tr -d '\n'
+            printf ' sha256='
+            sha256sum "$staged" | cut -d' ' -f1
+            if LC_ALL=C grep -n '[^A-Za-z0-9+/=[:space:]]' "$staged"; then
+              echo "Invalid base64 character found in $staged" >&2
+              exit 1
+            fi
+          done
           mkdir -p phaser/assets/audio/vehicles
           cat .github/audio-staging/engine/vehicle-engine-start-01.ogg.b64.part-* > /tmp/engine-start.b64
           cat .github/audio-staging/engine/vehicle-engine-loop-01.ogg.b64.part-* > /tmp/engine-loop.b64
