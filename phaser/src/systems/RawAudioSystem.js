@@ -498,6 +498,7 @@ class RawAudioBus {
       case "whisperFail": return this.fail(280);
       case "sense": return this.sense();
       case "weaponFire": return this.weaponFireFallback();
+      case "bulletHitWorld": return this.bulletHitWorldFallback();
       case "stun": return this.hit(120, 0.055, 0.12);
       case "kill": return this.hit(70, 0.10, 0.18);
       case "drainStart": return this.drainStart();
@@ -611,6 +612,12 @@ class RawAudioBus {
     this.noise(0.10, { volume: 0.12, filter: 1650, filterType: "highpass" });
     this.tone(190, 0.13, { to: 58, volume: 0.082, type: "square", filter: 1500 });
     this.tone(820, 0.05, { delay: 0.01, to: 210, volume: 0.035, type: "sawtooth", filter: 2500 });
+  }
+
+  bulletHitWorldFallback() {
+    this.noise(0.085, { volume: 0.052, filter: 1450, filterType: "bandpass", q: 0.78 });
+    this.tone(168, 0.11, { to: 74, volume: 0.034, type: "triangle", filter: 760 });
+    this.noise(0.070, { delay: 0.018, volume: 0.018, filter: 3300, filterType: "highpass", q: 0.85 });
   }
 
   hit(freq, vol, dur) {

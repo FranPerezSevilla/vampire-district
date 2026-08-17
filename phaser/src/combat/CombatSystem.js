@@ -16,6 +16,7 @@ import {
 } from "../data/weapons.js";
 import { resolveAction } from "../systems/ActionSystem.js";
 import { RawAudio } from "../systems/RawAudioSystem.js";
+import { resolveHitscanWorldImpact } from "./HitscanWorldCollision.js";
 
 const HUMAN_TYPES = new Set([
   NPC_TYPES.CIVILIAN,
@@ -214,22 +215,70 @@ export class CombatSystem {
     const selected = selectHitscanTarget(origin, this.attack.direction, candidates, config, {
       lineClear: candidate => this.hitscanLineClear(origin, candidate)
     });
-    const endpoint = selected
-      ? { x: selected.candidate.x, y: selected.candidate.y, hit: true }
-      : {
-          x: origin.x + this.attack.direction.x * config.range,
-          y: origin.y + this.attack.direction.y * config.range,
-          hit: false
-        };
+    const worldImpact = resolveHitscanWorldImpact({
+      origin,
+      direction: this.attack.direction,
+      range: config.range,
+      layer: this.scene.currentLayer,
+      vehicles: this.scene.vehicleSystem?.vehicles || [],
+      currentVehicleId: this.scene.vehicleSystem?.currentVehicleId || null
+    });
+    const selectedDistance = selected?.metrics?.along ?? Number.POSITIVE_INFINITY;
+    const worldFirst = Boolean(worldImpact && worldImpact.distance <= selectedDistance + 0.001);
+    const endpoint = worldFirst
+      ? { x: worldImpact.x, y: worldImpact.y, hit: true, kind: worldImpact.kind }
+      : selected
+        ? { x: selected.candidate.x, y: selected.candidate.y, hit: true, kind: selected.candidate.kind }
+        : {
+            x: origin.x + this.attack.direction.x * config.range,
+            y: origin.y + this.attack.direction.y * config.range,
+            hit: false
+          };
     this.attack.tracer = endpoint;
 
+    if (worldFirst) {
+      this.emitHitscanWorldImpact(worldImpact, config);
+      return;
+    }
     if (!selected) return;
     const candidate = selected.candidate;
     this.attack.hitIds.add(candidate.id);
     if (candidate.kind === "npc") this.applyHit(candidate.entity, config);
     if (candidate.kind === "prop") {
       this.scene.propDamageSystem?.damage?.(candidate.entity, config.damage || 1, this.attack.serial);
+      this.emitHitscanWorldImpact({
+        kind: "prop",
+        x: candidate.x,
+        y: candidate.y,
+        distance: selected.metrics.along,
+        prop: candidate.entity
+      }, config);
     }
+  }
+
+  emitHitscanWorldImpact(impact, config) {
+    RawAudio.play("bulletHitWorld", { cooldown: 0.035 });
+    if (impact.kind === "vehicle" && impact.vehicle?.id) {
+      this.scene.vehicleSystem?.damageVehicle?.(impact.vehicle.id, 1, {
+        reason: "gunfire",
+        persist: !impact.vehicle.transient
+      });
+      this.scene.events?.emit?.("vehicle:bullet-hit", {
+        vehicleId: impact.vehicle.id,
+        x: impact.x,
+        y: impact.y,
+        weaponId: config.id
+      });
+    }
+    this.scene.events?.emit?.("combat:world-hit", {
+      attackId: this.attack?.serial || 0,
+      weaponId: config.id,
+      targetKind: impact.kind,
+      vehicleId: impact.vehicle?.id || null,
+      propId: impact.prop?.id || null,
+      x: impact.x,
+      y: impact.y
+    });
   }
 
   hitscanLineClear(origin, candidate) {

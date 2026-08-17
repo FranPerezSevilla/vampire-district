@@ -19,6 +19,20 @@ const sampleEvent = (files, options = {}) => Object.freeze({
  * OGG derivatives remain in the repository for audio work.
  */
 export const SAMPLE_AUDIO_CATALOG = Object.freeze({
+  step: sampleEvent([
+    "phaser/assets/audio/player/step-01.mp3",
+    "phaser/assets/audio/player/step-02.mp3",
+    "phaser/assets/audio/player/step-03.mp3",
+    "phaser/assets/audio/player/step-04.mp3",
+    "phaser/assets/audio/player/step-05.mp3",
+    "phaser/assets/audio/player/step-06.mp3"
+  ], { volume: 0.82 }),
+  sprintStep: sampleEvent([
+    "phaser/assets/audio/player/sprint-step-01.mp3",
+    "phaser/assets/audio/player/sprint-step-02.mp3",
+    "phaser/assets/audio/player/sprint-step-03.mp3",
+    "phaser/assets/audio/player/sprint-step-04.mp3"
+  ], { volume: 0.92 }),
   weaponFire: sampleEvent([
     "phaser/assets/audio/combat/weapon-fire-01.mp3",
     "phaser/assets/audio/combat/weapon-fire-02.mp3",
@@ -27,6 +41,9 @@ export const SAMPLE_AUDIO_CATALOG = Object.freeze({
   bulletHitBody: sampleEvent([
     "phaser/assets/audio/combat/bullet-hit-body-02.mp3"
   ], { volume: 1.15 }),
+  bulletHitWorld: sampleEvent([
+    "phaser/assets/audio/combat/bullet-hit-world-01.mp3"
+  ], { volume: 0.88 }),
   drainStart: sampleEvent([
     "phaser/assets/audio/feeding/drain-start-01.mp3"
   ], { volume: 1.10, bus: "narrative" }),

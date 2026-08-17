@@ -12,6 +12,8 @@ The old audio catalogue lived in PR #44 (`agent/expand-audio-catalog`). That PR 
 
 ### Integrated P0 families
 
+- `step` / `sprintStep` — **real sample-backed families integrated on PR #55, pending listening acceptance**: six restrained and four firmer original-pitch concrete footfalls. Timing remains driven by measured player displacement, so blocked movement and driving do not create false steps.
+- `bulletHitWorld` — **real sample-backed candidate integrated on PR #55, pending listening acceptance**: bullets now stop on the first building boundary, vehicle, future prop or NPC. Buildings and vehicles produce the dedicated hard-surface impact; humans remain exclusively on `bulletHitBody`, and a miss into open space remains silent.
 - `weaponFire` — **integrated on PR #55**: three processed handgun variants under `phaser/assets/audio/combat/`, sample-backed playback through one stable event ID, WebKit-compatible MP3 runtime mirrors, and the previous procedural pistol sound retained as a loading/decoding fallback.
 - `bulletHitBody` — **integrated on PR #55**: the accepted processed impact sample plays only from the confirmed `combat:hit` path for hitscan weapons. Props/world geometry and vehicles do not emit that event, so they never receive the body-impact sound. The current family has one accepted runtime variant; extra variants are polish, not a blocker.
 - `drainStart` / `drainLoop` / `drainComplete` — **sound character listening accepted; narrative mix tuning on PR #55**: the KatjaSavia/Pixabay performance keeps its masculine-shifted start/release and original-pitch bite loop. The family now sits on a dedicated narrative bus with a modest level lift while ordinary world audio ducks to ~54% during feeding and returns smoothly just after the feeding exit cue.
@@ -41,8 +43,8 @@ Do not try to fill the full production catalogue before testing. For the current
 
 ### Player / vampire
 
-- `step` — normal asphalt/concrete footstep; 4–6 variants preferred
-- `sprintStep` — harder/faster footstep; 3–4 variants
+- `step` — **integrated candidate:** 6 restrained concrete variants; pending rhythm/level acceptance
+- `sprintStep` — **integrated candidate:** 4 firmer concrete variants for normal fast movement; pending rhythm/level acceptance
 - `whisper` — subtle supernatural command, intimate rather than explosive
 - `hungerWarning` — short low-priority warning accent
 
@@ -53,7 +55,7 @@ Do not try to fill the full production catalogue before testing. For the current
 - `weaponFire` — **done for the current handgun:** 3 sample-backed variants
 - `weaponDryFire` — empty trigger / failed shot
 - `bulletHitBody` — **done for current playtest:** 1 accepted sample, wired only to confirmed human hits; additional variants optional
-- `bulletHitWorld` — concrete/brick impact; 3 variants
+- `bulletHitWorld` — **integrated candidate:** 1 authentic hard-surface impact; bullets now collide with buildings, vehicles and future props before reaching NPCs behind them
 - `bulletRicochet` — occasional metal ricochet; 2–3 variants
 - `kill` — restrained lethal/downed impact accent; avoid arcade reward tone
 
@@ -123,4 +125,4 @@ The original first batch was:
 
 `step`, `weaponFire`, `bulletHitBody`, `drainStart`, `drainLoop`, `drainComplete`, `whisper`, `civilianScream`, `policeSirenLoop`, `vehicleEngineDrive`, `vehicleCollisionHeavy`.
 
-`weaponFire`, `bulletHitBody`, `civilianScream`, `vehicleSkidLoop` and the feeding sound character are listening accepted. `policeSirenLoop` is integrated and awaits in-game listening acceptance. Feeding now needs only a quick confirmation of the new narrative ducking/level balance. The systemic vehicle-engine mix is accepted; after feedback, each archetype now separates the short torque/RPM shift cut from a longer per-gear dwell, including a first-gear hold. A high-speed acceleration taper and lower upper-gear torque preserve the lively launch while making 3rd–5th gear breathe and stretching the run to maximum speed over several seconds. The procedural engine timbre has now been replaced by a real sample-backed start/loop candidate while preserving the accepted systemic RPM, gear and spatial ownership. There is deliberately no fixed city/traffic ambience sourcing task. `bulletHitWorld` remains a separate firearm-material family and must never reuse `bulletHitBody`.
+`weaponFire`, `bulletHitBody`, `civilianScream`, `vehicleSkidLoop` and the feeding sound character are listening accepted. `policeSirenLoop` is integrated and awaits in-game listening acceptance. Feeding now needs only a quick confirmation of the new narrative ducking/level balance. The systemic vehicle-engine mix is accepted; after feedback, each archetype now separates the short torque/RPM shift cut from a longer per-gear dwell, including a first-gear hold. A high-speed acceleration taper and lower upper-gear torque preserve the lively launch while making 3rd–5th gear breathe and stretching the run to maximum speed over several seconds. The procedural engine timbre has now been replaced by a real sample-backed start/loop candidate while preserving the accepted systemic RPM, gear and spatial ownership. There is deliberately no fixed city/traffic ambience sourcing task. `step`, `sprintStep` and `bulletHitWorld` are now real sample-backed candidates. World impacts remain strictly separate from `bulletHitBody`.
