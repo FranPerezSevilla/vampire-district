@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { CombatSystem } from "../phaser/src/combat/CombatSystem.js";
 import { DrainSystem } from "../phaser/src/combat/DrainSystem.js";
 import { PlayerDamageSystem } from "../phaser/src/combat/PlayerDamageSystem.js";
+import { createPlayerDamageState } from "../phaser/src/data/player-combat.js";
 import { WeaponSystem } from "../phaser/src/systems/WeaponSystem.js";
 
 function completedScene() {
@@ -14,6 +15,13 @@ function completedScene() {
     playerDamageSystem: { isHitStunned: () => false },
     missionSystem: { failed: false, completed: true }
   };
+}
+
+function damageSystem(scene) {
+  const damage = Object.create(PlayerDamageSystem.prototype);
+  damage.scene = scene;
+  damage.state = createPlayerDamageState();
+  return damage;
 }
 
 test("successful mission completion does not disable free-roam weapons or combat", () => {
@@ -35,9 +43,7 @@ test("successful mission completion does not disable free-roam weapons or combat
   drain.scene = scene;
   assert.equal(drain.canStart(frame), true);
 
-  const damage = Object.create(PlayerDamageSystem.prototype);
-  damage.scene = scene;
-  assert.equal(damage.canSimulate(frame), true);
+  assert.equal(damageSystem(scene).canSimulate(frame), true);
 });
 
 test("mission failure still blocks post-run combat actions", () => {
@@ -60,7 +66,5 @@ test("mission failure still blocks post-run combat actions", () => {
   drain.scene = scene;
   assert.equal(drain.canStart(frame), false);
 
-  const damage = Object.create(PlayerDamageSystem.prototype);
-  damage.scene = scene;
-  assert.equal(damage.canSimulate(frame), false);
+  assert.equal(damageSystem(scene).canSimulate(frame), false);
 });
