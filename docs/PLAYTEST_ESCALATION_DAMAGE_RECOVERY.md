@@ -126,19 +126,27 @@ At wanted level 2, one eligible chasing officer may visibly aim and fire control
 
 ## Slice 6 — master death beat and hospital recovery
 
-**State: documented backlog; dialogue copy provisional.**
+**State: in progress on PR #55; master death beat implemented, hospital reset/recovery pending.**
 
-1. Freeze active gameplay and close conflicting UI.
-2. Show a master dialogue popup. Initial concise line: **“Pathetic.”**
-3. Fade the scene and audio to black.
-4. Reset the active city runtime: clear Heat and active police response, rebuild transient traffic/NPC alarm state and remove temporary combat debris. Preserve durable campaign progression.
-5. Respawn the player at the hospital with a brief police reacquisition grace period.
-6. Place a lackey beside the player with the initial English line:
+### Implemented increment — master death beat and fade
+
+- The authoritative `player:died` event starts one idempotent death sequence; repeated death events cannot restart or duplicate it.
+- Conflicting interaction/feeding/combat actions are closed or cancelled immediately, while the existing dead-state input lock remains authoritative.
+- A fixed screen-space master popup shows **“Pathetic.”** for 1.1 seconds.
+- The scene then fades to full black over 0.9 seconds while the RawAudio world and narrative masters ramp down together; active vehicle-engine, skid and feeding loops are stopped before the fade.
+- The death presentation continues updating even after `worldEnabled` is false, so the lethal input lock cannot freeze the transition itself.
+- On reaching full black the system emits one `death:fade-complete` event. The next increment will consume that edge to clear transient city response state and perform hospital recovery rather than adding another death authority.
+
+### Remaining recovery flow
+
+1. Reset the active city runtime: clear Heat and active police response, rebuild transient traffic/NPC alarm state and remove temporary combat debris. Preserve durable campaign progression.
+2. Respawn the player at the hospital with a brief police reacquisition grace period.
+3. Place a lackey beside the player with the initial English line:
 
    **“You made quite a mess. We pulled you out of the morgue. Drink this blood bag. The car outside is yours.”**
 
-7. Grant one blood bag and place a usable replacement car immediately outside/in front of the hospital.
-8. The blood bag restores the player to a recoverable state but does not erase every consequence or fully satisfy Hunger by default.
+4. Grant one blood bag and place a usable replacement car immediately outside/in front of the hospital.
+5. The blood bag restores the player to a recoverable state but does not erase every consequence or fully satisfy Hunger by default.
 
 ### Acceptance
 
