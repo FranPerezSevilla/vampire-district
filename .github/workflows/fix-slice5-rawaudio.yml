@@ -1,0 +1,46 @@
+name: Fix Slice 5 explosion dependency
+
+on:
+  push:
+    branches: ["audio/playtest-p0"]
+    paths: [".github/workflows/fix-slice5-rawaudio.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: "audio/playtest-p0"
+          fetch-depth: 0
+      - name: Add RawAudio dependency and regression assertion
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('phaser/src/vehicles/VehicleSystem.js')
+          text = path.read_text(encoding='utf-8')
+          anchor = 'import { VEHICLE_OWNERSHIP, vehicleArchetype, vehicleDefinitions } from "../data/vehicles.js";\n'
+          if 'RawAudioSystem.js' not in text:
+              text = text.replace(anchor, anchor + 'import { RawAudio } from "../systems/RawAudioSystem.js";\n', 1)
+          path.write_text(text, encoding='utf-8')
+
+          path = Path('tests/vehicle-destruction.test.js')
+          text = path.read_text(encoding='utf-8')
+          anchor = '  assert.match(system, /vehicleDestructionTransition/);\n'
+          if 'RawAudioSystem' not in text:
+              text = text.replace(anchor, anchor + '  assert.match(system, /RawAudioSystem\\.js/);\n', 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Focused tests
+        run: node --test tests/player-damage.test.js tests/vehicle-destruction.test.js
+      - name: Commit fix and remove applicator
+        run: |
+          git config user.name "FranPerezSevilla"
+          git config user.email "fjperezga@gmail.com"
+          git add phaser/src/vehicles/VehicleSystem.js tests/vehicle-destruction.test.js
+          git rm .github/workflows/fix-slice5-rawaudio.yml
+          git commit -m "Fix Slice 5 explosion audio dependency"
+          git push origin HEAD:audio/playtest-p0
