@@ -1,6 +1,7 @@
 import { CombatSystem } from "../combat/CombatSystem.js";
 import { DrainSystem } from "../combat/DrainSystem.js";
 import { PlayerDamageSystem } from "../combat/PlayerDamageSystem.js";
+import { PoliceFirearmSystem } from "../combat/PoliceFirearmSystem.js";
 import { CITY_ANCHORS, LAYERS } from "../data/district.js";
 import { InputSystem } from "../input/InputSystem.js";
 import { createEmptyInputFrame } from "../input/actions.js";
@@ -44,6 +45,7 @@ export class GameplayRuntime {
     scene.weaponSystem = new WeaponSystem(scene);
     scene.combatSystem = new CombatSystem(scene);
     scene.playerDamageSystem = new PlayerDamageSystem(scene);
+    scene.policeFirearmSystem = new PoliceFirearmSystem(scene);
     scene.drainSystem = new DrainSystem(scene);
     scene.movementNoiseSystem = new MovementNoiseSystem(scene);
     scene.propDamageSystem = new PropDamageSystem(scene);
@@ -93,6 +95,7 @@ export class GameplayRuntime {
       "WeaponSystem",
       "CombatSystem",
       "PlayerDamageSystem",
+      "PoliceFirearmSystem",
       "DrainSystem",
       "MovementNoiseSystem",
       "PropDamageSystem",
@@ -125,6 +128,7 @@ export class GameplayRuntime {
       scene.nearestMovement = null;
       scene.nearestInteraction = null;
       scene.drainSystem?.update(0, frame);
+      scene.policeFirearmSystem?.update(0, frame);
       scene.playerDamageSystem?.postUpdate(0, frame);
       scene.aiStateSystem?.postUpdate?.(0, frame);
       scene.movementNoiseSystem?.update(frame);
@@ -137,6 +141,7 @@ export class GameplayRuntime {
       scene.nearestMovement = null;
       scene.nearestInteraction = null;
       scene.drainSystem?.update(0, frame);
+      scene.policeFirearmSystem?.update(0, frame);
       scene.playerDamageSystem?.postUpdate(0, frame);
       scene.aiStateSystem?.postUpdate?.(0, frame);
       scene.movementNoiseSystem?.update(frame);
@@ -151,6 +156,7 @@ export class GameplayRuntime {
       scene.nearestInteraction = null;
       scene.npcSystem.refreshVisibility();
       scene.drainSystem?.update(0, frame);
+      scene.policeFirearmSystem?.update(0, frame);
       scene.playerDamageSystem?.postUpdate(0, frame);
       scene.aiStateSystem?.postUpdate?.(0, frame);
       scene.movementNoiseSystem?.update(frame);
@@ -213,6 +219,7 @@ export class GameplayRuntime {
       scene.heatSystem?.cool?.(dt);
       scene.exposureSystem.cool(dt);
       scene.policeSystem.update(dt);
+      scene.policeFirearmSystem?.update(dt, frame);
       scene.hunterSystem.update(dt);
       scene.npcSystem.rebuildSpatialIndex?.();
       scene.aiStateSystem?.postUpdate?.(dt, frame);
@@ -225,6 +232,7 @@ export class GameplayRuntime {
       scene.nearestMovement = nearest(scene, split.movement);
       scene.nearestInteraction = nearest(scene, split.interaction);
     } else {
+      scene.policeFirearmSystem?.update(0, frame);
       scene.playerDamageSystem?.postUpdate(0, frame);
       scene.aiStateSystem?.postUpdate?.(0, frame);
     }
@@ -266,6 +274,8 @@ export class GameplayRuntime {
   }
 
   destroy() {
+    this.scene.policeFirearmSystem?.destroy?.();
+    this.scene.policeFirearmSystem = null;
     this.scene.traversalPromptLabel?.destroy?.();
     this.scene.traversalPromptLabel = null;
   }

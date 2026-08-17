@@ -259,7 +259,7 @@ export class PoliceSystem extends PoliceSystemCore {
     if (level === 1) {
       this.scene.lastActionText = "WANTED LEVEL 1: nearby foot patrols respond immediately and converge on the last known area.";
     } else if (level === 2) {
-      this.scene.lastActionText = "WANTED LEVEL 2: two response cruisers support the foot search from separate approaches.";
+      this.scene.lastActionText = "WANTED LEVEL 2: response cruisers actively intercept, ram and force vehicles off line while armed officers close in.";
     } else if (level >= 3) {
       this.scene.lastActionText = "WANTED LEVEL 3: three cruisers, a roadblock, massed foot units and helicopter pressure saturate the district.";
     }

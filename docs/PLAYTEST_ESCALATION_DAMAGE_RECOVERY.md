@@ -53,7 +53,7 @@ The current firearm collision query receives `scene.vehicleSystem.vehicles`. Amb
 
 **State: implemented on PR #55; pending grouped in-game validation.**
 
-Pursuit cruisers now switch from district routing to local tactical states when they become visible. On foot, they lead the player's motion; at wanted level 3 the first cruiser visibly telegraphs a committed ram before deploying officers. While driving, the two pursuit cruisers pressure opposite rear quarters; at wanted level 3 the lead unit telegraphs a controlled PIT attempt with a cooldown. The third unit keeps its route-informed roadblock role, offsets across the lane to leave a risky escape gap, and cannot materialize inside the player's immediate safety radius.
+Pursuit cruisers now switch from district routing to local tactical states when they become visible. From wanted level 2, the lead cruiser can visibly telegraph a committed ram against an on-foot target and a controlled PIT against a driving target, while the second cruiser pressures the opposite rear quarter. Wanted level 3 adds the third route-informed roadblock cruiser, which leaves a risky escape gap. No unit may materialize inside the player's immediate safety radius.
 
 ### Player on foot
 
@@ -86,7 +86,9 @@ Pursuit cruisers now switch from district routing to local tactical states when 
 
 ## Slice 4 — armed police on foot
 
-**State: documented backlog.**
+**State: implemented on PR #55; pending grouped in-game validation.**
+
+At wanted level 2, one eligible chasing officer may visibly aim and fire controlled two-shot bursts; wanted level 3 allows up to two coordinated shooters. Firearms use finite magazines, reload pauses and shared ballistic collision. Buildings, traffic, cruisers and other officers block shots. While the player occupies a vehicle, officers target and damage that vehicle first.
 
 - Officers acquire line of sight, aim, fire in controlled bursts and respect cooldown/reload windows.
 - On-foot officers shoot the player when legally escalated by wanted state.

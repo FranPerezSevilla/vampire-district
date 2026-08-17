@@ -599,7 +599,7 @@ export class MotorizedPoliceSystem {
         lateralDistance: 18
       });
 
-      if (level >= 3
+      if (level >= 2
         && unit.index === 0
         && unit.tacticCooldown <= 0
         && ![MOTORIZED_POLICE_TACTICS.PIT_TELEGRAPH, MOTORIZED_POLICE_TACTICS.PIT_COMMIT].includes(unit.tactic)
@@ -642,7 +642,7 @@ export class MotorizedPoliceSystem {
     }
 
     const intercept = predictInterceptPoint(focus, { leadSeconds: 0.92, maxLead: 115 });
-    if (level >= 3
+    if (level >= 2
       && unit.index === 0
       && unit.tacticCooldown <= 0
       && ![MOTORIZED_POLICE_TACTICS.RAM_TELEGRAPH, MOTORIZED_POLICE_TACTICS.RAM_COMMIT].includes(unit.tactic)
