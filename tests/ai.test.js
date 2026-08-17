@@ -149,5 +149,5 @@ test("the rooftop thug has a slow readable low-damage retaliation", () => {
   assert.ok(thug);
   assert.ok(thug.windupMs > police.windupMs);
   assert.ok(thug.recoveryMs > police.recoveryMs);
-  assert.ok(thug.hungerDamage < police.hungerDamage);
+  assert.ok(thug.vitalityDamage < police.vitalityDamage);
 });
