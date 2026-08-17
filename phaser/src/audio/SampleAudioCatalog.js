@@ -55,13 +55,13 @@ export const SAMPLE_AUDIO_CATALOG = Object.freeze({
   ], { volume: 0.95 }),
   vehicleEngineStart: sampleEvent([
     "phaser/assets/audio/vehicles/vehicle-engine-start-01.mp3"
-  ], { volume: 0.82 }),
+  ], { volume: 0.88 }),
   vehicleEngineLoop: sampleEvent([
     "phaser/assets/audio/vehicles/vehicle-engine-loop-01.wav"
   ], { volume: 1.00, loop: true }),
   vehicleSkidLoop: sampleEvent([
     "phaser/assets/audio/vehicles/vehicle-skid-loop-01.wav"
-  ], { volume: 0.68, loop: true })
+  ], { volume: 0.60, loop: true })
 });
 
 export const SAMPLE_AUDIO_IDS = Object.freeze(Object.keys(SAMPLE_AUDIO_CATALOG));

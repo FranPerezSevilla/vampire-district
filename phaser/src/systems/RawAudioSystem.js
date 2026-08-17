@@ -5,10 +5,10 @@ const RAW_AUDIO_MASTER_GAIN = 0.20;
 const NARRATIVE_DUCK_FACTOR = 0.54;
 const MAX_VEHICLE_ENGINE_VOICES = 10;
 const VEHICLE_ENGINE_PROFILES = Object.freeze({
-  compact: Object.freeze({ idleHz: 48, redlineHz: 126, filterBase: 520, filterRange: 1050, volume: 0.115, wave: "sawtooth", harmonic: 0.18, samplePitch: 1.06, sampleVolume: 0.34, sampleFilterBase: 1500, sampleFilterRange: 4300 }),
-  sedan: Object.freeze({ idleHz: 43, redlineHz: 112, filterBase: 470, filterRange: 930, volume: 0.112, wave: "sawtooth", harmonic: 0.17, samplePitch: 0.98, sampleVolume: 0.36, sampleFilterBase: 1400, sampleFilterRange: 3800 }),
-  van: Object.freeze({ idleHz: 35, redlineHz: 88, filterBase: 390, filterRange: 760, volume: 0.125, wave: "square", harmonic: 0.14, samplePitch: 0.84, sampleVolume: 0.40, sampleFilterBase: 1050, sampleFilterRange: 3000 }),
-  police: Object.freeze({ idleHz: 47, redlineHz: 128, filterBase: 540, filterRange: 1100, volume: 0.118, wave: "sawtooth", harmonic: 0.19, samplePitch: 1.08, sampleVolume: 0.36, sampleFilterBase: 1600, sampleFilterRange: 4500 })
+  compact: Object.freeze({ idleHz: 48, redlineHz: 126, filterBase: 520, filterRange: 1050, volume: 0.115, wave: "sawtooth", harmonic: 0.18, samplePitch: 1.06, sampleVolume: 0.38, sampleFilterBase: 1500, sampleFilterRange: 4300 }),
+  sedan: Object.freeze({ idleHz: 43, redlineHz: 112, filterBase: 470, filterRange: 930, volume: 0.112, wave: "sawtooth", harmonic: 0.17, samplePitch: 0.98, sampleVolume: 0.40, sampleFilterBase: 1400, sampleFilterRange: 3800 }),
+  van: Object.freeze({ idleHz: 35, redlineHz: 88, filterBase: 390, filterRange: 760, volume: 0.125, wave: "square", harmonic: 0.14, samplePitch: 0.84, sampleVolume: 0.44, sampleFilterBase: 1050, sampleFilterRange: 3000 }),
+  police: Object.freeze({ idleHz: 47, redlineHz: 128, filterBase: 540, filterRange: 1100, volume: 0.118, wave: "sawtooth", harmonic: 0.19, samplePitch: 1.08, sampleVolume: 0.40, sampleFilterBase: 1600, sampleFilterRange: 4500 })
 });
 
 class RawAudioBus {
