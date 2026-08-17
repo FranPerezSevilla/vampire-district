@@ -58,14 +58,14 @@ Pursuit cruisers now switch from district routing to local tactical states when 
 ### Player on foot
 
 - Pursuit cruisers use an intercept point rather than simply driving toward the player's current position.
-- At high wanted level, a cruiser may attempt a telegraphed ram/run-over attack.
+- From wanted level 2, a cruiser may attempt a telegraphed ram/run-over attack.
 - The attack must include approach visibility, a steering commitment window and an escape lane; no vehicle may spawn directly on top of the player.
 - A blocked or disabled cruiser can deploy officers rather than endlessly pushing geometry.
 
 ### Player driving
 
-- Pursuit cruisers use rear-quarter pressure and controlled PIT-like contact to turn or slow the player.
-- Coordinated units may form route-informed barricades at major junctions at the highest wanted level.
+- From wanted level 2, pursuit cruisers use rear-quarter pressure and controlled PIT-like contact to turn or slow the player.
+- Coordinated units may form route-informed barricades at major junctions only at wanted level 3.
 - Barricades must be placed ahead of the predicted route, leave a risky but possible escape option, and never materialize inside the player's collision footprint.
 - Police contact damages both vehicles according to relative speed and angle.
 
@@ -77,11 +77,9 @@ Pursuit cruisers now switch from district routing to local tactical states when 
 
 ### Grouped playtest checks
 
-- On foot at wanted level 2, visible cruisers lead the player's movement and deploy officers when they complete the intercept.
-- On foot at wanted level 3, the lead cruiser shows **RAM!**, commits to a short fixed line, shoves on contact and then deploys officers; changing direction during the telegraph should open an escape lane.
-- In a vehicle at wanted level 2, the two cruisers settle on opposite rear quarters instead of stacking directly behind the player.
-- In a vehicle at wanted level 3, the lead cruiser shows **PIT!**, makes one controlled contact that slows and yaws the player, then waits through its cooldown.
-- The roadblock cruiser appears ahead on its route, sits across the road with a visible **BLOCK** marker, and leaves a narrow but usable side gap.
+- On foot at wanted level 2, the lead cruiser may show **RAM!**, commit to a short fixed line, shove on contact and then deploy officers; changing direction during the telegraph should open an escape lane.
+- In a vehicle at wanted level 2, two cruisers settle on opposite rear quarters and the lead unit may show **PIT!**, make one controlled contact that slows and yaws the player, then wait through its cooldown.
+- Wanted level 3 retains those active vehicle tactics and adds the third roadblock cruiser ahead on its route. It sits across the road with a visible **BLOCK** marker and leaves a narrow but usable side gap.
 - No cruiser materializes directly on top of the player, and trapped/disabled cruisers deploy officers rather than pushing indefinitely.
 
 ## Slice 4 — armed police on foot
