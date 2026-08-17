@@ -3,6 +3,7 @@ import { createVehicleState } from "./VehicleModel.js";
 import { createVehicleHud, installVehicleBrowserApi, paintVehicle, publishVehicleState, refreshVehicleVisibility, updateVehicleHud, vehicleSystemSnapshot, vehicleSystemSummary } from "./VehicleView.js";
 import { canVehicleOccupy, filterVehicleInputFrame, handleVehicleWorldCollision, updateVehicleCamera, updateVehicleDriving } from "./VehicleDriving.js";
 import { canEnterVehicle, collectVehicleInteractions, enterVehicle, exitVehicle, inspectVehicleTrunk, removeVehicleTrunkItem, storeVehicleTrunkItem, vehicleStatusLabel, vehicleTrunkLabel } from "./VehicleInteractions.js";
+import { VEHICLE_DESTRUCTION, explosionDamageAtDistance, vehicleDestructionTransition } from "./VehicleDestructionPolicy.js";
 
 export class VehicleSystem {
   constructor(scene, campaign = scene?.campaignSystem || globalThis.NBD_CAMPAIGN_SYSTEM) {
@@ -50,6 +51,8 @@ export class VehicleSystem {
       visual,
       transient: Boolean(definition.transient),
       transientSequence: Number(definition.transientSequence) || 0,
+      criticalDamage: Boolean(state.disabled && state.health <= 0),
+      exploded: false,
       status: definition.transient
         ? (definition.status || definition.ownership || VEHICLE_OWNERSHIP.STOLEN)
         : this.campaign.vehicles.status(definition),
@@ -181,33 +184,162 @@ export class VehicleSystem {
     return handleVehicleWorldCollision(this, vehicle, impactSpeed);
   }
 
-  damageVehicle(vehicleId, amount, { reason = "damage", persist = true } = {}) {
+  damageVehicle(vehicleId, amount, { reason = "damage", persist = true, destructive = false } = {}) {
     const vehicle = this.vehicle(vehicleId);
     const damage = Math.max(0, Number(amount) || 0);
-    if (!vehicle || !damage || vehicle.disabled) return false;
-    vehicle.health = Math.max(0, vehicle.health - damage);
-    if (vehicle.health <= 0) {
-      vehicle.disabled = true;
-      vehicle.speed = 0;
-      vehicle.gear = 1;
-      vehicle.gearShiftTimer = 0;
-      vehicle.handbrake = false;
-      vehicle.parked = true;
-      this.handbrakeActive = false;
-      vehicle.container.setAlpha(0.52);
-      vehicle.visual.hood.setFillStyle(0x3f2027, 0.92);
-      this.scene.lastActionText = this.currentVehicleId === vehicle.id
-        ? `${vehicle.name} is disabled. You remain inside; press Enter to get out.`
-        : `${vehicle.name} disabled by ${reason}.`;
-      this.scene.events?.emit?.("vehicle:disabled", {
-        vehicleId: vehicle.id,
-        occupied: this.currentVehicleId === vehicle.id,
-        reason
-      });
+    if (!vehicle || !damage || vehicle.exploded) return false;
+    const transition = vehicleDestructionTransition(vehicle, damage, { destructive });
+    if (transition.action === "none") return false;
+    vehicle.health = transition.after;
+    if (transition.action === "explode") {
+      this.explodeVehicle(vehicle, { reason });
+    } else if (transition.action === "critical") {
+      this.markVehicleCritical(vehicle, { reason });
     }
     if (persist) this.persistVehicle(vehicle);
     this.updateHud();
     this.publish();
+    return true;
+  }
+
+  markVehicleCritical(vehicle, { reason = "damage" } = {}) {
+    if (!vehicle || vehicle.exploded) return false;
+    vehicle.health = 0;
+    vehicle.disabled = true;
+    vehicle.criticalDamage = true;
+    vehicle.speed = 0;
+    vehicle.velocityX = 0;
+    vehicle.velocityY = 0;
+    vehicle.gear = 1;
+    vehicle.gearShiftTimer = 0;
+    vehicle.handbrake = false;
+    vehicle.parked = true;
+    this.handbrakeActive = false;
+    vehicle.container?.setAlpha?.(0.52);
+    vehicle.visual?.hood?.setFillStyle?.(0x3f2027, 0.92);
+    this.scene.lastActionText = this.currentVehicleId === vehicle.id
+      ? `${vehicle.name} is critically damaged. Get out before another hit ignites it.`
+      : `${vehicle.name} is critically damaged by ${reason}.`;
+    this.scene.events?.emit?.("vehicle:critical", {
+      vehicleId: vehicle.id,
+      occupied: this.currentVehicleId === vehicle.id,
+      reason
+    });
+    this.scene.events?.emit?.("vehicle:disabled", {
+      vehicleId: vehicle.id,
+      occupied: this.currentVehicleId === vehicle.id,
+      reason
+    });
+    return true;
+  }
+
+  explosionNpcDamage(vehicle) {
+    const radius = VEHICLE_DESTRUCTION.explosionRadius;
+    const candidates = this.scene.npcSystem?.queryRadius?.(
+      vehicle.x,
+      vehicle.y,
+      radius,
+      this.scene.currentLayer
+    ) || this.scene.npcSystem?.npcs || [];
+    let affected = 0;
+    for (const npc of candidates) {
+      if (!npc || npc.dead || npc.inactive || npc.hiddenBody || npc.intercepted || npc.layer !== this.scene.currentLayer) continue;
+      const distance = Math.hypot(npc.x - vehicle.x, npc.y - vehicle.y);
+      const damage = explosionDamageAtDistance(distance, {
+        radius,
+        maxDamage: VEHICLE_DESTRUCTION.npcMaxDamage,
+        minDamage: VEHICLE_DESTRUCTION.npcMinDamage
+      });
+      if (damage <= 0) continue;
+      this.scene.combatSystem?.applyHit?.(npc, {
+        id: "vehicle_explosion",
+        name: "Vehicle explosion",
+        attackType: "explosion",
+        damage: Math.max(1, Math.round(damage)),
+        staggerMs: 900,
+        feedbackMs: 700
+      }, 0);
+      affected++;
+    }
+    return affected;
+  }
+
+  explodeVehicle(vehicle, { reason = "destructive damage" } = {}) {
+    if (!vehicle || vehicle.exploded) return false;
+    const occupied = this.currentVehicleId === vehicle.id;
+    vehicle.health = 0;
+    vehicle.disabled = true;
+    vehicle.criticalDamage = false;
+    vehicle.exploded = true;
+    vehicle.speed = 0;
+    vehicle.velocityX = 0;
+    vehicle.velocityY = 0;
+    vehicle.gear = 1;
+    vehicle.gearShiftTimer = 0;
+    vehicle.handbrake = false;
+    vehicle.parked = true;
+    this.handbrakeActive = false;
+    RawAudio.stopVehicleEngine?.(`player:${vehicle.id}`);
+    vehicle.container?.setAlpha?.(0.30);
+    vehicle.visual?.hood?.setFillStyle?.(0x1c0b0b, 1);
+
+    const playerDamageSystem = this.scene.playerDamageSystem;
+    let playerDamage = 0;
+    if (occupied) {
+      this.currentVehicleId = null;
+      this.scene.registry?.set?.("vehicleOccupied", null);
+      this.scene.player?.setActive?.(true);
+      this.scene.player?.setVisible?.(true);
+      this.scene.player?.setPosition?.(vehicle.x, vehicle.y);
+      if (this.scene.player?.body) {
+        this.scene.player.body.enable = true;
+        this.scene.player.body.setEnable?.(true);
+        this.scene.player.body.setVelocity?.(0, 0);
+      }
+      if (playerDamageSystem && !playerDamageSystem.isDead?.()) {
+        playerDamageSystem.state.invulnerableUntil = 0;
+        playerDamageSystem.damagePlayer(vehicle, {
+          id: "vehicle_explosion",
+          label: `${vehicle.name} explosion`,
+          damageKind: "explosion",
+          vitalityDamage: VEHICLE_DESTRUCTION.occupantVitalityDamage
+        });
+        playerDamage = VEHICLE_DESTRUCTION.occupantVitalityDamage;
+      }
+      this.scene.cameras?.main?.setFollowOffset?.(0, 0);
+      this.scene.cameras?.main?.startFollow?.(this.scene.player, true, 0.12, 0.12);
+    } else if (playerDamageSystem && !playerDamageSystem.isDead?.() && this.scene.currentLayer === vehicle.layer) {
+      const distance = Math.hypot(this.scene.player.x - vehicle.x, this.scene.player.y - vehicle.y);
+      playerDamage = explosionDamageAtDistance(distance, {
+        radius: VEHICLE_DESTRUCTION.explosionRadius,
+        maxDamage: VEHICLE_DESTRUCTION.playerMaxDamage,
+        minDamage: VEHICLE_DESTRUCTION.playerMinDamage
+      });
+      if (playerDamage > 0) {
+        playerDamageSystem.damagePlayer(vehicle, {
+          id: "vehicle_explosion",
+          label: `${vehicle.name} explosion`,
+          damageKind: "explosion",
+          vitalityDamage: playerDamage
+        });
+      }
+    }
+
+    const affectedNpcs = this.explosionNpcDamage(vehicle);
+    this.scene.cameras?.main?.shake?.(220, 0.0042);
+    this.scene.lastActionText = occupied
+      ? `${vehicle.name} explodes with you inside.`
+      : `${vehicle.name} explodes after ${reason}.`;
+    this.scene.events?.emit?.("vehicle:exploded", {
+      vehicleId: vehicle.id,
+      occupied,
+      reason,
+      x: vehicle.x,
+      y: vehicle.y,
+      radius: VEHICLE_DESTRUCTION.explosionRadius,
+      affectedNpcs,
+      playerDamage
+    });
     return true;
   }
 
@@ -227,6 +359,8 @@ export class VehicleSystem {
     vehicle.gearShiftTimer = 0;
     vehicle.health = condition.health;
     vehicle.disabled = condition.disabled;
+    vehicle.criticalDamage = Boolean(vehicle.disabled && vehicle.health <= 0);
+    vehicle.exploded = false;
     vehicle.parked = condition.parked;
     vehicle.handbrake = false;
     vehicle.status = this.campaign.vehicles.status(vehicle);

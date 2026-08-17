@@ -16,6 +16,7 @@ import {
 } from "./VehicleModel.js";
 import { collideVehicleWithPedestrians } from "./VehicleConsequences.js";
 import { vehicleCollisionAudioEvent } from "./VehicleCollisionAudioModel.js";
+import { VEHICLE_DESTRUCTION } from "./VehicleDestructionPolicy.js";
 import { vehicleEngineTelemetry } from "./VehicleEngineModel.js";
 
 const VEHICLE_COLLISION_RADIUS_PADDING = 1;
@@ -281,7 +282,11 @@ export function handleVehicleWorldCollision(system, vehicle, impactSpeed) {
   vehicle.velocityY = Math.sin(vehicle.travelAngle) * vehicle.speed;
 
   const damage = vehicleImpactDamage(impact, { threshold: 36, scale: 0.11 });
-  if (damage > 0) system.damageVehicle(vehicle.id, damage, { reason: "collision", persist: false });
+  if (damage > 0) system.damageVehicle(vehicle.id, damage, {
+    reason: "collision",
+    persist: false,
+    destructive: impact >= VEHICLE_DESTRUCTION.severeImpactSpeed
+  });
   const collisionEvent = vehicleCollisionAudioEvent(impact);
   if (collisionEvent && system.crashCooldown <= 0) {
     system.crashCooldown = 0.48;
@@ -348,6 +353,13 @@ export function updateVehicleDriving(system, dt, frame) {
     applyKinematicState(vehicle, next);
   } else if (!slideAlongWorld(system, vehicle, next)) {
     handleVehicleWorldCollision(system, vehicle, next.speed);
+  }
+
+  if (vehicle.disabled) {
+    RawAudio.stopVehicleEngine(`player:${vehicle.id}`);
+    system.updateHud();
+    system.publish();
+    return false;
   }
 
   if (vehicle.gear > previousGear) {

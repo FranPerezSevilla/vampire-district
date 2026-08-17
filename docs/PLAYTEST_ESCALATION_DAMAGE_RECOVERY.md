@@ -96,7 +96,7 @@ At wanted level 2, one eligible chasing officer may visibly aim and fire control
 
 ## Slice 5 — vehicle destruction, player vitality and death
 
-**State: in progress on PR #55. Player Vitality foundation is implemented; vehicle critical-damage/explosion remains next.**
+**State: implemented on PR #55; pending grouped in-game validation.**
 
 ### Implemented increment — player Vitality authority
 
@@ -107,11 +107,13 @@ At wanted level 2, one eligible chasing officer may visibly aim and fire control
 - Reaching zero Vitality creates one authoritative `dead` state, emits `player:died` once, cancels active enemy attacks and locks world input through the central input frame. Slice 6 will own the visible death beat and recovery transition rather than creating a second death authority.
 - Runtime state publishes a Vitality summary for HUD/recovery integration.
 
-### Remaining Slice 5 work
+### Implemented increment — vehicle critical damage and explosion
 
-- A vehicle at zero hull becomes critically damaged; destructive follow-up damage or a severe final impact triggers an explosion rather than every minor zero-health contact exploding immediately.
-- An occupant caught in their vehicle's explosion dies; nearby entities receive distance-based damage.
-- Route vehicle explosion and later civilian run-over damage through the same authoritative player Vitality state.
+- Ordinary damage that reaches zero hull now leaves a **critical wreck** first instead of exploding on the same minor hit.
+- Any destructive follow-up hit on that critical wreck explodes it; a severe world impact at **92+ impact speed** may explode immediately when it destroys the remaining hull.
+- An occupied vehicle explosion clears vehicle occupancy, restores the player entity to the street and applies lethal explosion damage through the existing authoritative `PlayerDamageSystem`, bypassing only the short overlap-invulnerability window required to guarantee occupant death.
+- On-foot players and nearby NPCs receive distance-based radial blast damage inside a **112-unit radius**. The blast publishes one `vehicle:exploded` event with affected-entity metadata for later presentation/audio work.
+- Persistent zero-hull vehicles restore as critical wrecks after campaign synchronization; active exploded presentation remains transient runtime state.
 
 ### Acceptance
 
@@ -119,7 +121,8 @@ At wanted level 2, one eligible chasing officer may visibly aim and fire control
 - The same police bullet removes more Vitality at 100% Hunger than below 100% Hunger.
 - Vitality recovers after the damage-free delay below 100% Hunger and does not recover at 100% Hunger.
 - Lethal damage produces exactly one dead state and locks movement, weapons, feeding and vehicle input.
-- Vehicle explosion behaviour is required before Slice 5 is complete.
+- Ordinary zero-hull damage produces a critical wreck; follow-up destructive damage or a severe final collision produces one explosion.
+- An occupant dies through the same Vitality authority, while nearby player/NPC damage falls off with distance.
 
 ## Slice 6 — master death beat and hospital recovery
 
