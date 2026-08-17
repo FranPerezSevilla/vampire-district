@@ -45,16 +45,29 @@ function routePointFor(definition) {
   return route.points[normalizedRouteIndex(route, definition.pedestrianRouteStartIndex)];
 }
 
+function reservedRoutePointIndexes(route) {
+  return new Set(
+    BASE_NPC_DEFINITIONS
+      .filter(definition => definition.pedestrianRouteId === route.id)
+      .map(definition => normalizedRouteIndex(route, definition.pedestrianRouteStartIndex))
+  );
+}
+
 function ambientPedestrianDefinitions() {
   return pedestrianRoutes.flatMap((route, routeOrder) => {
     const points = route.points || [];
     if (!points.length) return [];
-    const count = Math.min(AMBIENT_PEDESTRIANS_PER_ROUTE, points.length);
+    const reserved = reservedRoutePointIndexes(route);
+    const availablePointIndexes = points
+      .map((_, index) => index)
+      .filter(index => !reserved.has(index));
+    const count = Math.min(AMBIENT_PEDESTRIANS_PER_ROUTE, availablePointIndexes.length);
     return Array.from({ length: count }, (_, offset) => {
-      const pointIndex = Math.min(
-        points.length - 1,
-        Math.floor(((offset + 1) * points.length) / (count + 1))
+      const availableIndex = Math.min(
+        availablePointIndexes.length - 1,
+        Math.floor(((offset + 1) * availablePointIndexes.length) / (count + 1))
       );
+      const pointIndex = availablePointIndexes[availableIndex];
       const point = points[pointIndex];
       return {
         id: `ambient_${safeId(route.id)}_${offset + 1}`,
