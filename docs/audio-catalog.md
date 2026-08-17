@@ -22,6 +22,7 @@ The old audio catalogue lived in PR #44 (`agent/expand-audio-catalog`). That PR 
 - `vehicleEngineStart` / `vehicleEngineLoop` — **real sample-backed candidate integrated on PR #55; sound character and systemic mix accepted, level raised slightly after listening feedback**: the supplied freesounds123/Pixabay recording is split into an ignition/starter one-shot and a circular-crossfaded PCM idle loop. Player entry plays the start after the door closes and keeps the continuous engine voice muted until the recorded engine catches. Player, traffic and police still share the existing gear-aware RPM, load, distance and stereo-pan telemetry; runtime playback rate, filtering and gain shape the same real loop per archetype. The former oscillators remain only as a load/decode fallback.
 - `vehicleCollisionLight` — **real light-impact family integrated on PR #55, pending listening acceptance**: four authentic cuts from different moments of the supplied Pixabay iron/debris recording provide short bodywork and loose-metal responses without borrowing the heavy crash's low-end weight or glass tail. The procedural sound remains a loading/decoding fallback.
 - `vehicleCollisionHeavy` — **real heavy-crash family integrated on PR #55, pending listening acceptance**: the supplied Pixabay crash provides three restrained runtime variants with a broad bodywork hit and glass/metal tail. Impact-speed classification remains authoritative, so this family only plays from the heavy threshold upward; the procedural crash remains a loading/decoding fallback.
+- `vehicleHorn` — **real sample-backed family integrated on PR #55, pending listening acceptance**: one clean Universfield/Pixabay horn becomes three natural press lengths without pitch alteration. The player can sound it with the remappable **H** action while driving; it is mundane traffic audio and creates no Heat. A restrained procedural horn remains a loading/decoding fallback.
 ## Audio Lab
 
 In playtest mode, press **F8** or use the **AUDIO LAB** button to open a sample-backed catalogue soundboard. The lab pauses gameplay and lets a tester:
@@ -91,7 +92,7 @@ Do not try to fill the full production catalogue before testing. For the current
 - `vehicleCollisionLight` — **integrated candidate:** four real short metal/bodywork variants selected from the light threshold up to, but not including, the heavy threshold; pending listening acceptance
 - `vehicleCollisionHeavy` — **integrated candidate:** three real heavy-crash variants selected only at the heavy impact-speed threshold; pending listening acceptance
 - `vehicleHitPedestrian` — 2–3 variants; future material-impact layer, separate from the existing human scream reaction
-- `vehicleHorn` — 3–4 variants
+- `vehicleHorn` — **integrated candidate:** 3 original-pitch press-length variants; remappable H while driving; pending listening acceptance
 
 ### UI / systemic city soundscape
 

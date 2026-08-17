@@ -24,6 +24,7 @@ function activeFrame() {
     dashPressed: true,
     whisperPressed: true,
     bloodSensePressed: true,
+    hornPressed: true,
     beastPressed: true,
     debugLayerPressed: 3,
     menuConfirmPressed: true
@@ -38,6 +39,7 @@ test("full control mode preserves world actions but neutralizes obsolete sprint 
   assert.equal(frame.traversePressed, true);
   assert.equal(frame.interactPressed, true);
   assert.equal(frame.dashPressed, true);
+  assert.equal(frame.hornPressed, true);
   assert.equal(frame.beastPressed, true);
   assert.equal(frame.weaponStep, 1);
 });
@@ -50,6 +52,7 @@ test("movement mode exposes movement, quiet modifier and traversal only", () => 
   assert.equal(frame.traversePressed, true);
   assert.equal(frame.interactPressed, false);
   assert.equal(frame.primaryPressed, false);
+  assert.equal(frame.hornPressed, false);
   assert.equal(frame.dashPressed, false);
   assert.equal(frame.weaponStep, 0);
 });
@@ -74,6 +77,7 @@ test("world lock clears movement modifiers and world actions without clearing me
   assert.equal(frame.quietHeld, false);
   assert.equal(frame.traversePressed, false);
   assert.equal(frame.interactPressed, false);
+  assert.equal(frame.hornPressed, false);
   assert.equal(frame.weaponStep, 0);
   assert.equal(frame.menuConfirmPressed, true);
 });

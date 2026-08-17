@@ -314,6 +314,14 @@ export function handleVehicleWorldCollision(system, vehicle, impactSpeed) {
 export function updateVehicleDriving(system, dt, frame) {
   const vehicle = system.currentVehicle();
   if (!vehicle) return false;
+  if (frame?.hornPressed && !vehicle.disabled) {
+    RawAudio.play("vehicleHorn", { cooldown: 0.24 });
+    system.scene.events?.emit?.("vehicle:horn", {
+      vehicleId: vehicle.id,
+      x: vehicle.x,
+      y: vehicle.y
+    });
+  }
   system.crashCooldown = Math.max(0, system.crashCooldown - dt);
   system.skidNoiseCooldown = Math.max(0, (system.skidNoiseCooldown || 0) - dt);
   for (const [npcId, remaining] of system.pedestrianCooldowns) {

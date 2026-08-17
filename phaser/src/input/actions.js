@@ -9,6 +9,7 @@ export const INPUT_ACTIONS = Object.freeze({
   DASH: "dash",
   WHISPER: "whisper",
   BLOOD_SENSE: "bloodSense",
+  HORN: "horn",
   GIVE_IN: "giveIn",
   DEBUG_LAYER: "debugLayer"
 });
@@ -79,6 +80,7 @@ export function createEmptyInputFrame(overrides = {}) {
     dashPressed: false,
     whisperPressed: false,
     bloodSensePressed: false,
+    hornPressed: false,
     beastPressed: false,
     menuUpPressed: false,
     menuDownPressed: false,
@@ -115,6 +117,7 @@ export function applyControlMode(frame, mode, worldEnabled = true) {
     dashPressed: allows(INPUT_ACTIONS.DASH) && Boolean(frame.dashPressed),
     whisperPressed: allows(INPUT_ACTIONS.WHISPER) && Boolean(frame.whisperPressed),
     bloodSensePressed: allows(INPUT_ACTIONS.BLOOD_SENSE) && Boolean(frame.bloodSensePressed),
+    hornPressed: allows(INPUT_ACTIONS.HORN) && Boolean(frame.hornPressed),
     beastPressed: allows(INPUT_ACTIONS.GIVE_IN) && Boolean(frame.beastPressed),
     debugLayerPressed: allows(INPUT_ACTIONS.DEBUG_LAYER) ? Number(frame.debugLayerPressed || 0) : 0
   };

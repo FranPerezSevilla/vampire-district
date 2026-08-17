@@ -508,6 +508,7 @@ class RawAudioBus {
       case "vehicleDoorOpen": return this.vehicleDoorOpen();
       case "vehicleDoorClose": return this.vehicleDoorClose(options.delay);
       case "vehicleEngineStart": return this.vehicleEngineStartFallback(options.delay);
+      case "vehicleHorn": return this.vehicleHorn();
       case "vehicleCollisionLight": return this.vehicleCollision(false);
       case "vehicleCollisionHeavy": return this.vehicleCollision(true);
       case "vehicleSkidLoop": return this.vehicleSkid();
@@ -648,6 +649,11 @@ class RawAudioBus {
     const baseDelay = Math.max(0, Number(delay) || 0);
     this.noise(0.12, { delay: baseDelay, volume: 0.040, filter: 760, filterType: "bandpass", q: 0.82 });
     this.tone(96, 0.17, { delay: baseDelay + 0.015, to: 44, volume: 0.045, type: "triangle", filter: 420 });
+  }
+
+  vehicleHorn() {
+    this.tone(392, 0.44, { to: 384, volume: 0.040, type: "square", filter: 1500 });
+    this.tone(523, 0.44, { to: 515, volume: 0.028, type: "sawtooth", filter: 1800 });
   }
 
   vehicleSkid() {

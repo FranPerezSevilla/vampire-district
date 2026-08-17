@@ -59,6 +59,11 @@ export const SAMPLE_AUDIO_CATALOG = Object.freeze({
   vehicleEngineLoop: sampleEvent([
     "phaser/assets/audio/vehicles/vehicle-engine-loop-01.wav"
   ], { volume: 1.00, loop: true }),
+  vehicleHorn: sampleEvent([
+    "phaser/assets/audio/vehicles/vehicle-horn-01.mp3",
+    "phaser/assets/audio/vehicles/vehicle-horn-02.mp3",
+    "phaser/assets/audio/vehicles/vehicle-horn-03.mp3"
+  ], { volume: 0.78 }),
   vehicleCollisionLight: sampleEvent([
     "phaser/assets/audio/vehicles/vehicle-collision-light-01.mp3",
     "phaser/assets/audio/vehicles/vehicle-collision-light-02.mp3",
