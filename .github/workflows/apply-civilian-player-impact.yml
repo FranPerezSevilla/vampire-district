@@ -1,0 +1,162 @@
+name: Apply civilian traffic player impact
+
+on:
+  push:
+    paths:
+      - .github/workflows/apply-civilian-player-impact.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audio/playtest-p0
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Patch civilian traffic impacts
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          traffic_path = Path('phaser/src/streaming/TrafficLocalBehaviorSystem.js')
+          code = traffic_path.read_text()
+
+          anchor = '''function vehicleRadius(archetype) {
+            return Math.max(finite(archetype?.width, 28), finite(archetype?.height, 14)) * 0.43;
+          }
+          '''
+          insert = anchor + '''
+          export function civilianTrafficPlayerImpact(slot, player, speed) {
+            if (!slot || !player) return null;
+            const width = Math.max(18, finite(slot.archetype?.width, 28));
+            const height = Math.max(10, finite(slot.archetype?.height, 14));
+            const playerRadius = 7;
+            const angle = finite(slot.angle);
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+            const dx = finite(player.x) - finite(slot.x);
+            const dy = finite(player.y) - finite(slot.y);
+            const localX = dx * cos + dy * sin;
+            const localY = -dx * sin + dy * cos;
+            if (Math.abs(localX) > width * 0.5 + playerRadius || Math.abs(localY) > height * 0.5 + playerRadius) return null;
+
+            const impactSpeed = Math.max(0, finite(speed));
+            if (impactSpeed < 18) {
+              return { speed: impactSpeed, damage: 0, pushDistance: 0, direction: { x: cos, y: sin } };
+            }
+            const severity = clamp((impactSpeed - 18) / 70, 0, 1);
+            return {
+              speed: impactSpeed,
+              damage: round(7 + severity * 15, 1),
+              pushDistance: round(5 + severity * 13, 1),
+              direction: { x: cos, y: sin }
+            };
+          }
+          '''
+          if anchor not in code:
+            raise SystemExit('vehicleRadius anchor missing')
+          code = code.replace(anchor, insert, 1)
+
+          state_anchor = '''        engineGearShiftTimer: 0,
+                  engineRpm: 0.18
+          '''
+          state_replacement = '''        engineGearShiftTimer: 0,
+                  engineRpm: 0.18,
+                  playerImpactCooldownUntil: 0
+          '''
+          if state_anchor not in code:
+            raise SystemExit('traffic state anchor missing')
+          code = code.replace(state_anchor, state_replacement, 1)
+
+          method_anchor = '''  sampleLane(lane, phase) {
+          '''
+          method = '''  processPlayerImpact(slot, state) {
+            if (this.scene.currentLayer !== LAYERS.STREET || this.vehicleSystem.isDriving?.()) return false;
+            const player = this.scene.player;
+            if (!player || this.scene.playerDamageSystem?.isDead?.()) return false;
+            const now = finite(this.scene.time?.now);
+            if (now < finite(state.playerImpactCooldownUntil)) return false;
+
+            const impact = civilianTrafficPlayerImpact(slot, player, state.engineSpeed);
+            if (!impact) return false;
+
+            state.desiredSpeedFactor = 0;
+            state.speedFactor = Math.min(state.speedFactor, impact.damage > 0 ? 0.12 : 0);
+            state.engineSpeed = Math.min(state.engineSpeed, impact.speed * 0.42);
+            slot.desiredSpeedFactor = state.desiredSpeedFactor;
+            slot.speedFactor = state.speedFactor;
+
+            if (impact.damage <= 0) return true;
+            state.playerImpactCooldownUntil = now + 900;
+
+            const pushX = player.x + impact.direction.x * impact.pushDistance;
+            const pushY = player.y + impact.direction.y * impact.pushDistance;
+            if (!this.scene.canStandAt || this.scene.canStandAt(pushX, player.y)) player.x = pushX;
+            if (!this.scene.canStandAt || this.scene.canStandAt(player.x, pushY)) player.y = pushY;
+
+            const applied = Boolean(this.scene.playerDamageSystem?.damagePlayer?.(
+              { id: `traffic:${state.tokenId}` },
+              {
+                vitalityDamage: impact.damage,
+                label: "civilian vehicle impact",
+                damageKind: "vehicle"
+              }
+            ));
+            this.scene.events?.emit?.("traffic:player-impact", {
+              tokenId: state.tokenId,
+              vehicleId: `traffic:${state.tokenId}`,
+              speed: impact.speed,
+              attemptedDamage: impact.damage,
+              damage: applied ? impact.damage : 0,
+              pushed: impact.pushDistance,
+              x: player.x,
+              y: player.y
+            });
+            return true;
+          }
+
+          ''' + method_anchor
+          if method_anchor not in code:
+            raise SystemExit('sampleLane anchor missing')
+          code = code.replace(method_anchor, method, 1)
+
+          loop_anchor = '''    for (const item of decisions) this.applyDecision(item.slot, item.state, item.token, item.decision, dt);
+          '''
+          loop_replacement = '''    for (const item of decisions) {
+              this.applyDecision(item.slot, item.state, item.token, item.decision, dt);
+              this.processPlayerImpact(item.slot, item.state);
+            }
+          '''
+          if loop_anchor not in code:
+            raise SystemExit('update loop anchor missing')
+          code = code.replace(loop_anchor, loop_replacement, 1)
+          traffic_path.write_text(code)
+
+          test_path = Path('tests/traffic-player-impact.test.js')
+          test_path.write_text('''import test from "node:test";\nimport assert from "node:assert/strict";\nimport { readFileSync } from "node:fs";\nimport { civilianTrafficPlayerImpact } from "../phaser/src/streaming/TrafficLocalBehaviorSystem.js";\n\nconst slot = { x: 100, y: 100, angle: 0, archetype: { width: 30, height: 14 } };\n\ntest("civilian traffic keeps clear non-collisions harmless", () => {\n  assert.equal(civilianTrafficPlayerImpact(slot, { x: 150, y: 100 }, 70), null);\n});\n\ntest("a near-stopped civilian car can overlap without damaging the player", () => {\n  const impact = civilianTrafficPlayerImpact(slot, { x: 108, y: 100 }, 12);\n  assert.ok(impact);\n  assert.equal(impact.damage, 0);\n  assert.equal(impact.pushDistance, 0);\n});\n\ntest("a real-speed civilian collision produces bounded Vitality damage and a shove", () => {\n  const impact = civilianTrafficPlayerImpact(slot, { x: 108, y: 100 }, 68);\n  assert.ok(impact);\n  assert.ok(impact.damage >= 10 && impact.damage <= 22);\n  assert.ok(impact.pushDistance >= 8 && impact.pushDistance <= 18);\n  assert.deepEqual(impact.direction, { x: 1, y: 0 });\n});\n\ntest("runtime brakes for an on-foot player before allowing fortuitous traffic impact damage", () => {\n  const code = readFileSync(new URL("../phaser/src/streaming/TrafficLocalBehaviorSystem.js", import.meta.url), "utf8");\n  assert.match(code, /reason: "player-on-foot"/);\n  assert.match(code, /processPlayerImpact\(slot, state\)/);\n  assert.match(code, /playerDamageSystem\?\.damagePlayer\?/);\n  assert.match(code, /damageKind: "vehicle"/);\n  assert.match(code, /"traffic:player-impact"/);\n});\n''')
+
+          docs_path = Path('docs/PLAYTEST_ESCALATION_DAMAGE_RECOVERY.md')
+          docs = docs_path.read_text()
+          docs += '''\n\n## Follow-up — accidental civilian-traffic player impacts\n\n**State: implemented on PR #55; pending in-game validation.**\n\n- Civilian traffic keeps the existing on-foot player look-ahead blocker, so normal drivers try to brake rather than target or pursue the player.\n- A real geometric overlap is now resolved after local traffic movement. Contacts below **18 px/s** remain harmless stopping contact; faster fortuitous impacts produce bounded Vitality damage and a forward shove scaled by measured traffic speed.\n- Damage is routed exclusively through `PlayerDamageSystem`, so invulnerability, death authority and later hospital recovery remain single-owner systems.\n- The shove uses `GameScene.canStandAt()` independently on each axis to avoid pushing the player through buildings or world bounds.\n- The striking traffic proxy immediately sheds speed and owns a short per-vehicle impact cooldown, preventing one overlap from stacking damage every traffic tick.\n- A stable `traffic:player-impact` event exposes speed, attempted/applied damage and displacement for future telemetry and tuning.\n\n### Acceptance\n\n- Standing in front of an approaching civilian car normally makes it brake to a stop.\n- Stepping into a moving car, or otherwise causing an unavoidable fortuitous contact, can knock the player aside and reduce Vitality.\n- Civilian traffic never begins chasing the player after contact.\n- Low-speed nudges do not chip Vitality, and one collision cannot apply damage every frame.\n'''
+          docs_path.write_text(docs)
+          PY
+      - name: Install test dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+      - name: Run focused traffic tests
+        run: node --test tests/traffic-player-impact.test.js tests/city-streaming-4d.test.js
+      - name: Commit increment
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add phaser/src/streaming/TrafficLocalBehaviorSystem.js tests/traffic-player-impact.test.js docs/PLAYTEST_ESCALATION_DAMAGE_RECOVERY.md
+          git commit -m "Allow accidental civilian traffic impacts"
+          git push origin HEAD:audio/playtest-p0
