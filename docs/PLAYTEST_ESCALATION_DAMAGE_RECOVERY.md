@@ -96,14 +96,30 @@ At wanted level 2, one eligible chasing officer may visibly aim and fire control
 
 ## Slice 5 — vehicle destruction, player vitality and death
 
-**State: documented backlog.**
+**State: in progress on PR #55. Player Vitality foundation is implemented; vehicle critical-damage/explosion remains next.**
 
-- Add player vitality as the lethal resource, separate from Hunger.
-- Bullet hits reduce vitality. At **100% Hunger**, passive recovery is disabled and incoming firearm damage is more dangerous, so sustained police fire can kill the player.
-- Reaching 100% Hunger alone does not instantly kill the player.
+### Implemented increment — player Vitality authority
+
+- `PlayerDamageSystem` now owns **Vitality 100/100** as the lethal player resource. Enemy melee and police bullets reduce Vitality and no longer increase Hunger.
+- Existing hit-stun and short invulnerability remain the overlap-protection rules for incoming damage.
+- Police firearm damage is amplified by **1.5× at exactly 100% Hunger**. Reaching 100% Hunger alone never changes Vitality or kills the player.
+- Passive Vitality recovery begins only after a **3.5 s damage-free delay**, at **4 Vitality/s**, and is disabled while Hunger is 100%.
+- Reaching zero Vitality creates one authoritative `dead` state, emits `player:died` once, cancels active enemy attacks and locks world input through the central input frame. Slice 6 will own the visible death beat and recovery transition rather than creating a second death authority.
+- Runtime state publishes a Vitality summary for HUD/recovery integration.
+
+### Remaining Slice 5 work
+
 - A vehicle at zero hull becomes critically damaged; destructive follow-up damage or a severe final impact triggers an explosion rather than every minor zero-health contact exploding immediately.
 - An occupant caught in their vehicle's explosion dies; nearby entities receive distance-based damage.
-- Death is a single authoritative state that locks movement, weapons, feeding and vehicle input.
+- Route vehicle explosion and later civilian run-over damage through the same authoritative player Vitality state.
+
+### Acceptance
+
+- Hunger can reach 100% without directly reducing Vitality or killing the player.
+- The same police bullet removes more Vitality at 100% Hunger than below 100% Hunger.
+- Vitality recovers after the damage-free delay below 100% Hunger and does not recover at 100% Hunger.
+- Lethal damage produces exactly one dead state and locks movement, weapons, feeding and vehicle input.
+- Vehicle explosion behaviour is required before Slice 5 is complete.
 
 ## Slice 6 — master death beat and hospital recovery
 
