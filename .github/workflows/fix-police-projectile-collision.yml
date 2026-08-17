@@ -1,0 +1,52 @@
+name: Fix motorized police projectile collision
+
+on:
+  push:
+    branches:
+      - audio/playtest-p0
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: audio/playtest-p0
+          fetch-depth: 0
+
+      - name: Complete police cruiser collision authority
+        shell: bash
+        run: |
+          cat > /tmp/fix_police_projectile.py.gz.b64 <<'PAYLOAD'
+          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
+          PAYLOAD
+          base64 -d /tmp/fix_police_projectile.py.gz.b64 | gzip -d > /tmp/fix_police_projectile.py
+          python3 /tmp/fix_police_projectile.py
+
+      - name: Run focused projectile tests
+        run: |
+          node --test \
+            tests/ballistic-projectile.test.js \
+            tests/bullet-hit-world-audio.test.js \
+            tests/combat.test.js \
+            tests/motorized-police.test.js
+
+      - name: Commit correction
+        shell: bash
+        run: |
+          rm .github/workflows/fix-police-projectile-collision.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            phaser/src/combat/CombatSystem.js \
+            phaser/src/police/MotorizedPoliceSystem.js \
+            tests/ballistic-projectile.test.js \
+            docs/PLAYTEST_ESCALATION_DAMAGE_RECOVERY.md \
+            .github/workflows/fix-police-projectile-collision.yml
+          git commit -m "Complete police cruiser bullet collision"
+          git push origin HEAD:audio/playtest-p0
