@@ -25,37 +25,126 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg
 
-      - name: Reconstruct verified engine derivatives
+      - name: Acquire verified Pixabay source
+        env:
+          SOURCE_PAGE: https://pixabay.com/sound-effects/film-special-effects-car-engine-335601/
+          SOURCE_SHA256: 4a6639452acf4042cf05f93762449103a57fb2c3e74b9174a206e28f7a76f0f3
         run: |
           set -euo pipefail
-          echo "Staged fragment diagnostics:"
-          for staged in .github/audio-staging/engine/*.part-*; do
-            printf '%s bytes=' "$staged"
-            wc -c < "$staged" | tr -d '\n'
-            printf ' sha256='
-            sha256sum "$staged" | cut -d' ' -f1
-            if LC_ALL=C grep -n '[^A-Za-z0-9+/=[:space:]]' "$staged"; then
-              echo "Invalid base64 character found in $staged" >&2
-              exit 1
+          curl --fail --location --retry 3 \
+            --user-agent 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131 Safari/537.36' \
+            "$SOURCE_PAGE" -o /tmp/pixabay-engine.html
+
+          python - <<'PY' > /tmp/pixabay-engine-urls.txt
+          from pathlib import Path
+          from html import unescape
+          import re
+
+          text = unescape(Path('/tmp/pixabay-engine.html').read_text(encoding='utf-8', errors='ignore'))
+          for encoded, plain in {
+              r'\u002F': '/', r'\/': '/', r'\u0026': '&', r'\u003D': '=', r'\u003F': '?'
+          }.items():
+              text = text.replace(encoded, plain)
+
+          candidates = set()
+          for match in re.findall(r'https://[^\s"\'<>]+?\.mp3(?:\?[^\s"\'<>]*)?', text):
+              if 'pixabay.com' in match:
+                  candidates.add(match.rstrip('\\,;'))
+          for match in re.findall(r'(/download/audio/[^\s"\'<>]+?\.mp3(?:\?[^\s"\'<>]*)?)', text):
+              candidates.add('https://cdn.pixabay.com' + match.rstrip('\\,;'))
+          for url in sorted(candidates):
+              print(url)
+          PY
+
+          test -s /tmp/pixabay-engine-urls.txt
+          : > /tmp/car-engine-source.mp3
+          matched=0
+          while IFS= read -r url; do
+            echo "Trying Pixabay media candidate: ${url%%\?*}"
+            if curl --fail --location --retry 2 \
+              --referer "$SOURCE_PAGE" \
+              --user-agent 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131 Safari/537.36' \
+              "$url" -o /tmp/car-engine-candidate.mp3; then
+              actual="$(sha256sum /tmp/car-engine-candidate.mp3 | cut -d' ' -f1)"
+              if [[ "$actual" == "$SOURCE_SHA256" ]]; then
+                mv /tmp/car-engine-candidate.mp3 /tmp/car-engine-source.mp3
+                matched=1
+                break
+              fi
+              echo "Candidate SHA did not match: $actual"
             fi
-          done
+          done < /tmp/pixabay-engine-urls.txt
+
+          if [[ "$matched" -ne 1 ]]; then
+            echo "Pixabay source with expected SHA was not found." >&2
+            echo "Candidates discovered:" >&2
+            sed 's/[?].*//' /tmp/pixabay-engine-urls.txt >&2
+            exit 1
+          fi
+
+          echo "$SOURCE_SHA256  /tmp/car-engine-source.mp3" | sha256sum -c -
+          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 /tmp/car-engine-source.mp3
+
+      - name: Build start cue and gapless idle loop
+        run: |
+          set -euo pipefail
           mkdir -p phaser/assets/audio/vehicles
-          cat .github/audio-staging/engine/vehicle-engine-start-01.ogg.b64.part-* > /tmp/engine-start.b64
-          cat .github/audio-staging/engine/vehicle-engine-loop-01.ogg.b64.part-* > /tmp/engine-loop.b64
-          base64 --decode /tmp/engine-start.b64 > phaser/assets/audio/vehicles/vehicle-engine-start-01.ogg
-          base64 --decode /tmp/engine-loop.b64 > phaser/assets/audio/vehicles/vehicle-engine-loop-01.ogg
-          echo "83cd107a70f8f089131a94f8334857306d57817ef69c2a00004c701d05df7865  phaser/assets/audio/vehicles/vehicle-engine-start-01.ogg" | sha256sum -c -
-          echo "c03ac98e545b3d5c713e0b20cbf01e955912ca9d6712a0e3d477041fb0668353  phaser/assets/audio/vehicles/vehicle-engine-loop-01.ogg" | sha256sum -c -
-          ffprobe -v error -select_streams a:0 -show_entries stream=codec_name,sample_rate,channels -of csv=p=0 phaser/assets/audio/vehicles/vehicle-engine-start-01.ogg
-          ffprobe -v error -select_streams a:0 -show_entries stream=codec_name,sample_rate,channels -of csv=p=0 phaser/assets/audio/vehicles/vehicle-engine-loop-01.ogg
-          ffmpeg -nostdin -hide_banner -loglevel error -y -i phaser/assets/audio/vehicles/vehicle-engine-start-01.ogg -map_metadata -1 -ac 1 -ar 44100 -codec:a libmp3lame -q:a 4 phaser/assets/audio/vehicles/vehicle-engine-start-01.mp3
-          ffmpeg -nostdin -hide_banner -loglevel error -y -i phaser/assets/audio/vehicles/vehicle-engine-loop-01.ogg -map_metadata -1 -ac 1 -ar 44100 -codec:a pcm_s16le phaser/assets/audio/vehicles/vehicle-engine-loop-01.wav
-          ffmpeg -nostdin -hide_banner -loglevel error -y -i phaser/assets/audio/vehicles/vehicle-engine-loop-01.ogg -map_metadata -1 -ac 1 -ar 44100 -codec:a libmp3lame -q:a 4 phaser/assets/audio/vehicles/vehicle-engine-loop-01.mp3
+
+          ffmpeg -nostdin -hide_banner -loglevel error -y \
+            -ss 1.20 -t 3.05 -i /tmp/car-engine-source.mp3 \
+            -map_metadata -1 -ac 1 -ar 44100 \
+            -af 'highpass=f=40,volume=1.5dB,alimiter=limit=0.93:attack=5:release=50,afade=t=in:st=0:d=0.015,afade=t=out:st=3.025:d=0.025' \
+            -codec:a libvorbis -q:a 5 \
+            phaser/assets/audio/vehicles/vehicle-engine-start-01.ogg
+
+          ffmpeg -nostdin -hide_banner -loglevel error -y \
+            -ss 5.75 -t 2.90 -i /tmp/car-engine-source.mp3 \
+            -filter_complex '[0:a]aformat=channel_layouts=mono,aresample=44100,highpass=f=40,volume=1dB,asplit=3[headsrc][middle][tailsrc];[headsrc]atrim=start=0:end=0.18,asetpts=PTS-STARTPTS[head];[middle]atrim=start=0.18:end=2.72,asetpts=PTS-STARTPTS[mid];[tailsrc]atrim=start=2.72:end=2.90,asetpts=PTS-STARTPTS[tail];[tail][head]acrossfade=d=0.18:c1=qsin:c2=iqsin[cross];[mid][cross]concat=n=2:v=0:a=1,alimiter=limit=0.93[out]' \
+            -map '[out]' -map_metadata -1 \
+            -codec:a libvorbis -q:a 5 \
+            phaser/assets/audio/vehicles/vehicle-engine-loop-01.ogg
+
+          ffmpeg -nostdin -hide_banner -loglevel error -y \
+            -i phaser/assets/audio/vehicles/vehicle-engine-start-01.ogg \
+            -map_metadata -1 -ac 1 -ar 44100 -codec:a libmp3lame -q:a 4 \
+            phaser/assets/audio/vehicles/vehicle-engine-start-01.mp3
+          ffmpeg -nostdin -hide_banner -loglevel error -y \
+            -i phaser/assets/audio/vehicles/vehicle-engine-loop-01.ogg \
+            -map_metadata -1 -ac 1 -ar 44100 -codec:a pcm_s16le \
+            phaser/assets/audio/vehicles/vehicle-engine-loop-01.wav
+          ffmpeg -nostdin -hide_banner -loglevel error -y \
+            -i phaser/assets/audio/vehicles/vehicle-engine-loop-01.ogg \
+            -map_metadata -1 -ac 1 -ar 44100 -codec:a libmp3lame -q:a 4 \
+            phaser/assets/audio/vehicles/vehicle-engine-loop-01.mp3
+
+          python - <<'PY'
+          from pathlib import Path
+          import json, subprocess
+
+          expected = {
+              'phaser/assets/audio/vehicles/vehicle-engine-start-01.ogg': (3.00, 3.12),
+              'phaser/assets/audio/vehicles/vehicle-engine-loop-01.ogg': (2.68, 2.76),
+              'phaser/assets/audio/vehicles/vehicle-engine-loop-01.wav': (2.68, 2.76),
+          }
+          for path, bounds in expected.items():
+              data = json.loads(subprocess.check_output([
+                  'ffprobe', '-v', 'error', '-show_entries', 'stream=codec_name,sample_rate,channels:format=duration',
+                  '-of', 'json', path
+              ], text=True))
+              duration = float(data['format']['duration'])
+              assert bounds[0] <= duration <= bounds[1], (path, duration)
+              stream = data['streams'][0]
+              assert int(stream['sample_rate']) == 44100, (path, stream)
+              assert int(stream['channels']) == 1, (path, stream)
+              assert Path(path).stat().st_size > 5000, path
+              print(path, stream['codec_name'], duration, Path(path).stat().st_size)
+          PY
 
       - name: Integrate sample-backed engine system
         run: |
           set -euo pipefail
           python tools/_tmp-integrate-real-engine.py
+          sed -i 's/Pixabay Content License (verified 2026-08-17) | User-supplied/Pixabay Content License (verified 2026-08-17; Pixabay marks the source AI Generated) | User-supplied/' phaser/assets/audio/ATTRIBUTION.md
 
       - name: Validate focused engine and door behavior
         run: |
