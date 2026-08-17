@@ -39,13 +39,21 @@ export const DEFAULT_MACRO_GRAPH_URL = new URL(
   import.meta.url
 ).toString();
 
+export const DEFAULT_CIVILIAN_TRAFFIC_SPEED_MULTIPLIER = 1.12;
+
+export function effectiveTrafficTravelSeconds(value, multiplier = DEFAULT_CIVILIAN_TRAFFIC_SPEED_MULTIPLIER) {
+  const bounded = Math.max(0.75, Math.min(1.5, finite(multiplier, DEFAULT_CIVILIAN_TRAFFIC_SPEED_MULTIPLIER)));
+  return Math.max(1, finite(value, 6)) / bounded;
+}
+
 export class MacroTrafficPoliceSystem {
   constructor(scene, {
     graphUrl = DEFAULT_MACRO_GRAPH_URL,
     fetchImpl = globalThis.fetch?.bind?.(globalThis),
     intervalSeconds = 2,
     policeBudget = 4,
-    maxCatchUpTicks = 2
+    maxCatchUpTicks = 2,
+    trafficSpeedMultiplier = DEFAULT_CIVILIAN_TRAFFIC_SPEED_MULTIPLIER
   } = {}) {
     if (!scene?.cityStreamSystem || !scene?.entityStreamSystem || !scene?.npcSystem) {
       throw new TypeError("MacroTrafficPoliceSystem requires city, entity and NPC systems.");
@@ -57,6 +65,10 @@ export class MacroTrafficPoliceSystem {
     this.intervalSeconds = Math.max(0.5, finite(intervalSeconds, 2));
     this.policeBudget = Math.max(1, Math.floor(finite(policeBudget, 4)));
     this.maxCatchUpTicks = Math.max(1, Math.floor(finite(maxCatchUpTicks, 2)));
+    this.trafficSpeedMultiplier = Math.max(0.75, Math.min(1.5, finite(
+      trafficSpeedMultiplier,
+      DEFAULT_CIVILIAN_TRAFFIC_SPEED_MULTIPLIER
+    )));
     this.graph = null;
     this.trafficFlows = new Map();
     this.policeTravel = new Map();
@@ -241,7 +253,10 @@ export class MacroTrafficPoliceSystem {
     let completed = 0;
     for (const [edgeId, flow] of this.trafficFlows) {
       const edge = this.graph.edges[edgeId];
-      const increment = Math.max(0, finite(seconds)) / Math.max(1, finite(edge.travelSeconds, 6));
+      const increment = Math.max(0, finite(seconds)) / effectiveTrafficTravelSeconds(
+        edge.travelSeconds,
+        this.trafficSpeedMultiplier
+      );
       flow.phases = flow.phases.map(phase => {
         const next = finite(phase) + increment;
         const trips = Math.floor(next);

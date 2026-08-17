@@ -107,20 +107,19 @@ export function vehicleGearTorqueMultiplier(gear, gearCount = 5) {
   const selected = Math.round(clamp(Number(gear) || 1, 1, count));
   if (count <= 1) return 1;
   const progress = (selected - 1) / (count - 1);
-  // Keep the launch punch, then let higher gears trade torque for a longer,
-  // readable build toward top speed instead of sprinting through the box.
-  return 1.20 - 0.62 * Math.pow(progress, 0.82);
+  // Lower gears keep the lively launch. Upper gears still trade torque, but not
+  // enough to make the post-shift car feel strangled: fifth retains 70% drive torque.
+  return 1.20 - 0.50 * Math.pow(progress, 0.85);
 }
 
 export function vehicleHighSpeedAccelerationMultiplier(speed, maxSpeed) {
   const maximum = Math.max(1, Number(maxSpeed) || 1);
   const ratio = clamp(Math.abs(Number(speed) || 0) / maximum, 0, 1);
-  const taperStart = 0.58;
+  const taperStart = 0.62;
   if (ratio <= taperStart) return 1;
   const remaining = clamp((1 - ratio) / (1 - taperStart), 0, 1);
-  // Near maximum speed the car should keep gaining speed, but slowly enough
-  // that 4th/5th gear have time to exist as an audible/driving state.
-  return 0.02 + 0.98 * Math.pow(remaining, 1.5);
+  // Preserve a readable final pull without making the last gears feel artificially weak.
+  return 0.025 + 0.975 * Math.pow(remaining, 1.35);
 }
 
 export function stepVehicleKinematics(state, frame, dt, archetype) {

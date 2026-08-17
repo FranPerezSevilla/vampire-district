@@ -172,10 +172,11 @@ test("upper gears stretch the run to top speed without dulling the launch", () =
     }
   }
   assert.ok(halfSecondSpeed > 190 && halfSecondSpeed < 235, "launch character should remain lively");
-  assert.ok(timeToNinetyNine >= 3.0, "maximum speed should take several seconds to build");
-  assert.ok(timeToNinetyNine <= 5.5, "the arcade car should still reach its performance envelope");
+  assert.ok(timeToNinetyNine >= 2.0, "maximum speed should still require a readable multi-gear build");
+  assert.ok(timeToNinetyNine <= 4.0, "upper gears must no longer make the car feel strangled");
   assert.equal(vehicleHighSpeedAccelerationMultiplier(archetype.maxSpeed * 0.50, archetype.maxSpeed), 1);
-  assert.ok(vehicleHighSpeedAccelerationMultiplier(archetype.maxSpeed * 0.95, archetype.maxSpeed) < 0.08);
+  assert.ok(vehicleHighSpeedAccelerationMultiplier(archetype.maxSpeed * 0.95, archetype.maxSpeed) < 0.10);
+  assert.ok(vehicleHighSpeedAccelerationMultiplier(archetype.maxSpeed * 0.99, archetype.maxSpeed) < 0.04);
 });
 
 test("directional vehicle camera looks ahead only during stable forward travel", () => {
