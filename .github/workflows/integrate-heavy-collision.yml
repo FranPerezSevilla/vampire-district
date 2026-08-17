@@ -1,0 +1,170 @@
+name: Integrate heavy vehicle collision audio
+
+on:
+  push:
+    branches:
+      - audio/playtest-p0
+    paths:
+      - ".github/workflows/integrate-heavy-collision.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install FFmpeg
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+
+      - name: Reconstruct and process verified crash audio
+        run: |
+          set -euo pipefail
+          mkdir -p phaser/assets/audio/vehicles
+          cat .github/audio-staging/heavy/vehicle-collision-heavy-01.ogg.b64.part-* > /tmp/heavy.b64
+          base64 --decode /tmp/heavy.b64 > phaser/assets/audio/vehicles/vehicle-collision-heavy-01.ogg
+          echo "273e0420f8e56e01b269c4176022efb6e51cc06f426e12f090a569b1247bbb18  phaser/assets/audio/vehicles/vehicle-collision-heavy-01.ogg" | sha256sum -c -
+
+          ffmpeg -nostdin -hide_banner -loglevel error -y \
+            -i phaser/assets/audio/vehicles/vehicle-collision-heavy-01.ogg \
+            -map_metadata -1 -ac 1 -ar 44100 -codec:a libmp3lame -q:a 3 \
+            phaser/assets/audio/vehicles/vehicle-collision-heavy-01.mp3
+
+          ffmpeg -nostdin -hide_banner -loglevel error -y \
+            -i phaser/assets/audio/vehicles/vehicle-collision-heavy-01.ogg \
+            -af "asetrate=44100*0.9687,aresample=44100,highpass=f=32,lowpass=f=11500,afade=t=in:st=0:d=0.004,afade=t=out:st=1.315:d=0.13,atrim=duration=1.445" \
+            -map_metadata -1 -ac 1 -ar 44100 -codec:a libvorbis -q:a 6 \
+            phaser/assets/audio/vehicles/vehicle-collision-heavy-02.ogg
+          ffmpeg -nostdin -hide_banner -loglevel error -y \
+            -i phaser/assets/audio/vehicles/vehicle-collision-heavy-02.ogg \
+            -map_metadata -1 -ac 1 -ar 44100 -codec:a libmp3lame -q:a 3 \
+            phaser/assets/audio/vehicles/vehicle-collision-heavy-02.mp3
+
+          ffmpeg -nostdin -hide_banner -loglevel error -y \
+            -i phaser/assets/audio/vehicles/vehicle-collision-heavy-01.ogg \
+            -af "asetrate=44100*1.022,aresample=44100,highpass=f=40,lowpass=f=13500,afade=t=in:st=0:d=0.004,afade=t=out:st=1.255:d=0.13,atrim=duration=1.385" \
+            -map_metadata -1 -ac 1 -ar 44100 -codec:a libvorbis -q:a 6 \
+            phaser/assets/audio/vehicles/vehicle-collision-heavy-03.ogg
+          ffmpeg -nostdin -hide_banner -loglevel error -y \
+            -i phaser/assets/audio/vehicles/vehicle-collision-heavy-03.ogg \
+            -map_metadata -1 -ac 1 -ar 44100 -codec:a libmp3lame -q:a 3 \
+            phaser/assets/audio/vehicles/vehicle-collision-heavy-03.mp3
+
+          python - <<'PY'
+          from pathlib import Path
+          import json, subprocess
+          paths = [
+              Path(f"phaser/assets/audio/vehicles/vehicle-collision-heavy-{i:02d}.{ext}")
+              for i in range(1, 4) for ext in ("ogg", "mp3")
+          ]
+          for path in paths:
+              data = json.loads(subprocess.check_output([
+                  "ffprobe", "-v", "error", "-show_entries",
+                  "stream=codec_name,sample_rate,channels:format=duration",
+                  "-of", "json", str(path)
+              ], text=True))
+              stream = data["streams"][0]
+              duration = float(data["format"]["duration"])
+              assert int(stream["sample_rate"]) == 44100, (path, stream)
+              assert int(stream["channels"]) == 1, (path, stream)
+              assert 1.30 <= duration <= 1.55, (path, duration)
+              assert path.stat().st_size > 5000, path
+              print(path, stream["codec_name"], duration, path.stat().st_size)
+          PY
+
+      - name: Register heavy collision family
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          catalog = Path("phaser/src/audio/SampleAudioCatalog.js")
+          text = catalog.read_text()
+          if "vehicleCollisionHeavy: sampleEvent" not in text:
+              marker = "  vehicleSkidLoop: sampleEvent(["
+              block = '''  vehicleCollisionHeavy: sampleEvent([
+            "phaser/assets/audio/vehicles/vehicle-collision-heavy-01.mp3",
+            "phaser/assets/audio/vehicles/vehicle-collision-heavy-02.mp3",
+            "phaser/assets/audio/vehicles/vehicle-collision-heavy-03.mp3"
+          ], { volume: 0.82 }),
+'''
+              assert marker in text
+              text = text.replace(marker, block + marker)
+              catalog.write_text(text)
+
+          attribution = Path("phaser/assets/audio/ATTRIBUTION.md")
+          text = attribution.read_text()
+          if "`vehicleCollisionHeavy`" not in text:
+              row = "| `vehicleCollisionHeavy` | `vehicles/vehicle-collision-heavy-01.mp3` … `vehicles/vehicle-collision-heavy-03.mp3` (+ matching OGG working derivatives) | Sound Effect - Car Crash / heavy bodywork, glass and debris impact | u_mgq59j5ayf | https://pixabay.com/es/sound-effects/pel%C3%ADculas-y-efectos-especiales-sound-effect-car-crash-394903/ | Pixabay Content License (verified 2026-08-17) | User-supplied 1.62 s MP3 classified as a heavy crash because of its broad low-frequency impact and pronounced glass/metal tail. Trimmed to roughly 1.4 s, downmixed/resampled to mono 44.1 kHz, high/low-pass cleaned, edge-faded and conservatively level-managed. Variants 02–03 use subtle pitch/filter/duration changes to reduce repetition while preserving the same crash identity. |\n"
+              text = text.replace("\n\n## Rules", "\n" + row + "\n## Rules")
+              attribution.write_text(text)
+
+          docs = Path("docs/audio-catalog.md")
+          text = docs.read_text()
+          if "real heavy-crash family integrated" not in text:
+              bullet = "- `vehicleCollisionHeavy` — **real heavy-crash family integrated on PR #55, pending listening acceptance**: the supplied Pixabay crash provides three restrained runtime variants with a broad bodywork hit and glass/metal tail. Impact-speed classification remains authoritative, so this family only plays from the heavy threshold upward; the procedural crash remains a loading/decoding fallback.\n"
+              text = text.replace("## Audio Lab", bullet + "## Audio Lab")
+          text = text.replace(
+              "- `vehicleCollisionHeavy` — **procedural candidate on PR #55:** impact-speed classification selects a heavier crash fallback; real 3 sample variants remain a sourcing task",
+              "- `vehicleCollisionHeavy` — **integrated candidate:** three real heavy-crash variants selected only at the heavy impact-speed threshold; pending listening acceptance"
+          )
+          docs.write_text(text)
+
+          test_path = Path("tests/vehicle-collision-audio.test.js")
+          text = test_path.read_text()
+          if "SAMPLE_AUDIO_CATALOG" not in text:
+              text = text.replace(
+                  'import { readFileSync } from "node:fs";\n',
+                  'import { readFileSync } from "node:fs";\nimport { SAMPLE_AUDIO_CATALOG } from "../phaser/src/audio/SampleAudioCatalog.js";\n'
+              )
+              text = text.replace(
+                  'const source = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");',
+                  'const repoFile = path => new URL(`../${path}`, import.meta.url);\nconst source = path => readFileSync(repoFile(path), "utf8");\n\nfunction assertMp3(path) {\n  const data = readFileSync(repoFile(path));\n  assert.ok(data.length > 5_000, `${path} should contain a processed sample`);\n  const hasId3 = data.subarray(0, 3).toString("ascii") === "ID3";\n  const hasFrameSync = data[0] === 0xff && (data[1] & 0xe0) === 0xe0;\n  assert.ok(hasId3 || hasFrameSync, `${path} should be an MP3 stream`);\n}'
+              )
+              test_path.write_text(text)
+
+          text = test_path.read_text()
+          if "real heavy collision family" not in text:
+              block = '''
+          test("real heavy collision family is registered with three committed variants", () => {
+            const files = [
+              "phaser/assets/audio/vehicles/vehicle-collision-heavy-01.mp3",
+              "phaser/assets/audio/vehicles/vehicle-collision-heavy-02.mp3",
+              "phaser/assets/audio/vehicles/vehicle-collision-heavy-03.mp3"
+            ];
+            assert.deepEqual(SAMPLE_AUDIO_CATALOG.vehicleCollisionHeavy.files, files);
+            assert.equal(SAMPLE_AUDIO_CATALOG.vehicleCollisionHeavy.volume, 0.82);
+            assert.equal(SAMPLE_AUDIO_CATALOG.vehicleCollisionHeavy.loop, false);
+            files.forEach(assertMp3);
+          });
+          '''
+              test_path.write_text(text + block)
+          PY
+
+      - name: Run focused collision tests
+        run: |
+          set -euo pipefail
+          node --test tests/vehicle-collision-audio.test.js tests/audio-sample-catalog.test.js
+
+      - name: Remove one-off staging
+        run: |
+          set -euo pipefail
+          rm -rf .github/audio-staging/heavy
+          rm -f .github/workflows/integrate-heavy-collision.yml
+
+      - name: Commit integration
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Integrate real heavy vehicle collision audio"
+          git push
