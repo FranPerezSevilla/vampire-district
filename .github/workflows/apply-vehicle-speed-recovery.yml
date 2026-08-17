@@ -49,13 +49,13 @@ jobs:
           model = "phaser/src/vehicles/VehicleModel.js"
           replace_once(
               model,
-              "  // Lower gears keep the lively launch. Upper gears deliberately trade torque\n  // for a longer build so the engine can climb audibly instead of snapping to Vmax.\n  return 1.20 - 0.62 * Math.pow(progress, 0.82);",
+              "  // Keep the launch punch, then let higher gears trade torque for a longer,\n  // readable build toward top speed instead of sprinting through the box.\n  return 1.20 - 0.62 * Math.pow(progress, 0.82);",
               "  // Lower gears keep the lively launch. Upper gears still trade torque, but not\n  // enough to make the post-shift car feel strangled: fifth retains 70% drive torque.\n  return 1.20 - 0.50 * Math.pow(progress, 0.85);"
           )
           replace_once(
               model,
-              "  const taperStart = 0.58;\n  if (ratio <= taperStart) return 1;\n  const remaining = clamp((1 - ratio) / (1 - taperStart), 0, 1);\n  return 0.02 + 0.98 * Math.pow(remaining, 1.5);",
-              "  const taperStart = 0.62;\n  if (ratio <= taperStart) return 1;\n  const remaining = clamp((1 - ratio) / (1 - taperStart), 0, 1);\n  return 0.025 + 0.975 * Math.pow(remaining, 1.35);"
+              "  const taperStart = 0.58;\n  if (ratio <= taperStart) return 1;\n  const remaining = clamp((1 - ratio) / (1 - taperStart), 0, 1);\n  // Near maximum speed the car should keep gaining speed, but slowly enough\n  // that 4th/5th gear have time to exist as an audible/driving state.\n  return 0.02 + 0.98 * Math.pow(remaining, 1.5);",
+              "  const taperStart = 0.62;\n  if (ratio <= taperStart) return 1;\n  const remaining = clamp((1 - ratio) / (1 - taperStart), 0, 1);\n  // Preserve a readable final pull without making the last gears feel artificially weak.\n  return 0.025 + 0.975 * Math.pow(remaining, 1.35);"
           )
 
           macro = "phaser/src/streaming/MacroTrafficPoliceSystem.js"
