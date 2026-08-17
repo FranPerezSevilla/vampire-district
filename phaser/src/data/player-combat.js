@@ -9,6 +9,35 @@ export const PLAYER_DAMAGE = Object.freeze({
   frenzyThreshold: 100
 });
 
+export const POLICE_FIREARM = Object.freeze({
+  id: "police_pistol",
+  label: "police gunshot",
+  hungerDamage: 16,
+  minRange: 54,
+  range: 300,
+  aimMs: 430,
+  wantedThreeAimMs: 320,
+  shotGapMs: 170,
+  burstSize: 2,
+  burstCooldownMs: 1280,
+  magazineSize: 6,
+  reloadMs: 2100,
+  postReloadPauseMs: 260,
+  blockedRetryMs: 280,
+  projectileSpeed: 920,
+  playerHitRadius: 9,
+  friendlyRadius: 9,
+  friendlyClearance: 6,
+  worldClearance: 3,
+  muzzleOffset: 9,
+  muzzleFlashMs: 90,
+  impactSeconds: 0.14,
+  vehicleDamage: 5,
+  playerLeadSeconds: 0.12,
+  vehicleLeadSeconds: 0.22,
+  color: 0xffd27a
+});
+
 export const ENEMY_MELEE_BY_TYPE = Object.freeze({
   [NPC_TYPES.POLICE]: Object.freeze({
     id: "police_baton",
