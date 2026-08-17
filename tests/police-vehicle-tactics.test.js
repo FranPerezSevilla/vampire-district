@@ -31,3 +31,12 @@ test("roadblock leaves an intentional lateral escape gap and publishes tactics",
   assert.match(code, /tactic: unit\.tactic/);
   assert.match(code, /policeTacticLabel/);
 });
+
+test("Wanted 2 enables active ram and PIT pressure while roadblocks remain Wanted 3", () => {
+  const code = source("phaser/src/police/MotorizedPoliceSystem.js");
+  const policy = source("phaser/src/police/MotorizedPolicePolicy.js");
+  assert.match(code, /if \(level >= 2[\s\S]*PIT_TELEGRAPH/);
+  assert.match(code, /if \(level >= 2[\s\S]*RAM_TELEGRAPH/);
+  assert.match(policy, /if \(Math\.max\(0, Math\.floor\(finite\(level\)\)\) >= 3 && Number\(index\) === 2\)/);
+  assert.match(policy, /if \(wanted >= 3\) return 3;[\s\S]*if \(wanted >= 2\) return 2;/);
+});
