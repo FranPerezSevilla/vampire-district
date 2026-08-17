@@ -1,4 +1,4 @@
-name: Integrate bullet hit world audio
+name: Integrate footsteps and hitscan world collision
 
 on:
   push:
@@ -20,45 +20,29 @@ jobs:
           ref: audio/playtest-p0
           fetch-depth: 0
 
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
       - name: Recover verified integration script
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          curl -fsSL \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/FranPerezSevilla/vampire-district/git/blobs/f95443c77d1ae2e285b41fa882ad4b616febd3a0" \
-            -o /tmp/bullet-world-script.json
-          python3 - <<'PY'
-          import base64
-          import gzip
-          import json
-          from pathlib import Path
-          blob = json.loads(Path('/tmp/bullet-world-script.json').read_text())
-          packed_text = base64.b64decode(blob['content']).decode('utf-8')
-          script = gzip.decompress(base64.b64decode(packed_text))
-          Path('/tmp/integrate_bullet_hit_world.py').write_bytes(script)
-          PY
+          base64 -d .github/audio-staging/integrate-footsteps-world-hits.py.gz.b64 \
+            | gzip -d > /tmp/integrate_footsteps_world_hits.py
+          python3 -m py_compile /tmp/integrate_footsteps_world_hits.py
 
-      - name: Materialize and wire bullet world impact
-        run: python3 /tmp/integrate_bullet_hit_world.py
+      - name: Materialize audio and wire gameplay collision
+        run: python3 /tmp/integrate_footsteps_world_hits.py
 
-      - name: Run focused tests
+      - name: Remove encoded script staging
         run: |
-          node --test \
-            tests/bullet-hit-world-audio.test.js \
-            tests/audio-sample-catalog.test.js \
-            tests/combat.test.js
+          rm -f .github/audio-staging/integrate-footsteps-world-hits.py.gz.b64
+          rmdir .github/audio-staging 2>/dev/null || true
 
-      - name: Remove one-off workflows
-        run: |
-          rm -f .github/workflows/integrate-bullet-hit-world.yml
-          rm -f .github/workflows/integrate-footsteps.yml
-
-      - name: Commit integration
+      - name: Commit verified integration
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Integrate real bullet world impact audio"
+          git commit -m "Connect footsteps and hitscan world impacts"
           git push origin HEAD:audio/playtest-p0
