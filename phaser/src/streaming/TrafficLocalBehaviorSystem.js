@@ -502,6 +502,27 @@ export class TrafficLocalBehaviorSystem {
     return this.sampleLane(lane, phase === null ? token.phase : wrapPhase(phase));
   }
 
+  projectileColliders() {
+    if (this.scene.currentLayer !== LAYERS.STREET) return [];
+    return Object.freeze((this.materializer.pool || [])
+      .filter(slot => (
+        slot.tokenId
+        && slot.container?.active !== false
+        && slot.container?.visible !== false
+      ))
+      .map(slot => Object.freeze({
+        id: `traffic:${slot.tokenId}`,
+        x: finite(slot.x),
+        y: finite(slot.y),
+        angle: finite(slot.angle),
+        layer: LAYERS.STREET,
+        archetype: slot.archetype,
+        transient: true,
+        projectileProxy: "traffic",
+        trafficTokenId: slot.tokenId
+      })));
+  }
+
   snapshot() {
     const entries = [...this.states.values()]
       .map(state => ({

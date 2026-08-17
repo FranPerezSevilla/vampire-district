@@ -54,12 +54,15 @@ test("static collision is refined and the nearest world target wins", () => {
   assert.equal(nearest.vehicle.id, "near-car");
 });
 
-test("CombatSystem stops the tracer at world/vehicle impacts before NPCs", () => {
+test("CombatSystem resolves the travelling projectile against world and vehicles before NPCs", () => {
   const combat = source("phaser/src/combat/CombatSystem.js");
   assert.match(combat, /resolveHitscanWorldImpact\(/);
   assert.match(combat, /worldImpact\.distance <= selectedDistance/);
-  assert.match(combat, /this\.attack\.tracer = endpoint/);
+  assert.match(combat, /advanceBallisticProjectile\(projectile, dt\)/);
+  assert.match(combat, /minimumVehicleDistance: 0/);
   assert.match(combat, /RawAudio\.play\("bulletHitWorld"/);
   assert.match(combat, /"vehicle:bullet-hit"/);
+  assert.match(combat, /"traffic:bullet-hit"/);
   assert.match(combat, /"combat:world-hit"/);
+  assert.doesNotMatch(combat, /this\.attack\.tracer = endpoint/);
 });

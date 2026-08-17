@@ -67,13 +67,13 @@ export function rayOrientedRectDistance(origin, direction, vehicle, range) {
   );
 }
 
-export function findVehicleHitscanImpact({ origin, direction, range, layer, vehicles = [], currentVehicleId = null }) {
+export function findVehicleHitscanImpact({ origin, direction, range, layer, vehicles = [], currentVehicleId = null, minimumVehicleDistance = 7 }) {
   const aim = normalized(direction);
   let best = null;
   for (const vehicle of vehicles) {
     if (!vehicle || vehicle.id === currentVehicleId || vehicle.layer !== layer) continue;
     const distance = rayOrientedRectDistance(origin, aim, vehicle, range);
-    if (distance == null || distance < 7 || (best && best.distance <= distance)) continue;
+    if (distance == null || distance < Math.max(0, Number(minimumVehicleDistance) || 0) || (best && best.distance <= distance)) continue;
     best = {
       kind: "vehicle",
       distance,

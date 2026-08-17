@@ -17,6 +17,11 @@ import {
 import { resolveAction } from "../systems/ActionSystem.js";
 import { RawAudio } from "../systems/RawAudioSystem.js";
 import { resolveHitscanWorldImpact } from "./HitscanWorldCollision.js";
+import {
+  advanceBallisticProjectile,
+  commitBallisticAdvance,
+  createBallisticProjectile
+} from "./BallisticProjectile.js";
 
 const HUMAN_TYPES = new Set([
   NPC_TYPES.CIVILIAN,
@@ -34,6 +39,8 @@ export class CombatSystem {
     this.attackSerial = 0;
     this.graphics = scene.add.graphics().setDepth(71);
     this.labels = new Map();
+    this.projectiles = [];
+    this.impactEffects = [];
     scene.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, this.destroy, this);
   }
 
@@ -41,6 +48,8 @@ export class CombatSystem {
     this.ensureCombatStates();
     this.updateAim(frame);
     this.updateAttack(dt, frame);
+    this.updateProjectiles(dt);
+    this.updateImpactEffects(dt);
     this.syncNpcVisuals();
     this.draw(frame);
   }
@@ -134,7 +143,6 @@ export class CombatSystem {
       direction: { ...this.aimDirection },
       hitIds: new Set(),
       resolved: false,
-      tracer: null,
       config
     };
 
@@ -179,13 +187,38 @@ export class CombatSystem {
     if (!this.attack || this.attack.resolved) return;
     this.attack.resolved = true;
     const config = this.attack.config;
-    const origin = { x: this.scene.player.x, y: this.scene.player.y };
-    const candidates = [];
+    const muzzleOffset = 10;
+    const origin = {
+      x: this.scene.player.x + this.attack.direction.x * muzzleOffset,
+      y: this.scene.player.y + this.attack.direction.y * muzzleOffset
+    };
+    const projectile = createBallisticProjectile({
+      id: `player-shot-${this.attack.serial}`,
+      attackId: this.attack.serial,
+      config,
+      layer: this.scene.currentLayer,
+      origin,
+      direction: this.attack.direction,
+      range: Math.max(0, (Number(config.range) || 0) - muzzleOffset),
+      speed: config.projectileSpeed || 1050
+    });
+    this.projectiles.push(projectile);
+    this.scene.events?.emit?.("combat:projectile-fired", {
+      attackId: projectile.attackId,
+      projectileId: projectile.id,
+      weaponId: config.id,
+      x: projectile.x,
+      y: projectile.y,
+      direction: { ...projectile.direction }
+    });
+  }
 
+  projectileCandidates(origin, range) {
+    const candidates = [];
     const nearbyNpcs = this.scene.npcSystem?.queryRadius?.(
       origin.x,
       origin.y,
-      config.range,
+      Math.max(18, range + 14),
       this.scene.currentLayer
     ) || this.scene.npcSystem?.npcs || [];
     for (const npc of nearbyNpcs) {
@@ -202,6 +235,8 @@ export class CombatSystem {
 
     for (const prop of this.scene.propDamageSystem?.props || []) {
       if (!this.scene.propDamageSystem.validTarget(prop)) continue;
+      const distance = Math.hypot(prop.x - origin.x, prop.y - origin.y);
+      if (distance > range + (prop.hitRadius || 7) + 4) continue;
       candidates.push({
         id: `prop:${prop.id}`,
         kind: "prop",
@@ -211,67 +246,147 @@ export class CombatSystem {
         hitRadius: prop.hitRadius || 7
       });
     }
+    return candidates;
+  }
 
-    const selected = selectHitscanTarget(origin, this.attack.direction, candidates, config, {
-      lineClear: candidate => this.hitscanLineClear(origin, candidate)
+  projectileVehicles() {
+    const colliders = [
+      ...(this.scene.vehicleSystem?.vehicles || []),
+      ...(this.scene.trafficLocalBehaviorSystem?.projectileColliders?.() || []),
+      ...(this.scene.motorizedPoliceResponseSystem?.projectileColliders?.() || [])
+    ];
+    const unique = new Map();
+    for (const vehicle of colliders) {
+      if (!vehicle?.id || unique.has(vehicle.id)) continue;
+      unique.set(vehicle.id, vehicle);
+    }
+    return [...unique.values()];
+  }
+
+  resolveProjectileSegment(projectile, movement) {
+    const origin = movement.from;
+    const range = movement.distance;
+    if (range <= 0) return null;
+    const config = { ...projectile.config, range };
+    const candidates = this.projectileCandidates(origin, range);
+    const selected = selectHitscanTarget(origin, projectile.direction, candidates, config, {
+      lineClear: () => true
     });
     const worldImpact = resolveHitscanWorldImpact({
       origin,
-      direction: this.attack.direction,
-      range: config.range,
-      layer: this.scene.currentLayer,
-      vehicles: this.scene.vehicleSystem?.vehicles || [],
-      currentVehicleId: this.scene.vehicleSystem?.currentVehicleId || null
+      direction: projectile.direction,
+      range,
+      layer: projectile.layer,
+      vehicles: this.projectileVehicles(),
+      currentVehicleId: this.scene.vehicleSystem?.currentVehicleId || null,
+      minimumVehicleDistance: 0
     });
     const selectedDistance = selected?.metrics?.along ?? Number.POSITIVE_INFINITY;
-    const worldFirst = Boolean(worldImpact && worldImpact.distance <= selectedDistance + 0.001);
-    const endpoint = worldFirst
-      ? { x: worldImpact.x, y: worldImpact.y, hit: true, kind: worldImpact.kind }
-      : selected
-        ? { x: selected.candidate.x, y: selected.candidate.y, hit: true, kind: selected.candidate.kind }
-        : {
-            x: origin.x + this.attack.direction.x * config.range,
-            y: origin.y + this.attack.direction.y * config.range,
-            hit: false
-          };
-    this.attack.tracer = endpoint;
-
-    if (worldFirst) {
-      this.emitHitscanWorldImpact(worldImpact, config);
-      return;
-    }
-    if (!selected) return;
-    const candidate = selected.candidate;
-    this.attack.hitIds.add(candidate.id);
-    if (candidate.kind === "npc") this.applyHit(candidate.entity, config);
-    if (candidate.kind === "prop") {
-      this.scene.propDamageSystem?.damage?.(candidate.entity, config.damage || 1, this.attack.serial);
-      this.emitHitscanWorldImpact({
-        kind: "prop",
-        x: candidate.x,
-        y: candidate.y,
-        distance: selected.metrics.along,
-        prop: candidate.entity
-      }, config);
-    }
+    if (worldImpact && worldImpact.distance <= selectedDistance + 0.001) return worldImpact;
+    if (!selected) return null;
+    return {
+      kind: selected.candidate.kind,
+      x: origin.x + projectile.direction.x * selected.metrics.along,
+      y: origin.y + projectile.direction.y * selected.metrics.along,
+      distance: selected.metrics.along,
+      entity: selected.candidate.entity,
+      npc: selected.candidate.kind === "npc" ? selected.candidate.entity : null,
+      prop: selected.candidate.kind === "prop" ? selected.candidate.entity : null
+    };
   }
 
-  emitHitscanWorldImpact(impact, config) {
+  updateProjectiles(dt) {
+    if (!this.projectiles.length || this.scene.registry?.get?.("uiPaused")) return;
+    for (const projectile of this.projectiles) {
+      if (!projectile.alive) continue;
+      if (projectile.layer !== this.scene.currentLayer) {
+        projectile.alive = false;
+        continue;
+      }
+      const movement = advanceBallisticProjectile(projectile, dt);
+      if (movement.distance <= 0) {
+        projectile.alive = false;
+        continue;
+      }
+      const impact = this.resolveProjectileSegment(projectile, movement);
+      if (impact) {
+        this.completeProjectileImpact(projectile, impact);
+        continue;
+      }
+      commitBallisticAdvance(projectile, movement);
+    }
+    this.projectiles = this.projectiles.filter(projectile => projectile.alive);
+  }
+
+  completeProjectileImpact(projectile, impact) {
+    projectile.previousX = projectile.x;
+    projectile.previousY = projectile.y;
+    projectile.x = impact.x;
+    projectile.y = impact.y;
+    projectile.alive = false;
+    this.impactEffects.push({
+      x: impact.x,
+      y: impact.y,
+      kind: impact.kind,
+      ttl: 0.14,
+      duration: 0.14
+    });
+
+    if (impact.kind === "npc" && impact.npc) {
+      this.applyHit(impact.npc, projectile.config, projectile.attackId);
+    } else if (impact.kind === "prop" && impact.prop) {
+      this.scene.propDamageSystem?.damage?.(
+        impact.prop,
+        projectile.config.damage || 1,
+        projectile.attackId
+      );
+      this.emitHitscanWorldImpact(impact, projectile.config, projectile.attackId);
+    } else {
+      this.emitHitscanWorldImpact(impact, projectile.config, projectile.attackId);
+    }
+
+    this.scene.events?.emit?.("combat:projectile-impact", {
+      attackId: projectile.attackId,
+      projectileId: projectile.id,
+      weaponId: projectile.config.id,
+      targetKind: impact.kind,
+      x: impact.x,
+      y: impact.y
+    });
+  }
+
+  updateImpactEffects(dt) {
+    const seconds = Math.max(0, Number(dt) || 0);
+    for (const effect of this.impactEffects) effect.ttl -= seconds;
+    this.impactEffects = this.impactEffects.filter(effect => effect.ttl > 0);
+  }
+
+  emitHitscanWorldImpact(impact, config, attackId = 0) {
     RawAudio.play("bulletHitWorld", { cooldown: 0.035 });
     if (impact.kind === "vehicle" && impact.vehicle?.id) {
-      this.scene.vehicleSystem?.damageVehicle?.(impact.vehicle.id, 1, {
-        reason: "gunfire",
-        persist: !impact.vehicle.transient
-      });
-      this.scene.events?.emit?.("vehicle:bullet-hit", {
-        vehicleId: impact.vehicle.id,
-        x: impact.x,
-        y: impact.y,
-        weaponId: config.id
-      });
+      if (impact.vehicle.projectileProxy === "traffic") {
+        this.scene.events?.emit?.("traffic:bullet-hit", {
+tokenId: impact.vehicle.trafficTokenId || null,
+vehicleId: impact.vehicle.id,
+x: impact.x,
+y: impact.y,
+weaponId: config.id
+        });
+      } else {
+        this.scene.vehicleSystem?.damageVehicle?.(impact.vehicle.id, 1, {
+reason: "gunfire",
+persist: !impact.vehicle.transient
+        });
+        this.scene.events?.emit?.("vehicle:bullet-hit", {
+vehicleId: impact.vehicle.id,
+x: impact.x,
+y: impact.y,
+weaponId: config.id
+        });
+      }
     }
     this.scene.events?.emit?.("combat:world-hit", {
-      attackId: this.attack?.serial || 0,
+      attackId,
       weaponId: config.id,
       targetKind: impact.kind,
       vehicleId: impact.vehicle?.id || null,
@@ -297,7 +412,7 @@ export class CombatSystem {
     return state === COMBAT_STATES.ACTIVE || state === COMBAT_STATES.STAGGERED;
   }
 
-  applyHit(npc, config = this.attack?.config || this.currentAttackConfig()) {
+  applyHit(npc, config = this.attack?.config || this.currentAttackConfig(), attackId = this.attack?.serial || 0) {
     const now = this.scene.time.now;
     const combat = npc.combat || (npc.combat = createNpcCombatState(npc.type));
     if (!combat) return;
@@ -322,7 +437,7 @@ export class CombatSystem {
     }
 
     this.scene.events?.emit?.("combat:hit", {
-      attackId: this.attack?.serial || 0,
+      attackId,
       weaponId: config.id,
       damage: config.damage || 1,
       targetId: npc.id,
@@ -482,6 +597,27 @@ export class CombatSystem {
 
     if (this.attack) this.drawAttackArc();
 
+    for (const projectile of this.projectiles) {
+      const color = projectile.config?.color || 0xfff2a8;
+      const tail = 11;
+      graphics.lineStyle(4, color, 0.95);
+      graphics.beginPath();
+      graphics.moveTo(
+        projectile.x - projectile.direction.x * tail,
+        projectile.y - projectile.direction.y * tail
+      );
+      graphics.lineTo(projectile.x, projectile.y);
+      graphics.strokePath();
+      graphics.fillStyle(0xffffff, 0.95).fillCircle(projectile.x, projectile.y, 2);
+    }
+
+    for (const effect of this.impactEffects) {
+      const progress = 1 - effect.ttl / effect.duration;
+      const alpha = Math.max(0, effect.ttl / effect.duration);
+      graphics.lineStyle(2, effect.kind === "npc" ? 0xffc6a1 : 0xfff2a8, alpha);
+      graphics.strokeCircle(effect.x, effect.y, 3 + progress * 6);
+    }
+
     const now = this.scene.time.now;
     for (const npc of this.scene.npcSystem?.visibleInCamera?.(40) || this.scene.npcSystem?.npcs || []) {
       if (!npc.combat || npc.dead || npc.hiddenBody || npc.layer !== this.scene.currentLayer) continue;
@@ -548,17 +684,22 @@ export class CombatSystem {
     const py = this.scene.player.y;
 
     if (config.attackType === WEAPON_TYPES.HITSCAN) {
-      const endpoint = this.attack.tracer || {
-        x: px + this.attack.direction.x * Math.min(config.range, 80),
-        y: py + this.attack.direction.y * Math.min(config.range, 80),
-        hit: false
-      };
-      this.graphics.lineStyle(phase === "active" ? 3 : 1, color, alpha);
-      this.graphics.beginPath();
-      this.graphics.moveTo(px + this.attack.direction.x * 8, py + this.attack.direction.y * 8);
-      this.graphics.lineTo(endpoint.x, endpoint.y);
-      this.graphics.strokePath();
-      if (endpoint.hit) this.graphics.lineStyle(2, 0xfff2a8, alpha).strokeCircle(endpoint.x, endpoint.y, 7);
+      if (phase === "active") {
+        const muzzleX = px + this.attack.direction.x * 10;
+        const muzzleY = py + this.attack.direction.y * 10;
+        this.graphics.lineStyle(3, color, alpha);
+        this.graphics.beginPath();
+        this.graphics.moveTo(
+muzzleX - this.attack.direction.x * 4,
+muzzleY - this.attack.direction.y * 4
+        );
+        this.graphics.lineTo(
+muzzleX + this.attack.direction.x * 5,
+muzzleY + this.attack.direction.y * 5
+        );
+        this.graphics.strokePath();
+        this.graphics.fillStyle(0xffffff, alpha).fillCircle(muzzleX, muzzleY, 2.5);
+      }
       return;
     }
 
@@ -603,6 +744,8 @@ export class CombatSystem {
 
   destroy() {
     this.graphics?.destroy?.();
+    this.projectiles.length = 0;
+    this.impactEffects.length = 0;
     for (const label of this.labels.values()) label.destroy?.();
     this.labels.clear();
   }
