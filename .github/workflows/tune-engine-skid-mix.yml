@@ -1,0 +1,89 @@
+name: Tune engine and skid mix
+
+on:
+  push:
+    branches:
+      - audio/playtest-p0
+    paths:
+      - ".github/workflows/tune-engine-skid-mix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  tune:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply accepted mix feedback
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(path, old, new):
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected one match in {path}, found {count}: {old!r}")
+              file.write_text(text.replace(old, new))
+
+          raw = "phaser/src/systems/RawAudioSystem.js"
+          replace_exact(raw, "samplePitch: 1.06, sampleVolume: 0.34,", "samplePitch: 1.06, sampleVolume: 0.38,")
+          replace_exact(raw, "samplePitch: 0.98, sampleVolume: 0.36,", "samplePitch: 0.98, sampleVolume: 0.40,")
+          replace_exact(raw, "samplePitch: 0.84, sampleVolume: 0.40,", "samplePitch: 0.84, sampleVolume: 0.44,")
+          replace_exact(raw, "samplePitch: 1.08, sampleVolume: 0.36,", "samplePitch: 1.08, sampleVolume: 0.40,")
+
+          catalog = "phaser/src/audio/SampleAudioCatalog.js"
+          replace_exact(
+              catalog,
+              '  vehicleEngineStart: sampleEvent([\n    "phaser/assets/audio/vehicles/vehicle-engine-start-01.mp3"\n  ], { volume: 0.82 }),',
+              '  vehicleEngineStart: sampleEvent([\n    "phaser/assets/audio/vehicles/vehicle-engine-start-01.mp3"\n  ], { volume: 0.88 }),'
+          )
+          replace_exact(
+              catalog,
+              '  vehicleSkidLoop: sampleEvent([\n    "phaser/assets/audio/vehicles/vehicle-skid-loop-01.wav"\n  ], { volume: 0.68, loop: true })',
+              '  vehicleSkidLoop: sampleEvent([\n    "phaser/assets/audio/vehicles/vehicle-skid-loop-01.wav"\n  ], { volume: 0.60, loop: true })'
+          )
+
+          test_file = "tests/vehicle-engine-audio.test.js"
+          replace_exact(
+              test_file,
+              '  assert.equal(SAMPLE_AUDIO_CATALOG.vehicleEngineLoop.loop, true);\n  assertMp3(startFile);',
+              '  assert.equal(SAMPLE_AUDIO_CATALOG.vehicleEngineLoop.loop, true);\n  assert.equal(SAMPLE_AUDIO_CATALOG.vehicleEngineStart.volume, 0.88);\n  assert.equal(SAMPLE_AUDIO_CATALOG.vehicleSkidLoop.volume, 0.60);\n  assertMp3(startFile);'
+          )
+
+          docs = "docs/audio-catalog.md"
+          replace_exact(
+              docs,
+              '- `vehicleSkidLoop` — **integrated + listening accepted on PR #55**: the supplied MagiaZ tyre skid is trimmed into a gap-sensitive PCM WAV loop. Aggressive-driving pulses sustain one stateful loop while the drift continues and let it stop shortly after the skid ends; civilian panic remains a separate non-reporting reaction with no Heat.',
+              '- `vehicleSkidLoop` — **integrated + listening accepted on PR #55**: the supplied MagiaZ tyre skid is trimmed into a gap-sensitive PCM WAV loop. Aggressive-driving pulses sustain one stateful loop while the drift continues and let it stop shortly after the skid ends; civilian panic remains a separate non-reporting reaction with no Heat. Its runtime level was reduced slightly after the accepted real-engine mix review.'
+          )
+          replace_exact(
+              docs,
+              '- `vehicleEngineStart` / `vehicleEngineLoop` — **real sample-backed candidate integrated on PR #55; systemic mix accepted, listening re-check pending**:',
+              '- `vehicleEngineStart` / `vehicleEngineLoop` — **real sample-backed candidate integrated on PR #55; sound character and systemic mix accepted, level raised slightly after listening feedback**:'
+          )
+          PY
+
+      - name: Run focused audio tests
+        run: |
+          set -euo pipefail
+          node --test tests/vehicle-engine-audio.test.js tests/audio-sample-catalog.test.js
+
+      - name: Remove one-off workflow
+        run: rm -f .github/workflows/tune-engine-skid-mix.yml
+
+      - name: Commit tuned mix
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add phaser/src docs tests .github/workflows
+          git commit -m "Tune vehicle engine and skid levels"
+          git push
