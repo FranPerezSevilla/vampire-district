@@ -1,4 +1,5 @@
 import { VEHICLE_OWNERSHIP, vehicleArchetype, vehicleDefinitions } from "../data/vehicles.js";
+import { RawAudio } from "../systems/RawAudioSystem.js";
 import { createVehicleState } from "./VehicleModel.js";
 import { createVehicleHud, installVehicleBrowserApi, paintVehicle, publishVehicleState, refreshVehicleVisibility, updateVehicleHud, vehicleSystemSnapshot, vehicleSystemSummary } from "./VehicleView.js";
 import { canVehicleOccupy, filterVehicleInputFrame, handleVehicleWorldCollision, updateVehicleCamera, updateVehicleDriving } from "./VehicleDriving.js";

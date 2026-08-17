@@ -42,6 +42,7 @@ test("runtime routes critical vehicles, occupant death and radial damage through
   const system = source("phaser/src/vehicles/VehicleSystem.js");
   const driving = source("phaser/src/vehicles/VehicleDriving.js");
   assert.match(system, /vehicleDestructionTransition/);
+  assert.match(system, /RawAudioSystem\.js/);
   assert.match(system, /markVehicleCritical/);
   assert.match(system, /explodeVehicle/);
   assert.match(system, /playerDamageSystem\.damagePlayer/);
