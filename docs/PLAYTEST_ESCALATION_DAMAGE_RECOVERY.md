@@ -23,7 +23,7 @@ This is the ordered implementation contract for the combat, police, death and re
 
 ## Slice 2 — visible projectile and complete moving-vehicle collision
 
-**State: next implementation slice.**
+**State: next implementation slice after Slice 1 listening validation.**
 
 ### Confirmed defect
 
