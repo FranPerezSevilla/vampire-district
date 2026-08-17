@@ -8,7 +8,8 @@ import {
   enemyMeleeForType,
   enemyMeleeHits,
   playerIsHitStunned,
-  playerIsInvulnerable
+  playerIsInvulnerable,
+  recoverPlayerVitalityState
 } from "../data/player-combat.js";
 import { NPC_TYPES } from "../data/npcs.js";
 import { normalizeVector } from "../utils/geometry.js";
@@ -73,6 +74,7 @@ export class PlayerDamageSystem {
       if (distance <= config.startRange) this.startEnemyAttack(npc, config);
     }
 
+    this.recoverVitality(dt);
     this.syncPlayerFeedback();
     this.draw(frame);
   }
@@ -80,6 +82,7 @@ export class PlayerDamageSystem {
   canSimulate(frame) {
     return Boolean(
       frame?.worldEnabled
+      && !this.isDead()
       && !this.scene.transitionSystem?.active
       && !this.scene.interactionSystem?.isOpen
       && !this.scene.missionSystem?.failed
@@ -171,19 +174,23 @@ export class PlayerDamageSystem {
     npc.container?.setPosition?.(npc.x, npc.y);
   }
 
-  damagePlayer(attacker, config) {
+  damagePlayer(attacker, config = {}) {
     const now = this.scene.time.now;
     const feeding = this.scene.feedingSystem;
+    const vitalityDamage = Math.max(0, Number(config.vitalityDamage ?? config.damage) || 0);
     const result = applyPlayerDamageState(
       this.state,
       feeding?.hunger || 0,
-      config.hungerDamage,
+      vitalityDamage,
       now,
-      { sourceId: attacker.id, label: config.label }
+      {
+        sourceId: attacker?.id || config.sourceId || null,
+        label: config.label || "enemy attack",
+        damageKind: config.damageKind || "melee"
+      }
     );
     if (!result.applied) return false;
 
-    if (feeding) feeding.hunger = result.after;
     if (feeding?.isActive?.()) feeding.cancel("The hit tears you away from the victim.");
     if (this.scene.combatSystem?.attack) this.scene.combatSystem.attack = null;
 
@@ -198,41 +205,62 @@ export class PlayerDamageSystem {
 
     RawAudio.play("stun", { cooldown: 0.08 });
     this.scene.cameras?.main?.shake?.(120, 0.0022);
-    this.scene.lastActionText = result.critical
-      ? `HIT: ${config.label}. Hunger +${result.gained}. HUNGER CRITICAL — feed or Give In; the Beast is pressing against your control.`
-      : `HIT: ${config.label}. Hunger +${result.gained}.`;
+
+    const damage = Math.round(result.damage * 10) / 10;
+    const vitality = Math.round(result.after * 10) / 10;
+    const starving = result.multiplier > 1 ? " Starvation makes the gunshot more dangerous." : "";
+    if (result.dead) {
+      this.scene.lastActionText = `DEAD: ${config.label || "enemy attack"} took your last Vitality.${starving}`;
+    } else if (result.critical) {
+      this.scene.lastActionText = `HIT: ${config.label || "enemy attack"}. Vitality -${damage} · ${vitality}/${this.state.maxVitality}. VITALITY CRITICAL.${starving}`;
+    } else {
+      this.scene.lastActionText = `HIT: ${config.label || "enemy attack"}. Vitality -${damage} · ${vitality}/${this.state.maxVitality}.${starving}`;
+    }
 
     this.scene.events?.emit?.("player:damaged", {
-      attackerId: attacker.id,
-      attackId: config.id,
-      hungerDamage: result.gained,
-      hungerBefore: result.before,
-      hungerAfter: result.after,
-      critical: result.critical
-    });
-    this.scene.events?.emit?.("hunger:changed", {
-      source: "damage",
-      before: result.before,
-      after: result.after,
-      amount: result.gained
+      attackerId: attacker?.id || config.sourceId || null,
+      attackId: config.id || null,
+      damageKind: config.damageKind || "melee",
+      vitalityDamage: result.damage,
+      vitalityBefore: result.before,
+      vitalityAfter: result.after,
+      vitalityMax: this.state.maxVitality,
+      hunger: result.hunger,
+      damageMultiplier: result.multiplier,
+      critical: result.critical,
+      dead: result.dead
     });
 
-    if (result.frenzy) {
-      this.scene.lastActionText = `HIT: ${config.label}. Hunger reached its limit. THE BEAST IS CRITICAL — feed or Give In, but control remains yours.`;
-      this.scene.events?.emit?.("beast:critical-pressure", {
-        source: "damage",
-        attackerId: attacker.id,
-        hunger: result.after
+    if (result.dead) {
+      this.cancelAllEnemyAttacks();
+      this.scene.events?.emit?.("player:died", {
+        attackerId: attacker?.id || config.sourceId || null,
+        attackId: config.id || null,
+        damageKind: config.damageKind || "melee",
+        label: config.label || "enemy attack",
+        hunger: result.hunger
       });
     }
 
+    this.syncPlayerFeedback();
     return true;
   }
 
-  filterFrame(frame) {
-    if (!this.isHitStunned()) return frame;
+  recoverVitality(dt) {
+    if (this.isDead()) return false;
+    const result = recoverPlayerVitalityState(
+      this.state,
+      this.scene.feedingSystem?.hunger || 0,
+      dt,
+      this.scene.time.now
+    );
+    return result.applied;
+  }
+
+  lockedFrame(frame, { stopWorld = false } = {}) {
     return {
       ...frame,
+      worldEnabled: stopWorld ? false : frame?.worldEnabled,
       move: { x: 0, y: 0 },
       hasMovementIntent: false,
       quietHeld: false,
@@ -243,13 +271,22 @@ export class PlayerDamageSystem {
       drainPressed: false,
       traversePressed: false,
       interactPressed: false,
+      vehicleActionPressed: false,
+      handbrakeHeld: false,
+      hornPressed: false,
       weaponStep: 0,
       dashPressed: false,
       whisperPressed: false,
       bloodSensePressed: false,
-      // Give In remains available during hit stun so the player can voluntarily trade subtlety for recovery.
+      // Give In and menu state are deliberately not mutated here; worldEnabled owns the lethal lock.
       debugLayerPressed: 0
     };
+  }
+
+  filterFrame(frame) {
+    if (this.isDead()) return this.lockedFrame(frame, { stopWorld: true });
+    if (!this.isHitStunned()) return frame;
+    return this.lockedFrame(frame);
   }
 
   isHitStunned() {
@@ -260,28 +297,55 @@ export class PlayerDamageSystem {
     return playerIsInvulnerable(this.state, this.scene.time.now);
   }
 
+  isDead() {
+    return Boolean(this.state.dead);
+  }
+
   blocksMovement() {
-    return this.isHitStunned();
+    return this.isDead() || this.isHitStunned();
   }
 
   cancelAllEnemyAttacks() {
     for (const npc of this.enemies()) npc.enemyAttack = null;
   }
 
+  summary() {
+    const vitality = Math.max(0, Math.round(this.state.vitality));
+    const maximum = Math.max(1, Math.round(this.state.maxVitality));
+    if (this.state.dead) return `Vitality 0/${maximum} · DEAD`;
+    if (this.state.critical) return `Vitality ${vitality}/${maximum} · CRITICAL`;
+    if ((Number(this.scene.feedingSystem?.hunger) || 0) >= 100 && vitality < maximum) {
+      return `Vitality ${vitality}/${maximum} · recovery blocked at 100% Hunger`;
+    }
+    return `Vitality ${vitality}/${maximum}`;
+  }
+
   syncPlayerFeedback() {
     const now = this.scene.time.now;
-    const hunger = Number(this.scene.feedingSystem?.hunger) || 0;
-    this.state.critical = hunger >= PLAYER_DAMAGE.criticalThreshold && hunger < PLAYER_DAMAGE.frenzyThreshold;
-
     const invulnerable = this.isInvulnerable();
     if (this.scene.player) {
       const pulse = invulnerable ? 0.55 + Math.abs(Math.sin(now / 55)) * 0.45 : 1;
-      this.scene.player.setAlpha?.(pulse);
+      this.scene.player.setAlpha?.(this.isDead() ? 0.45 : pulse);
+    }
+
+    this.scene.statePublisher?.setMany?.({
+      vitalityText: this.summary(),
+      playerDead: this.isDead()
+    });
+
+    if (this.isDead()) {
+      this.feedbackLabel
+        .setText("DEAD")
+        .setPosition(this.scene.player.x, this.scene.player.y - 24)
+        .setVisible(true);
+      return;
     }
 
     if (now < this.state.feedbackUntil) {
+      const vitality = Math.max(0, Math.round(this.state.vitality));
+      const damage = Math.round(this.state.lastDamage * 10) / 10;
       this.feedbackLabel
-        .setText(this.state.critical ? `HUNGER +${this.state.lastDamage} · CRITICAL` : `HUNGER +${this.state.lastDamage}`)
+        .setText(`VITALITY -${damage} · ${vitality}/${this.state.maxVitality}${this.state.critical ? " · CRITICAL" : ""}`)
         .setPosition(this.scene.player.x, this.scene.player.y - 24)
         .setVisible(true);
     } else {
@@ -292,13 +356,15 @@ export class PlayerDamageSystem {
   draw(frame) {
     const graphics = this.graphics;
     graphics.clear();
-    if (!frame?.worldEnabled) return;
+    if (!frame?.worldEnabled && !this.isDead()) return;
 
-    for (const npc of this.enemies()) {
-      const attack = npc.enemyAttack;
-      const config = enemyMeleeForType(npc.type);
-      if (!attack || !config || npc.layer !== this.scene.currentLayer) continue;
-      this.drawEnemyAttack(npc, attack, config);
+    if (!this.isDead()) {
+      for (const npc of this.enemies()) {
+        const attack = npc.enemyAttack;
+        const config = enemyMeleeForType(npc.type);
+        if (!attack || !config || npc.layer !== this.scene.currentLayer) continue;
+        this.drawEnemyAttack(npc, attack, config);
+      }
     }
 
     if (this.isInvulnerable()) {
