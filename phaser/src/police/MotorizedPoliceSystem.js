@@ -565,6 +565,34 @@ export class MotorizedPoliceSystem {
     return reservedOfficerCount(level, this.units, this.officersPerUnit);
   }
 
+  projectileColliders() {
+    if (this.scene.currentLayer !== LAYERS.STREET) return [];
+    return Object.freeze(this.units
+      .filter(unit => {
+        const slot = this.slots[unit.index];
+        return Boolean(
+          unit.visible
+          && slot?.unitId === unit.id
+          && slot.container?.active !== false
+          && slot.container?.visible !== false
+        );
+      })
+      .map(unit => {
+        const slot = this.slots[unit.index];
+        return Object.freeze({
+          id: `police-cruiser:${unit.id}`,
+          x: finite(unit.x),
+          y: finite(unit.y),
+          angle: finite(unit.angle),
+          layer: LAYERS.STREET,
+          archetype: slot.archetype,
+          transient: true,
+          projectileProxy: "motorized-police",
+          policeUnitId: unit.id
+        });
+      }));
+  }
+
   blocksVehicle(x, y, radius = 0) {
     const ownRadius = Math.max(0, finite(radius));
     return this.units.some(unit => {

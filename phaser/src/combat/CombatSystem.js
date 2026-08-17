@@ -253,7 +253,7 @@ export class CombatSystem {
     const colliders = [
       ...(this.scene.vehicleSystem?.vehicles || []),
       ...(this.scene.trafficLocalBehaviorSystem?.projectileColliders?.() || []),
-      ...(this.scene.motorizedPoliceResponseSystem?.projectileColliders?.() || [])
+      ...(this.scene.motorizedPoliceSystem?.projectileColliders?.() || [])
     ];
     const unique = new Map();
     for (const vehicle of colliders) {
@@ -366,22 +366,34 @@ export class CombatSystem {
     if (impact.kind === "vehicle" && impact.vehicle?.id) {
       if (impact.vehicle.projectileProxy === "traffic") {
         this.scene.events?.emit?.("traffic:bullet-hit", {
-tokenId: impact.vehicle.trafficTokenId || null,
-vehicleId: impact.vehicle.id,
-x: impact.x,
-y: impact.y,
-weaponId: config.id
+          tokenId: impact.vehicle.trafficTokenId || null,
+          vehicleId: impact.vehicle.id,
+          x: impact.x,
+          y: impact.y,
+          weaponId: config.id
+        });
+      } else if (impact.vehicle.projectileProxy === "motorized-police") {
+        this.scene.motorizedPoliceSystem?.damageUnit?.(
+          impact.vehicle.policeUnitId || impact.vehicle.id,
+          1,
+          { reason: "gunfire" }
+        );
+        this.scene.events?.emit?.("police-cruiser:bullet-hit", {
+          unitId: impact.vehicle.policeUnitId || impact.vehicle.id,
+          x: impact.x,
+          y: impact.y,
+          weaponId: config.id
         });
       } else {
         this.scene.vehicleSystem?.damageVehicle?.(impact.vehicle.id, 1, {
-reason: "gunfire",
-persist: !impact.vehicle.transient
+          reason: "gunfire",
+          persist: !impact.vehicle.transient
         });
         this.scene.events?.emit?.("vehicle:bullet-hit", {
-vehicleId: impact.vehicle.id,
-x: impact.x,
-y: impact.y,
-weaponId: config.id
+          vehicleId: impact.vehicle.id,
+          x: impact.x,
+          y: impact.y,
+          weaponId: config.id
         });
       }
     }
@@ -690,12 +702,12 @@ weaponId: config.id
         this.graphics.lineStyle(3, color, alpha);
         this.graphics.beginPath();
         this.graphics.moveTo(
-muzzleX - this.attack.direction.x * 4,
-muzzleY - this.attack.direction.y * 4
+          muzzleX - this.attack.direction.x * 4,
+          muzzleY - this.attack.direction.y * 4
         );
         this.graphics.lineTo(
-muzzleX + this.attack.direction.x * 5,
-muzzleY + this.attack.direction.y * 5
+          muzzleX + this.attack.direction.x * 5,
+          muzzleY + this.attack.direction.y * 5
         );
         this.graphics.strokePath();
         this.graphics.fillStyle(0xffffff, alpha).fillCircle(muzzleX, muzzleY, 2.5);

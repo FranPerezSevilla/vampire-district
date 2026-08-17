@@ -23,7 +23,9 @@ This is the ordered implementation contract for the combat, police, death and re
 
 ## Slice 2 — visible projectile and complete moving-vehicle collision
 
-**State: next implementation slice after Slice 1 listening validation.**
+**State: implemented on PR #55; pending in-game validation.**
+
+The implementation uses a fast frame-updated projectile with swept segment collision. Materialized civilian traffic and motorized police expose immutable collider snapshots instead of leaking render containers into combat. Civilian traffic absorbs the shot and emits a traffic impact event; motorized police cruisers absorb the shot and lose cruiser health through `MotorizedPoliceSystem.damageUnit()`.
 
 ### Confirmed defect
 

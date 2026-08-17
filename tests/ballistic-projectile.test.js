@@ -58,10 +58,22 @@ test("runtime owns short projectile visuals and stable traffic collider snapshot
   assert.match(combat, /this\.projectiles = \[\]/);
   assert.match(combat, /advanceBallisticProjectile\(projectile, dt\)/);
   assert.match(combat, /trafficLocalBehaviorSystem\?\.projectileColliders/);
+  assert.match(combat, /motorizedPoliceSystem\?\.projectileColliders/);
   assert.match(combat, /minimumVehicleDistance: 0/);
   assert.match(combat, /"traffic:bullet-hit"/);
+  assert.match(combat, /projectileProxy === "motorized-police"/);
+  assert.match(combat, /motorizedPoliceSystem\?\.damageUnit/);
   assert.doesNotMatch(combat, /this\.attack\.tracer = endpoint/);
   assert.doesNotMatch(combat, /lineTo\(endpoint\.x, endpoint\.y\)/);
   assert.match(traffic, /projectileColliders\(\)/);
   assert.match(traffic, /projectileProxy: "traffic"/);
+});
+
+
+test("motorized police exposes visible cruiser snapshots to projectile collision", () => {
+  const police = source("phaser/src/police/MotorizedPoliceSystem.js");
+  assert.match(police, /projectileColliders\(\)/);
+  assert.match(police, /projectileProxy: "motorized-police"/);
+  assert.match(police, /policeUnitId: unit\.id/);
+  assert.match(police, /slot\?\.unitId === unit\.id/);
 });
