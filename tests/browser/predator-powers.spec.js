@@ -281,17 +281,20 @@ test("Blood Sense, contextual Whisper and Give In form one evidence-limited pred
     scene.npcSystem.rebuildSpatialIndex();
 
     scene.feedingSystem.hunger = 99;
+    scene.playerDamageSystem.revive({ vitality: 100, source: "browser-critical-pressure" });
     scene.playerDamageSystem.state.invulnerableUntil = 0;
     scene.playerDamageSystem.state.hitStunUntil = 0;
     const failedBefore = Boolean(scene.missionSystem.failed);
     const damaged = scene.playerDamageSystem.damagePlayer(officer, {
       id: "browser-critical-pressure",
       label: "controlled test strike",
-      hungerDamage: 5
+      damageKind: "melee",
+      vitalityDamage: 5
     });
     return {
       damaged,
       hunger: scene.feedingSystem.hunger,
+      vitality: scene.playerDamageSystem.state.vitality,
       failedBefore,
       failedAfter: Boolean(scene.missionSystem.failed),
       text: scene.lastActionText,
@@ -301,12 +304,13 @@ test("Blood Sense, contextual Whisper and Give In form one evidence-limited pred
 
   expect(criticalPressure).toMatchObject({
     damaged: true,
-    hunger: 100,
+    hunger: 99,
+    vitality: 95,
     failedBefore: false,
     failedAfter: false,
     hitStunned: true
   });
-  expect(criticalPressure.text).toContain("control remains yours");
+  expect(criticalPressure.text).toContain("Vitality -5");
 
   const giveInActivated = await page.evaluate(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
