@@ -1,6 +1,6 @@
 # Playtest escalation, damage and recovery plan
 
-_Last updated: 2026-08-17_
+_Last updated: 2026-08-18_
 
 This is the ordered implementation contract for the combat, police, death and recovery feedback captured during PR #55. Work through one independently testable slice at a time. Do not combine the police overhaul, player death and hospital recovery into one opaque change.
 
@@ -142,12 +142,14 @@ At wanted level 2, one eligible chasing officer may visibly aim and fire control
 ### Implemented increment — hospital reset and recovery
 
 - Full black clears Heat, temporary foot/motorized response, active firearm/combat projectiles and transient NPC alarm state while durable campaign progression is preserved.
-- The player respawns at a valid Hospital Ward street candidate with **35 Vitality** and a **7-second police reacquisition grace** honored by foot, firearm and motorized police authorities.
-- A static lackey appears beside the player with the recovery line:
+- The player respawns at a valid Hospital Ward street candidate with **35 Vitality**. Hospital arrival deliberately remains control-locked during the recovery beat.
+- A lackey appears beside the player and, after a short settle, delivers the recovery line through the **same conventional spoken-dialogue presentation** used elsewhere in the game:
 
   **“You made quite a mess. We pulled you out of the morgue. Drink this blood bag. The car outside is yours.”**
 
-- A world-interactable blood bag restores **30 Vitality** and relieves up to **35 Hunger**; it deliberately does not reset Hunger to zero.
+- After the player dismisses the line, the lackey visibly walks away and fades out. **Only when that departure completes** does the recovery authority explicitly restore `worldEnabled`, full control mode, keyboard focus and fresh input edges. The release lives in a fail-safe finalizer so a dialogue/presentation error cannot strand movement in the locked state.
+- The **7-second police reacquisition grace** is refreshed at that control handoff, so it is not consumed while the player is still forced to listen to the lackey.
+- The blood bag is not interactable until the lackey recovery beat has completed. It then restores **30 Vitality** and relieves up to **35 Hunger**; it deliberately does not reset Hunger to zero.
 - An **owned transient compact** is placed on the hospital emergency approach as a usable replacement vehicle.
 
 ### Acceptance
@@ -155,8 +157,9 @@ At wanted level 2, one eligible chasing officer may visibly aim and fire control
 - The death sequence cannot trigger twice or leave input/audio loops running.
 - Defeat has a readable zoom-and-hold beat before the Sire speaks, and the dialogue uses the established conventional thought-bubble style rather than a one-off death panel.
 - The player always reaches a valid hospital spawn.
-- The lackey, blood bag and replacement vehicle are present and usable.
-- Active police do not immediately kill the player again during the recovery beat.
+- The lackey speaks using the conventional dialogue style, leaves before control returns, and no movement/world-input lock survives the recovery beat.
+- The blood bag and replacement vehicle are present and usable only after the recovery introduction is complete.
+- Active police do not immediately kill the player again; the 7-second grace begins when control is actually returned.
 
 ## Delivery order
 
