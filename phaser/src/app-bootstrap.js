@@ -22,6 +22,26 @@ const PHASER_SCRIPT_SOURCES = Object.freeze([
 
 let playtestBootCover = null;
 
+function dismissViceBloodBootSplash({ immediate = false } = {}) {
+  const splash = document.getElementById("viceblood-boot-splash");
+  document.body.classList.remove("viceblood-booting");
+  if (!splash) return;
+
+  if (immediate) {
+    splash.remove();
+    return;
+  }
+
+  if (splash.classList.contains("is-leaving")) return;
+  splash.classList.add("is-leaving");
+  window.setTimeout(() => splash.remove(), 520);
+}
+
+window.NBD_DISMISS_BOOT_SPLASH = dismissViceBloodBootSplash;
+
+// Automation/direct-game boot must not leave the title splash covering the harness.
+if (bootProfile.enableHarness) dismissViceBloodBootSplash({ immediate: true });
+
 function publishPhaserSource({ kind, src = null, version = PHASER_VERSION }) {
   const detail = Object.freeze({ kind, src, version });
   window.NBD_PHASER_SOURCE_DETAIL = detail;
@@ -106,6 +126,7 @@ function installPlaytestIntroPolicy(UIScene) {
 
 function renderBootFailure(error) {
   console.error("Viceblood failed to boot", error);
+  dismissViceBloodBootSplash({ immediate: true });
   const root = document.getElementById("game-root");
   if (!root) return;
   root.innerHTML = `
