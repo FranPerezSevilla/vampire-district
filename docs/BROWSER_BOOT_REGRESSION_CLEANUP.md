@@ -51,7 +51,7 @@ Workflow run `32115289831`, shard 2 artifact `9316721665`, exposed three determi
 This increment therefore updates browser coverage rather than re-exposing a deliberately hidden feature:
 
 - `feeding-depths.spec.js` still validates Quick Bite → Full Feed → Drain, then verifies the hidden surface and reads the internal Night Ledger model to confirm all three feeding depths remain represented in hunting incidents.
-- `heat-exposure-evidence.spec.js` still validates independent Heat/Exposure persistence and crime-as-alibi reframing, then inspects the internal Night Ledger model for CLEAR/SEARCH police state, institutional/resolved evidence and the mundane reframing reason without opening hidden UI. Removing the old hidden-button timeout also exposed a second stale assertion in the same spec: `mundaneHeat: 52` is **Wanted/Heat level 1** under the current authoritative thresholds (22 / 55 / 85), so the expected Night Ledger state is `SEARCH`, not the former `PURSUIT` expectation.
+- `heat-exposure-evidence.spec.js` still validates independent Heat/Exposure persistence and crime-as-alibi reframing, then inspects the internal Night Ledger model for CLEAR/SEARCH police state, active institutional evidence and the mundane reframing reason without opening hidden UI. Removing the old hidden-button timeout also exposed two stale assumptions in the same spec: `mundaneHeat: 52` is **Wanted/Heat level 1** under the current authoritative thresholds (22 / 55 / 85), so the expected model state is `SEARCH`; and resolved supernatural evidence remains in campaign persistence but is deliberately omitted from the model's active evidence/incident view.
 - `night-ledger.spec.js` now explicitly guards the playtest-surface contract: the button remains hidden, direct toggling and **L** cannot open or pause the game, while the internal model still connects faction reputation, latent/discovered poaching, police Heat and supernatural evidence.
 - No Night Ledger runtime, hunting-law, Heat, Exposure, feeding, campaign persistence or playtest-surface behavior changes in this increment.
 
@@ -61,4 +61,5 @@ This increment therefore updates browser coverage rather than re-exposing a deli
 - Hiding the surface does not remove or stale the underlying Night Ledger model.
 - Feeding-depth, Heat/Exposure and hunting-law browser coverage validates the model directly rather than timing out on intentionally hidden controls.
 - The attention regression follows the current Heat thresholds exactly: a mundane Heat value of 52 remains level 1 / `SEARCH`, while forced level 2 begins at the authoritative 55 threshold.
+- Resolved exposure remains auditable in persisted campaign state while disappearing from the Night Ledger model's active evidence and active incident collection.
 - Any remaining browser-system failures after this cluster are treated as separate increments; no hidden playtest feature is re-enabled merely to satisfy stale tests.
