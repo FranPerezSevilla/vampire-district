@@ -23,6 +23,7 @@ import { RawAudio } from "../systems/RawAudioSystem.js";
 import { installVehicleCollisionSofteningPolicy } from "../vehicles/VehicleCollisionSofteningPolicy.js";
 import { VehicleSystem } from "../vehicles/VehicleSystem.js";
 import { GameplayRuntime as GameplayRuntimeCore } from "./GameplayRuntimeCore.js";
+import { enrichVehicleInputFrame, filterVehicleAwareInteractions } from "./VehicleRuntimeAdapter.js";
 
 const VEHICLE_ACTION_TYPES = new Set(["vehicleEnter", "vehicleExit"]);
 
@@ -75,6 +76,10 @@ export class GameplayRuntime extends GameplayRuntimeCore {
 
   constructor(scene) {
     super(scene);
+    this.baseInputBeginFrame = null;
+    this.baseCollectInteractions = null;
+    this.vehicleAwareInputFrame = this.vehicleAwareInputFrame.bind(this);
+    this.vehicleAwareInteractions = this.vehicleAwareInteractions.bind(this);
     scene.cityStreamSystem = new ChunkStreamSystem(scene);
     scene.buildingSidewalkClearancePolicy = installBuildingSidewalkClearancePolicy(scene);
     scene.pedestrianSystem = new PedestrianSystem(scene);
@@ -102,13 +107,33 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.vehicleSystem?.refreshVisibility?.();
   }
 
+  vehicleAwareInputFrame() {
+    const input = this.scene.inputSystem;
+    const beginFrame = this.baseInputBeginFrame;
+    const frame = typeof beginFrame === "function" ? beginFrame.call(input) : null;
+    if (!frame) return frame;
+    enrichVehicleInputFrame(frame, input?.keys?.space?.isDown);
+    const vehicle = this.scene.vehicleSystem;
+    return vehicle?.isDriving?.() ? vehicle.filterInputFrame(frame) : frame;
+  }
+
+  vehicleAwareInteractions() {
+    const scene = this.scene;
+    const collectInteractions = this.baseCollectInteractions;
+    const options = typeof collectInteractions === "function"
+      ? collectInteractions.call(scene) || []
+      : [];
+    return filterVehicleAwareInteractions(options, scene.currentInputFrame, isVehicleAction);
+  }
+
   update(time, deltaMs) {
     const scene = this.scene;
     const input = scene.inputSystem;
-    const vehicle = scene.vehicleSystem;
     const diagnostics = this.diagnostics;
     const originalBeginFrame = input?.beginFrame;
     const originalCollectInteractions = scene.collectInteractions;
+    this.baseInputBeginFrame = typeof originalBeginFrame === "function" ? originalBeginFrame : null;
+    this.baseCollectInteractions = typeof originalCollectInteractions === "function" ? originalCollectInteractions : null;
     const dt = Math.min(Math.max(0, Number(deltaMs) || 0) / 1000, 0.05);
     RawAudio.beginVehicleEngineFrame({ paused: Boolean(scene.registry?.get?.("uiPaused")) });
 
@@ -136,31 +161,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.pedestrianSystem?.update?.(dt);
     diagnostics.endSystem("PedestrianSystem", profileMark);
 
-    if (input && originalBeginFrame) {
-      input.beginFrame = function vehicleAwareInputFrame() {
-        const frame = originalBeginFrame.call(input);
-        const vehicleActionPressed = Boolean(frame.menuConfirmPressed && !frame.interactPressed);
-        const enriched = {
-          ...frame,
-          vehicleActionPressed,
-          handbrakeHeld: Boolean(input.keys?.space?.isDown)
-        };
-        if (vehicle?.isDriving?.()) return vehicle.filterInputFrame(enriched);
-        return vehicleActionPressed
-          ? { ...enriched, traversePressed: true }
-          : enriched;
-      };
-    }
-
-    if (typeof originalCollectInteractions === "function") {
-      scene.collectInteractions = function vehicleAwareInteractions() {
-        const options = originalCollectInteractions.call(scene) || [];
-        const frame = scene.currentInputFrame;
-        if (frame?.vehicleActionPressed) return options.filter(isVehicleAction);
-        if (frame?.traversePressed) return options.filter(option => !isVehicleAction(option));
-        return options;
-      };
-    }
+    if (input && this.baseInputBeginFrame) input.beginFrame = this.vehicleAwareInputFrame;
+    if (this.baseCollectInteractions) scene.collectInteractions = this.vehicleAwareInteractions;
 
     profileMark = diagnostics.beginSystem("GameplayRuntimeCore");
     try {
@@ -169,6 +171,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
       diagnostics.endSystem("GameplayRuntimeCore", profileMark);
       if (input && originalBeginFrame) input.beginFrame = originalBeginFrame;
       if (originalCollectInteractions) scene.collectInteractions = originalCollectInteractions;
+      this.baseInputBeginFrame = null;
+      this.baseCollectInteractions = null;
       RawAudio.endVehicleEngineFrame();
     }
 

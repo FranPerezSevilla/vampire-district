@@ -60,3 +60,27 @@ In a hitch-prone area, let the game run normally for several seconds and inspect
 ### Regression contract
 
 Pipeline timing must remain observational: it cannot alter system update order or gameplay cadence. Sampling must stay bounded, snapshots must reuse their heavy object inside the 250 ms cache window, and the pedestrian broadphase regression benchmark from Pass 1 must continue to pass.
+
+## Pass 3 — remove per-frame vehicle-adapter allocation churn
+
+**State: implemented; pending in-game hitch validation.**
+
+### Confirmed allocation hotspot
+
+Source-level inspection of the profiled outer runtime found an allocation pattern independent of which gameplay pipeline wins the wall-time ranking: `GameplayRuntime.update()` recreated two wrapper functions on every frame (`input.beginFrame` and `scene.collectInteractions`) and also cloned the input frame into an `enriched` object before the core runtime consumed it. At a 60 FPS target, ordinary on-foot play therefore produced at least **180 adapter-owned short-lived allocations per second** (two functions plus one object per frame), or **10,800 per minute**, before any subsystem-specific allocations are counted. Driving added another filtered input-frame object on top of that.
+
+This kind of constant short-lived churn is a plausible contributor to intermittent garbage-collection hitches even when its average CPU time is small, so it is safe to remove without waiting for the browser wall-time winner.
+
+### Implementation
+
+The two adapters are now bound once for the lifetime of `GameplayRuntime` and temporarily installed only around the existing core update, preserving the previous ownership window and restoration semantics. The raw input frame is enriched **in place** with `vehicleActionPressed`, `handbrakeHeld` and the vehicle-action traversal edge instead of being spread into a second object. Interaction options return the original array when no vehicle/traversal edge requires filtering; when filtering is required, a simple loop avoids an extra callback closure.
+
+The remaining `VehicleSystem.filterInputFrame()` object created while actively driving is intentionally retained because it is the central authority that suppresses on-foot actions during vehicle control. This pass removes the unconditional adapter churn rather than bypassing that safety boundary.
+
+### Measured allocation reduction
+
+The adapter layer drops from at least **3 short-lived allocations per ordinary frame to 0** outside active vehicle filtering. At 60 FPS that removes the deterministic **10,800 allocations/minute** identified above. While driving, the adapter drops from at least 4 allocations per frame to the single authoritative filtered-frame object, a **75% reduction** in this layer.
+
+### Regression contract
+
+Vehicle input enrichment must preserve the same frame object, vehicle entry/exit must still route through the movement/traversal path, and interaction filtering must preserve the original options array when no filter edge is active. `GameplayRuntime.update()` must not reintroduce frame-local `beginFrame` or `collectInteractions` function literals. Pass 2 wall-time sampling remains active so the next optimization can still target the top repeatable browser pipeline rather than guessing.
