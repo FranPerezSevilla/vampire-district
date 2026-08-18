@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { CombatSystem } from "../phaser/src/combat/CombatSystem.js";
 import {
   COMBAT_STATES,
   UNARMED_ATTACK,
@@ -28,6 +29,34 @@ test("mouse aim normalizes a distant pointer direction", () => {
     10
   );
   assert.deepEqual(direction, { x: 0, y: -1 });
+});
+
+test("mouse aim changes attack direction while the player body stays upright", () => {
+  const player = {
+    x: 100,
+    y: 100,
+    rotation: Math.PI / 3,
+    setRotation(value) {
+      this.rotation = value;
+      return this;
+    }
+  };
+  const system = Object.create(CombatSystem.prototype);
+  system.scene = {
+    player,
+    weaponSystem: {
+      currentWeapon: () => ({ aimDeadZone: 0 })
+    }
+  };
+  system.aimDirection = { x: 0, y: -1 };
+
+  system.updateAim({ aimWorld: { x: 140, y: 100 } });
+  assert.deepEqual(system.aimDirection, { x: 1, y: 0 });
+  assert.equal(player.rotation, 0);
+
+  system.updateAim({ aimWorld: { x: 100, y: 160 } });
+  assert.deepEqual(system.aimDirection, { x: 0, y: 1 });
+  assert.equal(player.rotation, 0);
 });
 
 test("unarmed arc hits targets in front and rejects targets behind", () => {
