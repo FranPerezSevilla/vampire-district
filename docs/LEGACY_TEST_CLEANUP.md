@@ -29,6 +29,21 @@ The regression now verifies the current contract:
 
 No runtime or audio behavior was changed by this cleanup.
 
+## Increment 2 — urban pedestrian/witness authority
+
+**State: updated on PR #55.**
+
+The three `urban-witness-network` failures were legitimately stale after the citywide pedestrian-route expansion and generalized pedestrian-surface work. The runtime already had matching focused coverage in `pedestrian-route-expansion.test.js`; the older network test was still asserting the previous sidewalk-only vocabulary and a pre-capacity population formula.
+
+The regression now verifies the current contract:
+
+- routed civilian population is checked against each route's actual capacity, `min(AMBIENT_PEDESTRIANS_PER_ROUTE, route.points.length)`, including authored routed civilians that reserve a route point before ambient fill;
+- each route still receives its full capacity without two routed civilians sharing the same origin and every start remains on valid pedestrian geometry;
+- foot-police patrol routes use the generalized `pedestrian` surface authority rather than the retired `sidewalk` label;
+- ordinary witness flight still follows pedestrian space monotonically and reports exactly once, while its presentation assertion matches the current pedestrian-space wording.
+
+No runtime, population density, police routing or witness behavior was changed by this cleanup.
+
 ## Remaining cleanup
 
-The urban witness/network and vehicle exit/impact-buffer failures remain deliberately untouched in this increment. They should be handled as separate evidence-backed cleanup increments so current gameplay semantics are not silently rewritten to match old tests.
+Only the vehicle exit/impact-buffer failures remain deliberately untouched in this increment. They should be reviewed against current Heat tuning and City Topology V2 exit geometry as a separate evidence-backed cleanup increment.
