@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+function baseBehaviorReason(reason) {
+  return String(reason || "").replace(/^assertive-/, "");
+}
+
 async function waitForTrafficBehavior(page) {
   await page.waitForFunction(() => Boolean(
     window.NBD_APP_READY
@@ -101,12 +105,13 @@ test("local traffic brakes for the driven vehicle, keeps its slot and resumes wh
   expect(result.assignmentBefore.slotIndex).toBe(result.selected.slotIndex);
   expect(result.assignmentDuring.slotIndex).toBe(result.selected.slotIndex);
   expect(result.assignmentAfter.slotIndex).toBe(result.selected.slotIndex);
-  expect(result.braking.reason).toBe("player-vehicle");
+  expect(baseBehaviorReason(result.braking.reason)).toBe("player-vehicle");
   expect(result.braking.speedFactor).toBeLessThan(1);
   expect(result.playerReactiveVehicles).toBeGreaterThan(0);
   expect(result.recovered.speedFactor).toBeGreaterThan(result.braking.speedFactor);
-  expect(["cruise", "catch-up", "traffic", "junction-yield"].includes(result.recovered.reason)).toBe(true);
-  expect(result.recovered.reason).not.toBe("player-vehicle");
+  expect(["cruise", "catch-up", "traffic", "junction-yield"].includes(baseBehaviorReason(result.recovered.reason))).toBe(true);
+  expect(baseBehaviorReason(result.recovered.reason)).not.toBe("player-vehicle");
+  expect(result.finalPlayerReactiveVehicles).toBe(0);
   expect(result.slotStillActive).toBe(true);
   expect(pageErrors).toEqual([]);
 });

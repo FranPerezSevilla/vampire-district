@@ -26,3 +26,20 @@ This note records the browser-boot portion of the final regression cleanup for P
 - H remains blocked while a task reveal owns input, then opens the pause menu on foot once that authority is idle; an actively driven vehicle keeps H for the horn when that remains its configured binding.
 - The high-contrast aim setting remains keyboard-operable and persists through reload.
 - Browser-system shard failures, if any remain after this boot cluster is green, are separate increments and must not be folded into this cleanup.
+
+## Browser-system increment — assertive traffic behavior semantics
+
+Baseline evidence from workflow run `32114525647`, shard 1 artifact `9316230698`, showed the local-traffic behavior loop failing deterministically because the browser assertion still expected the pre-temperament reason `player-vehicle`. The active playtest policy intentionally decorates an assertive driver's semantic state as `assertive-player-vehicle` and later `assertive-cruise`; the vehicle was braking and recovering correctly, and its pooled traffic slot remained stable.
+
+The same policy decoration exposed a narrower diagnostics defect: `TrafficLocalBehaviorSystem.snapshot()` counts exact base reason strings, so an assertive vehicle reacting to the player's car was reported as `playerReactiveVehicles: 0` even while its state clearly described a player-vehicle response. This increment leaves the assertive driving behavior untouched and fixes only semantic accounting plus the stale browser expectation:
+
+- `TrafficPlaytestPolicy` now derives diagnostic counters from the base semantic reason after removing the optional `assertive-` decorator. Assertive following, yielding and player-reactive traffic therefore remain visible in the same aggregate counters as normal drivers.
+- `tests/browser/city-streaming-traffic-behavior.spec.js` normalizes the optional temperament prefix when asserting the blocker and recovery reason. It still requires real braking, recovery, stable slot ownership and a positive player-reactive diagnostic count, and now also verifies that the count returns to zero once the blocker is cleared.
+- No speed floor, assertive-driver percentage, collision rule, materialization rule, Heat behavior or vehicle movement behavior changes in this increment.
+
+### Acceptance
+
+- A deterministic assertive civilian driver may report `assertive-player-vehicle` while braking for the occupied player car without failing the browser contract.
+- `playerReactiveVehicles` remains greater than zero during that reaction regardless of driver temperament and returns to zero after the player car clears the lane.
+- The same traffic token retains the same pooled slot before, during and after the braking event.
+- Browser-system traffic-impact failures remain a separate regression cluster for a later increment.

@@ -28,6 +28,10 @@ function assertiveDriver(tokenId) {
   return stableHash(tokenId) % 100 < ASSERTIVE_DRIVER_PERCENT;
 }
 
+function baseBehaviorReason(reason) {
+  return String(reason || "").replace(/^assertive-/, "");
+}
+
 export function installTrafficPlaytestPolicy() {
   const materializer = TrafficMaterializationSystem?.prototype;
   if (materializer && !materializer.__nbdPlaytestVisibilityPolicy) {
@@ -55,6 +59,7 @@ export function installTrafficPlaytestPolicy() {
   const behavior = TrafficLocalBehaviorSystem?.prototype;
   if (behavior && !behavior.__nbdPlaytestDriverTemperamentPolicy) {
     const originalDecisionFor = behavior.decisionFor;
+    const originalSnapshot = behavior.snapshot;
     behavior.decisionFor = function playtestDriverTemperament(slot, state, token, active) {
       const decision = originalDecisionFor.call(this, slot, state, token, active);
       const temperament = assertiveDriver(token?.tokenId) ? "assertive" : "normal";
@@ -83,6 +88,20 @@ export function installTrafficPlaytestPolicy() {
       }
 
       return decision;
+    };
+    behavior.snapshot = function playtestDriverTemperamentSnapshot() {
+      const snapshot = originalSnapshot.call(this);
+      const vehicles = Array.isArray(snapshot.vehicles) ? snapshot.vehicles : [];
+      return {
+        ...snapshot,
+        yieldingVehicles: vehicles.filter(item => baseBehaviorReason(item.reason).startsWith("junction")).length,
+        followingVehicles: vehicles.filter(item => baseBehaviorReason(item.reason) === "traffic").length,
+        playerReactiveVehicles: vehicles.filter(item => [
+          "player-vehicle",
+          "player-on-foot",
+          "junction-player"
+        ].includes(baseBehaviorReason(item.reason))).length
+      };
     };
     Object.defineProperty(behavior, "__nbdPlaytestDriverTemperamentPolicy", {
       value: true,
