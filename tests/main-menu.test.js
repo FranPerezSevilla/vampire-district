@@ -54,9 +54,16 @@ test("splash waits for a stable rendered canvas before revealing the title menu"
   assert.match(appBootstrap, /finishViceBloodBootSplashDismissal\(splash\)/);
 });
 
-test("the production wordmark has no full-rectangle turbulence noise", () => {
+test("the canonical wordmark is clean ivory/red typography with no fang or distress marks", () => {
+  assert.match(logoSvg, /fill="#f0ede6">VICE<\/text>/);
+  assert.match(logoSvg, /fill="#c8101d">BLOOD<\/text>/);
+  assert.doesNotMatch(logoSvg, /<path\b/);
+  assert.doesNotMatch(logoSvg, /<circle\b/);
+  assert.doesNotMatch(logoSvg, /<rect\b/);
+  assert.doesNotMatch(logoSvg, /<linearGradient\b/);
+  assert.doesNotMatch(logoSvg, /stroke=/);
   assert.doesNotMatch(logoSvg, /feTurbulence/);
-  assert.doesNotMatch(logoSvg, /filter="url\(#rough\)"/);
+  assert.doesNotMatch(logoSvg, /fang|distress|scratch/i);
 });
 
 test("main menu keeps the authoritative GameScene alive but freezes player aim", () => {
