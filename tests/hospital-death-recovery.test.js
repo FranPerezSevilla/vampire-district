@@ -27,16 +27,16 @@ test("black-frame recovery clears transient pursuit and revives at the hospital"
   assert.match(code, /death:hospital-recovered/);
 });
 
-test("hospital scene includes a lackey, blood bag interaction and owned replacement car", () => {
+test("hospital scene includes a lackey, walk-over blood bag and owned replacement car", () => {
   const code = source("phaser/src/combat/DeathRecoverySystem.js");
-  const scene = source("phaser/src/scenes/GameScene.js");
+  const runtime = source("phaser/src/runtime/GameplayRuntimeCore.js");
   assert.match(code, /HOSPITAL_RECOVERY\.lackeyId/);
-  assert.match(code, /Drink blood bag/);
+  assert.match(code, /hospital_recovery_blood_bag/);
   assert.match(code, /relieveHunger/);
   assert.match(code, /restoreVitality/);
   assert.match(code, /addTransientVehicle/);
   assert.match(code, /VEHICLE_OWNERSHIP\.OWNED/);
-  assert.match(scene, /deathRecoverySystem\?\.collectInteractions/);
+  assert.match(runtime, /autoConsumeHospitalBloodBag\(\)/);
 });
 
 test("all police attack authorities respect the same post-hospital grace", () => {
@@ -74,4 +74,20 @@ test("police grace is refreshed when control is returned, not consumed during th
   assert.ok(readyEvent > releaseStart);
   const releaseBody = code.slice(releaseStart, readyEvent);
   assert.match(releaseBody, /resetAfterPlayerDeath\?\.\(HOSPITAL_RECOVERY\.policeGraceMs\)/);
+});
+
+test("blood bag auto-consumes only after the recovery intro and only inside the pickup radius", () => {
+  const code = source("phaser/src/combat/DeathRecoverySystem.js");
+  const runtime = source("phaser/src/runtime/GameplayRuntimeCore.js");
+  assert.ok(HOSPITAL_RECOVERY.interactionRadius >= 12 && HOSPITAL_RECOVERY.interactionRadius <= 20);
+  assert.match(runtime, /const HOSPITAL_BLOOD_BAG_ID = "hospital_recovery_blood_bag"/);
+  assert.match(runtime, /if \(!recovery\?\.hospitalRecoveryIntroComplete \|\| recovery\.recoveryBagCollected\) return false/);
+  assert.match(runtime, /recovery\.collectInteractions\?\.\(\)\.find/);
+  assert.match(runtime, /scene\.interactionSystem\.runOption\(option\)/);
+  const pickup = runtime.indexOf("this.autoConsumeHospitalBloodBag();");
+  const input = runtime.indexOf("scene.inputSystem?.beginFrame()");
+  assert.ok(pickup >= 0 && input > pickup, "walk-over pickup resolves before normal interaction input");
+  assert.match(code, /distance > HOSPITAL_RECOVERY\.interactionRadius/);
+  assert.match(code, /if \(this\.recoveryBagCollected\) return false/);
+  assert.match(code, /this\.recoveryBagCollected = true/);
 });

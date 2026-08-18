@@ -23,7 +23,7 @@ export const HOSPITAL_RECOVERY = Object.freeze({
   bloodBagVitality: 30,
   bloodBagHungerRelief: 35,
   policeGraceMs: 7000,
-  interactionRadius: 34,
+  interactionRadius: 16,
   hospitalSettleMs: 320,
   lackeyDepartureMs: 1100,
   lackeySpeaker: "LACKEY",

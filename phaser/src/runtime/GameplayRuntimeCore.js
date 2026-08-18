@@ -19,6 +19,8 @@ import { UxGuidanceSystem } from "../systems/UxGuidanceSystem.js";
 import { WeaponSystem } from "../systems/WeaponSystem.js";
 import { RuntimeDiagnostics } from "./RuntimeDiagnostics.js";
 
+const HOSPITAL_BLOOD_BAG_ID = "hospital_recovery_blood_bag";
+
 function splitActions(options = []) {
   const movement = [];
   const interaction = [];
@@ -124,6 +126,7 @@ export class GameplayRuntime {
     const dt = Math.min(Math.max(0, Number(deltaMs) || 0) / 1000, 0.05);
     this.diagnostics.beginFrame();
     scene.deathRecoverySystem?.update?.(dt);
+    this.autoConsumeHospitalBloodBag();
 
     const rawFrame = scene.inputSystem?.beginFrame() || createEmptyInputFrame();
     scene.playerDamageSystem?.preUpdate(rawFrame);
@@ -248,6 +251,18 @@ export class GameplayRuntime {
     scene.movementNoiseSystem?.update(frame);
     scene.uxGuidanceSystem?.update?.(dt, frame);
     this.finishFrame();
+  }
+
+  autoConsumeHospitalBloodBag() {
+    const scene = this.scene;
+    const recovery = scene.deathRecoverySystem;
+    if (!recovery?.hospitalRecoveryIntroComplete || recovery.recoveryBagCollected) return false;
+    if (scene.currentLayer !== LAYERS.STREET || scene.interactionSystem?.isOpen || scene.transitionSystem?.active) return false;
+    const option = recovery.collectInteractions?.().find(candidate => candidate?.id === HOSPITAL_BLOOD_BAG_ID);
+    if (!option || typeof option.run !== "function") return false;
+    if (typeof scene.interactionSystem?.runOption === "function") scene.interactionSystem.runOption(option);
+    else option.run();
+    return true;
   }
 
   filterActions(options) {
