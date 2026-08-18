@@ -1,80 +1,84 @@
 import { titleScreenController } from "../ui/TitleScreenController.js";
 
-const PREVIEW_READY_RETRY_MS = 16;
-const PREVIEW_READY_MAX_ATTEMPTS = 180;
-const READY_RENDER_FRAMES = 2;
-
 export class MainMenuScene extends Phaser.Scene {
   constructor() {
     super("MainMenuScene");
     this.transitioning = false;
     this.handoffComplete = false;
     this.previewLocked = false;
+    this.previewPresented = false;
     this.previewInputWasEnabled = true;
     this.previewWorldInputWasEnabled = true;
     this.previewInputSystem = null;
     this.previewPointerWorldPoint = null;
     this.previewCombatGraphicsWasVisible = true;
-    this.readyRenderEvent = null;
-    this.readyRenderListener = null;
+    this.previewScene = null;
+    this.previewCreateEvent = null;
+    this.previewCreateListener = null;
   }
 
   create() {
     this.cameras.main.setBackgroundColor("rgba(0,0,0,0)");
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup());
     this.startWorldPreview();
-    this.waitForPreviewAuthority();
   }
 
   startWorldPreview() {
+    const gameScene = this.scene.get("GameScene");
+    if (!gameScene) {
+      titleScreenController.showFailure(new Error("The city preview scene is unavailable."));
+      return;
+    }
+
+    this.previewScene = gameScene;
+
+    // GameScene CREATE is the readiness boundary. It fires after GameScene.create()
+    // has constructed the world, GameplayRuntime and InputSystem. Register before
+    // launch so a fast hosted boot cannot outrun the title-screen handoff.
+    if (this.scene.isActive("GameScene") && gameScene.inputSystem) {
+      this.activateWorldPreview(gameScene);
+      return;
+    }
+
+    const createEvent = Phaser.Scenes?.Events?.CREATE || "create";
+    this.previewCreateEvent = createEvent;
+    this.previewCreateListener = () => this.activateWorldPreview(gameScene);
+    gameScene.events.once(createEvent, this.previewCreateListener);
+
     if (!this.scene.isActive("GameScene")) this.scene.launch("GameScene");
     this.scene.bringToTop("MainMenuScene");
   }
 
-  waitForPreviewAuthority(attempt = 0) {
-    if (!this.sys.isActive()) return;
+  activateWorldPreview(gameScene = this.previewScene) {
+    if (!this.sys.isActive() || this.previewPresented) return;
+    this.detachPreviewCreateListener();
 
-    if (this.lockPreviewControl()) {
-      const gameScene = this.scene.get("GameScene");
-      gameScene?.registry?.set?.("mainMenuActive", true);
-      this.presentTitleAfterRenderedWorld();
+    if (!this.lockPreviewControl(gameScene)) {
+      titleScreenController.showFailure(new Error("The city preview input authority is unavailable."));
       return;
     }
 
-    if (attempt >= PREVIEW_READY_MAX_ATTEMPTS) {
-      titleScreenController.showFailure(new Error("The city preview did not become ready."));
-      return;
+    this.previewPresented = true;
+    gameScene?.registry?.set?.("mainMenuActive", true);
+    this.scene.bringToTop("MainMenuScene");
+
+    // TitleScreenController commits the browser-anchored menu behind the opaque
+    // boot cover for two animation frames before beginning the crossfade. No
+    // renderer polling or timing heuristic is required here.
+    titleScreenController.present({ onNewNight: () => this.beginNight() })
+      .catch(error => titleScreenController.showFailure(error));
+  }
+
+  detachPreviewCreateListener() {
+    if (this.previewScene && this.previewCreateEvent && this.previewCreateListener) {
+      this.previewScene.events.off(this.previewCreateEvent, this.previewCreateListener);
     }
-
-    this.time.delayedCall(PREVIEW_READY_RETRY_MS, () => this.waitForPreviewAuthority(attempt + 1));
+    this.previewCreateEvent = null;
+    this.previewCreateListener = null;
   }
 
-  presentTitleAfterRenderedWorld() {
-    const postRenderEvent = Phaser.Core?.Events?.POST_RENDER || "postrender";
-    let renderedFrames = 0;
-
-    const waitForPostRender = () => {
-      if (!this.sys.isActive()) return;
-      renderedFrames += 1;
-      if (renderedFrames < READY_RENDER_FRAMES) {
-        this.game.events.once(postRenderEvent, waitForPostRender);
-        return;
-      }
-
-      this.readyRenderEvent = null;
-      this.readyRenderListener = null;
-      titleScreenController.present({ onNewNight: () => this.beginNight() })
-        .catch(error => titleScreenController.showFailure(error));
-    };
-
-    this.readyRenderEvent = postRenderEvent;
-    this.readyRenderListener = waitForPostRender;
-    this.game.events.once(postRenderEvent, waitForPostRender);
-  }
-
-  lockPreviewControl() {
+  lockPreviewControl(gameScene = this.previewScene || this.scene.get("GameScene")) {
     if (this.previewLocked) return true;
-    const gameScene = this.scene.get("GameScene");
     const inputSystem = gameScene?.inputSystem;
     if (!gameScene || !inputSystem) return false;
 
@@ -103,7 +107,7 @@ export class MainMenuScene extends Phaser.Scene {
 
   restorePreviewControl() {
     if (!this.previewLocked) return;
-    const gameScene = this.scene.get("GameScene");
+    const gameScene = this.previewScene || this.scene.get("GameScene");
     if (gameScene?.input) gameScene.input.enabled = this.previewInputWasEnabled;
 
     if (this.previewInputSystem) {
@@ -138,19 +142,14 @@ export class MainMenuScene extends Phaser.Scene {
     // Hand control to the exact live scene that has been running behind the DOM title layer.
     // There is deliberately no blackout, camera fade, GameScene stop or GameScene restart.
     this.restorePreviewControl();
-    const gameScene = this.scene.get("GameScene");
+    const gameScene = this.previewScene || this.scene.get("GameScene");
     gameScene?.registry?.set?.("mainMenuActive", false);
     this.handoffComplete = true;
     this.scene.stop("MainMenuScene");
   }
 
   cleanup() {
-    if (this.readyRenderEvent && this.readyRenderListener) {
-      this.game.events.off(this.readyRenderEvent, this.readyRenderListener);
-      this.readyRenderEvent = null;
-      this.readyRenderListener = null;
-    }
-
+    this.detachPreviewCreateListener();
     titleScreenController.detachNewNightHandler();
     if (this.handoffComplete) return;
     titleScreenController.resetToBoot();
