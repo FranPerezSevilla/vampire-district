@@ -40,6 +40,8 @@ export class DeathRecoverySystem {
     this.masterPresentationComplete = false;
     this.masterPresentationPromise = null;
     this.cameraZoomSnapshot = null;
+    this.hospitalRecoveryIntroComplete = false;
+    this.recoveryPresentationPromise = null;
 
     this.backdrop = scene.add.rectangle(0, 0, 1, 1, 0x000000, 1)
       .setOrigin(0, 0)
@@ -60,6 +62,8 @@ export class DeathRecoverySystem {
     this.audioFadeStarted = false;
     this.fadeCompleteEmitted = false;
     this.recovered = false;
+    this.hospitalRecoveryIntroComplete = false;
+    this.recoveryPresentationPromise = null;
     this.masterPresentationComplete = false;
     this.masterPresentationPromise = null;
     this.cameraZoomSnapshot = Number(this.scene.cameras?.main?.zoom) || null;
@@ -264,7 +268,7 @@ export class DeathRecoverySystem {
       existing.missionInformant = true;
       existing.x = x;
       existing.y = y;
-      existing.container?.setPosition?.(x, y).setVisible?.(true);
+      existing.container?.setPosition?.(x, y).setAlpha?.(1).setVisible?.(true);
       this.lackey = existing;
       return existing;
     }
@@ -296,6 +300,117 @@ export class DeathRecoverySystem {
     this.scene.npcSystem.rebuildSpatialIndex?.();
     this.lackey = lackey;
     return lackey;
+  }
+
+  lockRecoveryControls() {
+    const director = this.scene.tutorialDirector;
+    director?.setTip?.("", "");
+    director?.hideDialogue?.();
+    director?.setControlMode?.("locked");
+    if (director?.freezeWorld) {
+      director.freezeWorld(true);
+    } else {
+      this.scene.taskRevealCinematic ||= { active: false, queued: null, initialPlayed: true };
+      this.scene.taskRevealCinematic.active = true;
+      this.scene.registry?.set?.("taskRevealActive", true);
+    }
+    this.scene.inputSystem?.setControlMode?.("locked");
+    this.scene.inputSystem?.resetWorldEdges?.();
+  }
+
+  releaseRecoveryControls() {
+    const director = this.scene.tutorialDirector;
+    director?.hideDialogue?.();
+    director?.freezeWorld?.(false);
+    director?.setControlMode?.("full");
+    if (this.scene.taskRevealCinematic) this.scene.taskRevealCinematic.active = false;
+    this.scene.registry?.set?.("taskRevealActive", false);
+    this.scene.inputSystem?.setWorldEnabled?.(true);
+    this.scene.inputSystem?.setControlMode?.("full");
+    this.scene.inputSystem?.resetWorldEdges?.();
+    this.scene.game?.canvas?.focus?.({ preventScroll: true });
+    const graceUntil = this.scene.policeSystem?.resetAfterPlayerDeath?.(HOSPITAL_RECOVERY.policeGraceMs)
+      || ((Number(this.scene.time?.now) || 0) + HOSPITAL_RECOVERY.policeGraceMs);
+    this.scene.registry?.set?.("policeReacquisitionGraceUntil", graceUntil);
+    return graceUntil;
+  }
+
+  departLackey() {
+    const lackey = this.lackey;
+    if (!lackey || lackey.inactive) return Promise.resolve();
+    lackey.vx = 0;
+    lackey.vy = 0;
+    const offset = HOSPITAL_RECOVERY.lackeyExitOffset || { x: 74, y: -8 };
+    const targetX = lackey.x + (Number(offset.x) || 0);
+    const targetY = lackey.y + (Number(offset.y) || 0);
+    const finish = () => {
+      lackey.vx = 0;
+      lackey.vy = 0;
+      lackey.inactive = true;
+      lackey.active = false;
+      lackey.container?.setAlpha?.(0).setVisible?.(false);
+      this.scene.npcSystem?.rebuildSpatialIndex?.();
+    };
+    if (!this.scene.tweens?.add) {
+      lackey.x = targetX;
+      lackey.y = targetY;
+      finish();
+      return Promise.resolve();
+    }
+    return new Promise(resolve => {
+      this.scene.tweens.add({
+        targets: lackey,
+        x: targetX,
+        y: targetY,
+        duration: HOSPITAL_RECOVERY.lackeyDepartureMs,
+        ease: "Sine.easeInOut",
+        onUpdate: tween => {
+          lackey.container?.setPosition?.(lackey.x, lackey.y);
+          const progress = Math.max(0, Math.min(1, Number(tween.progress) || 0));
+          if (progress > 0.62) lackey.container?.setAlpha?.(1 - (progress - 0.62) / 0.38);
+        },
+        onComplete: () => {
+          finish();
+          resolve();
+        }
+      });
+    });
+  }
+
+  async runHospitalRecoveryBeat() {
+    const director = this.scene.tutorialDirector;
+    try {
+      await this.waitForPresentation(HOSPITAL_RECOVERY.hospitalSettleMs);
+      if (director?.showDialogue) {
+        await director.showDialogue({
+          speaker: HOSPITAL_RECOVERY.lackeySpeaker,
+          text: HOSPITAL_RECOVERY.lackeyLine,
+          kind: "spoken",
+          target: this.lackey
+        });
+      } else {
+        this.scene.lastActionText = `${HOSPITAL_RECOVERY.lackeySpeaker}: ${HOSPITAL_RECOVERY.lackeyLine}`;
+        await this.waitForPresentation(2200);
+      }
+      await this.departLackey();
+      return true;
+    } catch (error) {
+      console.error("Hospital lackey recovery beat failed", error);
+      return false;
+    } finally {
+      this.hospitalRecoveryIntroComplete = true;
+      const graceUntil = this.releaseRecoveryControls();
+      this.scene.statePublisher?.setMany?.({
+        hospitalRecoveryIntroComplete: true,
+        hospitalBloodBagAvailable: !this.recoveryBagCollected,
+        policeReacquisitionGraceUntil: graceUntil
+      });
+      this.scene.events?.emit?.("death:hospital-recovery-ready", {
+        vehicleId: this.recoveryVehicleId,
+        bloodBagAvailable: !this.recoveryBagCollected,
+        graceUntil
+      });
+    }
   }
 
   placeBloodBag(spawn) {
@@ -383,6 +498,7 @@ export class DeathRecoverySystem {
     this.placeBloodBag(spawn);
     this.placeReplacementVehicle();
     this.restoreAudio();
+    this.lockRecoveryControls();
 
     this.state = createDeathSequenceState();
     this.masterPresentationPromise = null;
@@ -395,9 +511,11 @@ export class DeathRecoverySystem {
       deathSequencePhase: DEATH_SEQUENCE_PHASES.IDLE,
       deathSequenceText: "Hospital recovery",
       hospitalRecoveryActive: true,
+      hospitalRecoveryIntroComplete: false,
+      hospitalBloodBagAvailable: false,
       policeReacquisitionGraceUntil: graceUntil
     });
-    this.scene.lastActionText = `LACKEY: ${HOSPITAL_RECOVERY.lackeyLine}`;
+    this.scene.lastActionText = "Hospital recovery · listen to the lackey.";
     this.scene.events?.emit?.("death:hospital-recovered", {
       x: spawn.x,
       y: spawn.y,
@@ -406,11 +524,15 @@ export class DeathRecoverySystem {
       vehicleId: this.recoveryVehicleId,
       bloodBagAvailable: true
     });
+    this.recoveryPresentationPromise = this.runHospitalRecoveryBeat();
     return true;
   }
 
   collectInteractions() {
-    if (!this.recovered || this.recoveryBagCollected || !this.bagContainer?.visible) return [];
+    if (!this.recovered
+      || !this.hospitalRecoveryIntroComplete
+      || this.recoveryBagCollected
+      || !this.bagContainer?.visible) return [];
     const player = this.scene.player;
     if (!player) return [];
     const distance = Math.hypot(player.x - this.bagContainer.x, player.y - this.bagContainer.y);
