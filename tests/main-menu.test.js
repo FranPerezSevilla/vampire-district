@@ -48,6 +48,9 @@ test("first paint and runtime menu use one persistent DOM title surface", () => 
   assert.match(titleController, /root\.dataset\.state = "prepared"/);
   assert.match(titleController, /root\.dataset\.state = "menu"/);
   assert.match(titleController, /await nextFrame\(this\.window\)/);
+  assert.match(titleController, /NBD_TITLE_SCREEN_STATE/);
+  assert.match(titleController, /publishState\("menu"\)/);
+  assert.match(titleController, /publishState\("failure", message\)/);
   assert.doesNotMatch(appBootstrap, /NBD_DISMISS_BOOT_SPLASH/);
   assert.doesNotMatch(appBootstrap, /canvasFrameSnapshot|getBoundingClientRect|MENU_LAYOUT_STABLE_FRAMES/);
 });
