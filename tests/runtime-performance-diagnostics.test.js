@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { RuntimeDiagnostics } from "../phaser/src/runtime/RuntimeDiagnostics.js";
+import { GameplayRuntime } from "../phaser/src/runtime/GameplayRuntimeCore.js";
 
 const source = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -101,4 +102,55 @@ test("GameplayRuntime profiles the expensive outer pipelines without callback ti
   }
 
   assert.doesNotMatch(runtime, /measureSystem\([^,]+,\s*\(\)\s*=>/);
+});
+
+test("cached runtime diagnostics publish only when their snapshot refreshes", () => {
+  let currentSnapshot = { serial: 1 };
+  let diagnosticsPublishes = 0;
+  let performancePublishes = 0;
+  let summaryCalls = 0;
+  let publishStateCalls = 0;
+  const runtime = Object.create(GameplayRuntime.prototype);
+  runtime.lastDiagnosticsSnapshot = null;
+  runtime.diagnostics = {
+    endFrame: () => 12.5,
+    snapshot: () => currentSnapshot,
+    summary: () => {
+      summaryCalls += 1;
+      return "systems 1";
+    }
+  };
+  runtime.scene = {
+    taskRevealCinematic: null,
+    registry: { get: () => false },
+    updateCameraForLayer() {},
+    outskirtsSystem: { updatePresentation() {} },
+    objectiveMarkerSystem: { update() {} },
+    time: { now: 0 },
+    drawPromptMarker() {},
+    npcSystem: { spatial: { size: () => 72 } },
+    statePublisher: {
+      setMany(values) {
+        if (Object.hasOwn(values, "runtimeDiagnostics")) diagnosticsPublishes += 1;
+        if (Object.hasOwn(values, "performanceText")) performancePublishes += 1;
+      }
+    },
+    publishState() {
+      publishStateCalls += 1;
+    }
+  };
+
+  runtime.finishFrame();
+  runtime.finishFrame();
+  assert.equal(diagnosticsPublishes, 1);
+  assert.equal(summaryCalls, 1);
+  assert.equal(performancePublishes, 2);
+  assert.equal(publishStateCalls, 2);
+
+  currentSnapshot = { serial: 2 };
+  runtime.finishFrame();
+  assert.equal(diagnosticsPublishes, 2);
+  assert.equal(summaryCalls, 2);
+  assert.equal(performancePublishes, 3);
+  assert.equal(publishStateCalls, 3);
 });
