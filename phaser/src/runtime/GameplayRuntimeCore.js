@@ -36,6 +36,7 @@ export class GameplayRuntime {
   constructor(scene) {
     this.scene = scene;
     this.diagnostics = new RuntimeDiagnostics({ sampleSize: 180 });
+    this.lastDiagnosticsSnapshot = null;
     this.installDiagnostics();
 
     scene.inputSystem?.destroy?.();
@@ -261,11 +262,17 @@ export class GameplayRuntime {
     scene.objectiveMarkerSystem?.update?.(scene.time?.now || 0);
     scene.drawPromptMarker();
     const frameMs = this.diagnostics.endFrame();
+    const diagnosticsSnapshot = this.diagnostics.snapshot();
     scene.statePublisher?.setMany?.({
-      runtimeText: this.diagnostics.summary(),
-      performanceText: `Frame ${frameMs.toFixed(2)} ms · spatial NPCs ${scene.npcSystem?.spatial?.size?.() || 0}`,
-      runtimeDiagnostics: this.diagnostics.snapshot()
+      performanceText: `Frame ${frameMs.toFixed(2)} ms · spatial NPCs ${scene.npcSystem?.spatial?.size?.() || 0}`
     });
+    if (diagnosticsSnapshot !== this.lastDiagnosticsSnapshot) {
+      this.lastDiagnosticsSnapshot = diagnosticsSnapshot;
+      scene.statePublisher?.setMany?.({
+        runtimeText: this.diagnostics.summary(),
+        runtimeDiagnostics: diagnosticsSnapshot
+      });
+    }
     scene.publishState();
   }
 
