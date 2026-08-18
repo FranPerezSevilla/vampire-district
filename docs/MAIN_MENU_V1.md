@@ -10,7 +10,8 @@ The visual target is **urban noir rather than gothic fantasy**: ViceBlood opens 
 
 - Fullscreen presentation: no outer web frame, top bar or build notes.
 - Pure top-down city imagery, consistent with the game itself.
-- Large `VICEBLOOD` wordmark: pale distressed `VICE`, deep red `BLOOD`, restrained fang cue.
+- Large, clean `VICEBLOOD` wordmark: ivory `VICE`, deep-red `BLOOD`.
+- The wordmark has **no fang, scratches, drips, black interior marks, distress texture or decorative iconography**.
 - The main-menu wordmark remains fully visible at the **top-left**, above navigation.
 - Minimal main navigation: `CONTINUE`, `NEW NIGHT`, `OPTIONS`, `CREDITS`.
 - `NEW NIGHT` is the default selection.
@@ -37,6 +38,7 @@ HTML first paint
       -> campaign runtime clears prior-session Heat/Wanted before it can spawn a response
       -> keep ambient city streaming/traffic alive
       -> freeze Phaser input + ViceBlood world input + pointer aim
+      -> wait for the rendered canvas crop to stabilize
       -> reveal the composed menu
 ```
 
@@ -65,7 +67,7 @@ If `CONTINUE` later gains stronger resume semantics, that menu action can delibe
 
 ### NEW NIGHT: seamless handoff
 
-The menu preview is now the actual scene that becomes gameplay.
+The menu preview is the actual scene that becomes gameplay.
 
 ```text
 NEW NIGHT
@@ -106,12 +108,14 @@ The menu must **not infer that crop from aspect-ratio maths alone**. Browser CSS
 
 `MainMenuScene.visibleViewportBounds()` reads the actual post-layout canvas rectangle with `canvas.getBoundingClientRect()` and maps the browser-visible intersection back into internal Phaser coordinates. Logo, navigation, footer and panel content are anchored to those measured bounds.
 
+The splash stays above the game until the canvas has reported several consecutive stable layout frames. This prevents the user seeing a provisional menu position before the browser finishes applying fullscreen cover sizing.
+
 Layout is recalculated on:
 
 - Phaser resize;
 - browser resize;
 - `visualViewport` resize when available;
-- two animation frames after entering fullscreen, so CSS cover sizing has definitely settled.
+- deferred animation-frame passes after entering fullscreen.
 
 The wordmark has an explicit safe inset from the measured visible top and left edges.
 
@@ -136,13 +140,13 @@ The option writes the existing `nbd-resolution-preset` preference and reloads, p
 
 Runtime logo: `phaser/assets/ui/viceblood-logo.svg`.
 
-The SVG intentionally avoids full-surface procedural turbulence. The earlier `feTurbulence` treatment generated a visible rectangular noisy field behind the wordmark in browsers. Distress is represented only by authored scratches/marks, leaving the surrounding asset transparent.
+The canonical wordmark is intentionally simple: **ivory `VICE` + deep-red `BLOOD` in a heavy condensed face**. It contains no separate fang shape, no scratches or dark streaks, no procedural noise, no gradients, no decorative symbols and no background. The asset is a transparent SVG made only from the two text runs, so the splash and runtime title always use the same clean mark.
 
 The HTML splash constrains the wordmark with `object-fit: contain` and a viewport-relative maximum height so it remains complete across aspect ratios.
 
 ## Acceptance checklist
 
-- Splash wordmark is complete and has no rectangular noise field.
+- Splash wordmark is complete, clean and free of fang/scratch artifacts.
 - Main-menu wordmark is complete and visibly inset from the top-left browser edge.
 - `OPTIONS` / `CREDITS` backdrop reaches the absolute top and bottom of the viewport.
 - Moving the mouse over the menu never affects player aim.
