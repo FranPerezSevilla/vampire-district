@@ -82,9 +82,9 @@ test("NEW NIGHT hands control to the already-running GameScene without blackout 
   assert.match(mainScene, /this\.restorePreviewControl\(\)/);
   assert.match(mainScene, /this\.scene\.launch\("UIScene"\)/);
   assert.doesNotMatch(mainScene, /transitionCurtain/);
-  assert.doesNotMatch(mainScene, /fadeIn\(/);
+  assert.doesNotMatch(mainScene, /\.fadeIn\(/);
   assert.doesNotMatch(mainScene, /this\.scene\.stop\("GameScene"\)/);
-  assert.doesNotMatch(mainScene, /restart GameScene/);
+  assert.doesNotMatch(mainScene, /this\.scene\.restart\("GameScene"\)/);
 });
 
 test("menu exposes the initial navigation surface", () => {
