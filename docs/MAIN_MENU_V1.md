@@ -4,78 +4,108 @@
 
 Introduce a production-facing title screen that sells the urban vampire fantasy without creating a second gameplay or rendering authority.
 
-The visual target is **urban noir rather than gothic fantasy**: ViceBlood should open on a living city, with the vampire framed as a small predatory presence inside it.
+The visual target is **urban noir rather than gothic fantasy**: ViceBlood opens on the real living city, with the menu presented as a clean title layer rather than a framed web demo.
 
 ## Locked direction
 
+- Fullscreen presentation while the title screen is active: no outer web frame, top bar, build notes or gameplay HUD.
 - Pure top-down city imagery, consistent with the game itself.
-- Large, aggressive `VICEBLOOD` wordmark: pale distressed `VICE`, deep red `BLOOD`, restrained fang cue.
-- Minimal menu surface: `CONTINUE`, `NEW NIGHT`, `OPTIONS`, `CREDITS`.
+- Large `VICEBLOOD` wordmark: pale distressed `VICE`, deep red `BLOOD`, restrained fang cue.
+- Minimal main navigation: `CONTINUE`, `NEW NIGHT`, `OPTIONS`, `CREDITS`.
 - `NEW NIGHT` is the default selection.
 - No ornate gothic frames, cathedral imagery, bats or dripping-blood UI chrome.
-- The city remains the visual star; UI occupies roughly the left third of the composition.
+- The city remains clearly visible; the left noir veil exists only to protect menu readability.
 - Menu copy stays crisp and scalable rather than relying on raster button art.
 
 ## Runtime implementation
 
-`MainMenuScene` is a presentation/composition layer only.
+`MainMenuScene` remains a presentation/composition layer over the authoritative game world.
 
 Normal boot:
 
 ```text
 BootScene
   -> MainMenuScene
+      -> switch page shell to fullscreen menu mode
+      -> hide the gameplay HUD / page chrome
       -> launch GameScene
-      -> pause GameScene
-      -> render menu over the real game world
+      -> keep GameScene running so city streaming, traffic and NPCs populate
+      -> disable GameScene input while the title screen owns controls
 
 NEW NIGHT
-  -> resume GameScene
+  -> fade title layer
+  -> restart GameScene from a clean state
   -> launch UIScene
+  -> restore normal page/game presentation
   -> stop MainMenuScene
 ```
 
-`GameScene` remains the single gameplay authority. The menu does not reimplement traffic, NPCs, city geometry, player state or simulation.
+The first implementation paused `GameScene` immediately. That prevented parts of the streamed city from materializing and produced an almost black/static background. The accepted revision keeps the simulation alive but blocks gameplay input, then restarts the game when `NEW NIGHT` is chosen.
 
-The release-candidate browser test profile (`window.NBD_RC_TEST_MODE`) keeps the previous direct `GameScene + UIScene` boot so the existing automated gameplay suite does not become dependent on menu navigation.
+`GameScene` remains the single gameplay authority. The menu does not reimplement traffic, NPCs, city geometry or player state.
+
+The release-candidate browser test profile (`window.NBD_RC_TEST_MODE`) keeps direct `GameScene + UIScene` boot so the existing automated gameplay suite does not depend on menu navigation.
 
 ## V1 interaction
 
-Keyboard:
+Main navigation:
 
 - `Up` / `W`: previous item.
 - `Down` / `S`: next item.
 - `Enter` / `Space`: activate.
-- `Esc`: close options/credits panel.
+- `Esc`: close options/credits.
+- Mouse hover/click is supported.
 
-Mouse hover and click are supported on enabled items.
+`CONTINUE` remains intentionally disabled until save-slot/menu semantics are connected deliberately to campaign persistence.
 
-`CONTINUE` is intentionally present but disabled until save-slot/menu semantics are connected deliberately to campaign persistence.
+## Options
 
-`OPTIONS` currently explains where resolution controls live. It is intentionally not a second settings authority. Audio/accessibility/gameplay settings can migrate into the panel when their existing owners expose stable menu-facing contracts.
+Render quality now belongs inside `OPTIONS`; the old page-header selector is removed.
+
+Available presets:
+
+- `LOW` — 960 × 640 internal target.
+- `HIGH` — 1280 × 853.
+- `VERY HIGH` — 1440 × 960.
+- `ULTRA` — 1920 × 1280.
+
+The option writes the existing `nbd-resolution-preset` preference and reloads, so there is still one resolution authority rather than a second settings system.
 
 ## Art
 
-The first logo asset is `phaser/assets/ui/viceblood-logo.svg`.
+Runtime logo: `phaser/assets/ui/viceblood-logo.svg`.
 
-It translates the approved generated concept into a lightweight, scalable runtime asset: condensed distressed lettering, pale `VICE`, dark crimson `BLOOD`, and a subtle fang treatment on the `V`.
+The loader path is rooted from the production page (`phaser/assets/...`) so Netlify/GitHub Pages resolve the asset correctly. The first preview incorrectly used `assets/...`, which produced the missing-texture rectangle seen during validation.
 
-The generated concept remains the visual reference for later polish. The production asset should remain readable first; texture and damage must never compromise the wordmark at normal menu size.
+The production logo remains a scalable translation of the approved generated concept: condensed distressed lettering, pale `VICE`, dark crimson `BLOOD`, and a subtle fang treatment on the `V`.
 
-## Future polish, not part of v1
+## Visual acceptance notes from first preview
 
-- Choose and lock a particularly strong rooftop/city camera composition for the menu preview.
+The first Netlify preview was rejected because it:
+
+- rendered inside the old web frame instead of fullscreen;
+- exposed Hunger, Police, Mission, Ledger and menu HUD chrome on the title screen;
+- kept render quality outside `OPTIONS`;
+- failed to load the logo;
+- over-darkened the city with a 76% global veil;
+- paused the live game before city streaming had populated the background;
+- left the navigation visually underdeveloped.
+
+Those are implementation defects, not the target look, and are explicitly guarded by the revised menu contract.
+
+## Future polish
+
+- Lock a deliberately authored rooftop/city camera composition rather than relying on the initial free-roam spawn camera.
 - Add menu-specific ambient audio mix and rare city one-shots.
 - Add restrained steam/rain/neon motion where the gameplay scene does not already provide it.
-- Connect `CONTINUE` to the canonical campaign save authority.
-- Move stable settings into `OPTIONS` without duplicating their existing owners.
-- Add a seamless camera/UX transition from menu composition into active player control if it can be done without mutating gameplay authority during preview.
+- Connect `CONTINUE` to canonical campaign persistence.
+- Add audio/accessibility options once their runtime owners expose stable menu-facing settings.
+- Consider a seamless camera transition into player control once the menu composition itself is accepted.
 
 ## Non-goals
 
-- No new gameplay loop.
 - No duplicate city simulation.
 - No new save system.
-- No redesign of the production HUD.
-- No city compiler or generated-geometry changes.
-- No replacement of existing gameplay sprites or environment assets in this PR.
+- No production HUD redesign.
+- No city compiler/generated-geometry changes.
+- No broad sprite/environment replacement in this PR.
