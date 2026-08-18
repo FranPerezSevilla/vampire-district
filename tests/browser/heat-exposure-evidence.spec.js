@@ -199,7 +199,7 @@ test("Heat and evidence-backed Exposure diverge, persist and remain explainable 
   expect(reframedLedger.ledgerOpen).toBe(false);
   expect(reframedLedger.policeState).toBe("SEARCH");
   expect(reframedLedger.exposure).toEqual({ value: 0, activeCount: 0, knownCount: 0 });
-  expect(reframedLedger.incidents.some(incident => incident.title === "DRAINED BODY" && incident.status === "RESOLVED")).toBe(true);
+  expect(reframedLedger.incidents.some(incident => incident.title === "DRAINED BODY")).toBe(false);
   expect(reframedLedger.incidents.some(incident => /ordinary gang assault/i.test(incident.detail))).toBe(true);
 
   expect(pageErrors).toEqual([]);
