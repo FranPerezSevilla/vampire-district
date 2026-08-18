@@ -15,7 +15,7 @@ async function waitForAttentionSystems(page) {
   ));
 }
 
-test("Heat and evidence-backed Exposure diverge, persist and remain explainable in the Night Ledger", async ({ page }) => {
+test("Heat and evidence-backed Exposure diverge, persist and remain explainable in the Night Ledger model", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
@@ -100,14 +100,39 @@ test("Heat and evidence-backed Exposure diverge, persist and remain explainable 
   expect(seeded.stored.version).toBe(5);
   expect(seeded.stored.exposure.records[seeded.clueId].knowledgeState).toBe("institutional");
 
-  await page.locator("#hud-ledger-button").click();
-  await expect(page.locator("#night-ledger-content")).toContainText("POLICE / HEAT");
-  await expect(page.locator("#night-ledger-content")).toContainText("VEIL / EVIDENCE");
-  await expect(page.locator('[data-ledger-police-state="CLEAR"]')).toBeVisible();
-  const knownEvidence = page.locator('[data-ledger-evidence="drained_body"]');
-  await expect(knownEvidence).toContainText("DRAINED BODY");
-  await expect(knownEvidence).toContainText("INSTITUTIONAL");
-  await page.keyboard.press("Escape");
+  const knownLedger = await page.evaluate(() => {
+    const ui = window.NBD_PHASER_GAME.scene.getScene("UIScene");
+    const model = ui.readNightLedgerState(true);
+    return {
+      buttonHidden: Boolean(ui.dom?.ledgerButton?.hidden),
+      ledgerOpen: Boolean(ui.ledgerOpen),
+      policeState: model.police.stateLabel,
+      exposure: {
+        value: model.exposure.value,
+        activeCount: model.exposure.activeCount,
+        knownCount: model.exposure.knownCount,
+        institutionalCount: model.exposure.institutionalCount,
+        records: model.exposure.records
+      },
+      incidents: model.incidents.map(incident => ({
+        kind: incident.kind,
+        title: incident.title,
+        detail: incident.detail,
+        status: incident.status
+      }))
+    };
+  });
+  expect(knownLedger.buttonHidden).toBe(true);
+  expect(knownLedger.ledgerOpen).toBe(false);
+  expect(knownLedger.policeState).toBe("CLEAR");
+  expect(knownLedger.exposure).toMatchObject({
+    value: 48,
+    activeCount: 1,
+    knownCount: 1,
+    institutionalCount: 1
+  });
+  expect(knownLedger.exposure.records.some(record => record.kind === "drained_body" && record.state === "institutional")).toBe(true);
+  expect(knownLedger.incidents.some(incident => incident.title === "DRAINED BODY" && incident.status === "INSTITUTIONAL")).toBe(true);
 
   const reframed = await page.evaluate(clueId => {
     const game = window.NBD_PHASER_GAME.scene.getScene("GameScene");
@@ -150,11 +175,32 @@ test("Heat and evidence-backed Exposure diverge, persist and remain explainable 
     .map(district => Number(district?.value) || 0))).toBeGreaterThanOrEqual(45);
   expect(reframed.stored.exposure.records[seeded.clueId].knowledgeState).toBe("resolved");
 
-  await page.locator("#hud-ledger-button").click();
-  await expect(page.locator('[data-ledger-police-state="PURSUIT"]')).toBeVisible();
-  await expect(page.locator("#night-ledger-content")).toContainText("No active supernatural evidence");
-  await expect(page.locator("#night-ledger-content")).toContainText("ordinary gang assault");
-  await page.keyboard.press("Escape");
+  const reframedLedger = await page.evaluate(() => {
+    const ui = window.NBD_PHASER_GAME.scene.getScene("UIScene");
+    const model = ui.readNightLedgerState(true);
+    return {
+      buttonHidden: Boolean(ui.dom?.ledgerButton?.hidden),
+      ledgerOpen: Boolean(ui.ledgerOpen),
+      policeState: model.police.stateLabel,
+      exposure: {
+        value: model.exposure.value,
+        activeCount: model.exposure.activeCount,
+        knownCount: model.exposure.knownCount
+      },
+      incidents: model.incidents.map(incident => ({
+        kind: incident.kind,
+        title: incident.title,
+        detail: incident.detail,
+        status: incident.status
+      }))
+    };
+  });
+  expect(reframedLedger.buttonHidden).toBe(true);
+  expect(reframedLedger.ledgerOpen).toBe(false);
+  expect(reframedLedger.policeState).toBe("PURSUIT");
+  expect(reframedLedger.exposure).toEqual({ value: 0, activeCount: 0, knownCount: 0 });
+  expect(reframedLedger.incidents.some(incident => incident.title === "DRAINED BODY" && incident.status === "RESOLVED")).toBe(true);
+  expect(reframedLedger.incidents.some(incident => /ordinary gang assault/i.test(incident.detail))).toBe(true);
 
   expect(pageErrors).toEqual([]);
 });
