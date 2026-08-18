@@ -6,6 +6,7 @@ on:
       - "audio/playtest-p0"
     paths:
       - "tools/apply-hospital-recovery-dialogue-fix.mjs"
+      - ".github/workflows/apply-hospital-recovery-dialogue-fix.yml"
 
 permissions:
   contents: write
