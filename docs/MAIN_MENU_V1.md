@@ -83,6 +83,8 @@ There is no `getBoundingClientRect()` polling, stable-frame counter, arbitrary s
 
 The earlier persistent-logo failure came from waiting on a game-level `POST_RENDER` callback after the preview authority had already been acquired. On the hosted build, that callback was not completing the title handoff, so the DOM surface remained permanently in `boot`. The production path now uses the Scene `CREATE` event—the actual lifecycle boundary needed here—and cannot be stranded waiting for a later renderer signal.
 
+The visual reveal is therefore renderer-independent: WebGL versus Canvas, CDN load speed and the exact number of game-loop frames cannot decide whether the title advances.
+
 ## Hosted diagnostics
 
 The transition exposes two read-only snapshots in DevTools so a hosted failure is diagnosable instead of appearing as an unexplained frozen logo:
