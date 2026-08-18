@@ -36,16 +36,18 @@ This removes the old race between an HTML splash, a separately rendered Phaser m
 
 ### MainMenuScene
 
-`phaser/src/scenes/MainMenuScene.js` is now only a world-preview coordinator. It:
+`phaser/src/scenes/MainMenuScene.js` is only a world-preview coordinator. It:
 
-1. launches the authoritative `GameScene`;
-2. waits until its input authority exists;
-3. freezes Phaser input, world input, pointer aim and combat graphics;
-4. waits for two explicit Phaser post-render frames;
+1. obtains the authoritative `GameScene` instance;
+2. subscribes to the official Phaser Scene `CREATE` lifecycle event **before** launching it;
+3. treats that event as the readiness boundary because it fires after `GameScene.create()` has constructed the world, `GameplayRuntime` and `InputSystem`;
+4. freezes Phaser input, world input, pointer aim and combat graphics;
 5. asks `TitleScreenController` to reveal the already-positioned DOM menu;
 6. restores control when `NEW NIGHT` completes its DOM exit.
 
-It does not draw text, logos, buttons, panels or gradients. It does not calculate browser crop coordinates.
+If `GameScene` is already active and owns an `InputSystem`, the same activation path runs immediately. There is no polling loop, retry counter or renderer-event dependency.
+
+`MainMenuScene` does not draw text, logos, buttons, panels or gradients. It does not calculate browser crop coordinates.
 
 ### First-paint CSS
 
@@ -68,15 +70,16 @@ The handoff is event-driven, not heuristic.
 ```text
 HTML first paint
   -> persistent title surface is already opaque
-  -> Phaser and GameScene boot behind it
-  -> MainMenuScene acquires and freezes input authority
-  -> two actual Phaser post-render frames complete
-  -> DOM menu is prepared while still covered
-  -> two browser animation frames commit its CSS state
+  -> MainMenuScene subscribes to GameScene CREATE
+  -> GameScene launches and completes create()
+  -> CREATE event confirms the world and input authority exist
+  -> MainMenuScene freezes gameplay input and aim
+  -> DOM menu is prepared while the boot cover remains opaque
+  -> two browser animation frames commit its final CSS state
   -> boot cover crossfades, revealing the already-positioned top-left menu
 ```
 
-There is no `getBoundingClientRect()` polling, stable-frame counter, arbitrary splash timeout or Phaser duplicate of the menu UI.
+There is no `getBoundingClientRect()` polling, stable-frame counter, arbitrary splash timeout, game-level post-render dependency or Phaser duplicate of the menu UI.
 
 ## NEW NIGHT handoff
 
@@ -112,6 +115,7 @@ The wordmark is intentionally clean:
 ## Acceptance checklist
 
 - The first visible frame is the ViceBlood lockup, never the old web shell or HUD.
+- The centered boot lockup always progresses to the interactive menu after `GameScene.create()` completes.
 - The runtime wordmark is fully visible at the browser top-left.
 - Splash-to-menu is a deliberate crossfade with no reframe or flash.
 - `OPTIONS` and `CREDITS` reach the absolute top and bottom of the viewport.
