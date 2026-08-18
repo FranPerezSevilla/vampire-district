@@ -2,7 +2,7 @@
 
 _Last updated: 2026-08-18_
 
-This note records the browser-boot portion of the final regression cleanup for PR #55. It changes browser assertions only; production runtime behavior is intentionally unchanged.
+This note records the browser-boot portion of the final regression cleanup for PR #55. It primarily aligns stale browser assertions and includes one narrow runtime input-ownership correction for the shared **H** key; combat, vehicle, police and campaign rules are intentionally unchanged.
 
 ## Current authority
 
