@@ -84,3 +84,23 @@ The adapter layer drops from at least **3 short-lived allocations per ordinary f
 ### Regression contract
 
 Vehicle input enrichment must preserve the same frame object, vehicle entry/exit must still route through the movement/traversal path, and interaction filtering must preserve the original options array when no filter edge is active. `GameplayRuntime.update()` must not reintroduce frame-local `beginFrame` or `collectInteractions` function literals. Pass 2 wall-time sampling remains active so the next optimization can still target the top repeatable browser pipeline rather than guessing.
+
+## Pass 4 — gate cached diagnostics registry serialization
+
+**State: implemented; pending in-game hitch validation.**
+
+### Confirmed serialization hotspot
+
+Pass 2 cached the heavy nested `RuntimeDiagnostics.snapshot()` object for 250 ms, but `GameplayRuntime.finishFrame()` still submitted that same object to `RegistryPublisher` every render frame. `RegistryPublisher` detects object equality by calling `JSON.stringify()` before comparing the previous value, so the unchanged cached diagnostics object was still serialized and allocated as a large temporary string up to 60 times per second.
+
+This work is independent of which gameplay pipeline ultimately wins the browser wall-time ranking: it removes repeated serialization of an object that is explicitly immutable for the cache window.
+
+### Implementation
+
+`GameplayRuntime` now remembers the last diagnostics snapshot reference. The lightweight frame-time text remains published every frame, but `runtimeDiagnostics` and its derived runtime summary are submitted to the registry only when `RuntimeDiagnostics.snapshot()` returns a refreshed object. Normal `scene.publishState()` cadence is unchanged, so gameplay/HUD state is not throttled by this optimization.
+
+With the existing 250 ms diagnostics cache and a 60 FPS target, heavy diagnostics registry serialization attempts are bounded from roughly **60 per second to about 4 per second**, a **93.3% reduction** in this specific serialization/allocation path. The actual browser wall-time saving still requires in-game capture; this pass does not claim a frame-time percentage from source-level call-count evidence alone.
+
+### Regression contract
+
+Repeated frames that receive the same cached diagnostics snapshot must publish `performanceText` normally but must not resubmit `runtimeDiagnostics` or recompute the runtime summary. A refreshed snapshot reference must publish immediately on the next frame. Runtime diagnostic collection, pipeline sampling and normal state publication remain unchanged.
