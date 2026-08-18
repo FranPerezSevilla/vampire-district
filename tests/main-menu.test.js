@@ -48,33 +48,43 @@ test("main menu keeps the authoritative GameScene alive but freezes player aim",
   assert.doesNotMatch(mainScene, /new\s+GameScene/);
 });
 
-test("main menu anchors UI to the visible fullscreen crop", () => {
-  assert.match(mainScene, /phaser\/assets\/ui\/viceblood-logo\.svg/);
-  assert.match(mainScene, /viceblood-menu-active/);
-  assert.match(mainScene, /#game-ui/);
-  assert.match(mainScene, /100vw/);
-  assert.match(mainScene, /100vh/);
+test("fullscreen menu measures the real rendered canvas crop", () => {
   assert.match(mainScene, /visibleViewportBounds\(\)/);
-  assert.match(mainScene, /Anchor the brand to the actually visible top-left/);
+  assert.match(mainScene, /canvas\?\.getBoundingClientRect\?\.\(\)/);
+  assert.match(mainScene, /const scaleX = rect\.width \/ gameWidth/);
+  assert.match(mainScene, /const top = Math\.max\(0, -rect\.top\)/);
+  assert.match(mainScene, /scheduleLayout\(\)/);
+  assert.match(mainScene, /requestAnimationFrame/);
+  assert.match(mainScene, /const safeTop = Math\.max\(this\.cssY\(view, 34\)/);
 });
 
-test("render quality lives inside a full-height OPTIONS drawer", () => {
+test("main menu remains fullscreen through the live-scene handoff", () => {
+  assert.match(mainScene, /viceblood-menu-active/);
+  assert.match(mainScene, /viceblood-world-active/);
+  assert.match(mainScene, /100vw/);
+  assert.match(mainScene, /100vh/);
+  assert.match(mainScene, /document\.body\.classList\.add\(WORLD_BODY_CLASS\)/);
+  assert.match(mainScene, /body\.\$\{WORLD_BODY_CLASS\} \.game-frame/);
+});
+
+test("render quality lives inside a drawer that bleeds through the full canvas height", () => {
   assert.match(mainScene, /nbd-resolution-preset/);
   assert.match(mainScene, /RENDER QUALITY/);
   assert.match(mainScene, /VERY HIGH/);
-  assert.match(mainScene, /const boxHeight = view\.height/);
-  assert.match(mainScene, /full-height left drawer/);
+  assert.match(mainScene, /panelBackdrop\.setPosition\(0, 0\)\.setSize\(drawerRight, height\)/);
+  assert.match(mainScene, /panel can never stop short of the browser bottom/);
   assert.doesNotMatch(indexHtml, /resolution-select/);
   assert.doesNotMatch(indexHtml, /Render quality/);
 });
 
-test("NEW NIGHT keeps the logo through the cinematic zoom before blackout", () => {
-  assert.match(mainScene, /targets:\s*previewCamera/);
-  assert.match(mainScene, /zoom:\s*targetZoom/);
-  assert.match(mainScene, /Logo survives most of the zoom/);
-  assert.match(mainScene, /targets:\s*this\.logo/);
-  assert.match(mainScene, /transitionCurtain/);
-  assert.match(mainScene, /finishNightTransition\(\)/);
+test("NEW NIGHT hands control to the already-running GameScene without blackout or restart", () => {
+  assert.match(mainScene, /Hand control to the exact live scene/);
+  assert.match(mainScene, /this\.restorePreviewControl\(\)/);
+  assert.match(mainScene, /this\.scene\.launch\("UIScene"\)/);
+  assert.doesNotMatch(mainScene, /transitionCurtain/);
+  assert.doesNotMatch(mainScene, /fadeIn\(/);
+  assert.doesNotMatch(mainScene, /this\.scene\.stop\("GameScene"\)/);
+  assert.doesNotMatch(mainScene, /restart GameScene/);
 });
 
 test("menu exposes the initial navigation surface", () => {
