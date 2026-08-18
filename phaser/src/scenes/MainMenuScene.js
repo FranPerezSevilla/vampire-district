@@ -23,9 +23,18 @@ export class MainMenuScene extends Phaser.Scene {
     this.startWorldPreview();
   }
 
+  publishReadiness(state, detail = null) {
+    window.NBD_MAIN_MENU_READINESS = Object.freeze({
+      state,
+      detail,
+      timestamp: Date.now()
+    });
+  }
+
   startWorldPreview() {
     const gameScene = this.scene.get("GameScene");
     if (!gameScene) {
+      this.publishReadiness("failure", "GameScene unavailable");
       titleScreenController.showFailure(new Error("The city preview scene is unavailable."));
       return;
     }
@@ -36,14 +45,19 @@ export class MainMenuScene extends Phaser.Scene {
     // has constructed the world, GameplayRuntime and InputSystem. Register before
     // launch so a fast hosted boot cannot outrun the title-screen handoff.
     if (this.scene.isActive("GameScene") && gameScene.inputSystem) {
+      this.publishReadiness("game-scene-already-created");
       this.activateWorldPreview(gameScene);
       return;
     }
 
     const createEvent = Phaser.Scenes?.Events?.CREATE || "create";
     this.previewCreateEvent = createEvent;
-    this.previewCreateListener = () => this.activateWorldPreview(gameScene);
+    this.previewCreateListener = () => {
+      this.publishReadiness("game-scene-created");
+      this.activateWorldPreview(gameScene);
+    };
     gameScene.events.once(createEvent, this.previewCreateListener);
+    this.publishReadiness("waiting-for-game-scene-create");
 
     if (!this.scene.isActive("GameScene")) this.scene.launch("GameScene");
     this.scene.bringToTop("MainMenuScene");
@@ -54,11 +68,13 @@ export class MainMenuScene extends Phaser.Scene {
     this.detachPreviewCreateListener();
 
     if (!this.lockPreviewControl(gameScene)) {
+      this.publishReadiness("failure", "InputSystem unavailable after GameScene CREATE");
       titleScreenController.showFailure(new Error("The city preview input authority is unavailable."));
       return;
     }
 
     this.previewPresented = true;
+    this.publishReadiness("presenting-title");
     gameScene?.registry?.set?.("mainMenuActive", true);
     this.scene.bringToTop("MainMenuScene");
 
@@ -66,7 +82,11 @@ export class MainMenuScene extends Phaser.Scene {
     // boot cover for two animation frames before beginning the crossfade. No
     // renderer polling or timing heuristic is required here.
     titleScreenController.present({ onNewNight: () => this.beginNight() })
-      .catch(error => titleScreenController.showFailure(error));
+      .then(() => this.publishReadiness("title-presented"))
+      .catch(error => {
+        this.publishReadiness("failure", String(error?.message || error));
+        titleScreenController.showFailure(error);
+      });
   }
 
   detachPreviewCreateListener() {
