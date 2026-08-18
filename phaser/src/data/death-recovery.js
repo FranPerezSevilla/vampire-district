@@ -22,7 +22,11 @@ export const HOSPITAL_RECOVERY = Object.freeze({
   bloodBagHungerRelief: 35,
   policeGraceMs: 7000,
   interactionRadius: 34,
+  hospitalSettleMs: 320,
+  lackeyDepartureMs: 1100,
+  lackeySpeaker: "LACKEY",
   lackeyLine: "You made quite a mess. We pulled you out of the morgue. Drink this blood bag. The car outside is yours.",
+  lackeyExitOffset: Object.freeze({ x: 74, y: -8 }),
   playerCandidates: Object.freeze([
     Object.freeze({ x: 898, y: 446 }),
     Object.freeze({ x: 898, y: 486 }),
