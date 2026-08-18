@@ -29,7 +29,8 @@ export class DeathRecoverySystem {
     this.scene = scene;
     this.state = createDeathSequenceState();
     this.deathPayload = null;
-    this.audioFadeStarted = false;
+    this.audioAttenuationStarted = false;
+    this.audioSilenceStarted = false;
     this.fadeCompleteEmitted = false;
     this.recovered = false;
     this.recoveryBagCollected = false;
@@ -40,6 +41,8 @@ export class DeathRecoverySystem {
     this.masterPresentationComplete = false;
     this.masterPresentationPromise = null;
     this.cameraZoomSnapshot = null;
+    this.deathBlackoutAlpha = 0;
+    this.deathDomBackdrop = null;
     this.hospitalRecoveryIntroComplete = false;
     this.recoveryPresentationPromise = null;
 
@@ -49,6 +52,7 @@ export class DeathRecoverySystem {
       .setDepth(980)
       .setAlpha(0)
       .setVisible(false);
+    this.ensureDeathDomBackdrop();
 
     this.handlePlayerDeath = payload => this.start(payload);
     scene.events?.on?.("player:died", this.handlePlayerDeath);
@@ -56,10 +60,42 @@ export class DeathRecoverySystem {
     scene.deathRecoverySystem = this;
   }
 
+  ensureDeathDomBackdrop() {
+    if (typeof document === "undefined") return null;
+    if (this.deathDomBackdrop?.isConnected) return this.deathDomBackdrop;
+    const host = document.getElementById("game-ui") || document.querySelector(".game-frame");
+    if (!host) return null;
+    let backdrop = document.getElementById("death-blackout-backdrop");
+    if (!backdrop) {
+      backdrop = document.createElement("div");
+      backdrop.id = "death-blackout-backdrop";
+      Object.assign(backdrop.style, {
+        position: "absolute",
+        inset: "0",
+        background: "#000",
+        opacity: "0",
+        pointerEvents: "none",
+        zIndex: "9998"
+      });
+      host.appendChild(backdrop);
+    }
+    this.deathDomBackdrop = backdrop;
+    return backdrop;
+  }
+
+  setSireDialogueAboveBlackout(active) {
+    const dialogue = this.scene.tutorialDirector?.ui?.dialogue;
+    if (!dialogue?.style) return false;
+    if (active) dialogue.style.zIndex = "9999";
+    else dialogue.style.removeProperty?.("z-index");
+    return true;
+  }
+
   start(payload = {}) {
     if (!startDeathSequence(this.state)) return false;
     this.deathPayload = copyPayload(payload);
-    this.audioFadeStarted = false;
+    this.audioAttenuationStarted = false;
+    this.audioSilenceStarted = false;
     this.fadeCompleteEmitted = false;
     this.recovered = false;
     this.hospitalRecoveryIntroComplete = false;
@@ -67,6 +103,7 @@ export class DeathRecoverySystem {
     this.masterPresentationComplete = false;
     this.masterPresentationPromise = null;
     this.cameraZoomSnapshot = Number(this.scene.cameras?.main?.zoom) || null;
+    this.deathBlackoutAlpha = 0;
     this.audioSnapshot = {
       master: Number(RawAudio.master?.gain?.value),
       narrative: Number(RawAudio.narrativeMaster?.gain?.value)
@@ -81,15 +118,11 @@ export class DeathRecoverySystem {
     if (this.scene.combatSystem?.attack) this.scene.combatSystem.attack = null;
     this.scene.playerDamageSystem?.cancelAllEnemyAttacks?.();
 
-    RawAudio.stopSampleLoop?.("drainLoop");
-    RawAudio.stopSampleLoop?.("vehicleSkidLoop");
-    RawAudio.stopAllVehicleEngines?.();
-
     this.scene.registry?.set?.("deathSequenceActive", true);
     this.scene.statePublisher?.setMany?.({
       deathSequenceActive: true,
       deathSequencePhase: this.state.phase,
-      deathSequenceText: "Death sequence · closing in"
+      deathSequenceText: "Death sequence · sound falling"
     });
     this.scene.events?.emit?.("death:sequence-started", {
       ...this.deathPayload,
@@ -107,19 +140,16 @@ export class DeathRecoverySystem {
       this.scene.statePublisher?.setMany?.({
         deathSequenceActive: true,
         deathSequencePhase: this.state.phase,
-        deathSequenceText: "Death sequence · sire"
+        deathSequenceText: this.deathBlackoutAlpha >= 0.999
+          ? "Death sequence · sire"
+          : "Death sequence · blackout"
       });
       return;
     }
     if (this.state.phase === DEATH_SEQUENCE_PHASES.MASTER) {
       this.state.elapsedMs = DEATH_BEAT.masterHoldMs;
     }
-    const before = this.state.phase;
     const result = advanceDeathSequence(this.state, Math.max(0, Number(dt) || 0) * 1000);
-
-    if (before !== DEATH_SEQUENCE_PHASES.FADE && this.state.phase === DEATH_SEQUENCE_PHASES.FADE) {
-      this.beginAudioFade();
-    }
     this.syncPresentation();
 
     this.scene.statePublisher?.setMany?.({
@@ -127,7 +157,7 @@ export class DeathRecoverySystem {
       deathSequencePhase: this.state.phase,
       deathSequenceText: this.state.phase === DEATH_SEQUENCE_PHASES.BLACK
         ? "Death sequence · black"
-        : "Death sequence · fading"
+        : "Death sequence · resolving"
     });
 
     if (result.fadeCompleted && !this.fadeCompleteEmitted) {
@@ -152,14 +182,94 @@ export class DeathRecoverySystem {
     });
   }
 
+  stopTransientWorldAudio() {
+    RawAudio.stopSampleLoop?.("drainLoop");
+    RawAudio.stopSampleLoop?.("vehicleSkidLoop");
+    RawAudio.stopAllVehicleEngines?.();
+  }
+
+  beginWorldAudioAttenuation() {
+    if (this.audioAttenuationStarted) return false;
+    this.audioAttenuationStarted = true;
+    const ctx = RawAudio.ctx;
+    const bus = RawAudio.master;
+    if (!ctx || !bus?.gain) return false;
+    const now = ctx.currentTime;
+    const end = now + DEATH_BEAT.audioAttenuateMs / 1000;
+    try {
+      const current = Math.max(0.0001, Number(bus.gain.value) || 0.0001);
+      const target = Math.max(0.0001, current * DEATH_BEAT.audioAttenuatedFactor);
+      bus.gain.cancelScheduledValues(now);
+      bus.gain.setValueAtTime(current, now);
+      bus.gain.linearRampToValueAtTime(target, end);
+    } catch {
+      try { bus.gain.value = Math.max(0.0001, (Number(bus.gain.value) || 0.0001) * DEATH_BEAT.audioAttenuatedFactor); } catch {}
+    }
+    return true;
+  }
+
+  beginWorldAudioSilence() {
+    if (this.audioSilenceStarted) return false;
+    this.audioSilenceStarted = true;
+    const ctx = RawAudio.ctx;
+    const bus = RawAudio.master;
+    if (!ctx || !bus?.gain) return false;
+    const now = ctx.currentTime;
+    const end = now + DEATH_BEAT.blackoutFadeMs / 1000;
+    try {
+      const current = Math.max(0.0001, Number(bus.gain.value) || 0.0001);
+      bus.gain.cancelScheduledValues(now);
+      bus.gain.setValueAtTime(current, now);
+      bus.gain.linearRampToValueAtTime(0.0001, end);
+    } catch {
+      try { bus.gain.value = 0.0001; } catch {}
+    }
+    return true;
+  }
+
+  fadeWorldToBlack() {
+    const duration = Math.max(1, Number(DEATH_BEAT.blackoutFadeMs) || 1);
+    if (!this.scene.tweens?.addCounter) {
+      return this.waitForPresentation(duration).then(() => {
+        this.deathBlackoutAlpha = 1;
+        this.syncPresentation();
+      });
+    }
+    return new Promise(resolve => {
+      this.scene.tweens.addCounter({
+        from: Math.max(0, Math.min(1, this.deathBlackoutAlpha)),
+        to: 1,
+        duration,
+        ease: "Sine.easeInOut",
+        onUpdate: tween => {
+          this.deathBlackoutAlpha = Math.max(0, Math.min(1, Number(tween.getValue?.()) || 0));
+        },
+        onComplete: () => {
+          this.deathBlackoutAlpha = 1;
+          this.syncPresentation();
+          resolve();
+        }
+      });
+    });
+  }
+
   async runMasterDeathBeat() {
     const director = this.scene.tutorialDirector;
     try {
       director?.setTip?.("", "");
       director?.hideDialogue?.();
-      if (director?.zoomToPlayer) await director.zoomToPlayer();
-      await this.waitForPresentation(DEATH_BEAT.zoomHoldMs);
+      this.beginWorldAudioAttenuation();
+      const cameraTask = director?.zoomToPlayer
+        ? Promise.resolve(director.zoomToPlayer()).catch(error => console.error("Death camera close failed", error))
+        : Promise.resolve();
 
+      await this.waitForPresentation(DEATH_BEAT.audioAttenuateMs);
+      this.stopTransientWorldAudio();
+      this.beginWorldAudioSilence();
+      await this.fadeWorldToBlack();
+      await cameraTask;
+
+      this.setSireDialogueAboveBlackout(true);
       if (director?.showDialogue) {
         await director.showDialogue({
           speaker: DEATH_BEAT.masterSpeaker,
@@ -177,29 +287,9 @@ export class DeathRecoverySystem {
       return false;
     } finally {
       director?.hideDialogue?.();
+      this.setSireDialogueAboveBlackout(false);
       this.masterPresentationComplete = true;
     }
-  }
-
-  beginAudioFade() {
-    if (this.audioFadeStarted) return false;
-    this.audioFadeStarted = true;
-    const ctx = RawAudio.ctx;
-    const buses = [RawAudio.master, RawAudio.narrativeMaster].filter(Boolean);
-    if (!ctx || !buses.length) return false;
-    const now = ctx.currentTime;
-    const end = now + DEATH_BEAT.fadeMs / 1000;
-    for (const bus of buses) {
-      try {
-        const current = Math.max(0.0001, Number(bus.gain.value) || 0.0001);
-        bus.gain.cancelScheduledValues(now);
-        bus.gain.setValueAtTime(current, now);
-        bus.gain.linearRampToValueAtTime(0.0001, end);
-      } catch {
-        try { bus.gain.value = 0.0001; } catch {}
-      }
-    }
-    return true;
   }
 
   restoreAudio() {
@@ -504,6 +594,8 @@ export class DeathRecoverySystem {
     this.masterPresentationPromise = null;
     this.masterPresentationComplete = false;
     this.cameraZoomSnapshot = null;
+    this.deathBlackoutAlpha = 0;
+    this.setSireDialogueAboveBlackout(false);
     this.syncPresentation();
     this.scene.registry?.set?.("deathSequenceActive", false);
     this.scene.statePublisher?.setMany?.({
@@ -575,8 +667,9 @@ export class DeathRecoverySystem {
   syncPresentation() {
     const width = Math.max(1, Number(this.scene.scale?.width) || Number(this.scene.cameras?.main?.width) || 960);
     const height = Math.max(1, Number(this.scene.scale?.height) || Number(this.scene.cameras?.main?.height) || 540);
-    const overlayAlpha = deathFadeAlpha(this.state);
-    const show = this.state.phase === DEATH_SEQUENCE_PHASES.FADE
+    const overlayAlpha = Math.max(deathFadeAlpha(this.state), this.deathBlackoutAlpha);
+    const show = overlayAlpha > 0.001
+      || this.state.phase === DEATH_SEQUENCE_PHASES.FADE
       || this.state.phase === DEATH_SEQUENCE_PHASES.BLACK;
 
     this.backdrop
@@ -585,6 +678,12 @@ export class DeathRecoverySystem {
       .setDisplaySize(width, height)
       .setAlpha(overlayAlpha)
       .setVisible(show);
+
+    const domBackdrop = this.ensureDeathDomBackdrop();
+    if (domBackdrop?.style) {
+      domBackdrop.style.opacity = String(Math.max(0, Math.min(1, overlayAlpha)));
+      domBackdrop.style.display = show ? "block" : "none";
+    }
   }
 
   isActive() {
@@ -599,7 +698,10 @@ export class DeathRecoverySystem {
     this.scene.events?.off?.("player:died", this.handlePlayerDeath);
     if (this.scene.deathRecoverySystem === this) this.scene.deathRecoverySystem = null;
     this.scene.tutorialDirector?.hideDialogue?.();
+    this.setSireDialogueAboveBlackout(false);
     this.backdrop?.destroy?.();
+    this.deathDomBackdrop?.remove?.();
+    this.deathDomBackdrop = null;
     this.bagContainer?.destroy?.();
   }
 }
