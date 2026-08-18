@@ -9,6 +9,10 @@ test("pause menu exposes a persistent keyboard-operable high-contrast aim option
     window.NBD_RC_HARNESS.unlockPostTutorialWorld();
     return true;
   });
+  await page.waitForTimeout(100);
+  await page.waitForFunction(() => Boolean(window.NBD_RC_HARNESS?.taskRevealIdle?.()), null, {
+    timeout: 10_000
+  });
 
   await page.keyboard.press("h");
   await expect(page.locator("#ui-modal")).toHaveClass(/open/);

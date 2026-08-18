@@ -2,6 +2,10 @@ import { expect, test } from "@playwright/test";
 
 test.describe.configure({ timeout: 90_000 });
 
+function normalizedText(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
 test("playtest mode delivers a start, objective loop, result and feedback path", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
@@ -9,8 +13,10 @@ test("playtest mode delivers a start, objective loop, result and feedback path",
   await page.goto("/?mode=playtest&rcTest=1", { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_PLAYTEST_READY));
 
+  await expect(page.locator("#playtest-boot-cover")).toHaveCount(0);
   await expect(page.locator("#playtest-intro")).toHaveClass(/open/);
-  await expect(page.locator("#playtest-intro-title")).toHaveText("Hunt. Feed. Escape.");
+  const introTitle = await page.locator("#playtest-intro-title").evaluate(node => node.innerText);
+  expect(normalizedText(introTitle)).toBe("Immortality was never the luxury you imagined.");
   await expect(page.locator("#playtest-start")).toBeVisible();
 
   await page.keyboard.press("h");
