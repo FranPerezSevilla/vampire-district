@@ -1,14 +1,14 @@
 # ViceBlood city simulation polish backlog
 
-_Last updated: 2026-08-18_
+_Last updated: 2026-08-19_
 
-This document records the next city-simulation polish requested during PR #55. These items are deliberately queued behind the current evidence-driven performance capture so that traffic and pedestrian simulation are not made more expensive blindly.
+This document records the city-simulation polish requested during PR #55. Work remains incremental: one independently testable traffic/police behavior change at a time, with the final browser performance capture retained as the evidence gate before any further density increase.
 
 ## 1. Civilian traffic must collide with other civilian traffic
 
-**State: queued.**
+**State: implemented on PR #55; pending grouped in-game validation.**
 
-Materialized civilian cars must behave as physical road users relative to one another rather than visual proxies that can overlap.
+Materialized civilian cars now behave as physical road users relative to one another rather than visual proxies that can overlap.
 
 ### Requirements
 
@@ -19,6 +19,18 @@ Materialized civilian cars must behave as physical road users relative to one an
 - Collision avoidance must not create permanent gridlock when one car is temporarily blocked.
 - Real accidental car-to-car impacts may still occur when avoidance is insufficient, but ordinary route following should try to prevent them.
 - Vehicle separation/collision work must use a bounded local-neighbour query rather than an all-pairs scan across the full traffic population.
+
+### Implementation
+
+- Existing same-lane following remains the first-line behavior: `TrafficLocalBehaviorSystem.nearestLead()` slows the rear car before contact, while existing junction yielding handles ordinary crossing conflicts.
+- A new hard separation guard runs after each local traffic behavior step. It builds a **96-unit spatial grid** from materialized civilian slots and queries only neighboring cells rather than scanning every traffic pair.
+- If two civilian footprints still overlap, the guard resolves the pair immediately before the frame completes. On the same lane, the follower retreats; at crossing conflicts an existing `junction-yield` participant remains subordinate; true unresolved ties use a stable token key.
+- The corrected vehicle is moved backward along its own lane rather than pushed sideways through geometry, is stopped for that update, and records `traffic-separation` plus the blocking token. Two bounded correction passes allow a newly corrected pair to settle without creating an unbounded recovery loop.
+- Runtime snapshots expose `trafficNeighborChecks` and `trafficSeparationCorrections` so local-query cost and real corrections can be observed during the grouped playtest.
+
+### Regression coverage
+
+`tests/traffic-local-separation.test.js` verifies that the spatial query stays local with a 100-vehicle synthetic layout, that footprint overlap includes the safety pad, that same-lane corrections retreat the follower, and that junction-yield traffic loses a crossing separation conflict.
 
 ### Acceptance
 
@@ -94,9 +106,9 @@ Normal police foot patrols must not wander longitudinally through vehicle lanes.
 
 ## Delivery order
 
-1. Complete the current browser `slowestSystems` performance capture and address the repeatable dominant hotspot if necessary.
-2. Add local civilian traffic separation/collision avoidance.
-3. Add junction reservation/priority and deadlock recovery.
-4. Add contextual civilian horn reactions to meaningful blockage.
-5. Constrain non-alert foot-police patrol/navigation to pedestrian-valid routes.
+1. **Done:** add bounded local civilian-traffic separation/collision avoidance.
+2. Add explicit junction reservation/priority and deadlock recovery.
+3. Add contextual civilian horn reactions to meaningful blockage.
+4. Constrain non-alert foot-police patrol/navigation to pedestrian-valid routes.
+5. Run the final browser `slowestSystems` capture in a hitch-prone area; optimize only the repeatable winner if necessary.
 6. Run one grouped city-flow playtest covering traffic queues, four-way junctions, horns, police sidewalks and frame-time impact.
