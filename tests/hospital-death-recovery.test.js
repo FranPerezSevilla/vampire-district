@@ -48,3 +48,30 @@ test("all police attack authorities respect the same post-hospital grace", () =>
   assert.match(motorized, /scene\.policeSystem\?\.wantedLevel/);
   assert.match(firearms, /scene\.policeSystem\?\.wantedLevel/);
 });
+
+test("hospital arrival holds control for conventional lackey dialogue, departure, then releases full input", () => {
+  const code = source("phaser/src/combat/DeathRecoverySystem.js");
+  assert.equal(HOSPITAL_RECOVERY.lackeySpeaker, "LACKEY");
+  assert.ok(HOSPITAL_RECOVERY.lackeyDepartureMs >= 700);
+  assert.match(code, /lockRecoveryControls\(\)/);
+  assert.match(code, /speaker: HOSPITAL_RECOVERY\.lackeySpeaker/);
+  assert.match(code, /kind: "spoken"/);
+  assert.match(code, /await this\.departLackey\(\)/);
+  assert.match(code, /setControlMode\?\.\("locked"\)/);
+  assert.match(code, /setControlMode\?\.\("full"\)/);
+  assert.match(code, /setWorldEnabled\?\.\(true\)/);
+  assert.match(code, /hospitalRecoveryIntroComplete/);
+  const departure = code.indexOf("await this.departLackey()");
+  const release = code.indexOf("this.releaseRecoveryControls()", departure);
+  assert.ok(departure >= 0 && release > departure);
+});
+
+test("police grace is refreshed when control is returned, not consumed during the lackey beat", () => {
+  const code = source("phaser/src/combat/DeathRecoverySystem.js");
+  const releaseStart = code.indexOf("releaseRecoveryControls()");
+  const readyEvent = code.indexOf('"death:hospital-recovery-ready"');
+  assert.ok(releaseStart >= 0);
+  assert.ok(readyEvent > releaseStart);
+  const releaseBody = code.slice(releaseStart, readyEvent);
+  assert.match(releaseBody, /resetAfterPlayerDeath\?\.\(HOSPITAL_RECOVERY\.policeGraceMs\)/);
+});
