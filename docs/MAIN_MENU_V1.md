@@ -81,6 +81,15 @@ HTML first paint
 
 There is no `getBoundingClientRect()` polling, stable-frame counter, arbitrary splash timeout, game-level post-render dependency or Phaser duplicate of the menu UI.
 
+## Hosted diagnostics
+
+The transition exposes two read-only snapshots in DevTools so a hosted failure is diagnosable instead of appearing as an unexplained frozen logo:
+
+- `window.NBD_MAIN_MENU_READINESS` records the Phaser-side boundary (`waiting-for-game-scene-create`, `game-scene-created`, `presenting-title`, `title-presented` or `failure`).
+- `window.NBD_TITLE_SCREEN_STATE` records the DOM-side state (`boot`, `preparing`, `menu`, `exiting`, `world`, `disabled` or `failure`).
+
+These snapshots do not drive the transition. They only report which explicit boundary was reached.
+
 ## NEW NIGHT handoff
 
 ```text
