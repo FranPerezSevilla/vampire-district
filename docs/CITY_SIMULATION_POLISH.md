@@ -24,7 +24,7 @@ Materialized civilian cars now behave as physical road users relative to one ano
 
 - Existing same-lane following remains the first-line behavior: `TrafficLocalBehaviorSystem.nearestLead()` slows the rear car before contact, while existing junction yielding handles ordinary crossing conflicts.
 - A new hard separation guard runs after each local traffic behavior step. It builds a **96-unit spatial grid** from materialized civilian slots and queries only neighboring cells rather than scanning every traffic pair.
-- If two civilian footprints still overlap, the guard resolves the pair immediately before the frame completes. On the same lane, the follower retreats; at crossing conflicts an existing `junction-yield` participant remains subordinate; true unresolved ties use a stable token key.
+- If two civilian footprints still overlap, the guard resolves the pair immediately before the frame completes. On the same lane, the follower retreats; at crossing conflicts an existing `junction-yield` or explicit `junction-reserved` participant remains subordinate; true unresolved ties use a stable token key.
 - The corrected vehicle is moved backward along its own lane rather than pushed sideways through geometry, is stopped for that update, and records `traffic-separation` plus the blocking token. Two bounded correction passes allow a newly corrected pair to settle without creating an unbounded recovery loop.
 - Runtime snapshots expose `trafficNeighborChecks` and `trafficSeparationCorrections` so local-query cost and real corrections can be observed during the grouped playtest.
 
@@ -41,9 +41,9 @@ Materialized civilian cars now behave as physical road users relative to one ano
 
 ## 2. Junction priority and deadlock resolution
 
-**State: queued.**
+**State: implemented on PR #55; pending grouped in-game validation.**
 
-Civilian cars approaching an intersection must negotiate entry instead of all braking indefinitely because every vehicle sees every other vehicle as a blocker.
+Civilian cars approaching an intersection now negotiate a bounded explicit reservation instead of relying only on reciprocal proximity heuristics.
 
 ### Requirements
 
@@ -55,6 +55,20 @@ Civilian cars approaching an intersection must negotiate entry instead of all br
 - Reservations expire if the owner cannot enter, preventing a broken/stuck vehicle from locking the junction forever.
 - Add bounded deadlock detection: if a junction has remained blocked beyond a sensible wait, release/re-evaluate reservations rather than leaving every participant stopped permanently.
 - Do not require full real-world traffic-law simulation for P0; the goal is readable, deterministic flow without overlap or indefinite four-way hesitation.
+
+### Implementation
+
+- `TrafficJunctionReservationPolicy` layers one conservative conflict reservation per materialized junction over the existing local traffic authority. It reuses the current lane projections and never creates a second traffic simulation.
+- A vehicle physically inside the junction wins immediately. Otherwise, the first recorded arrival owns the movement; exact arrival ties use the stable traffic token ID.
+- A granted vehicle receives a **1.45 s commitment lease**. Meaningful approach progress renews that lease, while conflicting lanes receive `junction-reserved` and brake before the conflict area. Same-lane followers remain governed by the existing lead-car spacing logic.
+- If the owner remains outside the junction without meaningful progress for **2.35 s** after its lease can expire, the reservation is released as a deadlock recovery. The stalled owner receives a short **0.9 s backoff**, allowing another waiting movement to take authority instead of immediately re-acquiring the same junction.
+- Existing stronger blockers remain authoritative: a same-lane queue, parked/player vehicle or `junction-player` conflict is not bypassed merely because a civilian owns the reservation.
+- The hard separation guard treats `junction-reserved` as subordinate to `junction-priority`, so the emergency anti-overlap correction preserves the same authority if two crossing cars still touch.
+- Runtime traffic snapshots expose reservation count, priority/yield counts, grants, releases, deadlock recoveries and current reservation owners for grouped playtest diagnostics.
+
+### Regression coverage
+
+`tests/traffic-junction-reservation.test.js` verifies inside-junction priority, arrival-order ownership, stable token tie-breaking, commitment-window retention, stale-owner recovery/backoff and the interaction between `junction-reserved` traffic and the hard separation guard.
 
 ### Acceptance
 
@@ -107,7 +121,7 @@ Normal police foot patrols must not wander longitudinally through vehicle lanes.
 ## Delivery order
 
 1. **Done:** add bounded local civilian-traffic separation/collision avoidance.
-2. Add explicit junction reservation/priority and deadlock recovery.
+2. **Done:** add explicit junction reservation/priority and deadlock recovery.
 3. Add contextual civilian horn reactions to meaningful blockage.
 4. Constrain non-alert foot-police patrol/navigation to pedestrian-valid routes.
 5. Run the final browser `slowestSystems` capture in a hitch-prone area; optimize only the repeatable winner if necessary.
