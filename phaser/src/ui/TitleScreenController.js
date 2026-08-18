@@ -67,10 +67,20 @@ export class TitleScreenController {
     this.buildQualityOptions();
     this.bindPointerInput();
     this.renderMenuSelection();
+    this.publishState("boot");
   }
 
   get available() {
     return Boolean(this.root && this.menu && this.drawer);
+  }
+
+  publishState(state = this.state, detail = null) {
+    this.window.NBD_TITLE_SCREEN_STATE = Object.freeze({
+      state,
+      detail,
+      available: this.available,
+      timestamp: Date.now()
+    });
   }
 
   buildQualityOptions() {
@@ -142,6 +152,7 @@ export class TitleScreenController {
     const token = ++this.presentationToken;
     this.onNewNight = typeof onNewNight === "function" ? onNewNight : null;
     this.state = "preparing";
+    this.publishState("preparing");
     this.inputLocked = true;
     this.panelMode = null;
     this.exitPromise = null;
@@ -165,6 +176,7 @@ export class TitleScreenController {
     this.state = "menu";
     this.root.dataset.state = "menu";
     this.inputLocked = false;
+    this.publishState("menu");
   }
 
   async exitToGame() {
@@ -172,6 +184,7 @@ export class TitleScreenController {
     if (this.state === "exiting") return this.exitPromise;
 
     this.state = "exiting";
+    this.publishState("exiting");
     this.inputLocked = true;
     this.closePanel();
     this.unbindKeyboard();
@@ -186,6 +199,8 @@ export class TitleScreenController {
       this.document.body.classList.remove(TITLE_BODY_CLASS);
       this.document.body.classList.add(WORLD_BODY_CLASS);
       this.onNewNight = null;
+      this.state = "world";
+      this.publishState("world");
     })();
 
     return this.exitPromise;
@@ -194,6 +209,7 @@ export class TitleScreenController {
   disableForHarness() {
     this.presentationToken += 1;
     this.state = "disabled";
+    this.publishState("disabled");
     this.inputLocked = true;
     this.onNewNight = null;
     this.unbindKeyboard();
@@ -209,6 +225,7 @@ export class TitleScreenController {
     if (!this.available || this.state === "disabled") return;
     this.presentationToken += 1;
     this.state = "boot";
+    this.publishState("boot");
     this.inputLocked = true;
     this.onNewNight = null;
     this.closePanel();
@@ -225,6 +242,8 @@ export class TitleScreenController {
     if (!this.available) return false;
     this.presentationToken += 1;
     this.state = "failure";
+    const message = String(error?.message || error || "Unknown boot error");
+    this.publishState("failure", message);
     this.inputLocked = true;
     this.onNewNight = null;
     this.unbindKeyboard();
@@ -234,7 +253,6 @@ export class TitleScreenController {
     this.document.body.classList.remove(WORLD_BODY_CLASS);
     this.document.body.classList.add(TITLE_BODY_CLASS);
     if (this.bootMessage) {
-      const message = String(error?.message || error || "Unknown boot error");
       this.bootMessage.textContent = `VICEBLOOD COULD NOT START · ${message}`;
     }
     return true;
