@@ -4,6 +4,7 @@ import { installPlaytestSurfacePolicy } from "./policies/PlaytestSurfacePolicy.j
 import { installTrafficPlaytestPolicy } from "./policies/TrafficPlaytestPolicy.js";
 import { installVampireVeilPolicy } from "./policies/VampireVeilPolicy.js";
 import { BootScene } from "./scenes/BootScene.js";
+import { MainMenuScene } from "./scenes/MainMenuScene.js";
 import { GameScene } from "./scenes/GameScene.js";
 import { UIScene } from "./scenes/UIScene.js";
 
@@ -84,7 +85,7 @@ const config = {
   render: { antialias: true, antialiasGL: true, pixelArt: false, roundPixels: false },
   physics: { default: "arcade", arcade: { debug: false } },
   scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [BootScene, GameScene, UIScene]
+  scene: [BootScene, MainMenuScene, GameScene, UIScene]
 };
 
 window.NBD_PHASER_GAME = new Phaser.Game(config);
