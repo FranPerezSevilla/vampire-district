@@ -99,8 +99,14 @@ test("bulletHitBody plays only after a confirmed hitscan hit on a human NPC", ()
   assert.match(weaponSource, /events\?\.off\?\.\("combat:hit", this\.onCombatHit, this\)/);
 
   const combatSource = readFileSync(repoFile("phaser/src/combat/CombatSystem.js"), "utf8");
-  assert.match(combatSource, /if \(candidate\.kind === "npc"\) this\.applyHit\(candidate\.entity, config\);/);
-  assert.match(combatSource, /if \(candidate\.kind === "prop"\) \{[\s\S]*?propDamageSystem\?\.damage/);
+  assert.match(
+    combatSource,
+    /completeProjectileImpact\(projectile, impact\)[\s\S]*?if \(impact\.kind === "npc" && impact\.npc\) \{[\s\S]*?this\.applyHit\(impact\.npc, projectile\.config, projectile\.attackId\);/
+  );
+  assert.match(
+    combatSource,
+    /else if \(impact\.kind === "prop" && impact\.prop\) \{[\s\S]*?propDamageSystem\?\.damage\?\.\(/
+  );
   assert.equal((combatSource.match(/"combat:hit"/g) || []).length, 1, "combat:hit should remain the human-NPC hit event");
 });
 
