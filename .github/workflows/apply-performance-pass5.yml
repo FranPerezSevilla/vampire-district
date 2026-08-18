@@ -1,3 +1,4 @@
+# transient applicator: remove itself after successful focused validation
 name: Apply performance pass 5
 
 on:
@@ -172,8 +173,7 @@ function compareStandardOptions(a, b) {
             raise SystemExit('GameplayRuntime nearest source no longer matches expected baseline')
           runtime.write_text(text.replace(old_nearest, new_nearest, 1))
 
-          test_path = Path('tests/interaction-selection-performance.test.js')
-          test_path.write_text('''import test from "node:test";
+          Path('tests/interaction-selection-performance.test.js').write_text('''import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { InteractionSystem } from "../phaser/src/systems/InteractionSystemCore.js";
