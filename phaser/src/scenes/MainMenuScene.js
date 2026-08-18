@@ -19,6 +19,7 @@ const MENU_STYLE_ID = "viceblood-main-menu-shell";
 const UI = Object.freeze({
   white: "#f1ede6",
   muted: "#89848a",
+  faint: "#5e5960",
   red: "#a8141c",
   redBright: "#ff3d46",
   black: 0x020306,
@@ -80,6 +81,7 @@ export class MainMenuScene extends Phaser.Scene {
 
     this.scale.on("resize", this.layout, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanupMenuShell());
+
     this.cameras.main.fadeIn(500, 2, 3, 6);
   }
 
@@ -179,6 +181,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.overlay.fillStyle(0x000000, 0.28).fillRect(0, 0, width, Math.round(height * 0.06));
     this.overlay.fillStyle(0x000000, 0.32)
       .fillRect(0, Math.round(height * 0.94), width, Math.round(height * 0.06));
+
     this.overlay.fillStyle(0x5b0b10, 0.42)
       .fillRect(Math.round(width * 0.045), Math.round(height * 0.34), 2, Math.round(height * 0.43));
   }
@@ -191,6 +194,7 @@ export class MainMenuScene extends Phaser.Scene {
         fontStyle: "900",
         color: UI.redBright
       }).setOrigin(0, 0.5);
+
       const label = this.add.text(0, 0, item.label, {
         fontFamily: "Arial Narrow, Arial, sans-serif",
         fontSize: "27px",
@@ -225,6 +229,7 @@ export class MainMenuScene extends Phaser.Scene {
       color: "#777179",
       letterSpacing: 3
     }).setOrigin(0, 1).setDepth(1010).setScrollFactor(0);
+
     this.version = this.add.text(0, 0, "VICEBLOOD · PRE-ALPHA", {
       fontFamily: "Arial, Helvetica, sans-serif",
       fontSize: "10px",
@@ -267,6 +272,15 @@ export class MainMenuScene extends Phaser.Scene {
       letterSpacing: 2
     });
 
+    this.panelGroup.add([
+      this.panelBackdrop,
+      this.panelRule,
+      this.panelTitle,
+      this.panelBody,
+      this.panelSection,
+      this.panelHint
+    ]);
+
     this.qualityRows = QUALITY_OPTIONS.map((option, index) => {
       const marker = this.add.text(0, 0, "›", {
         fontFamily: "Arial Narrow, Arial, sans-serif",
@@ -299,18 +313,10 @@ export class MainMenuScene extends Phaser.Scene {
         this.optionIndex = index;
         this.applySelectedQuality();
       });
+
       this.panelGroup.add([marker, label, detail]);
       return { ...option, marker, label, detail };
     });
-
-    this.panelGroup.add([
-      this.panelBackdrop,
-      this.panelRule,
-      this.panelTitle,
-      this.panelBody,
-      this.panelSection,
-      this.panelHint
-    ]);
   }
 
   bindInput() {
@@ -355,8 +361,10 @@ export class MainMenuScene extends Phaser.Scene {
       row.marker.setVisible(selected);
       row.label.setColor(selected ? UI.white : (row.enabled ? "#c5c0bc" : UI.muted));
       row.label.setAlpha(row.enabled ? (selected ? 1 : 0.72) : 0.25);
+      this.tweens.killTweensOf(row.label);
       if (selected) selectedRow = row;
     });
+
     if (selectedRow) {
       this.selectionBack.setVisible(true);
       this.selectionRule.setVisible(true);
