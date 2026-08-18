@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
+  <title id="title">VICEBLOOD</title>
+  <desc id="desc">Distressed urban ViceBlood logo, pale VICE and blood-red BLOOD.</desc>
+  <defs>
+    <filter id="rough" x="-5%" y="-10%" width="110%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="13" result="noise"/>
+      <feColorMatrix in="noise" type="saturate" values="0" result="gray"/>
+      <feComponentTransfer in="gray" result="grain">
+        <feFuncA type="table" tableValues="0 0 .12 .22"/>
+      </feComponentTransfer>
+      <feBlend in="SourceGraphic" in2="grain" mode="multiply"/>
+    </filter>
+    <linearGradient id="viceFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0ede6"/>
+      <stop offset="1" stop-color="#bcb8b1"/>
+    </linearGradient>
+    <linearGradient id="bloodFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d3252d"/>
+      <stop offset="1" stop-color="#8e1118"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="skewX(-7)" filter="url(#rough)">
+    <text x="45" y="292"
+      font-family="Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif"
+      font-size="300"
+      font-weight="900"
+      letter-spacing="-12"
+      fill="url(#viceFill)"
+      stroke="#242329"
+      stroke-width="5"
+      paint-order="stroke">VICE</text>
+    <text x="515" y="292"
+      font-family="Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif"
+      font-size="300"
+      font-weight="900"
+      letter-spacing="-12"
+      fill="url(#bloodFill)"
+      stroke="#30070a"
+      stroke-width="5"
+      paint-order="stroke">BLOOD</text>
+  </g>
+
+  <!-- restrained fang cue on the V -->
+  <path d="M82 280 L132 280 L102 378 Z" fill="#c8c4bd" stroke="#242329" stroke-width="4"/>
+
+  <!-- hand-cut distress marks, deliberately sparse so the logo stays readable -->
+  <g opacity=".34" stroke="#09090c" stroke-width="8" stroke-linecap="round">
+    <path d="M190 105 l-16 62"/><path d="M346 86 l-24 95"/><path d="M442 142 l-16 64"/>
+    <path d="M628 94 l-18 92"/><path d="M808 112 l-20 104"/><path d="M1006 88 l-17 112"/>
+  </g>
+  <g opacity=".34" fill="#180306">
+    <circle cx="590" cy="122" r="9"/><circle cx="720" cy="212" r="6"/><circle cx="925" cy="152" r="8"/>
+    <rect x="664" y="250" width="8" height="58" rx="4"/><rect x="1036" y="230" width="9" height="72" rx="4"/>
+  </g>
+</svg>
