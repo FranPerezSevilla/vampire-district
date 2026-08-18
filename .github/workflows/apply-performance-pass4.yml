@@ -1,0 +1,173 @@
+name: Apply performance pass 4
+
+on:
+  push:
+    branches:
+      - audio/playtest-p0
+    paths:
+      - .github/workflows/apply-performance-pass4.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audio/playtest-p0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply diagnostics publish gate
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          runtime_path = Path('phaser/src/runtime/GameplayRuntimeCore.js')
+          runtime = runtime_path.read_text()
+          old_ctor = '''    this.diagnostics = new RuntimeDiagnostics({ sampleSize: 180 });
+    this.installDiagnostics();
+'''
+          new_ctor = '''    this.diagnostics = new RuntimeDiagnostics({ sampleSize: 180 });
+    this.lastDiagnosticsSnapshot = null;
+    this.installDiagnostics();
+'''
+          if old_ctor not in runtime:
+              raise SystemExit('constructor anchor not found')
+          runtime = runtime.replace(old_ctor, new_ctor, 1)
+
+          old_finish = '''    const frameMs = this.diagnostics.endFrame();
+    scene.statePublisher?.setMany?.({
+      runtimeText: this.diagnostics.summary(),
+      performanceText: `Frame ${frameMs.toFixed(2)} ms · spatial NPCs ${scene.npcSystem?.spatial?.size?.() || 0}`,
+      runtimeDiagnostics: this.diagnostics.snapshot()
+    });
+    scene.publishState();
+'''
+          new_finish = '''    const frameMs = this.diagnostics.endFrame();
+    const diagnosticsSnapshot = this.diagnostics.snapshot();
+    scene.statePublisher?.setMany?.({
+      performanceText: `Frame ${frameMs.toFixed(2)} ms · spatial NPCs ${scene.npcSystem?.spatial?.size?.() || 0}`
+    });
+    if (diagnosticsSnapshot !== this.lastDiagnosticsSnapshot) {
+      this.lastDiagnosticsSnapshot = diagnosticsSnapshot;
+      scene.statePublisher?.setMany?.({
+        runtimeText: this.diagnostics.summary(),
+        runtimeDiagnostics: diagnosticsSnapshot
+      });
+    }
+    scene.publishState();
+'''
+          if old_finish not in runtime:
+              raise SystemExit('finishFrame anchor not found')
+          runtime = runtime.replace(old_finish, new_finish, 1)
+          runtime_path.write_text(runtime)
+
+          test_path = Path('tests/runtime-performance-diagnostics.test.js')
+          tests = test_path.read_text()
+          import_line = 'import { RuntimeDiagnostics } from "../phaser/src/runtime/RuntimeDiagnostics.js";\n'
+          runtime_import = 'import { GameplayRuntime } from "../phaser/src/runtime/GameplayRuntimeCore.js";\n'
+          if runtime_import not in tests:
+              if import_line not in tests:
+                  raise SystemExit('test import anchor not found')
+              tests = tests.replace(import_line, import_line + runtime_import, 1)
+
+          marker = 'test("cached runtime diagnostics publish only when their snapshot refreshes"'
+          if marker not in tests:
+              tests += '''
+
+test("cached runtime diagnostics publish only when their snapshot refreshes", () => {
+  let currentSnapshot = { serial: 1 };
+  let diagnosticsPublishes = 0;
+  let performancePublishes = 0;
+  let summaryCalls = 0;
+  let publishStateCalls = 0;
+  const runtime = Object.create(GameplayRuntime.prototype);
+  runtime.lastDiagnosticsSnapshot = null;
+  runtime.diagnostics = {
+    endFrame: () => 12.5,
+    snapshot: () => currentSnapshot,
+    summary: () => {
+      summaryCalls += 1;
+      return "systems 1";
+    }
+  };
+  runtime.scene = {
+    taskRevealCinematic: null,
+    registry: { get: () => false },
+    updateCameraForLayer() {},
+    outskirtsSystem: { updatePresentation() {} },
+    objectiveMarkerSystem: { update() {} },
+    time: { now: 0 },
+    drawPromptMarker() {},
+    npcSystem: { spatial: { size: () => 72 } },
+    statePublisher: {
+      setMany(values) {
+        if (Object.hasOwn(values, "runtimeDiagnostics")) diagnosticsPublishes += 1;
+        if (Object.hasOwn(values, "performanceText")) performancePublishes += 1;
+      }
+    },
+    publishState() {
+      publishStateCalls += 1;
+    }
+  };
+
+  runtime.finishFrame();
+  runtime.finishFrame();
+  assert.equal(diagnosticsPublishes, 1);
+  assert.equal(summaryCalls, 1);
+  assert.equal(performancePublishes, 2);
+  assert.equal(publishStateCalls, 2);
+
+  currentSnapshot = { serial: 2 };
+  runtime.finishFrame();
+  assert.equal(diagnosticsPublishes, 2);
+  assert.equal(summaryCalls, 2);
+  assert.equal(performancePublishes, 3);
+  assert.equal(publishStateCalls, 3);
+});
+'''
+          test_path.write_text(tests)
+
+          doc_path = Path('docs/PERFORMANCE_REVIEW.md')
+          doc = doc_path.read_text()
+          if '## Pass 4 — gate cached diagnostics registry serialization' not in doc:
+              doc += '''
+
+## Pass 4 — gate cached diagnostics registry serialization
+
+**State: implemented; pending in-game hitch validation.**
+
+### Confirmed serialization hotspot
+
+Pass 2 cached the heavy nested `RuntimeDiagnostics.snapshot()` object for 250 ms, but `GameplayRuntime.finishFrame()` still submitted that same object to `RegistryPublisher` every render frame. `RegistryPublisher` detects object equality by calling `JSON.stringify()` before comparing the previous value, so the unchanged cached diagnostics object was still serialized and allocated as a large temporary string up to 60 times per second.
+
+This work is independent of which gameplay pipeline ultimately wins the browser wall-time ranking: it removes repeated serialization of an object that is explicitly immutable for the cache window.
+
+### Implementation
+
+`GameplayRuntime` now remembers the last diagnostics snapshot reference. The lightweight frame-time text remains published every frame, but `runtimeDiagnostics` and its derived runtime summary are submitted to the registry only when `RuntimeDiagnostics.snapshot()` returns a refreshed object. Normal `scene.publishState()` cadence is unchanged, so gameplay/HUD state is not throttled by this optimization.
+
+With the existing 250 ms diagnostics cache and a 60 FPS target, heavy diagnostics registry serialization attempts are bounded from roughly **60 per second to about 4 per second**, a **93.3% reduction** in this specific serialization/allocation path. The actual browser wall-time saving still requires in-game capture; this pass does not claim a frame-time percentage from source-level call-count evidence alone.
+
+### Regression contract
+
+Repeated frames that receive the same cached diagnostics snapshot must publish `performanceText` normally but must not resubmit `runtimeDiagnostics` or recompute the runtime summary. A refreshed snapshot reference must publish immediately on the next frame. Runtime diagnostic collection, pipeline sampling and normal state publication remain unchanged.
+'''
+          doc_path.write_text(doc)
+          PY
+
+          node --test tests/runtime-performance-diagnostics.test.js
+          git diff --check
+
+      - name: Commit performance pass 4
+        shell: bash
+        run: |
+          git config user.name "viceblood-automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add phaser/src/runtime/GameplayRuntimeCore.js tests/runtime-performance-diagnostics.test.js docs/PERFORMANCE_REVIEW.md
+          git commit -m "Gate cached runtime diagnostics publishing"
+          git push origin HEAD:audio/playtest-p0
