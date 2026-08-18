@@ -4,12 +4,24 @@ const KEY_SET = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w",
 const RAW_AUDIO_MASTER_GAIN = 0.20;
 const NARRATIVE_DUCK_FACTOR = 0.54;
 const MAX_VEHICLE_ENGINE_VOICES = 10;
+const VEHICLE_ENGINE_PRIORITY_PRESENCE = Object.freeze({
+  traffic: 1.08,
+  police: 1.10,
+  player: 1.28
+});
 const VEHICLE_ENGINE_PROFILES = Object.freeze({
   compact: Object.freeze({ idleHz: 48, redlineHz: 126, filterBase: 520, filterRange: 1050, volume: 0.115, wave: "sawtooth", harmonic: 0.18, samplePitch: 1.06, sampleVolume: 0.44, sampleFilterBase: 1500, sampleFilterRange: 4300 }),
   sedan: Object.freeze({ idleHz: 43, redlineHz: 112, filterBase: 470, filterRange: 930, volume: 0.112, wave: "sawtooth", harmonic: 0.17, samplePitch: 0.98, sampleVolume: 0.46, sampleFilterBase: 1400, sampleFilterRange: 3800 }),
   van: Object.freeze({ idleHz: 35, redlineHz: 88, filterBase: 390, filterRange: 760, volume: 0.125, wave: "square", harmonic: 0.14, samplePitch: 0.84, sampleVolume: 0.50, sampleFilterBase: 1050, sampleFilterRange: 3000 }),
   police: Object.freeze({ idleHz: 47, redlineHz: 128, filterBase: 540, filterRange: 1100, volume: 0.118, wave: "sawtooth", harmonic: 0.19, samplePitch: 1.08, sampleVolume: 0.46, sampleFilterBase: 1600, sampleFilterRange: 4500 })
 });
+
+export function vehicleEnginePresenceGain(priority = 0) {
+  const normalized = Math.max(0, Number(priority) || 0);
+  if (normalized >= 3) return VEHICLE_ENGINE_PRIORITY_PRESENCE.player;
+  if (normalized >= 2) return VEHICLE_ENGINE_PRIORITY_PRESENCE.police;
+  return VEHICLE_ENGINE_PRIORITY_PRESENCE.traffic;
+}
 
 class RawAudioBus {
   constructor() {
@@ -361,6 +373,7 @@ class RawAudioBus {
     const ctx = this.unlock();
     if (!ctx || !this.master) return false;
     const priority = Math.max(0, Number(options.priority) || 0);
+    const presenceGain = vehicleEnginePresenceGain(priority);
     let voice = this.vehicleEngineVoices.get(key);
     if (voice?.mode === "procedural" && this.sampleBuffers.get("vehicleEngineLoop")?.length) {
       this.stopVehicleEngine(key, { preserveStartDeadline: true });
@@ -381,7 +394,7 @@ class RawAudioBus {
     if (voice.mode === "sample") {
       const playbackRate = Math.max(0.72, Math.min(2.20, profile.samplePitch * (0.80 + rpm * 1.18)));
       const gainTarget = revealed
-        ? Math.max(0.0001, profile.sampleVolume * audibility * (0.48 + rpm * 0.22 + load * 0.30))
+        ? Math.max(0.0001, profile.sampleVolume * audibility * presenceGain * (0.48 + rpm * 0.22 + load * 0.30))
         : 0.0001;
       const filterTarget = profile.sampleFilterBase + profile.sampleFilterRange * (0.22 + rpm * 0.58 + load * 0.20);
       voice.source.playbackRate.setTargetAtTime(playbackRate, now, 0.055);
@@ -391,7 +404,7 @@ class RawAudioBus {
     } else {
       const frequency = profile.idleHz + (profile.redlineHz - profile.idleHz) * rpm;
       const gainTarget = revealed
-        ? Math.max(0.0001, profile.volume * audibility * (0.42 + rpm * 0.36 + load * 0.22))
+        ? Math.max(0.0001, profile.volume * audibility * presenceGain * (0.42 + rpm * 0.36 + load * 0.22))
         : 0.0001;
       const filterTarget = profile.filterBase + profile.filterRange * (0.30 + rpm * 0.70);
       voice.primary.frequency.setTargetAtTime(Math.max(24, frequency), now, 0.035);
@@ -404,6 +417,7 @@ class RawAudioBus {
     voice.frame = this.vehicleEngineFrame;
     voice.priority = priority;
     voice.audibility = audibility;
+    voice.presenceGain = presenceGain;
     voice.rpm = rpm;
     voice.load = load;
     voice.pan = panTarget;
@@ -451,6 +465,7 @@ class RawAudioBus {
       load: Number(voice.load) || 0,
       pan: Number(voice.pan) || 0,
       audibility: Number(voice.audibility) || 0,
+      presenceGain: Number(voice.presenceGain) || 1,
       priority: Number(voice.priority) || 0
     }));
   }
