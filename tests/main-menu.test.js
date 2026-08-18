@@ -43,6 +43,17 @@ test("first paint is a fitted ViceBlood splash instead of the legacy shell", () 
   assert.match(mainScene, /revealMenuFromSplash\(\)/);
 });
 
+test("splash waits for a stable rendered canvas before revealing the title menu", () => {
+  assert.match(appBootstrap, /MENU_LAYOUT_STABLE_FRAMES = 3/);
+  assert.match(appBootstrap, /MENU_LAYOUT_MAX_FRAMES = 18/);
+  assert.match(appBootstrap, /canvas\?\.getBoundingClientRect\?\.\(\)/);
+  assert.match(appBootstrap, /canvasFrameIsStable\(previous, current\)/);
+  assert.match(appBootstrap, /splash\.dataset\.dismissPending = "true"/);
+  assert.match(appBootstrap, /requestAnimationFrame\(sampleUntilStable\)/);
+  assert.match(appBootstrap, /Give MainMenuScene one final paint after the last stable measurement/);
+  assert.match(appBootstrap, /finishViceBloodBootSplashDismissal\(splash\)/);
+});
+
 test("the production wordmark has no full-rectangle turbulence noise", () => {
   assert.doesNotMatch(logoSvg, /feTurbulence/);
   assert.doesNotMatch(logoSvg, /filter="url\(#rough\)"/);
