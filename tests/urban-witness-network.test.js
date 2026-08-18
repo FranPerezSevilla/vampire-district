@@ -60,34 +60,35 @@ function trafficMaterializer() {
   };
 }
 
-test("the city distributes ambient civilians across every pedestrian route", () => {
+test("the city distributes routed civilians across every pedestrian route without stacking", () => {
   const activeCivilians = npcDefinitions.filter(definition => (
     definition.type === NPC_TYPES.CIVILIAN
     && definition.layer === LAYERS.STREET
     && !definition.inactive
   ));
-  assert.ok(activeCivilians.length >= pedestrianRoutes.length * AMBIENT_PEDESTRIANS_PER_ROUTE);
+  const routedCivilians = activeCivilians.filter(definition => definition.pedestrianRouteId);
+  const expectedRouted = pedestrianRoutes.reduce((total, route) => (
+    total + Math.min(AMBIENT_PEDESTRIANS_PER_ROUTE, route.points.length)
+  ), 0);
+  assert.equal(routedCivilians.length, expectedRouted);
 
   for (const route of pedestrianRoutes) {
     const expected = Math.min(AMBIENT_PEDESTRIANS_PER_ROUTE, route.points.length);
-    const ambient = activeCivilians.filter(definition => (
-      definition.ambientPopulation
-      && definition.pedestrianRouteId === route.id
-    ));
-    assert.equal(ambient.length, expected, `${route.id} should receive its ambient population`);
+    const routed = routedCivilians.filter(definition => definition.pedestrianRouteId === route.id);
+    assert.equal(routed.length, expected, `${route.id} should receive its route-capacity population`);
     assert.equal(
-      new Set(ambient.map(definition => `${definition.x}:${definition.y}`)).size,
+      new Set(routed.map(definition => `${definition.x}:${definition.y}`)).size,
       expected,
       `${route.id} pedestrians should not stack at one route origin`
     );
     assert.ok(
-      ambient.every(definition => pointOnPedestrianSurface(definition.x, definition.y)),
+      routed.every(definition => pointOnPedestrianSurface(definition.x, definition.y)),
       `${route.id} pedestrians must start on pedestrian geometry`
     );
   }
 });
 
-test("foot-police patrol routes are sourced from continuous sidewalk loops", () => {
+test("foot-police patrol routes are sourced from continuous pedestrian loops", () => {
   const zoneIds = new Set(
     pedestrianRoutes.flatMap(route => route.points.map(point => districtZoneAt(point.x, point.y).id))
   );
@@ -95,9 +96,9 @@ test("foot-police patrol routes are sourced from continuous sidewalk loops", () 
 
   for (const zoneId of zoneIds) {
     const routes = sidewalkPatrolRoutesForZone(zoneId);
-    assert.ok(routes.length > 0, `${zoneId} should expose a sidewalk patrol route`);
+    assert.ok(routes.length > 0, `${zoneId} should expose a pedestrian patrol route`);
     for (const route of routes) {
-      assert.equal(route.surface, "sidewalk");
+      assert.equal(route.surface, "pedestrian");
       assert.ok(route.points.length >= 2);
       assert.ok(route.points.every(point => pointOnPedestrianSurface(point.x, point.y)));
     }
@@ -217,7 +218,7 @@ test("an alarmed pedestrian finishes shock once, then runs monotonically to repo
     positions.every((position, index) => index === 0 || position >= positions[index - 1]),
     "the witness should not flip direction while escaping"
   );
-  assert.match(scene.lastActionText, /bolts along the pavement/i);
+  assert.match(scene.lastActionText, /bolts through pedestrian space/i);
 
   policy.destroy();
 });
