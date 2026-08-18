@@ -4,10 +4,13 @@ import test from "node:test";
 
 const bootScene = readFileSync(new URL("../phaser/src/scenes/BootScene.js", import.meta.url), "utf8");
 const mainScene = readFileSync(new URL("../phaser/src/scenes/MainMenuScene.js", import.meta.url), "utf8");
+const titleController = readFileSync(new URL("../phaser/src/ui/TitleScreenController.js", import.meta.url), "utf8");
+const titleCss = readFileSync(new URL("../phaser/title-screen.css", import.meta.url), "utf8");
 const mainEntry = readFileSync(new URL("../phaser/src/main.js", import.meta.url), "utf8");
 const appBootstrap = readFileSync(new URL("../phaser/src/app-bootstrap.js", import.meta.url), "utf8");
 const campaignBootstrap = readFileSync(new URL("../phaser/src/campaign/bootstrap.js", import.meta.url), "utf8");
 const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const phaserIndexHtml = readFileSync(new URL("../phaser/index.html", import.meta.url), "utf8");
 const logoSvg = readFileSync(new URL("../phaser/assets/ui/viceblood-logo.svg", import.meta.url), "utf8");
 
 test("normal boot routes through the ViceBlood main menu", () => {
@@ -16,11 +19,11 @@ test("normal boot routes through the ViceBlood main menu", () => {
   assert.match(mainEntry, /scene:\s*\[BootScene, MainMenuScene, GameScene, UIScene\]/);
 });
 
-test("RC browser tests retain direct gameplay boot", () => {
+test("RC browser tests retain direct gameplay boot and disable the title surface", () => {
   assert.match(bootScene, /window\.NBD_RC_TEST_MODE/);
   assert.match(bootScene, /this\.scene\.start\("GameScene"\)/);
   assert.match(bootScene, /this\.scene\.launch\("UIScene"\)/);
-  assert.match(appBootstrap, /dismissViceBloodBootSplash\(\{ immediate: true \}\)/);
+  assert.match(appBootstrap, /titleScreenController\.disableForHarness\(\)/);
 });
 
 test("title-menu boot starts a fresh police-response session without erasing long-lived exposure", () => {
@@ -29,29 +32,24 @@ test("title-menu boot starts a fresh police-response session without erasing lon
   assert.ok(campaignBootstrap.includes("scene.heatSystem?.restoreState?.(campaign.state.heat)"));
   assert.ok(campaignBootstrap.includes("scene.exposureSystem?.restoreState?.(campaign.state.exposure)"));
   assert.doesNotMatch(campaignBootstrap, /exposureSystem\?\.clear/);
-  assert.match(campaignBootstrap, /Direct gameplay\/test harness boots intentionally keep the saved Heat contract/);
 });
 
-test("first paint is a fitted ViceBlood splash instead of the legacy shell", () => {
-  assert.match(indexHtml, /body class="viceblood-booting"/);
-  assert.match(indexHtml, /id="viceblood-boot-splash"/);
-  assert.match(indexHtml, /phaser\/assets\/ui\/viceblood-logo\.svg/);
-  assert.match(indexHtml, /body\.viceblood-booting \.shell\s*\{\s*visibility:\s*hidden/);
-  assert.match(indexHtml, /object-fit:\s*contain/);
-  assert.match(indexHtml, /max-height:\s*min\(46vh, 420px\)/);
-  assert.match(appBootstrap, /NBD_DISMISS_BOOT_SPLASH/);
-  assert.match(mainScene, /revealMenuFromSplash\(\)/);
-});
+test("first paint and runtime menu use one persistent DOM title surface", () => {
+  for (const html of [indexHtml, phaserIndexHtml]) {
+    assert.match(html, /body class="viceblood-title-active"/);
+    assert.match(html, /id="viceblood-title-screen"/);
+    assert.match(html, /data-title-menu/);
+    assert.match(html, /class="viceblood-title-boot-logo"/);
+    assert.match(html, /class="viceblood-title-menu-logo"/);
+    assert.match(html, /data-title-action="new-night"/);
+    assert.match(html, /title-screen\.css/);
+  }
 
-test("splash waits for a stable rendered canvas before revealing the title menu", () => {
-  assert.match(appBootstrap, /MENU_LAYOUT_STABLE_FRAMES = 3/);
-  assert.match(appBootstrap, /MENU_LAYOUT_MAX_FRAMES = 18/);
-  assert.match(appBootstrap, /canvas\?\.getBoundingClientRect\?\.\(\)/);
-  assert.match(appBootstrap, /canvasFrameIsStable\(previous, current\)/);
-  assert.match(appBootstrap, /splash\.dataset\.dismissPending = "true"/);
-  assert.match(appBootstrap, /requestAnimationFrame\(sampleUntilStable\)/);
-  assert.match(appBootstrap, /Give MainMenuScene one final paint after the last stable measurement/);
-  assert.match(appBootstrap, /finishViceBloodBootSplashDismissal\(splash\)/);
+  assert.match(titleController, /root\.dataset\.state = "prepared"/);
+  assert.match(titleController, /root\.dataset\.state = "menu"/);
+  assert.match(titleController, /await nextFrame\(this\.window\)/);
+  assert.doesNotMatch(appBootstrap, /NBD_DISMISS_BOOT_SPLASH/);
+  assert.doesNotMatch(appBootstrap, /canvasFrameSnapshot|getBoundingClientRect|MENU_LAYOUT_STABLE_FRAMES/);
 });
 
 test("the canonical wordmark is clean ivory/red typography with no fang or distress marks", () => {
@@ -66,6 +64,16 @@ test("the canonical wordmark is clean ivory/red typography with no fang or distr
   assert.doesNotMatch(logoSvg, /fang|distress|scratch/i);
 });
 
+test("MainMenuScene coordinates a live preview instead of rendering a second UI", () => {
+  assert.match(mainScene, /TitleScreenController\.js/);
+  assert.match(mainScene, /titleScreenController\.present/);
+  assert.match(mainScene, /Phaser\.Core\?\.Events\?\.POST_RENDER/);
+  assert.match(mainScene, /READY_RENDER_FRAMES = 2/);
+  assert.doesNotMatch(mainScene, /this\.add\.(?:image|text|rectangle|graphics|container)/);
+  assert.doesNotMatch(mainScene, /visibleViewportBounds|scheduleLayout|installFullscreenShell/);
+  assert.doesNotMatch(mainScene, /getBoundingClientRect/);
+});
+
 test("main menu keeps the authoritative GameScene alive but freezes player aim", () => {
   assert.match(mainScene, /this\.scene\.launch\("GameScene"\)/);
   assert.doesNotMatch(mainScene, /this\.scene\.pause\("GameScene"\)/);
@@ -76,47 +84,38 @@ test("main menu keeps the authoritative GameScene alive but freezes player aim",
   assert.doesNotMatch(mainScene, /new\s+GameScene/);
 });
 
-test("fullscreen menu measures the real rendered canvas crop", () => {
-  assert.match(mainScene, /visibleViewportBounds\(\)/);
-  assert.match(mainScene, /canvas\?\.getBoundingClientRect\?\.\(\)/);
-  assert.match(mainScene, /const scaleX = rect\.width \/ gameWidth/);
-  assert.match(mainScene, /const top = Math\.max\(0, -rect\.top\)/);
-  assert.match(mainScene, /scheduleLayout\(\)/);
-  assert.match(mainScene, /requestAnimationFrame/);
-  assert.match(mainScene, /const safeTop = Math\.max\(this\.cssY\(view, 34\)/);
+test("viewport anchoring and full-height panels belong to CSS, not canvas crop maths", () => {
+  assert.match(titleCss, /\.viceblood-title-brand\s*\{/);
+  assert.match(titleCss, /top:\s*max\(clamp\(24px/);
+  assert.match(titleCss, /left:\s*max\(clamp\(26px/);
+  assert.match(titleCss, /\.viceblood-title-drawer\s*\{[\s\S]*inset:\s*0 auto 0 0/);
+  assert.match(titleCss, /body\.viceblood-title-active #game-root canvas/);
+  assert.match(titleCss, /width:\s*max\(100vw, 150vh\)/);
 });
 
-test("main menu remains fullscreen through the live-scene handoff", () => {
-  assert.match(mainScene, /viceblood-menu-active/);
-  assert.match(mainScene, /viceblood-world-active/);
-  assert.match(mainScene, /100vw/);
-  assert.match(mainScene, /100vh/);
-  assert.match(mainScene, /document\.body\.classList\.add\(WORLD_BODY_CLASS\)/);
-  assert.match(mainScene, /body\.\$\{WORLD_BODY_CLASS\} \.game-frame/);
-});
-
-test("render quality lives inside a drawer that bleeds through the full canvas height", () => {
-  assert.match(mainScene, /nbd-resolution-preset/);
-  assert.match(mainScene, /RENDER QUALITY/);
-  assert.match(mainScene, /VERY HIGH/);
-  assert.match(mainScene, /panelBackdrop\.setPosition\(0, 0\)\.setSize\(drawerRight, height\)/);
-  assert.match(mainScene, /panel can never stop short of the browser bottom/);
+test("render quality belongs to the DOM Options drawer", () => {
+  assert.match(titleController, /nbd-resolution-preset/);
+  assert.match(titleController, /VERY HIGH/);
+  assert.match(titleController, /openOptions\(\)/);
+  assert.match(titleController, /applySelectedQuality\(\)/);
   assert.doesNotMatch(indexHtml, /resolution-select/);
-  assert.doesNotMatch(indexHtml, /Render quality/);
+  assert.doesNotMatch(phaserIndexHtml, /resolution-select/);
+  assert.doesNotMatch(mainEntry, /bindResolutionSelector/);
 });
 
-test("NEW NIGHT hands control to the already-running GameScene without blackout or restart", () => {
+test("NEW NIGHT hands control to the same running world without blackout or restart", () => {
+  assert.match(mainScene, /await titleScreenController\.exitToGame\(\)/);
   assert.match(mainScene, /Hand control to the exact live scene/);
   assert.match(mainScene, /this\.restorePreviewControl\(\)/);
   assert.match(mainScene, /this\.scene\.launch\("UIScene"\)/);
-  assert.doesNotMatch(mainScene, /transitionCurtain/);
-  assert.doesNotMatch(mainScene, /\.fadeIn\(/);
+  assert.doesNotMatch(mainScene, /transitionCurtain|\.fadeIn\(/);
   assert.doesNotMatch(mainScene, /this\.scene\.stop\("GameScene"\)/);
   assert.doesNotMatch(mainScene, /this\.scene\.restart\("GameScene"\)/);
 });
 
-test("menu exposes the initial navigation surface", () => {
-  for (const label of ["CONTINUE", "NEW NIGHT", "OPTIONS", "CREDITS"]) {
-    assert.ok(mainScene.includes(label), `expected ${label} in main menu`);
+test("menu exposes the approved semantic navigation surface", () => {
+  for (const action of ["continue", "new-night", "options", "credits"]) {
+    assert.match(indexHtml, new RegExp(`data-title-action="${action}"`));
   }
+  assert.match(indexHtml, /data-title-action="continue"[^>]*disabled/);
 });
