@@ -85,8 +85,9 @@ export class CombatSystem {
       config.aimDeadZone ?? UNARMED_ATTACK.aimDeadZone
     );
 
-    const angle = Math.atan2(this.aimDirection.y, this.aimDirection.x) + Math.PI / 2;
-    this.scene.player?.setRotation?.(angle);
+    // Mouse aim owns weapon/reticle direction only. Keep the vampire body
+    // upright so cursor movement never rotates the whole player container.
+    this.scene.player?.setRotation?.(0);
   }
 
   updateAttack(dt, frame) {
