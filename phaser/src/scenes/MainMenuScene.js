@@ -19,7 +19,6 @@ const MENU_STYLE_ID = "viceblood-main-menu-shell";
 const UI = Object.freeze({
   white: "#f1ede6",
   muted: "#89848a",
-  faint: "#5e5960",
   red: "#a8141c",
   redBright: "#ff3d46",
   black: 0x020306,
@@ -35,6 +34,10 @@ export class MainMenuScene extends Phaser.Scene {
     this.qualityRows = [];
     this.panelMode = null;
     this.previewInputWasEnabled = true;
+    this.previewWorldInputWasEnabled = true;
+    this.previewInputSystem = null;
+    this.previewPointerWorldPoint = null;
+    this.previewCombatGraphicsWasVisible = true;
     this.transitioning = false;
   }
 
@@ -49,26 +52,17 @@ export class MainMenuScene extends Phaser.Scene {
 
     this.overlay = this.add.graphics().setDepth(1000).setScrollFactor(0);
     this.selectionBack = this.add.rectangle(0, 0, 10, 10, UI.red, 0.12)
-      .setOrigin(0, 0.5)
-      .setDepth(1007)
-      .setScrollFactor(0);
+      .setOrigin(0, 0.5).setDepth(1007).setScrollFactor(0);
     this.selectionRule = this.add.rectangle(0, 0, 4, 10, 0xff303a, 1)
-      .setOrigin(0, 0.5)
-      .setDepth(1008)
-      .setScrollFactor(0);
+      .setOrigin(0, 0.5).setDepth(1008).setScrollFactor(0);
 
     // Black transition layer deliberately sits below the logo. During NEW NIGHT
     // the city can disappear into black while the ViceBlood wordmark remains on top.
     this.transitionCurtain = this.add.rectangle(0, 0, 10, 10, 0x000000, 1)
-      .setOrigin(0, 0)
-      .setDepth(1009)
-      .setScrollFactor(0)
-      .setAlpha(0);
+      .setOrigin(0, 0).setDepth(1009).setScrollFactor(0).setAlpha(0);
 
     this.logo = this.add.image(0, 0, "viceblood-logo")
-      .setOrigin(0, 0)
-      .setDepth(1010)
-      .setScrollFactor(0);
+      .setOrigin(0, 0).setDepth(1010).setScrollFactor(0);
 
     this.kicker = this.add.text(0, 0, "AN URBAN VAMPIRE SANDBOX", {
       fontFamily: "Arial, Helvetica, sans-serif",
@@ -101,7 +95,6 @@ export class MainMenuScene extends Phaser.Scene {
       window.NBD_DISMISS_BOOT_SPLASH();
       return;
     }
-
     document.body.classList.remove("viceblood-booting");
     const splash = document.getElementById("viceblood-boot-splash");
     if (!splash) return;
@@ -166,8 +159,21 @@ export class MainMenuScene extends Phaser.Scene {
   cleanupMenuShell() {
     this.scale.off("resize", this.layout, this);
     document.body.classList.remove(MENU_BODY_CLASS);
+
+    // During NEW NIGHT the preview scene is intentionally discarded and a fresh
+    // GameScene owns input, so there is nothing from the preview to restore.
+    if (this.transitioning) return;
+
     const gameScene = this.scene.get("GameScene");
     if (gameScene?.input) gameScene.input.enabled = this.previewInputWasEnabled;
+    if (this.previewInputSystem) {
+      if (this.previewPointerWorldPoint) {
+        this.previewInputSystem.pointerWorldPoint = this.previewPointerWorldPoint;
+      }
+      this.previewInputSystem.setWorldEnabled?.(this.previewWorldInputWasEnabled);
+      this.previewInputSystem.resetWorldEdges?.();
+    }
+    gameScene?.combatSystem?.graphics?.setVisible?.(this.previewCombatGraphicsWasVisible);
   }
 
   startWorldPreview() {
@@ -177,37 +183,76 @@ export class MainMenuScene extends Phaser.Scene {
     this.time.delayedCall(50, () => {
       const gameScene = this.scene.get("GameScene");
       if (!gameScene) return;
+
       if (gameScene.input) {
         this.previewInputWasEnabled = gameScene.input.enabled;
         gameScene.input.enabled = false;
       }
+
+      // Phaser input.enabled is not enough here because ViceBlood's InputSystem
+      // listens to pointer events directly on the canvas. Freeze world input and
+      // replace pointer-to-world aim with the player's own position while the menu owns focus.
+      const inputSystem = gameScene.inputSystem;
+      if (inputSystem) {
+        this.previewInputSystem = inputSystem;
+        this.previewWorldInputWasEnabled = inputSystem.worldEnabled;
+        this.previewPointerWorldPoint = inputSystem.pointerWorldPoint;
+        inputSystem.setWorldEnabled?.(false);
+        inputSystem.reset?.();
+        inputSystem.pointerWorldPoint = () => inputSystem.playerFallbackPoint();
+      }
+
+      const combatGraphics = gameScene.combatSystem?.graphics;
+      if (combatGraphics) {
+        this.previewCombatGraphicsWasVisible = combatGraphics.visible;
+        combatGraphics.setVisible(false);
+      }
+
       this.scene.bringToTop("MainMenuScene");
     });
+  }
+
+  visibleViewportBounds() {
+    const gameWidth = Math.max(1, Number(this.scale.width) || 1);
+    const gameHeight = Math.max(1, Number(this.scale.height) || 1);
+    const viewportWidth = Math.max(1, Number(window.innerWidth) || gameWidth);
+    const viewportHeight = Math.max(1, Number(window.innerHeight) || gameHeight);
+
+    // The canvas uses CSS "cover" sizing. Compute which internal Phaser pixels are
+    // actually visible after that crop and anchor all menu UI inside those bounds.
+    const cssScale = Math.max(viewportWidth / gameWidth, viewportHeight / gameHeight);
+    const visibleWidth = Math.min(gameWidth, viewportWidth / cssScale);
+    const visibleHeight = Math.min(gameHeight, viewportHeight / cssScale);
+    return {
+      x: (gameWidth - visibleWidth) / 2,
+      y: (gameHeight - visibleHeight) / 2,
+      width: visibleWidth,
+      height: visibleHeight
+    };
   }
 
   drawOverlay() {
     const width = this.scale.width;
     const height = this.scale.height;
-    const fadeWidth = Math.round(width * 0.57);
+    const view = this.visibleViewportBounds();
+    const fadeWidth = Math.round(view.width * 0.53);
 
     this.overlay.clear();
-    this.overlay.fillStyle(UI.black, 0.22).fillRect(0, 0, width, height);
+    this.overlay.fillStyle(UI.black, 0.16).fillRect(0, 0, width, height);
 
     const strips = 48;
     for (let i = 0; i < strips; i += 1) {
       const t = i / (strips - 1);
-      const alpha = 0.94 * Math.pow(1 - t, 1.45);
-      const x = (fadeWidth / strips) * i;
+      const alpha = 0.92 * Math.pow(1 - t, 1.5);
+      const x = view.x + (fadeWidth / strips) * i;
       this.overlay.fillStyle(UI.black, alpha)
         .fillRect(x, 0, Math.ceil(fadeWidth / strips) + 2, height);
     }
 
-    this.overlay.fillStyle(0x000000, 0.28).fillRect(0, 0, width, Math.round(height * 0.06));
-    this.overlay.fillStyle(0x000000, 0.32)
-      .fillRect(0, Math.round(height * 0.94), width, Math.round(height * 0.06));
-
-    this.overlay.fillStyle(0x5b0b10, 0.42)
-      .fillRect(Math.round(width * 0.045), Math.round(height * 0.34), 2, Math.round(height * 0.43));
+    this.overlay.fillStyle(0x000000, 0.24)
+      .fillRect(0, view.y, width, Math.max(1, Math.round(view.height * 0.045)));
+    this.overlay.fillStyle(0x000000, 0.28)
+      .fillRect(0, view.y + Math.round(view.height * 0.955), width, Math.max(1, Math.round(view.height * 0.045)));
   }
 
   createMenuRows() {
@@ -264,11 +309,11 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   createPanel() {
-    this.panelBackdrop = this.add.rectangle(0, 0, 10, 10, UI.panel, 0.92).setOrigin(0, 0);
+    this.panelBackdrop = this.add.rectangle(0, 0, 10, 10, UI.panel, 0.95).setOrigin(0, 0);
     this.panelRule = this.add.rectangle(0, 0, 4, 10, 0xb91f26, 1).setOrigin(0, 0);
     this.panelTitle = this.add.text(0, 0, "", {
       fontFamily: "Arial Narrow, Arial, sans-serif",
-      fontSize: "27px",
+      fontSize: "30px",
       fontStyle: "900",
       color: UI.white,
       letterSpacing: 4
@@ -388,7 +433,6 @@ export class MainMenuScene extends Phaser.Scene {
       row.marker.setVisible(selected);
       row.label.setColor(selected ? UI.white : (row.enabled ? "#c5c0bc" : UI.muted));
       row.label.setAlpha(row.enabled ? (selected ? 1 : 0.72) : 0.25);
-      this.tweens.killTweensOf(row.label);
       if (selected) selectedRow = row;
     });
 
@@ -431,6 +475,16 @@ export class MainMenuScene extends Phaser.Scene {
     if (item.id === "credits") return this.openCredits();
   }
 
+  dimMainMenuForPanel() {
+    this.menuGroup.setAlpha(0.08);
+    this.selectionBack.setAlpha(0.02);
+    this.selectionRule.setAlpha(0.08);
+    this.logo.setAlpha(0.12);
+    this.kicker.setAlpha(0.1);
+    this.footer.setAlpha(0.08);
+    this.version.setAlpha(0.08);
+  }
+
   openOptions() {
     this.panelMode = "options";
     const currentKey = this.currentResolutionKey();
@@ -440,9 +494,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.panelSection.setVisible(true);
     this.panelHint.setText("ENTER  APPLY     ESC  BACK");
     this.panelGroup.setVisible(true);
-    this.menuGroup.setAlpha(0.12);
-    this.selectionBack.setAlpha(0.04);
-    this.selectionRule.setAlpha(0.2);
+    this.dimMainMenuForPanel();
     this.refreshOptionSelection();
   }
 
@@ -458,9 +510,7 @@ export class MainMenuScene extends Phaser.Scene {
       row.detail.setVisible(false);
     });
     this.panelGroup.setVisible(true);
-    this.menuGroup.setAlpha(0.12);
-    this.selectionBack.setAlpha(0.04);
-    this.selectionRule.setAlpha(0.2);
+    this.dimMainMenuForPanel();
   }
 
   closePanel() {
@@ -469,6 +519,10 @@ export class MainMenuScene extends Phaser.Scene {
     this.menuGroup.setAlpha(1);
     this.selectionBack.setAlpha(0.12);
     this.selectionRule.setAlpha(1);
+    this.logo.setAlpha(1);
+    this.kicker.setAlpha(1);
+    this.footer.setAlpha(1);
+    this.version.setAlpha(1);
     this.refreshSelection();
   }
 
@@ -499,45 +553,21 @@ export class MainMenuScene extends Phaser.Scene {
       });
     }
 
-    // Remove navigation chrome immediately, but deliberately keep the logo.
     this.tweens.add({
-      targets: [
-        this.menuGroup,
-        this.selectionBack,
-        this.selectionRule,
-        this.kicker,
-        this.footer,
-        this.version
-      ],
+      targets: [this.menuGroup, this.selectionBack, this.selectionRule, this.kicker, this.footer, this.version],
       alpha: 0,
       duration: 260,
       ease: "Sine.easeOut"
     });
-    this.tweens.add({
-      targets: this.overlay,
-      alpha: 0.42,
-      duration: 520,
-      ease: "Sine.easeOut"
-    });
+    this.tweens.add({ targets: this.overlay, alpha: 0.42, duration: 520, ease: "Sine.easeOut" });
 
-    // Let the city zoom underneath the wordmark first.
     this.time.delayedCall(390, () => {
-      this.tweens.add({
-        targets: this.transitionCurtain,
-        alpha: 0.78,
-        duration: 430,
-        ease: "Sine.easeIn"
-      });
+      this.tweens.add({ targets: this.transitionCurtain, alpha: 0.78, duration: 430, ease: "Sine.easeIn" });
     });
 
     // Logo survives most of the zoom and only leaves during its final beat.
     this.time.delayedCall(560, () => {
-      this.tweens.add({
-        targets: this.logo,
-        alpha: 0,
-        duration: 500,
-        ease: "Sine.easeIn"
-      });
+      this.tweens.add({ targets: this.logo, alpha: 0, duration: 500, ease: "Sine.easeIn" });
     });
 
     this.time.delayedCall(900, () => {
@@ -558,8 +588,6 @@ export class MainMenuScene extends Phaser.Scene {
     this.scene.launch("GameScene");
     this.scene.launch("UIScene");
 
-    // Restart the authoritative game under black so the menu-preview zoom never
-    // creates a visible state/layout jump. The fresh game then fades into control.
     this.time.delayedCall(90, () => {
       const freshGame = this.scene.get("GameScene");
       freshGame?.cameras?.main?.fadeIn(420, 0, 0, 0);
@@ -570,21 +598,24 @@ export class MainMenuScene extends Phaser.Scene {
   layout() {
     const width = this.scale.width;
     const height = this.scale.height;
-    const left = Math.max(48, Math.round(width * 0.062));
-    const panelWidth = Math.round(width * 0.47);
+    const view = this.visibleViewportBounds();
+    const left = view.x + Math.max(42, Math.round(view.width * 0.045));
+    const top = view.y + Math.max(26, Math.round(view.height * 0.035));
 
     this.drawOverlay();
     this.transitionCurtain.setPosition(0, 0).setSize(width, height);
 
-    const logoWidth = Math.min(Math.round(width * 0.37), 620);
-    this.logo.setDisplaySize(logoWidth, logoWidth / 3);
-    this.logo.setPosition(left, Math.round(height * 0.085));
-    this.kicker.setPosition(left + 4, Math.round(height * 0.285));
+    // Anchor the brand to the actually visible top-left, not the cropped canvas edge.
+    const logoWidth = Math.min(Math.round(view.width * 0.31), 560);
+    const logoHeight = logoWidth / 3.12;
+    this.logo.setDisplaySize(logoWidth, logoHeight);
+    this.logo.setPosition(left, top);
+    this.kicker.setPosition(left + 4, top + logoHeight + Math.max(8, Math.round(view.height * 0.012)));
 
-    const menuTop = Math.round(height * 0.45);
-    const rowGap = Math.max(50, Math.round(height * 0.078));
-    const selectionWidth = Math.min(330, Math.round(width * 0.27));
-    const selectionHeight = Math.max(42, Math.round(height * 0.052));
+    const menuTop = view.y + Math.round(view.height * 0.40);
+    const rowGap = Math.max(48, Math.round(view.height * 0.085));
+    const selectionWidth = Math.min(340, Math.round(view.width * 0.27));
+    const selectionHeight = Math.max(42, Math.round(view.height * 0.058));
 
     this.menuRows.forEach((row, index) => {
       const y = menuTop + rowGap * index;
@@ -594,27 +625,31 @@ export class MainMenuScene extends Phaser.Scene {
     this.selectionBack.setSize(selectionWidth, selectionHeight);
     this.selectionRule.setSize(4, selectionHeight);
 
-    this.footer.setPosition(left + 4, height - 46);
-    this.version.setPosition(left + 4, height - 26);
+    this.footer.setPosition(left + 4, view.y + view.height - 36);
+    this.version.setPosition(left + 4, view.y + view.height - 18);
 
-    const boxWidth = Math.min(470, Math.round(width * 0.36));
-    const boxHeight = Math.min(390, Math.round(height * 0.58));
-    const boxX = Math.max(left, Math.round(panelWidth * 0.12));
-    const boxY = Math.round(height * 0.33);
+    // OPTIONS/CREDITS are a full-height left drawer, rather than a floating card.
+    const boxX = view.x;
+    const boxY = view.y;
+    const boxWidth = Math.min(620, Math.round(view.width * 0.42));
+    const boxHeight = view.height;
+    const innerX = boxX + Math.max(38, Math.round(boxWidth * 0.09));
+    const panelTop = boxY + Math.max(58, Math.round(boxHeight * 0.075));
+
     this.panelBackdrop.setPosition(boxX, boxY).setSize(boxWidth, boxHeight);
-    this.panelRule.setPosition(boxX, boxY).setSize(4, boxHeight);
-    this.panelTitle.setPosition(boxX + 30, boxY + 26);
-    this.panelBody.setPosition(boxX + 30, boxY + 78).setWordWrapWidth(boxWidth - 60);
-    this.panelSection.setPosition(boxX + 30, boxY + 145);
-    this.panelHint.setPosition(boxX + 30, boxY + boxHeight - 38);
+    this.panelRule.setPosition(boxX + boxWidth - 4, boxY).setSize(4, boxHeight);
+    this.panelTitle.setPosition(innerX, panelTop);
+    this.panelBody.setPosition(innerX, panelTop + 64).setWordWrapWidth(boxWidth - (innerX - boxX) * 2);
+    this.panelSection.setPosition(innerX, panelTop + 150);
+    this.panelHint.setPosition(innerX, boxY + boxHeight - 42);
 
-    const optionsTop = boxY + 184;
-    const optionGap = 40;
+    const optionsTop = panelTop + 194;
+    const optionGap = Math.max(40, Math.round(boxHeight * 0.052));
     this.qualityRows.forEach((row, index) => {
       const y = optionsTop + optionGap * index;
-      row.marker.setPosition(boxX + 30, y);
-      row.label.setPosition(boxX + 54, y);
-      row.detail.setPosition(boxX + boxWidth - 30, y);
+      row.marker.setPosition(innerX, y);
+      row.label.setPosition(innerX + 24, y);
+      row.detail.setPosition(boxX + boxWidth - Math.max(32, Math.round(boxWidth * 0.08)), y);
     });
 
     this.refreshSelection();
