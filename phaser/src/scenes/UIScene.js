@@ -353,7 +353,13 @@ export class UIScene extends Phaser.Scene {
   handleDomKeyDown(event) {
     if (event.repeat || isTextEntryTarget(event.target)) return;
     const code = event.code;
-    if (event.defaultPrevented && code !== "Escape") return;
+    const gameScene = this.scene.get("GameScene");
+    const hornBinding = this.registry.get("inputBindings")?.bindings?.horn;
+    const hornOwnsH = code === "KeyH"
+      && String(hornBinding || "H").toUpperCase() === "H"
+      && Boolean(gameScene?.vehicleSystem?.isDriving?.());
+    const uiOwnsH = code === "KeyH" && !hornOwnsH;
+    if (event.defaultPrevented && code !== "Escape" && !uiOwnsH) return;
 
     // Let the browser activate focused buttons and links with Enter/Space. The
     // corresponding click handler owns those controls and must not be pre-empted.
@@ -379,7 +385,7 @@ export class UIScene extends Phaser.Scene {
         handled = true;
       }
     } else if (code === "KeyH") {
-      if (!this.ledgerOpen && !this.introOpen && !this.resultOpen && !this.registry.get("taskRevealActive")) {
+      if (uiOwnsH && !this.ledgerOpen && !this.introOpen && !this.resultOpen && !this.registry.get("taskRevealActive")) {
         this.togglePause();
         handled = true;
       }

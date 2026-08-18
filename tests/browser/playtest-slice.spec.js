@@ -68,14 +68,14 @@ test("playtest mode delivers a start, objective loop, result and feedback path",
       pedestrianCount: window.NBD_PEDESTRIANS.snapshot().count,
       ambientCount: scene.npcSystem.npcs.filter(npc => npc.ambientPopulation && !npc.inactive).length,
       trafficWitnessCount: window.NBD_TRAFFIC_WITNESSES.snapshot().candidateCount,
-      sidewalkPatrols: patrolRoutes.filter(route => route.surface === "sidewalk").length,
+      pedestrianPatrols: patrolRoutes.filter(route => route.surface === "pedestrian").length,
       roadFallbacks: patrolRoutes.filter(route => route.surface === "road-fallback").length
     };
   });
   expect(cityConsequences.pedestrianCount).toBeGreaterThanOrEqual(30);
   expect(cityConsequences.ambientCount).toBeGreaterThanOrEqual(30);
   expect(cityConsequences.trafficWitnessCount).toBeGreaterThan(0);
-  expect(cityConsequences.sidewalkPatrols).toBeGreaterThan(0);
+  expect(cityConsequences.pedestrianPatrols).toBeGreaterThan(0);
   expect(cityConsequences.roadFallbacks).toBe(0);
 
   await page.evaluate(() => {
