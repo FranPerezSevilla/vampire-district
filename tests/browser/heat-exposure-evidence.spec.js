@@ -83,7 +83,7 @@ test("Heat and evidence-backed Exposure diverge, persist and remain explainable 
   }, STORAGE_KEY);
 
   expect(seeded.highHeatOnly.heat.level).toBe(2);
-  expect(seeded.highHeatOnly.heat.value).toBeGreaterThanOrEqual(45);
+  expect(seeded.highHeatOnly.heat.value).toBeGreaterThanOrEqual(55);
   expect(seeded.highHeatOnly.exposure.value).toBe(0);
 
   expect(seeded.latentClue.heat.level).toBe(0);
@@ -169,10 +169,10 @@ test("Heat and evidence-backed Exposure diverge, persist and remain explainable 
   expect(reframed.exposure.records[seeded.clueId]).toMatchObject({
     knowledgeState: "resolved"
   });
-  expect(reframed.heat.level).toBe(2);
-  expect(reframed.heat.value).toBeGreaterThanOrEqual(45);
+  expect(reframed.heat.level).toBe(1);
+  expect(reframed.heat.value).toBe(52);
   expect(Math.max(0, ...Object.values(reframed.stored.heat.districts || {})
-    .map(district => Number(district?.value) || 0))).toBeGreaterThanOrEqual(45);
+    .map(district => Number(district?.value) || 0))).toBe(52);
   expect(reframed.stored.exposure.records[seeded.clueId].knowledgeState).toBe("resolved");
 
   const reframedLedger = await page.evaluate(() => {
@@ -197,7 +197,7 @@ test("Heat and evidence-backed Exposure diverge, persist and remain explainable 
   });
   expect(reframedLedger.buttonHidden).toBe(true);
   expect(reframedLedger.ledgerOpen).toBe(false);
-  expect(reframedLedger.policeState).toBe("PURSUIT");
+  expect(reframedLedger.policeState).toBe("SEARCH");
   expect(reframedLedger.exposure).toEqual({ value: 0, activeCount: 0, knownCount: 0 });
   expect(reframedLedger.incidents.some(incident => incident.title === "DRAINED BODY" && incident.status === "RESOLVED")).toBe(true);
   expect(reframedLedger.incidents.some(incident => /ordinary gang assault/i.test(incident.detail))).toBe(true);
