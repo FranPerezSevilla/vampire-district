@@ -354,7 +354,7 @@ test("Blood Sense, contextual Whisper and Give In form one evidence-limited pred
   expect(beast.hitStunned).toBe(false);
   expect(beast.missionFailed).toBe(false);
   expect(beast.watcherAlarmed).toBe(true);
-  expect(beast.evidence.some(record => record.knowledgeState === "institutional")).toBe(true);
+  expect(beast.evidence.some(record => record.knowledgeState === "latent")).toBe(true);
 
   await expect(page.locator('[data-power="beast"]')).toHaveClass(/active/);
   await expect(page.locator('[data-power="beast"] .power-state')).toContainText("ACTIVE");
