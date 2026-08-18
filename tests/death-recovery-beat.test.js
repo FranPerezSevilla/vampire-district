@@ -23,14 +23,14 @@ test("death beat is idempotent and advances from master dialogue to black", () =
   let result = advanceDeathSequence(state, DEATH_BEAT.masterHoldMs - 1);
   assert.equal(result.fadeCompleted, false);
   assert.equal(state.phase, DEATH_SEQUENCE_PHASES.MASTER);
-  assert.equal(deathDialogueAlpha(state), 1);
-  assert.equal(deathFadeAlpha(state), 0.28);
+  assert.equal(deathDialogueAlpha(state), 0);
+  assert.equal(deathFadeAlpha(state), 0);
 
   result = advanceDeathSequence(state, 2);
   assert.equal(state.phase, DEATH_SEQUENCE_PHASES.FADE);
   assert.equal(result.fadeCompleted, false);
-  assert.ok(deathDialogueAlpha(state) < 1);
-  assert.ok(deathFadeAlpha(state) > 0.28);
+  assert.equal(deathDialogueAlpha(state), 0);
+  assert.ok(deathFadeAlpha(state) > 0);
 
   result = advanceDeathSequence(state, DEATH_BEAT.fadeMs);
   assert.equal(state.phase, DEATH_SEQUENCE_PHASES.BLACK);
@@ -43,10 +43,18 @@ test("death beat is idempotent and advances from master dialogue to black", () =
   assert.equal(state.phase, DEATH_SEQUENCE_PHASES.BLACK);
 });
 
-test("runtime death presentation listens to the authoritative player death event and fades audio", () => {
+test("runtime death presentation uses the conventional Sire dialogue after a readable zoom hold", () => {
   const code = source("phaser/src/combat/DeathRecoverySystem.js");
   assert.match(code, /"player:died"/);
-  assert.match(code, /"Pathetic\."/);
+  assert.ok(DEATH_BEAT.zoomHoldMs >= 1500);
+  assert.match(DEATH_BEAT.masterLine, /predator.*prey/i);
+  assert.equal(DEATH_BEAT.masterSpeaker, "YOUR SIRE · IN YOUR MIND");
+  assert.match(code, /tutorialDirector/);
+  assert.match(code, /zoomToPlayer/);
+  assert.match(code, /showDialogue/);
+  assert.match(code, /kind: "thought"/);
+  assert.match(code, /DEATH_BEAT\.zoomHoldMs/);
+  assert.doesNotMatch(code, /scene\.add\.text\(0, 0, "Pathetic\."/);
   assert.match(code, /death:sequence-started/);
   assert.match(code, /death:fade-complete/);
   assert.match(code, /RawAudio\.stopAllVehicleEngines/);

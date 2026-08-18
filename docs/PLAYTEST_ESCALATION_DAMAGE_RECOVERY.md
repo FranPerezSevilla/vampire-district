@@ -132,8 +132,10 @@ At wanted level 2, one eligible chasing officer may visibly aim and fire control
 
 - The authoritative `player:died` event starts one idempotent death sequence; repeated death events cannot restart or duplicate it.
 - Conflicting interaction/feeding/combat actions are closed or cancelled immediately, while the existing dead-state input lock remains authoritative.
-- A fixed screen-space master popup shows **“Pathetic.”** for 1.1 seconds.
-- The scene then fades to full black over 0.9 seconds while the RawAudio world and narrative masters ramp down together; active vehicle-engine, skid and feeding loops are stopped before the fade.
+- Death first eases the camera into the same close player zoom used by the conventional dialogue director, then holds on the defeated body for **2.0 seconds** before anyone speaks.
+- The Sire then uses the **normal in-game thought-dialogue presentation**, not a bespoke death popup: **“Pathetic. You are supposed to be the predator, not the prey.”**
+- Only after that dialogue is completed does the scene fade to full black over 0.9 seconds while the RawAudio world and narrative masters ramp down together; active vehicle-engine, skid and feeding loops are stopped before the fade.
+- Hospital recovery restores the pre-death camera zoom/follow framing before control returns.
 - The death presentation continues updating even after `worldEnabled` is false, so the lethal input lock cannot freeze the transition itself.
 - On reaching full black the system emits one `death:fade-complete` event and the same recovery owner consumes that edge exactly once.
 
@@ -151,6 +153,7 @@ At wanted level 2, one eligible chasing officer may visibly aim and fire control
 ### Acceptance
 
 - The death sequence cannot trigger twice or leave input/audio loops running.
+- Defeat has a readable zoom-and-hold beat before the Sire speaks, and the dialogue uses the established conventional thought-bubble style rather than a one-off death panel.
 - The player always reaches a valid hospital spawn.
 - The lackey, blood bag and replacement vehicle are present and usable.
 - Active police do not immediately kill the player again during the recovery beat.

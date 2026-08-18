@@ -4,7 +4,6 @@ import {
   HOSPITAL_RECOVERY,
   advanceDeathSequence,
   createDeathSequenceState,
-  deathDialogueAlpha,
   deathFadeAlpha,
   startDeathSequence
 } from "../data/death-recovery.js";
@@ -38,6 +37,9 @@ export class DeathRecoverySystem {
     this.bagContainer = null;
     this.recoveryVehicleId = HOSPITAL_RECOVERY.replacementVehicleId;
     this.audioSnapshot = null;
+    this.masterPresentationComplete = false;
+    this.masterPresentationPromise = null;
+    this.cameraZoomSnapshot = null;
 
     this.backdrop = scene.add.rectangle(0, 0, 1, 1, 0x000000, 1)
       .setOrigin(0, 0)
@@ -45,26 +47,6 @@ export class DeathRecoverySystem {
       .setDepth(980)
       .setAlpha(0)
       .setVisible(false);
-    this.panel = scene.add.rectangle(0, 0, 330, 92, 0x09080d, 0.94)
-      .setScrollFactor(0)
-      .setDepth(981)
-      .setStrokeStyle(1, 0x8a1735, 0.85)
-      .setVisible(false);
-    this.speakerLabel = scene.add.text(0, 0, "MASTER", {
-      fontFamily: "Arial, Helvetica, sans-serif",
-      fontSize: "11px",
-      fontStyle: "bold",
-      color: "#d77a91",
-      letterSpacing: 2
-    }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(982).setVisible(false);
-    this.dialogueLabel = scene.add.text(0, 0, "Pathetic.", {
-      fontFamily: "Arial, Helvetica, sans-serif",
-      fontSize: "24px",
-      fontStyle: "italic",
-      color: "#f4e9ec"
-    }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(982).setVisible(false);
-    this.dialogueLabel.setResolution?.(3);
-    this.dialogueLabel.setStroke?.("#05060b", 2);
 
     this.handlePlayerDeath = payload => this.start(payload);
     scene.events?.on?.("player:died", this.handlePlayerDeath);
@@ -78,6 +60,9 @@ export class DeathRecoverySystem {
     this.audioFadeStarted = false;
     this.fadeCompleteEmitted = false;
     this.recovered = false;
+    this.masterPresentationComplete = false;
+    this.masterPresentationPromise = null;
+    this.cameraZoomSnapshot = Number(this.scene.cameras?.main?.zoom) || null;
     this.audioSnapshot = {
       master: Number(RawAudio.master?.gain?.value),
       narrative: Number(RawAudio.narrativeMaster?.gain?.value)
@@ -100,18 +85,31 @@ export class DeathRecoverySystem {
     this.scene.statePublisher?.setMany?.({
       deathSequenceActive: true,
       deathSequencePhase: this.state.phase,
-      deathSequenceText: "MASTER · Pathetic."
+      deathSequenceText: "Death sequence · closing in"
     });
     this.scene.events?.emit?.("death:sequence-started", {
       ...this.deathPayload,
       phase: this.state.phase
     });
     this.syncPresentation();
+    this.masterPresentationPromise = this.runMasterDeathBeat();
     return true;
   }
 
   update(dt) {
     if (!this.isActive()) return;
+    if (this.state.phase === DEATH_SEQUENCE_PHASES.MASTER && !this.masterPresentationComplete) {
+      this.syncPresentation();
+      this.scene.statePublisher?.setMany?.({
+        deathSequenceActive: true,
+        deathSequencePhase: this.state.phase,
+        deathSequenceText: "Death sequence · sire"
+      });
+      return;
+    }
+    if (this.state.phase === DEATH_SEQUENCE_PHASES.MASTER) {
+      this.state.elapsedMs = DEATH_BEAT.masterHoldMs;
+    }
     const before = this.state.phase;
     const result = advanceDeathSequence(this.state, Math.max(0, Number(dt) || 0) * 1000);
 
@@ -125,7 +123,7 @@ export class DeathRecoverySystem {
       deathSequencePhase: this.state.phase,
       deathSequenceText: this.state.phase === DEATH_SEQUENCE_PHASES.BLACK
         ? "Death sequence · black"
-        : "MASTER · Pathetic."
+        : "Death sequence · fading"
     });
 
     if (result.fadeCompleted && !this.fadeCompleteEmitted) {
@@ -135,6 +133,47 @@ export class DeathRecoverySystem {
         phase: this.state.phase
       });
       this.completeHospitalRecovery();
+    }
+  }
+
+  waitForPresentation(ms) {
+    const duration = Math.max(0, Number(ms) || 0);
+    if (!duration) return Promise.resolve();
+    return new Promise(resolve => {
+      if (this.scene.time?.delayedCall) {
+        this.scene.time.delayedCall(duration, resolve);
+        return;
+      }
+      globalThis.setTimeout?.(resolve, duration);
+    });
+  }
+
+  async runMasterDeathBeat() {
+    const director = this.scene.tutorialDirector;
+    try {
+      director?.setTip?.("", "");
+      director?.hideDialogue?.();
+      if (director?.zoomToPlayer) await director.zoomToPlayer();
+      await this.waitForPresentation(DEATH_BEAT.zoomHoldMs);
+
+      if (director?.showDialogue) {
+        await director.showDialogue({
+          speaker: DEATH_BEAT.masterSpeaker,
+          text: DEATH_BEAT.masterLine,
+          kind: "thought",
+          target: this.scene.player
+        });
+      } else {
+        this.scene.lastActionText = `${DEATH_BEAT.masterSpeaker}: ${DEATH_BEAT.masterLine}`;
+        await this.waitForPresentation(DEATH_BEAT.fallbackDialogueMs);
+      }
+      return true;
+    } catch (error) {
+      console.error("Death sire dialogue failed", error);
+      return false;
+    } finally {
+      director?.hideDialogue?.();
+      this.masterPresentationComplete = true;
     }
   }
 
@@ -325,7 +364,20 @@ export class DeathRecoverySystem {
       this.scene.player.body.setVelocity?.(0, 0);
     }
     this.scene.playerDamageSystem?.revive?.({ vitality: HOSPITAL_RECOVERY.reviveVitality });
-    this.scene.cameras?.main?.startFollow?.(this.scene.player, true, 0.12, 0.12);
+    const camera = this.scene.cameras?.main;
+    const worldBounds = this.scene.physics?.world?.bounds;
+    if (camera) {
+      if (worldBounds) {
+        camera.setBounds?.(
+          Number(worldBounds.x) || 0,
+          Number(worldBounds.y) || 0,
+          Number(worldBounds.width) || camera.width,
+          Number(worldBounds.height) || camera.height
+        );
+      }
+      if (this.cameraZoomSnapshot) camera.setZoom?.(this.cameraZoomSnapshot);
+      camera.startFollow?.(this.scene.player, true, 0.12, 0.12);
+    }
 
     this.placeLackey(spawn);
     this.placeBloodBag(spawn);
@@ -333,6 +385,9 @@ export class DeathRecoverySystem {
     this.restoreAudio();
 
     this.state = createDeathSequenceState();
+    this.masterPresentationPromise = null;
+    this.masterPresentationComplete = false;
+    this.cameraZoomSnapshot = null;
     this.syncPresentation();
     this.scene.registry?.set?.("deathSequenceActive", false);
     this.scene.statePublisher?.setMany?.({
@@ -398,11 +453,9 @@ export class DeathRecoverySystem {
   syncPresentation() {
     const width = Math.max(1, Number(this.scene.scale?.width) || Number(this.scene.cameras?.main?.width) || 960);
     const height = Math.max(1, Number(this.scene.scale?.height) || Number(this.scene.cameras?.main?.height) || 540);
-    const centerX = width / 2;
-    const centerY = height / 2;
     const overlayAlpha = deathFadeAlpha(this.state);
-    const dialogueAlpha = deathDialogueAlpha(this.state);
-    const show = this.state.phase !== DEATH_SEQUENCE_PHASES.IDLE;
+    const show = this.state.phase === DEATH_SEQUENCE_PHASES.FADE
+      || this.state.phase === DEATH_SEQUENCE_PHASES.BLACK;
 
     this.backdrop
       .setPosition(0, 0)
@@ -410,11 +463,6 @@ export class DeathRecoverySystem {
       .setDisplaySize(width, height)
       .setAlpha(overlayAlpha)
       .setVisible(show);
-
-    const dialogueVisible = dialogueAlpha > 0.001;
-    this.panel.setPosition(centerX, centerY).setAlpha(dialogueAlpha).setVisible(dialogueVisible);
-    this.speakerLabel.setPosition(centerX, centerY - 23).setAlpha(dialogueAlpha).setVisible(dialogueVisible);
-    this.dialogueLabel.setPosition(centerX, centerY + 13).setAlpha(dialogueAlpha).setVisible(dialogueVisible);
   }
 
   isActive() {
@@ -428,10 +476,8 @@ export class DeathRecoverySystem {
   destroy() {
     this.scene.events?.off?.("player:died", this.handlePlayerDeath);
     if (this.scene.deathRecoverySystem === this) this.scene.deathRecoverySystem = null;
+    this.scene.tutorialDirector?.hideDialogue?.();
     this.backdrop?.destroy?.();
-    this.panel?.destroy?.();
-    this.speakerLabel?.destroy?.();
-    this.dialogueLabel?.destroy?.();
     this.bagContainer?.destroy?.();
   }
 }

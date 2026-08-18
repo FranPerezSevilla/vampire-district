@@ -6,8 +6,12 @@ export const DEATH_SEQUENCE_PHASES = Object.freeze({
 });
 
 export const DEATH_BEAT = Object.freeze({
-  masterHoldMs: 1100,
-  fadeMs: 900
+  zoomHoldMs: 2000,
+  masterHoldMs: 1,
+  fadeMs: 900,
+  fallbackDialogueMs: 1800,
+  masterSpeaker: "YOUR SIRE · IN YOUR MIND",
+  masterLine: "Pathetic. You are supposed to be the predator, not the prey."
 });
 
 export const HOSPITAL_RECOVERY = Object.freeze({
@@ -103,16 +107,12 @@ export function deathFadeAlpha(state, timings = DEATH_BEAT) {
   if (!state) return 0;
   if (state.phase === DEATH_SEQUENCE_PHASES.IDLE) return 0;
   if (state.phase === DEATH_SEQUENCE_PHASES.BLACK) return 1;
-  if (state.phase === DEATH_SEQUENCE_PHASES.MASTER) return 0.28;
+  if (state.phase === DEATH_SEQUENCE_PHASES.MASTER) return 0;
   const duration = Math.max(1, finite(timings.fadeMs, DEATH_BEAT.fadeMs));
-  const progress = Math.max(0, Math.min(1, state.elapsedMs / duration));
-  return 0.28 + progress * 0.72;
+  return Math.max(0, Math.min(1, state.elapsedMs / duration));
 }
 
-export function deathDialogueAlpha(state, timings = DEATH_BEAT) {
-  if (!state || state.phase === DEATH_SEQUENCE_PHASES.IDLE || state.phase === DEATH_SEQUENCE_PHASES.BLACK) return 0;
-  if (state.phase === DEATH_SEQUENCE_PHASES.MASTER) return 1;
-  const duration = Math.max(1, finite(timings.fadeMs, DEATH_BEAT.fadeMs));
-  const progress = Math.max(0, Math.min(1, state.elapsedMs / duration));
-  return Math.max(0, 1 - progress * 1.65);
+export function deathDialogueAlpha() {
+  // Death now reuses the conventional TutorialDirector dialogue surface.
+  return 0;
 }
