@@ -8,11 +8,12 @@ const MENU_LAYOUT_EPSILON_PX = 0.5;
 window.NBD_RC_TEST_MODE = bootProfile.enableHarness;
 window.NBD_PLAYTEST_ASSET_VERSION = PLAYTEST_ASSET_VERSION;
 
-const PHASER_SCRIPT_SOURCES = Object.freeze([
-  Object.freeze({
-    kind: "local-node-modules",
-    src: new URL("../../node_modules/phaser/dist/phaser.min.js", import.meta.url).href
-  }),
+const LOCAL_PHASER_SOURCE = Object.freeze({
+  kind: "local-node-modules",
+  src: new URL("../../node_modules/phaser/dist/phaser.min.js", import.meta.url).href
+});
+
+const CDN_PHASER_SOURCES = Object.freeze([
   Object.freeze({
     kind: "jsdelivr",
     src: `https://cdn.jsdelivr.net/npm/phaser@${PHASER_VERSION}/dist/phaser.min.js`
@@ -22,6 +23,22 @@ const PHASER_SCRIPT_SOURCES = Object.freeze([
     src: `https://unpkg.com/phaser@${PHASER_VERSION}/dist/phaser.min.js`
   })
 ]);
+
+function localPhaserAllowed() {
+  const protocol = window.location?.protocol || "";
+  const hostname = window.location?.hostname || "";
+  return protocol === "file:"
+    || hostname === "localhost"
+    || hostname === "127.0.0.1"
+    || hostname === "::1"
+    || hostname === "[::1]";
+}
+
+function phaserScriptSources() {
+  return localPhaserAllowed()
+    ? [LOCAL_PHASER_SOURCE, ...CDN_PHASER_SOURCES]
+    : CDN_PHASER_SOURCES;
+}
 
 let playtestBootCover = null;
 
@@ -135,7 +152,7 @@ async function ensurePhaser() {
     });
   }
   let lastError = null;
-  for (const source of PHASER_SCRIPT_SOURCES) {
+  for (const source of phaserScriptSources()) {
     try {
       await loadScript(source);
       if (window.Phaser) {
