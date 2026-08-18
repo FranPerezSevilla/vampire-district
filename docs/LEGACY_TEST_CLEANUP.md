@@ -16,7 +16,7 @@ Each group must be reviewed against current runtime authority before its tests a
 
 ## Increment 1 — ballistic `bulletHitBody` authority
 
-**State: updated on PR #55.**
+**State: updated and CI-verified on PR #55.**
 
 The `bulletHitBody` audio regression was legitimately stale. Player pistol fire no longer resolves an instantaneous direct `candidate` hit. `CombatSystem` now creates a travelling ballistic projectile and resolves the first actual impact in `completeProjectileImpact()`.
 
@@ -31,7 +31,7 @@ No runtime or audio behavior was changed by this cleanup.
 
 ## Increment 2 — urban pedestrian/witness authority
 
-**State: updated on PR #55.**
+**State: updated and CI-verified on PR #55.**
 
 The three `urban-witness-network` failures were legitimately stale after the citywide pedestrian-route expansion and generalized pedestrian-surface work. The runtime already had matching focused coverage in `pedestrian-route-expansion.test.js`; the older network test was still asserting the previous sidewalk-only vocabulary and a pre-capacity population formula.
 
@@ -46,7 +46,7 @@ No runtime, population density, police routing or witness behavior was changed b
 
 ## Increment 3 — vehicle impact Heat and exit-corridor authority
 
-**State: updated on PR #55; final CI verification required.**
+**State: updated and CI-verified on PR #55.**
 
 The remaining five failures were legitimately stale rather than evidence of five runtime regressions. Four assertions still hard-coded an older vehicle-pedestrian Heat curve and older threshold ceilings, while the vehicle-exit fixture only provided a 16-unit usable corridor after an anchor even though the current safety authority requires an 18-unit sampled escape corridor.
 
@@ -62,7 +62,7 @@ No runtime, Heat tuning, vehicle geometry or exit behavior was changed by this c
 
 ## Increment 4 — civilian traffic collision Heat authority
 
-**State: updated on PR #55; CI verification required.**
+**State: updated and CI-verified on PR #55.**
 
 The browser regression for a hard collision between the player's car and materialized civilian traffic still expected the collision to raise local police Heat. That expectation conflicts with the accepted target-aware vehicle consequence rule: ordinary transient/systemic civilian car-to-car contact is mundane, while contact with a police vehicle is the explicit Heat-producing exception.
 
@@ -76,6 +76,26 @@ The regression keeps the useful collision coverage and now verifies the current 
 
 No runtime collision, Heat, damage, pooling or police behavior was changed by this cleanup.
 
-## Remaining cleanup
+## Increment 5 — predator-power Vitality and evidence authority
 
-No known legacy **unit-test** authority groups remain. Browser-system cleanup is still being completed independently: after the civilian-traffic Heat regression, the remaining known failure is the separate `predator-powers` Hunger/health expectation cluster. That cluster must be reviewed against current Vitality/Hunger authority in a later increment rather than bundled into this one.
+**State: updated and fully CI-verified on PR #55.**
+
+The last known browser-system regression mixed two superseded assumptions into `predator-powers.spec.js`.
+
+First, the critical-pressure fixture still treated enemy damage as a Hunger increase. The current combat authority deliberately separates those resources: incoming enemy damage reduces `PlayerDamageSystem` Vitality, while Hunger remains the Beast-pressure/vulnerability resource. The regression now starts at Hunger 99 and Vitality 100, applies a controlled five-point melee strike through `damagePlayer()`, and verifies Vitality 95, Hunger still 99, normal hit stun, and no mission failure.
+
+Second, the Give In assertion assumed that any witnessed supernatural display immediately created institutional Exposure evidence. `WitnessSystem.onSuspiciousPower()` instead creates visible-power evidence through the actual observer authority. A civilian who sees the act creates latent evidence; it becomes institutional immediately only when an eligible police/hunter observer actually sees it, or later through the normal reporting path. The deterministic fixture has a civilian witness, so the regression now requires the correct latent record while still proving that the witness alarms and Give In's combat/movement modifiers activate.
+
+No predator-power, damage, Hunger, Exposure, witness, police or mission runtime behavior changed in this increment.
+
+## Final automated regression state
+
+The cleanup is complete for every known stale authority cluster on the current PR #55 head. CI run `32128631484` on code head `e9483f424f41cba22de7c02a7f447dffb097418b` is fully green:
+
+- **479/479 unit tests pass**;
+- browser boot passes;
+- browser campaign passes;
+- browser systems shards 1/3, 2/3 and 3/3 all pass;
+- City Compiler validation passes with **0 errors / 0 warnings** and score **87.9 / A**.
+
+The final rule remains unchanged: a future failing regression must be investigated against current runtime authority. A green baseline is not permission to rewrite a legitimate new failure as “legacy.”
