@@ -6,9 +6,11 @@ export const DEATH_SEQUENCE_PHASES = Object.freeze({
 });
 
 export const DEATH_BEAT = Object.freeze({
-  zoomHoldMs: 2000,
+  audioAttenuateMs: 460,
+  audioAttenuatedFactor: 0.28,
+  blackoutFadeMs: 780,
   masterHoldMs: 1,
-  fadeMs: 900,
+  fadeMs: 1,
   fallbackDialogueMs: 1800,
   masterSpeaker: "YOUR SIRE · IN YOUR MIND",
   masterLine: "Pathetic. You are supposed to be the predator, not the prey."
@@ -117,6 +119,6 @@ export function deathFadeAlpha(state, timings = DEATH_BEAT) {
 }
 
 export function deathDialogueAlpha() {
-  // Death now reuses the conventional TutorialDirector dialogue surface.
+  // Death reuses the conventional TutorialDirector dialogue surface.
   return 0;
 }
