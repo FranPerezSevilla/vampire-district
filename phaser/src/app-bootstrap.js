@@ -2,8 +2,8 @@ import { BOOT_MODES, bootProfile } from "./boot/BootProfile.js";
 
 const PHASER_VERSION = "3.90.0";
 const PLAYTEST_ASSET_VERSION = "2026-08-03-vehicle-incidents-1";
-const MENU_LAYOUT_STABLE_FRAMES = 3;
-const MENU_LAYOUT_MAX_FRAMES = 18;
+const MENU_LAYOUT_STABLE_FRAMES = 5;
+const MENU_LAYOUT_MAX_FRAMES = 120;
 const MENU_LAYOUT_EPSILON_PX = 0.5;
 window.NBD_RC_TEST_MODE = bootProfile.enableHarness;
 window.NBD_PLAYTEST_ASSET_VERSION = PLAYTEST_ASSET_VERSION;
@@ -54,11 +54,53 @@ function canvasFrameSnapshot() {
   };
 }
 
-function canvasFrameIsStable(previous, current) {
+function frameSnapshotIsStable(previous, current, keys) {
   if (!previous || !current) return false;
-  return ["left", "top", "width", "height"].every(key => (
+  return keys.every(key => (
     Math.abs(previous[key] - current[key]) <= MENU_LAYOUT_EPSILON_PX
   ));
+}
+
+function canvasFrameIsStable(previous, current) {
+  return frameSnapshotIsStable(previous, current, ["left", "top", "width", "height"]);
+}
+
+function mainMenuPresentationSnapshot() {
+  const scene = window.NBD_PHASER_GAME?.scene?.getScene?.("MainMenuScene");
+  const logo = scene?.logo;
+  const menuGroup = scene?.menuGroup;
+  const firstRow = scene?.menuRows?.find?.(row => row?.enabled && row?.label);
+  const view = scene?.visibleViewportBounds?.();
+
+  if (!scene || !logo || !menuGroup || !firstRow?.label || !view) return null;
+  if (!logo.visible || logo.alpha < 0.99 || !(logo.displayWidth > 0) || !(logo.displayHeight > 0)) return null;
+  if (!menuGroup.visible || menuGroup.alpha < 0.99) return null;
+
+  const viewRight = view.x + view.width;
+  const viewBottom = view.y + view.height;
+  const logoRight = logo.x + logo.displayWidth;
+  const logoBottom = logo.y + logo.displayHeight;
+  const insetTolerance = 2;
+  const logoInsideVisibleViewport = logo.x >= view.x - insetTolerance
+    && logo.y >= view.y - insetTolerance
+    && logoRight <= viewRight + insetTolerance
+    && logoBottom <= viewBottom + insetTolerance;
+  if (!logoInsideVisibleViewport) return null;
+
+  return {
+    logoX: logo.x,
+    logoY: logo.y,
+    logoWidth: logo.displayWidth,
+    logoHeight: logo.displayHeight,
+    navX: firstRow.label.x,
+    navY: firstRow.label.y
+  };
+}
+
+function mainMenuPresentationIsStable(previous, current) {
+  return frameSnapshotIsStable(previous, current, [
+    "logoX", "logoY", "logoWidth", "logoHeight", "navX", "navY"
+  ]);
 }
 
 function finishViceBloodBootSplashDismissal(splash) {
@@ -86,22 +128,39 @@ function dismissViceBloodBootSplash({ immediate = false } = {}) {
   if (splash.classList.contains("is-leaving") || splash.dataset.dismissPending === "true") return;
   splash.dataset.dismissPending = "true";
 
-  let previous = null;
-  let stableFrames = 0;
+  let previousCanvas = null;
+  let previousMenu = null;
+  let canvasStableFrames = 0;
+  let menuStableFrames = 0;
   let sampledFrames = 0;
 
   const sampleUntilStable = () => {
     if (!splash.isConnected) return;
-    const current = canvasFrameSnapshot();
+    const currentCanvas = canvasFrameSnapshot();
+    const currentMenu = mainMenuPresentationSnapshot();
     sampledFrames += 1;
 
-    if (current && canvasFrameIsStable(previous, current)) stableFrames += 1;
-    else stableFrames = 0;
-    previous = current;
+    if (currentCanvas && canvasFrameIsStable(previousCanvas, currentCanvas)) canvasStableFrames += 1;
+    else canvasStableFrames = 0;
+    previousCanvas = currentCanvas;
 
-    if (stableFrames >= MENU_LAYOUT_STABLE_FRAMES || sampledFrames >= MENU_LAYOUT_MAX_FRAMES) {
-      // Give MainMenuScene one final paint after the last stable measurement.
-      requestAnimationFrame(() => finishViceBloodBootSplashDismissal(splash));
+    if (currentMenu && mainMenuPresentationIsStable(previousMenu, currentMenu)) menuStableFrames += 1;
+    else menuStableFrames = 0;
+    previousMenu = currentMenu;
+
+    const presentationStable = canvasStableFrames >= MENU_LAYOUT_STABLE_FRAMES
+      && menuStableFrames >= MENU_LAYOUT_STABLE_FRAMES;
+    const timedOut = sampledFrames >= MENU_LAYOUT_MAX_FRAMES;
+
+    if (presentationStable || timedOut) {
+      if (timedOut && !presentationStable) {
+        console.warn("ViceBlood menu reveal timed out before presentation stability; revealing with best-known layout.");
+      }
+      // Keep the splash opaque for two final paints after the canvas AND title UI are stable.
+      // This guarantees the top-left runtime wordmark is already present when the splash leaves.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => finishViceBloodBootSplashDismissal(splash));
+      });
       return;
     }
     requestAnimationFrame(sampleUntilStable);
