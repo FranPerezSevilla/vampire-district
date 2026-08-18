@@ -27,7 +27,7 @@ Normal boot:
 BootScene
   -> MainMenuScene
       -> switch page shell to fullscreen menu mode
-      -> hide the gameplay HUD / page chrome
+      -> hide gameplay HUD and page chrome
       -> launch GameScene
       -> keep GameScene running so city streaming, traffic and NPCs populate
       -> disable GameScene input while the title screen owns controls
