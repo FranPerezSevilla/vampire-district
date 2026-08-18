@@ -18,6 +18,7 @@ The visual target is **urban noir rather than gothic fantasy**: ViceBlood opens 
 - No ornate gothic frames, cathedral imagery, bats or dripping-blood UI chrome.
 - The city remains clearly visible; the left noir veil exists only to protect menu readability.
 - Mouse movement must never rotate the player or move the gameplay reticle while the title screen owns input.
+- Loading the title screen always begins from a **neutral police-response state**: no inherited Wanted level or active pursuit from the previous browser session.
 
 ## Runtime implementation
 
@@ -33,12 +34,34 @@ HTML first paint
       -> switch shell to fullscreen menu mode
       -> hide gameplay HUD/page chrome
       -> launch the authoritative GameScene
+      -> campaign runtime clears prior-session Heat/Wanted before it can spawn a response
       -> keep ambient city streaming/traffic alive
       -> freeze Phaser input + ViceBlood world input + pointer aim
       -> reveal the composed menu
 ```
 
 `GameScene` remains the single gameplay authority. The title screen never creates a duplicate city simulation.
+
+## Session-start neutrality
+
+The title screen is treated as the boundary between playable sessions.
+
+Police `Heat` / `Wanted` is short-lived response state. Restoring it during the live title preview would allow a previous run's pursuit to immediately deploy foot police or response cruisers behind the menu. Therefore, when `MainMenuScene` is the active boot route, campaign bootstrap **does not restore the saved Heat snapshot**. Instead it calls `HeatSystem.clear()` after attaching the campaign authority.
+
+That reset is persisted immediately, so reloading the browser cannot revive the same pursuit again.
+
+This is deliberately narrower than a campaign reset. The title load still preserves:
+
+- Exposure and evidence;
+- wallet/cash;
+- faction/contact reputation;
+- territory state;
+- inventory/loadout persistence;
+- other durable campaign/world state.
+
+Direct gameplay / RC harness boots that bypass `MainMenuScene` retain the existing saved-Heat restore contract. This keeps test/scenario entry deterministic and makes the title-screen reset an explicit product behavior rather than a global persistence change.
+
+If `CONTINUE` later gains stronger resume semantics, that menu action can deliberately opt into a different policy. For the current main-menu flow, opening ViceBlood never begins inside an inherited active police chase.
 
 ### NEW NIGHT: seamless handoff
 
@@ -123,6 +146,8 @@ The HTML splash constrains the wordmark with `object-fit: contain` and a viewpor
 - Main-menu wordmark is complete and visibly inset from the top-left browser edge.
 - `OPTIONS` / `CREDITS` backdrop reaches the absolute top and bottom of the viewport.
 - Moving the mouse over the menu never affects player aim.
+- Loading the menu shows no inherited Wanted level, active foot pursuit or police response cruisers from the previous session.
+- Durable Exposure/evidence and campaign progression are not erased by the title-screen reset.
 - `NEW NIGHT` reveals the same running city with no blackout and no simulation reset.
 - HUD appears only after the world handoff.
 - Gameplay remains fullscreen after the title UI disappears.
