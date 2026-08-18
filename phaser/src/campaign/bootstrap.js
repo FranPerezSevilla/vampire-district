@@ -20,6 +20,29 @@ function publishCampaign(scene, checkpoints) {
   }
 }
 
+function titleMenuOwnsSession(game) {
+  return !window.NBD_RC_TEST_MODE
+    && Boolean(game?.scene?.isActive?.("MainMenuScene"));
+}
+
+function restoreCampaignAttention(scene, game) {
+  if (titleMenuOwnsSession(game)) {
+    // The title screen is the beginning of a new playable session. Heat/Wanted is
+    // moment-to-moment police response state, so never resurrect the previous
+    // browser session's pursuit into the live menu city. HeatSystem.clear also
+    // writes the neutral state back to campaign storage, preventing a later reload
+    // from reviving the same pursuit.
+    scene.heatSystem?.clear?.("Main menu starts a fresh police-response session.");
+  } else {
+    // Direct gameplay/test harness boots intentionally keep the saved Heat contract.
+    scene.heatSystem?.restoreState?.(campaign.state.heat);
+  }
+
+  // Exposure/evidence is long-lived campaign consequence, not active pursuit state.
+  // Preserve it across title loads along with wallet, reputation, territory, etc.
+  scene.exposureSystem?.restoreState?.(campaign.state.exposure);
+}
+
 function attachCampaignRuntime() {
   const game = window.NBD_PHASER_GAME;
   const scene = game?.scene?.getScene?.("GameScene");
@@ -35,8 +58,7 @@ function attachCampaignRuntime() {
   if (scene.campaignCheckpointSystem) return;
 
   scene.campaignSystem = campaign;
-  scene.heatSystem?.restoreState?.(campaign.state.heat);
-  scene.exposureSystem?.restoreState?.(campaign.state.exposure);
+  restoreCampaignAttention(scene, game);
   const deferredCheckpoint = campaignEntry.deferCheckpointRestore
     ? campaign.state.checkpoints.latest
     : null;

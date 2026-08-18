@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
+  <title id="title">VICEBLOOD</title>
+  <desc id="desc">Clean ViceBlood wordmark with ivory VICE and deep-red BLOOD.</desc>
+  <text x="28" y="300"
+    font-family="Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Narrow', sans-serif"
+    font-size="310"
+    font-weight="900"
+    letter-spacing="-13"
+    fill="#f0ede6">VICE</text>
+  <text x="493" y="300"
+    font-family="Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Narrow', sans-serif"
+    font-size="310"
+    font-weight="900"
+    letter-spacing="-13"
+    fill="#c8101d">BLOOD</text>
+</svg>

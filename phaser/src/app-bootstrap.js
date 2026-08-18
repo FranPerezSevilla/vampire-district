@@ -2,6 +2,9 @@ import { BOOT_MODES, bootProfile } from "./boot/BootProfile.js";
 
 const PHASER_VERSION = "3.90.0";
 const PLAYTEST_ASSET_VERSION = "2026-08-03-vehicle-incidents-1";
+const MENU_LAYOUT_STABLE_FRAMES = 3;
+const MENU_LAYOUT_MAX_FRAMES = 18;
+const MENU_LAYOUT_EPSILON_PX = 0.5;
 window.NBD_RC_TEST_MODE = bootProfile.enableHarness;
 window.NBD_PLAYTEST_ASSET_VERSION = PLAYTEST_ASSET_VERSION;
 
@@ -21,6 +24,79 @@ const PHASER_SCRIPT_SOURCES = Object.freeze([
 ]);
 
 let playtestBootCover = null;
+
+function canvasFrameSnapshot() {
+  const canvas = document.querySelector("#game-root canvas");
+  const rect = canvas?.getBoundingClientRect?.();
+  if (!rect || !(rect.width > 0) || !(rect.height > 0)) return null;
+  return {
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    height: rect.height
+  };
+}
+
+function canvasFrameIsStable(previous, current) {
+  if (!previous || !current) return false;
+  return ["left", "top", "width", "height"].every(key => (
+    Math.abs(previous[key] - current[key]) <= MENU_LAYOUT_EPSILON_PX
+  ));
+}
+
+function finishViceBloodBootSplashDismissal(splash) {
+  // Make the fully framed Phaser scene visible while the splash is still opaque,
+  // then fade only the splash. This prevents one visible frame of provisional menu layout.
+  document.body.classList.remove("viceblood-booting");
+  if (!splash) return;
+  splash.classList.add("is-leaving");
+  window.setTimeout(() => splash.remove(), 520);
+}
+
+function dismissViceBloodBootSplash({ immediate = false } = {}) {
+  const splash = document.getElementById("viceblood-boot-splash");
+
+  if (immediate) {
+    document.body.classList.remove("viceblood-booting");
+    splash?.remove();
+    return;
+  }
+
+  if (!splash) {
+    document.body.classList.remove("viceblood-booting");
+    return;
+  }
+  if (splash.classList.contains("is-leaving") || splash.dataset.dismissPending === "true") return;
+  splash.dataset.dismissPending = "true";
+
+  let previous = null;
+  let stableFrames = 0;
+  let sampledFrames = 0;
+
+  const sampleUntilStable = () => {
+    if (!splash.isConnected) return;
+    const current = canvasFrameSnapshot();
+    sampledFrames += 1;
+
+    if (current && canvasFrameIsStable(previous, current)) stableFrames += 1;
+    else stableFrames = 0;
+    previous = current;
+
+    if (stableFrames >= MENU_LAYOUT_STABLE_FRAMES || sampledFrames >= MENU_LAYOUT_MAX_FRAMES) {
+      // Give MainMenuScene one final paint after the last stable measurement.
+      requestAnimationFrame(() => finishViceBloodBootSplashDismissal(splash));
+      return;
+    }
+    requestAnimationFrame(sampleUntilStable);
+  };
+
+  requestAnimationFrame(sampleUntilStable);
+}
+
+window.NBD_DISMISS_BOOT_SPLASH = dismissViceBloodBootSplash;
+
+// Automation/direct-game boot must not leave the title splash covering the harness.
+if (bootProfile.enableHarness) dismissViceBloodBootSplash({ immediate: true });
 
 function publishPhaserSource({ kind, src = null, version = PHASER_VERSION }) {
   const detail = Object.freeze({ kind, src, version });
@@ -106,6 +182,7 @@ function installPlaytestIntroPolicy(UIScene) {
 
 function renderBootFailure(error) {
   console.error("Viceblood failed to boot", error);
+  dismissViceBloodBootSplash({ immediate: true });
   const root = document.getElementById("game-root");
   if (!root) return;
   root.innerHTML = `

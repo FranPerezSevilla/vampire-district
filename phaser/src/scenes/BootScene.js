@@ -8,7 +8,12 @@ export class BootScene extends Phaser.Scene {
     this.registry.set("currentLayer", 2);
     this.registry.set("statusText", "Rooftop refuge · movement sandbox");
 
-    this.scene.start("GameScene");
-    this.scene.launch("UIScene");
+    if (window.NBD_RC_TEST_MODE) {
+      this.scene.start("GameScene");
+      this.scene.launch("UIScene");
+      return;
+    }
+
+    this.scene.start("MainMenuScene");
   }
 }
