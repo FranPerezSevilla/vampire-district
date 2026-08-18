@@ -28,3 +28,20 @@ test("development still retains the pinned local Phaser source and CDN fallback"
   assert.match(bootstrap, /cdn\.jsdelivr\.net\/npm\/phaser@\$\{PHASER_VERSION\}/);
   assert.match(bootstrap, /unpkg\.com\/phaser@\$\{PHASER_VERSION\}/);
 });
+
+test("boot splash waits for the runtime logo and navigation to stabilize", async () => {
+  const bootstrap = await source();
+
+  assert.match(bootstrap, /MENU_LAYOUT_STABLE_FRAMES = 5/);
+  assert.match(bootstrap, /MENU_LAYOUT_MAX_FRAMES = 120/);
+  assert.match(bootstrap, /function mainMenuPresentationSnapshot\(\)/);
+  assert.match(bootstrap, /getScene\?\.\("MainMenuScene"\)/);
+  assert.match(bootstrap, /const logo = scene\?\.logo/);
+  assert.match(bootstrap, /const firstRow = scene\?\.menuRows\?\.find/);
+  assert.match(bootstrap, /logoInsideVisibleViewport/);
+  assert.match(bootstrap, /mainMenuPresentationIsStable/);
+  assert.match(bootstrap, /canvasStableFrames >= MENU_LAYOUT_STABLE_FRAMES/);
+  assert.match(bootstrap, /menuStableFrames >= MENU_LAYOUT_STABLE_FRAMES/);
+  assert.match(bootstrap, /two final paints after the canvas AND title UI are stable/);
+  assert.match(bootstrap, /requestAnimationFrame\(\(\) => \{\s*requestAnimationFrame/);
+});
