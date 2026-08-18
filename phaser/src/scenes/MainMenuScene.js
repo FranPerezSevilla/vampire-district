@@ -502,13 +502,13 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   finishNightTransition() {
-    const gameScene = this.scene.get("GameScene");
     if (!this.scene.isActive("GameScene")) this.scene.launch("GameScene");
     if (!this.scene.isActive("UIScene")) this.scene.launch("UIScene");
 
     // Hand control to the exact live scene that has been running behind the title.
     // There is deliberately no blackout, camera fade, GameScene stop or GameScene restart.
     this.restorePreviewControl();
+    const gameScene = this.scene.get("GameScene");
     gameScene?.registry?.set?.("mainMenuActive", false);
     document.body.classList.remove(MENU_BODY_CLASS);
     document.body.classList.add(WORLD_BODY_CLASS);
