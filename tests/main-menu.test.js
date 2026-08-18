@@ -73,6 +73,9 @@ test("MainMenuScene reveals the DOM menu from the authoritative GameScene create
   assert.match(mainScene, /gameScene\.events\.once\(createEvent, this\.previewCreateListener\)/);
   assert.match(mainScene, /titleScreenController\.present/);
   assert.match(mainScene, /this\.scene\.isActive\("GameScene"\) && gameScene\.inputSystem/);
+  assert.match(mainScene, /NBD_MAIN_MENU_READINESS/);
+  assert.match(mainScene, /publishReadiness\("game-scene-created"\)/);
+  assert.match(mainScene, /publishReadiness\("title-presented"\)/);
 
   const registerIndex = mainScene.indexOf("gameScene.events.once(createEvent, this.previewCreateListener)");
   const launchIndex = mainScene.indexOf('this.scene.launch("GameScene")');
