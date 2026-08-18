@@ -8,65 +8,93 @@ The visual target is **urban noir rather than gothic fantasy**: ViceBlood opens 
 
 ## Locked direction
 
-- Fullscreen presentation while the title screen is active: no outer web frame, top bar, build notes or gameplay HUD.
+- Fullscreen presentation: no outer web frame, top bar or build notes.
 - Pure top-down city imagery, consistent with the game itself.
 - Large `VICEBLOOD` wordmark: pale distressed `VICE`, deep red `BLOOD`, restrained fang cue.
-- In the actual main menu the wordmark remains visible at the **top-left**, above the navigation.
+- The main-menu wordmark remains fully visible at the **top-left**, above navigation.
 - Minimal main navigation: `CONTINUE`, `NEW NIGHT`, `OPTIONS`, `CREDITS`.
 - `NEW NIGHT` is the default selection.
-- `OPTIONS` and `CREDITS` use a full-height left drawer rather than a floating card.
+- `OPTIONS` and `CREDITS` use a left drawer that covers the **entire browser-visible height**.
 - No ornate gothic frames, cathedral imagery, bats or dripping-blood UI chrome.
 - The city remains clearly visible; the left noir veil exists only to protect menu readability.
-- Menu copy stays crisp and scalable rather than relying on raster button art.
+- Mouse movement must never rotate the player or move the gameplay reticle while the title screen owns input.
 
 ## Runtime implementation
 
-`MainMenuScene` remains a presentation/composition layer over the authoritative game world.
+`MainMenuScene` is only a presentation/composition layer over the authoritative `GameScene`.
 
 Normal boot:
 
 ```text
 HTML first paint
-  -> fullscreen ViceBlood splash (no legacy shell/HUD flash)
+  -> fitted fullscreen ViceBlood splash
   -> BootScene
   -> MainMenuScene
-      -> switch page shell to fullscreen menu mode
-      -> hide gameplay HUD and page chrome
-      -> launch GameScene
-      -> keep GameScene running so city streaming and ambient traffic populate
-      -> disable GameScene world input and pointer aim while the title screen owns controls
-      -> reveal menu once the composed scene is ready
-
-NEW NIGHT
-  -> fade menu controls
-  -> start the live-city camera zoom
-  -> keep the ViceBlood logo visible through most of the zoom
-  -> fade the logo into black
-  -> restart GameScene from a clean state
-  -> launch UIScene
-  -> restore normal page/game presentation
-  -> stop MainMenuScene
+      -> switch shell to fullscreen menu mode
+      -> hide gameplay HUD/page chrome
+      -> launch the authoritative GameScene
+      -> keep ambient city streaming/traffic alive
+      -> freeze Phaser input + ViceBlood world input + pointer aim
+      -> reveal the composed menu
 ```
 
-`GameScene` remains the single gameplay authority. The menu does not reimplement traffic, NPCs, city geometry or player state.
+`GameScene` remains the single gameplay authority. The title screen never creates a duplicate city simulation.
 
-The live preview deliberately keeps enough simulation running to make the city feel alive, but both Phaser scene input and ViceBlood's canvas-level `InputSystem` world controls are blocked. The preview temporarily resolves mouse aim to the player's own position and hides combat aim graphics, so moving the mouse over menu items cannot rotate the character or move the gameplay reticle.
+### NEW NIGHT: seamless handoff
 
-The fullscreen canvas uses cover sizing and can crop the internal 3:2 render surface on widescreen displays. Menu layout therefore computes the **actually visible internal viewport** and anchors the logo, navigation, footer and full-height drawers inside those visible bounds. This prevents the top-left wordmark from disappearing above the crop.
+The menu preview is now the actual scene that becomes gameplay.
 
-The release-candidate browser test profile (`window.NBD_RC_TEST_MODE`) keeps direct `GameScene + UIScene` boot so the existing automated gameplay suite does not depend on menu navigation.
+```text
+NEW NIGHT
+  -> menu/logo/veil slide and fade away
+  -> NO black curtain
+  -> NO camera fade-to-black
+  -> NO GameScene stop
+  -> NO GameScene restart
+  -> launch UIScene on top of the already-running world
+  -> restore InputSystem, pointer aim and combat presentation
+  -> switch from fullscreen-menu CSS to fullscreen-world CSS
+  -> stop only MainMenuScene
+```
 
-## V1 interaction
+This means cars, pedestrians and the visible city do not jump to a fresh state when the player starts. The world seen behind the menu is literally the world that receives control.
 
-Main navigation:
+The fullscreen presentation also remains active after the handoff, so removing the menu does not cause the canvas to snap back into the old framed web-demo layout. The gameplay HUD becomes visible on top of the same fullscreen world.
 
-- `Up` / `W`: previous item.
-- `Down` / `S`: next item.
-- `Enter` / `Space`: activate.
-- `Esc`: close options/credits.
-- Mouse hover/click is supported for menu UI only; gameplay aim is frozen while the title screen is active.
+## Input ownership
 
-`CONTINUE` remains intentionally disabled until save-slot/menu semantics are connected deliberately to campaign persistence.
+The live city must continue to feel alive without letting the hidden player react to menu input.
+
+While `MainMenuScene` is active:
+
+- Phaser `GameScene.input.enabled` is false.
+- ViceBlood `InputSystem.worldEnabled` is false.
+- `pointerWorldPoint` is temporarily pinned to the player's own position.
+- combat aim graphics are hidden.
+- city streaming, traffic and other ambient systems may continue updating.
+
+At the seamless handoff all captured input state is restored before `MainMenuScene` stops.
+
+## Fullscreen crop / safe viewport
+
+The internal game surface is 3:2 while desktop browser windows are commonly wider. The canvas therefore uses CSS cover sizing and is vertically cropped on widescreen displays.
+
+The menu must **not infer that crop from aspect-ratio maths alone**. Browser CSS layout is the source of truth.
+
+`MainMenuScene.visibleViewportBounds()` reads the actual post-layout canvas rectangle with `canvas.getBoundingClientRect()` and maps the browser-visible intersection back into internal Phaser coordinates. Logo, navigation, footer and panel content are anchored to those measured bounds.
+
+Layout is recalculated on:
+
+- Phaser resize;
+- browser resize;
+- `visualViewport` resize when available;
+- two animation frames after entering fullscreen, so CSS cover sizing has definitely settled.
+
+The wordmark has an explicit safe inset from the measured visible top and left edges.
+
+## Full-height submenu contract
+
+`OPTIONS` and `CREDITS` content is positioned within the measured visible crop, but their dark backdrop and red boundary rule deliberately extend through the **entire internal canvas height**. Because the canvas itself covers the browser, the drawer cannot end early above the bottom edge due to rounding or crop calculations.
 
 ## Options
 
@@ -79,35 +107,31 @@ Available presets:
 - `VERY HIGH` — 1440 × 960.
 - `ULTRA` — 1920 × 1280.
 
-The option writes the existing `nbd-resolution-preset` preference and reloads, so there is still one resolution authority rather than a second settings system.
+The option writes the existing `nbd-resolution-preset` preference and reloads, preserving one resolution authority.
 
 ## Art
 
 Runtime logo: `phaser/assets/ui/viceblood-logo.svg`.
 
-The loader path is rooted from the production page (`phaser/assets/...`) so Netlify/GitHub Pages resolve the asset correctly.
+The SVG intentionally avoids full-surface procedural turbulence. The earlier `feTurbulence` treatment generated a visible rectangular noisy field behind the wordmark in browsers. Distress is represented only by authored scratches/marks, leaving the surrounding asset transparent.
 
-The SVG intentionally avoids full-surface procedural turbulence. The earlier `feTurbulence` treatment generated a visible rectangular noisy field behind the wordmark in browsers. Distress is now represented only by authored scratches/marks, keeping the surrounding asset genuinely transparent. The SVG viewBox also includes explicit side breathing room to prevent edge clipping.
+The HTML splash constrains the wordmark with `object-fit: contain` and a viewport-relative maximum height so it remains complete across aspect ratios.
 
-The HTML splash constrains the logo with `object-fit: contain` and a viewport-relative maximum height so the wordmark remains complete across widescreen and taller displays.
+## Acceptance checklist
 
-## Visual acceptance history
-
-The first Netlify preview was rejected because it rendered inside the old web frame, exposed gameplay HUD chrome, kept render quality outside `OPTIONS`, failed to load the logo, over-darkened the city and paused streaming too early.
-
-Later review identified four additional presentation defects that are now part of the contract:
-
-- splash wordmark must never be cropped;
-- the logo asset must have no rectangular noise field;
-- the final main-menu wordmark stays visible at top-left despite fullscreen canvas cropping;
-- submenu panels use the full visible vertical dimension;
-- mouse movement must never control player aim while the main menu owns input.
+- Splash wordmark is complete and has no rectangular noise field.
+- Main-menu wordmark is complete and visibly inset from the top-left browser edge.
+- `OPTIONS` / `CREDITS` backdrop reaches the absolute top and bottom of the viewport.
+- Moving the mouse over the menu never affects player aim.
+- `NEW NIGHT` reveals the same running city with no blackout and no simulation reset.
+- HUD appears only after the world handoff.
+- Gameplay remains fullscreen after the title UI disappears.
 
 ## Future polish
 
 - Lock a deliberately authored rooftop/city camera composition rather than relying on the initial free-roam spawn camera.
 - Add menu-specific ambient audio mix and rare city one-shots.
-- Add restrained steam/rain/neon motion where the gameplay scene does not already provide it.
+- Add restrained steam/rain/neon motion where gameplay does not already provide it.
 - Connect `CONTINUE` to canonical campaign persistence.
 - Add audio/accessibility options once their runtime owners expose stable menu-facing settings.
 
