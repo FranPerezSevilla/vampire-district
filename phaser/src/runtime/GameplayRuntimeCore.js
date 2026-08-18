@@ -29,6 +29,8 @@ function splitActions(options = []) {
 }
 
 function nearest(scene, options = []) {
+  const bestOption = scene.interactionSystem?.bestOption;
+  if (typeof bestOption === "function") return bestOption.call(scene.interactionSystem, options);
   return scene.interactionSystem.sortOptions(options)[0] || null;
 }
 
@@ -82,6 +84,7 @@ export class GameplayRuntime {
     diagnostics.claim("GameScene.update", "GameplayRuntime");
     diagnostics.claim("GameScene.updatePlayerMovement", "GameScene");
     diagnostics.claim("InteractionSystem.sortOptions", "InteractionSystem");
+    diagnostics.claim("InteractionSystem.bestOption", "InteractionSystem");
     diagnostics.claim("PowersSystem.update", "PowersSystem");
     diagnostics.claim("NpcSystem.updateNpc", "NpcSystem");
     diagnostics.claim("WitnessSystem.drawMarkers", "WitnessSystem");
@@ -187,7 +190,7 @@ export class GameplayRuntime {
     );
 
     if (!combatBusy && frame.traversePressed && !scene.feedingSystem.isActive()) {
-      const option = nearest(scene, split.movement);
+      const option = scene.nearestMovement;
       if (option) {
         scene.interactionSystem.runOption(option);
         scene.nearestMovement = null;
