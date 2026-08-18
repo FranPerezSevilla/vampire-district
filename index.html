@@ -6,85 +6,54 @@
   <title>Viceblood</title>
   <link rel="stylesheet" href="phaser/styles.css" />
   <link rel="stylesheet" href="phaser/release-candidate.css" />
+  <link rel="stylesheet" href="phaser/title-screen.css" />
   <style>
     :root { --game-width: 1440px; --game-height: 960px; }
     html, body { margin: 0; min-height: 100%; background: #020306; }
     .shell { width: min(var(--game-width), calc(100vw - 28px)); }
     .game-frame, #game-root { width: var(--game-width); max-width: 100%; min-height: 0; aspect-ratio: 3 / 2; }
     #game-root canvas { width: var(--game-width) !important; max-width: 100% !important; height: auto !important; }
-
-    /* First paint belongs to ViceBlood, before Phaser or any application JS runs. */
-    body.viceblood-booting {
-      overflow: hidden;
-      background: #020306;
-    }
-    body.viceblood-booting .shell {
-      visibility: hidden;
-    }
-    #viceblood-boot-splash {
-      position: fixed;
-      inset: 0;
-      z-index: 2147483000;
-      display: grid;
-      place-items: center;
-      box-sizing: border-box;
-      padding: clamp(28px, 5vw, 88px);
-      overflow: hidden;
-      pointer-events: none;
-      opacity: 1;
-      background:
-        radial-gradient(circle at 50% 44%, rgba(82, 8, 14, .14), transparent 36%),
-        linear-gradient(180deg, #050609 0%, #020306 74%, #000 100%);
-      transition: opacity 460ms cubic-bezier(.22,.61,.36,1);
-    }
-    #viceblood-boot-splash::after {
-      content: "";
-      position: absolute;
-      left: 18vw;
-      right: 18vw;
-      bottom: 10vh;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(151, 18, 26, .48), transparent);
-      opacity: .72;
-    }
-    #viceblood-boot-splash.is-leaving {
-      opacity: 0;
-    }
-    .viceblood-boot-lockup {
-      position: relative;
-      width: min(72vw, 1080px);
-      max-width: 100%;
-      text-align: center;
-      transform: translateY(-1vh);
-    }
-    .viceblood-boot-logo {
-      display: block;
-      width: 100%;
-      max-width: 100%;
-      max-height: min(46vh, 420px);
-      height: auto;
-      object-fit: contain;
-      object-position: center;
-      filter: drop-shadow(0 18px 34px rgba(0,0,0,.62));
-    }
-    .viceblood-boot-tagline {
-      margin-top: clamp(10px, 1.7vh, 20px);
-      color: rgba(225, 218, 215, .48);
-      font: 800 clamp(9px, .75vw, 12px)/1.2 Arial, Helvetica, sans-serif;
-      letter-spacing: .38em;
-      text-transform: uppercase;
-    }
-    @media (max-aspect-ratio: 4/3) {
-      .viceblood-boot-lockup { width: min(88vw, 920px); }
-    }
   </style>
 </head>
-<body class="viceblood-booting">
-  <div id="viceblood-boot-splash" aria-label="ViceBlood loading">
-    <div class="viceblood-boot-lockup">
-      <img class="viceblood-boot-logo" src="phaser/assets/ui/viceblood-logo.svg" alt="ViceBlood" />
-      <div class="viceblood-boot-tagline">The city never sleeps</div>
-    </div>
+<body class="viceblood-title-active">
+  <div id="viceblood-title-screen" class="viceblood-title-screen" data-state="boot" aria-label="ViceBlood title screen">
+    <div class="viceblood-title-full-cover" aria-hidden="true"></div>
+    <div class="viceblood-title-menu-veil" aria-hidden="true"></div>
+
+    <section class="viceblood-title-boot" aria-label="ViceBlood loading">
+      <div class="viceblood-title-boot-lockup">
+        <img class="viceblood-title-boot-logo" src="phaser/assets/ui/viceblood-logo.svg" alt="ViceBlood" />
+        <p class="viceblood-title-boot-message" data-title-boot-message>The city never sleeps</p>
+      </div>
+    </section>
+
+    <section class="viceblood-title-menu" data-title-menu aria-label="ViceBlood main menu" aria-hidden="true">
+      <header class="viceblood-title-brand">
+        <img class="viceblood-title-menu-logo" src="phaser/assets/ui/viceblood-logo.svg" alt="ViceBlood" />
+        <p class="viceblood-title-kicker">An urban vampire sandbox</p>
+      </header>
+
+      <nav class="viceblood-title-nav" aria-label="Main menu">
+        <button class="viceblood-title-action" data-title-action="continue" type="button" disabled>Continue</button>
+        <button class="viceblood-title-action" data-title-action="new-night" type="button">New Night</button>
+        <button class="viceblood-title-action" data-title-action="options" type="button">Options</button>
+        <button class="viceblood-title-action" data-title-action="credits" type="button">Credits</button>
+      </nav>
+
+      <footer class="viceblood-title-footer">
+        <span>The city never sleeps.</span>
+        <small>ViceBlood · Pre-alpha</small>
+      </footer>
+    </section>
+
+    <aside class="viceblood-title-drawer" data-title-drawer aria-hidden="true">
+      <div class="viceblood-title-drawer-inner">
+        <h2 data-title-drawer-title></h2>
+        <p class="viceblood-title-drawer-body" data-title-drawer-body></p>
+        <div class="viceblood-title-drawer-content" data-title-drawer-content></div>
+        <p class="viceblood-title-drawer-hint" data-title-drawer-hint></p>
+      </div>
+    </aside>
   </div>
 
   <main class="shell">
