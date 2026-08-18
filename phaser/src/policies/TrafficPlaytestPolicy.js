@@ -7,6 +7,7 @@ import {
   TrafficLocalBehaviorSystem,
   wrapPhase
 } from "../streaming/TrafficLocalBehaviorSystem.js";
+import { installTrafficJunctionReservationPolicy } from "./TrafficJunctionReservationPolicy.js";
 
 const SPAWN_OFFSCREEN_MARGIN = 180;
 const RETAIN_ONSCREEN_MARGIN = 120;
@@ -101,8 +102,9 @@ export function chooseTrafficSeparationLoser(left, right, leftState = {}, rightS
     }
   }
 
-  const leftYielding = baseBehaviorReason(leftState.reason) === "junction-yield";
-  const rightYielding = baseBehaviorReason(rightState.reason) === "junction-yield";
+  const yieldingReasons = new Set(["junction-yield", "junction-reserved"]);
+  const leftYielding = yieldingReasons.has(baseBehaviorReason(leftState.reason));
+  const rightYielding = yieldingReasons.has(baseBehaviorReason(rightState.reason));
   if (leftYielding !== rightYielding) return leftYielding ? left : right;
 
   const leftId = String(leftState.tokenId || left?.tokenId || left?.slotIndex || "");
@@ -188,6 +190,8 @@ function resolveCivilianTrafficSeparation(system, seconds) {
 }
 
 export function installTrafficPlaytestPolicy() {
+  installTrafficJunctionReservationPolicy();
+
   const materializer = TrafficMaterializationSystem?.prototype;
   if (materializer && !materializer.__nbdPlaytestVisibilityPolicy) {
     const originalEligible = materializer.eligible;
