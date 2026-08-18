@@ -38,18 +38,19 @@ test("rapid pedestrian impacts use the current diminishing Heat curve instead of
 });
 
 test("one rapid impact burst cannot climb more than one Wanted band by itself", () => {
-  const fromClear = applyImpactSequence({ startHeat: 0, lethal: true, count: 12 });
+  const fromClear = applyImpactSequence({ startHeat: 0, lethal: true, count: 13 });
   assert.equal(fromClear.heat, vehiclePedestrianBurstCeiling(0));
   assert.equal(heatLevelFromValue(fromClear.heat), 1);
   assert.ok(fromClear.plans.some(plan => plan.suppressedHeat > 0));
 
-  const fromWantedOne = applyImpactSequence({ startHeat: 30, lethal: true, count: 12 });
+  const fromWantedOne = applyImpactSequence({ startHeat: 30, lethal: true, count: 13 });
   assert.equal(fromWantedOne.heat, vehiclePedestrianBurstCeiling(30));
   assert.equal(heatLevelFromValue(fromWantedOne.heat), 2);
+  assert.ok(fromWantedOne.plans.some(plan => plan.suppressedHeat > 0));
 });
 
 test("a later separate incident can escalate the response again", () => {
-  const first = applyImpactSequence({ lethal: true, count: 12 });
+  const first = applyImpactSequence({ lethal: true, count: 13 });
   const later = planVehiclePedestrianImpactHeat(first.state, {
     nowMs: first.state.lastImpactAtMs + PEDESTRIAN_IMPACT_BURST_WINDOW_MS + 1,
     districtId: "old-quarter",
