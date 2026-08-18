@@ -39,6 +39,14 @@ test("H is a remappable horn edge in the central input frame", () => {
   assert.match(input, /hornPressed: this\.justDown\(this\.keys\.horn\)/);
 });
 
+test("shared H shortcut preserves the menu on foot and horn ownership while driving", () => {
+  const ui = source("phaser/src/scenes/UIScene.js");
+  assert.match(ui, /const hornOwnsH = code === "KeyH"[\s\S]*vehicleSystem\?\.isDriving\?\.\(\)/);
+  assert.match(ui, /const uiOwnsH = code === "KeyH" && !hornOwnsH/);
+  assert.match(ui, /event\.defaultPrevented && code !== "Escape" && !uiOwnsH/);
+  assert.match(ui, /else if \(code === "KeyH"\) \{[\s\S]*if \(uiOwnsH &&/);
+});
+
 test("the player horn is owned by active vehicle driving and never creates Heat", () => {
   const driving = source("phaser/src/vehicles/VehicleDriving.js");
   const start = driving.indexOf("export function updateVehicleDriving");
