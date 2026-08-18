@@ -44,6 +44,22 @@ The regression now verifies the current contract:
 
 No runtime, population density, police routing or witness behavior was changed by this cleanup.
 
+## Increment 3 — vehicle impact Heat and exit-corridor authority
+
+**State: updated on PR #55; final CI verification required.**
+
+The remaining five failures were legitimately stale rather than evidence of five runtime regressions. Four assertions still hard-coded an older vehicle-pedestrian Heat curve and older threshold ceilings, while the vehicle-exit fixture only provided a 16-unit usable corridor after an anchor even though the current safety authority requires an 18-unit sampled escape corridor.
+
+The regressions now verify the current contracts rather than obsolete tuning literals:
+
+- lethal and non-lethal impact sequences derive their expected steps from `vehiclePedestrianImpactBaseHeat()` and still prove that Heat diminishes across a burst;
+- a burst is checked against `vehiclePedestrianBurstCeiling()` rather than old absolute ceiling values, preserving the rule that one rapid incident cannot skip more than one Wanted band;
+- a genuinely separate later incident begins only after the previous impact timestamp plus `PEDESTRIAN_IMPACT_BURST_WINDOW_MS`, resets the chain and can escalate the next response band;
+- non-lethal impacts remain strictly lower than corresponding lethal impacts without freezing yesterday's tuning values into the regression;
+- vehicle exit selection must find a standable anchor plus the full current escape corridor, return a standable endpoint and publish a normalized escape direction; a pixel-sized isolated landing point remains rejected.
+
+No runtime, Heat tuning, vehicle geometry or exit behavior was changed by this cleanup.
+
 ## Remaining cleanup
 
-Only the vehicle exit/impact-buffer failures remain deliberately untouched in this increment. They should be reviewed against current Heat tuning and City Topology V2 exit geometry as a separate evidence-backed cleanup increment.
+No known legacy unit-test authority groups remain after this increment. If the branch-wide suite is green on the resulting head, the implementation/test-cleanup work for this task is complete and the remaining work is grouped in-game validation of the already implemented systems.
