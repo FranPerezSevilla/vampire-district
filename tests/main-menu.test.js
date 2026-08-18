@@ -64,11 +64,19 @@ test("the canonical wordmark is clean ivory/red typography with no fang or distr
   assert.doesNotMatch(logoSvg, /fang|distress|scratch/i);
 });
 
-test("MainMenuScene coordinates a live preview instead of rendering a second UI", () => {
+test("MainMenuScene reveals the DOM menu from the authoritative GameScene create boundary", () => {
   assert.match(mainScene, /TitleScreenController\.js/);
+  assert.match(mainScene, /Phaser\.Scenes\?\.Events\?\.CREATE \|\| "create"/);
+  assert.match(mainScene, /gameScene\.events\.once\(createEvent, this\.previewCreateListener\)/);
   assert.match(mainScene, /titleScreenController\.present/);
-  assert.match(mainScene, /Phaser\.Core\?\.Events\?\.POST_RENDER/);
-  assert.match(mainScene, /READY_RENDER_FRAMES = 2/);
+  assert.match(mainScene, /this\.scene\.isActive\("GameScene"\) && gameScene\.inputSystem/);
+
+  const registerIndex = mainScene.indexOf("gameScene.events.once(createEvent, this.previewCreateListener)");
+  const launchIndex = mainScene.indexOf('this.scene.launch("GameScene")');
+  assert.ok(registerIndex >= 0 && launchIndex > registerIndex, "GameScene CREATE listener must be registered before launch");
+
+  assert.doesNotMatch(mainScene, /Phaser\.Core\?\.Events\?\.POST_RENDER|READY_RENDER_FRAMES/);
+  assert.doesNotMatch(mainScene, /PREVIEW_READY_RETRY_MS|PREVIEW_READY_MAX_ATTEMPTS|delayedCall/);
   assert.doesNotMatch(mainScene, /this\.add\.(?:image|text|rectangle|graphics|container)/);
   assert.doesNotMatch(mainScene, /visibleViewportBounds|scheduleLayout|installFullscreenShell/);
   assert.doesNotMatch(mainScene, /getBoundingClientRect/);
