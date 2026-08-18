@@ -60,6 +60,22 @@ The regressions now verify the current contracts rather than obsolete tuning lit
 
 No runtime, Heat tuning, vehicle geometry or exit behavior was changed by this cleanup.
 
+## Increment 4 — civilian traffic collision Heat authority
+
+**State: updated on PR #55; CI verification required.**
+
+The browser regression for a hard collision between the player's car and materialized civilian traffic still expected the collision to raise local police Heat. That expectation conflicts with the accepted target-aware vehicle consequence rule: ordinary transient/systemic civilian car-to-car contact is mundane, while contact with a police vehicle is the explicit Heat-producing exception.
+
+The regression keeps the useful collision coverage and now verifies the current contract:
+
+- a hard civilian traffic collision damages the active vehicle exactly once;
+- the impact remains outside Exposure and does not increase local Heat;
+- the traffic-impact authority reports the `hard` tier and applies its suppression cooldown;
+- an immediate repeated overlap is suppressed and cannot stack another vehicle-damage application;
+- the materialized traffic token remains assigned to the same pooled slot through the collision.
+
+No runtime collision, Heat, damage, pooling or police behavior was changed by this cleanup.
+
 ## Remaining cleanup
 
-No known legacy unit-test authority groups remain after this increment. If the branch-wide suite is green on the resulting head, the implementation/test-cleanup work for this task is complete and the remaining work is grouped in-game validation of the already implemented systems.
+No known legacy **unit-test** authority groups remain. Browser-system cleanup is still being completed independently: after the civilian-traffic Heat regression, the remaining known failure is the separate `predator-powers` Hunger/health expectation cluster. That cluster must be reviewed against current Vitality/Hunger authority in a later increment rather than bundled into this one.
