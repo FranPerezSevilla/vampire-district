@@ -6,6 +6,7 @@ const bootScene = readFileSync(new URL("../phaser/src/scenes/BootScene.js", impo
 const mainScene = readFileSync(new URL("../phaser/src/scenes/MainMenuScene.js", import.meta.url), "utf8");
 const mainEntry = readFileSync(new URL("../phaser/src/main.js", import.meta.url), "utf8");
 const appBootstrap = readFileSync(new URL("../phaser/src/app-bootstrap.js", import.meta.url), "utf8");
+const campaignBootstrap = readFileSync(new URL("../phaser/src/campaign/bootstrap.js", import.meta.url), "utf8");
 const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const logoSvg = readFileSync(new URL("../phaser/assets/ui/viceblood-logo.svg", import.meta.url), "utf8");
 
@@ -20,6 +21,15 @@ test("RC browser tests retain direct gameplay boot", () => {
   assert.match(bootScene, /this\.scene\.start\("GameScene"\)/);
   assert.match(bootScene, /this\.scene\.launch\("UIScene"\)/);
   assert.match(appBootstrap, /dismissViceBloodBootSplash\(\{ immediate: true \}\)/);
+});
+
+test("title-menu boot starts a fresh police-response session without erasing long-lived exposure", () => {
+  assert.ok(campaignBootstrap.includes('game?.scene?.isActive?.("MainMenuScene")'));
+  assert.ok(campaignBootstrap.includes('scene.heatSystem?.clear?.("Main menu starts a fresh police-response session.")'));
+  assert.ok(campaignBootstrap.includes("scene.heatSystem?.restoreState?.(campaign.state.heat)"));
+  assert.ok(campaignBootstrap.includes("scene.exposureSystem?.restoreState?.(campaign.state.exposure)"));
+  assert.doesNotMatch(campaignBootstrap, /exposureSystem\?\.clear/);
+  assert.match(campaignBootstrap, /Direct gameplay\/test harness boots intentionally keep the saved Heat contract/);
 });
 
 test("first paint is a fitted ViceBlood splash instead of the legacy shell", () => {
