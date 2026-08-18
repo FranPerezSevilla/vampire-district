@@ -43,3 +43,21 @@ The same policy decoration exposed a narrower diagnostics defect: `TrafficLocalB
 - `playerReactiveVehicles` remains greater than zero during that reaction regardless of driver temperament and returns to zero after the player car clears the lane.
 - The same traffic token retains the same pooled slot before, during and after the braking event.
 - Browser-system traffic-impact failures remain a separate regression cluster for a later increment.
+
+## Browser-system increment — hidden Night Ledger surface
+
+Workflow run `32115289831`, shard 2 artifact `9316721665`, exposed three deterministic timeouts in `feeding-depths`, `heat-exposure-evidence` and `night-ledger`. All three were trying to click `#hud-ledger-button`, but the element was correctly marked `hidden`, `aria-hidden="true"` and `display:none`. That is not a runtime regression: commit `c207c7c6824eb14b1a8e70c459ca7fe878829c90` deliberately removed the Night Ledger from the current playtest surface together with unavailable traversal affordances, while keeping the campaign/hunting/attention model alive internally.
+
+This increment therefore updates browser coverage rather than re-exposing a deliberately hidden feature:
+
+- `feeding-depths.spec.js` still validates Quick Bite → Full Feed → Drain, then verifies the hidden surface and reads the internal Night Ledger model to confirm all three feeding depths remain represented in hunting incidents.
+- `heat-exposure-evidence.spec.js` still validates independent Heat/Exposure persistence and crime-as-alibi reframing, then inspects the internal Night Ledger model for CLEAR/PURSUIT police state, institutional/resolved evidence and the mundane reframing reason without opening hidden UI.
+- `night-ledger.spec.js` now explicitly guards the playtest-surface contract: the button remains hidden, direct toggling and **L** cannot open or pause the game, while the internal model still connects faction reputation, latent/discovered poaching, police Heat and supernatural evidence.
+- No Night Ledger runtime, hunting-law, Heat, Exposure, feeding, campaign persistence or playtest-surface behavior changes in this increment.
+
+### Acceptance
+
+- The current playtest does not expose the Night Ledger button, drawer or **L** shortcut.
+- Hiding the surface does not remove or stale the underlying Night Ledger model.
+- Feeding-depth, Heat/Exposure and hunting-law browser coverage validates the model directly rather than timing out on intentionally hidden controls.
+- Any remaining browser-system failures after this cluster are treated as separate increments; no hidden playtest feature is re-enabled merely to satisfy stale tests.
