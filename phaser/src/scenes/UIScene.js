@@ -353,13 +353,7 @@ export class UIScene extends Phaser.Scene {
   handleDomKeyDown(event) {
     if (event.repeat || isTextEntryTarget(event.target)) return;
     const code = event.code;
-    const gameScene = this.scene.get("GameScene");
-    const hornBinding = this.registry.get("inputBindings")?.bindings?.horn;
-    const hornOwnsH = code === "KeyH"
-      && String(hornBinding || "H").toUpperCase() === "H"
-      && Boolean(gameScene?.vehicleSystem?.isDriving?.());
-    const uiOwnsH = code === "KeyH" && !hornOwnsH;
-    if (event.defaultPrevented && code !== "Escape" && !uiOwnsH) return;
+    if (event.defaultPrevented && code !== "Escape") return;
 
     // Let the browser activate focused buttons and links with Enter/Space. The
     // corresponding click handler owns those controls and must not be pre-empted.
@@ -384,11 +378,6 @@ export class UIScene extends Phaser.Scene {
         this.toggleNightLedger();
         handled = true;
       }
-    } else if (code === "KeyH") {
-      if (uiOwnsH && !this.ledgerOpen && !this.introOpen && !this.resultOpen && !this.registry.get("taskRevealActive")) {
-        this.togglePause();
-        handled = true;
-      }
     } else if (code === "Escape") {
       if (this.ledgerOpen) {
         this.closeNightLedger();
@@ -405,6 +394,8 @@ export class UIScene extends Phaser.Scene {
       } else if (this.introOpen) {
         this.closeIntro();
         handled = true;
+      } else if (!this.resultOpen && !this.registry.get("taskRevealActive")) {
+        handled = this.togglePause();
       }
     }
 
@@ -623,7 +614,7 @@ export class UIScene extends Phaser.Scene {
            Powers: ${key("dash", "Q")} Dash · ${key("whisper", "R")} Whisper · ${key("sense", "F")} Blood Sense · ${key("beast", "B")} Give In · M Mission · L Night Ledger</p>
          <p><strong>Stats</strong></p><pre>${this.escapeHtml(this.statsText(pauseData))}</pre>
          ${this.accessibilityMarkup()}`,
-        "Close · H / Esc"
+        "Close · Esc"
       );
     }
   }

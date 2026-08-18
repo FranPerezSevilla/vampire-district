@@ -1,7 +1,10 @@
+import { buildControlReference } from "../ui/ControlReference.js";
+
 const MENU_ITEMS = Object.freeze([
   { id: "continue", label: "CONTINUE", enabled: false },
   { id: "new-night", label: "NEW NIGHT", enabled: true },
   { id: "options", label: "OPTIONS", enabled: true },
+  { id: "controls", label: "CONTROLS", enabled: true },
   { id: "credits", label: "CREDITS", enabled: true }
 ]);
 
@@ -420,6 +423,7 @@ export class MainMenuScene extends Phaser.Scene {
     if (!item?.enabled || this.transitioning) return;
     if (item.id === "new-night") return this.beginNight();
     if (item.id === "options") return this.openOptions();
+    if (item.id === "controls") return this.openControls();
     if (item.id === "credits") return this.openCredits();
   }
 
@@ -433,12 +437,21 @@ export class MainMenuScene extends Phaser.Scene {
     this.version.setAlpha(0.08);
   }
 
+  hideQualityRows() {
+    this.qualityRows.forEach(row => {
+      row.marker.setVisible(false);
+      row.label.setVisible(false);
+      row.detail.setVisible(false);
+    });
+  }
+
   openOptions() {
     this.panelMode = "options";
     const currentKey = this.currentResolutionKey();
     this.optionIndex = Math.max(0, QUALITY_OPTIONS.findIndex(option => option.key === currentKey));
     this.panelTitle.setText("OPTIONS");
     this.panelBody.setText("Choose the internal render quality. Applying a change reloads the game.");
+    this.panelBody.setLineSpacing?.(9);
     this.panelSection.setVisible(true);
     this.panelHint.setText("ENTER  APPLY     ESC  BACK");
     this.panelGroup.setVisible(true);
@@ -446,17 +459,28 @@ export class MainMenuScene extends Phaser.Scene {
     this.refreshOptionSelection();
   }
 
+  openControls() {
+    this.panelMode = "controls";
+    const bindings = this.scene.get("GameScene")?.inputSystem?.bindings || {};
+    this.panelTitle.setText("CONTROLS");
+    this.panelBody.setText(buildControlReference(bindings));
+    this.panelBody.setLineSpacing?.(4);
+    this.panelSection.setVisible(false);
+    this.panelHint.setText("ESC / ENTER  BACK");
+    this.hideQualityRows();
+    this.panelGroup.setVisible(true);
+    this.dimMainMenuForPanel();
+    this.layout();
+  }
+
   openCredits() {
     this.panelMode = "credits";
     this.panelTitle.setText("CREDITS");
     this.panelBody.setText("VICEBLOOD\n\nCreated by Fran Pérez Sevilla.\n\nDesign, code and direction by Frainzzel.\nBuilt with Phaser.");
+    this.panelBody.setLineSpacing?.(9);
     this.panelSection.setVisible(false);
     this.panelHint.setText("ESC / ENTER  BACK");
-    this.qualityRows.forEach(row => {
-      row.marker.setVisible(false);
-      row.label.setVisible(false);
-      row.detail.setVisible(false);
-    });
+    this.hideQualityRows();
     this.panelGroup.setVisible(true);
     this.dimMainMenuForPanel();
   }
@@ -534,10 +558,10 @@ export class MainMenuScene extends Phaser.Scene {
     this.logo.setDisplaySize(logoWidth, logoHeight).setPosition(left, top);
     this.kicker.setFontSize(this.fontFor(view, 10)).setPosition(left + this.cssX(view, 4), top + logoHeight + this.cssY(view, 10));
 
-    const menuTop = view.y + view.height * 0.37;
-    const rowGap = this.cssY(view, 76);
+    const menuTop = view.y + view.height * 0.35;
+    const rowGap = this.cssY(view, 66);
     const selectionWidth = this.cssX(view, Math.min(340, visibleCssWidth * 0.28));
-    const selectionHeight = this.cssY(view, 48);
+    const selectionHeight = this.cssY(view, 44);
     this.menuRows.forEach((row, index) => {
       const y = menuTop + rowGap * index;
       row.marker.setFontSize(this.fontFor(view, 27)).setPosition(left - this.cssX(view, 25), y);
@@ -558,7 +582,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.panelBackdrop.setPosition(0, 0).setSize(drawerRight, height);
     this.panelRule.setPosition(drawerRight - this.cssX(view, 4), 0).setSize(this.cssX(view, 4), height);
     this.panelTitle.setFontSize(this.fontFor(view, 26)).setPosition(innerX, panelTop);
-    this.panelBody.setFontSize(this.fontFor(view, 14)).setPosition(innerX, panelTop + this.cssY(view, 66))
+    this.panelBody.setFontSize(this.fontFor(view, this.panelMode === "controls" ? 12 : 14)).setPosition(innerX, panelTop + this.cssY(view, 66))
       .setWordWrapWidth(drawerRight - innerX - this.cssX(view, 42));
     this.panelSection.setFontSize(this.fontFor(view, 10)).setPosition(innerX, panelTop + this.cssY(view, 154));
     this.panelHint.setFontSize(this.fontFor(view, 10)).setPosition(innerX, view.y + view.height - this.cssY(view, 40));
