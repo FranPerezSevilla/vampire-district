@@ -128,16 +128,17 @@ At wanted level 2, one eligible chasing officer may visibly aim and fire control
 
 **State: implemented on PR #55; pending grouped in-game validation.**
 
-### Implemented increment — master death beat and fade
+### Implemented increment — attenuated death blackout with Sire above black
 
 - The authoritative `player:died` event starts one idempotent death sequence; repeated death events cannot restart or duplicate it.
 - Conflicting interaction/feeding/combat actions are closed or cancelled immediately, while the existing dead-state input lock remains authoritative.
-- Death first eases the camera into the same close player zoom used by the conventional dialogue director, then holds on the defeated body for **2.0 seconds** before anyone speaks.
-- The Sire then uses the **normal in-game thought-dialogue presentation**, not a bespoke death popup: **“Pathetic. You are supposed to be the predator, not the prey.”**
-- Only after that dialogue is completed does the scene fade to full black over 0.9 seconds while the RawAudio world and narrative masters ramp down together; active vehicle-engine, skid and feeding loops are stopped before the fade.
-- Hospital recovery restores the pre-death camera zoom/follow framing before control returns.
+- On death, the existing close camera move begins immediately while the **world audio bus** ramps down to roughly **28% of its current level over 460 ms**. The separate narrative bus is deliberately left untouched.
+- Only after that readable audio dip are transient drain/skid/vehicle-engine loops stopped. World audio then continues to near-silence while the visual blackout grows over **780 ms**.
+- The blackout uses both the Phaser canvas cover and a full DOM cover above the ordinary HUD. The conventional tutorial dialogue is temporarily raised above that DOM cover, so at full black the **Sire message is the only intended visible game presentation**.
+- The Sire appears **after full black**, using the normal in-game thought-dialogue presentation: **“Pathetic. You are supposed to be the predator, not the prey.”** There is no bespoke death text panel.
+- Only after the player completes that dialogue does the death sequence expose its single terminal black edge and emit `death:fade-complete`; hospital recovery then consumes that edge exactly once.
+- Hospital recovery restores the pre-death camera zoom/follow framing and both audio-bus snapshots before control returns.
 - The death presentation continues updating even after `worldEnabled` is false, so the lethal input lock cannot freeze the transition itself.
-- On reaching full black the system emits one `death:fade-complete` event and the same recovery owner consumes that edge exactly once.
 
 ### Implemented increment — hospital reset and recovery
 
@@ -155,7 +156,9 @@ At wanted level 2, one eligible chasing officer may visibly aim and fire control
 ### Acceptance
 
 - The death sequence cannot trigger twice or leave input/audio loops running.
-- Defeat has a readable zoom-and-hold beat before the Sire speaks, and the dialogue uses the established conventional thought-bubble style rather than a one-off death panel.
+- Death audibly drops the world first, then fades the whole game presentation to black; the Sire thought dialogue remains visible above the completed blackout.
+- The Sire does not appear before full black, and hospital recovery cannot begin until that dialogue is completed.
+- The narrative bus is not faded together with world SFX during the death attenuation.
 - The player always reaches a valid hospital spawn.
 - The lackey speaks using the conventional dialogue style, leaves before control returns, and no movement/world-input lock survives the recovery beat.
 - The blood bag and replacement vehicle are present and usable only after the recovery introduction is complete.
@@ -168,7 +171,7 @@ At wanted level 2, one eligible chasing officer may visibly aim and fire control
 3. Police vehicle tactics.
 4. Armed foot police.
 5. Vehicle explosion + player vitality/death.
-6. Master popup + hospital reset/recovery.
+6. Sire blackout + hospital reset/recovery.
 
 ## Follow-up — citywide pedestrian-route expansion
 
