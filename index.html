@@ -8,12 +8,78 @@
   <link rel="stylesheet" href="phaser/release-candidate.css" />
   <style>
     :root { --game-width: 1440px; --game-height: 960px; }
+    html, body { margin: 0; min-height: 100%; background: #020306; }
     .shell { width: min(var(--game-width), calc(100vw - 28px)); }
     .game-frame, #game-root { width: var(--game-width); max-width: 100%; min-height: 0; aspect-ratio: 3 / 2; }
     #game-root canvas { width: var(--game-width) !important; max-width: 100% !important; height: auto !important; }
+
+    /*
+      This cover exists before Phaser or any application JavaScript runs.
+      It guarantees the first paint is ViceBlood rather than the legacy page/HUD shell.
+    */
+    body.viceblood-booting {
+      overflow: hidden;
+      background: #020306;
+    }
+    body.viceblood-booting .shell {
+      visibility: hidden;
+    }
+    #viceblood-boot-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 2147483000;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      pointer-events: none;
+      opacity: 1;
+      background:
+        radial-gradient(circle at 50% 43%, rgba(95, 9, 16, .18), transparent 33%),
+        linear-gradient(180deg, #050609 0%, #020306 72%, #000 100%);
+      transition: opacity 460ms cubic-bezier(.22,.61,.36,1);
+    }
+    #viceblood-boot-splash::after {
+      content: "";
+      position: absolute;
+      left: 12vw;
+      right: 12vw;
+      bottom: 11vh;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(151, 18, 26, .58), transparent);
+      opacity: .8;
+    }
+    #viceblood-boot-splash.is-leaving {
+      opacity: 0;
+    }
+    .viceblood-boot-lockup {
+      position: relative;
+      width: min(78vw, 1040px);
+      text-align: center;
+      transform: translateY(-2vh);
+    }
+    .viceblood-boot-logo {
+      display: block;
+      width: 100%;
+      height: auto;
+      filter: drop-shadow(0 22px 40px rgba(0,0,0,.72));
+    }
+    .viceblood-boot-tagline {
+      margin-top: clamp(12px, 2vh, 24px);
+      color: rgba(225, 218, 215, .48);
+      font: 800 clamp(9px, .75vw, 12px)/1.2 Arial, Helvetica, sans-serif;
+      letter-spacing: .38em;
+      text-transform: uppercase;
+    }
   </style>
 </head>
-<body>
+<body class="viceblood-booting">
+  <div id="viceblood-boot-splash" aria-label="ViceBlood loading">
+    <div class="viceblood-boot-lockup">
+      <img class="viceblood-boot-logo" src="phaser/assets/ui/viceblood-logo.svg" alt="ViceBlood" />
+      <div class="viceblood-boot-tagline">The city never sleeps</div>
+    </div>
+  </div>
+
   <main class="shell">
     <header class="topbar">
       <div>
