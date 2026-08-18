@@ -54,10 +54,10 @@ test("pause and task reveals discard mouse and wheel input", async ({ page }) =>
     && window.NBD_SCENARIOS?.snapshot?.().activeId === "input-locks"
   ));
 
-  await page.keyboard.press("h");
+  await page.keyboard.press("Escape");
   await expect(page.locator("#ui-modal")).toHaveClass(/open/);
   await dispatchWorldInputs(page);
-  await page.keyboard.press("h");
+  await page.keyboard.press("Escape");
   await expect(page.locator("#ui-modal")).not.toHaveClass(/open/);
   const pauseSnapshot = await inputSnapshot(page);
   expect(pauseSnapshot).toMatchObject(EMPTY_WORLD_INPUT);
