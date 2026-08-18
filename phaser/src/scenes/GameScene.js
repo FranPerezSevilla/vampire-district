@@ -9,6 +9,7 @@ import {
   sewerTunnels,
   sidewalks
 } from "../data/district.js";
+import { installVehicleExplosionPresentation } from "../vehicles/VehicleExplosionPresentation.js";
 import { GameScene as GameSceneCore } from "./GameSceneCore.js";
 
 const URBAN_RENDER_HALF_WIDTH = 680;
@@ -42,6 +43,13 @@ export class GameScene extends GameSceneCore {
     super();
     this.urbanRenderBounds = null;
     this.urbanRenderSectorKey = "";
+    this.removeVehicleExplosionPresentation = null;
+  }
+
+  create() {
+    super.create();
+    this.removeVehicleExplosionPresentation?.();
+    this.removeVehicleExplosionPresentation = installVehicleExplosionPresentation(this);
   }
 
   collectInteractions() {
