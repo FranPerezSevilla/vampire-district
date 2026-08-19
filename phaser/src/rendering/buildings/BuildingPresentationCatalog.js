@@ -45,13 +45,17 @@ export function scaleBuildingColor(color, factor = 1) {
   });
 }
 
-export const BUILDING_PRESENTATION_VERSION = 3;
+export const BUILDING_PRESENTATION_VERSION = 4;
 
 export const MODULE_KINDS = deepFreeze({
   FOUNDATION: "foundation",
   ROOF_MASS: "roof-mass",
+  ROOF_ANNEX: "roof-annex",
+  ROOF_TEXTURE_LINE: "roof-texture-line",
   PARAPET_EDGE: "parapet-edge",
   FRONTAGE: "frontage",
+  SERVICE_STRIP: "service-strip",
+  SERVICE_LIGHT: "service-light",
   SKYLIGHT: "skylight",
   HVAC: "hvac",
   VENT: "vent",
@@ -77,8 +81,11 @@ export const ROOFTOP_PROP_KINDS = deepFreeze([
 export const MODULE_LAYERS = deepFreeze({
   foundation: 0,
   roof: 10,
+  surface: 15,
   edge: 20,
+  annex: 26,
   frontage: 30,
+  service: 35,
   rooftop: 40,
   identity: 50
 });
@@ -91,12 +98,12 @@ export const FRONTAGE_KINDS = deepFreeze({
   CHURCH: "church"
 });
 
-// The normal city profile deliberately caps clutter. A roof should read as one
-// silhouette, one hero prop, and at most one supporting detail at gameplay zoom.
+// Normal gameplay should read silhouette first and roof detail second. Rich is
+// reserved for close-up experiments; even it remains deliberately restrained.
 export const DETAIL_LEVELS = deepFreeze({
-  minimal: { propDensity: 0.55, maximumProps: 1 },
-  standard: { propDensity: 0.82, maximumProps: 3 },
-  rich: { propDensity: 1, maximumProps: 4 }
+  minimal: { propDensity: 0.58, maximumProps: 1 },
+  standard: { propDensity: 0.88, maximumProps: 2 },
+  rich: { propDensity: 1, maximumProps: 3 }
 });
 
 export const LAYOUT_RECIPES = deepFreeze({
@@ -240,7 +247,10 @@ function classificationText(building = {}) {
 }
 
 export function classifyBuildingPresentation(building = {}) {
-  const explicit = normalizedArchetype(building.presentation?.archetype || building.presentationArchetype);
+  const explicit = normalizedArchetype(
+    building.presentation?.archetype
+      || building.presentationArchetype
+  );
   if (explicit) return explicit;
 
   const haystack = classificationText(building);
@@ -286,34 +296,57 @@ export function resolveBuildingPresentationDefinition(building = {}, options = {
       : 0,
     detailLevel,
     seed: options.seed ?? explicit.seed,
+    profileId: options.profileId || options.profile || explicit.profileId || explicit.profile || null,
+    surfaceKind: options.surfaceKind || options.roofSurface || explicit.surfaceKind || explicit.roofSurface || null,
+    showLabel: Boolean(options.showLabel ?? explicit.showLabel ?? false),
     propKinds: Array.isArray(options.propKinds || explicit.propKinds)
       ? [...(options.propKinds || explicit.propKinds)]
       : null
   };
 }
 
-export function resolveBuildingPalette(building = {}, archetypeId = "generic") {
+export function resolveBuildingPalette(building = {}, archetypeId = "generic", visualProfile = null) {
   const archetype = getBuildingArchetype(archetypeId);
-  const base = Number.isFinite(Number(building.color)) ? Number(building.color) : DEFAULT_BUILDING_COLOR;
-  const authoredTrim = Number.isFinite(Number(building.trim)) ? Number(building.trim) : DEFAULT_BUILDING_TRIM;
+  const authoredBase = Number.isFinite(Number(building.color))
+    ? Number(building.color)
+    : DEFAULT_BUILDING_COLOR;
+  const authoredTrim = Number.isFinite(Number(building.trim))
+    ? Number(building.trim)
+    : DEFAULT_BUILDING_TRIM;
+  const profileTint = Number.isFinite(Number(visualProfile?.roofTint))
+    ? Number(visualProfile.roofTint)
+    : authoredBase;
+  const profileAmount = Math.max(0, Math.min(1, Number(visualProfile?.roofTintAmount) || 0));
+  const base = mixBuildingColor(authoredBase, profileTint, profileAmount);
+  const trim = mixBuildingColor(authoredTrim, profileTint, profileAmount * 0.2);
   const accent = archetype.accent;
 
   return {
-    foundation: mixBuildingColor(base, 0x10121a, 0.46),
-    foundationShadow: mixBuildingColor(base, 0x05060a, 0.72),
-    foundationSeam: mixBuildingColor(authoredTrim, base, 0.76),
-    roof: mixBuildingColor(base, 0x3c3e4c, 0.2),
-    roofShade: mixBuildingColor(base, 0x080910, 0.52),
-    roofShadow: mixBuildingColor(base, 0x030408, 0.78),
-    parapetLight: mixBuildingColor(authoredTrim, 0xd0ced8, 0.22),
-    parapetMid: mixBuildingColor(authoredTrim, base, 0.48),
-    parapetDark: mixBuildingColor(authoredTrim, 0x0a0b10, 0.56),
-    seam: mixBuildingColor(authoredTrim, base, 0.76),
-    prop: mixBuildingColor(authoredTrim, 0x9a9da7, 0.25),
-    propDark: mixBuildingColor(authoredTrim, 0x0b0c12, 0.58),
-    glass: mixBuildingColor(archetypeId === "club" ? accent : 0x35558d, 0x0c1018, 0.38),
-    glassHighlight: mixBuildingColor(archetypeId === "club" ? accent : 0x6e96dd, 0xffffff, 0.14),
-    canopy: mixBuildingColor(base, authoredTrim, 0.28),
+    worldShadow: mixBuildingColor(base, 0x010207, 0.9),
+    foundation: mixBuildingColor(base, 0x171a25, 0.24),
+    foundationShadow: mixBuildingColor(base, 0x05060a, 0.7),
+    foundationSeam: mixBuildingColor(trim, base, 0.7),
+    wall: mixBuildingColor(base, 0x040509, 0.72),
+    wallHighlight: mixBuildingColor(trim, 0xa7abb5, 0.18),
+    roof: mixBuildingColor(base, 0x3b414f, 0.12),
+    roofShade: mixBuildingColor(base, 0x080a11, 0.5),
+    roofShadow: mixBuildingColor(base, 0x020308, 0.82),
+    annexRoof: mixBuildingColor(base, 0x252a35, 0.26),
+    roofTexture: mixBuildingColor(trim, base, 0.7),
+    roofTextureHighlight: mixBuildingColor(trim, 0xd3deea, 0.18),
+    parapetLight: mixBuildingColor(trim, 0xd4d2dc, 0.24),
+    parapetMid: mixBuildingColor(trim, base, 0.44),
+    parapetDark: mixBuildingColor(trim, 0x08090e, 0.6),
+    seam: mixBuildingColor(trim, base, 0.72),
+    prop: mixBuildingColor(trim, 0x9ea2ac, 0.28),
+    propDark: mixBuildingColor(trim, 0x090a10, 0.6),
+    glass: mixBuildingColor(archetypeId === "club" ? accent : 0x315b92, 0x090d16, 0.34),
+    glassHighlight: mixBuildingColor(archetypeId === "club" ? accent : 0x72a4e1, 0xffffff, 0.16),
+    canopy: mixBuildingColor(base, trim, 0.28),
+    serviceDark: mixBuildingColor(base, 0x05070a, 0.78),
+    serviceMid: mixBuildingColor(trim, base, 0.64),
+    serviceWindow: mixBuildingColor(0x17233a, accent, archetypeId === "police" ? 0.18 : 0.05),
+    serviceLight: 0xf2b35e,
     accent,
     accentSoft: archetype.accentSoft,
     label: archetype.labelColor,

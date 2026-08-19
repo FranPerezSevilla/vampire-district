@@ -10,6 +10,10 @@ import {
   resolveBuildingPresentationDefinition
 } from "./BuildingPresentationCatalog.js";
 import {
+  ROOF_SURFACE_KINDS,
+  resolveBuildingVisualProfile
+} from "./BuildingVisualProfileCatalog.js";
+import {
   boundsFromPoints,
   clamp,
   createRoofSilhouetteGeometry,
@@ -82,7 +86,7 @@ function recipeFits(recipe, footprint) {
     && footprint.h >= (recipe.minimumHeight || 0);
 }
 
-function chooseLayoutRecipe(building, footprint, definition, random, options) {
+function chooseLayoutRecipe(building, footprint, definition, visualProfile, random, options) {
   const explicit = requestedLayoutId(building, options);
   if (explicit) {
     const recipe = getBuildingLayoutRecipe(explicit);
@@ -107,7 +111,7 @@ function chooseLayoutRecipe(building, footprint, definition, random, options) {
     };
   }
 
-  const candidates = definition.archetype.layoutCandidates
+  const candidates = (visualProfile.layoutCandidates || definition.archetype.layoutCandidates)
     .map(getBuildingLayoutRecipe)
     .filter(recipe => recipe && recipeFits(recipe, footprint));
   const recipe = candidates[Math.floor(random() * candidates.length)]
@@ -115,22 +119,40 @@ function chooseLayoutRecipe(building, footprint, definition, random, options) {
   return { recipe, fallback: false, requested: null };
 }
 
-function createFoundationModule(building, footprint) {
+function hasFrontageOverride(building, options) {
+  return options.frontage !== undefined
+    || building.presentation?.frontage !== undefined;
+}
+
+function applyVisualProfileDefaults(building, definition, visualProfile, options) {
+  return {
+    ...definition,
+    frontage: hasFrontageOverride(building, options)
+      ? definition.frontage
+      : (visualProfile.frontage || definition.frontage),
+    showLabel: Boolean(definition.showLabel || visualProfile.showLabel)
+  };
+}
+
+function createFoundationModule(building, footprint, visualProfile) {
   return {
     id: moduleId(building, "foundation"),
     kind: MODULE_KINDS.FOUNDATION,
     layer: MODULE_LAYERS.foundation,
-    role: "low-service-roof",
+    role: visualProfile.serviceStrip ? "low-roof-with-service-edge" : "low-service-roof",
+    profileId: visualProfile.id,
     bounds: { ...footprint }
   };
 }
 
-function createRoofMassModule(building, geometry, layoutId) {
+function createRoofMassModule(building, geometry, layoutId, visualProfile) {
   return {
     id: moduleId(building, "roof-mass"),
     kind: MODULE_KINDS.ROOF_MASS,
     layer: MODULE_LAYERS.roof,
     layoutId,
+    profileId: visualProfile.id,
+    surfaceKind: visualProfile.surfaceKind,
     points: geometry.contour.map(point => ({ ...point })),
     bounds: { ...geometry.contourBounds }
   };
@@ -162,7 +184,7 @@ function frontageDimensions(frontage, footprint) {
     return { width: clamp(footprint.w * 0.17, 20, 38), depth: clamp(minSide * 0.095, 10, 16) };
   }
   if (frontage === FRONTAGE_KINDS.NONE) return { width: 0, depth: 0 };
-  return { width: clamp(footprint.w * 0.17, 18, 38), depth: clamp(minSide * 0.075, 8, 13) };
+  return { width: clamp(footprint.w * 0.15, 18, 36), depth: clamp(minSide * 0.065, 7, 11) };
 }
 
 function createFrontageModule(building, footprint, definition) {
@@ -204,19 +226,235 @@ function createFrontageModule(building, footprint, definition) {
   };
 }
 
-function rawPropDimensions(kind, geometry) {
+function createRoofAnnexModule(building, geometry, footprint, visualProfile, random) {
+  const specification = visualProfile.annex;
+  if (!specification || random() > (specification.chance ?? 1)) return null;
+  if (footprint.w < 110 || footprint.h < 80) return null;
+
+  const candidates = [...geometry.cells].sort((a, b) => (
+    a.row - b.row || b.column - a.column
+  ));
+  const cell = candidates.find(candidate => candidate.bounds.w >= 34 && candidate.bounds.h >= 30);
+  if (!cell) return null;
+
+  const safe = insetRect(cell.bounds, 6);
+  const width = clamp(
+    geometry.contourBounds.w * (specification.widthRatio || 0.28),
+    28,
+    safe.w
+  );
+  const height = clamp(
+    geometry.contourBounds.h * (specification.heightRatio || 0.34),
+    24,
+    safe.h
+  );
+  if (width < 18 || height < 18) return null;
+
+  const bounds = {
+    x: safe.x + safe.w - width,
+    y: safe.y,
+    w: width,
+    h: height
+  };
+  if (!rectContains(footprint, bounds)) return null;
+
+  return {
+    id: moduleId(building, "annex:service-room"),
+    kind: MODULE_KINDS.ROOF_ANNEX,
+    layer: MODULE_LAYERS.annex,
+    variant: specification.kind || "service-room",
+    surfaceKind: visualProfile.surfaceKind,
+    bounds
+  };
+}
+
+function mergeIntervals(intervals, maximumGap = 0) {
+  const sorted = intervals
+    .filter(interval => interval.end > interval.start)
+    .sort((a, b) => a.start - b.start);
+  const merged = [];
+
+  for (const interval of sorted) {
+    const previous = merged[merged.length - 1];
+    if (previous && interval.start <= previous.end + maximumGap) {
+      previous.end = Math.max(previous.end, interval.end);
+    } else {
+      merged.push({ ...interval });
+    }
+  }
+  return merged;
+}
+
+function textureLineModule(building, suffix, variant, x1, y1, x2, y2) {
+  return {
+    id: moduleId(building, `texture:${suffix}`),
+    kind: MODULE_KINDS.ROOF_TEXTURE_LINE,
+    layer: MODULE_LAYERS.surface,
+    variant,
+    x1,
+    y1,
+    x2,
+    y2,
+    bounds: {
+      x: Math.min(x1, x2),
+      y: Math.min(y1, y2),
+      w: Math.abs(x2 - x1),
+      h: Math.abs(y2 - y1)
+    }
+  };
+}
+
+function verticalTextureSegments(building, geometry, spacing, variant) {
+  const modules = [];
+  const bounds = geometry.contourBounds;
+  const margin = 4;
+  let index = 0;
+
+  for (let x = bounds.x + spacing; x < bounds.x + bounds.w - spacing * 0.45; x += spacing) {
+    const intervals = geometry.cells
+      .filter(cell => x >= cell.bounds.x + margin && x <= cell.bounds.x + cell.bounds.w - margin)
+      .map(cell => ({
+        start: cell.bounds.y + margin,
+        end: cell.bounds.y + cell.bounds.h - margin
+      }));
+    for (const interval of mergeIntervals(intervals, margin * 2)) {
+      modules.push(textureLineModule(
+        building,
+        `${variant}:v:${index++}`,
+        variant,
+        x,
+        interval.start,
+        x,
+        interval.end
+      ));
+    }
+  }
+  return modules;
+}
+
+function horizontalTextureSegments(building, geometry, ratios, variant) {
+  const modules = [];
+  const bounds = geometry.contourBounds;
+  const margin = 4;
+  let index = 0;
+
+  for (const ratio of ratios) {
+    const y = bounds.y + bounds.h * ratio;
+    const intervals = geometry.cells
+      .filter(cell => y >= cell.bounds.y + margin && y <= cell.bounds.y + cell.bounds.h - margin)
+      .map(cell => ({
+        start: cell.bounds.x + margin,
+        end: cell.bounds.x + cell.bounds.w - margin
+      }));
+    for (const interval of mergeIntervals(intervals, margin * 2)) {
+      modules.push(textureLineModule(
+        building,
+        `${variant}:h:${index++}`,
+        variant,
+        interval.start,
+        y,
+        interval.end,
+        y
+      ));
+    }
+  }
+  return modules;
+}
+
+function createRoofTextureModules(building, geometry, visualProfile) {
+  if (visualProfile.surfaceKind === ROOF_SURFACE_KINDS.CORRUGATED) {
+    return verticalTextureSegments(
+      building,
+      geometry,
+      clamp(visualProfile.textureSpacing || 9, 7, 14),
+      ROOF_SURFACE_KINDS.CORRUGATED
+    );
+  }
+  if (visualProfile.surfaceKind === ROOF_SURFACE_KINDS.MEMBRANE) {
+    return horizontalTextureSegments(
+      building,
+      geometry,
+      geometry.contourBounds.h >= 130 ? [0.28, 0.54, 0.78] : [0.36, 0.68],
+      ROOF_SURFACE_KINDS.MEMBRANE
+    );
+  }
+  if (visualProfile.surfaceKind === ROOF_SURFACE_KINDS.CIVIC) {
+    return [
+      ...horizontalTextureSegments(building, geometry, [0.5], ROOF_SURFACE_KINDS.CIVIC),
+      ...verticalTextureSegments(
+        building,
+        geometry,
+        Math.max(24, geometry.contourBounds.w * 0.48),
+        ROOF_SURFACE_KINDS.CIVIC
+      ).slice(0, 1)
+    ];
+  }
+  return [];
+}
+
+function createServiceStripModule(building, footprint, visualProfile) {
+  if (!visualProfile.serviceStrip || footprint.w < 60 || footprint.h < 45) return null;
+  const horizontalInset = clamp(footprint.w * 0.035, 6, 14);
+  const height = clamp(footprint.h * 0.055, 7, 12);
+  return {
+    id: moduleId(building, `service-strip:${visualProfile.serviceStrip}`),
+    kind: MODULE_KINDS.SERVICE_STRIP,
+    layer: MODULE_LAYERS.service,
+    variant: visualProfile.serviceStrip,
+    slots: clamp(Math.floor((footprint.w - horizontalInset * 2) / 34), 2, 8),
+    bounds: {
+      x: footprint.x + horizontalInset,
+      y: footprint.y + footprint.h - height - 2,
+      w: Math.max(1, footprint.w - horizontalInset * 2),
+      h: height
+    }
+  };
+}
+
+function createServiceLightModule(building, footprint, visualProfile, annex, serviceStrip) {
+  if (!visualProfile.serviceLight) return null;
+  const size = clamp(Math.min(footprint.w, footprint.h) * 0.055, 8, 13);
+  const anchorX = annex
+    ? annex.bounds.x + annex.bounds.w * 0.56
+    : serviceStrip
+      ? serviceStrip.bounds.x + serviceStrip.bounds.w * 0.72
+      : footprint.x + footprint.w * 0.72;
+  const anchorY = annex
+    ? annex.bounds.y + annex.bounds.h - 2
+    : serviceStrip
+      ? serviceStrip.bounds.y
+      : footprint.y + footprint.h * 0.75;
+  const bounds = {
+    x: clamp(anchorX - size / 2, footprint.x, footprint.x + footprint.w - size),
+    y: clamp(anchorY - size / 2, footprint.y, footprint.y + footprint.h - size),
+    w: size,
+    h: size
+  };
+  return {
+    id: moduleId(building, "service-light"),
+    kind: MODULE_KINDS.SERVICE_LIGHT,
+    layer: MODULE_LAYERS.service,
+    variant: "warm",
+    bounds
+  };
+}
+
+function rawPropDimensions(kind, geometry, visualProfile) {
   const roof = geometry.contourBounds;
   const shortSide = Math.min(roof.w, roof.h);
   if (kind === MODULE_KINDS.SKYLIGHT) {
+    const warehouse = visualProfile.id === "warehouse";
+    const club = visualProfile.id === "club";
     return {
-      w: clamp(roof.w * 0.28, 22, 58),
-      h: clamp(roof.h * 0.2, 14, 34)
+      w: clamp(roof.w * (warehouse ? 0.34 : club ? 0.32 : 0.27), warehouse ? 30 : 22, 66),
+      h: clamp(roof.h * (warehouse ? 0.19 : club ? 0.23 : 0.18), warehouse ? 16 : 14, 38)
     };
   }
   if (kind === MODULE_KINDS.HVAC) {
+    const industrial = visualProfile.id === "industrial";
     return {
-      w: clamp(shortSide * 0.2, 18, 34),
-      h: clamp(shortSide * 0.15, 14, 24)
+      w: clamp(shortSide * (industrial ? 0.18 : 0.2), 18, 36),
+      h: clamp(shortSide * (industrial ? 0.14 : 0.15), 14, 26)
     };
   }
   if (kind === MODULE_KINDS.HATCH) {
@@ -235,8 +473,8 @@ function rawPropDimensions(kind, geometry) {
   return { w: size, h: size };
 }
 
-function fittedPropDimensions(kind, cell, geometry) {
-  const raw = rawPropDimensions(kind, geometry);
+function fittedPropDimensions(kind, cell, geometry, visualProfile) {
+  const raw = rawPropDimensions(kind, geometry, visualProfile);
   return {
     w: Math.max(1, Math.min(raw.w, Math.max(1, cell.bounds.w - 10))),
     h: Math.max(1, Math.min(raw.h, Math.max(1, cell.bounds.h - 10)))
@@ -273,15 +511,19 @@ function normalizedAnchorPosition(anchor, geometry) {
   };
 }
 
-function anchorPreferenceScore(kind, anchor, geometry) {
+function anchorPreferenceScore(kind, anchor, geometry, visualProfile) {
   const position = normalizedAnchorPosition(anchor, geometry);
   const centerDistance = Math.hypot(position.x - 0.5, position.y - 0.5);
-  if (kind === MODULE_KINDS.SKYLIGHT) return centerDistance * 4 + anchor.tie * 0.2;
+  if (kind === MODULE_KINDS.SKYLIGHT) return centerDistance * 5 + anchor.tie * 0.14;
   if (kind === MODULE_KINDS.ANTENNA) {
     return (1 - position.x) * 1.4 + position.y * 1.5 + anchor.tie * 0.2;
   }
   if (kind === MODULE_KINDS.HVAC) {
-    return Math.abs(position.x - 0.35) * 1.4 + Math.abs(position.y - 0.48) + anchor.tie * 0.25;
+    const targetX = visualProfile.id === "industrial" ? 0.32 : 0.38;
+    const targetY = visualProfile.id === "industrial" ? 0.64 : 0.48;
+    return Math.abs(position.x - targetX) * 1.5
+      + Math.abs(position.y - targetY) * 1.2
+      + anchor.tie * 0.22;
   }
   if (kind === MODULE_KINDS.HATCH) {
     return position.x * 0.7 + (1 - position.y) * 0.9 + anchor.tie * 0.3;
@@ -289,12 +531,13 @@ function anchorPreferenceScore(kind, anchor, geometry) {
   return centerDistance + anchor.tie * 0.8;
 }
 
-function createPlacedProp(building, kind, anchor, geometry, index) {
-  const dimensions = fittedPropDimensions(kind, anchor.cell, geometry);
+function createPlacedProp(building, kind, anchor, geometry, visualProfile, index) {
+  const dimensions = fittedPropDimensions(kind, anchor.cell, geometry, visualProfile);
   return {
     id: moduleId(building, `prop:${index}:${kind}`),
     kind,
     layer: MODULE_LAYERS.rooftop,
+    profileId: visualProfile.id,
     bounds: {
       x: anchor.x - dimensions.w / 2,
       y: anchor.y - dimensions.h / 2,
@@ -304,25 +547,29 @@ function createPlacedProp(building, kind, anchor, geometry, index) {
   };
 }
 
-function propBudget(footprint, definition) {
+function propBudget(footprint, definition, visualProfile) {
   const level = DETAIL_LEVELS[definition.detailLevel] || DETAIL_LEVELS.standard;
   const area = footprint.w * footprint.h;
-  const areaTier = area >= 72000 ? 3 : area >= 28000 ? 2 : 1;
+  const areaTier = area >= 70000 ? 2 : 1;
   const churchAdjustment = definition.archetypeId === "church" ? -1 : 0;
   const desired = Math.max(0, Math.round(areaTier * level.propDensity) + churchAdjustment);
-  const signatureCount = definition.archetype.signatureProps?.length || 0;
-  const minimum = definition.archetypeId === "club" ? 1 : 0;
-  return clamp(Math.max(desired, minimum, Math.min(signatureCount, level.maximumProps)), 0, level.maximumProps);
+  const signatureCount = visualProfile.signatureProps?.length || 0;
+  const minimum = ["club", "warehouse", "industrial"].includes(visualProfile.id) ? 1 : 0;
+  return clamp(
+    Math.max(desired, minimum, Math.min(signatureCount, level.maximumProps)),
+    0,
+    level.maximumProps
+  );
 }
 
-function createPropQueue(definition, budget, random) {
+function createPropQueue(definition, visualProfile, budget, random) {
   const explicitAllowList = Array.isArray(definition.propKinds);
   const allowedKinds = explicitAllowList
     ? definition.propKinds.filter(kind => ROOFTOP_PROP_KINDS.includes(kind))
     : ROOFTOP_PROP_KINDS;
   const allowed = new Set(allowedKinds);
-  const signatures = (definition.archetype.signatureProps || []).filter(kind => allowed.has(kind));
-  const pool = (explicitAllowList ? allowedKinds : definition.archetype.propPool)
+  const signatures = visualProfile.signatureProps.filter(kind => allowed.has(kind));
+  const pool = (explicitAllowList ? allowedKinds : visualProfile.propPool)
     .filter(kind => allowed.has(kind));
   const queue = signatures.slice(0, budget);
   let cycle = shuffled([...new Set(pool)], random);
@@ -336,26 +583,51 @@ function createPropQueue(definition, budget, random) {
   return queue;
 }
 
-function createRooftopProps(building, footprint, geometry, frontage, definition, random) {
-  const reserved = frontage ? [frontage.bounds] : [];
+function createRooftopProps(
+  building,
+  footprint,
+  geometry,
+  frontage,
+  annex,
+  serviceStrip,
+  definition,
+  visualProfile,
+  random
+) {
+  const reserved = [frontage?.bounds, annex?.bounds, serviceStrip?.bounds].filter(Boolean);
   const modules = [];
   const anchors = createCandidateAnchors(geometry, random);
-  const queue = createPropQueue(definition, propBudget(footprint, definition), random);
+  const queue = createPropQueue(
+    definition,
+    visualProfile,
+    propBudget(footprint, definition, visualProfile),
+    random
+  );
 
   for (let index = 0; index < queue.length; index += 1) {
     const kind = queue[index];
     const orderedAnchors = anchors
-      .map(anchor => ({ anchor, score: anchorPreferenceScore(kind, anchor, geometry) }))
+      .map(anchor => ({
+        anchor,
+        score: anchorPreferenceScore(kind, anchor, geometry, visualProfile)
+      }))
       .sort((a, b) => a.score - b.score);
     let placed = null;
     let usedAnchor = null;
 
     for (const { anchor } of orderedAnchors) {
-      const candidate = createPlacedProp(building, kind, anchor, geometry, index);
+      const candidate = createPlacedProp(
+        building,
+        kind,
+        anchor,
+        geometry,
+        visualProfile,
+        index
+      );
       const safeCell = insetRect(anchor.cell.bounds, 4);
       if (!rectContains(safeCell, candidate.bounds)) continue;
       if (!rectContains(footprint, candidate.bounds)) continue;
-      if (reserved.some(bounds => rectsOverlap(bounds, candidate.bounds, 5))) continue;
+      if (reserved.some(bounds => rectsOverlap(bounds, candidate.bounds, 6))) continue;
       placed = candidate;
       usedAnchor = anchor;
       break;
@@ -371,11 +643,21 @@ function createRooftopProps(building, footprint, geometry, frontage, definition,
   return modules;
 }
 
-function lineModule(building, suffix, kind, x1, y1, x2, y2, extras = {}) {
+function lineModule(
+  building,
+  suffix,
+  kind,
+  x1,
+  y1,
+  x2,
+  y2,
+  extras = {},
+  layer = MODULE_LAYERS.identity
+) {
   return {
     id: moduleId(building, suffix),
     kind,
-    layer: MODULE_LAYERS.identity,
+    layer,
     x1,
     y1,
     x2,
@@ -549,41 +831,127 @@ export function moduleFitsBuildingFootprint(module, footprint) {
 
 export function createBuildingPresentationPlan(building = {}, options = {}) {
   const footprint = normalizeRect(building);
-  const definition = resolveBuildingPresentationDefinition(building, options);
+  const rawDefinition = resolveBuildingPresentationDefinition(building, options);
+  const visualProfile = resolveBuildingVisualProfile(
+    building,
+    rawDefinition.archetypeId,
+    {
+      ...options,
+      profileId: rawDefinition.profileId,
+      surfaceKind: rawDefinition.surfaceKind,
+      showLabel: rawDefinition.showLabel
+    }
+  );
+  const definition = applyVisualProfileDefaults(
+    building,
+    rawDefinition,
+    visualProfile,
+    options
+  );
   const seed = buildingPresentationSeed(building, definition.seed);
   const random = createRandom(seed);
-  const selection = chooseLayoutRecipe(building, footprint, definition, random, options);
+  const selection = chooseLayoutRecipe(
+    building,
+    footprint,
+    definition,
+    visualProfile,
+    random,
+    options
+  );
   const geometry = createRoofSilhouetteGeometry(footprint, selection.recipe);
-  const foundation = createFoundationModule(building, footprint);
-  const roofMass = createRoofMassModule(building, geometry, selection.recipe.id);
+  const foundation = createFoundationModule(building, footprint, visualProfile);
+  const roofMass = createRoofMassModule(
+    building,
+    geometry,
+    selection.recipe.id,
+    visualProfile
+  );
+  const texture = createRoofTextureModules(building, geometry, visualProfile);
   const edges = createParapetModules(building, geometry);
   const frontage = createFrontageModule(building, footprint, definition);
-  const props = createRooftopProps(building, footprint, geometry, frontage, definition, random);
-  const identity = createIdentityModules(building, geometry, edges, frontage, definition);
+  const annex = createRoofAnnexModule(
+    building,
+    geometry,
+    footprint,
+    visualProfile,
+    random
+  );
+  const serviceStrip = createServiceStripModule(
+    building,
+    footprint,
+    visualProfile
+  );
+  const serviceLight = createServiceLightModule(
+    building,
+    footprint,
+    visualProfile,
+    annex,
+    serviceStrip
+  );
+  const props = createRooftopProps(
+    building,
+    footprint,
+    geometry,
+    frontage,
+    annex,
+    serviceStrip,
+    definition,
+    visualProfile,
+    random
+  );
+  const identity = createIdentityModules(
+    building,
+    geometry,
+    edges,
+    frontage,
+    definition
+  );
   const modules = [
     foundation,
     roofMass,
+    ...texture,
     ...edges,
+    ...(annex ? [annex] : []),
     ...(frontage ? [frontage] : []),
+    ...(serviceStrip ? [serviceStrip] : []),
+    ...(serviceLight ? [serviceLight] : []),
     ...props,
     ...identity
   ].sort((a, b) => (a.layer || 0) - (b.layer || 0));
-  const palette = resolveBuildingPalette(building, definition.archetypeId);
+  const palette = resolveBuildingPalette(
+    building,
+    definition.archetypeId,
+    visualProfile
+  );
   const warnings = [];
   if (selection.fallback) {
-    warnings.push(`Layout '${selection.requested}' does not fit the authored footprint; using 'rectangle'.`);
+    warnings.push(
+      `Layout '${selection.requested}' does not fit the authored footprint; using 'rectangle'.`
+    );
   }
+  const minimumSide = Math.min(footprint.w, footprint.h);
 
   return {
     version: BUILDING_PRESENTATION_VERSION,
     buildingId: building.id || null,
     seed,
     archetype: definition.archetypeId,
+    profileId: visualProfile.id,
+    surfaceKind: visualProfile.surfaceKind,
     layoutId: selection.recipe.id,
     detailLevel: definition.detailLevel,
+    showLabel: Boolean(definition.showLabel),
     labelColor: palette.label,
     collisionFootprint: { ...footprint },
     visualFootprint: { ...footprint },
+    effects: {
+      shadowDepth: clamp(
+        minimumSide * 0.085 * (visualProfile.shadowDepthScale || 1),
+        7,
+        18
+      ),
+      wallDepth: clamp(minimumSide * 0.045, 4, 9)
+    },
     silhouette: {
       points: geometry.contour.map(point => ({ ...point })),
       bounds: { ...geometry.contourBounds },
@@ -593,12 +961,24 @@ export function createBuildingPresentationPlan(building = {}, options = {}) {
       bounds: { ...geometry.roofBounds },
       columns: geometry.columns,
       rows: geometry.rows,
-      occupiedCells: geometry.cells.map(cell => ({ row: cell.row, column: cell.column }))
+      occupiedCells: geometry.cells.map(cell => ({
+        row: cell.row,
+        column: cell.column
+      }))
     },
     frontage: frontage ? {
       kind: frontage.variant,
       edge: frontage.edge,
       bounds: { ...frontage.bounds }
+    } : null,
+    annex: annex ? {
+      kind: annex.variant,
+      bounds: { ...annex.bounds }
+    } : null,
+    service: serviceStrip ? {
+      kind: serviceStrip.variant,
+      bounds: { ...serviceStrip.bounds },
+      light: Boolean(serviceLight)
     } : null,
     palette,
     modules,

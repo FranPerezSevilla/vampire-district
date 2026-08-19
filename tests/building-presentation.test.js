@@ -4,8 +4,10 @@ import test from "node:test";
 import {
   FRONTAGE_KINDS,
   MODULE_KINDS,
+  ROOF_SURFACE_KINDS,
   buildingPresentationSeed,
   classifyBuildingPresentation,
+  classifyBuildingVisualProfile,
   clearBuildingPresentationCache,
   createBuildingPresentationPlan,
   drawBuildingPresentation,
@@ -34,6 +36,17 @@ function moduleLineKey(module) {
   return [module.x1, module.y1, module.x2, module.y2]
     .map(value => Number(value).toFixed(4))
     .join(":");
+}
+
+function rooftopProps(plan) {
+  return plan.modules.filter(module => [
+    MODULE_KINDS.SKYLIGHT,
+    MODULE_KINDS.HVAC,
+    MODULE_KINDS.VENT,
+    MODULE_KINDS.HATCH,
+    MODULE_KINDS.ANTENNA,
+    MODULE_KINDS.SATELLITE_DISH
+  ].includes(module.kind));
 }
 
 class GraphicsRecorder {
@@ -67,6 +80,17 @@ test("semantic classification is conservative and supports explicit overrides", 
   );
 });
 
+test("generic visual profiles use narrow whole-word classification", () => {
+  assert.equal(classifyBuildingVisualProfile(building({ sign: "WARE" })), "warehouse");
+  assert.equal(classifyBuildingVisualProfile(building({ sign: "WORKS" })), "industrial");
+  assert.equal(classifyBuildingVisualProfile(building({ sign: "FLATS" })), "residential");
+  assert.equal(classifyBuildingVisualProfile(building({ sign: "SOFTWARE" })), "default");
+  assert.equal(
+    classifyBuildingVisualProfile(building({ presentation: { profile: "factory" } })),
+    "industrial"
+  );
+});
+
 test("the planner is deterministic for the same authored building", () => {
   const source = building({ id: "deterministic-block" });
   assert.equal(buildingPresentationSeed(source), buildingPresentationSeed({ ...source }));
@@ -88,9 +112,11 @@ test("collision and visual footprints remain exactly equal to authored geometry"
   assert.deepEqual(foundations[0].bounds, expected);
 });
 
-test("every generated module stays inside the authored footprint", () => {
+test("every planned module stays inside the authored footprint", () => {
   const variants = [
     building({ id: "generic-large" }),
+    building({ id: "warehouse", sign: "WARE" }),
+    building({ id: "works", sign: "WORKS" }),
     building({ id: "police", sign: "POLICE" }),
     building({ id: "club", sign: "CLUB" }),
     building({ id: "church", sign: "CHURCH", w: 210, h: 220 })
@@ -149,15 +175,7 @@ test("unsupported layout size falls back safely and reports why", () => {
 
 test("standard detail stays restrained and uses large signature props", () => {
   const generic = createBuildingPresentationPlan(building({ id: "generic-detail" }));
-  const genericProps = generic.modules.filter(module => [
-    MODULE_KINDS.SKYLIGHT,
-    MODULE_KINDS.HVAC,
-    MODULE_KINDS.VENT,
-    MODULE_KINDS.HATCH,
-    MODULE_KINDS.ANTENNA,
-    MODULE_KINDS.SATELLITE_DISH
-  ].includes(module.kind));
-  assert.ok(genericProps.length <= 3);
+  assert.ok(rooftopProps(generic).length <= 2);
 
   const club = createBuildingPresentationPlan(building({ id: "club", sign: "CLUB" }));
   const skylight = club.modules.find(module => module.kind === MODULE_KINDS.SKYLIGHT);
@@ -166,19 +184,56 @@ test("standard detail stays restrained and uses large signature props", () => {
   assert.ok(skylight.bounds.h >= 12);
 });
 
+test("WARE uses the approved cool corrugated warehouse grammar", () => {
+  const plan = createBuildingPresentationPlan(building({
+    id: "riverside-ware",
+    sign: "WARE"
+  }));
+  assert.equal(plan.archetype, "generic");
+  assert.equal(plan.profileId, "warehouse");
+  assert.equal(plan.surfaceKind, ROOF_SURFACE_KINDS.CORRUGATED);
+  assert.equal(plan.layoutId, "rectangle");
+  assert.equal(plan.frontage, null);
+  assert.ok(plan.modules.some(module => module.kind === MODULE_KINDS.SKYLIGHT));
+  assert.ok(plan.modules.some(module => module.kind === MODULE_KINDS.SERVICE_STRIP));
+  assert.ok(
+    plan.modules.filter(module => module.kind === MODULE_KINDS.ROOF_TEXTURE_LINE).length >= 4
+  );
+});
+
+test("WORKS uses one unified industrial mass with a raised service annex", () => {
+  const plan = createBuildingPresentationPlan(building({
+    id: "old-works",
+    sign: "WORKS"
+  }));
+  assert.equal(plan.archetype, "generic");
+  assert.equal(plan.profileId, "industrial");
+  assert.equal(plan.surfaceKind, ROOF_SURFACE_KINDS.MEMBRANE);
+  assert.equal(plan.layoutId, "rectangle");
+  assert.ok(plan.modules.some(module => module.kind === MODULE_KINDS.ROOF_ANNEX));
+  assert.ok(plan.modules.some(module => module.kind === MODULE_KINDS.HVAC));
+  assert.ok(plan.modules.some(module => module.kind === MODULE_KINDS.SERVICE_STRIP));
+  assert.ok(plan.modules.some(module => module.kind === MODULE_KINDS.SERVICE_LIGHT));
+});
+
 test("landmark archetypes assemble from shared modules but retain identity", () => {
   const police = createBuildingPresentationPlan(building({ id: "police", sign: "POLICE" }));
   assert.equal(police.archetype, "police");
+  assert.equal(police.profileId, "police");
   assert.equal(police.frontage.kind, FRONTAGE_KINDS.POLICE);
   assert.ok(police.modules.some(module => module.kind === MODULE_KINDS.ANTENNA));
   assert.ok(police.modules.some(module => module.kind === MODULE_KINDS.ACCENT_STRIP));
 
   const club = createBuildingPresentationPlan(building({ id: "club", sign: "CLUB" }));
   assert.equal(club.archetype, "club");
+  assert.equal(club.profileId, "club");
   assert.equal(club.layoutId, "irregular");
   assert.equal(club.frontage.kind, FRONTAGE_KINDS.CLUB);
   assert.ok(club.modules.some(module => module.kind === MODULE_KINDS.SKYLIGHT));
-  assert.equal(club.modules.filter(module => module.kind === MODULE_KINDS.ACCENT_STRIP).length, 1);
+  assert.equal(
+    club.modules.filter(module => module.kind === MODULE_KINDS.ACCENT_STRIP).length,
+    1
+  );
 
   const church = createBuildingPresentationPlan(building({
     id: "cathedral",
@@ -187,6 +242,7 @@ test("landmark archetypes assemble from shared modules but retain identity", () 
     h: 260
   }));
   assert.equal(church.archetype, "church");
+  assert.equal(church.profileId, "church");
   assert.equal(church.layoutId, "cross");
   assert.equal(church.frontage.kind, FRONTAGE_KINDS.CHURCH);
   assert.ok(church.modules.some(module => module.kind === MODULE_KINDS.ROOF_RIDGE));
@@ -197,33 +253,49 @@ test("authored presentation overrides are resolved through one extension point",
   const source = building({
     presentation: {
       archetype: "club",
+      profile: "warehouse",
+      surfaceKind: "corrugated",
       layoutId: "l-shape",
       frontage: "club",
       frontageEdge: "east",
       frontageOffset: 0.5,
       detailLevel: "minimal",
+      showLabel: true,
       propKinds: [MODULE_KINDS.FRONTAGE, MODULE_KINDS.VENT]
     }
   });
   const definition = resolveBuildingPresentationDefinition(source);
   assert.equal(definition.archetypeId, "club");
+  assert.equal(definition.profileId, "warehouse");
+  assert.equal(definition.surfaceKind, "corrugated");
   assert.equal(definition.layoutId, "l-shape");
   assert.equal(definition.frontageEdge, "east");
   assert.equal(definition.frontageOffset, 0.5);
   assert.equal(definition.detailLevel, "minimal");
+  assert.equal(definition.showLabel, true);
 
   const plan = createBuildingPresentationPlan(source);
+  assert.equal(plan.profileId, "warehouse");
+  assert.equal(plan.surfaceKind, ROOF_SURFACE_KINDS.CORRUGATED);
   assert.equal(plan.layoutId, "l-shape");
   assert.equal(plan.frontage.edge, "east");
-  assert.equal(plan.modules.filter(module => module.kind === MODULE_KINDS.FRONTAGE).length, 1);
-  const optionalProps = plan.modules.filter(module => [
-    MODULE_KINDS.SKYLIGHT,
-    MODULE_KINDS.HVAC,
-    MODULE_KINDS.VENT,
-    MODULE_KINDS.HATCH,
-    MODULE_KINDS.SATELLITE_DISH
-  ].includes(module.kind));
-  assert.ok(optionalProps.every(module => module.kind === MODULE_KINDS.VENT));
+  assert.equal(plan.showLabel, true);
+  assert.equal(
+    plan.modules.filter(module => module.kind === MODULE_KINDS.FRONTAGE).length,
+    1
+  );
+  assert.ok(rooftopProps(plan).every(module => module.kind === MODULE_KINDS.VENT));
+});
+
+test("world labels are opt-in rather than permanent debug overlays", () => {
+  assert.equal(createBuildingPresentationPlan(building({ sign: "WARE" })).showLabel, false);
+  assert.equal(
+    createBuildingPresentationPlan(building({
+      sign: "WARE",
+      presentation: { showLabel: true }
+    })).showLabel,
+    true
+  );
 });
 
 test("all catalog recipes have internally consistent masks", () => {
@@ -254,22 +326,50 @@ test("tiny authored footprints still produce contained, renderable modules", () 
 
 test("runtime drawing caches deterministic plans per authored building and option set", () => {
   const source = building({ id: "cached-building" });
-  const first = drawBuildingPresentation(new GraphicsRecorder(), source, { detailLevel: "minimal" });
-  const second = drawBuildingPresentation(new GraphicsRecorder(), source, { detailLevel: "minimal" });
+  const first = drawBuildingPresentation(
+    new GraphicsRecorder(),
+    source,
+    { detailLevel: "minimal" }
+  );
+  const second = drawBuildingPresentation(
+    new GraphicsRecorder(),
+    source,
+    { detailLevel: "minimal" }
+  );
   assert.equal(first, second);
 
   clearBuildingPresentationCache(source);
-  const third = drawBuildingPresentation(new GraphicsRecorder(), source, { detailLevel: "minimal" });
+  const third = drawBuildingPresentation(
+    new GraphicsRecorder(),
+    source,
+    { detailLevel: "minimal" }
+  );
   assert.notEqual(first, third);
   assert.deepEqual(first, third);
 });
 
-test("renderer paints fused polygons, props and outlines without Phaser globals", () => {
+test("renderer paints the overpaint grammar without Phaser globals", () => {
   const graphics = new GraphicsRecorder();
-  const plan = createBuildingPresentationPlan(building({ id: "club", sign: "CLUB" }));
+  const plan = createBuildingPresentationPlan(building({
+    id: "old-works",
+    sign: "WORKS"
+  }));
   assert.doesNotThrow(() => renderBuildingPresentation(graphics, plan));
   assert.ok(graphics.calls.some(call => call.name === "fillPoints"));
   assert.ok(graphics.calls.some(call => call.name === "fillRect"));
+  assert.ok(graphics.calls.some(call => call.name === "fillCircle"));
   assert.ok(graphics.calls.some(call => call.name === "lineBetween"));
   assert.ok(graphics.calls.some(call => call.name === "strokeRect"));
+
+  const footprint = plan.visualFootprint;
+  const externalShadow = graphics.calls
+    .filter(call => call.name === "fillRect")
+    .some(call => {
+      const [x, y, w, h] = call.args.map(Number);
+      return x < footprint.x
+        || y < footprint.y
+        || x + w > footprint.x + footprint.w
+        || y + h > footprint.y + footprint.h;
+    });
+  assert.equal(externalShadow, true);
 });

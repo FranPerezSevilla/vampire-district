@@ -1,163 +1,278 @@
 # Building presentation system
 
-ViceBlood buildings keep their authored `x`, `y`, `w`, and `h` as the sole collision and navigation footprint. The presentation layer turns that rectangle into a deterministic modular composition without changing roads, entrances, rooftop routes, interiors, missions, or AI geometry.
+ViceBlood buildings keep their authored `x`, `y`, `w`, and `h` as the only collision and navigation footprint. The presentation layer turns that rectangle into a deterministic modular roof composition without changing roads, entrances, rooftop routes, interiors, missions, or AI geometry.
 
-The visual target is the approved concept sheet: **one clean overhead silhouette first, one or two large roof details second, and a restrained identity accent last**. The internal grid must never be visible in the finished render.
+The current visual north star is the approved in-context overpaint:
+
+1. **one solid overhead mass;**
+2. **a readable parapet and south/east shadow;**
+3. **one large identity prop and, at most, one supporting prop;**
+4. **no permanent debug labels.**
+
+The logical modular grid is planning data. It must not be visible in the finished render.
 
 ## Design contract
 
-- **Pure overhead:** orthographic top-down only. Volume comes from parapet values and a restrained south/east shadow, never from a front-facing or isometric facade.
-- **Silhouette first:** occupancy masks are planning data. Adjacent occupied cells are fused into one concave orthogonal roof polygon before rendering.
-- **Footprint-safe:** every planned module remains inside the authored rectangle. A full-footprint low service roof remains beneath irregular raised masses, so collision never becomes invisible.
-- **Restrained detail:** the default `standard` profile produces at most three large rooftop props and normally only one or two.
-- **Deterministic:** a stable seed derived from authored building identity fixes layout, prop selection, and prop placement across redraws and sessions.
-- **Data-driven:** layouts, archetypes, palettes, signature props, frontages, and module kinds live in the catalog rather than in scene conditionals.
-- **Presentation-only:** the system does not own topology, collision, navigation, rooftop traversal, interiors, or gameplay semantics.
+- **Pure overhead:** orthographic top-down only. No front facade and no isometric tilt.
+- **Mass before detail:** the eye should read the building silhouette before rooftop machinery.
+- **Footprint-safe planning:** every planned module stays inside the authored rectangle.
+- **Visual shadow freedom:** renderer-only shadows may extend outside the footprint because they do not affect collision.
+- **No invisible collision:** irregular raised masses sit above a complete low roof covering the full collision rectangle.
+- **Deterministic:** stable authored identity fixes profile, layout, annex, props, and placement.
+- **Sparse detail:** `standard` permits at most two standalone rooftop props.
+- **Data-driven:** profiles, archetypes, masks, props, surfaces, and palettes live outside `GameScene`.
+- **Presentation-only:** this system does not own topology, gameplay, entrances, navigation, or interiors.
+- **Labels are opt-in:** buildings, vehicles, and dumpsters do not carry permanent world-space names by default.
 
 ## Architecture
 
-`phaser/src/rendering/BuildingPresentation.js` is the stable public facade. Scene and gameplay code should import only from it.
+`phaser/src/rendering/BuildingPresentation.js` is the stable public facade. Scene code should import only from it.
 
-### Catalog
+### Semantic catalog
 
 `phaser/src/rendering/buildings/BuildingPresentationCatalog.js`
 
-- reusable module kinds;
-- layout recipes expressed as occupancy masks;
-- semantic archetypes and conservative classification rules;
-- signature props, optional prop pools, detail profiles, accents, and palette resolution.
+- module kinds and render layers;
+- reusable layout masks;
+- landmark archetypes;
+- detail limits;
+- semantic classification;
+- palette resolution.
+
+### Visual profiles
+
+`phaser/src/rendering/buildings/BuildingVisualProfileCatalog.js`
+
+Visual profiles describe *how a generic building should read*, independently of its collision geometry.
+
+Current profiles:
+
+- `default`
+- `residential`
+- `commercial`
+- `warehouse`
+- `industrial`
+- `police`
+- `club`
+- `church`
+
+Profile inference uses conservative whole-word tokens. For example:
+
+- `WARE`, `WAREHOUSE`, `DEPOT`, and `STORAGE` resolve to `warehouse`;
+- `WORKS`, `FACTORY`, `FOUNDRY`, and `GARAGE` resolve to `industrial`;
+- `FLATS`, `APARTMENTS`, and `TENEMENT` resolve to `residential`.
+
+`SOFTWARE` does **not** become a warehouse merely because it contains `ware`.
+
+A profile controls:
+
+- roof surface;
+- weighted layout candidates;
+- frontage default;
+- signature prop;
+- supporting prop pool;
+- roof tint;
+- service strip;
+- optional service light;
+- optional raised annex;
+- shadow depth;
+- default label visibility.
 
 ### Silhouette geometry
 
 `phaser/src/rendering/buildings/BuildingSilhouetteGeometry.js`
 
-- normalizes and safely insets authored footprints;
-- converts occupied cells into directed external boundary segments;
-- chains those segments into one closed orthogonal contour;
-- removes collinear intermediate vertices;
-- emits only external parapet edges, with no internal grid seams;
-- remains pure JavaScript with no Phaser dependency.
+- safely insets the authored footprint;
+- emits logical occupied cells;
+- converts connected mask cells into one closed orthogonal contour;
+- removes collinear vertices;
+- emits only external parapet edges;
+- has no Phaser dependency.
 
 ### Planner
 
 `phaser/src/rendering/buildings/BuildingPresentationPlanner.js`
 
-- chooses a fitting layout deterministically;
-- emits a full-footprint low service roof plus one fused raised roof mass;
-- places a small number of large props inside occupied logical cells;
-- reserves space around frontages and existing props;
-- creates landmark identity modules from shared primitives;
-- reports safe layout fallback warnings;
-- returns plain serializable plan data.
+The planner combines archetype and profile data into a serializable presentation plan:
+
+- full-footprint low roof;
+- one fused raised roof mass;
+- profile-specific surface lines;
+- external parapets;
+- optional raised service annex;
+- optional frontage;
+- optional service strip and warm service light;
+- one or two large standalone props;
+- landmark identity accents.
+
+The planner also returns:
+
+- selected archetype and visual profile;
+- roof surface kind;
+- exact collision and visual footprints;
+- silhouette and logical grid metadata;
+- label policy;
+- shadow/wall effect values;
+- module counts;
+- safe fallback warnings.
 
 ### Renderer
 
 `phaser/src/rendering/buildings/BuildingPresentationRenderer.js`
 
-- renders one polygon for the raised roof rather than one rectangle per cell;
-- draws directional parapets and contained roof shadows;
-- uses one small renderer per module kind;
-- keeps police, club, church, and generic identity compositional rather than monolithic;
-- caches immutable plans in a `WeakMap` keyed by authored building object and planning options;
-- ignores unknown future module kinds rather than crashing the city renderer.
+- renders one fused polygon, never one visible rectangle per logical cell;
+- draws an external south/east cast shadow;
+- draws a complete low roof rather than an interior-looking floor;
+- gives north/west parapets a restrained highlight;
+- gives south/east edges wall depth;
+- renders profile surfaces and service modules;
+- dispatches one renderer per module kind;
+- caches immutable plans in a `WeakMap`;
+- ignores unknown future module kinds instead of crashing the city.
 
-## Reusable layouts
+## Roof surfaces
 
-- `rectangle`
-- `l-shape`
-- `t-shape`
-- `stepped`
-- `cross`
-- `irregular`
+- `smooth`: almost no internal linework;
+- `membrane`: two or three broad, subtle roof seams;
+- `corrugated`: repeated restrained ribs, used by warehouses;
+- `civic`: sparse ordered seams;
+- `night`: clean dark mass for club architecture;
+- `pitched`: identity comes from ridges rather than flat-roof texture.
 
-Masks are normalized to the authored footprint. The mask controls the raised mass only; the low service roof still covers the complete collision footprint.
+## Approved profile grammar
 
-## Current archetypes
+### Warehouse
 
-- `generic`: neutral rectangle/L/T/stepped silhouettes, one hero prop, and no loud accent;
-- `police`: ordered rectangular mass, civic canopy, antenna, large HVAC, and two short blue cues;
-- `club`: irregular mass, dominant skylight, dark canopy, and one continuous magenta roof-edge accent;
-- `church`: cross or T silhouette, central ridges, a small gold cross marker, and almost no mechanical clutter.
+The warehouse is the direct translation of the cool-blue overpaint:
 
-Classification intentionally avoids broad terms such as `NEON`. Explicit metadata always wins over inference.
+- rectangular unified mass;
+- cool blue-gray tint;
+- fine corrugated ribs;
+- one large central skylight;
+- dark service strip on the south edge;
+- strong but clean shadow;
+- no generic entrance canopy.
 
-## Authored override contract
+### Industrial / works
 
-A building may optionally provide a `presentation` object:
+The industrial building follows the warm-brown overpaint:
+
+- rectangular unified main mass;
+- subtle membrane seams;
+- one large HVAC unit;
+- raised service-room annex in the north-east area;
+- dark loading/service strip;
+- one restrained warm service light;
+- no exposed-room or floorplan reading.
+
+### Police
+
+- ordered civic rectangle;
+- civic canopy;
+- antenna and HVAC composition;
+- two short blue accents;
+- no dependence on a large text label.
+
+### Club
+
+- irregular fused mass;
+- dominant skylight;
+- dark canopy;
+- one continuous magenta edge accent.
+
+### Church
+
+- cross or T silhouette;
+- central ridges;
+- small warm cross marker;
+- minimal mechanical clutter.
+
+## Authored overrides
+
+A building can optionally provide `presentation` metadata:
 
 ```js
 {
-  id: "east-side-club",
+  id: "east-side-works",
   x: 1200,
   y: 900,
   w: 240,
   h: 170,
   presentation: {
-    archetype: "club",
-    layoutId: "l-shape",
-    frontage: "club",
-    frontageEdge: "east",
-    frontageOffset: 0.35,
+    profile: "industrial",
+    surfaceKind: "membrane",
+    layoutId: "rectangle",
+    frontage: "none",
     detailLevel: "minimal",
-    propKinds: ["skylight", "hvac"]
+    showLabel: false,
+    propKinds: ["hvac"]
   }
 }
 ```
 
 Supported fields:
 
-- `archetype`: registered archetype or alias;
-- `layoutId`: registered layout recipe;
-- `frontage`: `none`, `generic`, `police`, `club`, or `church`;
-- `frontageEdge`: `north`, `east`, `south`, or `west`;
-- `frontageOffset`: normalized offset from `-1` to `1` along that edge;
-- `detailLevel`: `minimal`, `standard`, or `rich`;
-- `propKinds`: optional allow-list of registered rooftop prop kinds; structural kinds are rejected;
-- `seed`: optional deterministic seed override.
+- `archetype`
+- `profile` or `profileId`
+- `surfaceKind` or `roofSurface`
+- `layoutId`
+- `frontage`
+- `frontageEdge`
+- `frontageOffset`
+- `detailLevel`
+- `showLabel`
+- `propKinds`
+- `seed`
 
-Invalid values fall back to archetype defaults. A requested layout that cannot fit the authored dimensions falls back to `rectangle` and records a warning in the plan.
+Explicit metadata wins over inference. Structural module kinds are rejected from `propKinds`.
 
 ## Extending the system
+
+### Add a visual profile
+
+1. Add one entry to `BUILDING_VISUAL_PROFILES`.
+2. Define narrow whole-word classification tokens only when inference is safe.
+3. Reuse existing surface, annex, service, and prop modules.
+4. Add focused tests for profile selection and its signature composition.
 
 ### Add a layout
 
 1. Add one connected occupancy mask to `LAYOUT_RECIPES`.
-2. Set minimum dimensions appropriate for readable gameplay-scale cells.
-3. Add the layout to an archetype's candidates or select it explicitly.
-4. Cover contour vertex count, occupied cells, and exposed parapets in tests.
+2. Set readable minimum dimensions.
+3. Add it to a profile or archetype candidate list.
+4. Test contour vertices, occupied cells, and external parapets.
 
-No renderer change is required: the geometry layer automatically produces the fused polygon.
-
-### Add an archetype
-
-1. Add layout candidates, frontage, signature props, prop pool, accent, and label color to `BUILDING_ARCHETYPES`.
-2. Prefer explicit `presentation.archetype` metadata; add a narrow classification rule only when inference is unambiguous.
-3. Reuse existing modules wherever possible.
-4. Add archetype-specific identity planning only when composition cannot be expressed through catalog data alone.
+No renderer change is required for a new connected orthogonal mask.
 
 ### Add a module kind
 
-1. Add the constant to `MODULE_KINDS`.
-2. Have the planner emit a stable `id`, `layer`, and contained `bounds` or polygon points.
-3. Add one renderer entry to `MODULE_RENDERERS`.
-4. Add containment and renderer-dispatch coverage.
+1. Add the constant and layer.
+2. Emit stable `id`, geometry, and bounds from the planner.
+3. Add one renderer entry.
+4. Test footprint containment and renderer dispatch.
 
 ## Validation invariants
 
 Focused tests verify:
 
-- semantic classification and explicit overrides;
+- archetype and whole-word profile classification;
 - deterministic plans;
-- exact collision and visual footprint preservation;
-- containment of every generated module;
-- exactly one fused roof mass per building;
-- absence of visible roof-cell modules and internal parapet seams;
+- exact footprint preservation;
+- containment of every planned module;
+- one fused roof mass;
+- no visible roof cells or internal parapets;
 - safe layout fallback;
-- restrained prop counts and readable signature prop sizes;
-- police, club, and church identity contracts;
-- rejection of structural kinds in rooftop prop allow-lists;
-- renderability and containment for tiny authored footprints;
-- deterministic runtime caching;
-- polygon rendering without Phaser globals in unit tests.
+- a maximum of two standard rooftop props;
+- warehouse corrugation, skylight, and service edge;
+- industrial annex, HVAC, service strip, and warm light;
+- landmark identity contracts;
+- authored override behavior;
+- opt-in labels;
+- tiny-footprint safety;
+- runtime caching;
+- external visual shadows;
+- Phaser-free planner and renderer tests.
 
-Visual acceptance must happen at normal gameplay zoom in the Netlify preview. A successful building should read in this order: **silhouette → landmark identity → roof detail**. If the eye reads a procedural grid first, the implementation has failed even when its data model is correct.
+Visual acceptance still happens at normal gameplay zoom in the Netlify preview. The intended reading order is:
+
+**silhouette → profile identity → roof detail.**

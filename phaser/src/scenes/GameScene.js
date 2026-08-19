@@ -297,7 +297,8 @@ export class GameScene extends GameSceneCore {
   drawBuilding(building) {
     const plan = drawBuildingPresentation(this.map, building, { detailLevel: "standard" });
     const focus = this.renderFocus();
-    if (this.currentLayer === LAYERS.STREET
+    if (plan?.showLabel
+      && this.currentLayer === LAYERS.STREET
       && Phaser.Math.Distance.Between(focus.x, focus.y, building.x + building.w / 2, building.y + building.h / 2) < 520) {
       this.addMapLabel(building.sign, building.x + 9, building.y + 15, plan?.labelColor || 0xefe6ff);
     }

@@ -54,7 +54,9 @@ export function paintVehicle(scene, container, definition, archetype) {
     color: `#${archetype.trim.toString(16).padStart(6, "0")}`,
     backgroundColor: "rgba(5, 6, 11, .68)",
     padding: { x: 3, y: 1 }
-  }).setOrigin(0.5, 1).setRotation(-(Number(definition.angle) || 0));
+  }).setOrigin(0.5, 1)
+    .setRotation(-(Number(definition.angle) || 0))
+    .setVisible(Boolean(definition.showWorldLabel || archetype.showWorldLabel));
   label.setResolution?.(3);
   label.setStroke?.("#05060b", 2);
   container.add([...wheels, body, cabin, hood, nose, label]);
