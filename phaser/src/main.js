@@ -1,5 +1,6 @@
 import { WORLD } from "./data/balance.js";
 import { installDistrictGunfireHeatPolicy } from "./policies/DistrictGunfireHeatPolicy.js";
+import { installFootPolicePedestrianPolicy } from "./policies/FootPolicePedestrianPolicy.js";
 import { installPlaytestSurfacePolicy } from "./policies/PlaytestSurfacePolicy.js";
 import { installTrafficContextualHornPolicy } from "./policies/TrafficContextualHornPolicy.js";
 import { installTrafficPlaytestPolicy } from "./policies/TrafficPlaytestPolicy.js";
@@ -73,6 +74,7 @@ installVampireVeilPolicy();
 installPlaytestSurfacePolicy();
 installTrafficPlaytestPolicy();
 installTrafficContextualHornPolicy();
+installFootPolicePedestrianPolicy();
 installDistrictGunfireHeatPolicy();
 
 const config = {
