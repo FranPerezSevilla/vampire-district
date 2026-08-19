@@ -56,7 +56,7 @@ function drawFoundation(graphics, module, plan) {
   const palette = plan.palette;
   drawRect(graphics, bounds, palette.foundation, 1);
 
-  const drop = Math.max(2, Math.min(6, Math.floor(Math.min(bounds.w, bounds.h) * 0.035)));
+  const drop = Math.max(1, Math.min(6, Math.floor(Math.min(bounds.w, bounds.h) * 0.035)));
   drawRect(graphics, {
     x: bounds.x,
     y: bounds.y + bounds.h - drop,
@@ -71,13 +71,16 @@ function drawFoundation(graphics, module, plan) {
   }, palette.foundationShadow, 0.72);
 
   strokeRect(graphics, bounds, 2, palette.parapetDark, 0.95);
-  const inner = {
-    x: bounds.x + 3,
-    y: bounds.y + 3,
-    w: Math.max(1, bounds.w - 6),
-    h: Math.max(1, bounds.h - 6)
-  };
-  strokeRect(graphics, inner, 1, palette.parapetLight, 0.28);
+  const inset = Math.max(0, Math.min(3, Math.min(bounds.w, bounds.h) / 2 - 0.5));
+  if (inset > 0) {
+    const inner = {
+      x: bounds.x + inset,
+      y: bounds.y + inset,
+      w: Math.max(1, bounds.w - inset * 2),
+      h: Math.max(1, bounds.h - inset * 2)
+    };
+    strokeRect(graphics, inner, 1, palette.parapetLight, 0.28);
+  }
 }
 
 function drawRoofCell(graphics, module, plan) {
