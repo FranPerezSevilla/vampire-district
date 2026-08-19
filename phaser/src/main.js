@@ -1,10 +1,15 @@
 import { WORLD } from "./data/balance.js";
+import { installBloodSensePresentationPolicy } from "./policies/BloodSensePresentationPolicy.js";
 import { installDistrictGunfireHeatPolicy } from "./policies/DistrictGunfireHeatPolicy.js";
 import { installFootPolicePedestrianPolicy } from "./policies/FootPolicePedestrianPolicy.js";
 import { installPlaytestSurfacePolicy } from "./policies/PlaytestSurfacePolicy.js";
+import { installPoliceScreenPursuitPolicy } from "./policies/PoliceScreenPursuitPolicy.js";
+import { installStreetImpactAudioPolicy } from "./policies/StreetImpactAudioPolicy.js";
 import { installTrafficContextualHornPolicy } from "./policies/TrafficContextualHornPolicy.js";
+import { installTrafficFeedbackPolicy } from "./policies/TrafficFeedbackPolicy.js";
 import { installTrafficPlaytestPolicy } from "./policies/TrafficPlaytestPolicy.js";
 import { installVampireVeilPolicy } from "./policies/VampireVeilPolicy.js";
+import { installVehicleDamagePresentationPolicy } from "./policies/VehicleDamagePresentationPolicy.js";
 import { BootScene } from "./scenes/BootScene.js";
 import { MainMenuScene } from "./scenes/MainMenuScene.js";
 import { GameScene } from "./scenes/GameScene.js";
@@ -132,10 +137,15 @@ bindResolutionSelector();
 patchReadableCanvasText();
 installVampireVeilPolicy();
 installPlaytestSurfacePolicy();
+installBloodSensePresentationPolicy();
+installPoliceScreenPursuitPolicy();
 installTrafficPlaytestPolicy();
+installTrafficFeedbackPolicy();
 installTrafficContextualHornPolicy();
 installFootPolicePedestrianPolicy();
 installDistrictGunfireHeatPolicy();
+installVehicleDamagePresentationPolicy();
+installStreetImpactAudioPolicy();
 
 const config = {
   type: Phaser.AUTO,
