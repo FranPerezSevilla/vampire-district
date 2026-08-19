@@ -9,72 +9,13 @@ on:
     - cron: "17 3 * * *"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: tests-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  materialize-menu-theme:
-    if: github.event_name == 'pull_request' && github.head_ref == 'audio/playtest-p0'
-    runs-on: ubuntu-latest
-    timeout-minutes: 8
-    steps:
-      - name: Check out ViceBlood audio branch
-        uses: actions/checkout@v4
-        with:
-          ref: audio/playtest-p0
-          fetch-depth: 0
-      - name: Materialize validated menu theme and self-clean
-        shell: bash
-        run: |
-          set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y ffmpeg
-
-          prefix="phaser/assets/audio/music/_staging/main-menu-theme-01.ogg.b64"
-          shopt -s nullglob
-          parts=("${prefix}.part-"*)
-          test "${#parts[@]}" -eq 26
-          cat "${parts[@]}" > /tmp/main-menu-theme-01.ogg.b64
-          test "$(wc -c < /tmp/main-menu-theme-01.ogg.b64)" -eq 163148
-          base64 --decode /tmp/main-menu-theme-01.ogg.b64 > phaser/assets/audio/music/main-menu-theme-01.ogg
-          echo "0dabd4d991b4ef579f53c32489d992dd689612693035192af981f3ead1fcbd24  phaser/assets/audio/music/main-menu-theme-01.ogg" | sha256sum --check --strict
-          test "$(stat -c%s phaser/assets/audio/music/main-menu-theme-01.ogg)" -eq 122360
-          ffprobe -v error phaser/assets/audio/music/main-menu-theme-01.ogg
-
-          ffmpeg -nostdin -hide_banner -loglevel error -y \
-            -i phaser/assets/audio/music/main-menu-theme-01.ogg \
-            -map_metadata -1 -ac 1 -ar 44100 -codec:a libmp3lame -b:a 96k \
-            phaser/assets/audio/music/main-menu-theme-01.mp3
-          test "$(stat -c%s phaser/assets/audio/music/main-menu-theme-01.mp3)" -gt 100000
-          ffprobe -v error phaser/assets/audio/music/main-menu-theme-01.mp3
-
-          sed -i 's/main-menu-theme-01\.m4a/main-menu-theme-01.mp3/g' \
-            phaser/src/main.js tests/main-menu-music.test.js phaser/assets/audio/ATTRIBUTION.md
-          sed -i 's/User-supplied 24\.75 s AAC\/M4A loop retained as the runtime menu theme/Validated OGG source with browser-compatible MP3 runtime mirror/' phaser/assets/audio/ATTRIBUTION.md
-          rm -f phaser/assets/audio/music/main-menu-theme-01.m4a
-          rm -rf phaser/assets/audio/music/_staging
-          rm -f .github/workflows/recover-menu-theme.yml \
-            .github/workflows/recover-menu-theme-v2.yml \
-            .github/workflows/recover-menu-theme-v3.yml
-          sed -i '/# Manual retrigger for the validated ViceBlood menu-theme staging payload\./d' .github/workflows/materialize-audio-assets.yml
-          git show origin/main:.github/workflows/tests.yml > .github/workflows/tests.yml
-
-          grep -q 'main-menu-theme-01.mp3' phaser/src/main.js
-          ! grep -q 'main-menu-theme-01.m4a' phaser/src/main.js
-          grep -q 'waitForStart' phaser/src/scenes/MainMenuScene.js
-          grep -q 'PRESS ANY KEY TO START' phaser/src/ui/TitleScreenAudioGate.js
-          node --test tests/main-menu-music.test.js tests/main-menu-audio-binary.test.js
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Finalize complete ViceBlood menu theme playback"
-          git pull --rebase origin audio/playtest-p0
-          git push origin HEAD:audio/playtest-p0
-
   unit-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 8
