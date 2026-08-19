@@ -2,6 +2,41 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-19 — M1 complete; autonomous work advances to M2.1
+
+### Completed
+
+- confirmed all M1.4 building-focused contracts pass in the GitHub unit run;
+- confirmed the new collider-only footprint regression passes;
+- confirmed the old complete foundation frame is no longer emitted by the public renderer;
+- confirmed Netlify deploy preview is green for the M1.4 head;
+- closed M1 without changing planner, collision, topology, navigation or gameplay authority;
+- opened M2.1 for shared physical rooftop-prop volume primitives.
+
+### Validation
+
+- global unit result: **404 passed / 411 total**;
+- all building presentation and building shadow contracts pass, including:
+  - exact collider/visual footprint preservation;
+  - fused roof silhouettes;
+  - layered world/contact shadows;
+  - restrained parapets;
+  - low foundation slab with no visible complete outline;
+- seven failures remain exactly the known unrelated expectations:
+  - two in `tests/urban-witness-network.test.js`;
+  - five in `tests/vehicle-exit-and-impact-buffer.test.js`;
+- Netlify preview: `https://deploy-preview-63--vampire-district.netlify.app`.
+
+### M1 conclusion
+
+The authored rectangle remains the gameplay authority but no longer needs to read as the visible building. The raised/fused roof mass, wall depth and shadows now own the architectural silhouette. Any remaining icon-like quality belongs to M2 props rather than the collider frame.
+
+### Next
+
+M2.1: add shared renderer-only raised-rect and cylindrical volume primitives, prove top/side/contact separation in focused tests, and migrate only a minimal fixture before applying the primitives to skylights, HVAC and other prop families.
+
+---
+
 ## 2026-08-19 — M1.4 implemented; autonomous final-gate mode approved
 
 ### Scope
