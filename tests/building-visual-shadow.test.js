@@ -6,6 +6,12 @@ import {
   createBuildingPresentationPlan,
   renderBuildingPresentation
 } from "../phaser/src/rendering/BuildingPresentation.js";
+import {
+  createCylindricalVolumeGeometry,
+  createRaisedRectVolumeGeometry,
+  drawCylindricalVolume,
+  drawRaisedRectVolume
+} from "../phaser/src/rendering/buildings/BuildingPresentationVolumePrimitives.js";
 
 function building(overrides = {}) {
   return {
@@ -150,6 +156,96 @@ test("the authored collider footprint keeps a low slab but no visible full-frame
   assert.ok(foundationFills.every(call => Number(call.style.alpha) <= 0.62));
   assert.equal(graphics.calls.some(call => call.name === "strokeRect"), false);
   assert.equal(graphics.calls.some(call => call.name === "lineBetween"), false);
+});
+
+test("shared raised-rect volume separates top, side faces and contact without mutating bounds", () => {
+  const bounds = { x: 20, y: 30, w: 24, h: 18 };
+  const original = { ...bounds };
+  const geometry = createRaisedRectVolumeGeometry(bounds, { depth: 3 });
+
+  assert.deepEqual(bounds, original);
+  assert.equal(geometry.depth, 3);
+  assert.ok(geometry.top.w < bounds.w);
+  assert.ok(geometry.top.h < bounds.h);
+  assert.equal(geometry.south.y + geometry.south.h, bounds.y + bounds.h);
+  assert.equal(geometry.east.x + geometry.east.w, bounds.x + bounds.w);
+  assert.ok(geometry.shadow.x > bounds.x);
+  assert.ok(geometry.shadow.y > bounds.y);
+
+  const graphics = new GraphicsRecorder();
+  const painted = drawRaisedRectVolume(graphics, bounds, {
+    depth: 3,
+    shadowColor: 0x010101,
+    topColor: 0x020202,
+    southColor: 0x030303,
+    eastColor: 0x040404,
+    highlightColor: 0x050505,
+    seamColor: 0x060606
+  });
+
+  assert.deepEqual(painted, geometry);
+  const fillColors = graphics.calls
+    .filter(call => call.name === "fillRect")
+    .map(call => call.style.color);
+  assert.deepEqual(fillColors, [0x010101, 0x030303, 0x040404, 0x020202]);
+  assert.ok(graphics.calls.filter(call => call.name === "lineBetween").length >= 4);
+});
+
+test("shared cylindrical volume separates top, lower body and renderer-only shadow", () => {
+  const bounds = { x: 50, y: 60, w: 18, h: 18 };
+  const original = { ...bounds };
+  const geometry = createCylindricalVolumeGeometry(bounds, { depth: 2 });
+
+  assert.deepEqual(bounds, original);
+  assert.ok(geometry.shadowCenter.y > geometry.sideCenter.y);
+  assert.ok(geometry.sideCenter.y > geometry.center.y);
+  assert.ok(geometry.radius > 0);
+
+  const graphics = new GraphicsRecorder();
+  const painted = drawCylindricalVolume(graphics, bounds, {
+    depth: 2,
+    shadowColor: 0x111111,
+    topColor: 0x222222,
+    sideColor: 0x333333,
+    highlightColor: 0x444444,
+    rimColor: 0x555555
+  });
+
+  assert.deepEqual(painted, geometry);
+  const circleColors = graphics.calls
+    .filter(call => call.name === "fillCircle")
+    .map(call => call.style.color);
+  assert.deepEqual(circleColors, [0x111111, 0x333333, 0x222222, 0x444444]);
+  assert.equal(graphics.calls.filter(call => call.name === "strokeCircle").length, 1);
+});
+
+test("hatch proving fixture uses shared physical top-side-contact grammar", () => {
+  const sourcePlan = createBuildingPresentationPlan(building({
+    sign: "FLATS",
+    presentation: {
+      profile: "residential",
+      detailLevel: "rich",
+      propKinds: [MODULE_KINDS.HATCH],
+      seed: 710
+    }
+  }));
+  const hatch = sourcePlan.modules.find(module => module.kind === MODULE_KINDS.HATCH);
+  assert.ok(hatch);
+  const authoredBounds = { ...hatch.bounds };
+
+  const graphics = new GraphicsRecorder();
+  renderBuildingPresentation(graphics, {
+    ...sourcePlan,
+    modules: [hatch]
+  });
+
+  assert.deepEqual(hatch.bounds, authoredBounds);
+  const fills = graphics.calls.filter(call => call.name === "fillRect");
+  assert.ok(fills.some(call => call.style?.color === sourcePlan.palette.propDark));
+  assert.ok(fills.some(call => call.style?.color === sourcePlan.palette.serviceDark));
+  assert.ok(fills.some(call => call.style?.color === sourcePlan.palette.wall));
+  const contactShadows = fills.filter(call => call.style?.color === sourcePlan.palette.roofShadow);
+  assert.ok(contactShadows.length >= 3);
 });
 
 test("rectangular roof props receive several local contact-shadow passes", () => {
