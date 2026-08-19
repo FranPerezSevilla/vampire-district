@@ -96,7 +96,7 @@ export const MODULAR_CHARACTER_STYLES = Object.freeze({
     cap: false,
     collar: false,
     badge: false,
-    trench: true,
+    trench: false,
     glasses: true,
     hairVariant: 3,
     headwear: null
@@ -202,15 +202,36 @@ function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
 }
 
+function easeOutCubic(value) {
+  const t = clamp01(value);
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function quickPunchExtension(progress) {
+  const p = clamp01(progress);
+  if (p < 0.14) return -0.24 * easeOutCubic(p / 0.14);
+  if (p < 0.30) return -0.24 + 1.24 * easeOutCubic((p - 0.14) / 0.16);
+  if (p < 0.50) return 1 - easeOutCubic((p - 0.30) / 0.20);
+  return 0;
+}
+
+function quickPipeAngle(progress) {
+  const p = clamp01(progress);
+  if (p < 0.15) return 0.24 - 1.48 * easeOutCubic(p / 0.15);
+  if (p < 0.38) return -1.24 + 2.72 * easeOutCubic((p - 0.15) / 0.23);
+  if (p < 0.58) return 1.48 - 1.24 * easeOutCubic((p - 0.38) / 0.20);
+  return 0.24;
+}
+
 export function modularCharacterIdleMotion({ timeMs = 0, moving = false, phase = 0 } = {}) {
   const time = Math.max(0, Number(timeMs) || 0);
-  const breathe = Math.sin(time * 0.0021 + phase);
+  const breathe = Math.sin(time * 0.00225 + phase);
   const gait = Math.sin(time * 0.014 + phase);
   return {
-    upperY: moving ? -Math.abs(gait) * 0.42 : breathe * 0.22,
-    coreRotation: moving ? gait * 0.006 : breathe * 0.008,
-    coreScale: moving ? 1 : 1 + breathe * 0.006,
-    shadowScaleX: moving ? 1 + Math.abs(gait) * 0.025 : 1 - breathe * 0.012
+    upperY: moving ? -Math.abs(gait) * 0.48 : breathe * 0.48,
+    coreRotation: moving ? gait * 0.008 : breathe * 0.018,
+    coreScale: moving ? 1 : 1 + breathe * 0.012,
+    shadowScaleX: moving ? 1 + Math.abs(gait) * 0.028 : 1 - breathe * 0.024
   };
 }
 
@@ -225,9 +246,9 @@ export function modularCharacterPose({
 } = {}) {
   const time = Math.max(0, Number(timeMs) || 0);
   const walk = moving ? Math.sin(time * 0.014 + phase) : 0;
-  const idle = moving ? 0 : Math.sin(time * 0.0021 + phase);
+  const idle = moving ? 0 : Math.sin(time * 0.00225 + phase);
   const footStride = walk * 2.45;
-  const handSwing = moving ? walk * 1.25 : idle * 0.14;
+  const handSwing = moving ? walk * 1.25 : idle * 0.34;
   const progress = clamp01(attackProgress);
   const attackPulse = attacking ? Math.sin(progress * Math.PI) : 0;
 
@@ -238,44 +259,51 @@ export function modularCharacterPose({
 
   if (weaponId === WEAPON_PISTOL) {
     const recoil = attackPulse * 1.35;
-    const locomotionSway = moving ? walk * 0.42 : idle * 0.12;
-    const locomotionBob = moving ? Math.abs(walk) * 0.34 : idle * 0.05;
+    const locomotionSway = moving ? walk * 0.48 : idle * 0.18;
+    const locomotionBob = moving ? Math.abs(walk) * 0.38 : idle * 0.10;
     return {
       hands: {
         left: {
-          x: -2.15 - locomotionSway * 0.18,
-          y: -5.8 + recoil + locomotionBob + locomotionSway * 0.10,
-          rotation: -0.06 - locomotionSway * 0.025
+          x: -2.15 - locomotionSway * 0.20,
+          y: -5.8 + recoil + locomotionBob + locomotionSway * 0.12,
+          rotation: -0.06 - locomotionSway * 0.03
         },
         right: {
-          x: 2.15 + locomotionSway * 0.18,
-          y: -6.9 + recoil + locomotionBob - locomotionSway * 0.10,
-          rotation: 0.05 + locomotionSway * 0.025
+          x: 2.15 + locomotionSway * 0.20,
+          y: -6.9 + recoil + locomotionBob - locomotionSway * 0.12,
+          rotation: 0.05 + locomotionSway * 0.03
         }
       },
       feet,
       pistolVisible: true,
       pipeVisible: false,
-      attackKind: attacking ? "pistol" : null
+      attackKind: attacking ? "pistol" : null,
+      coreAttackRotation: 0
     };
   }
 
   if (weaponId === WEAPON_PIPE) {
-    const swingAngle = attacking ? -1.0 + progress * 2.0 : 0.22 + walk * 0.035;
-    const swingRadius = attacking ? 5.0 : 0;
+    const swingAngle = attacking ? quickPipeAngle(progress) : 0.22 + walk * 0.035;
+    const swingRadius = attacking ? 6.2 : 0;
+    const bodyDrive = attacking ? Math.sin(Math.min(1, progress / 0.45) * Math.PI) : 0;
     return {
       hands: {
-        left: { x: -8.2, y: 2.0 - handSwing, rotation: -0.08 - walk * 0.04 },
+        left: {
+          x: -8.0 + bodyDrive * 0.7,
+          y: 2.0 - handSwing - bodyDrive * 0.8,
+          rotation: -0.08 - walk * 0.04 + bodyDrive * 0.05
+        },
         right: {
-          x: attacking ? Math.sin(swingAngle) * swingRadius + 3.2 : 7.0,
-          y: attacking ? -Math.cos(swingAngle) * swingRadius - 0.2 : 0.4 + handSwing,
+          x: attacking ? Math.sin(swingAngle) * swingRadius + 2.4 : 7.0,
+          y: attacking ? -Math.cos(swingAngle) * swingRadius + 0.2 : 0.4 + handSwing,
           rotation: swingAngle
         }
       },
       feet,
       pistolVisible: false,
       pipeVisible: true,
-      attackKind: attacking ? "pipe" : null
+      attackKind: attacking ? "pipe" : null,
+      coreAttackRotation: attacking ? (swingAngle - 0.24) * 0.085 : 0
     };
   }
 
@@ -285,13 +313,17 @@ export function modularCharacterPose({
     left: { x: -8.3, y: 2.0 - handSwing, rotation: -0.08 - walk * 0.05 },
     right: { x: 8.3, y: 2.0 + handSwing, rotation: 0.08 + walk * 0.05 }
   };
+  let coreAttackRotation = 0;
 
   if (attacking) {
+    const extension = quickPunchExtension(progress);
+    const side = punchingSide === "left" ? -1 : 1;
     relaxed[punchingSide] = {
-      x: punchingSide === "left" ? -2.4 : 2.4,
-      y: 0.2 - attackPulse * 8.4,
-      rotation: punchingSide === "left" ? -0.04 : 0.04
+      x: side * (2.4 - Math.max(0, extension) * 0.55),
+      y: 0.4 - extension * 10.4,
+      rotation: side * 0.04
     };
+    coreAttackRotation = side * Math.max(0, extension) * 0.13;
   }
 
   return {
@@ -299,7 +331,8 @@ export function modularCharacterPose({
     feet,
     pistolVisible: false,
     pipeVisible: false,
-    attackKind: attacking ? "punch" : null
+    attackKind: attacking ? "punch" : null,
+    coreAttackRotation
   };
 }
 
@@ -526,7 +559,6 @@ export class ModularCharacterView {
     this.upperRoot
       .setPosition(0, idleMotion.upperY)
       .setRotation(wrapAngle(this.upperRotation - hostRotation));
-    this.core.setRotation(idleMotion.coreRotation).setScale(idleMotion.coreScale);
     this.shadow.setRotation(-hostRotation).setScale(idleMotion.shadowScaleX, 1);
 
     if (this.trench) {
@@ -553,6 +585,9 @@ export class ModularCharacterView {
       phase: this.phase
     });
 
+    this.core
+      .setRotation(idleMotion.coreRotation + (Number(pose.coreAttackRotation) || 0))
+      .setScale(idleMotion.coreScale);
     this.applyPartPose(this.leftHand.container, pose.hands.left);
     this.applyPartPose(this.rightHand.container, pose.hands.right);
     this.applyPartPose(this.leftFoot, pose.feet.left);
