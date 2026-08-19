@@ -18,7 +18,7 @@ ViceBlood buildings keep their authored `x`, `y`, `w`, and `h` as the sole colli
   - module kind constants;
   - layout recipes expressed as occupancy masks;
   - semantic archetypes and conservative classification rules;
-  - frontages, detail levels, accents, and palette resolution.
+  - frontages, detail levels, validated rooftop prop kinds, accents, and palette resolution.
 - `buildings/BuildingPresentationPlanner.js`
   - pure deterministic planning with no Phaser dependency;
   - converts an authored footprint into roof cells, exposed parapet edges, frontage, rooftop props, and identity modules;
@@ -82,7 +82,7 @@ Supported fields:
 - `frontageEdge`: `north`, `east`, `south`, or `west`;
 - `frontageOffset`: normalized offset from `-1` to `1` along that edge;
 - `detailLevel`: `minimal`, `standard`, or `rich`;
-- `propKinds`: optional allow-list of registered rooftop module kinds;
+- `propKinds`: optional allow-list of registered rooftop prop kinds; structural kinds such as `frontage` or `roof-cell` are rejected;
 - `seed`: optional deterministic seed override.
 
 Invalid values fall back to the archetype defaults. A layout that cannot fit the authored dimensions falls back to `rectangle` and records a warning in the plan.
@@ -122,6 +122,7 @@ The focused unit suite verifies:
 - modular mask assembly and absence of duplicate internal parapets;
 - safe layout fallback;
 - police, club, and church identity contracts;
+- rejection of structural kinds in authored rooftop prop lists;
 - renderer operation without Phaser globals.
 
 When iterating visually, validate the Netlify preview at normal gameplay zoom. Module detail should remain chunky enough to support character readability; this is not a miniature architectural renderer.
