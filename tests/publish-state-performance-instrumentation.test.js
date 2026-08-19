@@ -54,11 +54,12 @@ function createScene() {
   return scene;
 }
 
-test("publishState profiler measures coarse phases and summary groups only inside publishState", () => {
+test("publishState profiler measures coarse phases and selected summary groups only inside publishState", () => {
   const scene = createScene();
   const originalPublishState = scene.publishState;
   const originalVisibilityText = scene.visibilityText;
   const originalNpcSummary = scene.npcSystem.summary;
+  const originalFeedingSummary = scene.feedingSystem.summary;
   const originalExposureSummary = scene.exposureSystem.summary;
   const originalPoliceSummary = scene.policeSystem.summary;
   const originalPropSummary = scene.propDamageSystem.summary;
@@ -79,15 +80,17 @@ test("publishState profiler measures coarse phases and summary groups only insid
 
   const cleanup = installPublishStateInstrumentation(scene, diagnostics);
 
-  // Individual leaf summaries remain untouched. The selected ResponseAI group is
-  // split with exactly one extra existing boundary at propDamageSystem.summary().
+  // Individual leaf summaries remain untouched except at the minimum existing
+  // transition boundaries needed for the selected coarse drill-downs.
   assert.equal(scene.npcSystem.summary, originalNpcSummary);
+  assert.notEqual(scene.feedingSystem.summary, originalFeedingSummary);
   assert.notEqual(scene.exposureSystem.summary, originalExposureSummary);
   assert.notEqual(scene.policeSystem.summary, originalPoliceSummary);
   assert.notEqual(scene.propDamageSystem.summary, originalPropSummary);
   assert.notEqual(scene.aiStateSystem.summary, originalAiSummary);
 
   scene.npcSystem.summary();
+  scene.feedingSystem.summary();
   scene.exposureSystem.summary();
   scene.policeSystem.summary();
   scene.propDamageSystem.summary();
@@ -101,7 +104,8 @@ test("publishState profiler measures coarse phases and summary groups only insid
   const expectedBegin = [
     "PublishState.Prepare",
     "PublishState.Summaries",
-    "PublishState.Summary.MissionActors",
+    "PublishState.Summary.MissionActors.MissionNpc",
+    "PublishState.Summary.MissionActors.NeedsPowers",
     "PublishState.Summary.PressureEvidence",
     "PublishState.Summary.ResponseAI.Security",
     "PublishState.Summary.ResponseAI.WorldAI",
@@ -112,7 +116,8 @@ test("publishState profiler measures coarse phases and summary groups only insid
   ];
   const expectedEnd = [
     "PublishState.Prepare",
-    "PublishState.Summary.MissionActors",
+    "PublishState.Summary.MissionActors.MissionNpc",
+    "PublishState.Summary.MissionActors.NeedsPowers",
     "PublishState.Summary.PressureEvidence",
     "PublishState.Summary.ResponseAI.Security",
     "PublishState.Summary.ResponseAI.WorldAI",
@@ -130,6 +135,7 @@ test("publishState profiler measures coarse phases and summary groups only insid
   assert.equal(scene.publishState, originalPublishState);
   assert.equal(scene.visibilityText, originalVisibilityText);
   assert.equal(scene.npcSystem.summary, originalNpcSummary);
+  assert.equal(scene.feedingSystem.summary, originalFeedingSummary);
   assert.equal(scene.exposureSystem.summary, originalExposureSummary);
   assert.equal(scene.policeSystem.summary, originalPoliceSummary);
   assert.equal(scene.propDamageSystem.summary, originalPropSummary);
@@ -150,7 +156,8 @@ test("browser performance capture keeps grouped publishState and summary drill-d
   assert.match(instrumentation, /PublishState\.InteractionMenu/);
   assert.match(instrumentation, /PublishState\.PayloadTail/);
   assert.match(instrumentation, /PublishState\.RegistryCommit/);
-  assert.match(instrumentation, /PublishState\.Summary\.MissionActors/);
+  assert.match(instrumentation, /PublishState\.Summary\.MissionActors\.MissionNpc/);
+  assert.match(instrumentation, /PublishState\.Summary\.MissionActors\.NeedsPowers/);
   assert.match(instrumentation, /PublishState\.Summary\.PressureEvidence/);
   assert.match(instrumentation, /PublishState\.Summary\.ResponseAI\.Security/);
   assert.match(instrumentation, /PublishState\.Summary\.ResponseAI\.WorldAI/);
