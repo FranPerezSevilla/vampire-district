@@ -15,17 +15,17 @@ ViceBlood buildings keep their authored `x`, `y`, `w`, and `h` as the sole colli
 
 `phaser/src/rendering/BuildingPresentation.js` is the public facade. Gameplay and scenes should import only from it.
 
-- `buildings/BuildingPresentationCatalog.js`
+- `phaser/src/rendering/buildings/BuildingPresentationCatalog.js`
   - module kind constants;
   - layout recipes expressed as occupancy masks;
   - semantic archetypes and conservative classification rules;
   - frontages, detail levels, validated rooftop prop kinds, accents, and palette resolution.
-- `buildings/BuildingPresentationPlanner.js`
+- `phaser/src/rendering/buildings/BuildingPresentationPlanner.js`
   - pure deterministic planning with no Phaser dependency;
   - converts an authored footprint into roof cells, exposed parapet edges, frontage, rooftop props, and identity modules;
   - preserves exact collision and visual footprint contracts;
   - clamps frontages and identity markers for unusually small authored footprints.
-- `buildings/BuildingPresentationRenderer.js`
+- `phaser/src/rendering/buildings/BuildingPresentationRenderer.js`
   - Phaser Graphics dispatch only;
   - one small renderer per module kind;
   - caches deterministic plans in a `WeakMap` keyed by the immutable authored building object and planning options;
