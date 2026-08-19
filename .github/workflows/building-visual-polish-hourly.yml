@@ -90,7 +90,7 @@ jobs:
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           prompt-file: .github/codex/building-visual-polish-hourly.md
-          output-file: .codex-building-polish-final.txt
+          output-file: /tmp/codex-building-polish-final.txt
           sandbox: workspace-write
           safety-strategy: drop-sudo
           allow-bots: true
@@ -103,7 +103,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git diff --name-only --diff-filter=ACMR > /tmp/building-polish-changed.txt
+          {
+            git diff --name-only --diff-filter=ACMR
+            git ls-files --others --exclude-standard
+          } | sort -u > /tmp/building-polish-changed.txt
 
           if [[ ! -s /tmp/building-polish-changed.txt ]]; then
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
@@ -198,10 +201,10 @@ jobs:
               echo "- pushed commit: \`${COMMIT_SHA}\`"
             fi
             echo
-            if [[ -f .codex-building-polish-final.txt ]]; then
+            if [[ -f /tmp/codex-building-polish-final.txt ]]; then
               echo "### Agent summary"
               echo
-              head -c 5000 .codex-building-polish-final.txt
+              head -c 5000 /tmp/codex-building-polish-final.txt
               echo
             fi
           } > /tmp/building-polish-comment.md
