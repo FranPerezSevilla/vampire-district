@@ -51,74 +51,109 @@ function centerOf(bounds) {
   return { x: bounds.x + bounds.w / 2, y: bounds.y + bounds.h / 2 };
 }
 
+function offsetPoints(points, x, y) {
+  return points.map(point => ({ x: point.x + x, y: point.y + y }));
+}
+
+function containedShadowOffset(module, plan, desiredX, desiredY) {
+  const footprint = plan.visualFootprint || plan.collisionFootprint;
+  const bounds = module.bounds;
+  if (!footprint || !bounds) return { x: 0, y: 0 };
+  const availableX = footprint.x + footprint.w - (bounds.x + bounds.w);
+  const availableY = footprint.y + footprint.h - (bounds.y + bounds.h);
+  return {
+    x: Math.max(0, Math.min(desiredX, availableX)),
+    y: Math.max(0, Math.min(desiredY, availableY))
+  };
+}
+
 function drawFoundation(graphics, module, plan) {
   const { bounds } = module;
   const palette = plan.palette;
   drawRect(graphics, bounds, palette.foundation, 1);
 
-  const drop = Math.max(1, Math.min(6, Math.floor(Math.min(bounds.w, bounds.h) * 0.035)));
+  const drop = Math.max(1, Math.min(5, Math.floor(Math.min(bounds.w, bounds.h) * 0.03)));
   drawRect(graphics, {
     x: bounds.x,
     y: bounds.y + bounds.h - drop,
     w: bounds.w,
     h: drop
-  }, palette.foundationShadow, 0.9);
+  }, palette.foundationShadow, 0.72);
   drawRect(graphics, {
     x: bounds.x + bounds.w - drop,
     y: bounds.y,
     w: drop,
     h: bounds.h
-  }, palette.foundationShadow, 0.72);
+  }, palette.foundationShadow, 0.58);
 
-  strokeRect(graphics, bounds, 2, palette.parapetDark, 0.95);
-  const inset = Math.max(0, Math.min(3, Math.min(bounds.w, bounds.h) / 2 - 0.5));
+  strokeRect(graphics, bounds, 2, palette.parapetDark, 0.9);
+  const inset = Math.max(0, Math.min(4, Math.min(bounds.w, bounds.h) / 2 - 0.5));
   if (inset > 0) {
-    const inner = {
+    strokeRect(graphics, {
       x: bounds.x + inset,
       y: bounds.y + inset,
       w: Math.max(1, bounds.w - inset * 2),
       h: Math.max(1, bounds.h - inset * 2)
-    };
-    strokeRect(graphics, inner, 1, palette.parapetLight, 0.28);
+    }, 1, palette.foundationSeam, 0.24);
   }
 }
 
-function drawRoofCell(graphics, module, plan) {
-  const palette = plan.palette;
-  const alternate = (module.row + module.column) % 2 === 0;
-  drawRect(graphics, module.bounds, alternate ? palette.roof : palette.roofRaised, 1);
+function drawRoofMass(graphics, module, plan) {
+  const points = module.points || [];
+  if (points.length < 3) return;
+
+  const deepOffset = containedShadowOffset(module, plan, 4, 5);
+  const softOffset = containedShadowOffset(module, plan, 2, 3);
+  graphics.fillStyle(plan.palette.roofShadow, 0.72);
+  graphics.fillPoints(offsetPoints(points, deepOffset.x, deepOffset.y), true);
+  graphics.fillStyle(plan.palette.roofShade, 0.48);
+  graphics.fillPoints(offsetPoints(points, softOffset.x, softOffset.y), true);
+  graphics.fillStyle(plan.palette.roof, 1);
+  graphics.fillPoints(points, true);
+}
+
+function innerEdgeOffset(module, amount = 2) {
+  if (module.orientation === "north") return { x: 0, y: amount };
+  if (module.orientation === "east") return { x: -amount, y: 0 };
+  if (module.orientation === "south") return { x: 0, y: -amount };
+  return { x: amount, y: 0 };
 }
 
 function drawParapetEdge(graphics, module, plan) {
+  const palette = plan.palette;
   const lightFacing = module.orientation === "north" || module.orientation === "west";
-  graphics.lineStyle(
-    lightFacing ? 3 : 4,
-    lightFacing ? plan.palette.parapetLight : plan.palette.parapetDark,
-    lightFacing ? 0.92 : 0.96
-  );
+
+  graphics.lineStyle(5, palette.parapetDark, 0.92);
+  graphics.lineBetween(module.x1, module.y1, module.x2, module.y2);
+  graphics.lineStyle(lightFacing ? 3 : 4, lightFacing ? palette.parapetLight : palette.parapetDark, 0.98);
   graphics.lineBetween(module.x1, module.y1, module.x2, module.y2);
 
-  if (!lightFacing) {
-    const offset = 2;
-    const x1 = module.x1 - (module.orientation === "east" ? offset : 0);
-    const x2 = module.x2 - (module.orientation === "east" ? offset : 0);
-    const y1 = module.y1 - (module.orientation === "south" ? offset : 0);
-    const y2 = module.y2 - (module.orientation === "south" ? offset : 0);
-    graphics.lineStyle(1, plan.palette.seam, 0.32);
-    graphics.lineBetween(x1, y1, x2, y2);
-  }
+  const offset = innerEdgeOffset(module, 2);
+  graphics.lineStyle(1, lightFacing ? palette.parapetMid : palette.seam, lightFacing ? 0.5 : 0.38);
+  graphics.lineBetween(
+    module.x1 + offset.x,
+    module.y1 + offset.y,
+    module.x2 + offset.x,
+    module.y2 + offset.y
+  );
 }
 
-function outerEdgeBand(module, thickness = 3) {
+function bandThickness(bounds, desired) {
+  return Math.max(1, Math.min(desired, Math.min(bounds.w, bounds.h)));
+}
+
+function outerEdgeBand(module, desired = 3) {
   const { bounds, edge } = module;
+  const thickness = bandThickness(bounds, desired);
   if (edge === "north") return { x: bounds.x, y: bounds.y, w: bounds.w, h: thickness };
   if (edge === "east") return { x: bounds.x + bounds.w - thickness, y: bounds.y, w: thickness, h: bounds.h };
   if (edge === "west") return { x: bounds.x, y: bounds.y, w: thickness, h: bounds.h };
   return { x: bounds.x, y: bounds.y + bounds.h - thickness, w: bounds.w, h: thickness };
 }
 
-function innerEdgeBand(module, thickness = 3) {
+function innerEdgeBand(module, desired = 2) {
   const { bounds, edge } = module;
+  const thickness = bandThickness(bounds, desired);
   if (edge === "north") return { x: bounds.x, y: bounds.y + bounds.h - thickness, w: bounds.w, h: thickness };
   if (edge === "east") return { x: bounds.x, y: bounds.y, w: thickness, h: bounds.h };
   if (edge === "west") return { x: bounds.x + bounds.w - thickness, y: bounds.y, w: thickness, h: bounds.h };
@@ -126,62 +161,61 @@ function innerEdgeBand(module, thickness = 3) {
 }
 
 function drawGenericFrontage(graphics, module, plan) {
-  drawRect(graphics, module.bounds, plan.palette.propDark, 1);
-  strokeRect(graphics, module.bounds, 2, plan.palette.parapetLight, 0.72);
-  drawRect(graphics, outerEdgeBand(module, 3), plan.palette.foundationShadow, 1);
-  drawRect(graphics, innerEdgeBand(module, 2), plan.palette.seam, 0.5);
+  drawRect(graphics, module.bounds, plan.palette.canopy, 1);
+  strokeRect(graphics, module.bounds, 2, plan.palette.parapetDark, 0.92);
+  drawRect(graphics, outerEdgeBand(module, 3), plan.palette.foundationShadow, 0.95);
+  drawRect(graphics, innerEdgeBand(module, 1), plan.palette.parapetMid, 0.42);
 }
 
 function drawPoliceFrontage(graphics, module, plan) {
-  drawRect(graphics, module.bounds, plan.palette.prop, 1);
-  strokeRect(graphics, module.bounds, 2, plan.palette.parapetLight, 0.95);
-  drawRect(graphics, outerEdgeBand(module, 3), plan.palette.accent, 0.95);
-  drawRect(graphics, innerEdgeBand(module, 2), plan.palette.accentSoft, 0.8);
+  drawRect(graphics, module.bounds, plan.palette.canopy, 1);
+  strokeRect(graphics, module.bounds, 2, plan.palette.parapetLight, 0.92);
+  drawRect(graphics, outerEdgeBand(module, 4), plan.palette.accent, 0.95);
+  drawRect(graphics, innerEdgeBand(module, 2), plan.palette.accentSoft, 0.78);
 
   const center = centerOf(module.bounds);
-  const radius = Math.max(3, Math.min(module.bounds.w, module.bounds.h) * 0.22);
+  const radius = Math.max(2, Math.min(module.bounds.w, module.bounds.h) * 0.2);
   graphics.fillStyle(plan.palette.accentSoft, 1);
   graphics.fillCircle(center.x, center.y, radius);
   graphics.lineStyle(1, plan.palette.label, 0.9);
   graphics.strokeCircle(center.x, center.y, radius);
-  graphics.lineBetween(center.x - radius * 0.62, center.y, center.x + radius * 0.62, center.y);
-  graphics.lineBetween(center.x, center.y - radius * 0.62, center.x, center.y + radius * 0.62);
+  graphics.lineBetween(center.x - radius * 0.55, center.y, center.x + radius * 0.55, center.y);
+  graphics.lineBetween(center.x, center.y - radius * 0.55, center.x, center.y + radius * 0.55);
 }
 
 function drawClubFrontage(graphics, module, plan) {
   drawRect(graphics, module.bounds, plan.palette.foundationShadow, 1);
-  strokeRect(graphics, module.bounds, 2, plan.palette.accent, 0.95);
-  drawRect(graphics, outerEdgeBand(module, 3), plan.palette.accent, 0.92);
+  strokeRect(graphics, module.bounds, 2, plan.palette.accentSoft, 0.9);
+  drawRect(graphics, outerEdgeBand(module, 4), plan.palette.accent, 0.96);
 
   const center = centerOf(module.bounds);
-  const scale = Math.max(4, Math.min(module.bounds.w, module.bounds.h) * 0.3);
-  graphics.lineStyle(2, plan.palette.label, 0.94);
-  graphics.lineBetween(center.x - scale, center.y - scale * 0.45, center.x + scale, center.y - scale * 0.45);
-  graphics.lineBetween(center.x - scale, center.y - scale * 0.45, center.x, center.y + scale * 0.08);
-  graphics.lineBetween(center.x + scale, center.y - scale * 0.45, center.x, center.y + scale * 0.08);
-  graphics.lineBetween(center.x, center.y + scale * 0.08, center.x, center.y + scale * 0.72);
-  graphics.lineBetween(center.x - scale * 0.55, center.y + scale * 0.72, center.x + scale * 0.55, center.y + scale * 0.72);
+  const scale = Math.max(3, Math.min(module.bounds.w, module.bounds.h) * 0.27);
+  graphics.lineStyle(2, plan.palette.label, 0.9);
+  graphics.lineBetween(center.x - scale, center.y - scale * 0.4, center.x + scale, center.y - scale * 0.4);
+  graphics.lineBetween(center.x - scale, center.y - scale * 0.4, center.x, center.y + scale * 0.08);
+  graphics.lineBetween(center.x + scale, center.y - scale * 0.4, center.x, center.y + scale * 0.08);
+  graphics.lineBetween(center.x, center.y + scale * 0.08, center.x, center.y + scale * 0.68);
 }
 
 function drawChurchFrontage(graphics, module, plan) {
-  drawRect(graphics, module.bounds, plan.palette.roofShade, 1);
-  strokeRect(graphics, module.bounds, 2, plan.palette.parapetLight, 0.82);
-  drawRect(graphics, outerEdgeBand(module, 3), plan.palette.foundationShadow, 1);
+  drawRect(graphics, module.bounds, plan.palette.canopy, 1);
+  strokeRect(graphics, module.bounds, 2, plan.palette.parapetMid, 0.9);
+  drawRect(graphics, outerEdgeBand(module, 3), plan.palette.foundationShadow, 0.92);
 
   const center = centerOf(module.bounds);
-  const size = Math.max(5, Math.min(module.bounds.w, module.bounds.h) * 0.34);
+  const size = Math.max(4, Math.min(module.bounds.w, module.bounds.h) * 0.3);
   drawRect(graphics, {
-    x: center.x - size * 0.12,
-    y: center.y - size * 0.65,
-    w: size * 0.24,
-    h: size * 1.3
-  }, plan.palette.accent, 0.95);
+    x: center.x - size * 0.11,
+    y: center.y - size * 0.62,
+    w: size * 0.22,
+    h: size * 1.24
+  }, plan.palette.accent, 0.94);
   drawRect(graphics, {
-    x: center.x - size * 0.48,
-    y: center.y - size * 0.18,
-    w: size * 0.96,
-    h: size * 0.24
-  }, plan.palette.accent, 0.95);
+    x: center.x - size * 0.44,
+    y: center.y - size * 0.16,
+    w: size * 0.88,
+    h: size * 0.22
+  }, plan.palette.accent, 0.94);
 }
 
 function drawFrontage(graphics, module, plan) {
@@ -193,33 +227,41 @@ function drawFrontage(graphics, module, plan) {
 
 function drawSkylight(graphics, module, plan) {
   const { bounds } = module;
+  drawRect(graphics, {
+    x: bounds.x + 2,
+    y: bounds.y + 3,
+    w: bounds.w,
+    h: bounds.h
+  }, plan.palette.roofShadow, 0.56);
   drawRect(graphics, bounds, plan.palette.glass, 1);
   strokeRect(graphics, bounds, 2, plan.palette.propDark, 0.95);
-  const columns = bounds.w >= 28 ? 3 : 2;
-  const rows = bounds.h >= 18 ? 2 : 1;
-  graphics.lineStyle(1, plan.palette.glassHighlight, 0.52);
-  for (let column = 1; column < columns; column += 1) {
-    const x = bounds.x + bounds.w * column / columns;
-    graphics.lineBetween(x, bounds.y + 2, x, bounds.y + bounds.h - 2);
-  }
-  for (let row = 1; row < rows; row += 1) {
-    const y = bounds.y + bounds.h * row / rows;
-    graphics.lineBetween(bounds.x + 2, y, bounds.x + bounds.w - 2, y);
+  graphics.lineStyle(1, plan.palette.glassHighlight, 0.54);
+  const dividerX = bounds.x + bounds.w / 2;
+  graphics.lineBetween(dividerX, bounds.y + 2, dividerX, bounds.y + bounds.h - 2);
+  if (bounds.h >= 20) {
+    const dividerY = bounds.y + bounds.h / 2;
+    graphics.lineBetween(bounds.x + 2, dividerY, bounds.x + bounds.w - 2, dividerY);
   }
 }
 
 function drawHvac(graphics, module, plan) {
   const { bounds } = module;
+  drawRect(graphics, {
+    x: bounds.x + 2,
+    y: bounds.y + 2,
+    w: bounds.w,
+    h: bounds.h
+  }, plan.palette.roofShadow, 0.48);
   drawRect(graphics, bounds, plan.palette.prop, 1);
-  strokeRect(graphics, bounds, 1, plan.palette.propDark, 1);
+  strokeRect(graphics, bounds, 2, plan.palette.propDark, 0.95);
   const fanCount = bounds.w >= bounds.h * 1.45 ? 2 : 1;
-  const radius = Math.max(2, Math.min(bounds.h * 0.28, bounds.w / (fanCount * 2.8)));
+  const radius = Math.max(2, Math.min(bounds.h * 0.28, bounds.w / (fanCount * 3)));
   for (let index = 0; index < fanCount; index += 1) {
     const x = bounds.x + bounds.w * (index + 1) / (fanCount + 1);
     const y = bounds.y + bounds.h / 2;
-    graphics.fillStyle(plan.palette.propDark, 0.9);
+    graphics.fillStyle(plan.palette.propDark, 0.92);
     graphics.fillCircle(x, y, radius);
-    graphics.lineStyle(1, plan.palette.parapetLight, 0.45);
+    graphics.lineStyle(1, plan.palette.parapetLight, 0.4);
     graphics.strokeCircle(x, y, radius);
   }
 }
@@ -227,31 +269,35 @@ function drawHvac(graphics, module, plan) {
 function drawVent(graphics, module, plan) {
   const center = centerOf(module.bounds);
   const radius = Math.max(2, Math.min(module.bounds.w, module.bounds.h) / 2);
+  graphics.fillStyle(plan.palette.roofShadow, 0.5);
+  graphics.fillCircle(center.x + 1.5, center.y + 2, radius);
   graphics.fillStyle(plan.palette.propDark, 1);
   graphics.fillCircle(center.x, center.y, radius);
-  graphics.fillStyle(plan.palette.prop, 0.92);
-  graphics.fillCircle(center.x - radius * 0.16, center.y - radius * 0.16, radius * 0.55);
+  graphics.fillStyle(plan.palette.prop, 0.86);
+  graphics.fillCircle(center.x - radius * 0.18, center.y - radius * 0.18, radius * 0.5);
 }
 
 function drawHatch(graphics, module, plan) {
-  drawRect(graphics, module.bounds, plan.palette.propDark, 1);
-  strokeRect(graphics, module.bounds, 1, plan.palette.prop, 0.92);
-  const inner = {
-    x: module.bounds.x + 2,
+  drawRect(graphics, {
+    x: module.bounds.x + 1.5,
     y: module.bounds.y + 2,
-    w: Math.max(1, module.bounds.w - 4),
-    h: Math.max(1, module.bounds.h - 4)
-  };
-  strokeRect(graphics, inner, 1, plan.palette.seam, 0.54);
+    w: module.bounds.w,
+    h: module.bounds.h
+  }, plan.palette.roofShadow, 0.44);
+  drawRect(graphics, module.bounds, plan.palette.propDark, 1);
+  strokeRect(graphics, module.bounds, 2, plan.palette.prop, 0.82);
 }
 
 function drawAntenna(graphics, module, plan) {
   const center = centerOf(module.bounds);
-  const radius = Math.max(2, Math.min(module.bounds.w, module.bounds.h) * 0.24);
+  const radius = Math.max(2, Math.min(module.bounds.w, module.bounds.h) * 0.2);
+  graphics.fillStyle(plan.palette.roofShadow, 0.48);
+  graphics.fillCircle(center.x + 1.5, center.y + 2, radius * 1.35);
   graphics.fillStyle(plan.palette.propDark, 1);
   graphics.fillCircle(center.x, center.y, radius);
-  graphics.lineStyle(1, plan.palette.prop, 0.9);
+  graphics.lineStyle(2, plan.palette.prop, 0.92);
   graphics.lineBetween(center.x, center.y - radius, center.x, module.bounds.y);
+  graphics.lineStyle(1, plan.palette.prop, 0.78);
   graphics.lineBetween(center.x, center.y, module.bounds.x, module.bounds.y + module.bounds.h);
   graphics.lineBetween(center.x, center.y, module.bounds.x + module.bounds.w, module.bounds.y + module.bounds.h);
 }
@@ -259,30 +305,47 @@ function drawAntenna(graphics, module, plan) {
 function drawSatelliteDish(graphics, module, plan) {
   const center = centerOf(module.bounds);
   const radius = Math.max(3, Math.min(module.bounds.w, module.bounds.h) * 0.42);
+  graphics.fillStyle(plan.palette.roofShadow, 0.46);
+  graphics.fillCircle(center.x + 2, center.y + 2, radius);
   graphics.fillStyle(plan.palette.prop, 0.95);
   graphics.fillCircle(center.x, center.y, radius);
   graphics.fillStyle(plan.palette.roofShade, 1);
   graphics.fillCircle(center.x + radius * 0.34, center.y - radius * 0.18, radius * 0.72);
-  graphics.lineStyle(1, plan.palette.propDark, 0.9);
-  graphics.lineBetween(center.x, center.y, module.bounds.x + module.bounds.w, module.bounds.y + module.bounds.h);
 }
 
 function drawAccentStrip(graphics, module, plan) {
-  graphics.lineStyle(module.variant === "club" ? 3 : 2, plan.palette.accent, module.variant === "club" ? 0.9 : 0.82);
+  if (module.variant === "club") {
+    graphics.lineStyle(7, plan.palette.accentSoft, 0.18);
+    graphics.lineBetween(module.x1, module.y1, module.x2, module.y2);
+    graphics.lineStyle(3, plan.palette.accent, 0.96);
+    graphics.lineBetween(module.x1, module.y1, module.x2, module.y2);
+    graphics.lineStyle(1, plan.palette.label, 0.72);
+    graphics.lineBetween(module.x1, module.y1, module.x2, module.y2);
+    return;
+  }
+  graphics.lineStyle(4, plan.palette.accentSoft, 0.34);
+  graphics.lineBetween(module.x1, module.y1, module.x2, module.y2);
+  graphics.lineStyle(2, plan.palette.accent, 0.94);
   graphics.lineBetween(module.x1, module.y1, module.x2, module.y2);
 }
 
 function drawRoofRidge(graphics, module, plan) {
-  graphics.lineStyle(2, plan.palette.parapetLight, 0.42);
+  graphics.lineStyle(4, plan.palette.roofShadow, 0.38);
+  graphics.lineBetween(module.x1 + 1, module.y1 + 2, module.x2 + 1, module.y2 + 2);
+  graphics.lineStyle(2, plan.palette.parapetLight, 0.46);
   graphics.lineBetween(module.x1, module.y1, module.x2, module.y2);
-  graphics.lineStyle(1, plan.palette.roofShade, 0.85);
-  graphics.lineBetween(module.x1 + 1, module.y1 + 1, module.x2 + 1, module.y2 + 1);
 }
 
 function drawCrossMarker(graphics, module, plan) {
   const { bounds } = module;
   const center = centerOf(bounds);
   const thickness = Math.max(2, Math.floor(Math.min(bounds.w, bounds.h) * 0.18));
+  drawRect(graphics, {
+    x: center.x - thickness / 2 + 1,
+    y: bounds.y + 2,
+    w: thickness,
+    h: bounds.h
+  }, plan.palette.roofShadow, 0.38);
   drawRect(graphics, {
     x: center.x - thickness / 2,
     y: bounds.y,
@@ -314,7 +377,7 @@ function drawFence(graphics, module, plan) {
 
 const MODULE_RENDERERS = {
   [MODULE_KINDS.FOUNDATION]: drawFoundation,
-  [MODULE_KINDS.ROOF_CELL]: drawRoofCell,
+  [MODULE_KINDS.ROOF_MASS]: drawRoofMass,
   [MODULE_KINDS.PARAPET_EDGE]: drawParapetEdge,
   [MODULE_KINDS.FRONTAGE]: drawFrontage,
   [MODULE_KINDS.SKYLIGHT]: drawSkylight,
