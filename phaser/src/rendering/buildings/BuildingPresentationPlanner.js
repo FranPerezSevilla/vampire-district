@@ -4,6 +4,7 @@ import {
   FRONTAGE_KINDS,
   MODULE_KINDS,
   MODULE_LAYERS,
+  ROOFTOP_PROP_KINDS,
   getBuildingLayoutRecipe,
   resolveBuildingPalette,
   resolveBuildingPresentationDefinition
@@ -364,7 +365,7 @@ function createRooftopProps(building, footprint, grid, frontage, definition, ran
   const reserved = frontage ? [frontage.bounds] : [];
   const modules = [];
   const requestedKinds = definition.propKinds || definition.archetype.propPool;
-  const propKinds = requestedKinds.filter(kind => Object.values(MODULE_KINDS).includes(kind));
+  const propKinds = requestedKinds.filter(kind => ROOFTOP_PROP_KINDS.includes(kind));
   const anchors = candidateAnchors(grid, random);
   const budget = propBudget(footprint, definition);
   const queue = [];
