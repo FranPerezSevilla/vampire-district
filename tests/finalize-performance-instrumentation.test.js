@@ -17,8 +17,8 @@ test("Core.Finalize drill-down remains measurement-only and browser-visible", ()
     "Finalize.StatePublisher",
     "Finalize.PublishState"
   ]) {
-    assert.match(runtime, new RegExp(`beginSystem\\("${name}"\\)`));
-    assert.match(runtime, new RegExp(`endSystem\\("${name}"`));
+    assert.match(runtime, new RegExp(`beginSystem\\?\\.\\("${name}"\\)`));
+    assert.match(runtime, new RegExp(`endSystem\\?\\.\\("${name}"`));
   }
 
   assert.match(runtime, /FINALIZE_PROFILE_SYSTEMS/);
