@@ -4,12 +4,12 @@ import { installDistrictGunfireHeatPolicy } from "./policies/DistrictGunfireHeat
 import { installFootPolicePedestrianPolicy } from "./policies/FootPolicePedestrianPolicy.js";
 import { installPlaytestSurfacePolicy } from "./policies/PlaytestSurfacePolicy.js";
 import { installPoliceScreenPursuitPolicy } from "./policies/PoliceScreenPursuitPolicy.js";
-import { installStreetImpactAudioPolicy } from "./policies/StreetImpactAudioPolicy.js";
 import { installTrafficContextualHornPolicy } from "./policies/TrafficContextualHornPolicy.js";
 import { installTrafficFeedbackPolicy } from "./policies/TrafficFeedbackPolicy.js";
 import { installTrafficPlaytestPolicy } from "./policies/TrafficPlaytestPolicy.js";
 import { installVampireVeilPolicy } from "./policies/VampireVeilPolicy.js";
 import { installVehicleDamagePresentationPolicy } from "./policies/VehicleDamagePresentationPolicy.js";
+import { installVehicleWallCollisionAudioPolicy } from "./policies/VehicleWallCollisionAudioPolicy.js";
 import { BootScene } from "./scenes/BootScene.js";
 import { MainMenuScene } from "./scenes/MainMenuScene.js";
 import { GameScene } from "./scenes/GameScene.js";
@@ -145,7 +145,7 @@ installTrafficContextualHornPolicy();
 installFootPolicePedestrianPolicy();
 installDistrictGunfireHeatPolicy();
 installVehicleDamagePresentationPolicy();
-installStreetImpactAudioPolicy();
+installVehicleWallCollisionAudioPolicy();
 
 const config = {
   type: Phaser.AUTO,
