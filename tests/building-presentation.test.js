@@ -170,7 +170,7 @@ test("authored presentation overrides are resolved through one extension point",
       frontageEdge: "east",
       frontageOffset: 0.5,
       detailLevel: "minimal",
-      propKinds: [MODULE_KINDS.VENT]
+      propKinds: [MODULE_KINDS.FRONTAGE, MODULE_KINDS.VENT]
     }
   });
   const definition = resolveBuildingPresentationDefinition(source);
@@ -183,6 +183,7 @@ test("authored presentation overrides are resolved through one extension point",
   const plan = createBuildingPresentationPlan(source);
   assert.equal(plan.layoutId, "l-shape");
   assert.equal(plan.frontage.edge, "east");
+  assert.equal(plan.modules.filter(module => module.kind === MODULE_KINDS.FRONTAGE).length, 1);
   const optionalProps = plan.modules.filter(module => [
     MODULE_KINDS.SKYLIGHT,
     MODULE_KINDS.HVAC,
