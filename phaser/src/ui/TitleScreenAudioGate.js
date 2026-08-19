@@ -1,113 +1,43 @@
-const AUDIO_GATE_ID = "viceblood-title-audio-gate";
 const THEME_FADE_MS = 430;
 const THEME_CREDIT = "MUSIC\n“Gnossienne No. 1” — Erik Satie (1890).\nArranged for ViceBlood.";
-
-function removeNode(node) {
-  node?.remove?.();
-}
+const START_COPY = "PRESS ANY KEY TO START";
+const RETRY_COPY = "CLICK OR PRESS A KEY TO ENABLE AUDIO";
 
 export class TitleScreenAudioGate {
   constructor({ documentRef = document, windowRef = window } = {}) {
     this.document = documentRef;
     this.window = windowRef;
-    this.gate = null;
-    this.keydownBound = false;
+    this.root = null;
+    this.bootMessage = null;
+    this.waitPromise = null;
+    this.resolveWait = null;
+    this.listenersBound = false;
     this.creditsObserver = null;
     this.boundKeydown = event => this.handleKeydown(event);
-    this.boundUnlock = event => this.unlock(event);
+    this.boundPointer = event => this.unlock(event);
+    this.boundTouch = event => this.unlock(event);
   }
 
   get theme() {
     return this.window.NBD_MAIN_MENU_THEME || null;
   }
 
-  get titleScreen() {
-    return this.window.NBD_TITLE_SCREEN || null;
-  }
-
-  async present() {
-    const root = this.document.getElementById("viceblood-title-screen");
-    if (!root) return false;
-
-    this.installCreditsObserver(root);
-    this.disposeGate();
-    if (this.titleScreen) this.titleScreen.inputLocked = true;
-
-    const gate = this.document.createElement("button");
-    gate.id = AUDIO_GATE_ID;
-    gate.type = "button";
-    gate.className = "viceblood-title-audio-gate";
-    gate.setAttribute("aria-label", "Start ViceBlood");
-    gate.innerHTML = "<span>PRESS ANY KEY TO START</span>";
-    gate.style.cssText = [
-      "position:absolute",
-      "inset:0",
-      "z-index:999",
-      "display:grid",
-      "place-items:end center",
-      "padding:0 0 8vh",
-      "border:0",
-      "background:rgba(5,6,11,.18)",
-      "color:#f1e6ff",
-      "font:700 clamp(12px,1.25vw,18px) Arial,Helvetica,sans-serif",
-      "letter-spacing:.24em",
-      "text-shadow:0 0 18px rgba(187,128,255,.6)",
-      "cursor:pointer"
-    ].join(";");
-
-    const label = gate.querySelector("span");
-    if (label) label.style.cssText = "animation:viceblood-title-audio-pulse 1.55s ease-in-out infinite";
-
-    if (!this.document.getElementById("viceblood-title-audio-style")) {
-      const style = this.document.createElement("style");
-      style.id = "viceblood-title-audio-style";
-      style.textContent = `
-        @keyframes viceblood-title-audio-pulse {
-          0%,100% { opacity:.46; transform:translateY(0); }
-          50% { opacity:1; transform:translateY(-2px); }
-        }
-      `;
-      this.document.head.appendChild(style);
-    }
-
-    gate.addEventListener("pointerdown", this.boundUnlock, true);
-    gate.addEventListener("touchstart", this.boundUnlock, { capture: true, passive: false });
-    this.window.addEventListener("keydown", this.boundKeydown, true);
-    this.keydownBound = true;
-    root.appendChild(gate);
-    this.gate = gate;
-    this.window.NBD_TITLE_AUDIO_GATE_STATE = "waiting";
-    return true;
-  }
-
-  handleKeydown(event) {
-    if (!this.gate || event.repeat) return;
-    if (["Shift", "Control", "Alt", "Meta"].includes(event.key)) return;
-    this.unlock(event);
-  }
-
-  async unlock(event) {
-    if (!this.gate) return;
-    event?.preventDefault?.();
-    event?.stopPropagation?.();
-    this.window.NBD_TITLE_AUDIO_GATE_STATE = "unlocking";
-
-    const started = await this.theme?.start?.();
-    if (!started) {
-      this.window.NBD_TITLE_AUDIO_GATE_STATE = "blocked";
-      const label = this.gate?.querySelector("span");
-      if (label) label.textContent = "CLICK OR PRESS A KEY TO ENABLE AUDIO";
-      return;
-    }
-
-    this.window.NBD_TITLE_AUDIO_GATE_STATE = "playing";
-    if (this.titleScreen) this.titleScreen.inputLocked = false;
-    this.disposeGate();
-  }
-
-  fadeOut(durationMs = THEME_FADE_MS) {
-    this.disposeGate();
-    this.theme?.fadeOut?.(durationMs);
+  installPulseStyle() {
+    if (this.document.getElementById("viceblood-title-audio-style")) return;
+    const style = this.document.createElement("style");
+    style.id = "viceblood-title-audio-style";
+    style.textContent = `
+      @keyframes viceblood-title-audio-pulse {
+        0%,100% { opacity:.42; transform:translateY(0); }
+        50% { opacity:1; transform:translateY(-2px); }
+      }
+      .viceblood-title-boot-message[data-audio-gate="waiting"],
+      .viceblood-title-boot-message[data-audio-gate="blocked"] {
+        color: rgba(241,237,230,.9) !important;
+        animation: viceblood-title-audio-pulse 1.55s ease-in-out infinite;
+      }
+    `;
+    this.document.head.appendChild(style);
   }
 
   installCreditsObserver(root) {
@@ -126,21 +56,97 @@ export class TitleScreenAudioGate {
     }, 0);
   }
 
-  disposeGate() {
-    if (this.gate) {
-      this.gate.removeEventListener("pointerdown", this.boundUnlock, true);
-      this.gate.removeEventListener("touchstart", this.boundUnlock, true);
-      removeNode(this.gate);
-      this.gate = null;
+  waitForStart() {
+    if (this.waitPromise) return this.waitPromise;
+
+    this.root = this.document.getElementById("viceblood-title-screen");
+    this.bootMessage = this.root?.querySelector("[data-title-boot-message]") || null;
+    if (!this.root) return Promise.resolve(false);
+
+    this.installPulseStyle();
+    this.installCreditsObserver(this.root);
+    this.root.hidden = false;
+    this.root.dataset.state = "boot";
+    this.root.setAttribute("aria-hidden", "false");
+    if (this.bootMessage) {
+      this.bootMessage.textContent = START_COPY;
+      this.bootMessage.dataset.audioGate = "waiting";
     }
-    if (this.keydownBound) {
-      this.window.removeEventListener("keydown", this.boundKeydown, true);
-      this.keydownBound = false;
+
+    this.window.NBD_TITLE_AUDIO_GATE_STATE = "waiting";
+    this.bindUnlockListeners();
+    this.waitPromise = new Promise(resolve => {
+      this.resolveWait = resolve;
+    });
+    return this.waitPromise;
+  }
+
+  bindUnlockListeners() {
+    if (this.listenersBound || !this.root) return;
+    this.listenersBound = true;
+    this.window.addEventListener("keydown", this.boundKeydown, true);
+    this.root.addEventListener("pointerdown", this.boundPointer, true);
+    this.root.addEventListener("touchstart", this.boundTouch, { capture: true, passive: false });
+  }
+
+  unbindUnlockListeners() {
+    if (!this.listenersBound) return;
+    this.listenersBound = false;
+    this.window.removeEventListener("keydown", this.boundKeydown, true);
+    this.root?.removeEventListener("pointerdown", this.boundPointer, true);
+    this.root?.removeEventListener("touchstart", this.boundTouch, true);
+  }
+
+  handleKeydown(event) {
+    if (event.repeat) return;
+    if (["Shift", "Control", "Alt", "Meta"].includes(event.key)) return;
+    this.unlock(event);
+  }
+
+  async unlock(event) {
+    if (!this.waitPromise || this.window.NBD_TITLE_AUDIO_GATE_STATE === "unlocking") return;
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    this.window.NBD_TITLE_AUDIO_GATE_STATE = "unlocking";
+
+    const started = await this.theme?.start?.();
+    if (!started) {
+      this.window.NBD_TITLE_AUDIO_GATE_STATE = "blocked";
+      if (this.bootMessage) {
+        this.bootMessage.textContent = RETRY_COPY;
+        this.bootMessage.dataset.audioGate = "blocked";
+      }
+      return;
     }
+
+    this.window.NBD_TITLE_AUDIO_GATE_STATE = "playing";
+    if (this.bootMessage) {
+      this.bootMessage.textContent = "The city never sleeps";
+      delete this.bootMessage.dataset.audioGate;
+    }
+    this.unbindUnlockListeners();
+    const resolve = this.resolveWait;
+    this.resolveWait = null;
+    this.waitPromise = null;
+    resolve?.(true);
+  }
+
+  fadeOut(durationMs = THEME_FADE_MS) {
+    this.cancelWait(false);
+    this.theme?.fadeOut?.(durationMs);
+  }
+
+  cancelWait(result = false) {
+    this.unbindUnlockListeners();
+    if (this.bootMessage) delete this.bootMessage.dataset.audioGate;
+    const resolve = this.resolveWait;
+    this.resolveWait = null;
+    this.waitPromise = null;
+    resolve?.(result);
   }
 
   dispose() {
-    this.disposeGate();
+    this.cancelWait(false);
     this.creditsObserver?.disconnect?.();
     this.creditsObserver = null;
   }
