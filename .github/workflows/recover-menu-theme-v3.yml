@@ -1,0 +1,91 @@
+name: Finalize ViceBlood menu theme repair
+
+on:
+  push:
+    branches:
+      - audio/playtest-p0
+    paths:
+      - .github/workflows/recover-menu-theme-v3.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize-menu-theme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Recover validated OGG and browser MP3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p phaser/assets/audio/music
+          : > /tmp/theme.b64
+          append_blob() {
+            curl --fail --silent --show-error --location \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/blobs/$1" \
+              | jq -r '.content' | tr -d '\n' | base64 --decode >> /tmp/theme.b64
+          }
+          for sha in \
+            4b5da281459acd7a3016e19ed459820ceee5c80b \
+            4a3b4fc56066c5c5dd052ea1db6093ea80edc87b \
+            d432e69d06b940f501af095b14ebaa1d5dc4aa42 \
+            452757ebd981c01dd46015ba72e67baf35334967 \
+            f5dc0aa8f03772db142f58dd5b84e2e5742e8912 \
+            d0cb5e1e524766490cbc430143662560e6bdc64c \
+            282453cec40fcb237c9c1acade6296a02a5818fc \
+            d30d6fe121b935c18275e99ab615650e8b3f09ce \
+            24cc98be1bd46c4d6013c67022cd31a4625cfc9e \
+            3c4431a55666053390e3fd8cb1f6d53c2c92aecd \
+            a1fc21a69c1eda142c5d6d63b50032f62cbdc76b \
+            318c3a7fb55b78b87421ad82db26192cdb3a4ac9 \
+            835d36d59edbe8b22b3659146a924d6cd6009ada \
+            57b7ae2e09a8b24673c36eb5cd665880ea2f3dc7 \
+            c197c428acac9f982468e3c11792d735f441b881 \
+            14d649d7e1b91195d9b45847122fd32fdf30bac8 \
+            05904bf51e5bed982a231d9ded85e19333253e1a \
+            49b6a9eef1684fcf84d84fb2ecd5f1fc7a03cf3a
+          do append_blob "$sha"; done
+
+          test "$(wc -c < /tmp/theme.b64)" -eq 163148
+          base64 --decode /tmp/theme.b64 > phaser/assets/audio/music/main-menu-theme-01.ogg
+          echo "0dabd4d991b4ef579f53c32489d992dd689612693035192af981f3ead1fcbd24  phaser/assets/audio/music/main-menu-theme-01.ogg" | sha256sum --check --strict
+          test "$(stat -c%s phaser/assets/audio/music/main-menu-theme-01.ogg)" -eq 122360
+          ffprobe -v error phaser/assets/audio/music/main-menu-theme-01.ogg
+
+          ffmpeg -hide_banner -loglevel error -y -i phaser/assets/audio/music/main-menu-theme-01.ogg \
+            -ar 44100 -codec:a libmp3lame -b:a 96k phaser/assets/audio/music/main-menu-theme-01.mp3
+          test "$(stat -c%s phaser/assets/audio/music/main-menu-theme-01.mp3)" -gt 100000
+          ffprobe -v error phaser/assets/audio/music/main-menu-theme-01.mp3
+
+      - name: Wire validated binary and verify splash gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i 's/main-menu-theme-01\.m4a/main-menu-theme-01.mp3/g' phaser/src/main.js tests/main-menu-music.test.js phaser/assets/audio/ATTRIBUTION.md
+          rm -f phaser/assets/audio/music/main-menu-theme-01.m4a
+          rm -f .github/workflows/recover-menu-theme.yml .github/workflows/recover-menu-theme-v2.yml .github/workflows/recover-menu-theme-v3.yml
+          grep -q 'main-menu-theme-01.mp3' phaser/src/main.js
+          grep -q 'waitForStart' phaser/src/scenes/MainMenuScene.js
+          grep -q 'PRESS ANY KEY TO START' phaser/src/ui/TitleScreenAudioGate.js
+          node --test tests/main-menu-music.test.js tests/main-menu-audio-binary.test.js
+
+      - name: Commit without losing a concurrent branch update
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Finalize complete ViceBlood menu theme playback"
+          git pull --rebase origin audio/playtest-p0
+          git push origin HEAD:audio/playtest-p0
