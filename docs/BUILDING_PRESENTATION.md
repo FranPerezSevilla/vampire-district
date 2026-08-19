@@ -2,6 +2,8 @@
 
 ViceBlood buildings keep their authored `x`, `y`, `w`, and `h` as the only collision and navigation footprint. The presentation layer turns that rectangle into a deterministic modular roof composition without changing roads, entrances, rooftop routes, interiors, missions, or AI geometry.
 
+The active art-polish north star, milestone roadmap and agent continuity contract live in [`BUILDING_VISUAL_POLISH.md`](BUILDING_VISUAL_POLISH.md). This document remains the runtime architecture and authored-data contract.
+
 The current visual north star is the approved in-context overpaint:
 
 1. **one solid overhead mass;**

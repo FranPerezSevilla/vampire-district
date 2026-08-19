@@ -10,6 +10,8 @@ This is the operational entry point for AI-assisted changes. The architectural s
 4. State the files that are in scope before editing.
 5. Run the fast check, then the affected-test selector.
 
+For the active modular-building art initiative, continue from [`BUILDING_VISUAL_POLISH.md`](BUILDING_VISUAL_POLISH.md). Its agent contract, roadmap, progress log and machine-readable status are mandatory before changing building presentation.
+
 Useful searches:
 
 ```bash
@@ -34,6 +36,7 @@ Do not scan or rewrite the whole repository to understand one subsystem.
 | factions, territory or hunting law | `TerritorySystem`, `TerritoryRuntimeSystem` and hunting-law services | persistent campaign authority plus read-only runtime projection | territory/hunting browser group |
 | streaming or dormant simulation | `ChunkStreamSystem`, `EntityStreamSystem`, `DistantSimulationSystem` | resident resources before local queries | streaming browser group |
 | roads, parcels, sidewalks or generated city | `city-road-graph-v1.js`, `tools/city-compiler/` | road graph and compiler; locate the graph with `rg --files`; never hand-edit generated geometry | city validation + city browser group |
+| modular building presentation or visual polish | `docs/BUILDING_VISUAL_POLISH.md`, `phaser/src/rendering/BuildingPresentation.js` | profile catalog → pure planner → Phaser renderer; authored footprint remains gameplay truth | `tests/building-presentation.test.js` + Netlify visual review |
 
 If a symbol has moved, use `rg` to find it. Do not create a second authority because a path in this guide became stale.
 
@@ -65,7 +68,7 @@ Run the complete release-candidate suite only for cross-cutting changes, test-in
 npm run test:rc
 ```
 
-The selector is a conservative aid, not a replacement for judgment. Add a focused test manually when the change crosses a boundary that its filenames cannot reveal.
+The selector is a conservative aid, not a replacement for judgment. Add a focused test manually when the change crosses a boundary that filenames cannot reveal.
 
 ## Small-PR protocol
 

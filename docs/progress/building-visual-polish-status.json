@@ -1,0 +1,38 @@
+{
+  "initiative": "building-visual-polish",
+  "version": 1,
+  "updatedAt": "2026-08-19",
+  "branch": "agent/building-visual-poc",
+  "pullRequest": 63,
+  "state": "active",
+  "currentMilestone": "M1",
+  "currentTask": "M1.1-shared-shadow-primitives",
+  "nextAction": "Implement layered world, roof-mass and contact shadow primitives in BuildingPresentationRenderer.js, add focused tests, deploy and request visual review.",
+  "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
+  "milestones": [
+    { "id": "P0", "name": "modular proof of concept", "status": "complete" },
+    { "id": "P1", "name": "fused silhouette pass", "status": "complete" },
+    { "id": "P2", "name": "approved overpaint translation", "status": "complete" },
+    { "id": "P3", "name": "multi-profile screenshot audit", "status": "complete" },
+    { "id": "M0", "name": "canonical direction and agent continuity", "status": "complete" },
+    {
+      "id": "M1",
+      "name": "architectural parapets and layered shadow language",
+      "status": "in-progress",
+      "tasks": [
+        { "id": "M1.1", "name": "shared shadow primitives", "status": "in-progress" },
+        { "id": "M1.2", "name": "architectural parapet primitive", "status": "planned" },
+        { "id": "M1.3", "name": "visual validation", "status": "planned" }
+      ]
+    },
+    { "id": "M2", "name": "physical rooftop props", "status": "planned" },
+    { "id": "M3", "name": "surface material language", "status": "planned" },
+    { "id": "M4", "name": "family grammar expansion", "status": "planned" },
+    { "id": "M5", "name": "composition and controlled variation", "status": "planned" },
+    { "id": "M6", "name": "final polish and merge readiness", "status": "planned" }
+  ],
+  "knownUnrelatedCiFailures": [
+    "tests/urban-witness-network.test.js (2 expectations)",
+    "tests/vehicle-exit-and-impact-buffer.test.js (5 expectations)"
+  ]
+}
