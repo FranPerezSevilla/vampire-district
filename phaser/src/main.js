@@ -17,6 +17,82 @@ const RESOLUTION_PRESETS = Object.freeze({
   qhd: Object.freeze({ displayWidth: 1440, renderScale: 2.25 }),
   ultra: Object.freeze({ displayWidth: 1920, renderScale: 3 })
 });
+const MAIN_MENU_THEME_URL = new URL("../assets/audio/music/main-menu-theme-01.m4a", import.meta.url).href;
+const MAIN_MENU_THEME_VOLUME = 0.28;
+const MAIN_MENU_THEME_FADE_MS = 430;
+
+function createMainMenuThemeController() {
+  const audio = new Audio(MAIN_MENU_THEME_URL);
+  audio.loop = true;
+  audio.preload = "auto";
+  audio.volume = MAIN_MENU_THEME_VOLUME;
+  let fadeRaf = 0;
+
+  const cancelFade = () => {
+    if (fadeRaf) cancelAnimationFrame(fadeRaf);
+    fadeRaf = 0;
+  };
+
+  const start = () => {
+    cancelFade();
+    audio.loop = true;
+    audio.volume = MAIN_MENU_THEME_VOLUME;
+    if (audio.paused) audio.play().catch(() => {});
+  };
+
+  const fadeOut = (durationMs = MAIN_MENU_THEME_FADE_MS) => {
+    cancelFade();
+    if (audio.paused) {
+      audio.currentTime = 0;
+      return;
+    }
+    const from = audio.volume;
+    const startedAt = performance.now();
+    const tick = now => {
+      const t = Math.min(1, (now - startedAt) / Math.max(1, durationMs));
+      audio.volume = Math.max(0, from * (1 - t));
+      if (t >= 1) {
+        fadeRaf = 0;
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = MAIN_MENU_THEME_VOLUME;
+        return;
+      }
+      fadeRaf = requestAnimationFrame(tick);
+    };
+    fadeRaf = requestAnimationFrame(tick);
+  };
+
+  return Object.freeze({ start, fadeOut, audio });
+}
+
+window.NBD_MAIN_MENU_THEME = createMainMenuThemeController();
+
+function installMainMenuThemePolicy() {
+  const originalCreate = MainMenuScene.prototype.create;
+  const originalBeginNight = MainMenuScene.prototype.beginNight;
+  const originalOpenCredits = MainMenuScene.prototype.openCredits;
+
+  MainMenuScene.prototype.create = function viceBloodMenuCreate(...args) {
+    const result = originalCreate.apply(this, args);
+    window.NBD_MAIN_MENU_THEME?.start();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => window.NBD_MAIN_MENU_THEME?.fadeOut(120));
+    return result;
+  };
+
+  MainMenuScene.prototype.beginNight = function viceBloodMenuBeginNight(...args) {
+    window.NBD_MAIN_MENU_THEME?.fadeOut(MAIN_MENU_THEME_FADE_MS);
+    return originalBeginNight.apply(this, args);
+  };
+
+  MainMenuScene.prototype.openCredits = function viceBloodMenuCredits(...args) {
+    const result = originalOpenCredits.apply(this, args);
+    this.panelBody?.setText(
+      "VICEBLOOD\n\nCreated by Fran Pérez Sevilla.\n\nDesign, code and direction by Frainzzel.\nBuilt with Phaser.\n\nMUSIC\n“Gnossienne No. 1” — Erik Satie (1890).\nArranged for ViceBlood."
+    );
+    return result;
+  };
+}
 
 function savedResolutionKey() {
   const fallback = window.NBD_RC_TEST_MODE ? "compact" : "qhd";
@@ -76,6 +152,7 @@ installTrafficPlaytestPolicy();
 installTrafficContextualHornPolicy();
 installFootPolicePedestrianPolicy();
 installDistrictGunfireHeatPolicy();
+installMainMenuThemePolicy();
 
 const config = {
   type: Phaser.AUTO,
