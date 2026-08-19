@@ -16,8 +16,15 @@ const OUTER_SYSTEM_NAMES = Object.freeze([
 ]);
 const CORE_SYSTEM_PREFIX = "Core.";
 const FINALIZE_SYSTEM_PREFIX = "Finalize.";
-const PUBLISH_STATE_SYSTEM_PREFIX = "PublishState.";
-const PUBLISH_STATE_PHASE_COUNT = 5;
+const PUBLISH_STATE_PHASE_NAMES = Object.freeze([
+  "PublishState.Prepare",
+  "PublishState.Summaries",
+  "PublishState.InteractionMenu",
+  "PublishState.PayloadTail",
+  "PublishState.RegistryCommit"
+]);
+const PUBLISH_STATE_SUMMARY_PREFIX = "PublishState.Summary.";
+const PUBLISH_STATE_SUMMARY_GROUP_COUNT = 4;
 
 async function waitForRuntimeDiagnostics(page) {
   await page.waitForFunction(() => Boolean(
@@ -112,7 +119,8 @@ function summarizeCapture(samples) {
     ...outer,
     core: summarizeRanking(samples, "coreSystems"),
     finalize: summarizeRanking(samples, "finalizeSystems"),
-    publishState: summarizeRanking(samples, "publishStateSystems")
+    publishState: summarizeRanking(samples, "publishStateSystems"),
+    publishStateSummaries: summarizeRanking(samples, "publishStateSummarySystems")
   };
 }
 
@@ -137,13 +145,15 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
     outerSystemNames,
     coreSystemPrefix,
     finalizeSystemPrefix,
-    publishStateSystemPrefix
+    publishStatePhaseNames,
+    publishStateSummaryPrefix
   }) => {
     const district = await import("/phaser/src/data/district.js");
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
     const origin = { x: scene.player.x, y: scene.player.y };
     const outerNames = new Set(outerSystemNames);
+    const publishStateNames = new Set(publishStatePhaseNames);
     const phases = [
       { name: "settled-street", point: origin, relocate: false },
       { name: "harbor-stream", point: district.CITY_ANCHORS.harborFar, relocate: true },
@@ -186,7 +196,8 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
           slowestSystems: rank(timings.filter(timing => outerNames.has(timing.name))),
           coreSystems: rank(timings.filter(timing => timing.name.startsWith(coreSystemPrefix))),
           finalizeSystems: rank(timings.filter(timing => timing.name.startsWith(finalizeSystemPrefix))),
-          publishStateSystems: rank(timings.filter(timing => timing.name.startsWith(publishStateSystemPrefix)))
+          publishStateSystems: rank(timings.filter(timing => publishStateNames.has(timing.name))),
+          publishStateSummarySystems: rank(timings.filter(timing => timing.name.startsWith(publishStateSummaryPrefix)))
         });
       }
     }
@@ -199,7 +210,8 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
     outerSystemNames: OUTER_SYSTEM_NAMES,
     coreSystemPrefix: CORE_SYSTEM_PREFIX,
     finalizeSystemPrefix: FINALIZE_SYSTEM_PREFIX,
-    publishStateSystemPrefix: PUBLISH_STATE_SYSTEM_PREFIX
+    publishStatePhaseNames: PUBLISH_STATE_PHASE_NAMES,
+    publishStateSummaryPrefix: PUBLISH_STATE_SUMMARY_PREFIX
   });
 
   const capture = summarizeCapture(samples);
@@ -224,7 +236,12 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
   expect(capture.finalize.phases.every(phase => phase.samples === SAMPLES_PER_PHASE)).toBe(true);
   expect(capture.publishState.sampleCount).toBe(SAMPLES_PER_PHASE * 3);
   expect(capture.publishState.phases).toHaveLength(3);
-  expect(capture.publishState.systems.length).toBeGreaterThanOrEqual(PUBLISH_STATE_PHASE_COUNT);
+  expect(capture.publishState.systems.length).toBeGreaterThanOrEqual(PUBLISH_STATE_PHASE_NAMES.length);
   expect(capture.publishState.winner?.count || 0).toBeGreaterThan(0);
   expect(capture.publishState.phases.every(phase => phase.samples === SAMPLES_PER_PHASE)).toBe(true);
+  expect(capture.publishStateSummaries.sampleCount).toBe(SAMPLES_PER_PHASE * 3);
+  expect(capture.publishStateSummaries.phases).toHaveLength(3);
+  expect(capture.publishStateSummaries.systems.length).toBeGreaterThanOrEqual(PUBLISH_STATE_SUMMARY_GROUP_COUNT);
+  expect(capture.publishStateSummaries.winner?.count || 0).toBeGreaterThan(0);
+  expect(capture.publishStateSummaries.phases.every(phase => phase.samples === SAMPLES_PER_PHASE)).toBe(true);
 });
