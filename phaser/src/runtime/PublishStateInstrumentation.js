@@ -21,7 +21,7 @@ const METHOD_TARGETS = Object.freeze([
 function profileMethod(owner, method, label, diagnostics, isActive, restorers) {
   if (!owner || typeof owner[method] !== "function") return;
   const original = owner[method];
-  owner[method] = function profiledPublishStateMethod(...args) {
+  const wrapped = function profiledPublishStateMethod(...args) {
     if (!isActive()) return original.apply(this, args);
     const mark = diagnostics?.beginSystem?.(label) ?? null;
     try {
@@ -30,8 +30,9 @@ function profileMethod(owner, method, label, diagnostics, isActive, restorers) {
       diagnostics?.endSystem?.(label, mark);
     }
   };
+  owner[method] = wrapped;
   restorers.push(() => {
-    if (owner[method] !== original) owner[method] = original;
+    if (owner[method] === wrapped) owner[method] = original;
   });
 }
 
@@ -42,7 +43,7 @@ export function installPublishStateInstrumentation(scene, diagnostics) {
   const restorers = [];
   let activeDepth = 0;
   const originalPublishState = scene.publishState;
-  scene.publishState = function profiledPublishState(...args) {
+  const wrappedPublishState = function profiledPublishState(...args) {
     activeDepth += 1;
     try {
       return originalPublishState.apply(this, args);
@@ -50,8 +51,9 @@ export function installPublishStateInstrumentation(scene, diagnostics) {
       activeDepth = Math.max(0, activeDepth - 1);
     }
   };
+  scene.publishState = wrappedPublishState;
   restorers.push(() => {
-    if (scene.publishState !== originalPublishState) scene.publishState = originalPublishState;
+    if (scene.publishState === wrappedPublishState) scene.publishState = originalPublishState;
   });
 
   const isActive = () => activeDepth > 0;
