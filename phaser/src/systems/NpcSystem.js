@@ -1,11 +1,52 @@
 import { LAYERS, streetNavigationPoints } from "../data/district.js";
+import { NPC_TYPES } from "../data/npcs.js";
+import { ModularCharacterView } from "../rendering/ModularCharacterView.js";
 import { NpcSystem as NpcSystemCore } from "./NpcSystemCore.js";
 
 export class NpcSystem extends NpcSystemCore {
+  paintLivingNpc(container, type, palette) {
+    if (![NPC_TYPES.CIVILIAN, NPC_TYPES.POLICE].includes(type)) {
+      super.paintLivingNpc(container, type, palette);
+      return;
+    }
+
+    const styleName = type === NPC_TYPES.POLICE ? "police" : "civilian";
+    container.__modularCharacterView = new ModularCharacterView(this.scene, container, styleName, {
+      phaseKey: `${type}:${container.x}:${container.y}`
+    });
+  }
+
   createNpc(definition) {
     const npc = super.createNpc(definition);
+    npc.characterView = npc.container?.__modularCharacterView || null;
     this.scene.entityStreamSystem?.applyNpcState?.(npc, 0);
     return npc;
+  }
+
+  updateCharacterPresentation(timeMs = 0) {
+    for (const npc of this.npcs) {
+      const view = npc.characterView || npc.container?.__modularCharacterView;
+      if (!view || npc.dead) continue;
+
+      const vx = Number(npc.vx) || 0;
+      const vy = Number(npc.vy) || 0;
+      const moving = Math.hypot(vx, vy) > 1.25;
+      const facingDirection = { x: Number(npc.dirX) || 0, y: Number(npc.dirY) || 0 };
+      const movementDirection = moving ? { x: vx, y: vy } : facingDirection;
+      const aiming = npc.type === NPC_TYPES.POLICE && Boolean(npc.chasingPlayer || npc.enemyAttack);
+      const player = this.scene.player;
+      const aimDirection = aiming && player
+        ? { x: player.x - npc.x, y: player.y - npc.y }
+        : facingDirection;
+
+      view.update({
+        timeMs,
+        movementDirection,
+        aimDirection,
+        moving,
+        aiming
+      });
+    }
   }
 
   updateNpc(npc, dt) {
