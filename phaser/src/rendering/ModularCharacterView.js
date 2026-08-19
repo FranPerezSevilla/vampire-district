@@ -12,6 +12,7 @@ export const MODULAR_CHARACTER_STYLES = Object.freeze({
     trouser: 0x343b42,
     shoe: 0x2a241f,
     shoulderWidth: 15,
+    scale: 0.78,
     cap: false,
     collar: false,
     badge: false,
@@ -28,6 +29,7 @@ export const MODULAR_CHARACTER_STYLES = Object.freeze({
     trouser: 0x19283e,
     shoe: 0x111821,
     shoulderWidth: 17,
+    scale: 0.78,
     cap: true,
     collar: false,
     badge: true,
@@ -44,6 +46,7 @@ export const MODULAR_CHARACTER_STYLES = Object.freeze({
     trouser: 0x15141a,
     shoe: 0x0d0c11,
     shoulderWidth: 18,
+    scale: 0.8,
     cap: false,
     collar: true,
     badge: false,
@@ -62,7 +65,10 @@ function normalizedDirection(direction = DEFAULT_DIRECTION) {
 export function modularCharacterFacingRotation(direction = DEFAULT_DIRECTION) {
   const value = normalizedDirection(direction);
   // Sprites are authored facing north (negative Y), hence the +90 degree offset.
-  return Math.atan2(value.y, value.x) + Math.PI / 2;
+  let rotation = Math.atan2(value.y, value.x) + Math.PI / 2;
+  while (rotation > Math.PI) rotation -= Math.PI * 2;
+  while (rotation <= -Math.PI) rotation += Math.PI * 2;
+  return rotation;
 }
 
 export function modularCharacterPose({
@@ -137,7 +143,7 @@ function createFoot(scene, style) {
 function createCore(scene, style) {
   const core = scene.add.container(0, 0);
   const shadow = scene.add.ellipse(0, 5.8, style.shoulderWidth + 4, 7.5, 0x000000, 0.27);
-  const torso = addStroke(scene.add.rectangle(0, 1.2, style.shoulderWidth, 8.6, style.body, 1), style.outline);
+  const torso = addStroke(scene.add.ellipse(0, 1.2, style.shoulderWidth, 9.0, style.body, 1), style.outline);
   const chest = scene.add.rectangle(0, 2.5, Math.max(5, style.shoulderWidth - 7), 4.0, style.bodyDark, 0.72);
 
   const parts = [shadow, torso, chest];
@@ -182,7 +188,7 @@ export class ModularCharacterView {
     this.phase = stablePhase(phaseKey);
     this.lastDirection = { ...DEFAULT_DIRECTION };
 
-    this.root = scene.add.container(0, 0);
+    this.root = scene.add.container(0, 0).setScale(this.style.scale || 0.78);
     this.leftFoot = createFoot(scene, this.style);
     this.rightFoot = createFoot(scene, this.style);
     this.core = createCore(scene, this.style);
