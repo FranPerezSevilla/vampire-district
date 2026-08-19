@@ -1,0 +1,495 @@
+:root {
+  --viceblood-ivory: #f1ede6;
+  --viceblood-red: #ff303a;
+  --viceblood-black: #020306;
+}
+
+html,
+body {
+  min-height: 100%;
+  background: var(--viceblood-black);
+}
+
+body.viceblood-title-active,
+body.viceblood-world-active {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: var(--viceblood-black) !important;
+}
+
+body.viceblood-title-active .shell,
+body.viceblood-world-active .shell {
+  width: 100vw !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body.viceblood-title-active .topbar,
+body.viceblood-world-active .topbar,
+body.viceblood-title-active .notes,
+body.viceblood-world-active .notes {
+  display: none !important;
+}
+
+body.viceblood-title-active #game-ui {
+  display: none !important;
+}
+
+body.viceblood-title-active .game-frame,
+body.viceblood-world-active .game-frame,
+body.viceblood-title-active #game-root,
+body.viceblood-world-active #game-root {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  min-height: 100vh !important;
+  aspect-ratio: auto !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+  background: var(--viceblood-black) !important;
+}
+
+body.viceblood-title-active #game-root canvas,
+body.viceblood-world-active #game-root canvas {
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: max(100vw, 150vh) !important;
+  max-width: none !important;
+  height: auto !important;
+  image-rendering: auto !important;
+}
+
+.viceblood-title-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--viceblood-ivory);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.viceblood-title-screen[hidden] {
+  display: none !important;
+}
+
+.viceblood-title-full-cover,
+.viceblood-title-menu-veil,
+.viceblood-title-boot,
+.viceblood-title-menu {
+  position: absolute;
+  inset: 0;
+}
+
+.viceblood-title-full-cover,
+.viceblood-title-menu-veil {
+  pointer-events: none;
+}
+
+.viceblood-title-full-cover {
+  z-index: 0;
+  opacity: 1;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(82, 8, 14, .15), transparent 38%),
+    linear-gradient(180deg, #050609 0%, #020306 74%, #000 100%);
+  transition: opacity 420ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.viceblood-title-menu-veil {
+  z-index: 1;
+  opacity: 0;
+  background:
+    linear-gradient(90deg,
+      rgba(2, 3, 6, .99) 0%,
+      rgba(2, 3, 6, .96) 24%,
+      rgba(2, 3, 6, .78) 38%,
+      rgba(2, 3, 6, .30) 55%,
+      rgba(2, 3, 6, .06) 72%,
+      transparent 86%),
+    linear-gradient(180deg, rgba(2, 3, 6, .08), rgba(2, 3, 6, .14));
+  transition: opacity 420ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.viceblood-title-boot,
+.viceblood-title-menu {
+  z-index: 2;
+}
+
+.viceblood-title-boot {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  padding: clamp(28px, 5vw, 88px);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: none;
+  transition: opacity 300ms ease, visibility 0s linear 0s;
+}
+
+.viceblood-title-boot::after {
+  content: "";
+  position: absolute;
+  left: 18vw;
+  right: 18vw;
+  bottom: 10vh;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(151, 18, 26, .48), transparent);
+  opacity: .72;
+}
+
+.viceblood-title-boot-lockup {
+  width: min(72vw, 1080px);
+  max-width: 100%;
+  text-align: center;
+  transform: translateY(-1vh);
+}
+
+.viceblood-title-boot-logo {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  max-height: min(46vh, 420px);
+  height: auto;
+  object-fit: contain;
+  object-position: center;
+  filter: drop-shadow(0 18px 34px rgba(0, 0, 0, .62));
+}
+
+.viceblood-title-boot-message {
+  margin: clamp(10px, 1.7vh, 20px) 0 0;
+  color: rgba(225, 218, 215, .50);
+  font-size: clamp(9px, .75vw, 12px);
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: .38em;
+  text-transform: uppercase;
+}
+
+.viceblood-title-menu {
+  box-sizing: border-box;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-12px);
+  pointer-events: none;
+  transition:
+    opacity 320ms ease,
+    transform 420ms cubic-bezier(.22, .61, .36, 1),
+    visibility 0s linear 420ms;
+}
+
+.viceblood-title-brand {
+  position: absolute;
+  top: max(clamp(24px, 3.2vw, 52px), env(safe-area-inset-top));
+  left: max(clamp(26px, 4vw, 72px), env(safe-area-inset-left));
+  width: clamp(270px, 28vw, 430px);
+}
+
+.viceblood-title-menu-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  object-position: left top;
+  filter: drop-shadow(0 13px 25px rgba(0, 0, 0, .62));
+}
+
+.viceblood-title-kicker {
+  margin: 9px 0 0 4px;
+  color: #908b91;
+  font-size: clamp(8px, .65vw, 10px);
+  font-weight: 800;
+  letter-spacing: .31em;
+  text-transform: uppercase;
+}
+
+.viceblood-title-nav {
+  position: absolute;
+  top: 38%;
+  left: max(clamp(26px, 4vw, 72px), env(safe-area-inset-left));
+  display: grid;
+  width: clamp(250px, 26vw, 360px);
+  gap: clamp(20px, 3.8vh, 42px);
+}
+
+.viceblood-title-action {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  box-sizing: border-box;
+  padding: 0 18px 0 26px;
+  border: 0;
+  background: transparent;
+  color: #c5c0bc;
+  font: 900 clamp(17px, 1.45vw, 23px)/1 "Arial Narrow", Arial, sans-serif;
+  letter-spacing: .24em;
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: .72;
+  transition: opacity 150ms ease, transform 150ms ease, background 150ms ease;
+}
+
+.viceblood-title-action::before {
+  content: "›";
+  position: absolute;
+  left: 0;
+  color: #ff3d46;
+  font-size: 1.25em;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.viceblood-title-action::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--viceblood-red);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.viceblood-title-action.is-selected {
+  opacity: 1;
+  transform: translateX(8px);
+  background: linear-gradient(90deg, rgba(168, 20, 28, .14), transparent);
+  color: var(--viceblood-ivory);
+}
+
+.viceblood-title-action.is-selected::before,
+.viceblood-title-action.is-selected::after {
+  opacity: 1;
+}
+
+.viceblood-title-action.is-selected::before {
+  transform: translateX(0);
+}
+
+.viceblood-title-action:disabled {
+  cursor: default;
+  color: #69656b;
+  opacity: .27;
+}
+
+.viceblood-title-footer {
+  position: absolute;
+  left: max(clamp(30px, 4vw, 76px), env(safe-area-inset-left));
+  bottom: max(clamp(24px, 4vh, 46px), env(safe-area-inset-bottom));
+  display: grid;
+  gap: 6px;
+  color: #777179;
+  font-size: clamp(8px, .65vw, 10px);
+  font-weight: 800;
+  letter-spacing: .23em;
+  text-transform: uppercase;
+}
+
+.viceblood-title-footer small {
+  color: #555158;
+  font-size: .9em;
+  letter-spacing: .17em;
+}
+
+.viceblood-title-drawer {
+  position: fixed;
+  z-index: 4;
+  inset: 0 auto 0 0;
+  width: min(620px, 44vw);
+  min-width: 420px;
+  box-sizing: border-box;
+  padding:
+    max(clamp(38px, 5vh, 58px), env(safe-area-inset-top))
+    clamp(36px, 4vw, 58px)
+    max(clamp(28px, 4vh, 44px), env(safe-area-inset-bottom));
+  overflow: auto;
+  background: rgba(7, 8, 12, .985);
+  border-right: 4px solid #b91f26;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-100%);
+  pointer-events: none;
+  transition:
+    opacity 220ms ease,
+    transform 320ms cubic-bezier(.22, .61, .36, 1),
+    visibility 0s linear 320ms;
+}
+
+.viceblood-title-drawer-inner {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+}
+
+.viceblood-title-drawer h2 {
+  margin: 0;
+  color: var(--viceblood-ivory);
+  font: 900 clamp(25px, 2vw, 31px)/1 "Arial Narrow", Arial, sans-serif;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.viceblood-title-drawer-body {
+  max-width: 470px;
+  margin: 32px 0 0;
+  white-space: pre-line;
+  color: #b8b3b2;
+  font-size: clamp(13px, 1vw, 15px);
+  font-weight: 600;
+  line-height: 1.65;
+}
+
+.viceblood-title-drawer-content {
+  display: grid;
+  gap: 8px;
+  margin-top: 38px;
+}
+
+.viceblood-title-quality {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #aaa4aa;
+  cursor: pointer;
+  text-align: left;
+}
+
+.viceblood-title-quality-marker {
+  color: #ff3d46;
+  font-size: 22px;
+  font-weight: 900;
+  opacity: 0;
+}
+
+.viceblood-title-quality-label {
+  font: 900 clamp(16px, 1.25vw, 19px)/1 "Arial Narrow", Arial, sans-serif;
+  letter-spacing: .13em;
+}
+
+.viceblood-title-quality-detail {
+  color: #716b72;
+  font-size: clamp(11px, .9vw, 13px);
+  font-weight: 800;
+}
+
+.viceblood-title-quality.is-selected {
+  color: var(--viceblood-ivory);
+}
+
+.viceblood-title-quality.is-selected .viceblood-title-quality-marker {
+  opacity: 1;
+}
+
+.viceblood-title-quality.is-active .viceblood-title-quality-detail {
+  color: #ff3d46;
+}
+
+.viceblood-title-drawer-hint {
+  margin: auto 0 0;
+  padding-top: 40px;
+  color: #ff3d46;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.viceblood-title-screen[data-state="menu"] .viceblood-title-full-cover,
+.viceblood-title-screen[data-state="exiting"] .viceblood-title-full-cover {
+  opacity: 0;
+}
+
+.viceblood-title-screen[data-state="menu"] .viceblood-title-menu-veil {
+  opacity: 1;
+}
+
+.viceblood-title-screen[data-state="menu"] .viceblood-title-boot,
+.viceblood-title-screen[data-state="exiting"] .viceblood-title-boot {
+  opacity: 0;
+  visibility: hidden;
+  transition-delay: 0s, 300ms;
+}
+
+.viceblood-title-screen[data-state="menu"] .viceblood-title-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  pointer-events: auto;
+  transition-delay: 0s, 0s, 0s;
+}
+
+.viceblood-title-screen[data-state="exiting"] .viceblood-title-menu,
+.viceblood-title-screen[data-state="exiting"] .viceblood-title-menu-veil {
+  opacity: 0;
+  transform: translateX(-22px);
+  pointer-events: none;
+}
+
+.viceblood-title-screen[data-panel] .viceblood-title-menu {
+  opacity: .10;
+  pointer-events: none;
+}
+
+.viceblood-title-screen[data-panel] .viceblood-title-drawer {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  pointer-events: auto;
+  transition-delay: 0s, 0s, 0s;
+}
+
+.viceblood-title-screen[data-state="failure"] .viceblood-title-boot-message {
+  max-width: 820px;
+  margin-inline: auto;
+  color: #ff7d83;
+  letter-spacing: .16em;
+}
+
+@media (max-width: 860px) {
+  .viceblood-title-brand {
+    width: min(58vw, 360px);
+  }
+
+  .viceblood-title-nav {
+    top: 35%;
+    width: min(76vw, 340px);
+  }
+
+  .viceblood-title-drawer {
+    width: min(92vw, 620px);
+    min-width: 0;
+  }
+}
+
+@media (max-aspect-ratio: 4/3) {
+  .viceblood-title-boot-lockup {
+    width: min(88vw, 920px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .viceblood-title-full-cover,
+  .viceblood-title-menu-veil,
+  .viceblood-title-boot,
+  .viceblood-title-menu,
+  .viceblood-title-drawer,
+  .viceblood-title-action {
+    transition-duration: 1ms !important;
+  }
+}
