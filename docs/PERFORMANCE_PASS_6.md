@@ -2,7 +2,17 @@
 
 _State: measurement harness implemented on PR #55; optimization intentionally deferred until the browser capture identifies a repeatable winner._
 
-## Main sync checkpoint — 2026-08-19
+## Main sync checkpoint — 2026-08-19 17:41 Europe/Madrid
+
+`main` advanced again after CI cleanup, so Performance Pass 6 remains gated behind a real synchronization checkpoint.
+
+- Previously synchronized runtime authority: `c7bb5e433a59388eb8f996a4916af6a68286798b` (`POC: modular top-down character presentation (#62)`).
+- New `main` authority: `b0bca65a20e3aa177f6d05f8165a51b2a7315583` (`CI: install hourly autonomous building visual polish agent`).
+- The new default-branch commit adds only `.github/workflows/building-visual-polish-hourly.yml`, targeting the separate `agent/building-visual-poc` branch and issue #64. It does not change gameplay runtime, tests, density, PR #55 audio/combat/city policies, or the Performance Pass 6 harness.
+- The workflow file is integrated unchanged from `main`; no conflict resolution or runtime adaptation is required.
+- Performance work is intentionally not started in this same increment. The merged head must first re-establish the 0-behind invariant and pass the normal PR validation before a measurement-only Performance Pass 6 increment resumes.
+
+## Previous main sync checkpoint — 2026-08-19
 
 Before any further performance work, `main` was checked again because it advanced after the earlier synchronization checkpoint.
 
