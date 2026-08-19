@@ -8,17 +8,18 @@
   "state": "active",
   "executionMode": "autonomous-hourly-final-gate",
   "userValidation": "M6-final-only",
-  "currentMilestone": "M1",
-  "currentTask": "M1.4-kill-legacy-footprint-frame",
-  "nextAction": "Wait for focused CI and Netlify on M1.4. If building-focused validation is green, mark M1 complete and begin M2.1 shared physical prop-volume primitives without requesting intermediate user review.",
+  "currentMilestone": "M2",
+  "currentTask": "M2.1-shared-physical-volume-primitives",
+  "nextAction": "Introduce shared renderer-only rectangular and circular volume primitives, prove top/side/contact separation with focused tests, and migrate only a minimal fixture before redesigning individual prop families.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "automation": {
     "targetBranch": "agent/building-visual-poc",
     "trackingIssue": 64,
     "workflow": ".github/workflows/building-visual-polish-hourly.yml",
-    "schedule": "hourly",
+    "schedule": "hourly-at-minute-17",
     "requiredSecret": "OPENAI_API_KEY",
-    "installedOnDefaultBranch": false
+    "installedOnDefaultBranch": false,
+    "installationPullRequest": 65
   },
   "milestones": [
     { "id": "P0", "name": "modular proof of concept", "status": "complete" },
@@ -29,20 +30,36 @@
     {
       "id": "M1",
       "name": "architectural depth and removal of the legacy frame",
-      "status": "autonomous-in-progress",
+      "status": "complete",
       "tasks": [
         { "id": "M1.1", "name": "shared shadow primitives", "status": "complete" },
         { "id": "M1.2", "name": "architectural parapet primitive", "status": "complete" },
         { "id": "M1.3", "name": "runtime audit of first parapet pass", "status": "complete" },
-        { "id": "M1.4", "name": "kill legacy footprint frame", "status": "implementation-complete / automated-validation-pending" }
+        { "id": "M1.4", "name": "kill legacy footprint frame", "status": "complete" }
       ]
     },
-    { "id": "M2", "name": "physical rooftop props", "status": "planned" },
+    {
+      "id": "M2",
+      "name": "physical rooftop props",
+      "status": "autonomous-in-progress",
+      "tasks": [
+        { "id": "M2.1", "name": "shared physical volume primitives", "status": "active" },
+        { "id": "M2.2", "name": "skylights", "status": "planned" },
+        { "id": "M2.3", "name": "mechanical equipment", "status": "planned" },
+        { "id": "M2.4", "name": "architectural annexes and markers", "status": "planned" }
+      ]
+    },
     { "id": "M3", "name": "surface material language", "status": "planned" },
     { "id": "M4", "name": "family grammar expansion", "status": "planned" },
     { "id": "M5", "name": "composition and controlled variation", "status": "planned" },
     { "id": "M6", "name": "final polish and merge readiness", "status": "planned" }
   ],
+  "validation": {
+    "latestHead": "454f00a03dfd9d80f8cdc27b849ff4ad982955c2",
+    "buildingFocusedContracts": "pass",
+    "globalUnitResult": "404/411",
+    "netlify": "success"
+  },
   "knownUnrelatedCiFailures": [
     "tests/urban-witness-network.test.js (2 expectations)",
     "tests/vehicle-exit-and-impact-buffer.test.js (5 expectations)"
