@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { WORLD } from "../phaser/src/data/balance.js";
 import {
   DEFAULT_WEAPON_INVENTORY,
+  HITSCAN_WORLD_RANGE,
   WEAPON_IDS,
   WEAPON_TYPES,
   consumeWeaponAmmo,
@@ -49,6 +51,12 @@ test("weapon damage and sound pressure increase from unarmed to pipe to pistol",
   assert.equal(pistol.attackType, WEAPON_TYPES.HITSCAN);
 });
 
+test("aim follows the mouse without an artificial dead zone", () => {
+  assert.equal(weaponById(WEAPON_IDS.UNARMED).aimDeadZone, 0);
+  assert.equal(weaponById(WEAPON_IDS.PIPE).aimDeadZone, 0);
+  assert.equal(weaponById(WEAPON_IDS.PISTOL).aimDeadZone, 0);
+});
+
 test("pistol consumes finite ammunition and rejects an empty shot", () => {
   const pistol = weaponById(WEAPON_IDS.PISTOL);
   const first = consumeWeaponAmmo(pistol, pistol.ammoCapacity);
@@ -58,6 +66,25 @@ test("pistol consumes finite ammunition and rejects an empty shot", () => {
   const empty = consumeWeaponAmmo(pistol, 0);
   assert.equal(empty.fired, false);
   assert.equal(empty.after, 0);
+});
+
+test("pistol has no arbitrary combat range cap inside the playable world", () => {
+  const pistol = weaponById(WEAPON_IDS.PISTOL);
+  const worldDiagonal = Math.hypot(WORLD.width, WORLD.height);
+  assert.equal(pistol.worldBoundedRange, true);
+  assert.equal(pistol.range, HITSCAN_WORLD_RANGE);
+  assert.ok(pistol.range > worldDiagonal);
+
+  const farReachableTarget = {
+    x: WORLD.width - 1,
+    y: WORLD.height - 1,
+    hitRadius: 7
+  };
+  const direction = { x: farReachableTarget.x, y: farReachableTarget.y };
+  assert.equal(
+    hitscanCandidateMetrics({ x: 0, y: 0 }, direction, farReachableTarget, pistol).valid,
+    true
+  );
 });
 
 test("hitscan chooses the closest aligned target across NPCs and props", () => {
@@ -74,14 +101,13 @@ test("hitscan chooses the closest aligned target across NPCs and props", () => {
   assert.equal(selected.candidate.id, "near-prop");
 });
 
-test("hitscan rejects targets behind, outside width, beyond range or blocked", () => {
+test("hitscan rejects targets behind, outside width or blocked", () => {
   const pistol = weaponById(WEAPON_IDS.PISTOL);
   const origin = { x: 0, y: 0 };
   const direction = { x: 1, y: 0 };
 
   assert.equal(hitscanCandidateMetrics(origin, direction, { x: -20, y: 0, hitRadius: 7 }, pistol).valid, false);
   assert.equal(hitscanCandidateMetrics(origin, direction, { x: 40, y: 20, hitRadius: 7 }, pistol).valid, false);
-  assert.equal(hitscanCandidateMetrics(origin, direction, { x: pistol.range + 1, y: 0, hitRadius: 7 }, pistol).valid, false);
 
   const blocked = selectHitscanTarget(
     origin,

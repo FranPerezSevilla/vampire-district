@@ -1,4 +1,5 @@
 import { UNARMED_ATTACK } from "./combat.js";
+import { WORLD } from "./balance.js";
 import { angleBetween, dot, normalizeVector } from "../utils/geometry.js";
 
 export const WEAPON_TYPES = Object.freeze({
@@ -12,12 +13,18 @@ export const WEAPON_IDS = Object.freeze({
   PISTOL: "pistol"
 });
 
+// A firearm has no arbitrary gameplay range cap inside the playable world. The
+// only finite value needed by the current hitscan implementation is a radius
+// large enough to cover any two reachable points in the city.
+export const HITSCAN_WORLD_RANGE = Math.ceil(Math.hypot(WORLD.width, WORLD.height)) + 1;
+
 export const WEAPONS = Object.freeze({
   [WEAPON_IDS.UNARMED]: Object.freeze({
     ...UNARMED_ATTACK,
     id: WEAPON_IDS.UNARMED,
     name: "Unarmed",
     attackType: WEAPON_TYPES.MELEE,
+    aimDeadZone: 0,
     color: 0xd7c8ff,
     reticleDistance: 27,
     violenceLabel: "punched",
@@ -32,10 +39,10 @@ export const WEAPONS = Object.freeze({
     damage: 2,
     range: 42,
     halfAngle: 0.56,
-    aimDeadZone: 10,
-    windupMs: 130,
-    activeMs: 125,
-    recoveryMs: 360,
+    aimDeadZone: 0,
+    windupMs: 80,
+    activeMs: 90,
+    recoveryMs: 225,
     staggerMs: 460,
     feedbackMs: 1050,
     color: 0x78c7a3,
@@ -50,9 +57,10 @@ export const WEAPONS = Object.freeze({
     name: "Pistol",
     attackType: WEAPON_TYPES.HITSCAN,
     damage: 3,
-    range: 260,
+    range: HITSCAN_WORLD_RANGE,
+    worldBoundedRange: true,
     hitWidth: 2.5,
-    aimDeadZone: 10,
+    aimDeadZone: 0,
     windupMs: 65,
     activeMs: 45,
     recoveryMs: 430,

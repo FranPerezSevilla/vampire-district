@@ -9,6 +9,7 @@ import {
   sewerTunnels,
   sidewalks
 } from "../data/district.js";
+import { ModularCharacterView } from "../rendering/ModularCharacterView.js";
 import { installVehicleExplosionPresentation } from "../vehicles/VehicleExplosionPresentation.js";
 import { GameScene as GameSceneCore } from "./GameSceneCore.js";
 
@@ -16,6 +17,7 @@ const URBAN_RENDER_HALF_WIDTH = 680;
 const URBAN_RENDER_HALF_HEIGHT = 480;
 const URBAN_RENDER_SECTOR_WIDTH = 360;
 const URBAN_RENDER_SECTOR_HEIGHT = 260;
+const PLAYER_AIM_LINGER_MS = 250;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, Number(value) || 0));
@@ -43,13 +45,60 @@ export class GameScene extends GameSceneCore {
     super();
     this.urbanRenderBounds = null;
     this.urbanRenderSectorKey = "";
+    this.playerPresentationPosition = null;
+    this.playerMovementDirection = { x: 0, y: -1 };
+    this.playerAimDirection = { x: 0, y: -1 };
+    this.playerAimUntil = -1;
     this.removeVehicleExplosionPresentation = null;
   }
 
   create() {
     super.create();
+    this.playerBody?.setVisible?.(false);
+    this.playerHead?.setVisible?.(false);
+    this.playerCharacterView = new ModularCharacterView(this, this.player, "protagonist", {
+      phaseKey: "viceblood-protagonist"
+    });
+    this.playerPresentationPosition = { x: this.player.x, y: this.player.y };
     this.removeVehicleExplosionPresentation?.();
     this.removeVehicleExplosionPresentation = installVehicleExplosionPresentation(this);
+  }
+
+  update(time, deltaMs) {
+    super.update(time, deltaMs);
+    this.updateCharacterPresentation(time);
+  }
+
+  updateCharacterPresentation(timeMs = 0) {
+    if (!this.player || !this.playerCharacterView) return;
+
+    const previous = this.playerPresentationPosition || { x: this.player.x, y: this.player.y };
+    const dx = this.player.x - previous.x;
+    const dy = this.player.y - previous.y;
+    const moving = !this.vehicleSystem?.isDriving?.() && Math.hypot(dx, dy) > 0.05;
+    if (moving) this.playerMovementDirection = { x: dx, y: dy };
+
+    const frame = this.currentInputFrame || {};
+    const aim = frame.aimWorld;
+    const attackActive = Boolean(frame.primaryHeld || frame.primaryPressed);
+    if (attackActive) {
+      this.playerAimUntil = Math.max(this.playerAimUntil, Number(timeMs) + PLAYER_AIM_LINGER_MS);
+      if (frame.pointerInside && Number.isFinite(aim?.x) && Number.isFinite(aim?.y)) {
+        const aimDx = aim.x - this.player.x;
+        const aimDy = aim.y - this.player.y;
+        if (Math.hypot(aimDx, aimDy) > 0.5) this.playerAimDirection = { x: aimDx, y: aimDy };
+      }
+    }
+
+    this.playerCharacterView.update({
+      timeMs,
+      movementDirection: this.playerMovementDirection,
+      aimDirection: this.playerAimDirection,
+      moving,
+      aiming: Number(timeMs) <= this.playerAimUntil
+    });
+    this.npcSystem?.updateCharacterPresentation?.(timeMs);
+    this.playerPresentationPosition = { x: this.player.x, y: this.player.y };
   }
 
   collectInteractions() {
@@ -77,6 +126,7 @@ export class GameScene extends GameSceneCore {
     if (this.vehicleSystem?.isDriving?.()) this.vehicleSystem.exitVehicle({ force: true });
     this.cityStreamSystem?.updateFocus?.(position.x, position.y, { force: true });
     super.switchLayer(layer, position, status);
+    this.playerPresentationPosition = { x: this.player.x, y: this.player.y };
     this.vehicleSystem?.refreshVisibility?.();
     this.streetFurnitureSystem?.refreshVisibility?.();
   }

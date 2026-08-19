@@ -15,9 +15,9 @@ export const UNARMED_ATTACK = Object.freeze({
   range: 32,
   halfAngle: 0.62,
   aimDeadZone: 10,
-  windupMs: 90,
-  activeMs: 110,
-  recoveryMs: 240,
+  windupMs: 55,
+  activeMs: 75,
+  recoveryMs: 155,
   staggerMs: 320,
   feedbackMs: 950,
   soundRadius: 72
