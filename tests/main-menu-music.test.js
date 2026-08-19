@@ -4,32 +4,36 @@ import { existsSync, readFileSync } from "node:fs";
 
 const source = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("main menu theme asset is committed and wired as a loop with fade-out", () => {
+test("main menu theme asset is committed and owned by the title-screen flow", () => {
   const main = source("phaser/src/main.js");
+  const menuScene = source("phaser/src/scenes/MainMenuScene.js");
+  const gate = source("phaser/src/ui/TitleScreenAudioGate.js");
+
   assert.ok(existsSync(new URL("../phaser/assets/audio/music/main-menu-theme-01.m4a", import.meta.url)));
   assert.match(main, /main-menu-theme-01\.m4a/);
   assert.match(main, /audio\.loop = true/);
   assert.match(main, /MAIN_MENU_THEME_VOLUME = 0\.28/);
-  assert.match(main, /MainMenuScene\.prototype\.beginNight[\s\S]*fadeOut\(MAIN_MENU_THEME_FADE_MS\)/);
-  assert.match(main, /SHUTDOWN[\s\S]*fadeOut\(120\)/);
+  assert.match(menuScene, /titleScreenAudioGate\.present\(\)/);
+  assert.match(menuScene, /titleScreenAudioGate\.fadeOut\(430\)/);
+  assert.match(gate, /PRESS ANY KEY TO START/);
 });
 
-test("main menu audio gate unlocks browser autoplay on first real interaction", () => {
-  const main = source("phaser/src/main.js");
-  assert.match(main, /PRESS ANY KEY TO START/);
-  assert.match(main, /window\.addEventListener\("keydown", onKeyDown, true\)/);
-  assert.match(main, /gate\.addEventListener\("pointerdown", unlock, true\)/);
-  assert.match(main, /gate\.addEventListener\("touchstart", unlock/);
-  assert.match(main, /Promise\.resolve\(window\.NBD_MAIN_MENU_THEME\?\.start\?\.\(\)\)\.then\(started =>/);
-  assert.match(main, /if \(!started\) showMainMenuAudioGate\(\)/);
+test("title-screen audio gate unlocks browser autoplay on first real interaction", () => {
+  const gate = source("phaser/src/ui/TitleScreenAudioGate.js");
+  assert.match(gate, /window\.addEventListener\("keydown", this\.boundKeydown, true\)/);
+  assert.match(gate, /gate\.addEventListener\("pointerdown", this\.boundUnlock, true\)/);
+  assert.match(gate, /gate\.addEventListener\("touchstart", this\.boundUnlock/);
+  assert.match(gate, /const started = await this\.theme\?\.start\?\.\(\)/);
+  assert.match(gate, /NBD_TITLE_AUDIO_GATE_STATE = "playing"/);
+  assert.doesNotMatch(source("phaser/src/main.js"), /installMainMenuThemePolicy/);
 });
 
 test("main menu credits expose the Satie attribution", () => {
-  const main = source("phaser/src/main.js");
+  const gate = source("phaser/src/ui/TitleScreenAudioGate.js");
   const attribution = source("phaser/assets/audio/ATTRIBUTION.md");
-  assert.match(main, /Gnossienne No\. 1/);
-  assert.match(main, /Erik Satie \(1890\)/);
-  assert.match(main, /Arranged for ViceBlood/);
+  assert.match(gate, /Gnossienne No\. 1/);
+  assert.match(gate, /Erik Satie \(1890\)/);
+  assert.match(gate, /Arranged for ViceBlood/);
   assert.match(attribution, /Gnossienne No\. 1/);
   assert.match(attribution, /music\/main-menu-theme-01\.m4a/);
 });
