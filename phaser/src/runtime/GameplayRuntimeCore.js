@@ -29,6 +29,15 @@ const CORE_PROFILE_SYSTEMS = Object.freeze([
   "Core.InteractionRefresh",
   "Core.Finalize"
 ]);
+const FINALIZE_PROFILE_SYSTEMS = Object.freeze([
+  "Finalize.MovementNoise",
+  "Finalize.UxGuidance",
+  "Finalize.Camera",
+  "Finalize.Markers",
+  "Finalize.Diagnostics",
+  "Finalize.StatePublisher",
+  "Finalize.PublishState"
+]);
 
 function splitActions(options = []) {
   const movement = [];
@@ -124,7 +133,8 @@ export class GameplayRuntime {
       "OutskirtsSystem",
       "ObjectiveMarkerSystem",
       "UxGuidanceSystem",
-      ...CORE_PROFILE_SYSTEMS
+      ...CORE_PROFILE_SYSTEMS,
+      ...FINALIZE_PROFILE_SYSTEMS
     ]) diagnostics.registerSystem(name);
 
     if (typeof window !== "undefined") diagnostics.expose(window);
@@ -156,8 +166,7 @@ export class GameplayRuntime {
       scene.policeFirearmSystem?.update(0, frame);
       scene.playerDamageSystem?.postUpdate(0, frame);
       scene.aiStateSystem?.postUpdate?.(0, frame);
-      scene.movementNoiseSystem?.update(frame);
-      scene.uxGuidanceSystem?.update?.(0, frame);
+      this.updateFinalizeSystems(0, frame);
       coreMark = diagnostics.beginSystem("Core.Finalize");
       this.finishFrame();
       diagnostics.endSystem("Core.Finalize", coreMark);
@@ -171,8 +180,7 @@ export class GameplayRuntime {
       scene.policeFirearmSystem?.update(0, frame);
       scene.playerDamageSystem?.postUpdate(0, frame);
       scene.aiStateSystem?.postUpdate?.(0, frame);
-      scene.movementNoiseSystem?.update(frame);
-      scene.uxGuidanceSystem?.update?.(0, frame);
+      this.updateFinalizeSystems(0, frame);
       coreMark = diagnostics.beginSystem("Core.Finalize");
       this.finishFrame();
       diagnostics.endSystem("Core.Finalize", coreMark);
@@ -188,8 +196,7 @@ export class GameplayRuntime {
       scene.policeFirearmSystem?.update(0, frame);
       scene.playerDamageSystem?.postUpdate(0, frame);
       scene.aiStateSystem?.postUpdate?.(0, frame);
-      scene.movementNoiseSystem?.update(frame);
-      scene.uxGuidanceSystem?.update?.(0, frame);
+      this.updateFinalizeSystems(0, frame);
       coreMark = diagnostics.beginSystem("Core.Finalize");
       this.finishFrame();
       diagnostics.endSystem("Core.Finalize", coreMark);
@@ -283,10 +290,22 @@ export class GameplayRuntime {
     }
 
     coreMark = diagnostics.beginSystem("Core.Finalize");
-    scene.movementNoiseSystem?.update(frame);
-    scene.uxGuidanceSystem?.update?.(dt, frame);
+    this.updateFinalizeSystems(dt, frame);
     this.finishFrame();
     diagnostics.endSystem("Core.Finalize", coreMark);
+  }
+
+  updateFinalizeSystems(dt, frame) {
+    const scene = this.scene;
+    const diagnostics = this.diagnostics;
+
+    let finalizeMark = diagnostics.beginSystem("Finalize.MovementNoise");
+    scene.movementNoiseSystem?.update(frame);
+    diagnostics.endSystem("Finalize.MovementNoise", finalizeMark);
+
+    finalizeMark = diagnostics.beginSystem("Finalize.UxGuidance");
+    scene.uxGuidanceSystem?.update?.(dt, frame);
+    diagnostics.endSystem("Finalize.UxGuidance", finalizeMark);
   }
 
   autoConsumeHospitalBloodBag() {
@@ -307,27 +326,43 @@ export class GameplayRuntime {
 
   finishFrame() {
     const scene = this.scene;
+    const diagnostics = this.diagnostics;
+
+    let finalizeMark = diagnostics.beginSystem("Finalize.Camera");
     const cinematicOwnsCamera = Boolean(
       scene.taskRevealCinematic?.active
       || scene.registry?.get?.("taskRevealActive")
     );
     if (!cinematicOwnsCamera) scene.updateCameraForLayer();
+    diagnostics.endSystem("Finalize.Camera", finalizeMark);
+
+    finalizeMark = diagnostics.beginSystem("Finalize.Markers");
     scene.outskirtsSystem?.updatePresentation?.();
     scene.objectiveMarkerSystem?.update?.(scene.time?.now || 0);
     scene.drawPromptMarker();
-    const frameMs = this.diagnostics.endFrame();
-    const diagnosticsSnapshot = this.diagnostics.snapshot();
+    diagnostics.endSystem("Finalize.Markers", finalizeMark);
+
+    finalizeMark = diagnostics.beginSystem("Finalize.Diagnostics");
+    const frameMs = diagnostics.endFrame();
+    const diagnosticsSnapshot = diagnostics.snapshot();
+    diagnostics.endSystem("Finalize.Diagnostics", finalizeMark);
+
+    finalizeMark = diagnostics.beginSystem("Finalize.StatePublisher");
     scene.statePublisher?.setMany?.({
       performanceText: `Frame ${frameMs.toFixed(2)} ms · spatial NPCs ${scene.npcSystem?.spatial?.size?.() || 0}`
     });
     if (diagnosticsSnapshot !== this.lastDiagnosticsSnapshot) {
       this.lastDiagnosticsSnapshot = diagnosticsSnapshot;
       scene.statePublisher?.setMany?.({
-        runtimeText: this.diagnostics.summary(),
+        runtimeText: diagnostics.summary(),
         runtimeDiagnostics: diagnosticsSnapshot
       });
     }
+    diagnostics.endSystem("Finalize.StatePublisher", finalizeMark);
+
+    finalizeMark = diagnostics.beginSystem("Finalize.PublishState");
     scene.publishState();
+    diagnostics.endSystem("Finalize.PublishState", finalizeMark);
   }
 
   handleLayerDebugInput(frame = this.scene.currentInputFrame) {
