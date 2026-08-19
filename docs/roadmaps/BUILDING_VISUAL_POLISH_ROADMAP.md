@@ -136,13 +136,17 @@ Make skylights, HVAC, hatches, vents, annexes and markers read as objects rather
 
 ### M2.1 — Shared physical volume primitives
 
-**Status: active**
+**Status: implementation-complete / automated-validation-pending**
 
-- [ ] define a shared raised-rect volume primitive with top, south/east side faces and contact shadow;
-- [ ] define a shared circular/cylindrical volume primitive;
-- [ ] keep every planned bound unchanged and apply depth only in the renderer;
-- [ ] add focused tests for top/side/contact separation;
-- [ ] migrate no family-specific prop yet beyond a minimal proving fixture.
+- [x] define a shared raised-rect volume primitive with top, south/east side faces and contact shadow;
+- [x] define a shared circular/cylindrical volume primitive;
+- [x] keep every planned bound unchanged and apply depth only in the renderer;
+- [x] add focused tests for top/side/contact separation and input immutability;
+- [x] migrate only minimal proving fixtures: hatch for raised rectangles and vent for cylinders;
+- [ ] focused building validation green on the implementation head;
+- [ ] Netlify deploy preview green on the implementation head.
+
+The shared primitives are family-neutral. Skylight glass, HVAC fans, hatch hardware, antenna supports and family-specific finishes remain in M2.2–M2.4.
 
 ### M2.2 — Skylights
 
@@ -263,4 +267,4 @@ The workflow requires the repository Actions secret `OPENAI_API_KEY` because Git
 
 ## Current exact next action
 
-Begin M2.1: introduce shared renderer-only rectangular and circular volume primitives, prove top/side/contact separation with focused tests, and migrate only a minimal fixture. Do not redesign skylights or family props until the shared primitive contract is stable.
+Wait for focused building validation and Netlify on the M2.1 implementation head. If both are green, close M2.1 and begin M2.2 skylight frame/glazing depth without requesting intermediate user review.
