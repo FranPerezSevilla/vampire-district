@@ -13,15 +13,15 @@ The machine-readable mirror is [`../progress/building-visual-polish-status.json`
 
 ## Autonomous execution policy
 
-**Approved 2026-08-19.** The initiative now runs in autonomous final-gate mode.
+**Approved 2026-08-19.** The initiative runs in autonomous final-gate mode.
 
 - Intermediate subjective approval is not required between M1 and M5.
 - Each implementation session advances exactly one bounded unchecked task.
 - Focused automated validation, repository safety checks and a green Netlify preview remain mandatory.
-- The agent must update this roadmap, the append-only progress log and the status JSON after every meaningful advance.
+- The agent updates this roadmap, the append-only progress log and the status JSON after every meaningful advance.
 - The agent may continue to the next milestone when the current milestone's objective, tests and safety criteria are satisfied.
 - User validation happens once, after M6 assembles the final representative review package.
-- PR #63 must remain draft and must not merge before that final user approval.
+- PR #63 remains draft and must not merge before that final user approval.
 - Autonomous runs stop on a new focused-test failure, collision/topology/gameplay impact, unresolved art-direction ambiguity, missing execution credentials, or final validation readiness.
 
 Tracking issue: [#64 — Hourly autonomous agent: building visual polish roadmap](https://github.com/FranPerezSevilla/vampire-district/issues/64).
@@ -61,7 +61,7 @@ A new agent can identify the target, active task, authoritative files, validatio
 
 ## M1 — Architectural depth and removal of the legacy frame
 
-**Status: autonomous-in-progress**
+**Status: complete**
 
 ### Goal
 
@@ -101,9 +101,9 @@ Replace bright vector frames and hard rectangular shadows with one shared archit
 
 ### M1.4 — Kill the legacy footprint frame
 
-**Status: implementation-complete / automated-validation-pending**
+**Status: complete**
 
-The authored `x`, `y`, `w`, and `h` rectangle remains the exact collider and navigation authority, but must no longer be painted as a complete visible frame.
+The authored `x`, `y`, `w`, and `h` rectangle remains the exact collider and navigation authority, but is no longer painted as a complete visible frame.
 
 - [x] suppress the foundation's full-perimeter stroke;
 - [x] suppress foundation top/left highlight rails;
@@ -113,34 +113,52 @@ The authored `x`, `y`, `w`, and `h` rectangle remains the exact collider and nav
 - [x] omit the wide dark parapet pass from north/west sides;
 - [x] preserve local police/club identity accents instead of coloring whole perimeters;
 - [x] add focused regression coverage proving collider geometry remains while the visible full frame is gone;
-- [ ] focused CI green on the implementation commit;
-- [ ] Netlify preview green on the implementation commit.
+- [x] focused building contracts pass in CI;
+- [x] Netlify deploy preview is green.
 
-### M1 exit criteria
+### M1 exit evidence
 
-- representative buildings no longer expose the authored collision rectangle as a bounding box;
-- the visible silhouette is the roof mass, not the collider;
-- cast shadow, wall depth and contact shadow remain distinguishable;
-- no collision, planner, topology or gameplay geometry changes;
-- focused tests pass and Netlify is green.
-
-When these criteria are satisfied, the hourly agent advances directly to M2 without requesting intermediate user approval.
+- the complete authored rectangle remains present in the planner and tests as collision authority;
+- the foundation still renders as a subdued low slab and casts a world shadow;
+- the foundation emits no full-perimeter stroke or top/left rails;
+- all 25 building-focused contracts pass inside the global run;
+- global result is 404/411, with only the same seven unrelated witness/vehicle expectations failing;
+- Netlify preview is green;
+- no collision, planner, topology, navigation or gameplay geometry changed.
 
 ## M2 — Physical rooftop props
 
-**Status: planned**
+**Status: autonomous-in-progress**
 
 ### Goal
 
 Make skylights, HVAC, hatches, vents, annexes and markers read as objects rather than icons.
 
-### Tasks
+### M2.1 — Shared physical volume primitives
 
-- [ ] shared two-level prop volume primitive;
+**Status: active**
+
+- [ ] define a shared raised-rect volume primitive with top, south/east side faces and contact shadow;
+- [ ] define a shared circular/cylindrical volume primitive;
+- [ ] keep every planned bound unchanged and apply depth only in the renderer;
+- [ ] add focused tests for top/side/contact separation;
+- [ ] migrate no family-specific prop yet beyond a minimal proving fixture.
+
+### M2.2 — Skylights
+
 - [ ] skylight frame, glazing depth and directional highlight;
+- [ ] dominant warehouse/club skylights remain readable at gameplay zoom;
+- [ ] glass treatment does not look like a flat colored rectangle.
+
+### M2.3 — Mechanical equipment
+
 - [ ] HVAC casing, fan housing and visible side face;
 - [ ] hatch frame and hinge/handle cue;
-- [ ] antenna base and support geometry;
+- [ ] vent/cylinder treatment;
+- [ ] antenna base and support geometry.
+
+### M2.4 — Architectural annexes and markers
+
 - [ ] annex top, walls and service detail;
 - [ ] religious/medical markers integrated into architecture instead of stamped symbols;
 - [ ] prop scale validation at gameplay zoom;
@@ -245,4 +263,4 @@ The workflow requires the repository Actions secret `OPENAI_API_KEY` because Git
 
 ## Current exact next action
 
-Wait for focused CI and Netlify on M1.4. If building-focused validation is green, mark M1 complete and begin M2.1: shared physical prop-volume primitives. Do not request user review until M6.
+Begin M2.1: introduce shared renderer-only rectangular and circular volume primitives, prove top/side/contact separation with focused tests, and migrate only a minimal fixture. Do not redesign skylights or family props until the shared primitive contract is stable.
