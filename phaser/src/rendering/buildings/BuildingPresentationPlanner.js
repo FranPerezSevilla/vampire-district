@@ -9,46 +9,18 @@ import {
   resolveBuildingPalette,
   resolveBuildingPresentationDefinition
 } from "./BuildingPresentationCatalog.js";
+import {
+  boundsFromPoints,
+  clamp,
+  createRoofSilhouetteGeometry,
+  insetRect,
+  normalizeRect,
+  rectContains,
+  rectsOverlap
+} from "./BuildingSilhouetteGeometry.js";
 
 const EPSILON = 0.001;
 const VALID_FRONTAGE_EDGES = new Set(["north", "east", "south", "west"]);
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, Number(value) || 0));
-}
-
-function normalizedRect(source = {}) {
-  return {
-    x: Number(source.x) || 0,
-    y: Number(source.y) || 0,
-    w: Math.max(1, Number(source.w) || 1),
-    h: Math.max(1, Number(source.h) || 1)
-  };
-}
-
-function insetRect(rect, amount) {
-  const safe = Math.max(0, Math.min(Number(amount) || 0, Math.min(rect.w, rect.h) / 2 - 0.5));
-  return {
-    x: rect.x + safe,
-    y: rect.y + safe,
-    w: Math.max(1, rect.w - safe * 2),
-    h: Math.max(1, rect.h - safe * 2)
-  };
-}
-
-function rectsOverlap(a, b, margin = 0) {
-  return a.x < b.x + b.w + margin
-    && a.x + a.w > b.x - margin
-    && a.y < b.y + b.h + margin
-    && a.y + a.h > b.y - margin;
-}
-
-function rectContains(outer, inner, epsilon = EPSILON) {
-  return inner.x >= outer.x - epsilon
-    && inner.y >= outer.y - epsilon
-    && inner.x + inner.w <= outer.x + outer.w + epsilon
-    && inner.y + inner.h <= outer.y + outer.h + epsilon;
-}
 
 function stableHash(value) {
   const text = String(value || "");
@@ -82,6 +54,7 @@ function shuffled(values, random) {
 
 function moduleBounds(module) {
   if (module.bounds) return module.bounds;
+  if (Array.isArray(module.points) && module.points.length > 0) return boundsFromPoints(module.points);
   if ([module.x1, module.y1, module.x2, module.y2].every(Number.isFinite)) {
     return {
       x: Math.min(module.x1, module.x2),
@@ -142,108 +115,54 @@ function chooseLayoutRecipe(building, footprint, definition, random, options) {
   return { recipe, fallback: false, requested: null };
 }
 
-function createRoofGrid(building, footprint, recipe) {
-  const outerInset = clamp(Math.min(footprint.w, footprint.h) * 0.055, 5, 12);
-  const roofBounds = insetRect(footprint, outerInset);
-  const cellWidth = roofBounds.w / recipe.columns;
-  const cellHeight = roofBounds.h / recipe.rows;
-  const cells = [];
-  const occupiedByKey = new Map();
-
-  for (let row = 0; row < recipe.rows; row += 1) {
-    for (let column = 0; column < recipe.columns; column += 1) {
-      if (recipe.mask[row]?.[column] !== "1") continue;
-      const bounds = {
-        x: roofBounds.x + column * cellWidth,
-        y: roofBounds.y + row * cellHeight,
-        w: cellWidth,
-        h: cellHeight
-      };
-      const cell = {
-        id: moduleId(building, `roof:${row}:${column}`),
-        kind: MODULE_KINDS.ROOF_CELL,
-        layer: MODULE_LAYERS.roof,
-        row,
-        column,
-        bounds
-      };
-      cells.push(cell);
-      occupiedByKey.set(`${row}:${column}`, cell);
-    }
-  }
-
+function createFoundationModule(building, footprint) {
   return {
-    bounds: roofBounds,
-    columns: recipe.columns,
-    rows: recipe.rows,
-    cellWidth,
-    cellHeight,
-    cells,
-    occupiedByKey
+    id: moduleId(building, "foundation"),
+    kind: MODULE_KINDS.FOUNDATION,
+    layer: MODULE_LAYERS.foundation,
+    role: "low-service-roof",
+    bounds: { ...footprint }
   };
 }
 
-function edgeBounds(x1, y1, x2, y2) {
+function createRoofMassModule(building, geometry, layoutId) {
   return {
-    x: Math.min(x1, x2),
-    y: Math.min(y1, y2),
-    w: Math.abs(x2 - x1),
-    h: Math.abs(y2 - y1)
+    id: moduleId(building, "roof-mass"),
+    kind: MODULE_KINDS.ROOF_MASS,
+    layer: MODULE_LAYERS.roof,
+    layoutId,
+    points: geometry.contour.map(point => ({ ...point })),
+    bounds: { ...geometry.contourBounds }
   };
 }
 
-function createParapetEdges(building, grid) {
-  const edges = [];
-  const neighbourFor = {
-    north: [-1, 0],
-    east: [0, 1],
-    south: [1, 0],
-    west: [0, -1]
-  };
-
-  for (const cell of grid.cells) {
-    for (const [orientation, [rowDelta, columnDelta]] of Object.entries(neighbourFor)) {
-      const neighbourKey = `${cell.row + rowDelta}:${cell.column + columnDelta}`;
-      if (grid.occupiedByKey.has(neighbourKey)) continue;
-      const { x, y, w, h } = cell.bounds;
-      let x1;
-      let y1;
-      let x2;
-      let y2;
-      if (orientation === "north") [x1, y1, x2, y2] = [x, y, x + w, y];
-      else if (orientation === "east") [x1, y1, x2, y2] = [x + w, y, x + w, y + h];
-      else if (orientation === "south") [x1, y1, x2, y2] = [x, y + h, x + w, y + h];
-      else [x1, y1, x2, y2] = [x, y, x, y + h];
-
-      edges.push({
-        id: moduleId(building, `edge:${cell.row}:${cell.column}:${orientation}`),
-        kind: MODULE_KINDS.PARAPET_EDGE,
-        layer: MODULE_LAYERS.edge,
-        orientation,
-        x1,
-        y1,
-        x2,
-        y2,
-        bounds: edgeBounds(x1, y1, x2, y2)
-      });
-    }
-  }
-  return edges;
+function createParapetModules(building, geometry) {
+  return geometry.parapetEdges.map((edge, index) => ({
+    id: moduleId(building, `edge:${index}:${edge.orientation}`),
+    kind: MODULE_KINDS.PARAPET_EDGE,
+    layer: MODULE_LAYERS.edge,
+    orientation: edge.orientation,
+    x1: edge.x1,
+    y1: edge.y1,
+    x2: edge.x2,
+    y2: edge.y2,
+    bounds: { ...edge.bounds }
+  }));
 }
 
 function frontageDimensions(frontage, footprint) {
   const minSide = Math.min(footprint.w, footprint.h);
   if (frontage === FRONTAGE_KINDS.POLICE) {
-    return { width: clamp(footprint.w * 0.23, 28, 54), depth: clamp(minSide * 0.11, 12, 18) };
+    return { width: clamp(footprint.w * 0.24, 30, 58), depth: clamp(minSide * 0.1, 11, 17) };
   }
   if (frontage === FRONTAGE_KINDS.CLUB) {
-    return { width: clamp(footprint.w * 0.25, 28, 56), depth: clamp(minSide * 0.12, 13, 19) };
+    return { width: clamp(footprint.w * 0.25, 28, 56), depth: clamp(minSide * 0.1, 11, 18) };
   }
   if (frontage === FRONTAGE_KINDS.CHURCH) {
-    return { width: clamp(footprint.w * 0.16, 20, 36), depth: clamp(minSide * 0.11, 12, 18) };
+    return { width: clamp(footprint.w * 0.17, 20, 38), depth: clamp(minSide * 0.095, 10, 16) };
   }
   if (frontage === FRONTAGE_KINDS.NONE) return { width: 0, depth: 0 };
-  return { width: clamp(footprint.w * 0.17, 18, 38), depth: clamp(minSide * 0.085, 9, 14) };
+  return { width: clamp(footprint.w * 0.17, 18, 38), depth: clamp(minSide * 0.075, 8, 13) };
 }
 
 function createFrontageModule(building, footprint, definition) {
@@ -285,59 +204,93 @@ function createFrontageModule(building, footprint, definition) {
   };
 }
 
-function propDimensions(kind, cell) {
-  const shortSide = Math.min(cell.bounds.w, cell.bounds.h);
+function rawPropDimensions(kind, geometry) {
+  const roof = geometry.contourBounds;
+  const shortSide = Math.min(roof.w, roof.h);
   if (kind === MODULE_KINDS.SKYLIGHT) {
     return {
-      w: clamp(cell.bounds.w * 0.48, 16, 46),
-      h: clamp(cell.bounds.h * 0.34, 11, 30)
+      w: clamp(roof.w * 0.28, 22, 58),
+      h: clamp(roof.h * 0.2, 14, 34)
     };
   }
   if (kind === MODULE_KINDS.HVAC) {
     return {
-      w: clamp(shortSide * 0.26, 12, 24),
-      h: clamp(shortSide * 0.22, 10, 20)
+      w: clamp(shortSide * 0.2, 18, 34),
+      h: clamp(shortSide * 0.15, 14, 24)
     };
   }
   if (kind === MODULE_KINDS.HATCH) {
-    const size = clamp(shortSide * 0.18, 9, 16);
+    const size = clamp(shortSide * 0.12, 11, 18);
     return { w: size, h: size };
   }
   if (kind === MODULE_KINDS.ANTENNA) {
-    const size = clamp(shortSide * 0.16, 9, 15);
+    const size = clamp(shortSide * 0.13, 12, 20);
     return { w: size, h: size };
   }
   if (kind === MODULE_KINDS.SATELLITE_DISH) {
-    const size = clamp(shortSide * 0.2, 10, 18);
-    return { w: size, h: size * 0.8 };
+    const size = clamp(shortSide * 0.15, 13, 22);
+    return { w: size, h: size * 0.82 };
   }
-  const size = clamp(shortSide * 0.11, 5, 9);
+  const size = clamp(shortSide * 0.075, 7, 11);
   return { w: size, h: size };
 }
 
-function candidateAnchors(grid, random) {
+function fittedPropDimensions(kind, cell, geometry) {
+  const raw = rawPropDimensions(kind, geometry);
+  return {
+    w: Math.max(1, Math.min(raw.w, Math.max(1, cell.bounds.w - 10))),
+    h: Math.max(1, Math.min(raw.h, Math.max(1, cell.bounds.h - 10)))
+  };
+}
+
+function createCandidateAnchors(geometry, random) {
   const anchors = [];
   const ratios = [
     [0.5, 0.5],
-    [0.3, 0.3],
-    [0.7, 0.3],
-    [0.3, 0.7],
-    [0.7, 0.7]
+    [0.34, 0.34],
+    [0.66, 0.34],
+    [0.34, 0.66],
+    [0.66, 0.66]
   ];
-  for (const cell of grid.cells) {
+  for (const cell of geometry.cells) {
     for (const [xRatio, yRatio] of ratios) {
       anchors.push({
         cell,
         x: cell.bounds.x + cell.bounds.w * xRatio,
-        y: cell.bounds.y + cell.bounds.h * yRatio
+        y: cell.bounds.y + cell.bounds.h * yRatio,
+        tie: random()
       });
     }
   }
-  return shuffled(anchors, random);
+  return anchors;
 }
 
-function createPlacedProp(building, kind, anchor, index) {
-  const dimensions = propDimensions(kind, anchor.cell);
+function normalizedAnchorPosition(anchor, geometry) {
+  const bounds = geometry.contourBounds;
+  return {
+    x: bounds.w > 0 ? (anchor.x - bounds.x) / bounds.w : 0.5,
+    y: bounds.h > 0 ? (anchor.y - bounds.y) / bounds.h : 0.5
+  };
+}
+
+function anchorPreferenceScore(kind, anchor, geometry) {
+  const position = normalizedAnchorPosition(anchor, geometry);
+  const centerDistance = Math.hypot(position.x - 0.5, position.y - 0.5);
+  if (kind === MODULE_KINDS.SKYLIGHT) return centerDistance * 4 + anchor.tie * 0.2;
+  if (kind === MODULE_KINDS.ANTENNA) {
+    return (1 - position.x) * 1.4 + position.y * 1.5 + anchor.tie * 0.2;
+  }
+  if (kind === MODULE_KINDS.HVAC) {
+    return Math.abs(position.x - 0.35) * 1.4 + Math.abs(position.y - 0.48) + anchor.tie * 0.25;
+  }
+  if (kind === MODULE_KINDS.HATCH) {
+    return position.x * 0.7 + (1 - position.y) * 0.9 + anchor.tie * 0.3;
+  }
+  return centerDistance + anchor.tie * 0.8;
+}
+
+function createPlacedProp(building, kind, anchor, geometry, index) {
+  const dimensions = fittedPropDimensions(kind, anchor.cell, geometry);
   return {
     id: moduleId(building, `prop:${index}:${kind}`),
     kind,
@@ -354,52 +307,64 @@ function createPlacedProp(building, kind, anchor, index) {
 function propBudget(footprint, definition) {
   const level = DETAIL_LEVELS[definition.detailLevel] || DETAIL_LEVELS.standard;
   const area = footprint.w * footprint.h;
-  const areaBudget = 1 + Math.floor(area / 28000);
-  const archetypeAdjustment = definition.archetypeId === "church" ? -1 : 0;
-  return clamp(
-    Math.round((areaBudget + archetypeAdjustment) * level.propDensity),
-    definition.archetypeId === "club" ? 1 : 0,
-    level.maximumProps
-  );
+  const areaTier = area >= 72000 ? 3 : area >= 28000 ? 2 : 1;
+  const churchAdjustment = definition.archetypeId === "church" ? -1 : 0;
+  const desired = Math.max(0, Math.round(areaTier * level.propDensity) + churchAdjustment);
+  const signatureCount = definition.archetype.signatureProps?.length || 0;
+  const minimum = definition.archetypeId === "club" ? 1 : 0;
+  return clamp(Math.max(desired, minimum, Math.min(signatureCount, level.maximumProps)), 0, level.maximumProps);
 }
 
-function createRooftopProps(building, footprint, grid, frontage, definition, random) {
+function createPropQueue(definition, budget, random) {
+  const explicitAllowList = Array.isArray(definition.propKinds);
+  const allowedKinds = explicitAllowList
+    ? definition.propKinds.filter(kind => ROOFTOP_PROP_KINDS.includes(kind))
+    : ROOFTOP_PROP_KINDS;
+  const allowed = new Set(allowedKinds);
+  const signatures = (definition.archetype.signatureProps || []).filter(kind => allowed.has(kind));
+  const pool = (explicitAllowList ? allowedKinds : definition.archetype.propPool)
+    .filter(kind => allowed.has(kind));
+  const queue = signatures.slice(0, budget);
+  let cycle = shuffled([...new Set(pool)], random);
+
+  while (queue.length < budget && cycle.length > 0) {
+    queue.push(cycle.shift());
+    if (cycle.length === 0 && queue.length < budget) {
+      cycle = shuffled([...new Set(pool)], random);
+    }
+  }
+  return queue;
+}
+
+function createRooftopProps(building, footprint, geometry, frontage, definition, random) {
   const reserved = frontage ? [frontage.bounds] : [];
   const modules = [];
-  const requestedKinds = definition.propKinds || definition.archetype.propPool;
-  const propKinds = requestedKinds.filter(kind => ROOFTOP_PROP_KINDS.includes(kind));
-  const anchors = candidateAnchors(grid, random);
-  const budget = propBudget(footprint, definition);
-  const queue = [];
-
-  if (definition.archetypeId === "club" && propKinds.includes(MODULE_KINDS.SKYLIGHT)) {
-    queue.push(MODULE_KINDS.SKYLIGHT);
-  }
-  if (definition.archetypeId === "police") queue.push(MODULE_KINDS.ANTENNA);
-  while (queue.length < budget && propKinds.length > 0) {
-    queue.push(propKinds[Math.floor(random() * propKinds.length)]);
-  }
+  const anchors = createCandidateAnchors(geometry, random);
+  const queue = createPropQueue(definition, propBudget(footprint, definition), random);
 
   for (let index = 0; index < queue.length; index += 1) {
     const kind = queue[index];
+    const orderedAnchors = anchors
+      .map(anchor => ({ anchor, score: anchorPreferenceScore(kind, anchor, geometry) }))
+      .sort((a, b) => a.score - b.score);
     let placed = null;
-    for (const anchor of anchors) {
-      const candidate = createPlacedProp(building, kind, anchor, index);
+    let usedAnchor = null;
+
+    for (const { anchor } of orderedAnchors) {
+      const candidate = createPlacedProp(building, kind, anchor, geometry, index);
       const safeCell = insetRect(anchor.cell.bounds, 4);
       if (!rectContains(safeCell, candidate.bounds)) continue;
       if (!rectContains(footprint, candidate.bounds)) continue;
-      if (reserved.some(bounds => rectsOverlap(bounds, candidate.bounds, 4))) continue;
+      if (reserved.some(bounds => rectsOverlap(bounds, candidate.bounds, 5))) continue;
       placed = candidate;
+      usedAnchor = anchor;
       break;
     }
+
     if (!placed) continue;
     modules.push(placed);
     reserved.push(placed.bounds);
-    const usedIndex = anchors.findIndex(anchor => {
-      const candidate = createPlacedProp(building, kind, anchor, index);
-      return Math.abs(candidate.bounds.x - placed.bounds.x) < EPSILON
-        && Math.abs(candidate.bounds.y - placed.bounds.y) < EPSILON;
-    });
+    const usedIndex = anchors.indexOf(usedAnchor);
     if (usedIndex >= 0) anchors.splice(usedIndex, 1);
   }
 
@@ -415,89 +380,131 @@ function lineModule(building, suffix, kind, x1, y1, x2, y2, extras = {}) {
     y1,
     x2,
     y2,
-    bounds: edgeBounds(x1, y1, x2, y2),
+    bounds: {
+      x: Math.min(x1, x2),
+      y: Math.min(y1, y2),
+      w: Math.abs(x2 - x1),
+      h: Math.abs(y2 - y1)
+    },
     ...extras
   };
 }
 
-function createPoliceIdentity(building, grid, edges, frontage) {
-  const modules = [];
-  const horizontalEdges = edges.filter(edge => edge.orientation === "south" || edge.orientation === "north");
-  const selected = horizontalEdges.slice(0, 2);
-  for (let index = 0; index < selected.length; index += 1) {
-    const edge = selected[index];
-    const length = Math.hypot(edge.x2 - edge.x1, edge.y2 - edge.y1);
-    const ratio = Math.min(0.3, 18 / Math.max(1, length));
-    const x1 = edge.x1 + (edge.x2 - edge.x1) * 0.08;
-    const y1 = edge.y1 + (edge.y2 - edge.y1) * 0.08;
-    const x2 = x1 + (edge.x2 - edge.x1) * ratio;
-    const y2 = y1 + (edge.y2 - edge.y1) * ratio;
-    modules.push(lineModule(building, `police-accent:${index}`, MODULE_KINDS.ACCENT_STRIP, x1, y1, x2, y2, {
-      variant: "police"
-    }));
+function edgeLength(edge) {
+  return Math.hypot(edge.x2 - edge.x1, edge.y2 - edge.y1);
+}
+
+function shortenedEdge(edge, startRatio, lengthRatio) {
+  const dx = edge.x2 - edge.x1;
+  const dy = edge.y2 - edge.y1;
+  return {
+    x1: edge.x1 + dx * startRatio,
+    y1: edge.y1 + dy * startRatio,
+    x2: edge.x1 + dx * Math.min(1, startRatio + lengthRatio),
+    y2: edge.y1 + dy * Math.min(1, startRatio + lengthRatio)
+  };
+}
+
+function createPoliceIdentity(building, edges, frontage) {
+  const priority = orientation => ({ south: 0, north: 1, east: 2, west: 3 })[orientation] ?? 4;
+  const byPreference = [...edges].sort((a, b) => (
+    priority(a.orientation) - priority(b.orientation) || edgeLength(b) - edgeLength(a)
+  ));
+  const selected = [];
+  for (const edge of byPreference) {
+    if (edgeLength(edge) < 24) continue;
+    if (selected.some(existing => existing.orientation === edge.orientation)) continue;
+    selected.push(edge);
+    if (selected.length === 2) break;
   }
+
+  const modules = selected.map((edge, index) => {
+    const segment = shortenedEdge(edge, index === 0 ? 0.08 : 0.68, 0.24);
+    return lineModule(
+      building,
+      `police-accent:${index}`,
+      MODULE_KINDS.ACCENT_STRIP,
+      segment.x1,
+      segment.y1,
+      segment.x2,
+      segment.y2,
+      { variant: "police" }
+    );
+  });
   if (frontage) frontage.identity = "police";
   return modules;
 }
 
-function createClubIdentity(building, edges, frontage, random) {
-  const preferred = edges.filter(edge => edge.orientation === "south" || edge.orientation === "east");
-  const fallback = edges.filter(edge => edge.orientation === "north" || edge.orientation === "west");
-  const selected = [...preferred, ...shuffled(fallback, random)].slice(0, 5);
-  const modules = selected.map((edge, index) => lineModule(
-    building,
-    `club-neon:${index}`,
-    MODULE_KINDS.ACCENT_STRIP,
-    edge.x1,
-    edge.y1,
-    edge.x2,
-    edge.y2,
-    { variant: "club" }
-  ));
+function createClubIdentity(building, edges, frontage) {
+  const preferred = edges
+    .filter(edge => edge.orientation === "south" || edge.orientation === "east")
+    .sort((a, b) => edgeLength(b) - edgeLength(a));
+  const fallback = [...edges].sort((a, b) => edgeLength(b) - edgeLength(a));
+  const edge = preferred[0] || fallback[0];
+  if (!edge) return [];
+  const segment = shortenedEdge(edge, 0.08, 0.84);
   if (frontage) frontage.identity = "club";
-  return modules;
+  return [lineModule(
+    building,
+    "club-neon",
+    MODULE_KINDS.ACCENT_STRIP,
+    segment.x1,
+    segment.y1,
+    segment.x2,
+    segment.y2,
+    { variant: "club" }
+  )];
 }
 
-function createChurchIdentity(building, grid, frontage) {
-  const centerX = grid.bounds.x + grid.bounds.w / 2;
-  const centerY = grid.bounds.y + grid.bounds.h / 2;
+function southernCenterCell(geometry) {
+  const centerX = geometry.contourBounds.x + geometry.contourBounds.w / 2;
+  return [...geometry.cells].sort((a, b) => (
+    b.row - a.row
+    || Math.abs((a.bounds.x + a.bounds.w / 2) - centerX)
+      - Math.abs((b.bounds.x + b.bounds.w / 2) - centerX)
+  ))[0];
+}
+
+function createChurchIdentity(building, geometry, frontage) {
+  const centerX = geometry.contourBounds.x + geometry.contourBounds.w / 2;
+  const centerY = geometry.contourBounds.y + geometry.contourBounds.h / 2;
   const modules = [
     lineModule(
       building,
       "church-ridge:vertical",
       MODULE_KINDS.ROOF_RIDGE,
       centerX,
-      grid.bounds.y + 3,
+      geometry.contourBounds.y + 3,
       centerX,
-      grid.bounds.y + grid.bounds.h - 3,
+      geometry.contourBounds.y + geometry.contourBounds.h - 3,
       { variant: "church" }
     ),
     lineModule(
       building,
       "church-ridge:horizontal",
       MODULE_KINDS.ROOF_RIDGE,
-      grid.bounds.x + grid.bounds.w * 0.18,
+      geometry.contourBounds.x + geometry.contourBounds.w * 0.2,
       centerY,
-      grid.bounds.x + grid.bounds.w * 0.82,
+      geometry.contourBounds.x + geometry.contourBounds.w * 0.8,
       centerY,
       { variant: "church" }
     )
   ];
+  const cell = southernCenterCell(geometry);
+  const maximumSize = Math.max(1, Math.min(cell.bounds.w - 6, cell.bounds.h - 6));
   const markerSize = Math.max(1, Math.min(
-    clamp(Math.min(grid.cellWidth, grid.cellHeight) * 0.18, 8, 16),
-    Math.max(1, grid.bounds.w - 4),
-    Math.max(1, grid.bounds.h - 4)
+    clamp(Math.min(geometry.cellWidth, geometry.cellHeight) * 0.2, 9, 17),
+    maximumSize
   ));
-  const markerY = frontage
-    ? frontage.bounds.y - markerSize - 3
-    : grid.bounds.y + grid.bounds.h * 0.72;
+  const cellCenterX = cell.bounds.x + cell.bounds.w / 2;
+  const cellCenterY = cell.bounds.y + cell.bounds.h / 2;
   modules.push({
     id: moduleId(building, "church-cross"),
     kind: MODULE_KINDS.CROSS_MARKER,
     layer: MODULE_LAYERS.identity,
     bounds: {
-      x: centerX - markerSize / 2,
-      y: clamp(markerY, grid.bounds.y + 2, grid.bounds.y + grid.bounds.h - markerSize - 2),
+      x: cellCenterX - markerSize / 2,
+      y: cellCenterY - markerSize / 2,
       w: markerSize,
       h: markerSize
     },
@@ -507,20 +514,11 @@ function createChurchIdentity(building, grid, frontage) {
   return modules;
 }
 
-function createIdentityModules(building, grid, edges, frontage, definition, random) {
-  if (definition.archetypeId === "police") return createPoliceIdentity(building, grid, edges, frontage);
-  if (definition.archetypeId === "club") return createClubIdentity(building, edges, frontage, random);
-  if (definition.archetypeId === "church") return createChurchIdentity(building, grid, frontage);
+function createIdentityModules(building, geometry, edges, frontage, definition) {
+  if (definition.archetypeId === "police") return createPoliceIdentity(building, edges, frontage);
+  if (definition.archetypeId === "club") return createClubIdentity(building, edges, frontage);
+  if (definition.archetypeId === "church") return createChurchIdentity(building, geometry, frontage);
   return [];
-}
-
-function createFoundationModule(building, footprint) {
-  return {
-    id: moduleId(building, "foundation"),
-    kind: MODULE_KINDS.FOUNDATION,
-    layer: MODULE_LAYERS.foundation,
-    bounds: { ...footprint }
-  };
 }
 
 function moduleCounts(modules) {
@@ -550,19 +548,21 @@ export function moduleFitsBuildingFootprint(module, footprint) {
 }
 
 export function createBuildingPresentationPlan(building = {}, options = {}) {
-  const footprint = normalizedRect(building);
+  const footprint = normalizeRect(building);
   const definition = resolveBuildingPresentationDefinition(building, options);
   const seed = buildingPresentationSeed(building, definition.seed);
   const random = createRandom(seed);
   const selection = chooseLayoutRecipe(building, footprint, definition, random, options);
-  const grid = createRoofGrid(building, footprint, selection.recipe);
-  const edges = createParapetEdges(building, grid);
+  const geometry = createRoofSilhouetteGeometry(footprint, selection.recipe);
+  const foundation = createFoundationModule(building, footprint);
+  const roofMass = createRoofMassModule(building, geometry, selection.recipe.id);
+  const edges = createParapetModules(building, geometry);
   const frontage = createFrontageModule(building, footprint, definition);
-  const props = createRooftopProps(building, footprint, grid, frontage, definition, random);
-  const identity = createIdentityModules(building, grid, edges, frontage, definition, random);
+  const props = createRooftopProps(building, footprint, geometry, frontage, definition, random);
+  const identity = createIdentityModules(building, geometry, edges, frontage, definition);
   const modules = [
-    createFoundationModule(building, footprint),
-    ...grid.cells,
+    foundation,
+    roofMass,
     ...edges,
     ...(frontage ? [frontage] : []),
     ...props,
@@ -584,11 +584,16 @@ export function createBuildingPresentationPlan(building = {}, options = {}) {
     labelColor: palette.label,
     collisionFootprint: { ...footprint },
     visualFootprint: { ...footprint },
+    silhouette: {
+      points: geometry.contour.map(point => ({ ...point })),
+      bounds: { ...geometry.contourBounds },
+      exposedEdgeCount: geometry.parapetEdges.length
+    },
     roofGrid: {
-      bounds: { ...grid.bounds },
-      columns: grid.columns,
-      rows: grid.rows,
-      occupiedCells: grid.cells.map(cell => ({ row: cell.row, column: cell.column }))
+      bounds: { ...geometry.roofBounds },
+      columns: geometry.columns,
+      rows: geometry.rows,
+      occupiedCells: geometry.cells.map(cell => ({ row: cell.row, column: cell.column }))
     },
     frontage: frontage ? {
       kind: frontage.variant,
