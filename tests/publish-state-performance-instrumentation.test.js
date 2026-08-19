@@ -82,7 +82,7 @@ test("publishState profiler measures coarse phases and selected summary groups o
 
   // Individual leaf summaries remain untouched except at the minimum existing
   // transition boundaries needed for the selected coarse drill-downs.
-  assert.equal(scene.npcSystem.summary, originalNpcSummary);
+  assert.notEqual(scene.npcSystem.summary, originalNpcSummary);
   assert.notEqual(scene.feedingSystem.summary, originalFeedingSummary);
   assert.notEqual(scene.exposureSystem.summary, originalExposureSummary);
   assert.notEqual(scene.policeSystem.summary, originalPoliceSummary);
@@ -104,7 +104,8 @@ test("publishState profiler measures coarse phases and selected summary groups o
   const expectedBegin = [
     "PublishState.Prepare",
     "PublishState.Summaries",
-    "PublishState.Summary.MissionActors.MissionNpc",
+    "PublishState.Summary.MissionActors.Mission",
+    "PublishState.Summary.MissionActors.Npc",
     "PublishState.Summary.MissionActors.NeedsPowers",
     "PublishState.Summary.PressureEvidence",
     "PublishState.Summary.ResponseAI.Security",
@@ -116,7 +117,8 @@ test("publishState profiler measures coarse phases and selected summary groups o
   ];
   const expectedEnd = [
     "PublishState.Prepare",
-    "PublishState.Summary.MissionActors.MissionNpc",
+    "PublishState.Summary.MissionActors.Mission",
+    "PublishState.Summary.MissionActors.Npc",
     "PublishState.Summary.MissionActors.NeedsPowers",
     "PublishState.Summary.PressureEvidence",
     "PublishState.Summary.ResponseAI.Security",
@@ -156,7 +158,8 @@ test("browser performance capture keeps grouped publishState and summary drill-d
   assert.match(instrumentation, /PublishState\.InteractionMenu/);
   assert.match(instrumentation, /PublishState\.PayloadTail/);
   assert.match(instrumentation, /PublishState\.RegistryCommit/);
-  assert.match(instrumentation, /PublishState\.Summary\.MissionActors\.MissionNpc/);
+  assert.match(instrumentation, /PublishState\.Summary\.MissionActors\.Mission/);
+  assert.match(instrumentation, /PublishState\.Summary\.MissionActors\.Npc/);
   assert.match(instrumentation, /PublishState\.Summary\.MissionActors\.NeedsPowers/);
   assert.match(instrumentation, /PublishState\.Summary\.PressureEvidence/);
   assert.match(instrumentation, /PublishState\.Summary\.ResponseAI\.Security/);
