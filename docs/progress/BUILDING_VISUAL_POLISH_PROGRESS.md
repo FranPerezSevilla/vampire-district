@@ -2,6 +2,28 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-19 — Hourly autonomous scheduler installed on main
+
+### Completed
+
+- merged infrastructure PR #65 into `main` as commit `b0bca65a20e3aa177f6d05f8165a51b2a7315583`;
+- installed `.github/workflows/building-visual-polish-hourly.yml` on the default branch, which is required for GitHub scheduled workflows;
+- configured an hourly run at minute 17 with single-run concurrency protection;
+- configured the workflow to check out and modify only `agent/building-visual-poc`;
+- configured terminal states, strict allowed paths, focused building tests, branch-movement protection and issue #64 reporting;
+- configured the workflow never to merge or mark PR #63 ready for review;
+- updated machine state to show M2.1 as the active autonomous task.
+
+### Activation dependency
+
+The scheduler is installed. GitHub-hosted Codex execution requires repository Actions secret `OPENAI_API_KEY`. The workflow performs a safe no-op and comments issue #64 when that secret is unavailable, so missing credentials cannot produce uncontrolled changes.
+
+### Next
+
+At the next hourly minute-17 slot, preflight the machine state and credentials. When ready, advance exactly one bounded M2.1 task and push it only after focused building validation succeeds.
+
+---
+
 ## 2026-08-19 — M1 complete; autonomous work advances to M2.1
 
 ### Completed
