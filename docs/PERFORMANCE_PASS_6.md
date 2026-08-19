@@ -2,6 +2,19 @@
 
 _State: measurement harness implemented on PR #55; optimization intentionally deferred until the browser capture identifies a repeatable winner._
 
+## Durable CI evidence checkpoint — 2026-08-19
+
+The baseline PR validation is fully green again, so Performance Pass 6 can proceed. Before choosing an optimization, the capture evidence is now made durable instead of relying only on a successful job's console stream.
+
+- `tests/browser/runtime-performance-capture.spec.js` still emits the canonical `NBD_PERF_CAPTURE=<json>` console line, preserving the existing human/log inspection path.
+- The same summarized payload is also written to `.artifacts/performance/runtime-performance-capture.json` after a complete 24-snapshot capture.
+- The `browser-systems` workflow attempts to upload that exact file on every shard with `if-no-files-found: ignore`; only the shard that owns the performance spec produces the artifact, so sharding can change without hard-coding a shard number.
+- Successful capture evidence is retained for 14 days under a shard-qualified artifact name. A failing run that reaches summary persistence can still publish its evidence because upload uses `if: always()`.
+- Unit/source regression coverage guards both the file persistence and workflow upload contract.
+- No runtime instrumentation cadence, simulation order, gameplay behavior, density, audio, traffic, police, or recent human-feedback contract changes in this checkpoint.
+
+This is still a **measurement-only** increment. The next step is to consume the generated JSON from completed browser runs, repeat the same capture if necessary, and optimize only after a repeatable winner is demonstrated.
+
 ## Main sync checkpoint — 2026-08-19 17:41 Europe/Madrid
 
 `main` advanced again after CI cleanup, so Performance Pass 6 remains gated behind a real synchronization checkpoint.
@@ -35,6 +48,10 @@ This pass adds a Playwright capture that exercises a normal settled street, forc
 
 `NBD_PERF_CAPTURE=<json>`
 
+The same JSON summary is persisted at:
+
+`.artifacts/performance/runtime-performance-capture.json`
+
 The payload contains:
 
 - total browser sample count;
@@ -50,7 +67,7 @@ Run only the capture with:
 
 `npm run test:browser:performance`
 
-The same spec is included in `npm run test:browser:systems`, so PR CI records a real Chromium result instead of leaving performance selection to source inspection. The browser-systems log is the evidence source for the `NBD_PERF_CAPTURE` line.
+The same spec is included in `npm run test:browser:systems`, so PR CI records a real Chromium result instead of leaving performance selection to source inspection. The console still carries `NBD_PERF_CAPTURE`, while the browser-systems job now also uploads the persisted JSON from whichever shard executes the spec.
 
 ## Decision rule for the next pass
 
