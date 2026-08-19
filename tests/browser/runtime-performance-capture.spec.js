@@ -16,6 +16,7 @@ const OUTER_SYSTEM_NAMES = Object.freeze([
 ]);
 const CORE_SYSTEM_PREFIX = "Core.";
 const FINALIZE_SYSTEM_PREFIX = "Finalize.";
+const PUBLISH_STATE_SYSTEM_PREFIX = "PublishState.";
 
 async function waitForRuntimeDiagnostics(page) {
   await page.waitForFunction(() => Boolean(
@@ -109,7 +110,8 @@ function summarizeCapture(samples) {
   return {
     ...outer,
     core: summarizeRanking(samples, "coreSystems"),
-    finalize: summarizeRanking(samples, "finalizeSystems")
+    finalize: summarizeRanking(samples, "finalizeSystems"),
+    publishState: summarizeRanking(samples, "publishStateSystems")
   };
 }
 
@@ -133,7 +135,8 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
     settleMs,
     outerSystemNames,
     coreSystemPrefix,
-    finalizeSystemPrefix
+    finalizeSystemPrefix,
+    publishStateSystemPrefix
   }) => {
     const district = await import("/phaser/src/data/district.js");
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
@@ -181,7 +184,8 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
           maxFrameMs: Number(snapshot.maxFrameMs) || 0,
           slowestSystems: rank(timings.filter(timing => outerNames.has(timing.name))),
           coreSystems: rank(timings.filter(timing => timing.name.startsWith(coreSystemPrefix))),
-          finalizeSystems: rank(timings.filter(timing => timing.name.startsWith(finalizeSystemPrefix)))
+          finalizeSystems: rank(timings.filter(timing => timing.name.startsWith(finalizeSystemPrefix))),
+          publishStateSystems: rank(timings.filter(timing => timing.name.startsWith(publishStateSystemPrefix)))
         });
       }
     }
@@ -193,7 +197,8 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
     settleMs: SETTLE_MS,
     outerSystemNames: OUTER_SYSTEM_NAMES,
     coreSystemPrefix: CORE_SYSTEM_PREFIX,
-    finalizeSystemPrefix: FINALIZE_SYSTEM_PREFIX
+    finalizeSystemPrefix: FINALIZE_SYSTEM_PREFIX,
+    publishStateSystemPrefix: PUBLISH_STATE_SYSTEM_PREFIX
   });
 
   const capture = summarizeCapture(samples);
@@ -216,4 +221,9 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
   expect(capture.finalize.systems.length).toBeGreaterThanOrEqual(4);
   expect(capture.finalize.winner?.count || 0).toBeGreaterThan(0);
   expect(capture.finalize.phases.every(phase => phase.samples === SAMPLES_PER_PHASE)).toBe(true);
+  expect(capture.publishState.sampleCount).toBe(SAMPLES_PER_PHASE * 3);
+  expect(capture.publishState.phases).toHaveLength(3);
+  expect(capture.publishState.systems.length).toBeGreaterThanOrEqual(8);
+  expect(capture.publishState.winner?.count || 0).toBeGreaterThan(0);
+  expect(capture.publishState.phases.every(phase => phase.samples === SAMPLES_PER_PHASE)).toBe(true);
 });
