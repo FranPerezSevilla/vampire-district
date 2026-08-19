@@ -1,4 +1,8 @@
 const DEFAULT_DIRECTION = Object.freeze({ x: 0, y: -1 });
+const EIGHT_WAY_STEP = Math.PI / 4;
+const EIGHT_WAY_HALF_STEP = EIGHT_WAY_STEP / 2;
+
+export const MODULAR_CHARACTER_DIRECTION_HYSTERESIS = Math.PI * 8 / 180;
 
 export const MODULAR_CHARACTER_STYLES = Object.freeze({
   civilian: Object.freeze({
@@ -54,6 +58,10 @@ export const MODULAR_CHARACTER_STYLES = Object.freeze({
   })
 });
 
+function hasDirection(direction) {
+  return Boolean(direction && Math.hypot(Number(direction.x) || 0, Number(direction.y) || 0) > 0.001);
+}
+
 function normalizedDirection(direction = DEFAULT_DIRECTION) {
   const x = Number(direction?.x) || 0;
   const y = Number(direction?.y) || 0;
@@ -62,13 +70,35 @@ function normalizedDirection(direction = DEFAULT_DIRECTION) {
   return { x: x / length, y: y / length };
 }
 
+function wrapAngle(angle) {
+  let value = Number(angle) || 0;
+  while (value > Math.PI) value -= Math.PI * 2;
+  while (value <= -Math.PI) value += Math.PI * 2;
+  return value;
+}
+
+function angleDelta(from, to) {
+  return wrapAngle((Number(to) || 0) - (Number(from) || 0));
+}
+
 export function modularCharacterFacingRotation(direction = DEFAULT_DIRECTION) {
   const value = normalizedDirection(direction);
-  // Sprites are authored facing north (negative Y), hence the +90 degree offset.
-  let rotation = Math.atan2(value.y, value.x) + Math.PI / 2;
-  while (rotation > Math.PI) rotation -= Math.PI * 2;
-  while (rotation <= -Math.PI) rotation += Math.PI * 2;
-  return rotation;
+  // Character pieces are authored facing north (negative Y).
+  return wrapAngle(Math.atan2(value.y, value.x) + Math.PI / 2);
+}
+
+export function modularCharacterSnappedRotation(
+  direction = DEFAULT_DIRECTION,
+  previousRotation = null,
+  hysteresis = MODULAR_CHARACTER_DIRECTION_HYSTERESIS
+) {
+  const raw = modularCharacterFacingRotation(direction);
+  const snapped = wrapAngle(Math.round(raw / EIGHT_WAY_STEP) * EIGHT_WAY_STEP);
+  if (!Number.isFinite(previousRotation)) return snapped;
+
+  const previous = wrapAngle(Math.round(previousRotation / EIGHT_WAY_STEP) * EIGHT_WAY_STEP);
+  const threshold = EIGHT_WAY_HALF_STEP + Math.max(0, Number(hysteresis) || 0);
+  return Math.abs(angleDelta(previous, raw)) <= threshold ? previous : snapped;
 }
 
 export function modularCharacterPose({
@@ -79,19 +109,19 @@ export function modularCharacterPose({
 } = {}) {
   const time = Math.max(0, Number(timeMs) || 0);
   const walk = moving ? Math.sin(time * 0.014 + phase) : 0;
-  const footStride = walk * 2.45;
-  const handSwing = walk * 1.45;
+  const footStride = walk * 2.35;
+  const handSwing = walk * 1.35;
 
   const feet = {
-    left: { x: -3.7, y: 8.4 + footStride, rotation: -0.04 * walk },
-    right: { x: 3.7, y: 8.4 - footStride, rotation: 0.04 * walk }
+    left: { x: -3.6, y: 8.0 + footStride, rotation: -0.04 * walk },
+    right: { x: 3.6, y: 8.0 - footStride, rotation: 0.04 * walk }
   };
 
   if (aiming) {
     return {
       hands: {
-        left: { x: -2.2, y: -5.8, rotation: -0.08 },
-        right: { x: 2.15, y: -7.0, rotation: 0.06 }
+        left: { x: -2.35, y: -6.2, rotation: -0.08 },
+        right: { x: 2.25, y: -7.2, rotation: 0.06 }
       },
       feet,
       weaponVisible: true
@@ -100,8 +130,8 @@ export function modularCharacterPose({
 
   return {
     hands: {
-      left: { x: -8.6, y: 1.2 - handSwing, rotation: -0.08 - walk * 0.05 },
-      right: { x: 8.6, y: 1.2 + handSwing, rotation: 0.08 + walk * 0.05 }
+      left: { x: -8.5, y: 2.0 - handSwing, rotation: -0.08 - walk * 0.05 },
+      right: { x: 8.5, y: 2.0 + handSwing, rotation: 0.08 + walk * 0.05 }
     },
     feet,
     weaponVisible: false
@@ -134,44 +164,53 @@ function createHand(scene, style) {
 
 function createFoot(scene, style) {
   const container = scene.add.container(0, 0);
-  const trouser = addStroke(scene.add.rectangle(0, -1.2, 4.1, 4.2, style.trouser, 1), style.outline);
-  const shoe = addStroke(scene.add.ellipse(0, 2.0, 4.5, 5.2, style.shoe, 1), style.outline);
+  const trouser = addStroke(scene.add.rectangle(0, -1.0, 4.0, 3.8, style.trouser, 1), style.outline);
+  const shoe = addStroke(scene.add.ellipse(0, 1.8, 4.4, 4.8, style.shoe, 1), style.outline);
   container.add([trouser, shoe]);
   return container;
 }
 
 function createCore(scene, style) {
   const core = scene.add.container(0, 0);
-  const shadow = scene.add.ellipse(0, 5.8, style.shoulderWidth + 4, 7.5, 0x000000, 0.27);
-  const torso = addStroke(scene.add.ellipse(0, 1.2, style.shoulderWidth, 9.0, style.body, 1), style.outline);
-  const chest = scene.add.rectangle(0, 2.5, Math.max(5, style.shoulderWidth - 7), 4.0, style.bodyDark, 0.72);
 
-  const parts = [shadow, torso, chest];
+  // The shoulders are deliberately shallow: this must read as a true overhead
+  // silhouette at every rotation, not as a front-facing torso turned in 2D.
+  const shoulders = addStroke(scene.add.ellipse(0, 2.5, style.shoulderWidth, 5.8, style.body, 1), style.outline);
+  const shoulderShade = scene.add.ellipse(0, 3.0, Math.max(6, style.shoulderWidth - 5), 2.6, style.bodyDark, 0.58);
+  const parts = [shoulders, shoulderShade];
 
   if (style.collar) {
-    const leftCollar = addStroke(scene.add.rectangle(-5.0, -1.1, 4.2, 7.4, style.accent, 1), style.outline)
-      .setRotation(-0.34);
-    const rightCollar = addStroke(scene.add.rectangle(5.0, -1.1, 4.2, 7.4, style.accent, 1), style.outline)
-      .setRotation(0.34);
+    const leftCollar = addStroke(scene.add.rectangle(-5.0, 1.0, 3.8, 5.0, style.accent, 1), style.outline)
+      .setRotation(-0.44);
+    const rightCollar = addStroke(scene.add.rectangle(5.0, 1.0, 3.8, 5.0, style.accent, 1), style.outline)
+      .setRotation(0.44);
     parts.push(leftCollar, rightCollar);
   }
 
-  const head = addStroke(scene.add.ellipse(0, -3.3, 9.4, 10.6, style.skin, 1), style.outline);
+  const head = addStroke(scene.add.ellipse(0, -0.8, 10.3, 10.3, style.skin, 1), style.outline);
   parts.push(head);
 
   if (style.cap) {
-    const cap = addStroke(scene.add.ellipse(0, -5.2, 11.3, 8.8, style.body, 1), style.outline);
-    const brim = addStroke(scene.add.rectangle(0, -1.7, 9.7, 2.1, style.bodyDark, 1), style.outline);
-    const capBadge = scene.add.rectangle(0, -2.2, 2.6, 1.5, style.accent, 1);
+    const cap = addStroke(scene.add.ellipse(0, -0.1, 11.2, 9.4, style.body, 1), style.outline);
+    const brim = addStroke(scene.add.rectangle(0, -4.9, 8.8, 2.1, style.bodyDark, 1), style.outline);
+    const capBadge = scene.add.rectangle(0, -5.0, 2.4, 1.3, style.accent, 1);
     parts.push(cap, brim, capBadge);
   } else {
-    const hair = addStroke(scene.add.ellipse(0, -5.4, 9.6, 7.0, style.hair, 1), style.outline, 0.72);
+    // Hair is shifted toward the back of the head so a small skin crescent at
+    // the front communicates facing without reintroducing frontal perspective.
+    const hair = addStroke(scene.add.ellipse(0, 0.15, 9.8, 8.8, style.hair, 1), style.outline, 0.72);
     parts.push(hair);
   }
 
   if (style.badge) {
-    const badge = addStroke(scene.add.rectangle(4.8, 2.2, 2.8, 3.2, style.accent, 1), style.outline, 0.64);
-    parts.push(badge);
+    const leftEpaulette = addStroke(scene.add.rectangle(-6.2, 2.0, 2.8, 2.8, style.accent, 1), style.outline, 0.64);
+    const rightEpaulette = addStroke(scene.add.rectangle(6.2, 2.0, 2.8, 2.8, style.accent, 1), style.outline, 0.64);
+    parts.push(leftEpaulette, rightEpaulette);
+  }
+
+  if (style.collar) {
+    const clasp = scene.add.rectangle(0, 2.5, 2.0, 1.6, style.accent, 1);
+    parts.push(clasp);
   }
 
   core.add(parts);
@@ -186,35 +225,64 @@ export class ModularCharacterView {
     this.styleName = MODULAR_CHARACTER_STYLES[styleName] ? styleName : "civilian";
     this.style = MODULAR_CHARACTER_STYLES[this.styleName];
     this.phase = stablePhase(phaseKey);
-    this.lastDirection = { ...DEFAULT_DIRECTION };
+    this.lastMovementDirection = { ...DEFAULT_DIRECTION };
+    this.lastAimDirection = { ...DEFAULT_DIRECTION };
+    this.upperRotation = 0;
+    this.feetRotation = 0;
 
     this.root = scene.add.container(0, 0).setScale(this.style.scale || 0.78);
+    this.shadow = scene.add.ellipse(0, 5.0, this.style.shoulderWidth + 5, 5.6, 0x000000, 0.27);
+    this.feetRoot = scene.add.container(0, 0);
+    this.upperRoot = scene.add.container(0, 0);
     this.leftFoot = createFoot(scene, this.style);
     this.rightFoot = createFoot(scene, this.style);
     this.core = createCore(scene, this.style);
     this.leftHand = createHand(scene, this.style);
     this.rightHand = createHand(scene, this.style);
 
-    this.root.add([
-      this.leftFoot,
-      this.rightFoot,
-      this.core,
-      this.leftHand.container,
-      this.rightHand.container
-    ]);
+    this.feetRoot.add([this.leftFoot, this.rightFoot]);
+    this.upperRoot.add([this.core, this.leftHand.container, this.rightHand.container]);
+    this.root.add([this.shadow, this.feetRoot, this.upperRoot]);
     hostContainer.add(this.root);
-    this.update({ timeMs: 0, direction: DEFAULT_DIRECTION, moving: false, aiming: false });
+    this.update({
+      timeMs: 0,
+      movementDirection: DEFAULT_DIRECTION,
+      aimDirection: DEFAULT_DIRECTION,
+      moving: false,
+      aiming: false
+    });
+  }
+
+  get lastDirection() {
+    return this.lastMovementDirection;
   }
 
   update({
     timeMs = 0,
-    direction = this.lastDirection,
+    direction = null,
+    movementDirection = direction || this.lastMovementDirection,
+    aimDirection = this.lastAimDirection,
     moving = false,
     aiming = false
   } = {}) {
-    const normalized = normalizedDirection(direction);
-    this.lastDirection = normalized;
-    this.root.setRotation(modularCharacterFacingRotation(normalized));
+    if (hasDirection(movementDirection)) {
+      this.lastMovementDirection = normalizedDirection(movementDirection);
+    }
+    if (aiming && hasDirection(aimDirection)) {
+      this.lastAimDirection = normalizedDirection(aimDirection);
+    }
+
+    if (moving) {
+      this.feetRotation = modularCharacterSnappedRotation(
+        this.lastMovementDirection,
+        this.feetRotation
+      );
+    }
+
+    const upperDirection = aiming ? this.lastAimDirection : this.lastMovementDirection;
+    this.upperRotation = modularCharacterSnappedRotation(upperDirection, this.upperRotation);
+    this.feetRoot.setRotation(this.feetRotation);
+    this.upperRoot.setRotation(this.upperRotation);
 
     const pose = modularCharacterPose({
       timeMs,
@@ -231,7 +299,11 @@ export class ModularCharacterView {
     const showWeapon = Boolean(this.style.weapon && pose.weaponVisible);
     this.leftHand.weapon.setVisible(false);
     this.rightHand.weapon.setVisible(showWeapon);
-    return pose;
+    return {
+      ...pose,
+      upperRotation: this.upperRotation,
+      feetRotation: this.feetRotation
+    };
   }
 
   applyPartPose(part, pose) {
