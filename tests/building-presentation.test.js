@@ -48,6 +48,7 @@ class GraphicsRecorder {
 
   fillStyle(...args) { return this.record("fillStyle", args); }
   fillRect(...args) { return this.record("fillRect", args); }
+  fillPoints(...args) { return this.record("fillPoints", args); }
   lineStyle(...args) { return this.record("lineStyle", args); }
   strokeRect(...args) { return this.record("strokeRect", args); }
   fillCircle(...args) { return this.record("fillCircle", args); }
@@ -107,7 +108,19 @@ test("every generated module stays inside the authored footprint", () => {
   }
 });
 
-test("layout recipes produce modular geometry without duplicate internal parapets", () => {
+test("each building renders one fused roof mass instead of visible roof cells", () => {
+  const plan = createBuildingPresentationPlan(building({
+    id: "authored-l-block",
+    presentation: { layoutId: "l-shape" }
+  }));
+  const masses = plan.modules.filter(module => module.kind === MODULE_KINDS.ROOF_MASS);
+  assert.equal(masses.length, 1);
+  assert.equal(masses[0].points.length, 6);
+  assert.equal(plan.silhouette.points.length, 6);
+  assert.equal(plan.modules.some(module => module.kind === "roof-cell"), false);
+});
+
+test("layout recipes produce clean external parapets without internal seams", () => {
   const source = building({
     id: "authored-l-block",
     presentation: { layoutId: "l-shape" }
@@ -117,7 +130,7 @@ test("layout recipes produce modular geometry without duplicate internal parapet
   assert.equal(plan.roofGrid.occupiedCells.length, 5);
 
   const edges = plan.modules.filter(module => module.kind === MODULE_KINDS.PARAPET_EDGE);
-  assert.equal(edges.length, 10);
+  assert.equal(edges.length, 6);
   assert.equal(new Set(edges.map(moduleLineKey)).size, edges.length);
 });
 
@@ -134,6 +147,25 @@ test("unsupported layout size falls back safely and reports why", () => {
   assert.match(plan.warnings[0], /does not fit/i);
 });
 
+test("standard detail stays restrained and uses large signature props", () => {
+  const generic = createBuildingPresentationPlan(building({ id: "generic-detail" }));
+  const genericProps = generic.modules.filter(module => [
+    MODULE_KINDS.SKYLIGHT,
+    MODULE_KINDS.HVAC,
+    MODULE_KINDS.VENT,
+    MODULE_KINDS.HATCH,
+    MODULE_KINDS.ANTENNA,
+    MODULE_KINDS.SATELLITE_DISH
+  ].includes(module.kind));
+  assert.ok(genericProps.length <= 3);
+
+  const club = createBuildingPresentationPlan(building({ id: "club", sign: "CLUB" }));
+  const skylight = club.modules.find(module => module.kind === MODULE_KINDS.SKYLIGHT);
+  assert.ok(skylight);
+  assert.ok(skylight.bounds.w >= 20);
+  assert.ok(skylight.bounds.h >= 12);
+});
+
 test("landmark archetypes assemble from shared modules but retain identity", () => {
   const police = createBuildingPresentationPlan(building({ id: "police", sign: "POLICE" }));
   assert.equal(police.archetype, "police");
@@ -146,7 +178,7 @@ test("landmark archetypes assemble from shared modules but retain identity", () 
   assert.equal(club.layoutId, "irregular");
   assert.equal(club.frontage.kind, FRONTAGE_KINDS.CLUB);
   assert.ok(club.modules.some(module => module.kind === MODULE_KINDS.SKYLIGHT));
-  assert.ok(club.modules.some(module => module.kind === MODULE_KINDS.ACCENT_STRIP));
+  assert.equal(club.modules.filter(module => module.kind === MODULE_KINDS.ACCENT_STRIP).length, 1);
 
   const church = createBuildingPresentationPlan(building({
     id: "cathedral",
@@ -232,10 +264,11 @@ test("runtime drawing caches deterministic plans per authored building and optio
   assert.deepEqual(first, third);
 });
 
-test("renderer dispatches the modular plan without requiring Phaser globals", () => {
+test("renderer paints fused polygons, props and outlines without Phaser globals", () => {
   const graphics = new GraphicsRecorder();
   const plan = createBuildingPresentationPlan(building({ id: "club", sign: "CLUB" }));
   assert.doesNotThrow(() => renderBuildingPresentation(graphics, plan));
+  assert.ok(graphics.calls.some(call => call.name === "fillPoints"));
   assert.ok(graphics.calls.some(call => call.name === "fillRect"));
   assert.ok(graphics.calls.some(call => call.name === "lineBetween"));
   assert.ok(graphics.calls.some(call => call.name === "strokeRect"));
