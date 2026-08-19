@@ -119,6 +119,8 @@ export function applyControlMode(frame, mode, worldEnabled = true) {
     bloodSensePressed: allows(INPUT_ACTIONS.BLOOD_SENSE) && Boolean(frame.bloodSensePressed),
     hornPressed: allows(INPUT_ACTIONS.HORN) && Boolean(frame.hornPressed),
     beastPressed: allows(INPUT_ACTIONS.GIVE_IN) && Boolean(frame.beastPressed),
-    debugLayerPressed: allows(INPUT_ACTIONS.DEBUG_LAYER) ? Number(frame.debugLayerPressed || 0) : 0
+    // Numeric keys stay available to menu/dialogue choices, but production gameplay
+    // no longer exposes the old 1–4 debug layer teleports.
+    debugLayerPressed: 0
   };
 }

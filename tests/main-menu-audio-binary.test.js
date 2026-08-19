@@ -21,12 +21,17 @@ test("menu theme uses a complete browser runtime binary", () => {
   assert.doesNotMatch(main, /main-menu-theme-01\.m4a/);
 });
 
-test("splash remains the interaction gate until audio starts", () => {
+test("theme warms during boot while splash remains the interaction gate", () => {
+  const index = source("phaser/index.html");
+  const main = source("phaser/src/main.js");
   const scene = source("phaser/src/scenes/MainMenuScene.js");
   const gate = source("phaser/src/ui/TitleScreenAudioGate.js");
 
-  assert.match(scene, /await titleScreenAudioGate\.waitForStart\(\)/);
-  assert.match(scene, /await titleScreenAudioGate\.waitForStart\(\);[\s\S]*titleScreenController\.present/);
+  assert.match(index, /rel="preload"[^>]*main-menu-theme-01\.mp3[^>]*as="audio"/);
+  assert.match(index, /id="viceblood-main-menu-theme"[^>]*main-menu-theme-01\.mp3[^>]*preload="auto"/);
+  assert.match(main, /getElementById\("viceblood-main-menu-theme"\) \|\| new Audio\(MAIN_MENU_THEME_URL\)/);
+  assert.match(main, /audio\.preload = "auto"/);
+  assert.match(scene, /titleScreenAudioGate\.waitForStart\(\)[\s\S]*titleScreenController\.present/);
   assert.match(gate, /PRESS ANY KEY TO START/);
   assert.match(gate, /const started = await this\.theme\?\.start\?\.\(\)/);
   assert.match(gate, /if \(!started\)/);

@@ -22,7 +22,11 @@ const MAIN_MENU_THEME_VOLUME = 0.28;
 const MAIN_MENU_THEME_FADE_MS = 430;
 
 function createMainMenuThemeController() {
-  const audio = new Audio(MAIN_MENU_THEME_URL);
+  // Reuse the parser-created media element so the browser can warm the theme
+  // while Phaser and the world preview are still booting. Creating a second
+  // Audio instance here would throw away that head start and risks duplicate playback.
+  const audio = document.getElementById("viceblood-main-menu-theme") || new Audio(MAIN_MENU_THEME_URL);
+  if (!audio.src) audio.src = MAIN_MENU_THEME_URL;
   audio.loop = true;
   audio.preload = "auto";
   audio.volume = MAIN_MENU_THEME_VOLUME;
