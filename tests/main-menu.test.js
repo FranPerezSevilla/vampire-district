@@ -122,7 +122,7 @@ test("render quality belongs to the DOM Options drawer", () => {
 
 test("NEW NIGHT hands control to the same running world without blackout or restart", () => {
   assert.match(mainScene, /await titleScreenController\.exitToGame\(\)/);
-  assert.match(mainScene, /Hand control to the exact live scene/);
+  assert.match(mainScene, /this\.finishNightTransition\(\)/);
   assert.match(mainScene, /this\.restorePreviewControl\(\)/);
   assert.match(mainScene, /this\.scene\.launch\("UIScene"\)/);
   assert.doesNotMatch(mainScene, /transitionCurtain|\.fadeIn\(/);
@@ -134,5 +134,7 @@ test("menu exposes the approved semantic navigation surface", () => {
   for (const action of ["continue", "new-night", "options", "credits"]) {
     assert.match(indexHtml, new RegExp(`data-title-action="${action}"`));
   }
+  assert.match(titleController, /dataset\.titleAction = "controls"/);
+  assert.match(titleController, /openControls\(\)/);
   assert.match(indexHtml, /data-title-action="continue"[^>]*disabled/);
 });
