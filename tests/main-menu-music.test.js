@@ -13,18 +13,22 @@ test("main menu theme asset is committed and owned by the title-screen flow", ()
   assert.match(main, /main-menu-theme-01\.m4a/);
   assert.match(main, /audio\.loop = true/);
   assert.match(main, /MAIN_MENU_THEME_VOLUME = 0\.28/);
-  assert.match(menuScene, /titleScreenAudioGate\.present\(\)/);
+  assert.match(menuScene, /titleScreenAudioGate\.waitForStart\(\)[\s\S]*titleScreenController\.present/);
+  assert.match(menuScene, /awaiting-audio-start/);
   assert.match(menuScene, /titleScreenAudioGate\.fadeOut\(430\)/);
   assert.match(gate, /PRESS ANY KEY TO START/);
 });
 
-test("title-screen audio gate unlocks browser autoplay on first real interaction", () => {
+test("splash remains the autoplay gate until a real interaction starts audio", () => {
   const gate = source("phaser/src/ui/TitleScreenAudioGate.js");
+  assert.match(gate, /root\.dataset\.state = "boot"/);
+  assert.match(gate, /bootMessage\.textContent = START_COPY/);
   assert.match(gate, /window\.addEventListener\("keydown", this\.boundKeydown, true\)/);
-  assert.match(gate, /gate\.addEventListener\("pointerdown", this\.boundUnlock, true\)/);
-  assert.match(gate, /gate\.addEventListener\("touchstart", this\.boundUnlock/);
+  assert.match(gate, /root\.addEventListener\("pointerdown", this\.boundPointer, true\)/);
+  assert.match(gate, /root\.addEventListener\("touchstart", this\.boundTouch/);
   assert.match(gate, /const started = await this\.theme\?\.start\?\.\(\)/);
   assert.match(gate, /NBD_TITLE_AUDIO_GATE_STATE = "playing"/);
+  assert.match(gate, /resolve\?\.\(true\)/);
   assert.doesNotMatch(source("phaser/src/main.js"), /installMainMenuThemePolicy/);
 });
 
