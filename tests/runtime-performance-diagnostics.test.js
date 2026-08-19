@@ -104,6 +104,24 @@ test("GameplayRuntime profiles the expensive outer pipelines without callback ti
   assert.doesNotMatch(runtime, /measureSystem\([^,]+,\s*\(\)\s*=>/);
 });
 
+test("GameplayRuntimeCore exposes bounded internal phases without changing update order", () => {
+  const runtime = source("phaser/src/runtime/GameplayRuntimeCore.js");
+  for (const name of [
+    "Core.Input",
+    "Core.Combat",
+    "Core.InteractionQuery",
+    "Core.WorldActors",
+    "Core.WorldState",
+    "Core.InteractionRefresh",
+    "Core.Finalize"
+  ]) {
+    assert.match(runtime, new RegExp(`beginSystem\\("${name}"\\)`));
+    assert.match(runtime, new RegExp(`endSystem\\("${name}"`));
+  }
+
+  assert.doesNotMatch(runtime, /measureSystem\([^,]+,\s*\(\)\s*=>/);
+});
+
 test("cached runtime diagnostics publish only when their snapshot refreshes", () => {
   let currentSnapshot = { serial: 1 };
   let diagnosticsPublishes = 0;
@@ -162,6 +180,9 @@ test("browser performance capture persists machine-readable CI evidence", () => 
   assert.match(captureSpec, /NBD_PERF_CAPTURE=/);
   assert.match(captureSpec, /runtime-performance-capture\.json/);
   assert.match(captureSpec, /writeFile\(PERFORMANCE_CAPTURE_PATH/);
+  assert.match(captureSpec, /CORE_SYSTEM_PREFIX\s*=\s*"Core\."/);
+  assert.match(captureSpec, /coreSystems/);
+  assert.match(captureSpec, /core:\s*summarizeRanking/);
   assert.match(workflow, /Upload performance capture evidence/);
   assert.match(workflow, /runtime-performance-capture-shard-\$\{\{ matrix\.shard \}\}/);
   assert.match(workflow, /if-no-files-found:\s*ignore/);

@@ -20,6 +20,15 @@ import { WeaponSystem } from "../systems/WeaponSystem.js";
 import { RuntimeDiagnostics } from "./RuntimeDiagnostics.js";
 
 const HOSPITAL_BLOOD_BAG_ID = "hospital_recovery_blood_bag";
+const CORE_PROFILE_SYSTEMS = Object.freeze([
+  "Core.Input",
+  "Core.Combat",
+  "Core.InteractionQuery",
+  "Core.WorldActors",
+  "Core.WorldState",
+  "Core.InteractionRefresh",
+  "Core.Finalize"
+]);
 
 function splitActions(options = []) {
   const movement = [];
@@ -114,7 +123,8 @@ export class GameplayRuntime {
       "TaskRevealSystem",
       "OutskirtsSystem",
       "ObjectiveMarkerSystem",
-      "UxGuidanceSystem"
+      "UxGuidanceSystem",
+      ...CORE_PROFILE_SYSTEMS
     ]) diagnostics.registerSystem(name);
 
     if (typeof window !== "undefined") diagnostics.expose(window);
@@ -123,8 +133,11 @@ export class GameplayRuntime {
 
   update(_time, deltaMs) {
     const scene = this.scene;
+    const diagnostics = this.diagnostics;
     const dt = Math.min(Math.max(0, Number(deltaMs) || 0) / 1000, 0.05);
-    this.diagnostics.beginFrame();
+    diagnostics.beginFrame();
+
+    let coreMark = diagnostics.beginSystem("Core.Input");
     scene.deathRecoverySystem?.update?.(dt);
     this.autoConsumeHospitalBloodBag();
 
@@ -134,6 +147,7 @@ export class GameplayRuntime {
     scene.currentInputFrame = frame;
     scene.aiStateSystem?.preUpdate?.(dt, frame);
     scene.weaponSystem?.update(frame);
+    diagnostics.endSystem("Core.Input", coreMark);
 
     if (!frame.worldEnabled) {
       scene.nearestMovement = null;
@@ -144,7 +158,9 @@ export class GameplayRuntime {
       scene.aiStateSystem?.postUpdate?.(0, frame);
       scene.movementNoiseSystem?.update(frame);
       scene.uxGuidanceSystem?.update?.(0, frame);
+      coreMark = diagnostics.beginSystem("Core.Finalize");
       this.finishFrame();
+      diagnostics.endSystem("Core.Finalize", coreMark);
       return;
     }
 
@@ -157,7 +173,9 @@ export class GameplayRuntime {
       scene.aiStateSystem?.postUpdate?.(0, frame);
       scene.movementNoiseSystem?.update(frame);
       scene.uxGuidanceSystem?.update?.(0, frame);
+      coreMark = diagnostics.beginSystem("Core.Finalize");
       this.finishFrame();
+      diagnostics.endSystem("Core.Finalize", coreMark);
       return;
     }
 
@@ -172,15 +190,20 @@ export class GameplayRuntime {
       scene.aiStateSystem?.postUpdate?.(0, frame);
       scene.movementNoiseSystem?.update(frame);
       scene.uxGuidanceSystem?.update?.(0, frame);
+      coreMark = diagnostics.beginSystem("Core.Finalize");
       this.finishFrame();
+      diagnostics.endSystem("Core.Finalize", coreMark);
       return;
     }
 
+    coreMark = diagnostics.beginSystem("Core.Combat");
     scene.handleLayerDebugInput(frame);
     scene.powersSystem.update(dt, frame);
     scene.combatSystem?.update(dt, frame);
     scene.drainSystem?.update(dt, frame);
+    diagnostics.endSystem("Core.Combat", coreMark);
 
+    coreMark = diagnostics.beginSystem("Core.InteractionQuery");
     let availableActions = this.filterActions(scene.collectInteractions());
     let split = splitActions(availableActions);
     scene.nearestMovement = nearest(scene, split.movement);
@@ -209,7 +232,9 @@ export class GameplayRuntime {
           : nearest(scene, splitActions(this.filterActions(scene.collectInteractions())).interaction);
       }
     }
+    diagnostics.endSystem("Core.InteractionQuery", coreMark);
 
+    coreMark = diagnostics.beginSystem("Core.WorldActors");
     if (!scene.interactionSystem.isOpen && !scene.transitionSystem?.active) {
       if (scene.feedingSystem.isActive()) {
         scene.witnessSystem.update(dt);
@@ -225,7 +250,11 @@ export class GameplayRuntime {
         scene.npcSystem.update(dt);
         scene.witnessSystem.update(dt);
       }
+    }
+    diagnostics.endSystem("Core.WorldActors", coreMark);
 
+    coreMark = diagnostics.beginSystem("Core.WorldState");
+    if (!scene.interactionSystem.isOpen && !scene.transitionSystem?.active) {
       scene.evidenceSystem.update(dt);
       scene.heatSystem?.cool?.(dt);
       scene.exposureSystem.cool(dt);
@@ -237,20 +266,27 @@ export class GameplayRuntime {
       scene.playerDamageSystem?.postUpdate(dt, frame);
       scene.missionSystem.update();
       scene.tutorialDirector?.update?.(dt, frame);
-
-      availableActions = this.filterActions(scene.collectInteractions());
-      split = splitActions(availableActions);
-      scene.nearestMovement = nearest(scene, split.movement);
-      scene.nearestInteraction = nearest(scene, split.interaction);
     } else {
       scene.policeFirearmSystem?.update(0, frame);
       scene.playerDamageSystem?.postUpdate(0, frame);
       scene.aiStateSystem?.postUpdate?.(0, frame);
     }
+    diagnostics.endSystem("Core.WorldState", coreMark);
 
+    if (!scene.interactionSystem.isOpen && !scene.transitionSystem?.active) {
+      coreMark = diagnostics.beginSystem("Core.InteractionRefresh");
+      availableActions = this.filterActions(scene.collectInteractions());
+      split = splitActions(availableActions);
+      scene.nearestMovement = nearest(scene, split.movement);
+      scene.nearestInteraction = nearest(scene, split.interaction);
+      diagnostics.endSystem("Core.InteractionRefresh", coreMark);
+    }
+
+    coreMark = diagnostics.beginSystem("Core.Finalize");
     scene.movementNoiseSystem?.update(frame);
     scene.uxGuidanceSystem?.update?.(dt, frame);
     this.finishFrame();
+    diagnostics.endSystem("Core.Finalize", coreMark);
   }
 
   autoConsumeHospitalBloodBag() {

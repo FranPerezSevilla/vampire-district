@@ -6,6 +6,15 @@ const SAMPLES_PER_PHASE = 8;
 const SETTLE_MS = 900;
 const PERFORMANCE_CAPTURE_DIR = ".artifacts/performance";
 const PERFORMANCE_CAPTURE_PATH = `${PERFORMANCE_CAPTURE_DIR}/runtime-performance-capture.json`;
+const OUTER_SYSTEM_NAMES = Object.freeze([
+  "StreamingPipeline",
+  "TrafficPipeline",
+  "MotorizedPoliceSystem",
+  "PedestrianSystem",
+  "GameplayRuntimeCore",
+  "TerritoryRuntimeSystem"
+]);
+const CORE_SYSTEM_PREFIX = "Core.";
 
 async function waitForRuntimeDiagnostics(page) {
   await page.waitForFunction(() => Boolean(
@@ -21,20 +30,21 @@ function finite(value) {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
-function summarizeCapture(samples) {
+function summarizeRanking(samples, rankingKey) {
   const winnerCounts = new Map();
   const timingTotals = new Map();
   const phaseWinners = new Map();
 
   for (const sample of samples) {
-    const winner = sample.slowestSystems[0]?.name;
+    const ranking = sample[rankingKey] || [];
+    const winner = ranking[0]?.name;
     if (winner) {
       winnerCounts.set(winner, (winnerCounts.get(winner) || 0) + 1);
       const phaseKey = `${sample.phase}:${winner}`;
       phaseWinners.set(phaseKey, (phaseWinners.get(phaseKey) || 0) + 1);
     }
 
-    for (const timing of sample.slowestSystems) {
+    for (const timing of ranking) {
       const current = timingTotals.get(timing.name) || {
         name: timing.name,
         observations: 0,
@@ -93,6 +103,14 @@ function summarizeCapture(samples) {
   };
 }
 
+function summarizeCapture(samples) {
+  const outer = summarizeRanking(samples, "slowestSystems");
+  return {
+    ...outer,
+    core: summarizeRanking(samples, "coreSystems")
+  };
+}
+
 async function persistCapture(capture) {
   await mkdir(PERFORMANCE_CAPTURE_DIR, { recursive: true });
   await writeFile(PERFORMANCE_CAPTURE_PATH, `${JSON.stringify(capture, null, 2)}\n`, "utf8");
@@ -107,17 +125,29 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
   await waitForRuntimeDiagnostics(page);
 
-  const samples = await page.evaluate(async ({ intervalMs, samplesPerPhase, settleMs }) => {
+  const samples = await page.evaluate(async ({
+    intervalMs,
+    samplesPerPhase,
+    settleMs,
+    outerSystemNames,
+    coreSystemPrefix
+  }) => {
     const district = await import("/phaser/src/data/district.js");
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
     const origin = { x: scene.player.x, y: scene.player.y };
+    const outerNames = new Set(outerSystemNames);
     const phases = [
       { name: "settled-street", point: origin, relocate: false },
       { name: "harbor-stream", point: district.CITY_ANCHORS.harborFar, relocate: true },
       { name: "street-return", point: origin, relocate: true }
     ];
     const captured = [];
+    const rank = timings => timings.sort((a, b) => (
+      b.averageMs - a.averageMs
+      || b.recentMaxMs - a.recentMaxMs
+      || a.name.localeCompare(b.name)
+    ));
 
     for (const phase of phases) {
       if (phase.relocate) {
@@ -134,18 +164,20 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
       for (let index = 0; index < samplesPerPhase; index += 1) {
         await sleep(intervalMs);
         const snapshot = window.NBD_RUNTIME_DIAGNOSTICS.snapshot({ force: true });
+        const timings = Object.entries(snapshot.systemTimings || {}).map(([name, timing]) => ({
+          name,
+          averageMs: Number(timing.averageMs) || 0,
+          recentMaxMs: Number(timing.recentMaxMs) || 0,
+          maxMs: Number(timing.maxMs) || 0,
+          samples: Number(timing.samples) || 0
+        }));
         captured.push({
           phase: phase.name,
           averageFrameMs: Number(snapshot.averageFrameMs) || 0,
           recentMaxFrameMs: Number(snapshot.recentMaxFrameMs) || 0,
           maxFrameMs: Number(snapshot.maxFrameMs) || 0,
-          slowestSystems: (snapshot.slowestSystems || []).map(timing => ({
-            name: timing.name,
-            averageMs: Number(timing.averageMs) || 0,
-            recentMaxMs: Number(timing.recentMaxMs) || 0,
-            maxMs: Number(timing.maxMs) || 0,
-            samples: Number(timing.samples) || 0
-          }))
+          slowestSystems: rank(timings.filter(timing => outerNames.has(timing.name))),
+          coreSystems: rank(timings.filter(timing => timing.name.startsWith(coreSystemPrefix)))
         });
       }
     }
@@ -154,7 +186,9 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
   }, {
     intervalMs: SAMPLE_INTERVAL_MS,
     samplesPerPhase: SAMPLES_PER_PHASE,
-    settleMs: SETTLE_MS
+    settleMs: SETTLE_MS,
+    outerSystemNames: OUTER_SYSTEM_NAMES,
+    coreSystemPrefix: CORE_SYSTEM_PREFIX
   });
 
   const capture = summarizeCapture(samples);
@@ -167,4 +201,9 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
   expect(capture.systems.length).toBeGreaterThanOrEqual(4);
   expect(capture.winner?.count || 0).toBeGreaterThan(0);
   expect(capture.phases.every(phase => phase.samples === SAMPLES_PER_PHASE)).toBe(true);
+  expect(capture.core.sampleCount).toBe(SAMPLES_PER_PHASE * 3);
+  expect(capture.core.phases).toHaveLength(3);
+  expect(capture.core.systems.length).toBeGreaterThanOrEqual(4);
+  expect(capture.core.winner?.count || 0).toBeGreaterThan(0);
+  expect(capture.core.phases.every(phase => phase.samples === SAMPLES_PER_PHASE)).toBe(true);
 });
