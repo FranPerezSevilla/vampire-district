@@ -2,6 +2,77 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-19 — M1.4 implemented; autonomous final-gate mode approved
+
+### Scope
+
+- Active milestone: M1
+- Task: remove the remaining visible full-footprint legacy frame while retaining the exact authored rectangle as invisible collider/navigation authority
+- Authoritative files: public polish compositor, focused shadow tests, roadmap, agent contract and machine status
+- Focused tests: `tests/building-presentation.test.js` and `tests/building-visual-shadow.test.js`
+- Acceptance criteria: low footprint slab remains; complete outer frame disappears; raised roof mass becomes the visible architectural silhouette; no geometry authority changes
+- Explicit non-goals: physical prop redesign, material pass, hospital profile, composition grammar and unrelated global CI failures
+
+### Runtime evidence reviewed
+
+The user supplied a second normal-gameplay capture set covering:
+
+- multiple nightlife/club blocks;
+- hospital/medical-context blocks;
+- church and chapel-like masses;
+- generic and irregular buildings;
+- mixed street context.
+
+The first M1 pass was judged improved but incomplete. The persistent blocker was the old full rectangular footprint outline: it still exposed the logical collider as a bounding box around the newer raised roof language.
+
+### Decision
+
+- keep authored `x`, `y`, `w`, and `h` unchanged for collision and navigation;
+- stop painting that rectangle as a complete perimeter;
+- retain only a subdued low slab, renderer-only cast shadow and subtle south/east low-wall depth;
+- make the inset/fused raised roof mass the visible building silhouette;
+- keep police/club color identity local rather than applying it to a whole perimeter.
+
+### Implemented
+
+- suppressed the foundation full-perimeter `strokeRect` in the public polish compositor;
+- suppressed foundation top/left highlight rails and wall-highlight lines;
+- reduced foundation fill and wall opacity so the low slab anchors irregular footprints without becoming a second building frame;
+- reduced neutral parapet caps to a restrained material cue;
+- removed the wide dark parapet pass from north/west sides;
+- reduced south/east wall-face width and opacity while preserving directional depth;
+- retained layered cast and contact shadows;
+- added focused coverage proving the foundation still matches the collider footprint, remains filled and casts shadow, but emits no full-frame stroke or line rails.
+
+### Autonomous execution mandate
+
+The user approved independent progression through the remaining roadmap with one final validation at M6.
+
+- intermediate subjective gates are removed;
+- each hourly run advances one bounded task;
+- focused validation, allowed-path enforcement and Netlify remain mandatory;
+- PR #63 stays draft and cannot merge autonomously;
+- GitHub issue #64 tracks hourly execution;
+- scheduled workflow requires repository secret `OPENAI_API_KEY`.
+
+### Validation
+
+- implementation and focused tests are committed;
+- GitHub focused CI and Netlify are pending for the M1.4 head;
+- known unrelated global failures remain out of scope.
+
+### Risks
+
+- the low slab may still need further opacity tuning, but it no longer owns a complete visible outline;
+- props remain symbolic until M2;
+- GitHub-hosted hourly Codex execution cannot use the interactive ChatGPT subscription and therefore needs the repository Actions secret.
+
+### Next
+
+When focused CI and Netlify are green, close M1 and begin M2.1: shared physical prop-volume primitives. Do not request user review until M6.
+
+---
+
 ## 2026-08-19 — M1 automated validation complete; visual gate remains
 
 ### Completed
