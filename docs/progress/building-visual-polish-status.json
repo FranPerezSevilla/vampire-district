@@ -9,8 +9,8 @@
   "executionMode": "autonomous-hourly-final-gate",
   "userValidation": "M6-final-only",
   "currentMilestone": "M2",
-  "currentTask": "M2.1-shared-physical-volume-primitives",
-  "nextAction": "The installed hourly scheduler should introduce shared renderer-only rectangular and circular volume primitives, prove top/side/contact separation with focused tests, and migrate only a minimal fixture before redesigning individual prop families.",
+  "currentTask": "M2.1-automated-validation-pending",
+  "nextAction": "Wait for focused building validation and Netlify on the shared volume implementation head. If both are green, close M2.1 and begin M2.2 skylight frame and glazing depth without requesting intermediate user review.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "automation": {
     "targetBranch": "agent/building-visual-poc",
@@ -45,7 +45,7 @@
       "name": "physical rooftop props",
       "status": "autonomous-in-progress",
       "tasks": [
-        { "id": "M2.1", "name": "shared physical volume primitives", "status": "active" },
+        { "id": "M2.1", "name": "shared physical volume primitives", "status": "implementation-complete / automated-validation-pending" },
         { "id": "M2.2", "name": "skylights", "status": "planned" },
         { "id": "M2.3", "name": "mechanical equipment", "status": "planned" },
         { "id": "M2.4", "name": "architectural annexes and markers", "status": "planned" }
@@ -58,9 +58,10 @@
   ],
   "validation": {
     "latestM1Head": "454f00a03dfd9d80f8cdc27b849ff4ad982955c2",
-    "buildingFocusedContracts": "pass",
-    "globalUnitResult": "404/411",
-    "netlify": "success"
+    "latestM2ImplementationHead": "c87ecf1cd731c009b62776494732841e632df107",
+    "buildingFocusedContracts": "pending",
+    "globalUnitResult": "pending",
+    "netlify": "pending"
   },
   "knownUnrelatedCiFailures": [
     "tests/urban-witness-network.test.js (2 expectations)",
