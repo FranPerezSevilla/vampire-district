@@ -136,23 +136,37 @@ Make skylights, HVAC, hatches, vents, annexes and markers read as objects rather
 
 ### M2.1 — Shared physical volume primitives
 
-**Status: implementation-complete / automated-validation-pending**
+**Status: complete**
 
 - [x] define a shared raised-rect volume primitive with top, south/east side faces and contact shadow;
 - [x] define a shared circular/cylindrical volume primitive;
 - [x] keep every planned bound unchanged and apply depth only in the renderer;
 - [x] add focused tests for top/side/contact separation and input immutability;
 - [x] migrate only minimal proving fixtures: hatch for raised rectangles and vent for cylinders;
-- [ ] focused building validation green on the implementation head;
-- [ ] Netlify deploy preview green on the implementation head.
+- [x] focused building validation green on the implementation head;
+- [x] Netlify deploy preview green on the implementation head.
+
+### M2.1 evidence
+
+- all new raised-rectangle, cylindrical and hatch-integration contracts pass;
+- the complete global run reports **407 passed / 414 total**;
+- the seven failures are exactly the previously documented witness/vehicle expectations;
+- the scheduler integration assertion was updated to recognize the canonical hourly workflow;
+- no planned module bounds, collider geometry or gameplay authority changed.
 
 The shared primitives are family-neutral. Skylight glass, HVAC fans, hatch hardware, antenna supports and family-specific finishes remain in M2.2–M2.4.
 
 ### M2.2 — Skylights
 
-- [ ] skylight frame, glazing depth and directional highlight;
-- [ ] dominant warehouse/club skylights remain readable at gameplay zoom;
-- [ ] glass treatment does not look like a flat colored rectangle.
+**Status: active**
+
+- [ ] route skylights through the shared raised-rectangle primitive;
+- [ ] add a physical outer curb/frame with top and side separation;
+- [ ] add inset glazing with directional highlight and restrained internal mullions;
+- [ ] keep dominant warehouse/club skylights readable at gameplay zoom;
+- [ ] ensure glass no longer reads as a flat colored rectangle;
+- [ ] preserve authored skylight bounds and deterministic composition;
+- [ ] add focused physical-skylight contracts.
 
 ### M2.3 — Mechanical equipment
 
@@ -267,4 +281,4 @@ The workflow requires the repository Actions secret `OPENAI_API_KEY` because Git
 
 ## Current exact next action
 
-Wait for focused building validation and Netlify on the M2.1 implementation head. If both are green, close M2.1 and begin M2.2 skylight frame/glazing depth without requesting intermediate user review.
+At the next hourly run, begin M2.2 by routing skylights through the shared raised-rectangle volume primitive, adding a physical curb and inset glazing, preserving authored bounds, and adding focused contracts. Do not request intermediate user review.
