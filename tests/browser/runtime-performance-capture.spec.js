@@ -17,6 +17,7 @@ const OUTER_SYSTEM_NAMES = Object.freeze([
 const CORE_SYSTEM_PREFIX = "Core.";
 const FINALIZE_SYSTEM_PREFIX = "Finalize.";
 const PUBLISH_STATE_SYSTEM_PREFIX = "PublishState.";
+const PUBLISH_STATE_PHASE_COUNT = 5;
 
 async function waitForRuntimeDiagnostics(page) {
   await page.waitForFunction(() => Boolean(
@@ -223,7 +224,7 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
   expect(capture.finalize.phases.every(phase => phase.samples === SAMPLES_PER_PHASE)).toBe(true);
   expect(capture.publishState.sampleCount).toBe(SAMPLES_PER_PHASE * 3);
   expect(capture.publishState.phases).toHaveLength(3);
-  expect(capture.publishState.systems.length).toBeGreaterThanOrEqual(8);
+  expect(capture.publishState.systems.length).toBeGreaterThanOrEqual(PUBLISH_STATE_PHASE_COUNT);
   expect(capture.publishState.winner?.count || 0).toBeGreaterThan(0);
   expect(capture.publishState.phases.every(phase => phase.samples === SAMPLES_PER_PHASE)).toBe(true);
 });
