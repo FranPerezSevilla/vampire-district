@@ -22,7 +22,7 @@ function routePoints(route) {
       seen.add(key);
       return true;
     })
-    .map(point => ({
+    .map(point => Object.freeze({
       x: finite(point.x),
       y: finite(point.y),
       layer: LAYERS.STREET,
@@ -31,32 +31,36 @@ function routePoints(route) {
     }));
 }
 
-function allPedestrianPoliceRoutes() {
-  return pedestrianRoutes
+const PEDESTRIAN_POLICE_ROUTES = Object.freeze(
+  pedestrianRoutes
     .map(route => {
       const points = routePoints(route);
       return points.length >= 2
-        ? {
+        ? Object.freeze({
             id: route.id,
-            points,
+            points: Object.freeze(points),
             surface: "pedestrian"
-          }
+          })
         : null;
     })
-    .filter(Boolean);
-}
+    .filter(Boolean)
+);
+const PEDESTRIAN_POLICE_ROUTES_BY_ZONE = new Map();
 
 export function pedestrianPoliceRoutesForZone(zoneId) {
-  const routes = allPedestrianPoliceRoutes();
-  const local = routes.filter(route => (
+  const key = String(zoneId || "");
+  if (PEDESTRIAN_POLICE_ROUTES_BY_ZONE.has(key)) return PEDESTRIAN_POLICE_ROUTES_BY_ZONE.get(key);
+  const local = PEDESTRIAN_POLICE_ROUTES.filter(route => (
     route.points.some(point => districtZoneAt(point.x, point.y).id === zoneId)
   ));
-  return local.length ? local : routes;
+  const selected = Object.freeze(local.length ? local : [...PEDESTRIAN_POLICE_ROUTES]);
+  PEDESTRIAN_POLICE_ROUTES_BY_ZONE.set(key, selected);
+  return selected;
 }
 
 export function nearestPedestrianPolicePoint(x, y, zoneId = null) {
   const routes = zoneId == null
-    ? allPedestrianPoliceRoutes()
+    ? PEDESTRIAN_POLICE_ROUTES
     : pedestrianPoliceRoutesForZone(zoneId);
   let best = null;
   let bestDistance = Infinity;
