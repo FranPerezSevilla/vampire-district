@@ -15,6 +15,7 @@ const OUTER_SYSTEM_NAMES = Object.freeze([
   "TerritoryRuntimeSystem"
 ]);
 const CORE_SYSTEM_PREFIX = "Core.";
+const FINALIZE_SYSTEM_PREFIX = "Finalize.";
 
 async function waitForRuntimeDiagnostics(page) {
   await page.waitForFunction(() => Boolean(
@@ -107,7 +108,8 @@ function summarizeCapture(samples) {
   const outer = summarizeRanking(samples, "slowestSystems");
   return {
     ...outer,
-    core: summarizeRanking(samples, "coreSystems")
+    core: summarizeRanking(samples, "coreSystems"),
+    finalize: summarizeRanking(samples, "finalizeSystems")
   };
 }
 
@@ -130,7 +132,8 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
     samplesPerPhase,
     settleMs,
     outerSystemNames,
-    coreSystemPrefix
+    coreSystemPrefix,
+    finalizeSystemPrefix
   }) => {
     const district = await import("/phaser/src/data/district.js");
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
@@ -177,7 +180,8 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
           recentMaxFrameMs: Number(snapshot.recentMaxFrameMs) || 0,
           maxFrameMs: Number(snapshot.maxFrameMs) || 0,
           slowestSystems: rank(timings.filter(timing => outerNames.has(timing.name))),
-          coreSystems: rank(timings.filter(timing => timing.name.startsWith(coreSystemPrefix)))
+          coreSystems: rank(timings.filter(timing => timing.name.startsWith(coreSystemPrefix))),
+          finalizeSystems: rank(timings.filter(timing => timing.name.startsWith(finalizeSystemPrefix)))
         });
       }
     }
@@ -188,7 +192,8 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
     samplesPerPhase: SAMPLES_PER_PHASE,
     settleMs: SETTLE_MS,
     outerSystemNames: OUTER_SYSTEM_NAMES,
-    coreSystemPrefix: CORE_SYSTEM_PREFIX
+    coreSystemPrefix: CORE_SYSTEM_PREFIX,
+    finalizeSystemPrefix: FINALIZE_SYSTEM_PREFIX
   });
 
   const capture = summarizeCapture(samples);
@@ -206,4 +211,9 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
   expect(capture.core.systems.length).toBeGreaterThanOrEqual(4);
   expect(capture.core.winner?.count || 0).toBeGreaterThan(0);
   expect(capture.core.phases.every(phase => phase.samples === SAMPLES_PER_PHASE)).toBe(true);
+  expect(capture.finalize.sampleCount).toBe(SAMPLES_PER_PHASE * 3);
+  expect(capture.finalize.phases).toHaveLength(3);
+  expect(capture.finalize.systems.length).toBeGreaterThanOrEqual(4);
+  expect(capture.finalize.winner?.count || 0).toBeGreaterThan(0);
+  expect(capture.finalize.phases.every(phase => phase.samples === SAMPLES_PER_PHASE)).toBe(true);
 });
