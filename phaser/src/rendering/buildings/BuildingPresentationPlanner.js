@@ -252,10 +252,12 @@ function createFrontageModule(building, footprint, definition) {
     ? definition.frontageEdge
     : "south";
   const dimensions = frontageDimensions(definition.frontage, footprint);
-  const inset = 2;
+  const inset = Math.max(0, Math.min(2, Math.min(footprint.w, footprint.h) / 2 - 0.5));
   const horizontal = edge === "north" || edge === "south";
-  const available = horizontal ? footprint.w - inset * 2 : footprint.h - inset * 2;
-  const primarySize = Math.min(dimensions.width, available);
+  const available = Math.max(1, (horizontal ? footprint.w : footprint.h) - inset * 2);
+  const availableDepth = Math.max(1, (horizontal ? footprint.h : footprint.w) - inset * 2);
+  const primarySize = clamp(dimensions.width, 1, available);
+  const depth = clamp(dimensions.depth, 1, availableDepth);
   const offset = definition.frontageOffset * Math.max(0, (available - primarySize) / 2);
   let bounds;
 
@@ -263,14 +265,14 @@ function createFrontageModule(building, footprint, definition) {
     const x = footprint.x + footprint.w / 2 - primarySize / 2 + offset;
     const y = edge === "north"
       ? footprint.y + inset
-      : footprint.y + footprint.h - dimensions.depth - inset;
-    bounds = { x, y, w: primarySize, h: dimensions.depth };
+      : footprint.y + footprint.h - depth - inset;
+    bounds = { x, y, w: primarySize, h: depth };
   } else {
     const y = footprint.y + footprint.h / 2 - primarySize / 2 + offset;
     const x = edge === "west"
       ? footprint.x + inset
-      : footprint.x + footprint.w - dimensions.depth - inset;
-    bounds = { x, y, w: dimensions.depth, h: primarySize };
+      : footprint.x + footprint.w - depth - inset;
+    bounds = { x, y, w: depth, h: primarySize };
   }
 
   return {
@@ -481,7 +483,11 @@ function createChurchIdentity(building, grid, frontage) {
       { variant: "church" }
     )
   ];
-  const markerSize = clamp(Math.min(grid.cellWidth, grid.cellHeight) * 0.18, 8, 16);
+  const markerSize = Math.max(1, Math.min(
+    clamp(Math.min(grid.cellWidth, grid.cellHeight) * 0.18, 8, 16),
+    Math.max(1, grid.bounds.w - 4),
+    Math.max(1, grid.bounds.h - 4)
+  ));
   const markerY = frontage
     ? frontage.bounds.y - markerSize - 3
     : grid.bounds.y + grid.bounds.h * 0.72;
