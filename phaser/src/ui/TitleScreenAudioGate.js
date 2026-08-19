@@ -12,22 +12,26 @@ export class TitleScreenAudioGate {
     this.window = windowRef;
     this.gate = null;
     this.keydownBound = false;
-    this.creditsBound = false;
+    this.creditsObserver = null;
     this.boundKeydown = event => this.handleKeydown(event);
     this.boundUnlock = event => this.unlock(event);
-    this.boundCredits = () => this.refreshCredits();
   }
 
   get theme() {
     return this.window.NBD_MAIN_MENU_THEME || null;
   }
 
+  get titleScreen() {
+    return this.window.NBD_TITLE_SCREEN || null;
+  }
+
   async present() {
     const root = this.document.getElementById("viceblood-title-screen");
     if (!root) return false;
 
-    this.installCreditsHook(root);
+    this.installCreditsObserver(root);
     this.disposeGate();
+    if (this.titleScreen) this.titleScreen.inputLocked = true;
 
     const gate = this.document.createElement("button");
     gate.id = AUDIO_GATE_ID;
@@ -97,6 +101,7 @@ export class TitleScreenAudioGate {
     }
 
     this.window.NBD_TITLE_AUDIO_GATE_STATE = "playing";
+    if (this.titleScreen) this.titleScreen.inputLocked = false;
     this.disposeGate();
   }
 
@@ -105,12 +110,12 @@ export class TitleScreenAudioGate {
     this.theme?.fadeOut?.(durationMs);
   }
 
-  installCreditsHook(root) {
-    if (this.creditsBound) return;
-    const creditsButton = root.querySelector('[data-title-action="credits"]');
-    if (!creditsButton) return;
-    creditsButton.addEventListener("click", this.boundCredits);
-    this.creditsBound = true;
+  installCreditsObserver(root) {
+    if (this.creditsObserver || typeof this.window.MutationObserver !== "function") return;
+    this.creditsObserver = new this.window.MutationObserver(() => {
+      if (root.dataset.panel === "credits") this.refreshCredits();
+    });
+    this.creditsObserver.observe(root, { attributes: true, attributeFilter: ["data-panel"] });
   }
 
   refreshCredits() {
@@ -136,6 +141,8 @@ export class TitleScreenAudioGate {
 
   dispose() {
     this.disposeGate();
+    this.creditsObserver?.disconnect?.();
+    this.creditsObserver = null;
   }
 }
 
