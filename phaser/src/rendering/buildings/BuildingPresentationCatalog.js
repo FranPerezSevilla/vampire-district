@@ -45,11 +45,11 @@ export function scaleBuildingColor(color, factor = 1) {
   });
 }
 
-export const BUILDING_PRESENTATION_VERSION = 2;
+export const BUILDING_PRESENTATION_VERSION = 3;
 
 export const MODULE_KINDS = deepFreeze({
   FOUNDATION: "foundation",
-  ROOF_CELL: "roof-cell",
+  ROOF_MASS: "roof-mass",
   PARAPET_EDGE: "parapet-edge",
   FRONTAGE: "frontage",
   SKYLIGHT: "skylight",
@@ -91,10 +91,12 @@ export const FRONTAGE_KINDS = deepFreeze({
   CHURCH: "church"
 });
 
+// The normal city profile deliberately caps clutter. A roof should read as one
+// silhouette, one hero prop, and at most one supporting detail at gameplay zoom.
 export const DETAIL_LEVELS = deepFreeze({
-  minimal: { propDensity: 0.45, maximumProps: 2 },
-  standard: { propDensity: 0.72, maximumProps: 4 },
-  rich: { propDensity: 1, maximumProps: 6 }
+  minimal: { propDensity: 0.55, maximumProps: 1 },
+  standard: { propDensity: 0.82, maximumProps: 3 },
+  rich: { propDensity: 1, maximumProps: 4 }
 });
 
 export const LAYOUT_RECIPES = deepFreeze({
@@ -164,7 +166,8 @@ export const BUILDING_ARCHETYPES = deepFreeze({
     defaultLayout: "rectangle",
     layoutCandidates: ["rectangle", "rectangle", "rectangle", "rectangle", "l-shape", "t-shape", "stepped"],
     frontage: FRONTAGE_KINDS.GENERIC,
-    propPool: [MODULE_KINDS.SKYLIGHT, MODULE_KINDS.HVAC, MODULE_KINDS.VENT, MODULE_KINDS.HATCH],
+    signatureProps: [],
+    propPool: [MODULE_KINDS.HVAC, MODULE_KINDS.SKYLIGHT, MODULE_KINDS.HATCH, MODULE_KINDS.VENT],
     labelColor: 0xefe6ff,
     accent: 0x77809c,
     accentSoft: 0x444a61
@@ -174,8 +177,9 @@ export const BUILDING_ARCHETYPES = deepFreeze({
     defaultLayout: "rectangle",
     layoutCandidates: ["rectangle"],
     frontage: FRONTAGE_KINDS.POLICE,
-    propPool: [MODULE_KINDS.HVAC, MODULE_KINDS.HATCH, MODULE_KINDS.VENT],
-    requiredIdentity: [MODULE_KINDS.ANTENNA, MODULE_KINDS.ACCENT_STRIP],
+    signatureProps: [MODULE_KINDS.ANTENNA, MODULE_KINDS.HVAC],
+    propPool: [MODULE_KINDS.HATCH, MODULE_KINDS.VENT],
+    requiredIdentity: [MODULE_KINDS.ACCENT_STRIP],
     labelColor: 0xc9ddff,
     accent: 0x4b82df,
     accentSoft: 0x263f72
@@ -185,7 +189,8 @@ export const BUILDING_ARCHETYPES = deepFreeze({
     defaultLayout: "irregular",
     layoutCandidates: ["irregular", "l-shape", "stepped"],
     frontage: FRONTAGE_KINDS.CLUB,
-    propPool: [MODULE_KINDS.SKYLIGHT, MODULE_KINDS.HVAC, MODULE_KINDS.VENT],
+    signatureProps: [MODULE_KINDS.SKYLIGHT],
+    propPool: [MODULE_KINDS.HVAC, MODULE_KINDS.VENT],
     requiredIdentity: [MODULE_KINDS.ACCENT_STRIP],
     labelColor: 0xffc2f4,
     accent: 0xd84bbb,
@@ -196,7 +201,8 @@ export const BUILDING_ARCHETYPES = deepFreeze({
     defaultLayout: "cross",
     layoutCandidates: ["cross", "t-shape"],
     frontage: FRONTAGE_KINDS.CHURCH,
-    propPool: [MODULE_KINDS.VENT, MODULE_KINDS.HATCH],
+    signatureProps: [],
+    propPool: [MODULE_KINDS.HATCH, MODULE_KINDS.VENT],
     requiredIdentity: [MODULE_KINDS.ROOF_RIDGE, MODULE_KINDS.CROSS_MARKER],
     labelColor: 0xffedbd,
     accent: 0xd6ad55,
@@ -293,18 +299,21 @@ export function resolveBuildingPalette(building = {}, archetypeId = "generic") {
   const accent = archetype.accent;
 
   return {
-    foundation: mixBuildingColor(base, 0x11131d, 0.28),
-    foundationShadow: mixBuildingColor(base, 0x05060a, 0.58),
-    roof: mixBuildingColor(base, 0x181a24, 0.22),
-    roofRaised: mixBuildingColor(base, 0x353849, 0.16),
-    roofShade: mixBuildingColor(base, 0x080910, 0.46),
-    parapetLight: mixBuildingColor(authoredTrim, 0xb7b7c1, 0.18),
-    parapetDark: mixBuildingColor(authoredTrim, 0x101018, 0.42),
-    seam: mixBuildingColor(authoredTrim, base, 0.72),
-    prop: mixBuildingColor(authoredTrim, 0x8d919d, 0.24),
-    propDark: mixBuildingColor(authoredTrim, 0x101118, 0.52),
-    glass: mixBuildingColor(archetypeId === "club" ? accent : 0x35558d, 0x10131d, 0.34),
-    glassHighlight: mixBuildingColor(archetypeId === "club" ? accent : 0x6e96dd, 0xffffff, 0.12),
+    foundation: mixBuildingColor(base, 0x10121a, 0.46),
+    foundationShadow: mixBuildingColor(base, 0x05060a, 0.72),
+    foundationSeam: mixBuildingColor(authoredTrim, base, 0.76),
+    roof: mixBuildingColor(base, 0x3c3e4c, 0.2),
+    roofShade: mixBuildingColor(base, 0x080910, 0.52),
+    roofShadow: mixBuildingColor(base, 0x030408, 0.78),
+    parapetLight: mixBuildingColor(authoredTrim, 0xd0ced8, 0.22),
+    parapetMid: mixBuildingColor(authoredTrim, base, 0.48),
+    parapetDark: mixBuildingColor(authoredTrim, 0x0a0b10, 0.56),
+    seam: mixBuildingColor(authoredTrim, base, 0.76),
+    prop: mixBuildingColor(authoredTrim, 0x9a9da7, 0.25),
+    propDark: mixBuildingColor(authoredTrim, 0x0b0c12, 0.58),
+    glass: mixBuildingColor(archetypeId === "club" ? accent : 0x35558d, 0x0c1018, 0.38),
+    glassHighlight: mixBuildingColor(archetypeId === "club" ? accent : 0x6e96dd, 0xffffff, 0.14),
+    canopy: mixBuildingColor(base, authoredTrim, 0.28),
     accent,
     accentSoft: archetype.accentSoft,
     label: archetype.labelColor,
