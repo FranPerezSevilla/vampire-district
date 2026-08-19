@@ -272,12 +272,11 @@ export class ModularCharacterView {
       this.lastAimDirection = normalizedDirection(aimDirection);
     }
 
-    if (moving) {
-      this.feetRotation = modularCharacterSnappedRotation(
-        this.lastMovementDirection,
-        this.feetRotation
-      );
-    }
+    const movementRotation = modularCharacterSnappedRotation(
+      this.lastMovementDirection,
+      this.feetRotation
+    );
+    if (moving || !aiming) this.feetRotation = movementRotation;
 
     const upperDirection = aiming ? this.lastAimDirection : this.lastMovementDirection;
     this.upperRotation = modularCharacterSnappedRotation(upperDirection, this.upperRotation);
