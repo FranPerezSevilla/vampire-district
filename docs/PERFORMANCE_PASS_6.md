@@ -2,6 +2,16 @@
 
 _State: measurement harness implemented on PR #55; optimization intentionally deferred until the browser capture identifies a repeatable winner._
 
+## Main sync checkpoint — 2026-08-19
+
+A fresh `main` check was performed before any further performance work, as required by the post-playtest backlog.
+
+- Current `main`: `dcc0d6996a16ff5b20c2148fdbf57a55ba5f5b45` (`fix: avoid local Phaser 404 on hosted builds (#59)`).
+- Current feature merge base with `main`: the same `dcc0d6996a16ff5b20c2148fdbf57a55ba5f5b45`.
+- `audio/playtest-p0` is therefore **0 commits behind `main`**. There is no newer `main` commit to merge or rebase in this checkpoint, so creating a synthetic no-op merge would add history without integrating content.
+- The previously imported finalized ViceBlood splash/main-menu work and hosted Phaser loader fix remain present on the feature branch.
+- This checkpoint intentionally changes no runtime behavior. The next allowed implementation step remains evidence-driven Performance Pass 6 capture/analysis after CI confirms this documentation head.
+
 ## Why this pass exists
 
 The runtime already exposes bounded wall-time samples through `window.NBD_RUNTIME_DIAGNOSTICS.snapshot({ force: true })`, including `slowestSystems`, but the previous performance passes still relied on a human opening DevTools and copying an ad-hoc snapshot. That is not reproducible enough to choose the next optimization safely.
