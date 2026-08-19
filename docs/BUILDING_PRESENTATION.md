@@ -22,7 +22,8 @@ ViceBlood buildings keep their authored `x`, `y`, `w`, and `h` as the sole colli
 - `buildings/BuildingPresentationPlanner.js`
   - pure deterministic planning with no Phaser dependency;
   - converts an authored footprint into roof cells, exposed parapet edges, frontage, rooftop props, and identity modules;
-  - preserves exact collision and visual footprint contracts.
+  - preserves exact collision and visual footprint contracts;
+  - clamps frontages and identity markers for unusually small authored footprints.
 - `buildings/BuildingPresentationRenderer.js`
   - Phaser Graphics dispatch only;
   - one small renderer per module kind;
@@ -123,6 +124,7 @@ The focused unit suite verifies:
 - safe layout fallback;
 - police, club, and church identity contracts;
 - rejection of structural kinds in authored rooftop prop lists;
+- renderability and containment for tiny authored footprints;
 - renderer operation without Phaser globals.
 
 When iterating visually, validate the Netlify preview at normal gameplay zoom. Module detail should remain chunky enough to support character readability; this is not a miniature architectural renderer.
