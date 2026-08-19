@@ -21,12 +21,16 @@ function createScene() {
     hunterSystem: { summary: () => "hunter" },
     propDamageSystem: { summary: () => "props" },
     aiStateSystem: { summary: () => "ai" },
-    interactionSystem: { snapshot: () => ({ open: false }) },
+    interactionSystem: { isOpen: false, snapshot: () => ({ open: false }) },
     statePublisher: { setMany: payload => payload }
   };
   scene.publishState = function publishState() {
-    const payload = {
-      zone: this.describeCurrentZone(),
+    const layerName = "Street";
+    const zone = this.describeCurrentZone();
+    const movementPrompt = "";
+    const interactionPrompt = "";
+    return this.statePublisher.setMany({
+      statusText: `${layerName} · ${zone}`,
       visibility: this.visibilityText(),
       mission: this.missionSystem.objectiveText(),
       npc: this.npcSystem.summary(),
@@ -41,17 +45,19 @@ function createScene() {
       hunter: this.hunterSystem.summary(),
       props: this.propDamageSystem.summary(),
       ai: this.aiStateSystem.summary(),
+      interactionPrompt: this.interactionSystem.isOpen ? "" : movementPrompt || interactionPrompt,
       menu: this.interactionSystem.snapshot()
-    };
-    return this.statePublisher.setMany(payload);
+    });
   };
   return scene;
 }
 
-test("publishState profiler measures only calls made by publishState and restores owners", () => {
+test("publishState profiler measures low-overhead phases only inside publishState and restores boundaries", () => {
   const scene = createScene();
   const originalPublishState = scene.publishState;
+  const originalVisibilityText = scene.visibilityText;
   const originalNpcSummary = scene.npcSystem.summary;
+  const originalInteractionSnapshot = scene.interactionSystem.snapshot;
   const originalSetMany = scene.statePublisher.setMany;
   const begin = [];
   const end = [];
@@ -66,27 +72,22 @@ test("publishState profiler measures only calls made by publishState and restore
   };
 
   const cleanup = installPublishStateInstrumentation(scene, diagnostics);
+
+  // Fine-grained summary methods are deliberately left untouched so the profiler
+  // does not add seventeen wrapper/Map operations to every published frame.
+  assert.equal(scene.npcSystem.summary, originalNpcSummary);
   scene.npcSystem.summary();
+  scene.visibilityText();
+  scene.interactionSystem.snapshot();
+  scene.statePublisher.setMany({ outside: true });
   assert.deepEqual(begin, []);
 
   scene.publishState();
   const expected = [
-    "PublishState.Zone",
-    "PublishState.Visibility",
-    "PublishState.Mission",
-    "PublishState.Npc",
-    "PublishState.Hunger",
-    "PublishState.Powers",
-    "PublishState.Exposure",
-    "PublishState.Heat",
-    "PublishState.WantedLevel",
-    "PublishState.Witness",
-    "PublishState.Evidence",
-    "PublishState.Police",
-    "PublishState.Hunter",
-    "PublishState.Props",
-    "PublishState.Ai",
+    "PublishState.Prepare",
+    "PublishState.Summaries",
     "PublishState.InteractionMenu",
+    "PublishState.PayloadTail",
     "PublishState.RegistryCommit"
   ];
   assert.deepEqual(begin, expected);
@@ -95,16 +96,24 @@ test("publishState profiler measures only calls made by publishState and restore
 
   cleanup();
   assert.equal(scene.publishState, originalPublishState);
+  assert.equal(scene.visibilityText, originalVisibilityText);
   assert.equal(scene.npcSystem.summary, originalNpcSummary);
+  assert.equal(scene.interactionSystem.snapshot, originalInteractionSnapshot);
   assert.equal(scene.statePublisher.setMany, originalSetMany);
 });
 
 test("browser performance capture keeps publishState as a parallel ranking", () => {
   const runtime = source("phaser/src/runtime/GameplayRuntime.js");
   const capture = source("tests/browser/runtime-performance-capture.spec.js");
+  const instrumentation = source("phaser/src/runtime/PublishStateInstrumentation.js");
 
   assert.match(runtime, /installPublishStateInstrumentation/);
   assert.match(runtime, /removePublishStateInstrumentation/);
+  assert.match(instrumentation, /PublishState\.Prepare/);
+  assert.match(instrumentation, /PublishState\.Summaries/);
+  assert.match(instrumentation, /PublishState\.InteractionMenu/);
+  assert.match(instrumentation, /PublishState\.PayloadTail/);
+  assert.match(instrumentation, /PublishState\.RegistryCommit/);
   assert.match(capture, /PUBLISH_STATE_SYSTEM_PREFIX\s*=\s*"PublishState\."/);
   assert.match(capture, /publishStateSystems/);
   assert.match(capture, /publishState:\s*summarizeRanking/);
