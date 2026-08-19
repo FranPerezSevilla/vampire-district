@@ -210,7 +210,17 @@ function createModuleGraphicsProxy(graphics, module, plan) {
       };
       let nextWidth = Number(width);
       let nextAlpha = Number(alpha);
-      if (Number(color) === plan.palette.parapetLight) {
+      const architecturalDarkLine = Number(color) === plan.palette.parapetDark
+        && (
+          module.kind === MODULE_KINDS.PARAPET_EDGE
+            || module.kind === MODULE_KINDS.FOUNDATION
+            || module.kind === MODULE_KINDS.ROOF_ANNEX
+        );
+      if (architecturalDarkLine) {
+        const parapetEdge = module.kind === MODULE_KINDS.PARAPET_EDGE;
+        nextWidth = Math.min(parapetEdge ? 3 : 2, nextWidth);
+        nextAlpha = Math.min(parapetEdge ? 0.54 : 0.6, nextAlpha);
+      } else if (Number(color) === plan.palette.parapetLight) {
         nextWidth = Math.min(2, nextWidth);
         nextAlpha = Math.min(0.36, nextAlpha);
       } else if (Number(color) === plan.palette.wallHighlight) {
