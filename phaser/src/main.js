@@ -1,6 +1,7 @@
 import { WORLD } from "./data/balance.js";
 import { installDistrictGunfireHeatPolicy } from "./policies/DistrictGunfireHeatPolicy.js";
 import { installPlaytestSurfacePolicy } from "./policies/PlaytestSurfacePolicy.js";
+import { installTrafficContextualHornPolicy } from "./policies/TrafficContextualHornPolicy.js";
 import { installTrafficPlaytestPolicy } from "./policies/TrafficPlaytestPolicy.js";
 import { installVampireVeilPolicy } from "./policies/VampireVeilPolicy.js";
 import { BootScene } from "./scenes/BootScene.js";
@@ -71,6 +72,7 @@ patchReadableCanvasText();
 installVampireVeilPolicy();
 installPlaytestSurfacePolicy();
 installTrafficPlaytestPolicy();
+installTrafficContextualHornPolicy();
 installDistrictGunfireHeatPolicy();
 
 const config = {

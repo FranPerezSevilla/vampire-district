@@ -79,9 +79,9 @@ Civilian cars approaching an intersection now negotiate a bounded explicit reser
 
 ## 3. Contextual civilian horn use
 
-**State: queued.**
+**State: implemented on PR #55; pending grouped in-game/audio validation.**
 
-The existing `vehicleHorn` family should become part of traffic behaviour rather than being exclusive to player input.
+The existing authentic `vehicleHorn` family is now part of civilian traffic behaviour as a restrained response to meaningful blockage rather than a random ambience source.
 
 ### Requirements
 
@@ -90,6 +90,20 @@ The existing `vehicleHorn` family should become part of traffic behaviour rather
 - Use cooldowns and probability/driver variation so a queue does not become a continuous wall of horns.
 - A horn does not grant right-of-way, create Heat, or force another vehicle to move.
 - Playback remains spatial and uses the existing authentic `vehicleHorn` variants.
+
+### Implementation
+
+- `TrafficContextualHornPolicy` wraps the already-finalized local traffic update, so braking, hard separation and junction reservation remain the only movement authorities. Horn playback never writes speed, gap or reservation ownership.
+- Only sustained full stops caused by `traffic`, `traffic-separation`, `junction-yield`, `junction-reserved` or a blocking player vehicle are eligible. Free-flowing traffic, catch-up, junction-priority and player-on-foot reactions stay silent.
+- Driver temperament is deterministic per traffic token: roughly **46%** of civilian drivers are horn-capable. Their first frustration delay varies from **1.85–3.10 s** and their repeat cooldown varies from **7.2–12.0 s**.
+- A global **1.15 s** minimum gap between civilian horns prevents a stopped queue from stacking overlapping horn calls in one update burst.
+- Playback reuses the accepted `vehicleHorn` decoded sample buffers and variant cursor, applies distance attenuation out to **520 units**, stereo panning when WebAudio provides it, and a restrained traffic-only gain scale. Inaudible/out-of-range vehicles do not consume a horn cooldown.
+- The city emits the existing `vehicle:horn` event with `source: "traffic"` and `heat: 0` only after an authentic horn sample actually starts. If the sample is still loading, the driver retries later instead of substituting random ambient noise.
+- Traffic snapshots expose cumulative contextual horn count, horn-eligible/cooling-down vehicle counts and the last horn token/reason for grouped playtest diagnostics.
+
+### Regression coverage
+
+`tests/traffic-contextual-horn.test.js` verifies obstruction-only eligibility, deterministic driver variation, sustained-stop/cooldown requirements, distance attenuation/stereo pan and integration after the existing traffic authority without any Heat or right-of-way mutation.
 
 ### Acceptance
 
@@ -122,7 +136,7 @@ Normal police foot patrols must not wander longitudinally through vehicle lanes.
 
 1. **Done:** add bounded local civilian-traffic separation/collision avoidance.
 2. **Done:** add explicit junction reservation/priority and deadlock recovery.
-3. Add contextual civilian horn reactions to meaningful blockage.
+3. **Done:** add contextual civilian horn reactions to meaningful blockage.
 4. Constrain non-alert foot-police patrol/navigation to pedestrian-valid routes.
 5. Run the final browser `slowestSystems` capture in a hitch-prone area; optimize only the repeatable winner if necessary.
 6. Run one grouped city-flow playtest covering traffic queues, four-way junctions, horns, police sidewalks and frame-time impact.
