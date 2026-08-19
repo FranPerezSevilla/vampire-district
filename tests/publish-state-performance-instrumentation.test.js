@@ -61,6 +61,7 @@ test("publishState profiler measures coarse phases and summary groups only insid
   const originalNpcSummary = scene.npcSystem.summary;
   const originalExposureSummary = scene.exposureSystem.summary;
   const originalPoliceSummary = scene.policeSystem.summary;
+  const originalPropSummary = scene.propDamageSystem.summary;
   const originalAiSummary = scene.aiStateSystem.summary;
   const originalInteractionSnapshot = scene.interactionSystem.snapshot;
   const originalSetMany = scene.statePublisher.setMany;
@@ -78,16 +79,18 @@ test("publishState profiler measures coarse phases and summary groups only insid
 
   const cleanup = installPublishStateInstrumentation(scene, diagnostics);
 
-  // Individual leaf summaries remain untouched. Only three summary-group boundaries
-  // are wrapped after the grouped browser artifact selected Summaries decisively.
+  // Individual leaf summaries remain untouched. The selected ResponseAI group is
+  // split with exactly one extra existing boundary at propDamageSystem.summary().
   assert.equal(scene.npcSystem.summary, originalNpcSummary);
   assert.notEqual(scene.exposureSystem.summary, originalExposureSummary);
   assert.notEqual(scene.policeSystem.summary, originalPoliceSummary);
+  assert.notEqual(scene.propDamageSystem.summary, originalPropSummary);
   assert.notEqual(scene.aiStateSystem.summary, originalAiSummary);
 
   scene.npcSystem.summary();
   scene.exposureSystem.summary();
   scene.policeSystem.summary();
+  scene.propDamageSystem.summary();
   scene.aiStateSystem.summary();
   scene.visibilityText();
   scene.interactionSystem.snapshot();
@@ -100,7 +103,8 @@ test("publishState profiler measures coarse phases and summary groups only insid
     "PublishState.Summaries",
     "PublishState.Summary.MissionActors",
     "PublishState.Summary.PressureEvidence",
-    "PublishState.Summary.ResponseAI",
+    "PublishState.Summary.ResponseAI.Security",
+    "PublishState.Summary.ResponseAI.WorldAI",
     "PublishState.Summary.Tail",
     "PublishState.InteractionMenu",
     "PublishState.PayloadTail",
@@ -110,7 +114,8 @@ test("publishState profiler measures coarse phases and summary groups only insid
     "PublishState.Prepare",
     "PublishState.Summary.MissionActors",
     "PublishState.Summary.PressureEvidence",
-    "PublishState.Summary.ResponseAI",
+    "PublishState.Summary.ResponseAI.Security",
+    "PublishState.Summary.ResponseAI.WorldAI",
     "PublishState.Summary.Tail",
     "PublishState.Summaries",
     "PublishState.InteractionMenu",
@@ -127,6 +132,7 @@ test("publishState profiler measures coarse phases and summary groups only insid
   assert.equal(scene.npcSystem.summary, originalNpcSummary);
   assert.equal(scene.exposureSystem.summary, originalExposureSummary);
   assert.equal(scene.policeSystem.summary, originalPoliceSummary);
+  assert.equal(scene.propDamageSystem.summary, originalPropSummary);
   assert.equal(scene.aiStateSystem.summary, originalAiSummary);
   assert.equal(scene.interactionSystem.snapshot, originalInteractionSnapshot);
   assert.equal(scene.statePublisher.setMany, originalSetMany);
@@ -146,7 +152,8 @@ test("browser performance capture keeps grouped publishState and summary drill-d
   assert.match(instrumentation, /PublishState\.RegistryCommit/);
   assert.match(instrumentation, /PublishState\.Summary\.MissionActors/);
   assert.match(instrumentation, /PublishState\.Summary\.PressureEvidence/);
-  assert.match(instrumentation, /PublishState\.Summary\.ResponseAI/);
+  assert.match(instrumentation, /PublishState\.Summary\.ResponseAI\.Security/);
+  assert.match(instrumentation, /PublishState\.Summary\.ResponseAI\.WorldAI/);
   assert.match(instrumentation, /PublishState\.Summary\.Tail/);
   assert.match(capture, /PUBLISH_STATE_PHASE_NAMES/);
   assert.match(capture, /PUBLISH_STATE_SUMMARY_PREFIX\s*=\s*"PublishState\.Summary\."/);
