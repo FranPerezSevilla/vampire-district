@@ -2,6 +2,58 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-19 — M2.1 shared physical volume primitives implemented
+
+### Scope
+
+- Active milestone: M2
+- Task: establish family-neutral renderer-only physical volume primitives before redesigning individual rooftop prop families
+- Authoritative files: shared volume primitive module, public polish compositor and focused building-shadow tests
+- Focused tests: `tests/building-presentation.test.js` and `tests/building-visual-shadow.test.js`
+- Acceptance criteria: distinct top, south/east or lower-body face, and contact shadow; planned module bounds remain unchanged
+- Explicit non-goals: skylight glazing, HVAC fans, hatch hardware, antenna supports, annex detail, medical/religious marker redesign and surface materials
+
+### Implemented
+
+- added `BuildingPresentationVolumePrimitives.js` with no Phaser globals;
+- added a shared raised-rectangle geometry and painter:
+  - unchanged planned bounds;
+  - renderer-only offset contact shadow;
+  - top plane;
+  - south face;
+  - east face;
+  - restrained north/west highlight and top/side seam;
+- added a shared cylindrical geometry and painter:
+  - unchanged planned bounds;
+  - lower-body offset that creates a readable south-facing crescent;
+  - top circle;
+  - contact shadow;
+  - restrained highlight and rim;
+- kept material colors supplied by the caller so profiles remain data-driven;
+- routed the hatch and vent through the shared primitives as minimal proving fixtures;
+- retained the public polish proxy so their contact shadows still receive the existing layered M1 treatment;
+- added direct geometry/painter contracts for immutability and top/side/contact separation;
+- added an integration contract proving the hatch keeps its authored bounds while gaining layered shadow and distinct physical faces.
+
+### Validation
+
+- implementation and focused contracts are committed;
+- GitHub focused/global unit validation is pending on the consolidated documentation head;
+- Netlify deploy preview is pending on the consolidated documentation head;
+- status remains `M2.1-automated-validation-pending`, preventing the hourly agent from reimplementing the same task.
+
+### Risks
+
+- hatch and vent are only proving fixtures; their family-specific hardware/detail remains intentionally deferred to M2.3;
+- the shared primitive depth may need later profile-scale tuning, but geometry remains renderer-only and cannot affect collision;
+- skylights remain visually flat until M2.2.
+
+### Next
+
+If focused validation and Netlify are green, close M2.1 and begin M2.2: physical skylight frame, glazing depth and directional highlight. Do not request intermediate user review.
+
+---
+
 ## 2026-08-19 — Hourly autonomous scheduler installed on main
 
 ### Completed
