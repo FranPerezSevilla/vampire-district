@@ -1,6 +1,35 @@
 # Performance Pass 6 — repeatable browser hotspot capture
 
-_State: outer hotspot identified; `GameplayRuntimeCore` now receives measurement-only internal phase instrumentation before any optimization._
+_State: `Core.Finalize` is the repeatable internal hotspot; finalize-only drill-down instrumentation is now in place before any optimization._
+
+## Core.Finalize drill-down checkpoint — 2026-08-19
+
+The first internal-core capture is decisive enough to narrow measurement one level further, but it still does **not** authorize an optimization.
+
+- Workflow `32289072702` completed the performance-bearing browser shard successfully and produced `runtime-performance-capture-shard-3`.
+- Artifact id: `9379073165`.
+- Archive digest: `sha256:5a171ed22c4ed115cfa9ca546d10f8a619e29508a077468b10fbefc0baa45e76`.
+- The outer ranking still selects `GameplayRuntimeCore` in **24/24** snapshots and all three phases, with mean reported average **5.071 ms** and peak recent max **12.9 ms** on this run.
+- The internal `core` ranking selects `Core.Finalize` in **23/24** snapshots (**0.958 share**) and in all three phases. `Core.Finalize` reports mean average **2.477 ms** and peak recent max **6.2 ms**.
+- `Core.WorldState` wins the remaining single snapshot and reports mean average **1.679 ms** / peak recent max **4.1 ms**. Every other `Core.*` bucket is below **0.25 ms mean** on this capture.
+
+Because `Core.Finalize` is still an orchestration bucket, this increment drills down only that path. No gameplay, AI, traffic, police, audio, density, simulation order or rendering semantics are deliberately changed.
+
+The finalize family now exposes seven bounded measurement labels:
+
+- `Finalize.MovementNoise` — the existing movement-noise update;
+- `Finalize.UxGuidance` — the existing UX-guidance update;
+- `Finalize.Camera` — cinematic ownership check plus layer-camera update;
+- `Finalize.Markers` — outskirts presentation, objective marker and prompt marker;
+- `Finalize.Diagnostics` — frame accounting plus diagnostics snapshot;
+- `Finalize.StatePublisher` — performance/runtime diagnostics publication into the state publisher;
+- `Finalize.PublishState` — final scene state publication.
+
+These labels reuse `RuntimeDiagnostics.beginSystem/endSystem`, therefore retain the existing **1-in-6 sampling stride** and bounded sample history. The existing outer ranking and `core` ranking remain explicit and uncontaminated; the persisted performance JSON now adds a third parallel `finalize` ranking using only `Finalize.*` timings.
+
+The workflow-level browser boot job for `32289072702` was cancelled while installing Chromium and never entered a product test step. Unit tests, City Compiler, Foundry, browser campaign and all three browser-systems shards completed successfully, including the shard that produced the performance artifact. This is treated as transient infrastructure rather than a product regression.
+
+**Decision gate:** consume the next successful artifact and require a repeatable `Finalize.*` winner before touching behavior. If the winning label is still a broad orchestration bucket, deepen only that label. Any actual optimization remains a separate later increment with a comparable before/after capture.
 
 ## Internal core instrumentation checkpoint — 2026-08-19
 
@@ -83,9 +112,10 @@ The payload contains:
 - outer top-system win count and share across all snapshots;
 - outer per-system mean of the runtime-reported average wall time and peak recent maximum;
 - outer per-phase winner, mean frame time and peak recent frame time;
-- a parallel `core` object with the same winner/system/phase structure for `Core.*` child timings.
+- a parallel `core` object with the same winner/system/phase structure for `Core.*` child timings;
+- a parallel `finalize` object with the same structure for `Finalize.*` child timings.
 
-The test does **not** impose an FPS threshold and does not claim an FPS improvement. Its regression contract is observational: diagnostics must exist, all three phases must complete, at least four named outer systems and four internal core phases must have timing data, and both rankings must produce a winner without page errors.
+The test does **not** impose an FPS threshold and does not claim an FPS improvement. Its regression contract is observational: diagnostics must exist, all three phases must complete, at least four named outer systems, four internal core phases and four finalize substeps must have timing data, and all three rankings must produce a winner without page errors.
 
 ## Commands and CI
 
@@ -101,6 +131,7 @@ Do not optimize from intuition. Use durable browser capture evidence and confirm
 
 - If a concrete outer pipeline such as `TrafficPipeline`, `PedestrianSystem`, `StreamingPipeline`, `MotorizedPoliceSystem` or `TerritoryRuntimeSystem` is the stable winner, the next pass may optimize that owner only.
 - If `GameplayRuntimeCore` wins consistently, require the `core` child ranking and identify a repeatable `Core.*` winner first; do not guess which child subsystem is responsible.
-- If either ranking is unstable, extend/repeat measurement before modifying gameplay behavior.
+- If `Core.Finalize` wins consistently, require the `finalize` child ranking and identify a repeatable `Finalize.*` winner before any optimization.
+- If any ranking is unstable, extend/repeat measurement before modifying gameplay behavior.
 
-The internal instrumentation added here remains **measurement only**. The next code optimization is a separate increment so before/after evidence remains attributable.
+The finalize drill-down added here remains **measurement only**. The next code optimization is a separate increment so before/after evidence remains attributable.
