@@ -204,6 +204,22 @@ test("all catalog recipes have internally consistent masks", () => {
   }
 });
 
+test("tiny authored footprints still produce contained, renderable modules", () => {
+  const source = building({
+    id: "tiny-explicit-club",
+    x: 3,
+    y: 7,
+    w: 8,
+    h: 8,
+    presentation: { archetype: "club", frontageEdge: "east" }
+  });
+  const plan = createBuildingPresentationPlan(source);
+  for (const module of plan.modules) {
+    assert.equal(moduleFitsBuildingFootprint(module, plan.collisionFootprint), true, module.id);
+  }
+  assert.doesNotThrow(() => renderBuildingPresentation(new GraphicsRecorder(), plan));
+});
+
 test("runtime drawing caches deterministic plans per authored building and option set", () => {
   const source = building({ id: "cached-building" });
   const first = drawBuildingPresentation(new GraphicsRecorder(), source, { detailLevel: "minimal" });
