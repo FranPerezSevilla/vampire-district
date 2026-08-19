@@ -113,9 +113,9 @@ The existing authentic `vehicleHorn` family is now part of civilian traffic beha
 
 ## 4. Foot police patrol only on pedestrian-valid routes
 
-**State: queued.**
+**State: implemented on PR #55; pending grouped in-game validation.**
 
-Normal police foot patrols must not wander longitudinally through vehicle lanes. Their patrol/navigation authority should use sidewalks and legitimate pedestrian crossings just like a believable foot patrol.
+Normal police foot patrols now use pedestrian-valid route authority rather than treating generic street navigation points as a fallback. Direct pursuit/combat remains deliberately unrestricted, while officers that lose the player recover back onto pedestrian navigation before resuming search/patrol behavior.
 
 ### Requirements
 
@@ -124,6 +124,19 @@ Normal police foot patrols must not wander longitudinally through vehicle lanes.
 - Spawning/reacquisition must prefer pedestrian-valid positions rather than the centre of a traffic lane.
 - Active pursuit/combat may temporarily leave the sidewalk when necessary to chase or engage the player; this is an escalation exception, not patrol behaviour.
 - After losing the target, officers return to pedestrian-valid navigation instead of continuing to wander down the road.
+
+### Implementation
+
+- `FootPolicePedestrianPolicy` replaces the normal district patrol route fallback with points sourced only from `pedestrianRoutes` and verified through `pointOnPedestrianSurface()`. If a district has no local loop, the nearest available pedestrian-route authority is used instead of raw road navigation.
+- Foot-response spawn candidates are validated after the existing response-distance selection. Any road-centre result or formation offset that leaves pedestrian geometry is snapped to the nearest valid pedestrian patrol point before the officer enters simulation.
+- Normal `patrol`, `search` and Heat-investigation destinations are pedestrianized. Search/Heat targets keep their original semantic kind and timing, but their movement destination is projected onto the officer's pedestrian patrol route rather than the roadway coordinate itself.
+- Direct `player` targets remain untouched. Armed engagement and visible pursuit can therefore cross a street or enter a road when necessary; motorized officers deployed beside a disabled cruiser retain the same active-response exception.
+- The policy records whether a cop was actively chasing before the base target update. If visual pursuit ends while the officer is off pedestrian geometry, the next authoritative target becomes `pedestrian-return` to the nearest valid route point. Only after reaching pedestrian geometry does ordinary search/patrol navigation resume.
+- Response retirement remains unchanged: a temporary unit that is explicitly withdrawing may use its existing city exit target instead of being trapped by patrol-surface rules.
+
+### Regression coverage
+
+`tests/foot-police-pedestrian-policy.test.js` verifies pedestrian-only route authority, pedestrian-safe foot-response spawn selection, explicit road-to-pedestrian recovery after losing pursuit, pedestrianized search continuation and the chase exception that leaves a visible player target on the roadway untouched. Existing `urban-witness-network` coverage continues to assert that foot-patrol loops come from continuous pedestrian routes.
 
 ### Acceptance
 
@@ -137,6 +150,6 @@ Normal police foot patrols must not wander longitudinally through vehicle lanes.
 1. **Done:** add bounded local civilian-traffic separation/collision avoidance.
 2. **Done:** add explicit junction reservation/priority and deadlock recovery.
 3. **Done:** add contextual civilian horn reactions to meaningful blockage.
-4. Constrain non-alert foot-police patrol/navigation to pedestrian-valid routes.
+4. **Done:** constrain non-alert foot-police patrol/navigation to pedestrian-valid routes.
 5. Run the final browser `slowestSystems` capture in a hitch-prone area; optimize only the repeatable winner if necessary.
 6. Run one grouped city-flow playtest covering traffic queues, four-way junctions, horns, police sidewalks and frame-time impact.
