@@ -17,7 +17,7 @@ const RESOLUTION_PRESETS = Object.freeze({
   qhd: Object.freeze({ displayWidth: 1440, renderScale: 2.25 }),
   ultra: Object.freeze({ displayWidth: 1920, renderScale: 3 })
 });
-const MAIN_MENU_THEME_URL = new URL("../assets/audio/music/main-menu-theme-01.m4a", import.meta.url).href;
+const MAIN_MENU_THEME_URL = new URL("../assets/audio/music/main-menu-theme-01.mp3", import.meta.url).href;
 const MAIN_MENU_THEME_VOLUME = 0.28;
 const MAIN_MENU_THEME_FADE_MS = 430;
 
