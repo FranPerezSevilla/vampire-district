@@ -6,7 +6,8 @@ const PHASE_REGISTRY_COMMIT = "PublishState.RegistryCommit";
 
 const SUMMARY_MISSION_ACTORS = "PublishState.Summary.MissionActors";
 const SUMMARY_PRESSURE_EVIDENCE = "PublishState.Summary.PressureEvidence";
-const SUMMARY_RESPONSE_AI = "PublishState.Summary.ResponseAI";
+const SUMMARY_RESPONSE_AI_SECURITY = "PublishState.Summary.ResponseAI.Security";
+const SUMMARY_RESPONSE_AI_WORLD = "PublishState.Summary.ResponseAI.WorldAI";
 const SUMMARY_TAIL = "PublishState.Summary.Tail";
 
 function profileBoundary(owner, method, { before = null, after = null } = {}, isActive, restorers) {
@@ -106,8 +107,8 @@ export function installPublishStateInstrumentation(scene, diagnostics) {
   );
 
   // The grouped artifact proved PublishState.Summaries is the only stable coarse
-  // winner. Deepen only that phase with three additional existing boundaries rather
-  // than returning to per-summary wrappers whose overhead dominated the leaf capture.
+  // winner. Deepen only that phase with existing method boundaries rather than
+  // returning to per-summary wrappers whose overhead dominated the leaf capture.
   profileBoundary(
     scene.exposureSystem,
     "summary",
@@ -118,7 +119,17 @@ export function installPublishStateInstrumentation(scene, diagnostics) {
   profileBoundary(
     scene.policeSystem,
     "summary",
-    { before: () => transitionSummaryPhase(SUMMARY_RESPONSE_AI) },
+    { before: () => transitionSummaryPhase(SUMMARY_RESPONSE_AI_SECURITY) },
+    isActive,
+    restorers
+  );
+  // The first durable summary-group artifact selected ResponseAI 24/24. Split only
+  // that broad group at the existing props boundary: Police+Hunter remain Security,
+  // while Props+AI become WorldAI. This adds one wrapper and no new gameplay work.
+  profileBoundary(
+    scene.propDamageSystem,
+    "summary",
+    { before: () => transitionSummaryPhase(SUMMARY_RESPONSE_AI_WORLD) },
     isActive,
     restorers
   );
