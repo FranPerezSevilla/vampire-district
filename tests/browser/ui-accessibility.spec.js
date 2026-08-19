@@ -7,37 +7,34 @@ test("main menu exposes the canonical controls and Escape owns the in-game pause
   await page.waitForFunction(() => Boolean(
     window.NBD_APP_READY
     && window.NBD_PHASER_GAME?.scene?.isActive?.("MainMenuScene")
+    && window.NBD_TITLE_SCREEN
   ));
 
-  const controlPanel = await page.evaluate(() => {
-    const menu = window.NBD_PHASER_GAME.scene.getScene("MainMenuScene");
-    const index = menu.menuRows.findIndex(row => row.id === "controls");
-    if (index < 0) return null;
-    menu.selectedIndex = index;
-    menu.activateSelection();
-    return {
-      panelMode: menu.panelMode,
-      title: menu.panelTitle?.text || "",
-      body: menu.panelBody?.text || ""
-    };
-  });
+  // The splash is the browser-audio gesture gate; a real key press lets the
+  // existing title flow reveal the DOM menu without bypassing production code.
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => window.NBD_TITLE_SCREEN_STATE?.state === "menu");
 
-  expect(controlPanel).not.toBeNull();
-  expect(controlPanel.panelMode).toBe("controls");
-  expect(controlPanel.title).toBe("CONTROLS");
-  expect(controlPanel.body).toContain("Mouse wheel  Change weapon");
-  expect(controlPanel.body).toContain("Hold right mouse  Feed / Drain");
-  expect(controlPanel.body).toContain("Blood Sense");
-  expect(controlPanel.body).toContain("Handbrake");
-  expect(controlPanel.body).toContain("Horn");
-  expect(controlPanel.body).toContain("Pause / back");
+  const controlsAction = page.locator('[data-title-action="controls"]');
+  await expect(controlsAction).toBeVisible();
+  await controlsAction.click();
+  await expect(page.locator("[data-title-drawer]")).toHaveAttribute("aria-hidden", "false");
+  await expect(page.locator("[data-title-drawer-title]")).toHaveText("CONTROLS");
+  const controlBody = page.locator("[data-title-drawer-body]");
+  await expect(controlBody).toContainText("Mouse wheel  Change weapon");
+  await expect(controlBody).toContainText("Hold right mouse  Feed / Drain");
+  await expect(controlBody).toContainText("Blood Sense");
+  await expect(controlBody).toContainText("Handbrake");
+  await expect(controlBody).toContainText("Horn");
+  await expect(controlBody).toContainText("Pause / back");
 
-  await page.evaluate(() => {
-    const menu = window.NBD_PHASER_GAME.scene.getScene("MainMenuScene");
-    menu.closePanel();
-    menu.finishNightTransition();
-  });
-  await page.waitForFunction(() => Boolean(window.NBD_PHASER_GAME?.scene?.isActive?.("UIScene")));
+  await page.keyboard.press("Escape");
+  await expect(page.locator("[data-title-drawer]")).toHaveAttribute("aria-hidden", "true");
+  await page.locator('[data-title-action="new-night"]').click();
+  await page.waitForFunction(() => Boolean(
+    window.NBD_TITLE_SCREEN_STATE?.state === "world"
+    && window.NBD_PHASER_GAME?.scene?.isActive?.("UIScene")
+  ));
 
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => !window.NBD_PHASER_GAME.scene.getScene("UIScene").introOpen);
