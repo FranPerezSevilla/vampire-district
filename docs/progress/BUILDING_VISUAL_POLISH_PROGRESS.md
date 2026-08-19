@@ -2,6 +2,36 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-19 — M1 automated validation complete; visual gate remains
+
+### Completed
+
+- fixed the final focused-test regression by muting the legacy parapet line state before the architectural parapet compositor draws it;
+- confirmed the public renderer no longer exposes the old six-pixel bright neutral frame recipe;
+- confirmed Netlify deploy preview is green for the implementation commit;
+- kept PR #63 in draft because M1.3 still requires normal-gameplay visual approval.
+
+### Validation
+
+- all building-presentation and building-shadow tests pass;
+- global unit result: **403 passed / 410 total**;
+- the seven failures are the same known unrelated expectations:
+  - two in `tests/urban-witness-network.test.js`;
+  - five in `tests/vehicle-exit-and-impact-buffer.test.js`;
+- no new building-focused failure remains;
+- Netlify preview: `https://deploy-preview-63--vampire-district.netlify.app`.
+
+### Risks
+
+- automated tests prove layering and regression contracts, not final aesthetic quality;
+- M1 must not be marked complete until representative gameplay captures are reviewed against the rubric.
+
+### Next
+
+Complete M1.3 with warehouse, industrial, police, church and mixed-context captures at normal gameplay zoom; approve M1 or perform one bounded correction pass.
+
+---
+
 ## 2026-08-19 — M1.1 and M1.2 implementation complete; M1.3 opened
 
 ### Scope
