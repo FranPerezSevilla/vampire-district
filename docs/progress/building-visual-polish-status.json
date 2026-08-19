@@ -1,14 +1,25 @@
 {
   "initiative": "building-visual-polish",
-  "version": 1,
+  "version": 2,
   "updatedAt": "2026-08-19",
   "branch": "agent/building-visual-poc",
   "pullRequest": 63,
+  "trackingIssue": 64,
   "state": "active",
+  "executionMode": "autonomous-hourly-final-gate",
+  "userValidation": "M6-final-only",
   "currentMilestone": "M1",
-  "currentTask": "M1.3-visual-validation",
-  "nextAction": "Validate layered shadows and architectural parapets in Netlify at normal gameplay zoom; capture representative profiles and record rubric scores.",
+  "currentTask": "M1.4-kill-legacy-footprint-frame",
+  "nextAction": "Wait for focused CI and Netlify on M1.4. If building-focused validation is green, mark M1 complete and begin M2.1 shared physical prop-volume primitives without requesting intermediate user review.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
+  "automation": {
+    "targetBranch": "agent/building-visual-poc",
+    "trackingIssue": 64,
+    "workflow": ".github/workflows/building-visual-polish-hourly.yml",
+    "schedule": "hourly",
+    "requiredSecret": "OPENAI_API_KEY",
+    "installedOnDefaultBranch": false
+  },
   "milestones": [
     { "id": "P0", "name": "modular proof of concept", "status": "complete" },
     { "id": "P1", "name": "fused silhouette pass", "status": "complete" },
@@ -17,12 +28,13 @@
     { "id": "M0", "name": "canonical direction and agent continuity", "status": "complete" },
     {
       "id": "M1",
-      "name": "architectural parapets and layered shadow language",
-      "status": "implementation-complete / visual-validation-pending",
+      "name": "architectural depth and removal of the legacy frame",
+      "status": "autonomous-in-progress",
       "tasks": [
         { "id": "M1.1", "name": "shared shadow primitives", "status": "complete" },
         { "id": "M1.2", "name": "architectural parapet primitive", "status": "complete" },
-        { "id": "M1.3", "name": "visual validation", "status": "in-progress" }
+        { "id": "M1.3", "name": "runtime audit of first parapet pass", "status": "complete" },
+        { "id": "M1.4", "name": "kill legacy footprint frame", "status": "implementation-complete / automated-validation-pending" }
       ]
     },
     { "id": "M2", "name": "physical rooftop props", "status": "planned" },
