@@ -27,11 +27,24 @@ export class NpcSystem extends NpcSystemCore {
     for (const npc of this.npcs) {
       const view = npc.characterView || npc.container?.__modularCharacterView;
       if (!view || npc.dead) continue;
+
+      const vx = Number(npc.vx) || 0;
+      const vy = Number(npc.vy) || 0;
+      const moving = Math.hypot(vx, vy) > 1.25;
+      const facingDirection = { x: Number(npc.dirX) || 0, y: Number(npc.dirY) || 0 };
+      const movementDirection = moving ? { x: vx, y: vy } : facingDirection;
+      const aiming = npc.type === NPC_TYPES.POLICE && Boolean(npc.chasingPlayer || npc.enemyAttack);
+      const player = this.scene.player;
+      const aimDirection = aiming && player
+        ? { x: player.x - npc.x, y: player.y - npc.y }
+        : facingDirection;
+
       view.update({
         timeMs,
-        direction: { x: npc.dirX, y: npc.dirY },
-        moving: Math.hypot(Number(npc.vx) || 0, Number(npc.vy) || 0) > 1.25,
-        aiming: npc.type === NPC_TYPES.POLICE && Boolean(npc.chasingPlayer || npc.enemyAttack)
+        movementDirection,
+        aimDirection,
+        moving,
+        aiming
       });
     }
   }
