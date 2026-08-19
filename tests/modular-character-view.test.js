@@ -36,6 +36,13 @@ test("facing hysteresis prevents jitter around an octant boundary", () => {
   closeTo(modularCharacterSnappedRotation(committedTurn, previous), Math.PI / 4);
 });
 
+test("movement and aim can resolve to independent octants", () => {
+  const feet = modularCharacterSnappedRotation({ x: 0, y: -1 });
+  const upper = modularCharacterSnappedRotation({ x: 1, y: 0 });
+  closeTo(feet, 0);
+  closeTo(upper, Math.PI / 2);
+});
+
 test("walk pose alternates hands and feet without moving the fixed core", () => {
   const pose = modularCharacterPose({ timeMs: 120, moving: true, phase: 0 });
   assert.notEqual(pose.feet.left.y, pose.feet.right.y);
