@@ -1,8 +1,7 @@
 const DEFAULT_DIRECTION = Object.freeze({ x: 0, y: -1 });
-const EIGHT_WAY_STEP = Math.PI / 4;
-const EIGHT_WAY_HALF_STEP = EIGHT_WAY_STEP / 2;
-
-export const MODULAR_CHARACTER_DIRECTION_HYSTERESIS = Math.PI * 8 / 180;
+const WEAPON_UNARMED = "unarmed";
+const WEAPON_PIPE = "iron_pipe";
+const WEAPON_PISTOL = "pistol";
 
 export const MODULAR_CHARACTER_STYLES = Object.freeze({
   civilian: Object.freeze({
@@ -19,8 +18,7 @@ export const MODULAR_CHARACTER_STYLES = Object.freeze({
     scale: 0.78,
     cap: false,
     collar: false,
-    badge: false,
-    weapon: false
+    badge: false
   }),
   police: Object.freeze({
     body: 0x263a58,
@@ -36,8 +34,7 @@ export const MODULAR_CHARACTER_STYLES = Object.freeze({
     scale: 0.78,
     cap: true,
     collar: false,
-    badge: true,
-    weapon: true
+    badge: true
   }),
   protagonist: Object.freeze({
     body: 0x1b1920,
@@ -53,8 +50,7 @@ export const MODULAR_CHARACTER_STYLES = Object.freeze({
     scale: 0.8,
     cap: false,
     collar: true,
-    badge: false,
-    weapon: true
+    badge: false
   })
 });
 
@@ -77,64 +73,94 @@ function wrapAngle(angle) {
   return value;
 }
 
-function angleDelta(from, to) {
-  return wrapAngle((Number(to) || 0) - (Number(from) || 0));
-}
-
 export function modularCharacterFacingRotation(direction = DEFAULT_DIRECTION) {
   const value = normalizedDirection(direction);
   // Character pieces are authored facing north (negative Y).
   return wrapAngle(Math.atan2(value.y, value.x) + Math.PI / 2);
 }
 
-export function modularCharacterSnappedRotation(
-  direction = DEFAULT_DIRECTION,
-  previousRotation = null,
-  hysteresis = MODULAR_CHARACTER_DIRECTION_HYSTERESIS
-) {
-  const raw = modularCharacterFacingRotation(direction);
-  const snapped = wrapAngle(Math.round(raw / EIGHT_WAY_STEP) * EIGHT_WAY_STEP);
-  if (!Number.isFinite(previousRotation)) return snapped;
-
-  const previous = wrapAngle(Math.round(previousRotation / EIGHT_WAY_STEP) * EIGHT_WAY_STEP);
-  const threshold = EIGHT_WAY_HALF_STEP + Math.max(0, Number(hysteresis) || 0);
-  return Math.abs(angleDelta(previous, raw)) <= threshold ? previous : snapped;
+function clamp01(value) {
+  return Math.max(0, Math.min(1, Number(value) || 0));
 }
 
 export function modularCharacterPose({
   timeMs = 0,
   moving = false,
-  aiming = false,
+  weaponId = WEAPON_UNARMED,
+  attacking = false,
+  attackProgress = 0,
+  attackSerial = 0,
   phase = 0
 } = {}) {
   const time = Math.max(0, Number(timeMs) || 0);
   const walk = moving ? Math.sin(time * 0.014 + phase) : 0;
-  const footStride = walk * 2.35;
-  const handSwing = walk * 1.35;
+  const footStride = walk * 2.45;
+  const handSwing = walk * 1.25;
+  const progress = clamp01(attackProgress);
+  const attackPulse = attacking ? Math.sin(progress * Math.PI) : 0;
 
+  // Feet are anchored directly underneath the torso origin. Their only local
+  // displacement is the gait itself; the whole feet root rotates with actual
+  // movement so the cadence reads identically in every world direction.
   const feet = {
-    left: { x: -3.6, y: 8.0 + footStride, rotation: -0.04 * walk },
-    right: { x: 3.6, y: 8.0 - footStride, rotation: 0.04 * walk }
+    left: { x: -2.6, y: 3.5 + footStride, rotation: -0.05 * walk },
+    right: { x: 2.6, y: 3.5 - footStride, rotation: 0.05 * walk }
   };
 
-  if (aiming) {
+  if (weaponId === WEAPON_PISTOL) {
+    const recoil = attackPulse * 1.35;
     return {
       hands: {
-        left: { x: -2.35, y: -6.2, rotation: -0.08 },
-        right: { x: 2.25, y: -7.2, rotation: 0.06 }
+        left: { x: -2.15, y: -5.8 + recoil, rotation: -0.06 },
+        right: { x: 2.15, y: -6.9 + recoil, rotation: 0.05 }
       },
       feet,
-      weaponVisible: true
+      pistolVisible: true,
+      pipeVisible: false,
+      attackKind: attacking ? "pistol" : null
+    };
+  }
+
+  if (weaponId === WEAPON_PIPE) {
+    const swingAngle = attacking ? -1.0 + progress * 2.0 : 0.22;
+    const swingRadius = attacking ? 5.0 : 0;
+    return {
+      hands: {
+        left: { x: -8.2, y: 2.0 - handSwing, rotation: -0.08 - walk * 0.04 },
+        right: {
+          x: attacking ? Math.sin(swingAngle) * swingRadius + 3.2 : 7.0,
+          y: attacking ? -Math.cos(swingAngle) * swingRadius - 0.2 : 0.4 + handSwing,
+          rotation: swingAngle
+        }
+      },
+      feet,
+      pistolVisible: false,
+      pipeVisible: true,
+      attackKind: attacking ? "pipe" : null
+    };
+  }
+
+  const rightPunch = Math.abs(Number(attackSerial) || 0) % 2 === 1;
+  const punchingSide = rightPunch ? "right" : "left";
+  const relaxed = {
+    left: { x: -8.3, y: 2.0 - handSwing, rotation: -0.08 - walk * 0.05 },
+    right: { x: 8.3, y: 2.0 + handSwing, rotation: 0.08 + walk * 0.05 }
+  };
+
+  if (attacking) {
+    relaxed[punchingSide] = {
+      x: punchingSide === "left" ? -2.4 : 2.4,
+      y: 0.2 - attackPulse * 8.4,
+      rotation: punchingSide === "left" ? -0.04 : 0.04
     };
   }
 
   return {
-    hands: {
-      left: { x: -8.5, y: 2.0 - handSwing, rotation: -0.08 - walk * 0.05 },
-      right: { x: 8.5, y: 2.0 + handSwing, rotation: 0.08 + walk * 0.05 }
-    },
+    hands: relaxed,
     feet,
-    weaponVisible: false
+    pistolVisible: false,
+    pipeVisible: false,
+    attackKind: attacking ? "punch" : null
   };
 }
 
@@ -152,20 +178,37 @@ function addStroke(shape, color, alpha = 0.92) {
   return shape;
 }
 
+function createPistol(scene, style) {
+  const pistol = scene.add.container(0, 0).setVisible(false);
+  const grip = addStroke(scene.add.rectangle(0.8, -4.8, 2.4, 4.0, 0x242934, 1), style.outline);
+  const body = addStroke(scene.add.rectangle(0, -7.1, 2.7, 5.2, 0x353c49, 1), style.outline);
+  const muzzle = scene.add.rectangle(0, -9.8, 2.2, 1.2, 0x11151d, 1);
+  pistol.add([grip, body, muzzle]);
+  return pistol;
+}
+
+function createPipe(scene, style) {
+  const pipe = scene.add.container(0, 0).setVisible(false);
+  const shaft = addStroke(scene.add.rectangle(0, -8.0, 2.4, 14.0, 0x78818b, 1), style.outline, 0.78);
+  const cap = addStroke(scene.add.ellipse(0, -15.0, 3.0, 2.2, 0xa6afb7, 1), style.outline, 0.7);
+  pipe.add([shaft, cap]);
+  return pipe;
+}
+
 function createHand(scene, style) {
   const container = scene.add.container(0, 0);
   const sleeve = addStroke(scene.add.rectangle(0, 0.7, 4.2, 6.2, style.sleeve, 1), style.outline);
   const hand = addStroke(scene.add.ellipse(0, -2.7, 3.4, 3.8, style.skin, 1), style.outline, 0.72);
-  const weapon = addStroke(scene.add.rectangle(0, -6.0, 1.8, 6.6, 0x171b22, 1), 0x05070a)
-    .setVisible(false);
-  container.add([sleeve, hand, weapon]);
-  return { container, weapon };
+  const pistol = createPistol(scene, style);
+  const pipe = createPipe(scene, style);
+  container.add([sleeve, hand, pistol, pipe]);
+  return { container, pistol, pipe };
 }
 
 function createFoot(scene, style) {
   const container = scene.add.container(0, 0);
-  const trouser = addStroke(scene.add.rectangle(0, -1.0, 4.0, 3.8, style.trouser, 1), style.outline);
-  const shoe = addStroke(scene.add.ellipse(0, 1.8, 4.4, 4.8, style.shoe, 1), style.outline);
+  const trouser = addStroke(scene.add.rectangle(0, -1.0, 3.9, 3.5, style.trouser, 1), style.outline);
+  const shoe = addStroke(scene.add.ellipse(0, 1.5, 4.2, 4.4, style.shoe, 1), style.outline);
   container.add([trouser, shoe]);
   return container;
 }
@@ -173,33 +216,34 @@ function createFoot(scene, style) {
 function createCore(scene, style) {
   const core = scene.add.container(0, 0);
 
-  // The shoulders are deliberately shallow: this must read as a true overhead
-  // silhouette at every rotation, not as a front-facing torso turned in 2D.
-  const shoulders = addStroke(scene.add.ellipse(0, 2.5, style.shoulderWidth, 5.8, style.body, 1), style.outline);
-  const shoulderShade = scene.add.ellipse(0, 3.0, Math.max(6, style.shoulderWidth - 5), 2.6, style.bodyDark, 0.58);
+  // Very shallow shoulders keep the core genuinely overhead. Rotation should
+  // never reveal a preferred "front view" of the torso.
+  const shoulders = addStroke(scene.add.ellipse(0, 2.3, style.shoulderWidth, 5.4, style.body, 1), style.outline);
+  const shoulderShade = scene.add.ellipse(0, 2.8, Math.max(6, style.shoulderWidth - 5), 2.3, style.bodyDark, 0.54);
   const parts = [shoulders, shoulderShade];
 
   if (style.collar) {
-    const leftCollar = addStroke(scene.add.rectangle(-5.0, 1.0, 3.8, 5.0, style.accent, 1), style.outline)
+    const leftCollar = addStroke(scene.add.rectangle(-5.0, 0.8, 3.7, 4.8, style.accent, 1), style.outline)
       .setRotation(-0.44);
-    const rightCollar = addStroke(scene.add.rectangle(5.0, 1.0, 3.8, 5.0, style.accent, 1), style.outline)
+    const rightCollar = addStroke(scene.add.rectangle(5.0, 0.8, 3.7, 4.8, style.accent, 1), style.outline)
       .setRotation(0.44);
     parts.push(leftCollar, rightCollar);
   }
 
-  const head = addStroke(scene.add.ellipse(0, -0.8, 10.3, 10.3, style.skin, 1), style.outline);
+  const head = addStroke(scene.add.ellipse(0, -0.8, 10.5, 10.5, style.skin, 1), style.outline);
   parts.push(head);
 
   if (style.cap) {
-    const cap = addStroke(scene.add.ellipse(0, -0.1, 11.2, 9.4, style.body, 1), style.outline);
+    const cap = addStroke(scene.add.ellipse(0, 0.0, 11.3, 9.4, style.body, 1), style.outline);
     const brim = addStroke(scene.add.rectangle(0, -4.9, 8.8, 2.1, style.bodyDark, 1), style.outline);
     const capBadge = scene.add.rectangle(0, -5.0, 2.4, 1.3, style.accent, 1);
     parts.push(cap, brim, capBadge);
   } else {
-    // Hair is shifted toward the back of the head so a small skin crescent at
-    // the front communicates facing without reintroducing frontal perspective.
-    const hair = addStroke(scene.add.ellipse(0, 0.15, 9.8, 8.8, style.hair, 1), style.outline, 0.72);
-    parts.push(hair);
+    // Hair occupies the rear of the skull. The exposed skin crescent at -Y is
+    // the face, making the look direction readable under continuous rotation.
+    const hair = addStroke(scene.add.ellipse(0, 0.4, 9.9, 8.7, style.hair, 1), style.outline, 0.72);
+    const faceTip = scene.add.ellipse(0, -5.0, 3.2, 1.8, style.skin, 1);
+    parts.push(hair, faceTip);
   }
 
   if (style.badge) {
@@ -209,7 +253,7 @@ function createCore(scene, style) {
   }
 
   if (style.collar) {
-    const clasp = scene.add.rectangle(0, 2.5, 2.0, 1.6, style.accent, 1);
+    const clasp = scene.add.rectangle(0, 2.4, 2.0, 1.5, style.accent, 1);
     parts.push(clasp);
   }
 
@@ -217,21 +261,37 @@ function createCore(scene, style) {
   return core;
 }
 
+function attackPresentation(scene) {
+  const attack = scene?.combatSystem?.attack || null;
+  if (!attack) return { attacking: false, progress: 0, serial: 0 };
+  const config = attack.config || {};
+  const total = Math.max(1,
+    (Number(config.windupMs) || 0)
+    + (Number(config.activeMs) || 0)
+    + (Number(config.recoveryMs) || 0));
+  return {
+    attacking: true,
+    progress: clamp01((Number(attack.elapsedMs) || 0) / total),
+    serial: Number(attack.serial) || 0
+  };
+}
+
 export class ModularCharacterView {
   constructor(scene, hostContainer, styleName = "civilian", { phaseKey = "character" } = {}) {
     if (!scene || !hostContainer) throw new TypeError("ModularCharacterView requires a scene and host container.");
     this.scene = scene;
     this.host = hostContainer;
+    this.isPlayer = hostContainer === scene.player;
     this.styleName = MODULAR_CHARACTER_STYLES[styleName] ? styleName : "civilian";
     this.style = MODULAR_CHARACTER_STYLES[this.styleName];
     this.phase = stablePhase(phaseKey);
     this.lastMovementDirection = { ...DEFAULT_DIRECTION };
-    this.lastAimDirection = { ...DEFAULT_DIRECTION };
+    this.lastLookDirection = { ...DEFAULT_DIRECTION };
     this.upperRotation = 0;
     this.feetRotation = 0;
 
     this.root = scene.add.container(0, 0).setScale(this.style.scale || 0.78);
-    this.shadow = scene.add.ellipse(0, 5.0, this.style.shoulderWidth + 5, 5.6, 0x000000, 0.27);
+    this.shadow = scene.add.ellipse(0, 4.5, this.style.shoulderWidth + 5, 5.4, 0x000000, 0.27);
     this.feetRoot = scene.add.container(0, 0);
     this.upperRoot = scene.add.container(0, 0);
     this.leftFoot = createFoot(scene, this.style);
@@ -257,36 +317,58 @@ export class ModularCharacterView {
     return this.lastMovementDirection;
   }
 
+  selectedWeaponId(explicitWeaponId, aiming) {
+    if (explicitWeaponId) return explicitWeaponId;
+    if (this.isPlayer) return this.scene.weaponSystem?.currentWeapon?.()?.id || WEAPON_UNARMED;
+    if (this.styleName === "police" && aiming) return WEAPON_PISTOL;
+    return WEAPON_UNARMED;
+  }
+
   update({
     timeMs = 0,
     direction = null,
     movementDirection = direction || this.lastMovementDirection,
-    aimDirection = this.lastAimDirection,
+    aimDirection = this.lastLookDirection,
     moving = false,
-    aiming = false
+    aiming = false,
+    weaponId = null,
+    attacking = null,
+    attackProgress = null,
+    attackSerial = null
   } = {}) {
     if (hasDirection(movementDirection)) {
       this.lastMovementDirection = normalizedDirection(movementDirection);
     }
-    if (aiming && hasDirection(aimDirection)) {
-      this.lastAimDirection = normalizedDirection(aimDirection);
-    }
 
-    const movementRotation = modularCharacterSnappedRotation(
-      this.lastMovementDirection,
-      this.feetRotation
-    );
-    if (moving || !aiming) this.feetRotation = movementRotation;
+    // The player's actual CombatSystem aim is authoritative. Presentation uses
+    // exactly the same direction as hit resolution, eliminating mouse/face drift.
+    const combatAim = this.isPlayer ? this.scene.combatSystem?.aimDirection : null;
+    const requestedLook = hasDirection(combatAim) ? combatAim : aimDirection;
+    if (hasDirection(requestedLook)) this.lastLookDirection = normalizedDirection(requestedLook);
 
-    const upperDirection = aiming ? this.lastAimDirection : this.lastMovementDirection;
-    this.upperRotation = modularCharacterSnappedRotation(upperDirection, this.upperRotation);
-    this.feetRoot.setRotation(this.feetRotation);
-    this.upperRoot.setRotation(this.upperRotation);
+    if (moving) this.feetRotation = modularCharacterFacingRotation(this.lastMovementDirection);
+    this.upperRotation = modularCharacterFacingRotation(this.lastLookDirection);
+
+    // CombatSystem still rotates the legacy player host container. Counter that
+    // transform here so upper body and feet end up at the intended world angles.
+    const hostRotation = Number(this.host?.rotation) || 0;
+    this.feetRoot.setPosition(0, 0).setRotation(wrapAngle(this.feetRotation - hostRotation));
+    this.upperRoot.setRotation(wrapAngle(this.upperRotation - hostRotation));
+    this.shadow.setRotation(-hostRotation);
+
+    const attack = this.isPlayer ? attackPresentation(this.scene) : null;
+    const resolvedAttacking = attacking == null ? Boolean(attack?.attacking) : Boolean(attacking);
+    const resolvedProgress = attackProgress == null ? Number(attack?.progress) || 0 : attackProgress;
+    const resolvedSerial = attackSerial == null ? Number(attack?.serial) || 0 : attackSerial;
+    const resolvedWeaponId = this.selectedWeaponId(weaponId, aiming);
 
     const pose = modularCharacterPose({
       timeMs,
       moving: Boolean(moving),
-      aiming: Boolean(aiming),
+      weaponId: resolvedWeaponId,
+      attacking: resolvedAttacking,
+      attackProgress: resolvedProgress,
+      attackSerial: resolvedSerial,
       phase: this.phase
     });
 
@@ -295,13 +377,17 @@ export class ModularCharacterView {
     this.applyPartPose(this.leftFoot, pose.feet.left);
     this.applyPartPose(this.rightFoot, pose.feet.right);
 
-    const showWeapon = Boolean(this.style.weapon && pose.weaponVisible);
-    this.leftHand.weapon.setVisible(false);
-    this.rightHand.weapon.setVisible(showWeapon);
+    this.leftHand.pistol.setVisible(false);
+    this.leftHand.pipe.setVisible(false);
+    this.rightHand.pistol.setVisible(Boolean(pose.pistolVisible));
+    this.rightHand.pipe.setVisible(Boolean(pose.pipeVisible));
+
     return {
       ...pose,
       upperRotation: this.upperRotation,
-      feetRotation: this.feetRotation
+      feetRotation: this.feetRotation,
+      lookDirection: { ...this.lastLookDirection },
+      movementDirection: { ...this.lastMovementDirection }
     };
   }
 
