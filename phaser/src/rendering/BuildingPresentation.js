@@ -1,5 +1,5 @@
 // Stable public facade for the building presentation system. Game code should
-// import from this module; catalog, profiles, planner and renderer may evolve internally.
+// import from this module; catalog, planner and renderer may evolve internally.
 export {
   BUILDING_ARCHETYPES,
   BUILDING_PRESENTATION_VERSION,
@@ -34,4 +34,4 @@ export {
   clearBuildingPresentationCache,
   drawBuildingPresentation,
   renderBuildingPresentation
-} from "./buildings/BuildingPresentationRenderer.js";
+} from "./buildings/BuildingPresentationPolishRenderer.js";

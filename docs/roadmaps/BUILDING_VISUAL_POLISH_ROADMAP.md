@@ -43,7 +43,7 @@ A new agent can identify the target, active task, authoritative files, validatio
 
 ## M1 — Architectural parapets and layered shadow language
 
-**Status: in-progress**
+**Status: implementation-complete / visual-validation-pending**
 
 ### Goal
 
@@ -51,28 +51,28 @@ Replace the current bright vector-frame treatment and hard rectangular shadows w
 
 ### M1.1 — Shared shadow primitives
 
-**Status: in-progress**
+**Status: complete**
 
-- [ ] layered world cast shadow;
-- [ ] layered roof-mass contact shadow;
-- [ ] shared rectangular contact-shadow helper for annexes/frontages/props;
-- [ ] shadows remain renderer-only and may extend outside the footprint;
-- [ ] focused tests cover multiple shadow layers and external rendering.
+- [x] layered world cast shadow;
+- [x] layered roof-mass contact shadow;
+- [x] shared rectangular/circular contact-shadow treatment for annexes, frontages and props;
+- [x] shadows remain renderer-only and may extend outside the footprint;
+- [x] focused tests cover multiple shadow layers and external rendering.
 
 ### M1.2 — Architectural parapet primitive
 
-**Status: planned**
+**Status: complete**
 
-- [ ] muted top cap;
-- [ ] inner occlusion line;
-- [ ] south/east wall face;
-- [ ] restrained north/west highlight;
-- [ ] consistent corner behaviour;
-- [ ] no luminous double-outline on neutral profiles.
+- [x] muted top cap;
+- [x] inner occlusion line;
+- [x] south/east wall face;
+- [x] restrained north/west highlight;
+- [x] consistent directional treatment;
+- [x] old six-pixel luminous double-outline removed from the public renderer.
 
 ### M1.3 — M1 visual validation
 
-**Status: planned**
+**Status: in-progress**
 
 - [ ] warehouse capture;
 - [ ] industrial capture;
@@ -186,4 +186,4 @@ Eliminate blank roofs, token props and repetitive service patterns.
 
 ## Current exact next action
 
-Implement **M1.1 shared shadow primitives** in `BuildingPresentationRenderer.js`, add focused renderer assertions, update progress/status, deploy and request visual review.
+Validate the M1 implementation in the Netlify preview at normal gameplay zoom. Capture warehouse, industrial, police, church and mixed context; score the M1 categories and collect user approval or one bounded correction pass.

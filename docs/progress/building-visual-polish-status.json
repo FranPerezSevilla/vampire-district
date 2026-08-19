@@ -6,8 +6,8 @@
   "pullRequest": 63,
   "state": "active",
   "currentMilestone": "M1",
-  "currentTask": "M1.1-shared-shadow-primitives",
-  "nextAction": "Implement layered world, roof-mass and contact shadow primitives in BuildingPresentationRenderer.js, add focused tests, deploy and request visual review.",
+  "currentTask": "M1.3-visual-validation",
+  "nextAction": "Validate layered shadows and architectural parapets in Netlify at normal gameplay zoom; capture representative profiles and record rubric scores.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "milestones": [
     { "id": "P0", "name": "modular proof of concept", "status": "complete" },
@@ -18,11 +18,11 @@
     {
       "id": "M1",
       "name": "architectural parapets and layered shadow language",
-      "status": "in-progress",
+      "status": "implementation-complete / visual-validation-pending",
       "tasks": [
-        { "id": "M1.1", "name": "shared shadow primitives", "status": "in-progress" },
-        { "id": "M1.2", "name": "architectural parapet primitive", "status": "planned" },
-        { "id": "M1.3", "name": "visual validation", "status": "planned" }
+        { "id": "M1.1", "name": "shared shadow primitives", "status": "complete" },
+        { "id": "M1.2", "name": "architectural parapet primitive", "status": "complete" },
+        { "id": "M1.3", "name": "visual validation", "status": "in-progress" }
       ]
     },
     { "id": "M2", "name": "physical rooftop props", "status": "planned" },

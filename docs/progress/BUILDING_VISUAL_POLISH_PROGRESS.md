@@ -2,6 +2,44 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-19 — M1.1 and M1.2 implementation complete; M1.3 opened
+
+### Scope
+
+- Active milestone: M1
+- Task: replace hard one-pass shadows and luminous parapet frames with shared renderer-level polish
+- Authoritative files: public building facade, base module painter, new polish compositor and focused shadow tests
+- Acceptance criteria: multiple cast/contact shadow layers; directional parapet wall/cap/occlusion; no planner or collision changes
+- Explicit non-goals: prop redesign, material pass, hospital profile and composition grammar remain M2–M5
+
+### Completed
+
+- introduced `BuildingPresentationPolishRenderer.js` as the public renderer compositor while retaining the existing renderer as the stable module painter;
+- added soft multi-pass rectangular, polygon and circular shadow treatments;
+- applied layered shadows to world casts, raised roof masses, annexes, frontages and rooftop props;
+- replaced the legacy six-pixel bright parapet recipe with muted top caps, inner occlusion and darker south/east wall faces;
+- reduced neutral highlight intensity without weakening explicit club/police identity accents;
+- preserved deterministic planning, module geometry, collision footprint and public facade API;
+- added focused tests for external shadow layering, polygon contact shadows, parapet regression and prop contact shadows.
+
+### Validation
+
+- new JavaScript modules pass `node --check`;
+- focused test file passes syntax validation;
+- GitHub/Netlify validation pending on the branch commit.
+
+### Risks
+
+- the polish compositor deliberately wraps the stable base module painter; future agents must keep the facade as the only public renderer authority;
+- final alpha and wall-depth values require gameplay-zoom visual review;
+- props remain partly symbolic until M2 even though their contact shadows are improved.
+
+### Next
+
+Run CI and Netlify, then complete M1.3 visual validation with warehouse, industrial, police, church and mixed-context captures.
+
+---
+
 ## 2026-08-19 — M0 canonical documentation complete; M1 opened
 
 ### Scope

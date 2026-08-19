@@ -11,8 +11,9 @@ The authoritative runtime boundary is:
 - visual profiles: `phaser/src/rendering/buildings/BuildingVisualProfileCatalog.js`
 - silhouette geometry: `phaser/src/rendering/buildings/BuildingSilhouetteGeometry.js`
 - planner: `phaser/src/rendering/buildings/BuildingPresentationPlanner.js`
-- renderer: `phaser/src/rendering/buildings/BuildingPresentationRenderer.js`
-- focused tests: `tests/building-presentation.test.js`
+- base module painter: `phaser/src/rendering/buildings/BuildingPresentationRenderer.js`
+- public polish compositor: `phaser/src/rendering/buildings/BuildingPresentationPolishRenderer.js`
+- focused tests: `tests/building-presentation.test.js` and `tests/building-visual-shadow.test.js`
 
 The art-direction authority is [`../BUILDING_VISUAL_POLISH.md`](../BUILDING_VISUAL_POLISH.md). The current task authority is [`../roadmaps/BUILDING_VISUAL_POLISH_ROADMAP.md`](../roadmaps/BUILDING_VISUAL_POLISH_ROADMAP.md).
 
@@ -50,7 +51,8 @@ Every implementation session must begin with a bounded declaration in the progre
 ### 1. Preserve authorities
 
 - Planner decides **what exists and where**.
-- Renderer decides **how planned modules are painted**.
+- Base module painter decides **how each module kind is painted**.
+- Public polish compositor applies the shared shadow/parapet language and is the only renderer exported by the public facade.
 - Visual profile catalog decides **family defaults**.
 - Semantic catalog decides **module/archetype contracts**.
 - `GameScene` only requests a presentation and draws opt-in labels.
@@ -113,7 +115,7 @@ Never rewrite old progress entries. Corrections are new entries referencing the 
 Minimum focused validation:
 
 ```bash
-node --test tests/building-presentation.test.js
+node --test tests/building-presentation.test.js tests/building-visual-shadow.test.js
 ```
 
 Repository safety validation:
