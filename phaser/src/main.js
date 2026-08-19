@@ -104,17 +104,6 @@ window.NBD_RESOLUTION_PRESET = { key: resolutionKey, ...resolutionPreset };
 document.documentElement.style.setProperty("--game-width", `${resolutionPreset.displayWidth}px`);
 document.documentElement.style.setProperty("--game-height", `${Math.round(resolutionPreset.displayWidth * viewportHeight / viewportWidth)}px`);
 
-function bindResolutionSelector() {
-  const select = document.getElementById("resolution-select");
-  if (!select) return;
-  select.value = resolutionKey;
-  select.addEventListener("change", () => {
-    const nextKey = RESOLUTION_PRESETS[select.value] ? select.value : "qhd";
-    try { window.localStorage.setItem(RESOLUTION_STORAGE_KEY, nextKey); } catch {}
-    window.location.reload();
-  });
-}
-
 function patchReadableCanvasText() {
   const factory = Phaser.GameObjects?.GameObjectFactory?.prototype;
   if (!factory || factory.__nbdReadableTextPatch) return;
@@ -133,7 +122,6 @@ function patchReadableCanvasText() {
   factory.__nbdReadableTextPatch = true;
 }
 
-bindResolutionSelector();
 patchReadableCanvasText();
 installVampireVeilPolicy();
 installPlaytestSurfacePolicy();
