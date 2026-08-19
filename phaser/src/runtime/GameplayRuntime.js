@@ -23,6 +23,7 @@ import { RawAudio } from "../systems/RawAudioSystem.js";
 import { installVehicleCollisionSofteningPolicy } from "../vehicles/VehicleCollisionSofteningPolicy.js";
 import { VehicleSystem } from "../vehicles/VehicleSystem.js";
 import { GameplayRuntime as GameplayRuntimeCore } from "./GameplayRuntimeCore.js";
+import { installPublishStateInstrumentation } from "./PublishStateInstrumentation.js";
 import { enrichVehicleInputFrame, filterVehicleAwareInteractions } from "./VehicleRuntimeAdapter.js";
 
 const VEHICLE_ACTION_TYPES = new Set(["vehicleEnter", "vehicleExit"]);
@@ -76,6 +77,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
 
   constructor(scene) {
     super(scene);
+    this.removePublishStateInstrumentation = installPublishStateInstrumentation(scene, this.diagnostics);
     this.baseInputBeginFrame = null;
     this.baseCollectInteractions = null;
     this.vehicleAwareInputFrame = this.vehicleAwareInputFrame.bind(this);
@@ -189,6 +191,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
   }
 
   destroy() {
+    this.removePublishStateInstrumentation?.();
+    this.removePublishStateInstrumentation = null;
     RawAudio.stopAllVehicleEngines();
     this.scene.huntingLawRuntimeSystem?.destroy?.();
     this.scene.huntingLawRuntimeSystem = null;
