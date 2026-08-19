@@ -1,39 +1,67 @@
 # Building presentation system
 
-ViceBlood buildings keep their authored `x`, `y`, `w`, and `h` as the sole collision and navigation footprint. The presentation layer turns that rectangle into a deterministic set of reusable top-down modules without changing roads, entrances, rooftop routes, or AI geometry.
+ViceBlood buildings keep their authored `x`, `y`, `w`, and `h` as the sole collision and navigation footprint. The presentation layer turns that rectangle into a deterministic modular composition without changing roads, entrances, rooftop routes, interiors, missions, or AI geometry.
+
+The visual target is the approved concept sheet: **one clean overhead silhouette first, one or two large roof details second, and a restrained identity accent last**. The internal grid must never be visible in the finished render.
 
 ## Design contract
 
-- **Pure overhead:** modules are drawn in orthographic top-down view. Volume comes from parapet values and restrained south/east shading, never from a front-facing facade.
-- **Footprint-safe:** every generated module is contained inside the authored building rectangle. A full-footprint foundation remains visible beneath irregular raised roof masses, so there is no invisible collision.
-- **Deterministic:** a stable seed derived from authored building identity selects generic layouts and rooftop details. A building does not change appearance between redraws or sessions.
-- **Data-driven:** semantic archetypes, layout masks, detail budgets, frontages, and module kinds live in the catalog. Game scenes call one stable facade.
-- **Presentation-only:** this system does not own city topology, collision, entrances, roof traversal, interiors, or mission semantics.
-- **Restrained by default:** the city renderer requests the `standard` detail profile explicitly; the profile is intentionally sparse and can be tuned centrally without touching scene code.
+- **Pure overhead:** orthographic top-down only. Volume comes from parapet values and a restrained south/east shadow, never from a front-facing or isometric facade.
+- **Silhouette first:** occupancy masks are planning data. Adjacent occupied cells are fused into one concave orthogonal roof polygon before rendering.
+- **Footprint-safe:** every planned module remains inside the authored rectangle. A full-footprint low service roof remains beneath irregular raised masses, so collision never becomes invisible.
+- **Restrained detail:** the default `standard` profile produces at most three large rooftop props and normally only one or two.
+- **Deterministic:** a stable seed derived from authored building identity fixes layout, prop selection, and prop placement across redraws and sessions.
+- **Data-driven:** layouts, archetypes, palettes, signature props, frontages, and module kinds live in the catalog rather than in scene conditionals.
+- **Presentation-only:** the system does not own topology, collision, navigation, rooftop traversal, interiors, or gameplay semantics.
 
 ## Architecture
 
-`phaser/src/rendering/BuildingPresentation.js` is the public facade. Gameplay and scenes should import only from it.
+`phaser/src/rendering/BuildingPresentation.js` is the stable public facade. Scene and gameplay code should import only from it.
 
-- `phaser/src/rendering/buildings/BuildingPresentationCatalog.js`
-  - module kind constants;
-  - layout recipes expressed as occupancy masks;
-  - semantic archetypes and conservative classification rules;
-  - frontages, detail levels, validated rooftop prop kinds, accents, and palette resolution.
-- `phaser/src/rendering/buildings/BuildingPresentationPlanner.js`
-  - pure deterministic planning with no Phaser dependency;
-  - converts an authored footprint into roof cells, exposed parapet edges, frontage, rooftop props, and identity modules;
-  - preserves exact collision and visual footprint contracts;
-  - clamps frontages and identity markers for unusually small authored footprints.
-- `phaser/src/rendering/buildings/BuildingPresentationRenderer.js`
-  - Phaser Graphics dispatch only;
-  - one small renderer per module kind;
-  - caches deterministic plans in a `WeakMap` keyed by the immutable authored building object and planning options;
-  - unknown future module kinds are ignored rather than crashing the city renderer.
+### Catalog
 
-The planner output is a plain object containing the selected archetype and layout, exact footprints, palette, roof grid, module list, module counts, and any safe fallback warnings.
+`phaser/src/rendering/buildings/BuildingPresentationCatalog.js`
 
-## Current reusable layouts
+- reusable module kinds;
+- layout recipes expressed as occupancy masks;
+- semantic archetypes and conservative classification rules;
+- signature props, optional prop pools, detail profiles, accents, and palette resolution.
+
+### Silhouette geometry
+
+`phaser/src/rendering/buildings/BuildingSilhouetteGeometry.js`
+
+- normalizes and safely insets authored footprints;
+- converts occupied cells into directed external boundary segments;
+- chains those segments into one closed orthogonal contour;
+- removes collinear intermediate vertices;
+- emits only external parapet edges, with no internal grid seams;
+- remains pure JavaScript with no Phaser dependency.
+
+### Planner
+
+`phaser/src/rendering/buildings/BuildingPresentationPlanner.js`
+
+- chooses a fitting layout deterministically;
+- emits a full-footprint low service roof plus one fused raised roof mass;
+- places a small number of large props inside occupied logical cells;
+- reserves space around frontages and existing props;
+- creates landmark identity modules from shared primitives;
+- reports safe layout fallback warnings;
+- returns plain serializable plan data.
+
+### Renderer
+
+`phaser/src/rendering/buildings/BuildingPresentationRenderer.js`
+
+- renders one polygon for the raised roof rather than one rectangle per cell;
+- draws directional parapets and contained roof shadows;
+- uses one small renderer per module kind;
+- keeps police, club, church, and generic identity compositional rather than monolithic;
+- caches immutable plans in a `WeakMap` keyed by authored building object and planning options;
+- ignores unknown future module kinds rather than crashing the city renderer.
+
+## Reusable layouts
 
 - `rectangle`
 - `l-shape`
@@ -42,16 +70,16 @@ The planner output is a plain object containing the selected archetype and layou
 - `cross`
 - `irregular`
 
-Masks are normalized to the building footprint. This lets the same recipe work for differently sized buildings while retaining the original collision rectangle.
+Masks are normalized to the authored footprint. The mask controls the raised mass only; the low service roof still covers the complete collision footprint.
 
 ## Current archetypes
 
-- `generic`: neutral frontage and restrained deterministic rooftop variety;
-- `police`: ordered rectangular mass, civic frontage, antenna, and blue accents;
-- `club`: irregular raised roof, skylight, club frontage, and magenta edge lighting;
-- `church`: cross-shaped raised roof, ridges, church frontage, and a small gold cross marker.
+- `generic`: neutral rectangle/L/T/stepped silhouettes, one hero prop, and no loud accent;
+- `police`: ordered rectangular mass, civic canopy, antenna, large HVAC, and two short blue cues;
+- `club`: irregular mass, dominant skylight, dark canopy, and one continuous magenta roof-edge accent;
+- `church`: cross or T silhouette, central ridges, a small gold cross marker, and almost no mechanical clutter.
 
-Classification intentionally avoids broad words such as `NEON`; ordinary generated blocks should not become landmarks accidentally. Explicit metadata always wins.
+Classification intentionally avoids broad terms such as `NEON`. Explicit metadata always wins over inference.
 
 ## Authored override contract
 
@@ -71,7 +99,7 @@ A building may optionally provide a `presentation` object:
     frontageEdge: "east",
     frontageOffset: 0.35,
     detailLevel: "minimal",
-    propKinds: ["vent", "hvac"]
+    propKinds: ["skylight", "hvac"]
   }
 }
 ```
@@ -84,48 +112,52 @@ Supported fields:
 - `frontageEdge`: `north`, `east`, `south`, or `west`;
 - `frontageOffset`: normalized offset from `-1` to `1` along that edge;
 - `detailLevel`: `minimal`, `standard`, or `rich`;
-- `propKinds`: optional allow-list of registered rooftop prop kinds; structural kinds such as `frontage` or `roof-cell` are rejected;
+- `propKinds`: optional allow-list of registered rooftop prop kinds; structural kinds are rejected;
 - `seed`: optional deterministic seed override.
 
-Invalid values fall back to the archetype defaults. A layout that cannot fit the authored dimensions falls back to `rectangle` and records a warning in the plan.
+Invalid values fall back to archetype defaults. A requested layout that cannot fit the authored dimensions falls back to `rectangle` and records a warning in the plan.
 
 ## Extending the system
 
 ### Add a layout
 
-1. Add one occupancy-mask entry to `LAYOUT_RECIPES`.
-2. Add its ID to an archetype's `layoutCandidates` or use it through explicit metadata.
-3. Add or update planner tests for occupied cells and exposed edges.
+1. Add one connected occupancy mask to `LAYOUT_RECIPES`.
+2. Set minimum dimensions appropriate for readable gameplay-scale cells.
+3. Add the layout to an archetype's candidates or select it explicitly.
+4. Cover contour vertex count, occupied cells, and exposed parapets in tests.
 
-The generic roof-cell and parapet renderers need no changes.
+No renderer change is required: the geometry layer automatically produces the fused polygon.
 
 ### Add an archetype
 
-1. Add an entry to `BUILDING_ARCHETYPES` with layout, frontage, prop pool, accent, and label color.
-2. Add a narrow classification rule or rely on explicit `presentation.archetype` metadata.
-3. Reuse existing module kinds when possible.
-4. Add identity planner logic only when the archetype needs a genuinely unique arrangement.
+1. Add layout candidates, frontage, signature props, prop pool, accent, and label color to `BUILDING_ARCHETYPES`.
+2. Prefer explicit `presentation.archetype` metadata; add a narrow classification rule only when inference is unambiguous.
+3. Reuse existing modules wherever possible.
+4. Add archetype-specific identity planning only when composition cannot be expressed through catalog data alone.
 
 ### Add a module kind
 
 1. Add the constant to `MODULE_KINDS`.
-2. Have the planner emit a module with stable `id`, `layer`, and contained `bounds`.
-3. Add one renderer to `MODULE_RENDERERS`.
+2. Have the planner emit a stable `id`, `layer`, and contained `bounds` or polygon points.
+3. Add one renderer entry to `MODULE_RENDERERS`.
 4. Add containment and renderer-dispatch coverage.
 
 ## Validation invariants
 
-The focused unit suite verifies:
+Focused tests verify:
 
 - semantic classification and explicit overrides;
 - deterministic plans;
-- exact collision/visual footprint preservation;
+- exact collision and visual footprint preservation;
 - containment of every generated module;
-- modular mask assembly and absence of duplicate internal parapets;
+- exactly one fused roof mass per building;
+- absence of visible roof-cell modules and internal parapet seams;
 - safe layout fallback;
+- restrained prop counts and readable signature prop sizes;
 - police, club, and church identity contracts;
-- rejection of structural kinds in authored rooftop prop lists;
+- rejection of structural kinds in rooftop prop allow-lists;
 - renderability and containment for tiny authored footprints;
-- renderer operation without Phaser globals.
+- deterministic runtime caching;
+- polygon rendering without Phaser globals in unit tests.
 
-When iterating visually, validate the Netlify preview at normal gameplay zoom. Module detail should remain chunky enough to support character readability; this is not a miniature architectural renderer.
+Visual acceptance must happen at normal gameplay zoom in the Netlify preview. A successful building should read in this order: **silhouette → landmark identity → roof detail**. If the eye reads a procedural grid first, the implementation has failed even when its data model is correct.
