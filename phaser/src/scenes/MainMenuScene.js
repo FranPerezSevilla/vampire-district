@@ -72,16 +72,25 @@ export class MainMenuScene extends Phaser.Scene {
     }
 
     this.previewPresented = true;
-    this.publishReadiness("presenting-title");
     gameScene?.registry?.set?.("mainMenuActive", true);
     this.scene.bringToTop("MainMenuScene");
 
-    titleScreenController.present({ onNewNight: () => this.beginNight() })
-      .then(async () => {
-        await titleScreenAudioGate.present();
-        this.publishReadiness("title-presented");
+    // The splash is now the intentional browser-audio gate. The world may finish
+    // loading behind it, but the DOM title controller must not reveal the main
+    // menu until a real user gesture has successfully started the theme.
+    this.publishReadiness("awaiting-audio-start");
+    titleScreenAudioGate.waitForStart()
+      .then(started => {
+        if (!started || !this.sys.isActive()) return false;
+        this.publishReadiness("presenting-title");
+        return titleScreenController.present({ onNewNight: () => this.beginNight() })
+          .then(() => true);
+      })
+      .then(presented => {
+        if (presented) this.publishReadiness("title-presented");
       })
       .catch(error => {
+        if (!this.sys.isActive()) return;
         this.publishReadiness("failure", String(error?.message || error));
         titleScreenController.showFailure(error);
       });
