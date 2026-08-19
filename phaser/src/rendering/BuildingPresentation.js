@@ -7,6 +7,7 @@ export {
   FRONTAGE_KINDS,
   LAYOUT_RECIPES,
   MODULE_KINDS,
+  ROOFTOP_PROP_KINDS,
   buildingPresentationLabelColor,
   classifyBuildingPresentation,
   getBuildingArchetype,
