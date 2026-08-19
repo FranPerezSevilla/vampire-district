@@ -10,7 +10,7 @@
   "userValidation": "M6-final-only",
   "currentMilestone": "M2",
   "currentTask": "M2.1-shared-physical-volume-primitives",
-  "nextAction": "Introduce shared renderer-only rectangular and circular volume primitives, prove top/side/contact separation with focused tests, and migrate only a minimal fixture before redesigning individual prop families.",
+  "nextAction": "The installed hourly scheduler should introduce shared renderer-only rectangular and circular volume primitives, prove top/side/contact separation with focused tests, and migrate only a minimal fixture before redesigning individual prop families.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "automation": {
     "targetBranch": "agent/building-visual-poc",
@@ -18,8 +18,10 @@
     "workflow": ".github/workflows/building-visual-polish-hourly.yml",
     "schedule": "hourly-at-minute-17",
     "requiredSecret": "OPENAI_API_KEY",
-    "installedOnDefaultBranch": false,
-    "installationPullRequest": 65
+    "installedOnDefaultBranch": true,
+    "installationPullRequest": 65,
+    "installationCommit": "b0bca65a20e3aa177f6d05f8165a51b2a7315583",
+    "firstScheduledRunExpected": "next hourly minute-17 slot"
   },
   "milestones": [
     { "id": "P0", "name": "modular proof of concept", "status": "complete" },
@@ -55,7 +57,7 @@
     { "id": "M6", "name": "final polish and merge readiness", "status": "planned" }
   ],
   "validation": {
-    "latestHead": "454f00a03dfd9d80f8cdc27b849ff4ad982955c2",
+    "latestM1Head": "454f00a03dfd9d80f8cdc27b849ff4ad982955c2",
     "buildingFocusedContracts": "pass",
     "globalUnitResult": "404/411",
     "netlify": "success"
