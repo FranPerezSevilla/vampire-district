@@ -1,33 +1,19 @@
-const METHOD_TARGETS = Object.freeze([
-  [scene => scene, "describeCurrentZone", "PublishState.Zone"],
-  [scene => scene, "visibilityText", "PublishState.Visibility"],
-  [scene => scene.missionSystem, "objectiveText", "PublishState.Mission"],
-  [scene => scene.npcSystem, "summary", "PublishState.Npc"],
-  [scene => scene.feedingSystem, "summary", "PublishState.Hunger"],
-  [scene => scene.powersSystem, "summary", "PublishState.Powers"],
-  [scene => scene.exposureSystem, "summary", "PublishState.Exposure"],
-  [scene => scene.heatSystem, "summary", "PublishState.Heat"],
-  [scene => scene.heatSystem, "level", "PublishState.WantedLevel"],
-  [scene => scene.witnessSystem, "summary", "PublishState.Witness"],
-  [scene => scene.evidenceSystem, "summary", "PublishState.Evidence"],
-  [scene => scene.policeSystem, "summary", "PublishState.Police"],
-  [scene => scene.hunterSystem, "summary", "PublishState.Hunter"],
-  [scene => scene.propDamageSystem, "summary", "PublishState.Props"],
-  [scene => scene.aiStateSystem, "summary", "PublishState.Ai"],
-  [scene => scene.interactionSystem, "snapshot", "PublishState.InteractionMenu"],
-  [scene => scene.statePublisher, "setMany", "PublishState.RegistryCommit"]
-]);
+const PHASE_PREPARE = "PublishState.Prepare";
+const PHASE_SUMMARIES = "PublishState.Summaries";
+const PHASE_INTERACTION_MENU = "PublishState.InteractionMenu";
+const PHASE_PAYLOAD_TAIL = "PublishState.PayloadTail";
+const PHASE_REGISTRY_COMMIT = "PublishState.RegistryCommit";
 
-function profileMethod(owner, method, label, diagnostics, isActive, restorers) {
+function profileBoundary(owner, method, { before = null, after = null } = {}, isActive, restorers) {
   if (!owner || typeof owner[method] !== "function") return;
   const original = owner[method];
-  const wrapped = function profiledPublishStateMethod(...args) {
-    if (!isActive()) return original.apply(this, args);
-    const mark = diagnostics?.beginSystem?.(label) ?? null;
+  const wrapped = function profiledPublishStateBoundary(...args) {
+    const active = isActive();
+    if (active) before?.();
     try {
       return original.apply(this, args);
     } finally {
-      diagnostics?.endSystem?.(label, mark);
+      if (active) after?.();
     }
   };
   owner[method] = wrapped;
@@ -42,12 +28,33 @@ export function installPublishStateInstrumentation(scene, diagnostics) {
 
   const restorers = [];
   let activeDepth = 0;
+  let activePhase = null;
+
+  const endActivePhase = () => {
+    if (!activePhase) return;
+    diagnostics?.endSystem?.(activePhase.label, activePhase.mark);
+    activePhase = null;
+  };
+
+  const transitionPhase = label => {
+    if (activeDepth <= 0) return;
+    endActivePhase();
+    if (!label) return;
+    activePhase = {
+      label,
+      mark: diagnostics?.beginSystem?.(label) ?? null
+    };
+  };
+
   const originalPublishState = scene.publishState;
   const wrappedPublishState = function profiledPublishState(...args) {
+    const outermost = activeDepth === 0;
     activeDepth += 1;
+    if (outermost) transitionPhase(PHASE_PREPARE);
     try {
       return originalPublishState.apply(this, args);
     } finally {
+      if (outermost) endActivePhase();
       activeDepth = Math.max(0, activeDepth - 1);
     }
   };
@@ -57,11 +64,46 @@ export function installPublishStateInstrumentation(scene, diagnostics) {
   });
 
   const isActive = () => activeDepth > 0;
-  for (const [resolveOwner, method, label] of METHOD_TARGETS) {
-    profileMethod(resolveOwner(scene), method, label, diagnostics, isActive, restorers);
-  }
+
+  // Keep this drill-down deliberately coarse. The previous leaf-method profiler
+  // wrapped seventeen calls and its own Map/rest-argument overhead became material
+  // relative to the tiny per-summary timings. These boundaries cover the existing
+  // publishState body with only three wrapped methods while preserving its order.
+  profileBoundary(
+    scene,
+    "visibilityText",
+    { after: () => transitionPhase(PHASE_SUMMARIES) },
+    isActive,
+    restorers
+  );
+  profileBoundary(
+    scene.interactionSystem,
+    "snapshot",
+    {
+      before: () => transitionPhase(PHASE_INTERACTION_MENU),
+      after: () => transitionPhase(PHASE_PAYLOAD_TAIL)
+    },
+    isActive,
+    restorers
+  );
+  profileBoundary(
+    scene.statePublisher,
+    "setMany",
+    {
+      before: () => {
+        transitionPhase(null);
+        const mark = diagnostics?.beginSystem?.(PHASE_REGISTRY_COMMIT) ?? null;
+        activePhase = { label: PHASE_REGISTRY_COMMIT, mark };
+      },
+      after: () => endActivePhase()
+    },
+    isActive,
+    restorers
+  );
 
   const cleanup = () => {
+    endActivePhase();
+    activeDepth = 0;
     for (let index = restorers.length - 1; index >= 0; index -= 1) restorers[index]();
     if (scene.__nbdPublishStateInstrumentationCleanup === cleanup) {
       delete scene.__nbdPublishStateInstrumentationCleanup;
