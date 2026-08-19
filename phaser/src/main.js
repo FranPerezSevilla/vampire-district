@@ -20,6 +20,7 @@ const RESOLUTION_PRESETS = Object.freeze({
 const MAIN_MENU_THEME_URL = new URL("../assets/audio/music/main-menu-theme-01.m4a", import.meta.url).href;
 const MAIN_MENU_THEME_VOLUME = 0.28;
 const MAIN_MENU_THEME_FADE_MS = 430;
+const MAIN_MENU_AUDIO_GATE_ID = "viceblood-audio-gate";
 
 function createMainMenuThemeController() {
   const audio = new Audio(MAIN_MENU_THEME_URL);
@@ -33,11 +34,17 @@ function createMainMenuThemeController() {
     fadeRaf = 0;
   };
 
-  const start = () => {
+  const start = async () => {
     cancelFade();
     audio.loop = true;
     audio.volume = MAIN_MENU_THEME_VOLUME;
-    if (audio.paused) audio.play().catch(() => {});
+    if (!audio.paused) return true;
+    try {
+      await audio.play();
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const fadeOut = (durationMs = MAIN_MENU_THEME_FADE_MS) => {
@@ -68,6 +75,74 @@ function createMainMenuThemeController() {
 
 window.NBD_MAIN_MENU_THEME = createMainMenuThemeController();
 
+function removeMainMenuAudioGate() {
+  document.getElementById(MAIN_MENU_AUDIO_GATE_ID)?.remove();
+}
+
+function showMainMenuAudioGate() {
+  if (document.getElementById(MAIN_MENU_AUDIO_GATE_ID)) return;
+
+  const root = document.getElementById("game-root");
+  if (!root) return;
+
+  const gate = document.createElement("button");
+  gate.id = MAIN_MENU_AUDIO_GATE_ID;
+  gate.type = "button";
+  gate.setAttribute("aria-label", "Start ViceBlood");
+  gate.innerHTML = "<span>PRESS ANY KEY TO START</span>";
+  gate.style.cssText = [
+    "position:absolute",
+    "inset:0",
+    "z-index:80",
+    "display:grid",
+    "place-items:end center",
+    "padding:0 0 9%",
+    "border:0",
+    "background:rgba(5,6,11,.28)",
+    "color:#f1e6ff",
+    "font:700 clamp(12px,1.25vw,18px) Arial,Helvetica,sans-serif",
+    "letter-spacing:.24em",
+    "text-shadow:0 0 18px rgba(187,128,255,.55)",
+    "cursor:pointer"
+  ].join(";");
+
+  const label = gate.querySelector("span");
+  label.style.cssText = "animation:viceblood-audio-gate-pulse 1.55s ease-in-out infinite";
+
+  if (!document.getElementById("viceblood-audio-gate-style")) {
+    const style = document.createElement("style");
+    style.id = "viceblood-audio-gate-style";
+    style.textContent = `
+      @keyframes viceblood-audio-gate-pulse {
+        0%,100% { opacity:.46; transform:translateY(0); }
+        50% { opacity:1; transform:translateY(-2px); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  const unlock = async event => {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    const started = await window.NBD_MAIN_MENU_THEME?.start?.();
+    if (!started) return;
+    window.removeEventListener("keydown", onKeyDown, true);
+    gate.removeEventListener("pointerdown", unlock, true);
+    gate.removeEventListener("touchstart", unlock, true);
+    gate.remove();
+  };
+
+  const onKeyDown = event => {
+    if (event.repeat || ["Shift", "Control", "Alt", "Meta"].includes(event.key)) return;
+    unlock(event);
+  };
+
+  gate.addEventListener("pointerdown", unlock, true);
+  gate.addEventListener("touchstart", unlock, { capture: true, passive: false });
+  window.addEventListener("keydown", onKeyDown, true);
+  root.appendChild(gate);
+}
+
 function installMainMenuThemePolicy() {
   const originalCreate = MainMenuScene.prototype.create;
   const originalBeginNight = MainMenuScene.prototype.beginNight;
@@ -75,12 +150,18 @@ function installMainMenuThemePolicy() {
 
   MainMenuScene.prototype.create = function viceBloodMenuCreate(...args) {
     const result = originalCreate.apply(this, args);
-    window.NBD_MAIN_MENU_THEME?.start();
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => window.NBD_MAIN_MENU_THEME?.fadeOut(120));
+    Promise.resolve(window.NBD_MAIN_MENU_THEME?.start?.()).then(started => {
+      if (!started) showMainMenuAudioGate();
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      removeMainMenuAudioGate();
+      window.NBD_MAIN_MENU_THEME?.fadeOut(120);
+    });
     return result;
   };
 
   MainMenuScene.prototype.beginNight = function viceBloodMenuBeginNight(...args) {
+    removeMainMenuAudioGate();
     window.NBD_MAIN_MENU_THEME?.fadeOut(MAIN_MENU_THEME_FADE_MS);
     return originalBeginNight.apply(this, args);
   };
