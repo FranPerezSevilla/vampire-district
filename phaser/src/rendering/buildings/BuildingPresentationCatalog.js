@@ -65,6 +65,15 @@ export const MODULE_KINDS = deepFreeze({
   FENCE: "fence"
 });
 
+export const ROOFTOP_PROP_KINDS = deepFreeze([
+  MODULE_KINDS.SKYLIGHT,
+  MODULE_KINDS.HVAC,
+  MODULE_KINDS.VENT,
+  MODULE_KINDS.HATCH,
+  MODULE_KINDS.ANTENNA,
+  MODULE_KINDS.SATELLITE_DISH
+]);
+
 export const MODULE_LAYERS = deepFreeze({
   foundation: 0,
   roof: 10,
