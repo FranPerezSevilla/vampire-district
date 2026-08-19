@@ -2,66 +2,103 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   modularCharacterFacingRotation,
-  modularCharacterPose,
-  modularCharacterSnappedRotation
+  modularCharacterPose
 } from "../phaser/src/rendering/ModularCharacterView.js";
 
 const closeTo = (actual, expected, epsilon = 0.0001) => {
   assert.ok(Math.abs(actual - expected) <= epsilon, `${actual} should be close to ${expected}`);
 };
 
-const directionForRotation = rotation => ({
-  x: Math.sin(rotation),
-  y: -Math.cos(rotation)
-});
-
-test("modular character rotation keeps authored north as zero rotation", () => {
+test("modular character facing remains continuous instead of snapping to octants", () => {
   closeTo(modularCharacterFacingRotation({ x: 0, y: -1 }), 0);
   closeTo(modularCharacterFacingRotation({ x: 1, y: 0 }), Math.PI / 2);
   closeTo(modularCharacterFacingRotation({ x: -1, y: 0 }), -Math.PI / 2);
+
+  const thirtyDegrees = Math.PI / 6;
+  const direction = { x: Math.sin(thirtyDegrees), y: -Math.cos(thirtyDegrees) };
+  closeTo(modularCharacterFacingRotation(direction), thirtyDegrees);
 });
 
-test("visual facing snaps to eight directions", () => {
-  closeTo(modularCharacterSnappedRotation(directionForRotation(Math.PI * 20 / 180)), 0);
-  closeTo(modularCharacterSnappedRotation(directionForRotation(Math.PI * 32 / 180)), Math.PI / 4);
-  closeTo(modularCharacterSnappedRotation(directionForRotation(Math.PI / 2)), Math.PI / 2);
+test("walking feet remain centered beneath the torso and alternate around one origin", () => {
+  const first = modularCharacterPose({ timeMs: 80, moving: true, phase: 0 });
+  const second = modularCharacterPose({ timeMs: 190, moving: true, phase: 0 });
+
+  assert.ok(Math.abs(first.feet.left.x) < 3);
+  assert.ok(Math.abs(first.feet.right.x) < 3);
+  assert.notEqual(first.feet.left.y, first.feet.right.y);
+  assert.notEqual(first.feet.left.y, second.feet.left.y);
+  closeTo(first.feet.left.x, -first.feet.right.x);
 });
 
-test("facing hysteresis prevents jitter around an octant boundary", () => {
-  const previous = 0;
-  const insideHysteresis = directionForRotation(Math.PI * 29 / 180);
-  const committedTurn = directionForRotation(Math.PI * 32 / 180);
+test("unarmed attacks thrust one hand forward and alternate hands by attack serial", () => {
+  const leftPunch = modularCharacterPose({
+    timeMs: 0,
+    weaponId: "unarmed",
+    attacking: true,
+    attackProgress: 0.5,
+    attackSerial: 2
+  });
+  const rightPunch = modularCharacterPose({
+    timeMs: 0,
+    weaponId: "unarmed",
+    attacking: true,
+    attackProgress: 0.5,
+    attackSerial: 3
+  });
 
-  closeTo(modularCharacterSnappedRotation(insideHysteresis, previous), 0);
-  closeTo(modularCharacterSnappedRotation(committedTurn, previous), Math.PI / 4);
+  assert.ok(leftPunch.hands.left.y < leftPunch.hands.right.y);
+  assert.ok(rightPunch.hands.right.y < rightPunch.hands.left.y);
+  assert.equal(leftPunch.attackKind, "punch");
 });
 
-test("movement and aim can resolve to independent octants", () => {
-  const feet = modularCharacterSnappedRotation({ x: 0, y: -1 });
-  const upper = modularCharacterSnappedRotation({ x: 1, y: 0 });
-  closeTo(feet, 0);
-  closeTo(upper, Math.PI / 2);
+test("iron pipe remains visible and sweeps through the attack", () => {
+  const windup = modularCharacterPose({
+    weaponId: "iron_pipe",
+    attacking: true,
+    attackProgress: 0.1
+  });
+  const followThrough = modularCharacterPose({
+    weaponId: "iron_pipe",
+    attacking: true,
+    attackProgress: 0.8
+  });
+
+  assert.equal(windup.pipeVisible, true);
+  assert.equal(windup.pistolVisible, false);
+  assert.notEqual(windup.hands.right.rotation, followThrough.hands.right.rotation);
 });
 
-test("walk pose alternates hands and feet without moving the fixed core", () => {
-  const pose = modularCharacterPose({ timeMs: 120, moving: true, phase: 0 });
-  assert.notEqual(pose.feet.left.y, pose.feet.right.y);
-  assert.notEqual(pose.hands.left.y, pose.hands.right.y);
-  assert.equal(pose.weaponVisible, false);
+test("pistol keeps both hands forward and adds recoil during a shot", () => {
+  const idle = modularCharacterPose({ weaponId: "pistol", attacking: false });
+  const firing = modularCharacterPose({
+    weaponId: "pistol",
+    attacking: true,
+    attackProgress: 0.5
+  });
+
+  assert.equal(idle.pistolVisible, true);
+  assert.ok(idle.hands.left.y < 0);
+  assert.ok(idle.hands.right.y < 0);
+  assert.notEqual(idle.hands.right.y, firing.hands.right.y);
 });
 
-test("aim pose moves both hands ahead of the shoulders and exposes the weapon hook", () => {
-  const idle = modularCharacterPose({ timeMs: 0, moving: false, aiming: false });
-  const aim = modularCharacterPose({ timeMs: 0, moving: false, aiming: true });
-
-  assert.ok(aim.hands.left.y < idle.hands.left.y);
-  assert.ok(aim.hands.right.y < idle.hands.right.y);
-  assert.equal(aim.weaponVisible, true);
-});
-
-test("aiming can keep the walking feet animated independently from the hands", () => {
-  const first = modularCharacterPose({ timeMs: 100, moving: true, aiming: true, phase: 0.3 });
-  const second = modularCharacterPose({ timeMs: 220, moving: true, aiming: true, phase: 0.3 });
+test("feet keep animating independently while a weapon attack owns the hands", () => {
+  const first = modularCharacterPose({
+    timeMs: 100,
+    moving: true,
+    weaponId: "pistol",
+    attacking: true,
+    attackProgress: 0.4,
+    phase: 0.3
+  });
+  const second = modularCharacterPose({
+    timeMs: 220,
+    moving: true,
+    weaponId: "pistol",
+    attacking: true,
+    attackProgress: 0.4,
+    phase: 0.3
+  });
 
   assert.deepEqual(first.hands, second.hands);
   assert.notEqual(first.feet.left.y, second.feet.left.y);
