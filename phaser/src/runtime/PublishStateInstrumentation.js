@@ -4,7 +4,8 @@ const PHASE_INTERACTION_MENU = "PublishState.InteractionMenu";
 const PHASE_PAYLOAD_TAIL = "PublishState.PayloadTail";
 const PHASE_REGISTRY_COMMIT = "PublishState.RegistryCommit";
 
-const SUMMARY_MISSION_ACTORS = "PublishState.Summary.MissionActors";
+const SUMMARY_MISSION_ACTORS_MISSION_NPC = "PublishState.Summary.MissionActors.MissionNpc";
+const SUMMARY_MISSION_ACTORS_NEEDS_POWERS = "PublishState.Summary.MissionActors.NeedsPowers";
 const SUMMARY_PRESSURE_EVIDENCE = "PublishState.Summary.PressureEvidence";
 const SUMMARY_RESPONSE_AI_SECURITY = "PublishState.Summary.ResponseAI.Security";
 const SUMMARY_RESPONSE_AI_WORLD = "PublishState.Summary.ResponseAI.WorldAI";
@@ -99,15 +100,28 @@ export function installPublishStateInstrumentation(scene, diagnostics) {
     {
       after: () => {
         transitionPhase(PHASE_SUMMARIES);
-        transitionSummaryPhase(SUMMARY_MISSION_ACTORS);
+        transitionSummaryPhase(SUMMARY_MISSION_ACTORS_MISSION_NPC);
       }
     },
     isActive,
     restorers
   );
 
+  // The latest durable summary-group artifact selected MissionActors 24/24 after
+  // the ResponseAI split. Deepen only that selected group with one extra existing
+  // boundary: mission objective + NPC remain together, while Hunger + Powers form
+  // the second contiguous phase. This keeps profiler overhead bounded and leaves
+  // every summary method itself untouched except for the transition boundary.
+  profileBoundary(
+    scene.feedingSystem,
+    "summary",
+    { before: () => transitionSummaryPhase(SUMMARY_MISSION_ACTORS_NEEDS_POWERS) },
+    isActive,
+    restorers
+  );
+
   // The grouped artifact proved PublishState.Summaries is the only stable coarse
-  // winner. Deepen only that phase with existing method boundaries rather than
+  // winner. Deepen only selected phases with existing method boundaries rather than
   // returning to per-summary wrappers whose overhead dominated the leaf capture.
   profileBoundary(
     scene.exposureSystem,
@@ -123,9 +137,6 @@ export function installPublishStateInstrumentation(scene, diagnostics) {
     isActive,
     restorers
   );
-  // The first durable summary-group artifact selected ResponseAI 24/24. Split only
-  // that broad group at the existing props boundary: Police+Hunter remain Security,
-  // while Props+AI become WorldAI. This adds one wrapper and no new gameplay work.
   profileBoundary(
     scene.propDamageSystem,
     "summary",
