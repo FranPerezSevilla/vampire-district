@@ -4,7 +4,8 @@ const PHASE_INTERACTION_MENU = "PublishState.InteractionMenu";
 const PHASE_PAYLOAD_TAIL = "PublishState.PayloadTail";
 const PHASE_REGISTRY_COMMIT = "PublishState.RegistryCommit";
 
-const SUMMARY_MISSION_ACTORS_MISSION_NPC = "PublishState.Summary.MissionActors.MissionNpc";
+const SUMMARY_MISSION_ACTORS_MISSION = "PublishState.Summary.MissionActors.Mission";
+const SUMMARY_MISSION_ACTORS_NPC = "PublishState.Summary.MissionActors.Npc";
 const SUMMARY_MISSION_ACTORS_NEEDS_POWERS = "PublishState.Summary.MissionActors.NeedsPowers";
 const SUMMARY_PRESSURE_EVIDENCE = "PublishState.Summary.PressureEvidence";
 const SUMMARY_RESPONSE_AI_SECURITY = "PublishState.Summary.ResponseAI.Security";
@@ -100,18 +101,24 @@ export function installPublishStateInstrumentation(scene, diagnostics) {
     {
       after: () => {
         transitionPhase(PHASE_SUMMARIES);
-        transitionSummaryPhase(SUMMARY_MISSION_ACTORS_MISSION_NPC);
+        transitionSummaryPhase(SUMMARY_MISSION_ACTORS_MISSION);
       }
     },
     isActive,
     restorers
   );
 
-  // The latest durable summary-group artifact selected MissionActors 24/24 after
-  // the ResponseAI split. Deepen only that selected group with one extra existing
-  // boundary: mission objective + NPC remain together, while Hunger + Powers form
-  // the second contiguous phase. This keeps profiler overhead bounded and leaves
-  // every summary method itself untouched except for the transition boundary.
+  // The durable MissionActors split selected MissionNpc 24/24 across all three
+  // phases. Deepen only that selected pair with one additional existing-method
+  // boundary: objectiveText remains the Mission phase, and NpcSystem.summary()
+  // starts the Npc phase. The sibling NeedsPowers phase is left unchanged.
+  profileBoundary(
+    scene.npcSystem,
+    "summary",
+    { before: () => transitionSummaryPhase(SUMMARY_MISSION_ACTORS_NPC) },
+    isActive,
+    restorers
+  );
   profileBoundary(
     scene.feedingSystem,
     "summary",
