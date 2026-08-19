@@ -1,173 +1,139 @@
 # ViceBlood main menu v1
 
-## Goal
+## Product goal
 
-Introduce a production-facing title screen that sells the urban vampire fantasy without creating a second gameplay or rendering authority.
+The title screen sells the urban-vampire fantasy over the real living city. It is a fullscreen product surface, not a framed web demo and not a second game simulation.
 
-The visual target is **urban noir rather than gothic fantasy**: ViceBlood opens on the real living city, with the menu presented as a clean title layer rather than a framed web demo.
+## Canonical presentation
 
-## Locked direction
+- First paint is the clean ivory/red `VICEBLOOD` wordmark over an opaque noir background.
+- Once the world is ready, the same persistent HTML title surface reveals the city and presents the wordmark at the browser's top-left.
+- Navigation is `CONTINUE`, `NEW NIGHT`, `OPTIONS`, `CREDITS`; `CONTINUE` remains disabled until canonical save semantics exist.
+- `OPTIONS` and `CREDITS` use a browser-anchored drawer spanning the full viewport height.
+- The gameplay HUD is hidden while the title screen owns focus.
+- Mouse movement never rotates the player or moves the combat reticle while the title screen is active.
+- Loading the title screen clears inherited Heat/Wanted response state while preserving durable Exposure/evidence and campaign progression.
 
-- Fullscreen presentation: no outer web frame, top bar or build notes.
-- Pure top-down city imagery, consistent with the game itself.
-- Large, clean `VICEBLOOD` wordmark: ivory `VICE`, deep-red `BLOOD`.
-- The wordmark has **no fang, scratches, drips, black interior marks, distress texture or decorative iconography**.
-- The main-menu wordmark remains fully visible at the **top-left**, above navigation.
-- Minimal main navigation: `CONTINUE`, `NEW NIGHT`, `OPTIONS`, `CREDITS`.
-- `NEW NIGHT` is the default selection.
-- `OPTIONS` and `CREDITS` use a left drawer that covers the **entire browser-visible height**.
-- No ornate gothic frames, cathedral imagery, bats or dripping-blood UI chrome.
-- The city remains clearly visible; the left noir veil exists only to protect menu readability.
-- Mouse movement must never rotate the player or move the gameplay reticle while the title screen owns input.
-- Loading the title screen always begins from a **neutral police-response state**: no inherited Wanted level or active pursuit from the previous browser session.
+## Architecture
 
-## Runtime implementation
+The title screen is split by responsibility.
 
-`MainMenuScene` is only a presentation/composition layer over the authoritative `GameScene`.
+### DOM title controller
 
-Normal boot:
+`phaser/src/ui/TitleScreenController.js` owns all title UI as semantic HTML:
+
+- boot lockup;
+- top-left runtime wordmark;
+- menu navigation;
+- render-quality options;
+- credits drawer;
+- keyboard and pointer navigation;
+- the visual exit into gameplay.
+
+The controller operates one persistent DOM surface, `#viceblood-title-screen`. The boot splash is not removed and replaced with a second UI. Instead, that same surface changes from `boot` to `prepared` to `menu` state.
+
+This removes the old race between an HTML splash, a separately rendered Phaser menu, canvas crop calculations and delayed polling that guessed when layout had settled.
+
+### MainMenuScene
+
+`phaser/src/scenes/MainMenuScene.js` is only a world-preview coordinator. It:
+
+1. obtains the authoritative `GameScene` instance;
+2. subscribes to the official Phaser Scene `CREATE` lifecycle event **before** launching it;
+3. treats that event as the readiness boundary because it fires after `GameScene.create()` has constructed the world, `GameplayRuntime` and `InputSystem`;
+4. freezes Phaser input, world input, pointer aim and combat graphics;
+5. asks `TitleScreenController` to reveal the already-positioned DOM menu;
+6. restores control when `NEW NIGHT` completes its DOM exit.
+
+If `GameScene` is already active and owns an `InputSystem`, the same activation path runs immediately. There is no polling loop, retry counter or renderer-event dependency.
+
+`MainMenuScene` does not draw text, logos, buttons, panels or gradients. It does not calculate browser crop coordinates.
+
+### First-paint CSS
+
+`phaser/title-screen.css` owns the complete viewport presentation from the first HTML paint:
+
+- fullscreen shell and canvas;
+- HUD suppression during title ownership;
+- opaque boot cover;
+- left noir menu veil;
+- stable top-left logo anchoring;
+- full-height drawer;
+- responsive and reduced-motion behavior.
+
+Because title UI is positioned against the browser viewport rather than internal Phaser coordinates, it cannot be clipped by the 3:2 canvas cover crop.
+
+## No-flicker contract
+
+The handoff is event-driven, not heuristic.
 
 ```text
 HTML first paint
-  -> fitted fullscreen ViceBlood splash
-  -> BootScene
-  -> MainMenuScene
-      -> switch shell to fullscreen menu mode
-      -> hide gameplay HUD/page chrome
-      -> launch the authoritative GameScene
-      -> campaign runtime clears prior-session Heat/Wanted before it can spawn a response
-      -> keep ambient city streaming/traffic alive
-      -> freeze Phaser input + ViceBlood world input + pointer aim
-      -> wait for the rendered canvas crop to stabilize
-      -> reveal the composed menu
+  -> persistent title surface is already opaque
+  -> MainMenuScene subscribes to GameScene CREATE
+  -> GameScene launches and completes create()
+  -> CREATE event confirms the world and input authority exist
+  -> MainMenuScene freezes gameplay input and aim
+  -> DOM menu is prepared while the boot cover remains opaque
+  -> two browser animation frames commit its final CSS state
+  -> boot cover crossfades, revealing the already-positioned top-left menu
 ```
 
-`GameScene` remains the single gameplay authority. The title screen never creates a duplicate city simulation.
+There is no `getBoundingClientRect()` polling, stable-frame counter, arbitrary splash timeout, game-level post-render dependency or Phaser duplicate of the menu UI.
 
-## Session-start neutrality
+The earlier persistent-logo failure came from waiting on a game-level `POST_RENDER` callback after the preview authority had already been acquired. On the hosted build, that callback was not completing the title handoff, so the DOM surface remained permanently in `boot`. The production path now uses the Scene `CREATE` event—the actual lifecycle boundary needed here—and cannot be stranded waiting for a later renderer signal.
 
-The title screen is treated as the boundary between playable sessions.
+The visual reveal is therefore renderer-independent: WebGL versus Canvas, CDN load speed and the exact number of game-loop frames cannot decide whether the title advances.
 
-Police `Heat` / `Wanted` is short-lived response state. Restoring it during the live title preview would allow a previous run's pursuit to immediately deploy foot police or response cruisers behind the menu. Therefore, when `MainMenuScene` is the active boot route, campaign bootstrap **does not restore the saved Heat snapshot**. Instead it calls `HeatSystem.clear()` after attaching the campaign authority.
+## Hosted diagnostics
 
-That reset is persisted immediately, so reloading the browser cannot revive the same pursuit again.
+The transition exposes two read-only snapshots in DevTools so a hosted failure is diagnosable instead of appearing as an unexplained frozen logo:
 
-This is deliberately narrower than a campaign reset. The title load still preserves:
+- `window.NBD_MAIN_MENU_READINESS` records the Phaser-side boundary (`waiting-for-game-scene-create`, `game-scene-created`, `presenting-title`, `title-presented` or `failure`).
+- `window.NBD_TITLE_SCREEN_STATE` records the DOM-side state (`boot`, `preparing`, `menu`, `exiting`, `world`, `disabled` or `failure`).
 
-- Exposure and evidence;
-- wallet/cash;
-- faction/contact reputation;
-- territory state;
-- inventory/loadout persistence;
-- other durable campaign/world state.
+These snapshots do not drive the transition. They only report which explicit boundary was reached.
 
-Direct gameplay / RC harness boots that bypass `MainMenuScene` retain the existing saved-Heat restore contract. This keeps test/scenario entry deterministic and makes the title-screen reset an explicit product behavior rather than a global persistence change.
-
-If `CONTINUE` later gains stronger resume semantics, that menu action can deliberately opt into a different policy. For the current main-menu flow, opening ViceBlood never begins inside an inherited active police chase.
-
-### NEW NIGHT: seamless handoff
-
-The menu preview is the actual scene that becomes gameplay.
+## NEW NIGHT handoff
 
 ```text
 NEW NIGHT
-  -> menu/logo/veil slide and fade away
-  -> NO black curtain
-  -> NO camera fade-to-black
-  -> NO GameScene stop
-  -> NO GameScene restart
-  -> launch UIScene on top of the already-running world
-  -> restore InputSystem, pointer aim and combat presentation
-  -> switch from fullscreen-menu CSS to fullscreen-world CSS
-  -> stop only MainMenuScene
+  -> DOM navigation, logo and noir veil animate away
+  -> no black curtain
+  -> no camera fade
+  -> no GameScene stop or restart
+  -> UIScene launches over the existing world
+  -> player input, pointer aim and combat presentation restore
+  -> only MainMenuScene stops
 ```
 
-This means cars, pedestrians and the visible city do not jump to a fresh state when the player starts. The world seen behind the menu is literally the world that receives control.
+The city visible behind the title is literally the city that receives control.
 
-The fullscreen presentation also remains active after the handoff, so removing the menu does not cause the canvas to snap back into the old framed web-demo layout. The gameplay HUD becomes visible on top of the same fullscreen world.
+## Session-start neutrality
 
-## Input ownership
+The title screen is the boundary between playable sessions. Campaign bootstrap clears the transient Heat/Wanted response snapshot when `MainMenuScene` is active and persists that reset immediately. It does not clear Exposure, evidence, wallet, reputation, territory, inventory or other durable campaign state.
 
-The live city must continue to feel alive without letting the hidden player react to menu input.
+## Assets
 
-While `MainMenuScene` is active:
+Canonical runtime logo: `phaser/assets/ui/viceblood-logo.svg`.
 
-- Phaser `GameScene.input.enabled` is false.
-- ViceBlood `InputSystem.worldEnabled` is false.
-- `pointerWorldPoint` is temporarily pinned to the player's own position.
-- combat aim graphics are hidden.
-- city streaming, traffic and other ambient systems may continue updating.
+The wordmark is intentionally clean:
 
-At the seamless handoff all captured input state is restored before `MainMenuScene` stops.
-
-## Fullscreen crop / safe viewport
-
-The internal game surface is 3:2 while desktop browser windows are commonly wider. The canvas therefore uses CSS cover sizing and is vertically cropped on widescreen displays.
-
-The menu must **not infer that crop from aspect-ratio maths alone**. Browser CSS layout is the source of truth.
-
-`MainMenuScene.visibleViewportBounds()` reads the actual post-layout canvas rectangle with `canvas.getBoundingClientRect()` and maps the browser-visible intersection back into internal Phaser coordinates. Logo, navigation, footer and panel content are anchored to those measured bounds.
-
-The splash stays above the game until the canvas has reported several consecutive stable layout frames. This prevents the user seeing a provisional menu position before the browser finishes applying fullscreen cover sizing.
-
-Layout is recalculated on:
-
-- Phaser resize;
-- browser resize;
-- `visualViewport` resize when available;
-- deferred animation-frame passes after entering fullscreen.
-
-The wordmark has an explicit safe inset from the measured visible top and left edges.
-
-## Full-height submenu contract
-
-`OPTIONS` and `CREDITS` content is positioned within the measured visible crop, but their dark backdrop and red boundary rule deliberately extend through the **entire internal canvas height**. Because the canvas itself covers the browser, the drawer cannot end early above the bottom edge due to rounding or crop calculations.
-
-## Options
-
-Render quality belongs inside `OPTIONS`; the old page-header selector is removed.
-
-Available presets:
-
-- `LOW` — 960 × 640 internal target.
-- `HIGH` — 1280 × 853.
-- `VERY HIGH` — 1440 × 960.
-- `ULTRA` — 1920 × 1280.
-
-The option writes the existing `nbd-resolution-preset` preference and reloads, preserving one resolution authority.
-
-## Art
-
-Runtime logo: `phaser/assets/ui/viceblood-logo.svg`.
-
-The canonical wordmark is intentionally simple: **ivory `VICE` + deep-red `BLOOD` in a heavy condensed face**. It contains no separate fang shape, no scratches or dark streaks, no procedural noise, no gradients, no decorative symbols and no background. The asset is a transparent SVG made only from the two text runs, so the splash and runtime title always use the same clean mark.
-
-The HTML splash constrains the wordmark with `object-fit: contain` and a viewport-relative maximum height so it remains complete across aspect ratios.
+- ivory `VICE`;
+- deep-red `BLOOD`;
+- no fang;
+- no scratches or dark streaks;
+- no gradients, noise field or background.
 
 ## Acceptance checklist
 
-- Splash wordmark is complete, clean and free of fang/scratch artifacts.
-- Main-menu wordmark is complete and visibly inset from the top-left browser edge.
-- `OPTIONS` / `CREDITS` backdrop reaches the absolute top and bottom of the viewport.
-- Moving the mouse over the menu never affects player aim.
-- Loading the menu shows no inherited Wanted level, active foot pursuit or police response cruisers from the previous session.
-- Durable Exposure/evidence and campaign progression are not erased by the title-screen reset.
-- `NEW NIGHT` reveals the same running city with no blackout and no simulation reset.
-- HUD appears only after the world handoff.
-- Gameplay remains fullscreen after the title UI disappears.
-
-## Future polish
-
-- Lock a deliberately authored rooftop/city camera composition rather than relying on the initial free-roam spawn camera.
-- Add menu-specific ambient audio mix and rare city one-shots.
-- Add restrained steam/rain/neon motion where gameplay does not already provide it.
-- Connect `CONTINUE` to canonical campaign persistence.
-- Add audio/accessibility options once their runtime owners expose stable menu-facing settings.
-
-## Non-goals
-
-- No duplicate city simulation.
-- No new save system.
-- No production HUD redesign.
-- No city compiler/generated-geometry changes.
-- No broad sprite/environment replacement in this PR.
+- The first visible frame is the ViceBlood lockup, never the old web shell or HUD.
+- The centered boot lockup always progresses to the interactive menu after `GameScene.create()` completes.
+- The runtime wordmark is fully visible at the browser top-left.
+- Splash-to-menu is a deliberate crossfade with no reframe or flash.
+- `OPTIONS` and `CREDITS` reach the absolute top and bottom of the viewport.
+- Moving the mouse cannot rotate the hidden player while the title is active.
+- No inherited pursuit or response vehicles spawn behind the menu.
+- `NEW NIGHT` reveals the same world with no blackout or reset.
+- HUD appears only after the title surface exits.
+- GitHub Pages and Netlify skip the unavailable hosted `node_modules` Phaser request.
