@@ -117,49 +117,51 @@ function drawArchitecturalParapet(graphics, module, plan, line, args) {
   const alpha = Number(line.alpha) || 0;
   const depth = Math.max(3, Number(plan.effects?.wallDepth) || 5);
 
+  // The wide dark pass from the base painter is translated into actual wall
+  // depth only on the shadow-facing sides. It is deliberately omitted on the
+  // north/west sides so the roof contour cannot read as a closed UI frame.
   if (width >= 5 && color === plan.palette.parapetDark) {
     if (!lightFacing) {
-      const outward = outwardOffset(orientation, depth * 0.42);
-      graphics.lineStyle(Math.max(3, depth * 0.9), plan.palette.wall, 0.78);
+      const outward = outwardOffset(orientation, depth * 0.36);
+      graphics.lineStyle(Math.max(2, depth * 0.58), plan.palette.wall, 0.58);
       graphics.lineBetween(
         x1 + outward.x,
         y1 + outward.y,
         x2 + outward.x,
         y2 + outward.y
       );
-      graphics.lineStyle(1, plan.palette.wallHighlight, 0.13);
+      graphics.lineStyle(1, plan.palette.wallHighlight, 0.08);
       graphics.lineBetween(
-        x1 + outward.x * 0.24,
-        y1 + outward.y * 0.24,
-        x2 + outward.x * 0.24,
-        y2 + outward.y * 0.24
+        x1 + outward.x * 0.18,
+        y1 + outward.y * 0.18,
+        x2 + outward.x * 0.18,
+        y2 + outward.y * 0.18
       );
-    } else {
-      graphics.lineStyle(3, plan.palette.parapetDark, 0.54);
-      graphics.lineBetween(x1, y1, x2, y2);
     }
     return;
   }
 
+  // One restrained architectural cap replaces the former luminous double
+  // outline. Family identity remains the job of explicit accent modules.
   if (width >= 3 && (
     color === plan.palette.parapetLight
       || color === plan.palette.parapetMid
       || color === plan.palette.parapetDark
   )) {
-    graphics.lineStyle(2.5, plan.palette.parapetMid, lightFacing ? 0.76 : 0.68);
+    graphics.lineStyle(1.5, plan.palette.parapetMid, lightFacing ? 0.48 : 0.38);
     graphics.lineBetween(x1, y1, x2, y2);
     if (lightFacing) {
-      graphics.lineStyle(1, plan.palette.parapetLight, 0.32);
+      graphics.lineStyle(0.75, plan.palette.parapetLight, 0.16);
       graphics.lineBetween(x1, y1, x2, y2);
     }
     return;
   }
 
-  const inward = inwardOffset(orientation, 0.4);
+  const inward = inwardOffset(orientation, 0.65);
   graphics.lineStyle(
-    Math.min(1.2, Math.max(1, width)),
+    Math.min(1, Math.max(0.75, width)),
     plan.palette.roofShadow,
-    Math.min(0.42, Math.max(0.24, alpha))
+    Math.min(0.3, Math.max(0.18, alpha))
   );
   graphics.lineBetween(
     x1 + inward.x,
@@ -175,17 +177,24 @@ function drawMutedRectOutline(graphics, bounds, plan) {
   const w = Number(bounds.w);
   const h = Number(bounds.h);
 
-  graphics.lineStyle(2.5, plan.palette.parapetMid, 0.7);
+  graphics.lineStyle(1.5, plan.palette.parapetMid, 0.46);
   graphics.lineBetween(x, y, x + w, y);
   graphics.lineBetween(x, y, x, y + h);
 
-  graphics.lineStyle(1, plan.palette.parapetLight, 0.28);
-  graphics.lineBetween(x + 1, y + 1, x + w - 1, y + 1);
-  graphics.lineBetween(x + 1, y + 1, x + 1, y + h - 1);
-
-  graphics.lineStyle(2, plan.palette.parapetDark, 0.6);
+  graphics.lineStyle(1, plan.palette.parapetDark, 0.44);
   graphics.lineBetween(x, y + h, x + w, y + h);
   graphics.lineBetween(x + w, y, x + w, y + h);
+}
+
+function normalizedFoundationFill(module, plan, color, alpha) {
+  if (module.kind !== MODULE_KINDS.FOUNDATION) return { color, alpha };
+  if (Number(color) === plan.palette.foundation) {
+    return { color, alpha: Math.min(0.62, Number(alpha)) };
+  }
+  if (Number(color) === plan.palette.wall) {
+    return { color, alpha: Math.min(0.48, Number(alpha)) };
+  }
+  return { color, alpha };
 }
 
 function createModuleGraphicsProxy(graphics, module, plan) {
@@ -197,8 +206,8 @@ function createModuleGraphicsProxy(graphics, module, plan) {
 
   const handlers = {
     fillStyle(color, alpha = 1) {
-      state.fill = { color: Number(color), alpha: Number(alpha) };
-      graphics.fillStyle(color, alpha);
+      state.fill = normalizedFoundationFill(module, plan, Number(color), Number(alpha));
+      graphics.fillStyle(state.fill.color, state.fill.alpha);
       return proxy;
     },
 
@@ -218,13 +227,13 @@ function createModuleGraphicsProxy(graphics, module, plan) {
         );
       if (architecturalDarkLine) {
         const parapetEdge = module.kind === MODULE_KINDS.PARAPET_EDGE;
-        nextWidth = Math.min(parapetEdge ? 3 : 2, nextWidth);
-        nextAlpha = Math.min(parapetEdge ? 0.54 : 0.6, nextAlpha);
+        nextWidth = Math.min(parapetEdge ? 2 : 1.5, nextWidth);
+        nextAlpha = Math.min(parapetEdge ? 0.4 : 0.46, nextAlpha);
       } else if (Number(color) === plan.palette.parapetLight) {
-        nextWidth = Math.min(2, nextWidth);
-        nextAlpha = Math.min(0.36, nextAlpha);
+        nextWidth = Math.min(1.5, nextWidth);
+        nextAlpha = Math.min(0.22, nextAlpha);
       } else if (Number(color) === plan.palette.wallHighlight) {
-        nextAlpha = Math.min(0.16, nextAlpha);
+        nextAlpha = Math.min(0.1, nextAlpha);
       }
       graphics.lineStyle(nextWidth, color, nextAlpha);
       return proxy;
@@ -272,6 +281,11 @@ function createModuleGraphicsProxy(graphics, module, plan) {
     },
 
     lineBetween(...args) {
+      if (module.kind === MODULE_KINDS.FOUNDATION) {
+        // Keep the full authored rectangle as an invisible collision authority,
+        // but do not paint its old top/left frame or wall-highlight rails.
+        return proxy;
+      }
       if (module.kind === MODULE_KINDS.PARAPET_EDGE) {
         drawArchitecturalParapet(graphics, module, plan, state.line, args);
       } else {
@@ -282,8 +296,15 @@ function createModuleGraphicsProxy(graphics, module, plan) {
 
     strokeRect(...args) {
       if (
-        (module.kind === MODULE_KINDS.FOUNDATION
-          || module.kind === MODULE_KINDS.ROOF_ANNEX)
+        module.kind === MODULE_KINDS.FOUNDATION
+          && state.line.color === plan.palette.parapetDark
+      ) {
+        // The footprint remains fully rendered as a low slab and fully active as
+        // collision, but its complete rectangular outline is intentionally gone.
+        return proxy;
+      }
+      if (
+        module.kind === MODULE_KINDS.ROOF_ANNEX
           && state.line.color === plan.palette.parapetDark
       ) {
         drawMutedRectOutline(graphics, {
