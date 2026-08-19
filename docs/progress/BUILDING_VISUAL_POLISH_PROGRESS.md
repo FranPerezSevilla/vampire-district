@@ -2,6 +2,37 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-19 — M2.1 validated; M2.2 physical skylights opened
+
+### Completed
+
+- verified the shared raised-rectangle and cylindrical geometry/painter contracts in GitHub CI;
+- verified the hatch proving fixture keeps its authored bounds while gaining separate top, side and layered contact-shadow treatment;
+- verified the vent proving fixture uses the cylindrical volume path without planner changes;
+- updated the branding-cleanup workflow inventory so the canonical hourly scheduler is treated as active infrastructure rather than retired one-off patching;
+- confirmed Netlify is green on the validated implementation head;
+- marked M2.1 complete and opened M2.2 physical skylights.
+
+### Validation
+
+- global unit result: **407 passed / 414 total**;
+- all new and existing building-focused contracts pass;
+- the seven failures are exactly the documented unrelated expectations:
+  - two in `tests/urban-witness-network.test.js`;
+  - five in `tests/vehicle-exit-and-impact-buffer.test.js`;
+- no collision, topology, navigation, AI, mission or gameplay authority changed;
+- Netlify preview: `https://deploy-preview-63--vampire-district.netlify.app`.
+
+### Residual risk
+
+The shared primitives prove the physical language, but current skylights still use the older flat-glass renderer. M2.2 must add a curb/frame, inset glazing and directional highlight while preserving the same planned bounds and gameplay-scale readability.
+
+### Next
+
+At the next hourly autonomous run, route skylights through the shared raised-rectangle primitive and add focused physical-skylight contracts. Intermediate user review remains deferred until M6.
+
+---
+
 ## 2026-08-19 — M2.1 shared physical volume primitives implemented
 
 ### Scope
