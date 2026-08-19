@@ -10,7 +10,7 @@ test("main menu theme asset is committed and wired as a loop with fade-out", () 
   assert.match(main, /main-menu-theme-01\.m4a/);
   assert.match(main, /audio\.loop = true/);
   assert.match(main, /MAIN_MENU_THEME_VOLUME = 0\.28/);
-  assert.match(main, /beginNight[\s\S]*fadeOut\(MAIN_MENU_THEME_FADE_MS\)/);
+  assert.match(main, /MainMenuScene\.prototype\.beginNight[\s\S]*fadeOut\(MAIN_MENU_THEME_FADE_MS\)/);
   assert.match(main, /SHUTDOWN[\s\S]*fadeOut\(120\)/);
 });
 
