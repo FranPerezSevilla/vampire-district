@@ -1,4 +1,5 @@
 import { titleScreenController } from "../ui/TitleScreenController.js";
+import { titleScreenAudioGate } from "../ui/TitleScreenAudioGate.js";
 
 export class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -41,9 +42,6 @@ export class MainMenuScene extends Phaser.Scene {
 
     this.previewScene = gameScene;
 
-    // GameScene CREATE is the readiness boundary. It fires after GameScene.create()
-    // has constructed the world, GameplayRuntime and InputSystem. Register before
-    // launch so a fast hosted boot cannot outrun the title-screen handoff.
     if (this.scene.isActive("GameScene") && gameScene.inputSystem) {
       this.publishReadiness("game-scene-already-created");
       this.activateWorldPreview(gameScene);
@@ -78,11 +76,11 @@ export class MainMenuScene extends Phaser.Scene {
     gameScene?.registry?.set?.("mainMenuActive", true);
     this.scene.bringToTop("MainMenuScene");
 
-    // TitleScreenController commits the browser-anchored menu behind the opaque
-    // boot cover for two animation frames before beginning the crossfade. No
-    // renderer polling or timing heuristic is required here.
     titleScreenController.present({ onNewNight: () => this.beginNight() })
-      .then(() => this.publishReadiness("title-presented"))
+      .then(async () => {
+        await titleScreenAudioGate.present();
+        this.publishReadiness("title-presented");
+      })
       .catch(error => {
         this.publishReadiness("failure", String(error?.message || error));
         titleScreenController.showFailure(error);
@@ -145,6 +143,7 @@ export class MainMenuScene extends Phaser.Scene {
   async beginNight() {
     if (this.transitioning) return;
     this.transitioning = true;
+    titleScreenAudioGate.fadeOut(430);
 
     try {
       await titleScreenController.exitToGame();
@@ -159,8 +158,6 @@ export class MainMenuScene extends Phaser.Scene {
     if (!this.scene.isActive("GameScene")) this.scene.launch("GameScene");
     if (!this.scene.isActive("UIScene")) this.scene.launch("UIScene");
 
-    // Hand control to the exact live scene that has been running behind the DOM title layer.
-    // There is deliberately no blackout, camera fade, GameScene stop or GameScene restart.
     this.restorePreviewControl();
     const gameScene = this.previewScene || this.scene.get("GameScene");
     gameScene?.registry?.set?.("mainMenuActive", false);
@@ -170,6 +167,7 @@ export class MainMenuScene extends Phaser.Scene {
 
   cleanup() {
     this.detachPreviewCreateListener();
+    titleScreenAudioGate.dispose();
     titleScreenController.detachNewNightHandler();
     if (this.handoffComplete) return;
     titleScreenController.resetToBoot();
