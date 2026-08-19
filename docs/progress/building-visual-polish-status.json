@@ -9,19 +9,19 @@
   "executionMode": "autonomous-hourly-final-gate",
   "userValidation": "M6-final-only",
   "currentMilestone": "M2",
-  "currentTask": "M2.1-automated-validation-pending",
-  "nextAction": "Wait for focused building validation and Netlify on the shared volume implementation head. If both are green, close M2.1 and begin M2.2 skylight frame and glazing depth without requesting intermediate user review.",
+  "currentTask": "M2.2-physical-skylights",
+  "nextAction": "At the next hourly run, route skylights through the shared raised-rectangle volume primitive, add a physical curb and inset glazing with directional highlight, preserve authored bounds, and add focused physical-skylight contracts.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "automation": {
     "targetBranch": "agent/building-visual-poc",
     "trackingIssue": 64,
     "workflow": ".github/workflows/building-visual-polish-hourly.yml",
-    "schedule": "hourly-at-minute-17",
+    "schedule": "hourly-at-minute-17-UTC",
     "requiredSecret": "OPENAI_API_KEY",
     "installedOnDefaultBranch": true,
     "installationPullRequest": 65,
     "installationCommit": "b0bca65a20e3aa177f6d05f8165a51b2a7315583",
-    "firstScheduledRunExpected": "next hourly minute-17 slot"
+    "firstScheduledRunExpected": "2026-08-19T16:17:00Z"
   },
   "milestones": [
     { "id": "P0", "name": "modular proof of concept", "status": "complete" },
@@ -45,8 +45,8 @@
       "name": "physical rooftop props",
       "status": "autonomous-in-progress",
       "tasks": [
-        { "id": "M2.1", "name": "shared physical volume primitives", "status": "implementation-complete / automated-validation-pending" },
-        { "id": "M2.2", "name": "skylights", "status": "planned" },
+        { "id": "M2.1", "name": "shared physical volume primitives", "status": "complete" },
+        { "id": "M2.2", "name": "skylights", "status": "active" },
         { "id": "M2.3", "name": "mechanical equipment", "status": "planned" },
         { "id": "M2.4", "name": "architectural annexes and markers", "status": "planned" }
       ]
@@ -58,10 +58,10 @@
   ],
   "validation": {
     "latestM1Head": "454f00a03dfd9d80f8cdc27b849ff4ad982955c2",
-    "latestM2ImplementationHead": "c87ecf1cd731c009b62776494732841e632df107",
-    "buildingFocusedContracts": "pending",
-    "globalUnitResult": "pending",
-    "netlify": "pending"
+    "latestM2ValidatedHead": "20d49ac4478e97e82c7e0cfc1f76432270c6f16a",
+    "buildingFocusedContracts": "pass",
+    "globalUnitResult": "407/414",
+    "netlify": "success"
   },
   "knownUnrelatedCiFailures": [
     "tests/urban-witness-network.test.js (2 expectations)",
