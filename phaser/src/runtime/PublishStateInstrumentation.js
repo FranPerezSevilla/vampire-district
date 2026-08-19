@@ -4,6 +4,11 @@ const PHASE_INTERACTION_MENU = "PublishState.InteractionMenu";
 const PHASE_PAYLOAD_TAIL = "PublishState.PayloadTail";
 const PHASE_REGISTRY_COMMIT = "PublishState.RegistryCommit";
 
+const SUMMARY_MISSION_ACTORS = "PublishState.Summary.MissionActors";
+const SUMMARY_PRESSURE_EVIDENCE = "PublishState.Summary.PressureEvidence";
+const SUMMARY_RESPONSE_AI = "PublishState.Summary.ResponseAI";
+const SUMMARY_TAIL = "PublishState.Summary.Tail";
+
 function profileBoundary(owner, method, { before = null, after = null } = {}, isActive, restorers) {
   if (!owner || typeof owner[method] !== "function") return;
   const original = owner[method];
@@ -29,6 +34,7 @@ export function installPublishStateInstrumentation(scene, diagnostics) {
   const restorers = [];
   let activeDepth = 0;
   let activePhase = null;
+  let activeSummaryPhase = null;
 
   const endActivePhase = () => {
     if (!activePhase) return;
@@ -46,6 +52,22 @@ export function installPublishStateInstrumentation(scene, diagnostics) {
     };
   };
 
+  const endActiveSummaryPhase = () => {
+    if (!activeSummaryPhase) return;
+    diagnostics?.endSystem?.(activeSummaryPhase.label, activeSummaryPhase.mark);
+    activeSummaryPhase = null;
+  };
+
+  const transitionSummaryPhase = label => {
+    if (activeDepth <= 0) return;
+    endActiveSummaryPhase();
+    if (!label) return;
+    activeSummaryPhase = {
+      label,
+      mark: diagnostics?.beginSystem?.(label) ?? null
+    };
+  };
+
   const originalPublishState = scene.publishState;
   const wrappedPublishState = function profiledPublishState(...args) {
     const outermost = activeDepth === 0;
@@ -54,7 +76,10 @@ export function installPublishStateInstrumentation(scene, diagnostics) {
     try {
       return originalPublishState.apply(this, args);
     } finally {
-      if (outermost) endActivePhase();
+      if (outermost) {
+        endActiveSummaryPhase();
+        endActivePhase();
+      }
       activeDepth = Math.max(0, activeDepth - 1);
     }
   };
@@ -65,22 +90,54 @@ export function installPublishStateInstrumentation(scene, diagnostics) {
 
   const isActive = () => activeDepth > 0;
 
-  // Keep this drill-down deliberately coarse. The previous leaf-method profiler
-  // wrapped seventeen calls and its own Map/rest-argument overhead became material
-  // relative to the tiny per-summary timings. These boundaries cover the existing
-  // publishState body with only three wrapped methods while preserving its order.
+  // Keep the top-level drill-down deliberately coarse. These boundaries cover the
+  // existing publishState body with only three wrapped methods while preserving order.
   profileBoundary(
     scene,
     "visibilityText",
-    { after: () => transitionPhase(PHASE_SUMMARIES) },
+    {
+      after: () => {
+        transitionPhase(PHASE_SUMMARIES);
+        transitionSummaryPhase(SUMMARY_MISSION_ACTORS);
+      }
+    },
+    isActive,
+    restorers
+  );
+
+  // The grouped artifact proved PublishState.Summaries is the only stable coarse
+  // winner. Deepen only that phase with three additional existing boundaries rather
+  // than returning to per-summary wrappers whose overhead dominated the leaf capture.
+  profileBoundary(
+    scene.exposureSystem,
+    "summary",
+    { before: () => transitionSummaryPhase(SUMMARY_PRESSURE_EVIDENCE) },
     isActive,
     restorers
   );
   profileBoundary(
+    scene.policeSystem,
+    "summary",
+    { before: () => transitionSummaryPhase(SUMMARY_RESPONSE_AI) },
+    isActive,
+    restorers
+  );
+  profileBoundary(
+    scene.aiStateSystem,
+    "summary",
+    { after: () => transitionSummaryPhase(SUMMARY_TAIL) },
+    isActive,
+    restorers
+  );
+
+  profileBoundary(
     scene.interactionSystem,
     "snapshot",
     {
-      before: () => transitionPhase(PHASE_INTERACTION_MENU),
+      before: () => {
+        endActiveSummaryPhase();
+        transitionPhase(PHASE_INTERACTION_MENU);
+      },
       after: () => transitionPhase(PHASE_PAYLOAD_TAIL)
     },
     isActive,
@@ -102,6 +159,7 @@ export function installPublishStateInstrumentation(scene, diagnostics) {
   );
 
   const cleanup = () => {
+    endActiveSummaryPhase();
     endActivePhase();
     activeDepth = 0;
     for (let index = restorers.length - 1; index >= 0; index -= 1) restorers[index]();
