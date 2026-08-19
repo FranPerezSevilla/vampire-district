@@ -25,6 +25,7 @@ class GraphicsRecorder {
   constructor() {
     this.calls = [];
     this.style = { color: null, alpha: null };
+    this.line = { width: null, color: null, alpha: null };
   }
 
   fillStyle(color, alpha) {
@@ -44,12 +45,13 @@ class GraphicsRecorder {
   }
 
   lineStyle(...args) {
+    this.line = { width: args[0], color: args[1], alpha: args[2] };
     this.calls.push({ name: "lineStyle", args });
     return this;
   }
 
   strokeRect(...args) {
-    this.calls.push({ name: "strokeRect", args });
+    this.calls.push({ name: "strokeRect", args, line: { ...this.line } });
     return this;
   }
 
@@ -59,12 +61,12 @@ class GraphicsRecorder {
   }
 
   strokeCircle(...args) {
-    this.calls.push({ name: "strokeCircle", args });
+    this.calls.push({ name: "strokeCircle", args, line: { ...this.line } });
     return this;
   }
 
   lineBetween(...args) {
-    this.calls.push({ name: "lineBetween", args });
+    this.calls.push({ name: "lineBetween", args, line: { ...this.line } });
     return this;
   }
 }
@@ -113,7 +115,7 @@ test("neutral parapets avoid the old six-pixel bright frame recipe", () => {
     .filter(call => call.name === "lineStyle")
     .map(call => call.args);
 
-  assert.ok(lineStyles.some(([width]) => Number(width) === 3));
+  assert.ok(lineStyles.some(([width]) => Number(width) <= 2));
   assert.ok(lineStyles.some(([width]) => Number(width) === 1));
   assert.equal(
     lineStyles.some(([width, color, alpha]) => (
@@ -123,6 +125,31 @@ test("neutral parapets avoid the old six-pixel bright frame recipe", () => {
     )),
     false
   );
+});
+
+test("the authored collider footprint keeps a low slab but no visible full-frame outline", () => {
+  const sourcePlan = createBuildingPresentationPlan(building({
+    sign: "FLATS",
+    presentation: { profile: "residential", layoutId: "rectangle" }
+  }));
+  const foundation = sourcePlan.modules.find(module => module.kind === MODULE_KINDS.FOUNDATION);
+  assert.ok(foundation);
+  assert.deepEqual(foundation.bounds, sourcePlan.collisionFootprint);
+
+  const graphics = new GraphicsRecorder();
+  renderBuildingPresentation(graphics, {
+    ...sourcePlan,
+    modules: [foundation]
+  });
+
+  const foundationFills = graphics.calls.filter(call => (
+    call.name === "fillRect"
+      && call.style?.color === sourcePlan.palette.foundation
+  ));
+  assert.ok(foundationFills.length >= 1);
+  assert.ok(foundationFills.every(call => Number(call.style.alpha) <= 0.62));
+  assert.equal(graphics.calls.some(call => call.name === "strokeRect"), false);
+  assert.equal(graphics.calls.some(call => call.name === "lineBetween"), false);
 });
 
 test("rectangular roof props receive several local contact-shadow passes", () => {
