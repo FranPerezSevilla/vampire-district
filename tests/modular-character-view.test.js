@@ -2,17 +2,38 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   modularCharacterFacingRotation,
-  modularCharacterPose
+  modularCharacterPose,
+  modularCharacterSnappedRotation
 } from "../phaser/src/rendering/ModularCharacterView.js";
 
 const closeTo = (actual, expected, epsilon = 0.0001) => {
   assert.ok(Math.abs(actual - expected) <= epsilon, `${actual} should be close to ${expected}`);
 };
 
+const directionForRotation = rotation => ({
+  x: Math.sin(rotation),
+  y: -Math.cos(rotation)
+});
+
 test("modular character rotation keeps authored north as zero rotation", () => {
   closeTo(modularCharacterFacingRotation({ x: 0, y: -1 }), 0);
   closeTo(modularCharacterFacingRotation({ x: 1, y: 0 }), Math.PI / 2);
   closeTo(modularCharacterFacingRotation({ x: -1, y: 0 }), -Math.PI / 2);
+});
+
+test("visual facing snaps to eight directions", () => {
+  closeTo(modularCharacterSnappedRotation(directionForRotation(Math.PI * 20 / 180)), 0);
+  closeTo(modularCharacterSnappedRotation(directionForRotation(Math.PI * 32 / 180)), Math.PI / 4);
+  closeTo(modularCharacterSnappedRotation(directionForRotation(Math.PI / 2)), Math.PI / 2);
+});
+
+test("facing hysteresis prevents jitter around an octant boundary", () => {
+  const previous = 0;
+  const insideHysteresis = directionForRotation(Math.PI * 29 / 180);
+  const committedTurn = directionForRotation(Math.PI * 32 / 180);
+
+  closeTo(modularCharacterSnappedRotation(insideHysteresis, previous), 0);
+  closeTo(modularCharacterSnappedRotation(committedTurn, previous), Math.PI / 4);
 });
 
 test("walk pose alternates hands and feet without moving the fixed core", () => {
