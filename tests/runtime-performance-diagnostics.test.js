@@ -154,3 +154,15 @@ test("cached runtime diagnostics publish only when their snapshot refreshes", ()
   assert.equal(performancePublishes, 3);
   assert.equal(publishStateCalls, 3);
 });
+
+test("browser performance capture persists machine-readable CI evidence", () => {
+  const captureSpec = source("tests/browser/runtime-performance-capture.spec.js");
+  const workflow = source(".github/workflows/tests.yml");
+
+  assert.match(captureSpec, /NBD_PERF_CAPTURE=/);
+  assert.match(captureSpec, /runtime-performance-capture\.json/);
+  assert.match(captureSpec, /writeFile\(PERFORMANCE_CAPTURE_PATH/);
+  assert.match(workflow, /Upload performance capture evidence/);
+  assert.match(workflow, /runtime-performance-capture-shard-\$\{\{ matrix\.shard \}\}/);
+  assert.match(workflow, /if-no-files-found:\s*ignore/);
+});
