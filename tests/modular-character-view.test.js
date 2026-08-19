@@ -33,42 +33,61 @@ test("walking feet remain centered beneath the torso and alternate around one or
   closeTo(first.feet.left.x, -first.feet.right.x);
 });
 
-test("unarmed attacks thrust one hand forward and alternate hands by attack serial", () => {
-  const leftPunch = modularCharacterPose({
-    timeMs: 0,
+test("unarmed attacks snap out early, recover quickly and alternate hands", () => {
+  const windup = modularCharacterPose({
     weaponId: "unarmed",
     attacking: true,
-    attackProgress: 0.5,
+    attackProgress: 0.10,
+    attackSerial: 2
+  });
+  const impact = modularCharacterPose({
+    weaponId: "unarmed",
+    attacking: true,
+    attackProgress: 0.28,
+    attackSerial: 2
+  });
+  const recovered = modularCharacterPose({
+    weaponId: "unarmed",
+    attacking: true,
+    attackProgress: 0.62,
     attackSerial: 2
   });
   const rightPunch = modularCharacterPose({
-    timeMs: 0,
     weaponId: "unarmed",
     attacking: true,
-    attackProgress: 0.5,
+    attackProgress: 0.28,
     attackSerial: 3
   });
 
-  assert.ok(leftPunch.hands.left.y < leftPunch.hands.right.y);
+  assert.ok(impact.hands.left.y < windup.hands.left.y - 5);
+  assert.ok(recovered.hands.left.y > impact.hands.left.y + 5);
   assert.ok(rightPunch.hands.right.y < rightPunch.hands.left.y);
-  assert.equal(leftPunch.attackKind, "punch");
+  assert.ok(Math.abs(impact.coreAttackRotation) > 0.05);
+  assert.equal(impact.attackKind, "punch");
 });
 
-test("iron pipe remains visible and sweeps through the attack", () => {
+test("iron pipe whips through a fast wide swing and settles early", () => {
   const windup = modularCharacterPose({
     weaponId: "iron_pipe",
     attacking: true,
-    attackProgress: 0.1
+    attackProgress: 0.12
   });
-  const followThrough = modularCharacterPose({
+  const impact = modularCharacterPose({
     weaponId: "iron_pipe",
     attacking: true,
-    attackProgress: 0.8
+    attackProgress: 0.34
+  });
+  const recovered = modularCharacterPose({
+    weaponId: "iron_pipe",
+    attacking: true,
+    attackProgress: 0.70
   });
 
   assert.equal(windup.pipeVisible, true);
   assert.equal(windup.pistolVisible, false);
-  assert.notEqual(windup.hands.right.rotation, followThrough.hands.right.rotation);
+  assert.ok(Math.abs(impact.hands.right.rotation - windup.hands.right.rotation) > 1.5);
+  assert.ok(Math.abs(recovered.hands.right.rotation - 0.24) < 0.01);
+  assert.ok(Math.abs(impact.coreAttackRotation) > 0.05);
 });
 
 test("pistol keeps both hands forward, recoils and still sways while moving", () => {
@@ -123,14 +142,21 @@ test("feet keep animating independently while a weapon attack owns the hands", (
   assert.notEqual(first.feet.right.y, second.feet.right.y);
 });
 
-test("idle motion is subtle, continuous and phase-friendly", () => {
+test("idle motion is clearly readable but remains bounded and phase-friendly", () => {
   const first = modularCharacterIdleMotion({ timeMs: 100, moving: false, phase: 0.2 });
   const second = modularCharacterIdleMotion({ timeMs: 700, moving: false, phase: 0.2 });
 
   assert.notEqual(first.upperY, second.upperY);
-  assert.ok(Math.abs(first.upperY) <= 0.23);
-  assert.ok(Math.abs(second.upperY) <= 0.23);
-  assert.ok(first.coreScale > 0.99 && first.coreScale < 1.01);
+  assert.ok(Math.abs(first.upperY) <= 0.49);
+  assert.ok(Math.abs(second.upperY) <= 0.49);
+  assert.ok(first.coreScale > 0.985 && first.coreScale < 1.015);
+
+  const samples = Array.from({ length: 16 }, (_, index) => modularCharacterIdleMotion({
+    timeMs: index * 180,
+    moving: false,
+    phase: 0
+  }).upperY);
+  assert.ok(Math.max(...samples) - Math.min(...samples) > 0.65);
 });
 
 test("civilian visual variants are deterministic but produce a varied crowd", () => {
@@ -144,9 +170,9 @@ test("civilian visual variants are deterministic but produce a varied crowd", ()
   assert.ok(signatures.size >= 8);
 });
 
-test("protagonist direction is modern trench-coat rather than classical vampire costume", () => {
+test("protagonist keeps a modern short-jacket silhouette with no trench coat", () => {
   const style = MODULAR_CHARACTER_STYLES.protagonist;
-  assert.equal(style.trench, true);
+  assert.equal(style.trench, false);
   assert.equal(style.collar, false);
   assert.equal(style.glasses, true);
   assert.ok(style.shoulderWidth < MODULAR_CHARACTER_STYLES.police.shoulderWidth);
