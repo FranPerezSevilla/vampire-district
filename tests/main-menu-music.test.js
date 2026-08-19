@@ -14,6 +14,16 @@ test("main menu theme asset is committed and wired as a loop with fade-out", () 
   assert.match(main, /SHUTDOWN[\s\S]*fadeOut\(120\)/);
 });
 
+test("main menu audio gate unlocks browser autoplay on first real interaction", () => {
+  const main = source("phaser/src/main.js");
+  assert.match(main, /PRESS ANY KEY TO START/);
+  assert.match(main, /window\.addEventListener\("keydown", onKeyDown, true\)/);
+  assert.match(main, /gate\.addEventListener\("pointerdown", unlock, true\)/);
+  assert.match(main, /gate\.addEventListener\("touchstart", unlock/);
+  assert.match(main, /Promise\.resolve\(window\.NBD_MAIN_MENU_THEME\?\.start\?\.\(\)\)\.then\(started =>/);
+  assert.match(main, /if \(!started\) showMainMenuAudioGate\(\)/);
+});
+
 test("main menu credits expose the Satie attribution", () => {
   const main = source("phaser/src/main.js");
   const attribution = source("phaser/assets/audio/ATTRIBUTION.md");
