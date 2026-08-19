@@ -139,5 +139,3 @@ jobs:
           fi
           git commit -m "Generate browser-compatible audio mirrors"
           git push
-
-# Manual retrigger for the validated ViceBlood menu-theme staging payload.
