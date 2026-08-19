@@ -1,8 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { mkdir, writeFile } from "node:fs/promises";
 
 const SAMPLE_INTERVAL_MS = 300;
 const SAMPLES_PER_PHASE = 8;
 const SETTLE_MS = 900;
+const PERFORMANCE_CAPTURE_DIR = ".artifacts/performance";
+const PERFORMANCE_CAPTURE_PATH = `${PERFORMANCE_CAPTURE_DIR}/runtime-performance-capture.json`;
 
 async function waitForRuntimeDiagnostics(page) {
   await page.waitForFunction(() => Boolean(
@@ -90,6 +93,11 @@ function summarizeCapture(samples) {
   };
 }
 
+async function persistCapture(capture) {
+  await mkdir(PERFORMANCE_CAPTURE_DIR, { recursive: true });
+  await writeFile(PERFORMANCE_CAPTURE_PATH, `${JSON.stringify(capture, null, 2)}\n`, "utf8");
+}
+
 test.describe.configure({ timeout: 90_000 });
 
 test("runtime diagnostics capture a repeatable browser hotspot ranking across city streaming pressure", async ({ page }) => {
@@ -150,6 +158,7 @@ test("runtime diagnostics capture a repeatable browser hotspot ranking across ci
   });
 
   const capture = summarizeCapture(samples);
+  await persistCapture(capture);
   console.log(`NBD_PERF_CAPTURE=${JSON.stringify(capture)}`);
 
   expect(pageErrors).toEqual([]);
