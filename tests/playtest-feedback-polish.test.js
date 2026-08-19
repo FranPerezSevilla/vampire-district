@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
-const source = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+const repoFile = path => new URL(`../${path}`, import.meta.url);
+const source = path => readFileSync(repoFile(path), "utf8");
 
 test("Blood Sense exclusively owns NPC and player perception overlays", () => {
   const policy = source("phaser/src/policies/BloodSensePresentationPolicy.js");
@@ -44,12 +45,19 @@ test("damaged vehicles keep progressive smoke fire and a charred exploded state"
   assert.match(policy, /VehicleSystem\.prototype\.explodeVehicle/);
 });
 
-test("street-range projectile expiry produces world impact audio", () => {
-  const policy = source("phaser/src/policies/StreetImpactAudioPolicy.js");
-  assert.match(policy, /remainingRange/);
-  assert.match(policy, /LAYERS\.STREET/);
-  assert.match(policy, /bulletHitWorld/);
-  assert.match(policy, /combat:street-hit/);
+test("car impacts against walls stay audible even when collision recovery slides along the wall", () => {
+  const policy = source("phaser/src/policies/VehicleWallCollisionAudioPolicy.js");
+  const main = source("phaser/src/main.js");
+  assert.match(policy, /VehicleSystem\.prototype/);
+  assert.match(policy, /stepVehicleKinematics/);
+  assert.match(policy, /vehicleFootprintPoints/);
+  assert.match(policy, /vehicleWouldHitWall/);
+  assert.match(policy, /vehicleCollisionAudioEvent\(impact\) \|\| "vehicleCollisionLight"/);
+  assert.match(policy, /RawAudio\.play\(audioEvent, \{ cooldown: 0\.28 \}\)/);
+  assert.match(policy, /originalFeedback/);
+  assert.match(main, /installVehicleWallCollisionAudioPolicy\(\)/);
+  assert.equal(existsSync(repoFile("phaser/src/policies/StreetImpactAudioPolicy.js")), false);
+  assert.doesNotMatch(main, /installStreetImpactAudioPolicy/);
 });
 
 test("production spawn is moved away from the problematic traffic handoff crossing", () => {
