@@ -9,6 +9,7 @@ import {
   sewerTunnels,
   sidewalks
 } from "../data/district.js";
+import { ModularCharacterView } from "../rendering/ModularCharacterView.js";
 import { GameScene as GameSceneCore } from "./GameSceneCore.js";
 
 const URBAN_RENDER_HALF_WIDTH = 680;
@@ -42,6 +43,51 @@ export class GameScene extends GameSceneCore {
     super();
     this.urbanRenderBounds = null;
     this.urbanRenderSectorKey = "";
+    this.playerPresentationPosition = null;
+  }
+
+  create() {
+    super.create();
+    this.playerBody?.setVisible?.(false);
+    this.playerHead?.setVisible?.(false);
+    this.playerCharacterView = new ModularCharacterView(this, this.player, "protagonist", {
+      phaseKey: "viceblood-protagonist"
+    });
+    this.playerPresentationPosition = { x: this.player.x, y: this.player.y };
+  }
+
+  update(time, deltaMs) {
+    super.update(time, deltaMs);
+    this.updateCharacterPresentation(time);
+  }
+
+  updateCharacterPresentation(timeMs = 0) {
+    if (!this.player || !this.playerCharacterView) return;
+
+    const previous = this.playerPresentationPosition || { x: this.player.x, y: this.player.y };
+    const dx = this.player.x - previous.x;
+    const dy = this.player.y - previous.y;
+    const moving = !this.vehicleSystem?.isDriving?.() && Math.hypot(dx, dy) > 0.05;
+    const frame = this.currentInputFrame || {};
+    const aim = frame.aimWorld;
+    let direction = this.playerCharacterView.lastDirection;
+
+    if (frame.pointerInside && Number.isFinite(aim?.x) && Number.isFinite(aim?.y)) {
+      const aimDx = aim.x - this.player.x;
+      const aimDy = aim.y - this.player.y;
+      if (Math.hypot(aimDx, aimDy) > 0.5) direction = { x: aimDx, y: aimDy };
+    } else if (moving) {
+      direction = { x: dx, y: dy };
+    }
+
+    this.playerCharacterView.update({
+      timeMs,
+      direction,
+      moving,
+      aiming: Boolean(frame.primaryHeld || frame.primaryPressed)
+    });
+    this.npcSystem?.updateCharacterPresentation?.(timeMs);
+    this.playerPresentationPosition = { x: this.player.x, y: this.player.y };
   }
 
   collectInteractions() {
