@@ -43,6 +43,7 @@ test("first paint and runtime menu use one persistent DOM title surface", () => 
     assert.match(html, /class="viceblood-title-menu-logo"/);
     assert.match(html, /data-title-action="new-night"/);
     assert.match(html, /title-screen\.css/);
+    assert.doesNotMatch(html, /viceblood-title-kicker|An urban vampire sandbox/i);
   }
 
   assert.match(titleController, /root\.dataset\.state = "prepared"/);
@@ -55,9 +56,11 @@ test("first paint and runtime menu use one persistent DOM title surface", () => 
   assert.doesNotMatch(appBootstrap, /canvasFrameSnapshot|getBoundingClientRect|MENU_LAYOUT_STABLE_FRAMES/);
 });
 
-test("the canonical wordmark is clean ivory/red typography with no fang or distress marks", () => {
-  assert.match(logoSvg, /fill="#f0ede6">VICE<\/text>/);
-  assert.match(logoSvg, /fill="#c8101d">BLOOD<\/text>/);
+test("the canonical wordmark is clean, bounded ivory/red typography", () => {
+  assert.match(logoSvg, /<text x="24" y="300"[\s\S]*textLength="448"[\s\S]*fill="#f0ede6">VICE<\/text>/);
+  assert.match(logoSvg, /<text x="480" y="300"[\s\S]*textLength="688"[\s\S]*fill="#c8101d">BLOOD<\/text>/);
+  assert.match(logoSvg, /lengthAdjust="spacingAndGlyphs"/);
+  assert.doesNotMatch(logoSvg, /letter-spacing=/);
   assert.doesNotMatch(logoSvg, /<path\b/);
   assert.doesNotMatch(logoSvg, /<circle\b/);
   assert.doesNotMatch(logoSvg, /<rect\b/);
