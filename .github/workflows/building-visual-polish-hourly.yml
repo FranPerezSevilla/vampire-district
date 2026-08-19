@@ -1,0 +1,211 @@
+name: Hourly building visual polish agent
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: building-visual-polish-hourly
+  cancel-in-progress: false
+
+env:
+  TARGET_BRANCH: agent/building-visual-poc
+  TRACKING_ISSUE: "64"
+
+jobs:
+  advance:
+    name: advance-one-bounded-task
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+    steps:
+      - name: Check out the active polish branch
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Preflight machine state and credentials
+        id: preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "base_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+          if [[ ! -f docs/progress/building-visual-polish-status.json ]]; then
+            echo "run_agent=false" >> "$GITHUB_OUTPUT"
+            echo "reason=status-file-missing" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          state="$(node -e 'const s=require("./docs/progress/building-visual-polish-status.json"); process.stdout.write(String(s.state || ""));')"
+          task="$(node -e 'const s=require("./docs/progress/building-visual-polish-status.json"); process.stdout.write(String(s.currentTask || "unknown"));')"
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+          echo "task=$task" >> "$GITHUB_OUTPUT"
+
+          case "$state" in
+            blocked|paused|final-validation-pending|complete)
+              echo "run_agent=false" >> "$GITHUB_OUTPUT"
+              echo "reason=terminal-state-$state" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
+
+          if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+            echo "run_agent=false" >> "$GITHUB_OUTPUT"
+            echo "reason=missing-OPENAI_API_KEY" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ ! -f .github/codex/building-visual-polish-hourly.md ]]; then
+            echo "run_agent=false" >> "$GITHUB_OUTPUT"
+            echo "reason=prompt-file-missing-on-target-branch" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "run_agent=true" >> "$GITHUB_OUTPUT"
+          echo "reason=ready" >> "$GITHUB_OUTPUT"
+
+      - name: Install exact test dependencies
+        if: steps.preflight.outputs.run_agent == 'true'
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+
+      - name: Advance one canonical roadmap task with Codex
+        id: codex
+        if: steps.preflight.outputs.run_agent == 'true'
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: .github/codex/building-visual-polish-hourly.md
+          output-file: .codex-building-polish-final.txt
+          sandbox: workspace-write
+          safety-strategy: drop-sudo
+          allow-bots: true
+          model: gpt-5.3-codex
+          effort: medium
+
+      - name: Validate scope and continuity files
+        id: scope
+        if: steps.preflight.outputs.run_agent == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only --diff-filter=ACMR > /tmp/building-polish-changed.txt
+
+          if [[ ! -s /tmp/building-polish-changed.txt ]]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          disallowed=0
+          while IFS= read -r path; do
+            case "$path" in
+              phaser/src/rendering/BuildingPresentation.js) ;;
+              phaser/src/rendering/buildings/*) ;;
+              tests/building-presentation.test.js) ;;
+              tests/building-visual-shadow.test.js) ;;
+              docs/BUILDING_VISUAL_POLISH.md) ;;
+              docs/BUILDING_PRESENTATION.md) ;;
+              docs/agents/BUILDING_VISUAL_POLISH_AGENT.md) ;;
+              docs/roadmaps/BUILDING_VISUAL_POLISH_ROADMAP.md) ;;
+              docs/progress/BUILDING_VISUAL_POLISH_PROGRESS.md) ;;
+              docs/progress/building-visual-polish-status.json) ;;
+              *)
+                echo "Disallowed hourly-agent path: $path" >&2
+                disallowed=1
+                ;;
+            esac
+          done < /tmp/building-polish-changed.txt
+
+          if [[ "$disallowed" -ne 0 ]]; then
+            exit 1
+          fi
+
+          node -e 'JSON.parse(require("fs").readFileSync("docs/progress/building-visual-polish-status.json", "utf8"));'
+          git diff --check
+
+      - name: Run focused building validation
+        if: steps.preflight.outputs.run_agent == 'true' && steps.scope.outputs.has_changes == 'true'
+        run: node --test tests/building-presentation.test.js tests/building-visual-shadow.test.js
+
+      - name: Ensure the target branch did not move during the run
+        if: steps.preflight.outputs.run_agent == 'true' && steps.scope.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$TARGET_BRANCH"
+          remote_sha="$(git rev-parse "origin/$TARGET_BRANCH")"
+          if [[ "$remote_sha" != "${{ steps.preflight.outputs.base_sha }}" ]]; then
+            echo "Target branch moved from ${{ steps.preflight.outputs.base_sha }} to $remote_sha; refusing an unsafe push." >&2
+            exit 1
+          fi
+
+      - name: Commit and push the validated task
+        id: commit
+        if: steps.preflight.outputs.run_agent == 'true' && steps.scope.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          task="$(node -e 'const s=require("./docs/progress/building-visual-polish-status.json"); process.stdout.write(String(s.currentTask || "roadmap-task"));')"
+          git config user.name "viceblood-building-polish[bot]"
+          git config user.email "viceblood-building-polish[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore(buildings): hourly advance ${task}"
+          git push origin "HEAD:$TARGET_BRANCH"
+          echo "commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Report the hourly run to the tracking issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREFLIGHT_REASON: ${{ steps.preflight.outputs.reason }}
+          PREFLIGHT_STATE: ${{ steps.preflight.outputs.state }}
+          PREFLIGHT_TASK: ${{ steps.preflight.outputs.task }}
+          HAS_CHANGES: ${{ steps.scope.outputs.has_changes }}
+          COMMIT_SHA: ${{ steps.commit.outputs.commit_sha }}
+          CODEX_OUTCOME: ${{ steps.codex.outcome }}
+          SCOPE_OUTCOME: ${{ steps.scope.outcome }}
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## Hourly building-polish run"
+            echo
+            echo "- workflow: \`$GITHUB_RUN_ID\`"
+            echo "- job status: \`${JOB_STATUS:-unknown}\`"
+            echo "- preflight: \`${PREFLIGHT_REASON:-not-run}\`"
+            echo "- machine state: \`${PREFLIGHT_STATE:-unknown}\`"
+            echo "- task at start: \`${PREFLIGHT_TASK:-unknown}\`"
+            echo "- Codex step: \`${CODEX_OUTCOME:-skipped}\`"
+            echo "- scope gate: \`${SCOPE_OUTCOME:-skipped}\`"
+            echo "- changed files: \`${HAS_CHANGES:-false}\`"
+            if [[ -n "${COMMIT_SHA:-}" ]]; then
+              echo "- pushed commit: \`${COMMIT_SHA}\`"
+            fi
+            echo
+            if [[ -f .codex-building-polish-final.txt ]]; then
+              echo "### Agent summary"
+              echo
+              head -c 5000 .codex-building-polish-final.txt
+              echo
+            fi
+          } > /tmp/building-polish-comment.md
+
+          gh issue comment "$TRACKING_ISSUE" \
+            --repo "$GITHUB_REPOSITORY" \
+            --body-file /tmp/building-polish-comment.md
