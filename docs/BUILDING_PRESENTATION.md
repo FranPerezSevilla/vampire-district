@@ -9,6 +9,7 @@ ViceBlood buildings keep their authored `x`, `y`, `w`, and `h` as the sole colli
 - **Deterministic:** a stable seed derived from authored building identity selects generic layouts and rooftop details. A building does not change appearance between redraws or sessions.
 - **Data-driven:** semantic archetypes, layout masks, detail budgets, frontages, and module kinds live in the catalog. Game scenes call one stable facade.
 - **Presentation-only:** this system does not own city topology, collision, entrances, roof traversal, interiors, or mission semantics.
+- **Restrained by default:** the city renderer requests the `standard` detail profile explicitly; the profile is intentionally sparse and can be tuned centrally without touching scene code.
 
 ## Architecture
 
