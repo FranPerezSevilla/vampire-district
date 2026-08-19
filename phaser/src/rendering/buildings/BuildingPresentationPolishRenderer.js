@@ -1,6 +1,10 @@
 import { MODULE_KINDS } from "./BuildingPresentationCatalog.js";
 import { createBuildingPresentationPlan } from "./BuildingPresentationPlanner.js";
 import {
+  drawCylindricalVolume,
+  drawRaisedRectVolume
+} from "./BuildingPresentationVolumePrimitives.js";
+import {
   clearBuildingPresentationCache as clearBaseBuildingPresentationCache,
   renderBuildingPresentation as renderBaseBuildingPresentation
 } from "./BuildingPresentationRenderer.js";
@@ -197,6 +201,66 @@ function normalizedFoundationFill(module, plan, color, alpha) {
   return { color, alpha };
 }
 
+function physicalDepth(bounds, ratio, maximum) {
+  return Math.max(1, Math.min(
+    Number(maximum) || 3,
+    Math.min(bounds.w, bounds.h) * ratio
+  ));
+}
+
+function drawPhysicalHatch(graphics, module, plan) {
+  const geometry = drawRaisedRectVolume(graphics, module.bounds, {
+    depth: physicalDepth(module.bounds, 0.18, 3),
+    shadowColor: plan.palette.roofShadow,
+    shadowAlpha: 0.46,
+    topColor: plan.palette.propDark,
+    southColor: plan.palette.serviceDark,
+    eastColor: plan.palette.wall,
+    highlightColor: plan.palette.prop,
+    highlightAlpha: 0.34,
+    seamColor: plan.palette.serviceMid,
+    seamAlpha: 0.3
+  });
+  const inset = Math.max(1.5, Math.min(
+    3,
+    Math.min(geometry.top.w, geometry.top.h) * 0.18
+  ));
+  const innerWidth = Math.max(1, geometry.top.w - inset * 2);
+  const innerHeight = Math.max(1, geometry.top.h - inset * 2);
+  graphics.lineStyle(1, plan.palette.serviceMid, 0.42);
+  graphics.strokeRect(
+    geometry.top.x + inset,
+    geometry.top.y + inset,
+    innerWidth,
+    innerHeight
+  );
+}
+
+function drawPhysicalVent(graphics, module, plan) {
+  drawCylindricalVolume(graphics, module.bounds, {
+    depth: physicalDepth(module.bounds, 0.15, 2.5),
+    shadowColor: plan.palette.roofShadow,
+    shadowAlpha: 0.46,
+    topColor: plan.palette.prop,
+    sideColor: plan.palette.propDark,
+    highlightColor: plan.palette.parapetLight,
+    highlightAlpha: 0.2,
+    rimColor: plan.palette.serviceMid,
+    rimAlpha: 0.38
+  });
+}
+
+function drawDebugBounds(graphics, module) {
+  if (!module.bounds) return;
+  graphics.lineStyle(1, 0xffd65c, 0.45);
+  graphics.strokeRect(
+    module.bounds.x,
+    module.bounds.y,
+    module.bounds.w,
+    module.bounds.h
+  );
+}
+
 function createModuleGraphicsProxy(graphics, module, plan) {
   const state = {
     fill: { color: null, alpha: 1 },
@@ -344,11 +408,18 @@ export function renderBuildingPresentation(graphics, plan, options = {}) {
   if (!graphics || !plan) return plan;
   for (const module of plan.modules || []) {
     const moduleGraphics = createModuleGraphicsProxy(graphics, module, plan);
-    renderBaseBuildingPresentation(
-      moduleGraphics,
-      { ...plan, modules: [module] },
-      options
-    );
+    if (module.kind === MODULE_KINDS.HATCH) {
+      drawPhysicalHatch(moduleGraphics, module, plan);
+    } else if (module.kind === MODULE_KINDS.VENT) {
+      drawPhysicalVent(moduleGraphics, module, plan);
+    } else {
+      renderBaseBuildingPresentation(
+        moduleGraphics,
+        { ...plan, modules: [module] },
+        options
+      );
+    }
+    if (options.showModuleBounds) drawDebugBounds(graphics, module);
   }
   return plan;
 }
