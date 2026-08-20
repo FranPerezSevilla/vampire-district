@@ -208,6 +208,76 @@ function physicalDepth(bounds, ratio, maximum) {
   ));
 }
 
+function drawPhysicalSkylight(graphics, module, plan) {
+  const geometry = drawRaisedRectVolume(graphics, module.bounds, {
+    depth: physicalDepth(module.bounds, 0.12, 4),
+    shadowColor: plan.palette.roofShadow,
+    shadowAlpha: 0.48,
+    topColor: plan.palette.propDark,
+    southColor: plan.palette.serviceDark,
+    eastColor: plan.palette.wall,
+    highlightColor: plan.palette.parapetLight,
+    highlightAlpha: 0.24,
+    seamColor: plan.palette.serviceMid,
+    seamAlpha: 0.34
+  });
+
+  const shortSide = Math.min(geometry.top.w, geometry.top.h);
+  const maximumCurb = Math.max(0.25, (shortSide - 1) / 2);
+  const curb = Math.min(maximumCurb, Math.max(1.25, shortSide * 0.13));
+  const glass = {
+    x: geometry.top.x + curb,
+    y: geometry.top.y + curb,
+    w: Math.max(0.5, geometry.top.w - curb * 2),
+    h: Math.max(0.5, geometry.top.h - curb * 2)
+  };
+
+  // A recessed dark well separates the glazing from the raised metal curb.
+  graphics.fillStyle(plan.palette.roofShadow, 0.22);
+  graphics.fillRect(
+    glass.x + Math.min(1.2, curb * 0.35),
+    glass.y + Math.min(1.5, curb * 0.45),
+    glass.w,
+    glass.h
+  );
+
+  graphics.fillStyle(plan.palette.glass, 1);
+  graphics.fillRect(glass.x, glass.y, glass.w, glass.h);
+
+  // Keep the glass dimensional without turning it into noisy texture: a small
+  // shadow-facing band, one cool directional glint and restrained mullions.
+  const shadeX = Math.max(0.75, Math.min(2.5, glass.w * 0.08));
+  const shadeY = Math.max(0.75, Math.min(2.5, glass.h * 0.1));
+  graphics.fillStyle(plan.palette.roofShadow, 0.16);
+  graphics.fillRect(glass.x + glass.w - shadeX, glass.y, shadeX, glass.h);
+  graphics.fillRect(glass.x, glass.y + glass.h - shadeY, glass.w, shadeY);
+
+  graphics.fillStyle(plan.palette.glassHighlight, 0.12);
+  graphics.fillRect(
+    glass.x + Math.min(1, glass.w * 0.04),
+    glass.y + Math.min(1, glass.h * 0.06),
+    Math.max(0.5, glass.w * 0.42),
+    Math.max(0.5, Math.min(2, glass.h * 0.16))
+  );
+
+  graphics.lineStyle(1, plan.palette.glassHighlight, 0.58);
+  graphics.lineBetween(glass.x, glass.y, glass.x + glass.w, glass.y);
+  graphics.lineBetween(glass.x, glass.y, glass.x, glass.y + glass.h);
+
+  graphics.lineStyle(1, plan.palette.serviceMid, 0.38);
+  const verticalMullions = glass.w >= 56 ? 2 : glass.w >= 24 ? 1 : 0;
+  for (let index = 1; index <= verticalMullions; index += 1) {
+    const x = glass.x + glass.w * index / (verticalMullions + 1);
+    graphics.lineBetween(x, glass.y + 1, x, glass.y + glass.h - 1);
+  }
+  if (glass.h >= 30) {
+    const y = glass.y + glass.h / 2;
+    graphics.lineBetween(glass.x + 1, y, glass.x + glass.w - 1, y);
+  }
+
+  return { ...geometry, curb, glass };
+}
+
 function drawPhysicalHatch(graphics, module, plan) {
   const geometry = drawRaisedRectVolume(graphics, module.bounds, {
     depth: physicalDepth(module.bounds, 0.18, 3),
@@ -408,7 +478,9 @@ export function renderBuildingPresentation(graphics, plan, options = {}) {
   if (!graphics || !plan) return plan;
   for (const module of plan.modules || []) {
     const moduleGraphics = createModuleGraphicsProxy(graphics, module, plan);
-    if (module.kind === MODULE_KINDS.HATCH) {
+    if (module.kind === MODULE_KINDS.SKYLIGHT) {
+      drawPhysicalSkylight(moduleGraphics, module, plan);
+    } else if (module.kind === MODULE_KINDS.HATCH) {
       drawPhysicalHatch(moduleGraphics, module, plan);
     } else if (module.kind === MODULE_KINDS.VENT) {
       drawPhysicalVent(moduleGraphics, module, plan);
