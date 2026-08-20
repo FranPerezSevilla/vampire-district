@@ -140,10 +140,10 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
     id: "west_market_north_loop",
     name: "West Market north nightlife circulation",
     points: [
-      { x: 503, y: 1540 },
-      { x: 513, y: 1540 },
-      { x: 513, y: 1690 },
-      { x: 503, y: 1690 }
+      { x: 503, y: 1320 },
+      { x: 513, y: 1320 },
+      { x: 513, y: 1380 },
+      { x: 503, y: 1380 }
     ],
     sidewalkId: "sidewalk:road-edge:v:554:1192:554:1920:west:fragment:01",
     graphEdgeId: "road-edge:v:554:1192:554:1920",
@@ -154,10 +154,10 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
     id: "west_market_south_loop",
     name: "West Market south nightlife circulation",
     points: [
-      { x: 503, y: 1730 },
-      { x: 513, y: 1730 },
-      { x: 513, y: 1880 },
-      { x: 503, y: 1880 }
+      { x: 503, y: 1420 },
+      { x: 513, y: 1420 },
+      { x: 513, y: 1480 },
+      { x: 503, y: 1480 }
     ],
     sidewalkId: "sidewalk:road-edge:v:554:1192:554:1920:west:fragment:01",
     graphEdgeId: "road-edge:v:554:1192:554:1920",
@@ -182,10 +182,10 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
     id: "old_quarter_north_service_loop",
     name: "Old Quarter north frontage loop",
     points: [
-      { x: 1703, y: 1590 },
-      { x: 1713, y: 1590 },
-      { x: 1713, y: 1630 },
-      { x: 1703, y: 1630 }
+      { x: 1703, y: 1660 },
+      { x: 1713, y: 1660 },
+      { x: 1713, y: 1710 },
+      { x: 1703, y: 1710 }
     ],
     sidewalkId: "sidewalk:road-edge:v:1754:1574:1754:1920:west",
     graphEdgeId: "road-edge:v:1754:1574:1754:1920",
@@ -196,10 +196,10 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
     id: "old_quarter_south_service_loop",
     name: "Old Quarter south frontage loop",
     points: [
-      { x: 1703, y: 1850 },
-      { x: 1713, y: 1850 },
-      { x: 1713, y: 1900 },
-      { x: 1703, y: 1900 }
+      { x: 1703, y: 1760 },
+      { x: 1713, y: 1760 },
+      { x: 1713, y: 1810 },
+      { x: 1703, y: 1810 }
     ],
     sidewalkId: "sidewalk:road-edge:v:1754:1574:1754:1920:west",
     graphEdgeId: "road-edge:v:1754:1574:1754:1920",
@@ -224,10 +224,10 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
     id: "university_north_loop",
     name: "University north frontage loop",
     points: [
-      { x: 4231, y: 1170 },
-      { x: 4241, y: 1170 },
-      { x: 4241, y: 1230 },
-      { x: 4231, y: 1230 }
+      { x: 4231, y: 1280 },
+      { x: 4241, y: 1280 },
+      { x: 4241, y: 1350 },
+      { x: 4231, y: 1350 }
     ],
     sidewalkId: "sidewalk:road-edge:v:4284:1156:4284:1636:west",
     graphEdgeId: "road-edge:v:4284:1156:4284:1636",
@@ -238,10 +238,10 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
     id: "university_south_loop",
     name: "University south frontage loop",
     points: [
-      { x: 4231, y: 1550 },
-      { x: 4241, y: 1550 },
-      { x: 4241, y: 1620 },
-      { x: 4231, y: 1620 }
+      { x: 4231, y: 1440 },
+      { x: 4241, y: 1440 },
+      { x: 4241, y: 1510 },
+      { x: 4231, y: 1510 }
     ],
     sidewalkId: "sidewalk:road-edge:v:4284:1156:4284:1636:west",
     graphEdgeId: "road-edge:v:4284:1156:4284:1636",
@@ -266,10 +266,10 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
     id: "canal_west_north_loop",
     name: "Canal West north frontage loop",
     points: [
-      { x: 703, y: 2225 },
-      { x: 713, y: 2225 },
-      { x: 713, y: 2280 },
-      { x: 703, y: 2280 }
+      { x: 703, y: 2310 },
+      { x: 713, y: 2310 },
+      { x: 713, y: 2370 },
+      { x: 703, y: 2370 }
     ],
     sidewalkId: "sidewalk:road-edge:v:752:2212:752:2572:west",
     graphEdgeId: "road-edge:v:752:2212:752:2572",
@@ -280,10 +280,10 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
     id: "canal_west_south_loop",
     name: "Canal West south frontage loop",
     points: [
-      { x: 703, y: 2500 },
-      { x: 713, y: 2500 },
-      { x: 713, y: 2560 },
-      { x: 703, y: 2560 }
+      { x: 703, y: 2410 },
+      { x: 713, y: 2410 },
+      { x: 713, y: 2470 },
+      { x: 703, y: 2470 }
     ],
     sidewalkId: "sidewalk:road-edge:v:752:2212:752:2572:west",
     graphEdgeId: "road-edge:v:752:2212:752:2572",
@@ -322,10 +322,10 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
     id: "north_harbor_south_loop",
     name: "North Harbor south frontage loop",
     points: [
-      { x: 4423, y: 780 },
-      { x: 4433, y: 780 },
-      { x: 4433, y: 930 },
-      { x: 4423, y: 930 }
+      { x: 4423, y: 650 },
+      { x: 4433, y: 650 },
+      { x: 4433, y: 740 },
+      { x: 4423, y: 740 }
     ],
     sidewalkId: "sidewalk:road-edge:v:4500:0:4500:960:west",
     graphEdgeId: "road-edge:v:4500:0:4500:960",
@@ -364,10 +364,10 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
     id: "south_harbor_east_loop",
     name: "South Harbor east frontage loop",
     points: [
-      { x: 4430, y: 3003 },
-      { x: 4485, y: 3003 },
-      { x: 4485, y: 3013 },
-      { x: 4430, y: 3013 }
+      { x: 4320, y: 3003 },
+      { x: 4400, y: 3003 },
+      { x: 4400, y: 3013 },
+      { x: 4320, y: 3013 }
     ],
     sidewalkId: "sidewalk:road-edge:h:4080:3052:4500:3052:north",
     graphEdgeId: "road-edge:h:4080:3052:4500:3052",
