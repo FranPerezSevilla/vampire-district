@@ -159,15 +159,17 @@ The shared primitives are family-neutral. Skylight glass, HVAC fans, hatch hardw
 
 ### M2.2 — Skylights
 
-**Status: active**
+**Status: implementation-complete / automated-validation-pending**
 
-- [ ] route skylights through the shared raised-rectangle primitive;
-- [ ] add a physical outer curb/frame with top and side separation;
-- [ ] add inset glazing with directional highlight and restrained internal mullions;
-- [ ] keep dominant warehouse/club skylights readable at gameplay zoom;
-- [ ] ensure glass no longer reads as a flat colored rectangle;
-- [ ] preserve authored skylight bounds and deterministic composition;
-- [ ] add focused physical-skylight contracts.
+- [x] route skylights through the shared raised-rectangle primitive;
+- [x] add a physical outer curb/frame with top and side separation;
+- [x] add inset glazing with directional highlight and restrained internal mullions;
+- [x] keep dominant warehouse/club skylights readable through one shared family-neutral renderer path;
+- [x] ensure glass uses recessed well, directional shade/glint and mullions instead of a flat colored rectangle;
+- [x] preserve authored skylight bounds and deterministic composition;
+- [x] add focused physical-skylight contracts for curb/glass/depth, immutability and warehouse/club reuse;
+- [ ] focused building validation green on implementation head `1c25100fda1f6d80b4483ec739c6220eb5ff0b43`;
+- [ ] Netlify deploy preview green on the implementation head.
 
 ### M2.3 — Mechanical equipment
 
@@ -285,4 +287,4 @@ No `OPENAI_API_KEY` repository secret is required for this operating model. The 
 
 ## Current exact next action
 
-At the next ChatGPT scheduled run, begin M2.2 by routing skylights through the shared raised-rectangle volume primitive, adding a physical curb and inset glazing, preserving authored bounds, and adding focused contracts. Do not request intermediate user review.
+Validate M2.2 implementation head `1c25100fda1f6d80b4483ec739c6220eb5ff0b43`. If focused building contracts and Netlify are green, mark M2.2 complete and begin M2.3 with HVAC casing/fan housing as the first mechanical-equipment increment. If a new building-focused failure exists, fix only that M2.2 regression before advancing.
