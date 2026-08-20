@@ -98,7 +98,9 @@ test("normal boot retires legacy missions and opens persistent street free roam"
     localStorage.setItem(key, JSON.stringify(state));
   }, { key: LEGACY_STORAGE_KEY, state: legacyMissionState() });
 
-  await page.goto("/", { waitUntil: "domcontentloaded" });
+  // Browser automation bypasses the production audio-gesture title gate while
+  // preserving the normal persistent campaign boot profile under test.
+  await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
   await waitForFreeRoam(page);
 
   const result = await page.evaluate(({ storageKey, legacyStorageKey }) => {

@@ -19,13 +19,14 @@ const { MissionSystem } = await import("../phaser/src/systems/MissionSystem.js")
 
 function fixture({ authored = true, map = null, onRedraw = null } = {}) {
   const events = new EventEmitter();
+  const published = new Map();
   const scene = {
     map,
     currentLayer: LAYERS.STREET,
     player: { x: 438, y: 326 },
     events,
-    registry: { set() {} },
-    statePublisher: { set() {} },
+    registry: { set(key, value) { published.set(key, value); return true; } },
+    statePublisher: { set(key, value) { published.set(key, value); return true; } },
     lastActionText: "",
     npcSystem: {
       npcs: [],
@@ -48,7 +49,7 @@ function fixture({ authored = true, map = null, onRedraw = null } = {}) {
     now: () => 100
   });
   const mission = new MissionSystem(scene, campaign);
-  return { scene, campaign, mission };
+  return { scene, campaign, mission, published };
 }
 
 function progressToJournalist(campaign) {
@@ -130,4 +131,37 @@ test("generic MissionSystem failure updates an explicit authoritative record wit
   assert.equal(record.failureReason, "Police took you alive.");
   assert.equal(mission.failed, true);
   assert.equal(campaign.wallet.balance(), 0);
+});
+
+test("player death fails the active mission once without rewards or a blocking failure result", () => {
+  const { scene, campaign, mission, published } = fixture();
+  const failedEvents = [];
+  const dispose = campaign.events.on("mission:failed", event => failedEvents.push(event));
+  campaign.startMission(SILENCE_THE_JOURNALIST_ID, {
+    metadata: { integration: "campaign_entry" }
+  });
+
+  const walletBefore = campaign.wallet.balance();
+  const worldFlagsBefore = { ...campaign.state.world.flags };
+  const completedBefore = [...campaign.state.missions.completed];
+
+  scene.events.emit("player:died", { source: "police-bullet" });
+  scene.events.emit("player:died", { source: "explosion" });
+
+  const record = campaign.missions.record(SILENCE_THE_JOURNALIST_ID);
+  assert.equal(record.status, MISSION_STATUS.FAILED);
+  assert.equal(record.failureReason, "Death ended the contract.");
+  assert.equal(record.rewardsGranted, false);
+  assert.equal(campaign.state.missions.activeMissionId, null);
+  assert.equal(campaign.wallet.balance(), walletBefore);
+  assert.deepEqual(campaign.state.world.flags, worldFlagsBefore);
+  assert.deepEqual(campaign.state.missions.completed, completedBefore);
+  assert.equal(campaign.state.missions.failed.filter(id => id === SILENCE_THE_JOURNALIST_ID).length, 1);
+  assert.equal(failedEvents.length, 1);
+  assert.equal(failedEvents[0].payload.source, "player-death");
+  assert.equal(failedEvents[0].payload.reason, "Death ended the contract.");
+  assert.equal(published.get("missionResult"), null);
+  assert.match(mission.activeTaskText(), /No active contract/);
+  assert.match(scene.lastActionText, /MISSION FAILED: Death ended the contract\./);
+  dispose();
 });

@@ -1,3 +1,6 @@
+import { loadInputBindings } from "../input/bindings.js";
+import { buildControlReference } from "./ControlReference.js";
+
 const RESOLUTION_STORAGE_KEY = "nbd-resolution-preset";
 const TITLE_BODY_CLASS = "viceblood-title-active";
 const WORLD_BODY_CLASS = "viceblood-world-active";
@@ -49,6 +52,7 @@ export class TitleScreenController {
     this.drawerContent = this.root?.querySelector("[data-title-drawer-content]") || null;
     this.drawerHint = this.root?.querySelector("[data-title-drawer-hint]") || null;
     this.bootMessage = this.root?.querySelector("[data-title-boot-message]") || null;
+    this.ensureControlsAction();
     this.menuButtons = this.root
       ? Array.from(this.root.querySelectorAll("[data-title-action]"))
       : [];
@@ -68,6 +72,19 @@ export class TitleScreenController {
     this.bindPointerInput();
     this.renderMenuSelection();
     this.publishState("boot");
+  }
+
+  ensureControlsAction() {
+    if (!this.menu || this.root?.querySelector('[data-title-action="controls"]')) return;
+    const nav = this.menu.querySelector(".viceblood-title-nav");
+    if (!nav) return;
+    const button = this.document.createElement("button");
+    button.className = "viceblood-title-action";
+    button.dataset.titleAction = "controls";
+    button.type = "button";
+    button.textContent = "Controls";
+    const credits = nav.querySelector('[data-title-action="credits"]');
+    nav.insertBefore(button, credits || null);
   }
 
   get available() {
@@ -282,7 +299,7 @@ export class TitleScreenController {
       return;
     }
 
-    if (this.panelMode === "credits") {
+    if (this.panelMode === "controls" || this.panelMode === "credits") {
       if (activate || back) this.closePanel();
       return;
     }
@@ -349,6 +366,7 @@ export class TitleScreenController {
       return;
     }
     if (action === "options") this.openOptions();
+    else if (action === "controls") this.openControls();
     else if (action === "credits") this.openCredits();
   }
 
@@ -363,6 +381,17 @@ export class TitleScreenController {
     this.root.dataset.panel = "options";
     this.drawer.setAttribute("aria-hidden", "false");
     this.renderQualitySelection();
+  }
+
+  openControls() {
+    this.panelMode = "controls";
+    const bindings = loadInputBindings(this.window.localStorage);
+    this.drawerTitle.textContent = "CONTROLS";
+    this.drawerBody.textContent = buildControlReference(bindings);
+    this.drawerHint.textContent = "ESC / ENTER  BACK";
+    this.drawerContent.hidden = true;
+    this.root.dataset.panel = "controls";
+    this.drawer.setAttribute("aria-hidden", "false");
   }
 
   openCredits() {

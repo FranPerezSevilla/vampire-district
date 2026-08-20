@@ -37,6 +37,8 @@ export class MissionSystem {
 
     this.onNeutralized = payload => this.handleNeutralized(payload);
     scene.events?.on?.("combat:entity-neutralized", this.onNeutralized);
+    this.onPlayerDied = payload => this.handlePlayerDeath(payload);
+    scene.events?.on?.("player:died", this.onPlayerDied);
     scene.events?.once?.(globalThis.Phaser?.Scenes?.Events?.SHUTDOWN || "shutdown", this.destroy, this);
   }
 
@@ -80,21 +82,34 @@ export class MissionSystem {
     });
   }
 
+  handlePlayerDeath(_payload = {}) {
+    if (!this.campaign.state.missions.activeMissionId) return false;
+    return this.failRun("Death ended the contract.", {
+      title: "MISSION FAILED",
+      missionText: "FAILED · Death ended the contract.",
+      audio: null,
+      source: "player-death",
+      publishResult: false
+    });
+  }
+
   failRun(reason, {
     title = "MISSION FAILED",
     missionText = "FAILED · The run is over.",
-    audio = "masqueradeFail"
+    audio = "masqueradeFail",
+    source = null,
+    publishResult = true
   } = {}) {
     const activeMissionId = this.campaign.state.missions.activeMissionId;
     if (!activeMissionId || this.completed || this.failed) return false;
     this.presentationMissionId = activeMissionId;
     this.lastMissionText = missionText;
     const failed = this.campaign.failActiveMission(reason, {
-      source: title.toLowerCase().replaceAll(" ", "-")
+      source: source || title.toLowerCase().replaceAll(" ", "-")
     });
     if (!failed) return false;
-    RawAudio.play(audio);
-    this.publishResult("failed", title, reason, { missionId: activeMissionId });
+    if (audio) RawAudio.play(audio);
+    if (publishResult) this.publishResult("failed", title, reason, { missionId: activeMissionId });
     return true;
   }
 
@@ -113,11 +128,20 @@ export class MissionSystem {
   handleCampaignEvent(event) {
     const missionId = event?.payload?.missionId;
     if (!missionId) return;
+    const recoverableDeathFailure = event.type === "mission:failed" && event?.payload?.source === "player-death";
     this.presentationMissionId = missionId;
     this.syncFromCampaign({
       actionText: this.actionTextForCurrentState(event.type),
       redraw: true
     });
+    if (recoverableDeathFailure) {
+      const reason = event?.payload?.reason || "Death ended the contract.";
+      this.resetResultState(null);
+      this.lastMissionText = "No active contract · city free roam.";
+      this.scene.lastActionText = `MISSION FAILED: ${reason}`;
+      if (this.scene.map) this.scene.redrawLayer?.(this.scene.lastActionText);
+      return;
+    }
     if (event.type === "mission:completed") {
       this.publishResult("complete", "CONTRACT COMPLETE", "The operation is complete.", { missionId });
     } else if (event.type === "mission:failed") {
@@ -226,6 +250,7 @@ export class MissionSystem {
 
   destroy() {
     this.scene.events?.off?.("combat:entity-neutralized", this.onNeutralized);
+    this.scene.events?.off?.("player:died", this.onPlayerDied);
     for (const dispose of this.disposers.splice(0)) dispose?.();
   }
 }

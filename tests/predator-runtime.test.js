@@ -35,7 +35,7 @@ test("Give In remains available during hit stun but is suppressed while driving"
   assert.equal(driving.bloodSensePressed, false);
 });
 
-test("reaching 100 Hunger no longer invokes an automatic frenzy failure", () => {
+test("100 Hunger remains Beast pressure rather than automatic death or frenzy failure", () => {
   globalThis.Phaser = {
     Scenes: { Events: { SHUTDOWN: "shutdown" } }
   };
@@ -53,7 +53,7 @@ test("reaching 100 Hunger no longer invokes an automatic frenzy failure", () => 
     time: { now: 1000 },
     cameras: { main: { shake() {} } },
     feedingSystem: {
-      hunger: 99,
+      hunger: 100,
       isActive: () => false
     },
     combatSystem: { attack: null },
@@ -77,14 +77,18 @@ test("reaching 100 Hunger no longer invokes an automatic frenzy failure", () => 
   const applied = system.damagePlayer({ id: "police-test" }, {
     id: "critical-test",
     label: "critical strike",
-    hungerDamage: 20
+    damageKind: "melee",
+    vitalityDamage: 20
   });
 
   assert.equal(applied, true);
   assert.equal(scene.feedingSystem.hunger, 100);
+  assert.equal(system.state.vitality, 80);
+  assert.equal(system.isDead(), false);
   assert.equal(failureCalls, 0);
-  assert.match(scene.lastActionText, /control remains yours/i);
-  assert.ok(events.some(event => event.type === "beast:critical-pressure"));
+  assert.match(scene.lastActionText, /Vitality -20/i);
+  assert.ok(events.some(event => event.type === "player:damaged"));
+  assert.ok(!events.some(event => event.type === "player:died"));
 
   const filtered = system.filterFrame({
     worldEnabled: true,

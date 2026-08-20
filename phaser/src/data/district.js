@@ -29,8 +29,8 @@ import {
   dumpsters,
   bodyHideSpots,
   shadowZones,
-  pedestrianRoutes,
-  streetNavigationPoints,
+  pedestrianRoutes as generatedPedestrianRoutes,
+  streetNavigationPoints as generatedStreetNavigationPoints,
   districtZones,
   policeStation,
   policePatrolRoutes,
@@ -57,6 +57,131 @@ export const LAYER_NAMES = Object.freeze({
 });
 
 export const SELECTED_CITY_CANDIDATE = CITY_TOPOLOGY_SEED;
+
+function freezePedestrianRoute(route) {
+  return Object.freeze({
+    ...route,
+    points: Object.freeze(route.points.map(point => Object.freeze({ ...point })))
+  });
+}
+
+const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
+  freezePedestrianRoute({
+    id: "hospital_perimeter_loop",
+    name: "Hospital north perimeter loop",
+    points: [
+      { x: 250, y: 143 },
+      { x: 830, y: 143 },
+      { x: 830, y: 153 },
+      { x: 250, y: 153 }
+    ],
+    sidewalkId: "sidewalk:road-edge:h:162:202:918:202:north",
+    graphEdgeId: "road-edge:h:162:202:918:202",
+    routeKind: "sidewalk-patrol",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "west_market_vertical_loop",
+    name: "West Market pedestrian spine loop",
+    points: [
+      { x: 503, y: 1300 },
+      { x: 513, y: 1300 },
+      { x: 513, y: 1500 },
+      { x: 503, y: 1500 }
+    ],
+    sidewalkId: "sidewalk:road-edge:v:554:1192:554:1920:west:fragment:01",
+    graphEdgeId: "road-edge:v:554:1192:554:1920",
+    routeKind: "sidewalk-patrol",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "old_quarter_service_loop",
+    name: "Old Quarter service avenue loop",
+    points: [
+      { x: 1703, y: 1640 },
+      { x: 1713, y: 1640 },
+      { x: 1713, y: 1840 },
+      { x: 1703, y: 1840 }
+    ],
+    sidewalkId: "sidewalk:road-edge:v:1754:1574:1754:1920:west",
+    graphEdgeId: "road-edge:v:1754:1574:1754:1920",
+    routeKind: "sidewalk-patrol",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "university_court_loop",
+    name: "University court avenue loop",
+    points: [
+      { x: 4231, y: 1250 },
+      { x: 4241, y: 1250 },
+      { x: 4241, y: 1540 },
+      { x: 4231, y: 1540 }
+    ],
+    sidewalkId: "sidewalk:road-edge:v:4284:1156:4284:1636:west",
+    graphEdgeId: "road-edge:v:4284:1156:4284:1636",
+    routeKind: "sidewalk-patrol",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "canal_west_loop",
+    name: "Canal West service lane loop",
+    points: [
+      { x: 703, y: 2290 },
+      { x: 713, y: 2290 },
+      { x: 713, y: 2490 },
+      { x: 703, y: 2490 }
+    ],
+    sidewalkId: "sidewalk:road-edge:v:752:2212:752:2572:west",
+    graphEdgeId: "road-edge:v:752:2212:752:2572",
+    routeKind: "sidewalk-patrol",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "north_harbor_vertical_loop",
+    name: "North Harbor avenue loop",
+    points: [
+      { x: 4423, y: 220 },
+      { x: 4433, y: 220 },
+      { x: 4433, y: 760 },
+      { x: 4423, y: 760 }
+    ],
+    sidewalkId: "sidewalk:road-edge:v:4500:0:4500:960:west",
+    graphEdgeId: "road-edge:v:4500:0:4500:960",
+    routeKind: "sidewalk-patrol",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "south_harbor_freight_loop",
+    name: "South Harbor freight frontage loop",
+    points: [
+      { x: 4140, y: 3003 },
+      { x: 4420, y: 3003 },
+      { x: 4420, y: 3013 },
+      { x: 4140, y: 3013 }
+    ],
+    sidewalkId: "sidewalk:road-edge:h:4080:3052:4500:3052:north",
+    graphEdgeId: "road-edge:h:4080:3052:4500:3052",
+    routeKind: "sidewalk-patrol",
+    generated: false
+  })
+]);
+
+const pedestrianRoutes = Object.freeze([
+  ...generatedPedestrianRoutes,
+  ...EXTRA_PEDESTRIAN_ROUTES
+]);
+
+const streetNavigationPoints = Object.freeze([
+  ...generatedStreetNavigationPoints,
+  ...EXTRA_PEDESTRIAN_ROUTES.flatMap(route => route.points.map((point, index) => Object.freeze({
+    id: `nav:${route.id}:${index + 1}`,
+    x: point.x,
+    y: point.y,
+    kind: "pedestrian",
+    routeId: route.id,
+    sidewalkId: route.sidewalkId
+  })))
+]);
 
 export {
   CITY_TOPOLOGY_SEED,

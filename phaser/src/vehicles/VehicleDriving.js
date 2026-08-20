@@ -1,11 +1,13 @@
 import { CAMERA, WORLD } from "../data/balance.js";
 import { buildings } from "../data/district.js";
+import { NPC_TYPES } from "../data/npcs.js";
 import { RawAudio } from "../systems/RawAudioSystem.js";
 import {
   interpolateVehicleState,
   normalizeAngle,
   rotateTowardAngle,
   stepVehicleKinematics,
+  vehicleCameraLookAhead,
   vehicleCameraZoom,
   vehicleFootprintPoints,
   vehicleHealthPercent,
@@ -13,10 +15,99 @@ import {
   vehicleSlideCandidates
 } from "./VehicleModel.js";
 import { collideVehicleWithPedestrians } from "./VehicleConsequences.js";
+import { vehicleCollisionAudioEvent } from "./VehicleCollisionAudioModel.js";
+import { VEHICLE_DESTRUCTION } from "./VehicleDestructionPolicy.js";
+import { vehicleEngineTelemetry } from "./VehicleEngineModel.js";
 
 const VEHICLE_COLLISION_RADIUS_PADDING = 1;
 const PERSIST_INTERVAL_SECONDS = 1.8;
 const CONTACT_SEARCH_STEPS = 10;
+const AGGRESSIVE_SKID_THRESHOLD = 0.28;
+const AGGRESSIVE_SKID_PULSE_SECONDS = 0.22;
+
+function updateDrivenVehicleEngine(system, vehicle, frame) {
+  if (!vehicle || vehicle.disabled) {
+    if (vehicle?.id) RawAudio.stopVehicleEngine(`player:${vehicle.id}`);
+    return false;
+  }
+  const throttle = Math.max(0, -(Number(frame?.move?.y) || 0));
+  const telemetry = vehicleEngineTelemetry({
+    speed: vehicle.speed,
+    archetype: vehicle.archetype,
+    gear: vehicle.gear,
+    gearShiftTimer: vehicle.gearShiftTimer,
+    throttle,
+    x: vehicle.x,
+    y: vehicle.y,
+    listener: vehicle,
+    ownVehicle: true,
+    maxDistance: 1
+  });
+  return RawAudio.updateVehicleEngine(`player:${vehicle.id}`, { ...telemetry, priority: 3 });
+}
+
+export function aggressiveDrivingSkidIntensity(vehicle, frame = {}) {
+  const speed = Math.abs(Number(vehicle?.speed) || 0);
+  if (speed < 28) return 0;
+
+  const drift = Math.abs(Number(vehicle?.driftAngle) || 0);
+  const steer = Math.abs(Number(frame?.move?.x) || 0);
+  const handbrake = Boolean(vehicle?.handbrake || frame?.handbrakeHeld);
+  const driftScore = Math.min(1, drift / 0.20);
+  const handbrakeScore = handbrake && steer >= 0.28
+    ? Math.min(1, Math.max(0, speed - 20) / 50)
+    : 0;
+  return Math.max(driftScore, handbrakeScore);
+}
+
+export function panicCiviliansFromAggressiveDriving(system, vehicle, intensity = 0) {
+  if (!system?.scene || !vehicle) return 0;
+  const strength = Math.max(0, Math.min(1, Number(intensity) || 0));
+  const radius = 95 + strength * 70;
+  const candidates = system.scene.npcSystem?.queryRadius?.(
+    vehicle.x,
+    vehicle.y,
+    radius,
+    system.scene.currentLayer,
+    npc => [NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)
+  ) || [];
+
+  let newlyPanicked = 0;
+  for (const npc of candidates) {
+    if (!npc || npc.dead || npc.inactive || npc.hiddenBody || npc.intercepted || npc.drainVictim) continue;
+    if (npc.alarmed || npc.chasingPlayer || npc.enemyAttack) continue;
+    if (Number.isFinite(npc.stunnedTimer) && npc.stunnedTimer > 0) continue;
+
+    const wasPanicking = (npc.panicTimer || 0) > 0;
+    npc.panicTimer = Math.max(npc.panicTimer || 0, 1.35 + strength * 1.25);
+    npc.panicSourceX = vehicle.x;
+    npc.panicSourceY = vehicle.y;
+    npc.soundReactionTimer = 0;
+    npc.vx = 0;
+    npc.vy = 0;
+    system.scene.aiStateSystem?.resolveNpc?.(npc);
+    if (!wasPanicking) newlyPanicked++;
+  }
+
+  if (newlyPanicked) RawAudio.play("civilianScream", { cooldown: 0.75 });
+  system.scene.events?.emit?.("vehicle:aggressive-driving", {
+    vehicleId: vehicle.id,
+    x: vehicle.x,
+    y: vehicle.y,
+    intensity: strength,
+    radius,
+    panickedCivilians: newlyPanicked
+  });
+  return newlyPanicked;
+}
+
+function emitAggressiveDrivingNoise(system, vehicle, frame) {
+  const intensity = aggressiveDrivingSkidIntensity(vehicle, frame);
+  if (intensity < AGGRESSIVE_SKID_THRESHOLD || (system.skidNoiseCooldown || 0) > 0) return 0;
+  system.skidNoiseCooldown = AGGRESSIVE_SKID_PULSE_SECONDS;
+  RawAudio.play("vehicleSkidLoop", { cooldown: 0.16 });
+  return panicCiviliansFromAggressiveDriving(system, vehicle, intensity);
+}
 
 function pointInRect(point, rect) {
   return point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h;
@@ -41,6 +132,8 @@ function applyKinematicState(vehicle, next) {
   vehicle.velocityX = next.velocityX || 0;
   vehicle.velocityY = next.velocityY || 0;
   vehicle.speed = next.speed;
+  vehicle.gear = Math.max(1, Math.round(Number(next.gear) || 1));
+  vehicle.gearShiftTimer = Math.max(0, Number(next.gearShiftTimer) || 0);
   vehicle.parked = next.parked;
   vehicle.handbrake = Boolean(next.handbrake);
   return vehicle;
@@ -180,6 +273,7 @@ export function canVehicleOccupy(system, vehicle, x, y, angle) {
 
 export function handleVehicleWorldCollision(system, vehicle, impactSpeed) {
   const impact = Math.abs(Number(impactSpeed) || 0);
+  const contact = system.vehicleCollisionContact || null;
   const direction = Math.sign(vehicle.speed || impactSpeed || 1);
   vehicle.speed = direction * Math.min(5, impact * 0.025);
   vehicle.travelAngle = rotateTowardAngle(vehicle.travelAngle ?? vehicle.angle, vehicle.angle, 0.12);
@@ -188,19 +282,53 @@ export function handleVehicleWorldCollision(system, vehicle, impactSpeed) {
   vehicle.velocityY = Math.sin(vehicle.travelAngle) * vehicle.speed;
 
   const damage = vehicleImpactDamage(impact, { threshold: 36, scale: 0.11 });
-  if (damage > 0) system.damageVehicle(vehicle.id, damage, { reason: "collision", persist: false });
-  if (impact >= 44 && system.crashCooldown <= 0) {
+  if (damage > 0) system.damageVehicle(vehicle.id, damage, {
+    reason: "collision",
+    persist: false,
+    destructive: impact >= VEHICLE_DESTRUCTION.severeImpactSpeed
+  });
+  const collisionEvent = vehicleCollisionAudioEvent(impact);
+  if (collisionEvent && system.crashCooldown <= 0) {
     system.crashCooldown = 0.48;
-    RawAudio.play("bodyDrop", { cooldown: 0.4 });
-    system.scene.policeSystem?.addHeat?.(vehicle.x, vehicle.y, Math.min(24, Math.max(4, impact * 0.12)), `${vehicle.name} crashes into the streetscape`, { source: "vehicle_crash" });
-    system.scene.lastActionText = `${vehicle.name} collision · hull ${vehicleHealthPercent(vehicle.health, vehicle.archetype.maxHealth)}%.`;
+    // VehicleCollisionSofteningPolicy owns car-to-car sound and consequences
+    // because it knows the concrete target. This path owns walls/streetscape.
+    if (!contact) {
+      RawAudio.play(collisionEvent, { cooldown: 0.28 });
+      system.scene.policeSystem?.addHeat?.(
+        vehicle.x,
+        vehicle.y,
+        Math.min(24, Math.max(4, impact * 0.12)),
+        `${vehicle.name} crashes into the streetscape`,
+        { source: "vehicle_crash" }
+      );
+    }
+    system.scene.events?.emit?.("vehicle:collision", {
+      vehicleId: vehicle.id,
+      targetId: contact?.targetId || null,
+      targetKind: contact?.targetKind || "world",
+      policeTarget: Boolean(contact?.police),
+      impactSpeed: impact,
+      audioEvent: collisionEvent
+    });
+    system.scene.lastActionText = contact
+      ? `${vehicle.name} vehicle contact · hull ${vehicleHealthPercent(vehicle.health, vehicle.archetype.maxHealth)}%.`
+      : `${vehicle.name} collision · hull ${vehicleHealthPercent(vehicle.health, vehicle.archetype.maxHealth)}%.`;
   }
 }
 
 export function updateVehicleDriving(system, dt, frame) {
   const vehicle = system.currentVehicle();
   if (!vehicle) return false;
+  if (frame?.hornPressed && !vehicle.disabled) {
+    RawAudio.play("vehicleHorn", { cooldown: 0.24 });
+    system.scene.events?.emit?.("vehicle:horn", {
+      vehicleId: vehicle.id,
+      x: vehicle.x,
+      y: vehicle.y
+    });
+  }
   system.crashCooldown = Math.max(0, system.crashCooldown - dt);
+  system.skidNoiseCooldown = Math.max(0, (system.skidNoiseCooldown || 0) - dt);
   for (const [npcId, remaining] of system.pedestrianCooldowns) {
     const next = remaining - dt;
     if (next <= 0) system.pedestrianCooldowns.delete(npcId);
@@ -208,10 +336,12 @@ export function updateVehicleDriving(system, dt, frame) {
   }
 
   system.handbrakeActive = Boolean(frame?.handbrakeHeld && !vehicle.disabled);
+  const previousGear = Math.max(1, Math.round(Number(vehicle.gear) || 1));
   const next = stepVehicleKinematics(vehicle, frame, dt, vehicle.archetype);
   const furniture = system.scene.streetFurnitureSystem?.resolveVehicleMove?.(vehicle, next) || { blocked: false, impacts: [] };
   if (vehicle.disabled) {
     vehicle.handbrake = false;
+    RawAudio.stopVehicleEngine(`player:${vehicle.id}`);
     system.updateHud();
     system.publish();
     return false;
@@ -225,10 +355,28 @@ export function updateVehicleDriving(system, dt, frame) {
     handleVehicleWorldCollision(system, vehicle, next.speed);
   }
 
+  if (vehicle.disabled) {
+    RawAudio.stopVehicleEngine(`player:${vehicle.id}`);
+    system.updateHud();
+    system.publish();
+    return false;
+  }
+
+  if (vehicle.gear > previousGear) {
+    system.scene.events?.emit?.("vehicle:gear-shift", {
+      vehicleId: vehicle.id,
+      fromGear: previousGear,
+      toGear: vehicle.gear,
+      speed: vehicle.speed
+    });
+  }
+
   vehicle.container.setPosition(vehicle.x, vehicle.y).setRotation(vehicle.angle);
   vehicle.visual.label.setRotation(-vehicle.angle);
   system.scene.player.setPosition(vehicle.x, vehicle.y);
   collideVehicleWithPedestrians(system, vehicle);
+  updateDrivenVehicleEngine(system, vehicle, frame);
+  emitAggressiveDrivingNoise(system, vehicle, frame);
   system.persistTimer += dt;
   if (system.persistTimer >= PERSIST_INTERVAL_SECONDS) {
     system.persistTimer %= PERSIST_INTERVAL_SECONDS;
@@ -247,5 +395,12 @@ export function updateVehicleCamera(system) {
   const targetZoom = vehicleCameraZoom(baseZoom, vehicle.speed, vehicle.archetype);
   const camera = system.scene.cameras.main;
   camera.setZoom(Phaser.Math.Linear(camera.zoom, targetZoom, 0.10));
+
+  const lookAhead = vehicleCameraLookAhead(vehicle, system.scene.currentInputFrame, vehicle.archetype);
+  const recentering = lookAhead.strength < 0.08;
+  const response = recentering ? 0.28 : 0.10;
+  system.cameraLookAheadX = Phaser.Math.Linear(Number(system.cameraLookAheadX) || 0, lookAhead.x, response);
+  system.cameraLookAheadY = Phaser.Math.Linear(Number(system.cameraLookAheadY) || 0, lookAhead.y, response);
+  camera.setFollowOffset(-system.cameraLookAheadX, -system.cameraLookAheadY);
   return true;
 }

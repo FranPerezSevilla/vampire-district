@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Viceblood</title>
+  <link rel="preload" href="./assets/audio/music/main-menu-theme-01.mp3" as="audio" type="audio/mpeg" />
   <link rel="stylesheet" href="./styles.css" />
   <link rel="stylesheet" href="./release-candidate.css" />
   <link rel="stylesheet" href="./title-screen.css" />
@@ -16,6 +17,7 @@
   </style>
 </head>
 <body class="viceblood-title-active">
+  <audio id="viceblood-main-menu-theme" src="./assets/audio/music/main-menu-theme-01.mp3" preload="auto" loop hidden aria-hidden="true"></audio>
   <div id="viceblood-title-screen" class="viceblood-title-screen" data-state="boot" aria-label="ViceBlood title screen">
     <div class="viceblood-title-full-cover" aria-hidden="true"></div>
     <div class="viceblood-title-menu-veil" aria-hidden="true"></div>

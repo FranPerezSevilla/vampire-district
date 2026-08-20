@@ -49,6 +49,8 @@ export function createVehicleState(definition, archetype, condition = {}) {
     velocityX: 0,
     velocityY: 0,
     speed: 0,
+    gear: 1,
+    gearShiftTimer: 0,
     health: clamp(Number.isFinite(Number(condition.health)) ? Number(condition.health) : maxHealth, 0, maxHealth),
     disabled: Boolean(condition.disabled) || Number(condition.health) <= 0,
     parked: condition.parked == null ? definition.parked !== false : Boolean(condition.parked)
@@ -62,6 +64,62 @@ export function normalizeVehicleInput(frame = {}) {
     steer: clamp(Number(move.x) || 0, -1, 1),
     handbrake: Boolean(frame?.handbrakeHeld)
   };
+}
+
+export function vehicleGearCount(archetype) {
+  return Math.round(clamp(Number(archetype?.gearCount) || 5, 1, 5));
+}
+
+export function vehicleGearShiftTiming(archetype = {}) {
+  return {
+    shiftDuration: clamp(Number(archetype?.gearShiftDuration) || 0.14, 0.06, 0.28),
+    holdDuration: clamp(Number(archetype?.gearHoldDuration) || 0.28, 0.10, 0.50),
+    firstGearHoldDuration: clamp(Number(archetype?.firstGearHoldDuration) || 0.26, 0.12, 0.50)
+  };
+}
+
+export function vehicleGearShiftActive(gear, gearShiftTimer, archetype = {}) {
+  const timing = vehicleGearShiftTiming(archetype);
+  return Math.max(1, Math.round(Number(gear) || 1)) > 1
+    && Math.max(0, Number(gearShiftTimer) || 0) > timing.holdDuration;
+}
+
+function vehicleGearUpshiftRatio(gear, gearCount) {
+  const count = Math.max(1, Math.round(Number(gearCount) || 1));
+  return clamp((Math.max(1, Number(gear) || 1) / count) * 0.93, 0.14, 0.88);
+}
+
+export function vehicleGearForSpeed(speed, archetype, currentGear = 1) {
+  const count = vehicleGearCount(archetype);
+  const velocity = Math.max(0, Number(speed) || 0);
+  if (velocity <= 0.5 || count <= 1) return 1;
+  const maximum = Math.max(1, Number(archetype?.maxSpeed) || 1);
+  const ratio = clamp(velocity / maximum, 0, 1);
+  const hysteresis = 0.055;
+  let gear = Math.round(clamp(Number(currentGear) || 1, 1, count));
+  while (gear < count && ratio >= vehicleGearUpshiftRatio(gear, count)) gear++;
+  while (gear > 1 && ratio < vehicleGearUpshiftRatio(gear - 1, count) - hysteresis) gear--;
+  return gear;
+}
+
+export function vehicleGearTorqueMultiplier(gear, gearCount = 5) {
+  const count = Math.max(1, Math.round(Number(gearCount) || 1));
+  const selected = Math.round(clamp(Number(gear) || 1, 1, count));
+  if (count <= 1) return 1;
+  const progress = (selected - 1) / (count - 1);
+  // Lower gears keep the lively launch. Upper gears still trade torque, but not
+  // enough to make the post-shift car feel strangled: fifth retains 70% drive torque.
+  return 1.20 - 0.50 * Math.pow(progress, 0.85);
+}
+
+export function vehicleHighSpeedAccelerationMultiplier(speed, maxSpeed) {
+  const maximum = Math.max(1, Number(maxSpeed) || 1);
+  const ratio = clamp(Math.abs(Number(speed) || 0) / maximum, 0, 1);
+  const taperStart = 0.62;
+  if (ratio <= taperStart) return 1;
+  const remaining = clamp((1 - ratio) / (1 - taperStart), 0, 1);
+  // Preserve a readable final pull without making the last gears feel artificially weak.
+  return 0.025 + 0.975 * Math.pow(remaining, 1.35);
 }
 
 export function stepVehicleKinematics(state, frame, dt, archetype) {
@@ -81,16 +139,44 @@ export function stepVehicleKinematics(state, frame, dt, archetype) {
   const handbrakeDriftKick = Math.max(0, Number(archetype?.handbrakeDriftKick) || 0.55);
   const normalGrip = Math.max(0.1, Number(archetype?.grip) || 8);
   const handbrakeGrip = Math.max(0.1, Number(archetype?.handbrakeGrip) || 1.4);
+  const gearCount = vehicleGearCount(archetype);
+  const gearTiming = vehicleGearShiftTiming(archetype);
 
   let speed = Number(state?.speed) || 0;
+  let gear = Math.round(clamp(Number(state?.gear) || 1, 1, gearCount));
+  let gearShiftTimer = Math.max(0, (Number(state?.gearShiftTimer) || 0) - seconds);
   const incomingRatio = clamp(Math.abs(speed) / maxSpeed, 0, 1);
   const launchMultiplier = 1 + launchBoost * Math.pow(1 - incomingRatio, 2.1);
+
+  // First gear gets a short dwell without a torque cut. This prevents the
+  // gearbox from immediately stepping through 1→2 as soon as launch torque
+  // pushes the car over the first speed threshold.
+  if (gear === 1 && Math.abs(speed) < 0.5 && state?.parked && input.throttle > 0.05 && gearShiftTimer <= 0) {
+    gearShiftTimer = gearTiming.firstGearHoldDuration;
+  }
+
+  if (speed >= 0) {
+    const targetGear = vehicleGearForSpeed(speed, archetype, gear);
+    if (targetGear > gear && gearShiftTimer <= 0 && input.throttle > 0.05) {
+      gear = Math.min(targetGear, gear + 1);
+      gearShiftTimer = gearTiming.shiftDuration + gearTiming.holdDuration;
+    } else if (targetGear < gear) {
+      gear = targetGear;
+      gearShiftTimer = 0;
+    }
+  } else {
+    gear = 1;
+    gearShiftTimer = 0;
+  }
+  const gearTorque = vehicleGearTorqueMultiplier(gear, gearCount);
+  const shiftTorque = vehicleGearShiftActive(gear, gearShiftTimer, archetype) ? 0.78 : 1;
+  const accelerationTaper = vehicleHighSpeedAccelerationMultiplier(speed, maxSpeed);
 
   if (state?.disabled) {
     speed = approach(speed, 0, brake * seconds);
   } else if (input.handbrake) {
     if (input.throttle > 0 && speed >= 0) {
-      speed += acceleration * launchMultiplier * handbrakeThrottleFactor * input.throttle * seconds;
+      speed += acceleration * launchMultiplier * gearTorque * shiftTorque * accelerationTaper * handbrakeThrottleFactor * input.throttle * seconds;
     } else if (input.throttle < 0 && speed <= 0) {
       speed -= reverseAcceleration * handbrakeThrottleFactor * Math.abs(input.throttle) * seconds;
     }
@@ -98,7 +184,7 @@ export function stepVehicleKinematics(state, frame, dt, archetype) {
   } else if (input.throttle > 0) {
     speed = speed < 0
       ? approach(speed, 0, brake * input.throttle * seconds)
-      : speed + acceleration * launchMultiplier * input.throttle * seconds;
+      : speed + acceleration * launchMultiplier * gearTorque * shiftTorque * accelerationTaper * input.throttle * seconds;
   } else if (input.throttle < 0) {
     const pressure = Math.abs(input.throttle);
     speed = speed > 0
@@ -151,6 +237,8 @@ export function stepVehicleKinematics(state, frame, dt, archetype) {
     velocityX,
     velocityY,
     speed,
+    gear,
+    gearShiftTimer,
     parked: Math.abs(speed) < 0.5,
     handbrake: input.handbrake
   };
@@ -216,6 +304,30 @@ export function vehicleHealthPercent(health, maxHealth) {
 export function vehicleImpactDamage(speed, { threshold = 34, scale = 0.12 } = {}) {
   const impact = Math.max(0, Math.abs(Number(speed) || 0) - Math.max(0, Number(threshold) || 0));
   return Math.round(impact * Math.max(0, Number(scale) || 0) * 10) / 10;
+}
+
+export function vehicleCameraLookAhead(state, frame, archetype) {
+  const speed = Number(state?.speed) || 0;
+  const maximum = Math.max(1, Number(archetype?.maxSpeed) || 1);
+  if (speed <= 18) return { x: 0, y: 0, strength: 0 };
+
+  const input = normalizeVehicleInput(frame);
+  const speedRatio = clamp(speed / maximum, 0, 1);
+  const speedProgress = clamp((speedRatio - 0.16) / 0.70, 0, 1);
+  const speedWeight = speedProgress * speedProgress * (3 - 2 * speedProgress);
+  const steeringSuppression = clamp((Math.abs(input.steer) - 0.08) / 0.42, 0, 1);
+  const driftSuppression = clamp((Math.abs(Number(state?.driftAngle) || 0) - 0.035) / 0.22, 0, 1);
+  const braking = input.throttle < -0.08;
+  const unstable = braking || input.handbrake || Boolean(state?.handbrake);
+  const stability = unstable ? 0 : (1 - steeringSuppression) * (1 - driftSuppression);
+  const strength = clamp(speedWeight * stability, 0, 1);
+  const distance = clamp(Number(archetype?.cameraLookAhead) || 72, 0, 120) * strength;
+  const direction = Number.isFinite(Number(state?.travelAngle)) ? Number(state.travelAngle) : Number(state?.angle) || 0;
+  return {
+    x: Math.cos(direction) * distance,
+    y: Math.sin(direction) * distance,
+    strength
+  };
 }
 
 export function vehicleCameraZoom(baseZoom, speed, archetype) {

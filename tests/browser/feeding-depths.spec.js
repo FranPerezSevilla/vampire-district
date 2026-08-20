@@ -227,11 +227,21 @@ test("held feeding resolves Quick Bite, Full Feed and Drain without farming Hung
   expect(result.feedingStats).toMatchObject({ feeds: 3, quickBites: 1, fullFeeds: 1, drains: 1 });
   expect(result.lastActionText).toContain("DRAIN");
 
-  await page.click("#hud-ledger-button");
-  await expect(page.locator("#night-ledger")).toHaveClass(/open/);
-  const ledgerText = await page.locator("#night-ledger-content").innerText();
-  expect(ledgerText).toContain("QUICK BITE");
-  expect(ledgerText).toContain("FULL FEED");
-  expect(ledgerText).toContain("DRAIN");
+  const ledger = await page.evaluate(() => {
+    const ui = window.NBD_PHASER_GAME.scene.getScene("UIScene");
+    const model = ui.readNightLedgerState(true);
+    return {
+      buttonHidden: Boolean(ui.dom?.ledgerButton?.hidden),
+      ledgerOpen: Boolean(ui.ledgerOpen),
+      huntingDetails: model.incidents
+        .filter(incident => incident.kind === "hunting")
+        .map(incident => incident.detail)
+    };
+  });
+  expect(ledger.buttonHidden).toBe(true);
+  expect(ledger.ledgerOpen).toBe(false);
+  expect(ledger.huntingDetails.join(" | ")).toContain("QUICK BITE");
+  expect(ledger.huntingDetails.join(" | ")).toContain("FULL FEED");
+  expect(ledger.huntingDetails.join(" | ")).toContain("DRAIN");
   expect(pageErrors).toEqual([]);
 });

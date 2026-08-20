@@ -7,6 +7,8 @@ const CROSSWALK_PAUSE_MAX = 0.62;
 const CROWD_EPSILON = 0.001;
 const CROWD_RESOLVE_ITERATIONS = 3;
 const CROWD_YIELD_SECONDS = 0.12;
+const CROWD_BROADPHASE_PADDING = 2;
+const PEDESTRIAN_PUBLISH_INTERVAL = 0.25;
 
 export const PEDESTRIAN_MIN_SEPARATION = 16;
 export const PEDESTRIAN_PLAYER_SEPARATION = 13;
@@ -97,8 +99,12 @@ export class PedestrianSystem {
       participants: 0,
       resolvedPairs: 0,
       remainingOverlaps: 0,
-      minimumSeparation: null
+      minimumSeparation: null,
+      pairChecks: 0,
+      metricPairChecks: 0,
+      broadphase: "bruteforce"
     };
+    this.publishAccumulator = 0;
     this.bindPedestrians();
     this.resolveCrowdCollisions({ iterations: 5, includePlayer: false });
     this.publish();
@@ -147,6 +153,72 @@ export class PedestrianSystem {
 
   crowdParticipants(options = {}) {
     return this.scene.npcSystem.npcs.filter(npc => this.isCrowdParticipant(npc, options));
+  }
+
+  nearbyCrowdParticipants(x, y, radius, options = {}) {
+    const queryRadius = this.scene.npcSystem?.queryRadius;
+    if (typeof queryRadius === "function") {
+      return queryRadius.call(
+        this.scene.npcSystem,
+        x,
+        y,
+        Math.max(0, Number(radius) || 0),
+        LAYERS.STREET,
+        candidate => this.isCrowdParticipant(candidate, options)
+      );
+    }
+    const limit = Math.max(0, Number(radius) || 0);
+    return this.crowdParticipants(options)
+      .filter(candidate => Math.hypot(candidate.x - x, candidate.y - y) <= limit);
+  }
+
+  crowdMetrics(participants, minimum = PEDESTRIAN_MIN_SEPARATION) {
+    const required = Math.max(0, Number(minimum) || 0);
+    const queryRadius = this.scene.npcSystem?.queryRadius;
+    if (typeof queryRadius !== "function") {
+      let overlaps = 0;
+      let minimumSeparation = Infinity;
+      let metricPairChecks = 0;
+      for (let first = 0; first < participants.length; first++) {
+        for (let second = first + 1; second < participants.length; second++) {
+          metricPairChecks++;
+          const current = distance(participants[first], participants[second]);
+          minimumSeparation = Math.min(minimumSeparation, current);
+          if (current < required - 0.25) overlaps++;
+        }
+      }
+      return {
+        overlaps,
+        minimumSeparation: Number.isFinite(minimumSeparation) ? minimumSeparation : null,
+        metricPairChecks,
+        broadphase: "bruteforce"
+      };
+    }
+
+    const order = new Map(participants.map((npc, index) => [npc, index]));
+    let overlaps = 0;
+    let minimumSeparation = Infinity;
+    let metricPairChecks = 0;
+    for (let first = 0; first < participants.length; first++) {
+      const npc = participants[first];
+      for (const other of this.nearbyCrowdParticipants(npc.x, npc.y, required)) {
+        const second = order.get(other);
+        if (second == null || second <= first) continue;
+        metricPairChecks++;
+        const current = distance(npc, other);
+        minimumSeparation = Math.min(minimumSeparation, current);
+        if (current < required - 0.25) overlaps++;
+      }
+    }
+    return {
+      overlaps,
+      // Diagnostics only need to prove the configured separation floor when no close pair exists.
+      minimumSeparation: Number.isFinite(minimumSeparation)
+        ? minimumSeparation
+        : participants.length > 1 ? required : null,
+      metricPairChecks,
+      broadphase: "spatial"
+    };
   }
 
   isCrowdLocked(npc) {
@@ -274,16 +346,44 @@ export class PedestrianSystem {
     simulatedOnly = true
   } = {}) {
     const participants = this.crowdParticipants({ simulatedOnly });
+    const useSpatialBroadphase = typeof this.scene.npcSystem?.queryRadius === "function";
+    const order = useSpatialBroadphase
+      ? new Map(participants.map((npc, index) => [npc, index]))
+      : null;
+    const maxIterations = Math.max(1, Math.floor(iterations));
     let resolvedPairs = 0;
+    let pairChecks = 0;
     let changed = false;
 
-    for (let iteration = 0; iteration < Math.max(1, Math.floor(iterations)); iteration++) {
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
       let changedThisPass = false;
-      for (let first = 0; first < participants.length; first++) {
-        for (let second = first + 1; second < participants.length; second++) {
-          if (this.resolvePair(participants[first], participants[second])) {
-            resolvedPairs++;
-            changedThisPass = true;
+      if (useSpatialBroadphase) {
+        const radius = PEDESTRIAN_MIN_SEPARATION + CROWD_BROADPHASE_PADDING;
+        for (let first = 0; first < participants.length; first++) {
+          const npc = participants[first];
+          for (const other of this.nearbyCrowdParticipants(
+            npc.x,
+            npc.y,
+            radius,
+            { simulatedOnly }
+          )) {
+            const second = order.get(other);
+            if (second == null || second <= first) continue;
+            pairChecks++;
+            if (this.resolvePair(npc, other)) {
+              resolvedPairs++;
+              changedThisPass = true;
+            }
+          }
+        }
+      } else {
+        for (let first = 0; first < participants.length; first++) {
+          for (let second = first + 1; second < participants.length; second++) {
+            pairChecks++;
+            if (this.resolvePair(participants[first], participants[second])) {
+              resolvedPairs++;
+              changedThisPass = true;
+            }
           }
         }
       }
@@ -294,20 +394,28 @@ export class PedestrianSystem {
       }
       changed = changed || changedThisPass;
       if (!changedThisPass) break;
+      if (useSpatialBroadphase && iteration + 1 < maxIterations) {
+        this.scene.npcSystem.rebuildSpatialIndex?.();
+      }
     }
 
     if (changed) this.scene.npcSystem.rebuildSpatialIndex?.();
+    const metrics = this.crowdMetrics(participants);
     this.lastCrowdResolution = {
       participants: participants.length,
       resolvedPairs,
-      remainingOverlaps: this.overlapCount(participants),
-      minimumSeparation: minimumPedestrianSeparation(participants)
+      remainingOverlaps: metrics.overlaps,
+      minimumSeparation: metrics.minimumSeparation,
+      pairChecks,
+      metricPairChecks: metrics.metricPairChecks,
+      broadphase: metrics.broadphase
     };
     return this.lastCrowdResolution;
   }
 
   hasCrowdClearance(npc, x, y, minimum = PEDESTRIAN_MIN_SEPARATION - 1) {
-    for (const other of this.crowdParticipants()) {
+    const radius = minimum + CROWD_BROADPHASE_PADDING;
+    for (const other of this.nearbyCrowdParticipants(x, y, radius)) {
       if (other === npc) continue;
       if (Math.hypot(other.x - x, other.y - y) < minimum) return false;
     }
@@ -409,9 +517,14 @@ export class PedestrianSystem {
       npc.container?.setPosition?.(npc.x, npc.y);
     }
 
-    this.resolveCrowdCollisions({ iterations: 1, includePlayer: true });
+    // Movement changed pedestrian positions, so refresh the shared broadphase once before crowd resolution.
     this.scene.npcSystem.rebuildSpatialIndex?.();
-    this.publish();
+    this.resolveCrowdCollisions({ iterations: 1, includePlayer: true });
+    this.publishAccumulator += seconds;
+    if (this.publishAccumulator >= PEDESTRIAN_PUBLISH_INTERVAL) {
+      this.publishAccumulator %= PEDESTRIAN_PUBLISH_INTERVAL;
+      this.publish();
+    }
   }
 
   snapshot() {
@@ -423,9 +536,12 @@ export class PedestrianSystem {
       total: this.pedestrians.length,
       crowd: {
         participants: participants.length,
-        minimumSeparation: minimumPedestrianSeparation(participants),
-        overlaps: this.overlapCount(participants),
-        resolvedPairs: this.lastCrowdResolution.resolvedPairs
+        minimumSeparation: this.lastCrowdResolution.minimumSeparation,
+        overlaps: this.lastCrowdResolution.remainingOverlaps,
+        resolvedPairs: this.lastCrowdResolution.resolvedPairs,
+        pairChecks: this.lastCrowdResolution.pairChecks,
+        metricPairChecks: this.lastCrowdResolution.metricPairChecks,
+        broadphase: this.lastCrowdResolution.broadphase
       },
       routes: pedestrianRoutes.map(route => ({ id: route.id, points: route.points.length })),
       pedestrians: this.pedestrians.map(npc => ({

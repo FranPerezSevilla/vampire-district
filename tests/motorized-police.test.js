@@ -8,7 +8,12 @@ import {
   laneDirection,
   motorizedRole,
   MOTORIZED_POLICE_ROLES,
+  MOTORIZED_POLICE_TACTICS,
+  policeTacticLabel,
+  predictInterceptPoint,
+  rearQuarterTarget,
   reservedOfficerCount,
+  rotateToward,
   shortestDistrictPath
 } from "../phaser/src/police/MotorizedPolicePolicy.js";
 
@@ -108,4 +113,34 @@ test("officer reservation ends only after each cruiser has dismounted", () => {
     { index: 1, officersDismounted: true },
     { index: 2, officersDismounted: true }
   ], 2), 0);
+});
+
+
+test("intercept prediction leads a moving target but clamps extreme velocity", () => {
+  const led = predictInterceptPoint({ x: 10, y: 20, velocityX: 40, velocityY: 0 }, {
+    leadSeconds: 1,
+    maxLead: 100
+  });
+  assert.deepEqual(led, { x: 50, y: 20, leadDistance: 40 });
+  const clamped = predictInterceptPoint({ x: 0, y: 0, velocityX: 500, velocityY: 0 }, {
+    leadSeconds: 1,
+    maxLead: 120
+  });
+  assert.equal(clamped.x, 120);
+  assert.equal(clamped.leadDistance, 120);
+});
+
+test("pursuit units choose opposite rear quarters and readable committed tactics", () => {
+  const vehicle = { x: 100, y: 100, angle: 0 };
+  const left = rearQuarterTarget(vehicle, 0);
+  const right = rearQuarterTarget(vehicle, 1);
+  assert.equal(left.x, 48);
+  assert.equal(right.x, 48);
+  assert.equal(left.y, 82);
+  assert.equal(right.y, 118);
+  assert.equal(left.side, -1);
+  assert.equal(right.side, 1);
+  assert.equal(policeTacticLabel(MOTORIZED_POLICE_TACTICS.RAM_TELEGRAPH), "RAM!");
+  assert.equal(policeTacticLabel(MOTORIZED_POLICE_TACTICS.PIT_COMMIT), "PIT");
+  assert.ok(rotateToward(0, Math.PI, 0.2) <= 0.2 + 1e-9);
 });

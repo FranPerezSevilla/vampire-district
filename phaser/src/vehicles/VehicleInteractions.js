@@ -8,6 +8,9 @@ const ENTER_RADIUS = 30;
 const EXIT_SPEED_LIMIT = 12;
 const EXIT_ESCAPE_PROBE = 18;
 const EXIT_CORRIDOR_STEPS = Object.freeze([0, 0.5, 1]);
+const VEHICLE_DOOR_CLOSE_DELAY = 0.52;
+const VEHICLE_ENGINE_START_DELAY = 0.58;
+const VEHICLE_ENGINE_LOOP_REVEAL = 2.05;
 
 export function vehicleStatusLabel(vehicle) {
   switch (vehicle.status) {
@@ -175,7 +178,12 @@ export function enterVehicle(system, vehicleId, { force = false } = {}) {
     system.scene.lastActionText = `You enter ${vehicle.name}. W/S accelerate and brake · A/D steer · Space handbrake · Enter exits.`;
   }
 
-  RawAudio.play("confirm");
+  RawAudio.play("vehicleDoorOpen");
+  RawAudio.play("vehicleDoorClose", { delay: VEHICLE_DOOR_CLOSE_DELAY, cooldown: 0 });
+  RawAudio.beginVehicleEngineStart(`player:${vehicle.id}`, {
+    delay: VEHICLE_ENGINE_START_DELAY,
+    revealAfter: VEHICLE_ENGINE_LOOP_REVEAL
+  });
   system.updateHud();
   system.publish();
   system.scene.events?.emit?.("vehicle:entered", { vehicleId: vehicle.id, status: vehicle.status });
@@ -203,16 +211,23 @@ export function exitVehicle(system, { force = false } = {}) {
   vehicle.speed = 0;
   vehicle.velocityX = 0;
   vehicle.velocityY = 0;
+  vehicle.gear = 1;
+  vehicle.gearShiftTimer = 0;
   vehicle.parked = true;
   vehicle.handbrake = false;
   system.handbrakeActive = false;
   system.currentVehicleId = null;
+  RawAudio.stopVehicleEngine(`player:${vehicle.id}`);
   restoreStreetControl(system.scene, exitPoint);
+  system.cameraLookAheadX = 0;
+  system.cameraLookAheadY = 0;
+  system.scene.cameras.main.setFollowOffset(0, 0);
   system.scene.cameras.main.startFollow(system.scene.player, true, 0.12, 0.12);
   system.persistVehicle(vehicle);
   system.hud.setVisible(false);
   system.scene.lastActionText = vehicle.disabled ? `You climb out of the disabled ${vehicle.name}.` : `${vehicle.name} parked. You return to street movement.`;
-  RawAudio.play("confirm");
+  RawAudio.play("vehicleDoorOpen");
+  RawAudio.play("vehicleDoorClose", { delay: VEHICLE_DOOR_CLOSE_DELAY, cooldown: 0 });
   system.publish();
   system.scene.events?.emit?.("vehicle:exited", {
     vehicleId: vehicle.id,

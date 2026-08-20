@@ -26,10 +26,11 @@ export function normalizeBooleanPreference(value, fallback = false) {
   return Boolean(fallback);
 }
 
-export function weaponGuidanceState({ tutorialComplete = false, weaponChanges = 0 } = {}) {
-  if (!tutorialComplete) return WEAPON_GUIDANCE_STATES.LOCKED;
-  if (Math.max(0, Number(weaponChanges) || 0) < 1) return WEAPON_GUIDANCE_STATES.AWAITING_CYCLE;
-  return WEAPON_GUIDANCE_STATES.COMPLETE;
+// Weapon cycling remains available, but the old contextual wheel tutorial was retired.
+// Keep this compatibility helper fail-closed for any legacy callers: once normal control
+// is available there is no intermediate guidance state to render.
+export function weaponGuidanceState({ tutorialComplete = false } = {}) {
+  return tutorialComplete ? WEAPON_GUIDANCE_STATES.COMPLETE : WEAPON_GUIDANCE_STATES.LOCKED;
 }
 
 export function isRecoverableNpcType(type) {

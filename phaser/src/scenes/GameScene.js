@@ -10,6 +10,7 @@ import {
   sidewalks
 } from "../data/district.js";
 import { ModularCharacterView } from "../rendering/ModularCharacterView.js";
+import { installVehicleExplosionPresentation } from "../vehicles/VehicleExplosionPresentation.js";
 import { GameScene as GameSceneCore } from "./GameSceneCore.js";
 
 const URBAN_RENDER_HALF_WIDTH = 680;
@@ -48,6 +49,7 @@ export class GameScene extends GameSceneCore {
     this.playerMovementDirection = { x: 0, y: -1 };
     this.playerAimDirection = { x: 0, y: -1 };
     this.playerAimUntil = -1;
+    this.removeVehicleExplosionPresentation = null;
   }
 
   create() {
@@ -58,6 +60,8 @@ export class GameScene extends GameSceneCore {
       phaseKey: "viceblood-protagonist"
     });
     this.playerPresentationPosition = { x: this.player.x, y: this.player.y };
+    this.removeVehicleExplosionPresentation?.();
+    this.removeVehicleExplosionPresentation = installVehicleExplosionPresentation(this);
   }
 
   update(time, deltaMs) {
@@ -103,6 +107,7 @@ export class GameScene extends GameSceneCore {
     if (!this.feedingSystem?.isActive?.()) {
       options.push(...(this.vehicleSystem?.collectInteractions?.() || []));
       options.push(...(this.trafficMaterializationSystem?.collectInteractions?.() || []));
+      options.push(...(this.deathRecoverySystem?.collectInteractions?.() || []));
     }
     return options;
   }

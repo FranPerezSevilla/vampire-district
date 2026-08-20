@@ -57,7 +57,11 @@ test("the retired canvas prototype and one-off patch infrastructure are physical
   }
 
   const workflows = await readdir(new URL("../.github/workflows/", import.meta.url));
-  assert.deepEqual(workflows.sort(), ["build-itch-zip.yml", "tests.yml"]);
+  assert.deepEqual(workflows.sort(), [
+    "build-itch-zip.yml",
+    "materialize-audio-assets.yml",
+    "tests.yml"
+  ]);
 
   const rootTools = (await readdir(new URL("../tools/", import.meta.url), { withFileTypes: true }))
     .filter(entry => entry.isFile())

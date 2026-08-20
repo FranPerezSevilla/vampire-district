@@ -30,6 +30,7 @@ export class WeaponSystem {
       if (weapon.ammoCapacity != null) this.ammo[id] = weapon.ammoCapacity;
     }
     this.scene.inputSystem?.setWheelCaptureEnabled?.(true);
+    this.scene.events?.on?.("combat:hit", this.onCombatHit, this);
     this.publish();
     scene.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, this.destroy, this);
   }
@@ -138,10 +139,14 @@ export class WeaponSystem {
     }
 
     if (weapon.id === WEAPON_IDS.PISTOL) {
-      RawAudio.noise?.(0.10, { volume: 0.12, filter: 1650, filterType: "highpass" });
-      RawAudio.tone?.(190, 0.13, { to: 58, volume: 0.082, type: "square", filter: 1500 });
-      RawAudio.tone?.(820, 0.05, { delay: 0.01, to: 210, volume: 0.035, type: "sawtooth", filter: 2500 });
+      RawAudio.play("weaponFire");
     }
+  }
+
+  onCombatHit(event = {}) {
+    const weapon = weaponById(event.weaponId);
+    if (weapon?.attackType !== WEAPON_TYPES.HITSCAN) return;
+    RawAudio.play("bulletHitBody", { cooldown: 0.04 });
   }
 
   onMeleeImpact(weapon, victim) {
@@ -165,6 +170,7 @@ export class WeaponSystem {
     ) || this.scene.npcSystem?.npcs || [];
     let visualWitnesses = 0;
     let heardOnly = 0;
+    let heardOnlyCivilians = 0;
 
     for (const npc of candidates) {
       if (!this.validObserver(npc, source.layer)) continue;
@@ -184,9 +190,11 @@ export class WeaponSystem {
       if (distance > weapon.soundRadius || npc.alarmed || npc.chasingPlayer || npc.enemyAttack) continue;
       this.startHeardOnlyReaction(npc, source, 1.9);
       heardOnly++;
+      if ([NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)) heardOnlyCivilians++;
     }
 
-    if (heardOnly) RawAudio.play("witnessWtf", { cooldown: 0.4 });
+    if (heardOnlyCivilians) RawAudio.play("civilianScream", { cooldown: 0.75 });
+    else if (heardOnly) RawAudio.play("witnessWtf", { cooldown: 0.4 });
     this.scene.lastActionText = `GUNSHOT: ${weapon.name} fired · ${this.ammoRemaining(weapon.id)}/${weapon.ammoCapacity} rounds.${visualWitnesses ? ` ${visualWitnesses} observer(s) saw the shot.` : ""}${heardOnly ? ` ${heardOnly} NPC(s) heard it.` : ""}`;
     this.scene.events?.emit?.("noise:emitted", {
       kind: "gunshot",
@@ -245,6 +253,7 @@ export class WeaponSystem {
     }
 
     if ([NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)) {
+      if (!npc.alarmed) RawAudio.play("civilianScream", { cooldown: 0.75 });
       this.scene.witnessSystem?.alarmWitness?.(npc, "a gunshot", weapon.witnessSeverity || 18, {
         masqueradeRisk: false,
         reactionSeconds: 0.55,
@@ -341,6 +350,7 @@ export class WeaponSystem {
   }
 
   destroy() {
+    this.scene.events?.off?.("combat:hit", this.onCombatHit, this);
     this.scene.inputSystem?.setWheelCaptureEnabled?.(false);
   }
 }

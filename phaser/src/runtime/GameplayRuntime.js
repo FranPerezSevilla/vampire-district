@@ -19,9 +19,12 @@ import { TrafficImpactConsequencesSystem } from "../streaming/TrafficImpactConse
 import { TrafficLocalBehaviorSystem } from "../streaming/TrafficLocalBehaviorSystem.js";
 import { TrafficMaterializationSystem } from "../streaming/TrafficMaterializationSystem.js";
 import { TrafficPhysicalConsequencesSystem } from "../streaming/TrafficPhysicalConsequencesSystem.js";
+import { RawAudio } from "../systems/RawAudioSystem.js";
 import { installVehicleCollisionSofteningPolicy } from "../vehicles/VehicleCollisionSofteningPolicy.js";
 import { VehicleSystem } from "../vehicles/VehicleSystem.js";
 import { GameplayRuntime as GameplayRuntimeCore } from "./GameplayRuntimeCore.js";
+import { installPublishStateInstrumentation } from "./PublishStateInstrumentation.js";
+import { enrichVehicleInputFrame, filterVehicleAwareInteractions } from "./VehicleRuntimeAdapter.js";
 
 const VEHICLE_ACTION_TYPES = new Set(["vehicleEnter", "vehicleExit"]);
 
@@ -74,6 +77,11 @@ export class GameplayRuntime extends GameplayRuntimeCore {
 
   constructor(scene) {
     super(scene);
+    this.removePublishStateInstrumentation = installPublishStateInstrumentation(scene, this.diagnostics);
+    this.baseInputBeginFrame = null;
+    this.baseCollectInteractions = null;
+    this.vehicleAwareInputFrame = this.vehicleAwareInputFrame.bind(this);
+    this.vehicleAwareInteractions = this.vehicleAwareInteractions.bind(this);
     scene.cityStreamSystem = new ChunkStreamSystem(scene);
     scene.buildingSidewalkClearancePolicy = installBuildingSidewalkClearancePolicy(scene);
     scene.pedestrianSystem = new PedestrianSystem(scene);
@@ -101,60 +109,78 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.vehicleSystem?.refreshVisibility?.();
   }
 
+  vehicleAwareInputFrame() {
+    const input = this.scene.inputSystem;
+    const beginFrame = this.baseInputBeginFrame;
+    const frame = typeof beginFrame === "function" ? beginFrame.call(input) : null;
+    if (!frame) return frame;
+    enrichVehicleInputFrame(frame, input?.keys?.space?.isDown);
+    const vehicle = this.scene.vehicleSystem;
+    return vehicle?.isDriving?.() ? vehicle.filterInputFrame(frame) : frame;
+  }
+
+  vehicleAwareInteractions() {
+    const scene = this.scene;
+    const collectInteractions = this.baseCollectInteractions;
+    const options = typeof collectInteractions === "function"
+      ? collectInteractions.call(scene) || []
+      : [];
+    return filterVehicleAwareInteractions(options, scene.currentInputFrame, isVehicleAction);
+  }
+
   update(time, deltaMs) {
     const scene = this.scene;
     const input = scene.inputSystem;
-    const vehicle = scene.vehicleSystem;
+    const diagnostics = this.diagnostics;
     const originalBeginFrame = input?.beginFrame;
     const originalCollectInteractions = scene.collectInteractions;
+    this.baseInputBeginFrame = typeof originalBeginFrame === "function" ? originalBeginFrame : null;
+    this.baseCollectInteractions = typeof originalCollectInteractions === "function" ? originalCollectInteractions : null;
     const dt = Math.min(Math.max(0, Number(deltaMs) || 0) / 1000, 0.05);
+    RawAudio.beginVehicleEngineFrame({ paused: Boolean(scene.registry?.get?.("uiPaused")) });
 
+    let profileMark = diagnostics.beginSystem("StreamingPipeline");
     scene.cityStreamSystem?.update?.();
     scene.districtPackSystem?.update?.();
     scene.entityStreamSystem?.update?.(dt);
     scene.distantSimulationSystem?.update?.(dt);
+    diagnostics.endSystem("StreamingPipeline", profileMark);
+
+    profileMark = diagnostics.beginSystem("TrafficPipeline");
     scene.macroTrafficPoliceSystem?.update?.(dt);
     scene.trafficMaterializationSystem?.update?.(dt);
     scene.trafficOccupantWitnessSystem?.update?.(dt);
     scene.trafficLocalBehaviorSystem?.update?.(dt);
     scene.trafficPhysicalConsequencesSystem?.update?.(dt);
     scene.trafficImpactConsequencesSystem?.update?.(dt);
+    diagnostics.endSystem("TrafficPipeline", profileMark);
+
+    profileMark = diagnostics.beginSystem("MotorizedPoliceSystem");
     scene.motorizedPoliceSystem?.update?.(dt);
+    diagnostics.endSystem("MotorizedPoliceSystem", profileMark);
+
+    profileMark = diagnostics.beginSystem("PedestrianSystem");
     scene.pedestrianSystem?.update?.(dt);
+    diagnostics.endSystem("PedestrianSystem", profileMark);
 
-    if (input && originalBeginFrame) {
-      input.beginFrame = function vehicleAwareInputFrame() {
-        const frame = originalBeginFrame.call(input);
-        const vehicleActionPressed = Boolean(frame.menuConfirmPressed && !frame.interactPressed);
-        const enriched = {
-          ...frame,
-          vehicleActionPressed,
-          handbrakeHeld: Boolean(input.keys?.space?.isDown)
-        };
-        if (vehicle?.isDriving?.()) return vehicle.filterInputFrame(enriched);
-        return vehicleActionPressed
-          ? { ...enriched, traversePressed: true }
-          : enriched;
-      };
-    }
+    if (input && this.baseInputBeginFrame) input.beginFrame = this.vehicleAwareInputFrame;
+    if (this.baseCollectInteractions) scene.collectInteractions = this.vehicleAwareInteractions;
 
-    if (typeof originalCollectInteractions === "function") {
-      scene.collectInteractions = function vehicleAwareInteractions() {
-        const options = originalCollectInteractions.call(scene) || [];
-        const frame = scene.currentInputFrame;
-        if (frame?.vehicleActionPressed) return options.filter(isVehicleAction);
-        if (frame?.traversePressed) return options.filter(option => !isVehicleAction(option));
-        return options;
-      };
-    }
-
+    profileMark = diagnostics.beginSystem("GameplayRuntimeCore");
     try {
       super.update(time, deltaMs);
     } finally {
+      diagnostics.endSystem("GameplayRuntimeCore", profileMark);
       if (input && originalBeginFrame) input.beginFrame = originalBeginFrame;
       if (originalCollectInteractions) scene.collectInteractions = originalCollectInteractions;
+      this.baseInputBeginFrame = null;
+      this.baseCollectInteractions = null;
+      RawAudio.endVehicleEngineFrame();
     }
+
+    profileMark = diagnostics.beginSystem("TerritoryRuntimeSystem");
     scene.territoryRuntimeSystem?.update?.();
+    diagnostics.endSystem("TerritoryRuntimeSystem", profileMark);
   }
 
   finishFrame() {
@@ -165,6 +191,9 @@ export class GameplayRuntime extends GameplayRuntimeCore {
   }
 
   destroy() {
+    this.removePublishStateInstrumentation?.();
+    this.removePublishStateInstrumentation = null;
+    RawAudio.stopAllVehicleEngines();
     this.scene.huntingLawRuntimeSystem?.destroy?.();
     this.scene.huntingLawRuntimeSystem = null;
     this.scene.territoryRuntimeSystem?.destroy?.();
