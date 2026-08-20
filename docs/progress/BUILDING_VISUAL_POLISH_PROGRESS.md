@@ -2,6 +2,50 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-20 — M3.2 membrane validated; M3.3 civic surface implemented
+
+### Scope
+
+- Active milestone: M3.2 → M3.3
+- Task: close membrane seams after automated validation, then implement exactly one bounded civic-surface-order increment
+- Authoritative files: `BuildingPresentationMaterialRenderer.js`, `tests/building-membrane-surface.test.js`, `tests/building-civic-surface.test.js`, roadmap and machine status
+- Acceptance criteria: membrane validation green; civic joints gain clear primary/secondary hierarchy without changing planner-owned coordinates; deterministic focused contracts; Netlify required before civic completion
+- Explicit non-goals: pitched-roof shading, night-roof modulation, low-frequency global variation, hospital/medical profile work, gameplay/collision/topology/navigation/AI/mission/generated-city edits
+
+### Completed
+
+- confirmed M3.2 membrane rendering is green: exact implementation/test head `ed260d0e945487df4c108e20ae8a361deb62c18b` has Netlify success and focused unit contracts; later continuity head `02ae75f3a86cb25f77957ee32db0d1442e0c00ce` passed workflow `32343914136` with unit tests, browser campaign, browser boot and all three browser-system shards green;
+- marked M3.2 complete without changing planner seam placement;
+- extended `BuildingPresentationMaterialRenderer.js` so `CIVIC` roof texture modules are intercepted by the M3 material layer rather than using the legacy uniform `0.2` highlight line;
+- retained every planner-owned civic joint coordinate and module;
+- gave the horizontal civic joint a restrained primary role using roof-texture alpha `0.115` plus one faint north-side highlight at `0.028`;
+- gave the vertical/cross-axis civic joint a quieter secondary role at alpha `0.06` with no extra decorative highlight;
+- added `tests/building-civic-surface.test.js` proving original coordinates, primary/secondary hierarchy, absence of the old uniform `0.2` treatment and deterministic output;
+- did not begin pitched-roof, night-roof or global variation work.
+
+### Validation
+
+- M3.2 implementation commit: `1bb841fdd047805bc5fc0476a9a9960784a3916c`;
+- M3.2 implementation/test head: `ed260d0e945487df4c108e20ae8a361deb62c18b`;
+- M3.2 continuity workflow `32343914136`: **success**, including unit + browser campaign + browser boot + 3/3 browser-system shards;
+- M3.2 Netlify: **success**;
+- M3.3 implementation commit: `fbd3791dad4dff22e54e54a0821733394e9400e4`;
+- M3.3 implementation/test head: `92507de3484e59067a60b2699ad99b7cc4179158`;
+- M3.3 workflow `32344451571`: **in progress at bounded observation**;
+- M3.3 Netlify: **pending at bounded observation**;
+- authored surface modules, building bounds, gameplay and collision authority: **unchanged**;
+- PR #63 remains open, draft and unmerged.
+
+### Visual risk
+
+Civic material hierarchy is now intentionally sparse: one primary ordering joint and one quieter cross-axis joint. Final apparent strength at gameplay zoom remains part of M6. Do not add more civic lines or repeated decorative slots to make the surface more obvious.
+
+### Next
+
+Validate workflow `32344451571` and Netlify for head `92507de3484e59067a60b2699ad99b7cc4179158`. If green, mark M3.3 complete and continue with one separate M3 pitched-roof ridge-shading increment. If a building-focused failure appears, fix only that regression.
+
+---
+
 ## 2026-08-20 — M3.1 warehouse corrugation validated; M3.2 opened
 
 ### Scope
