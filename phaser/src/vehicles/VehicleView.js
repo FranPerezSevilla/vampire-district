@@ -49,17 +49,17 @@ export function paintVehicle(scene, container, definition, archetype) {
     parts.push(part);
     return part;
   };
-  const dot = (x, y, w, h, fill, alpha = 1) => {
-    const part = scene.add.rectangle(x, y, Math.max(1, w), Math.max(1, h), fill, alpha);
-    parts.push(part);
-    return part;
-  };
 
-  // ViceBlood vehicles deliberately use the same restrained shape language as the city:
-  // flat body panels, dark glass and only a handful of readable details at gameplay scale.
+  // Subtle contact tone: keeps the vehicle visually seated in the street without introducing
+  // a separate lighting/shadow authority.
+  detail(-0.8, 0.8, width * 0.94, height * 0.92, 0x070a11, 0.20);
+
+  // The body remains deliberately flat to match ViceBlood's city rendering.
   const body = detail(0, 0, width, height, color, 1).setStrokeStyle(1, 0x111621, 0.95);
-  detail(-width * 0.47, 0, width * 0.06, height * 0.74, 0x171b25, 0.9);
-  detail(width * 0.47, 0, width * 0.06, height * 0.74, 0x171b25, 0.9);
+
+  // Embedded dark side bands make the footprint read as wheels/body rather than a floating box.
+  detail(-width * 0.47, 0, width * 0.06, height * 0.74, 0x171b25, 0.84);
+  detail(width * 0.47, 0, width * 0.06, height * 0.74, 0x171b25, 0.84);
 
   let cabinX = -width * 0.06;
   let cabinWidth = width * 0.43;
@@ -67,103 +67,105 @@ export function paintVehicle(scene, container, definition, archetype) {
   let hoodX = width * 0.31;
   let hoodWidth = width * 0.23;
 
+  // Silhouette language: make each family readable before any small detail is noticed.
   if (["compact", "hatchback", "junker"].includes(style)) {
-    cabinX = -width * 0.10;
-    cabinWidth = width * 0.48;
+    cabinX = -width * 0.11;
+    cabinWidth = width * 0.50;
     cabinHeight = height * 0.72;
-    hoodX = width * 0.33;
-    hoodWidth = width * 0.18;
+    hoodX = width * 0.34;
+    hoodWidth = width * 0.16;
+    detail(-width * 0.43, 0, width * 0.10, height * 0.76, color, 0.88);
   } else if (["muscle", "sports", "coupe", "police-interceptor"].includes(style)) {
-    cabinX = -width * 0.10;
-    cabinWidth = width * 0.34;
-    cabinHeight = height * 0.60;
-    hoodX = width * 0.29;
-    hoodWidth = width * 0.31;
+    cabinX = -width * 0.12;
+    cabinWidth = width * 0.33;
+    cabinHeight = height * 0.58;
+    hoodX = width * 0.28;
+    hoodWidth = width * 0.32;
+    detail(width * 0.44, 0, width * 0.08, height * 0.84, color, 0.92);
   } else if (["suv", "police-suv"].includes(style)) {
     cabinX = -width * 0.05;
-    cabinWidth = width * 0.55;
-    cabinHeight = height * 0.73;
+    cabinWidth = width * 0.57;
+    cabinHeight = height * 0.76;
     hoodX = width * 0.34;
     hoodWidth = width * 0.18;
+    detail(0, 0, width * 0.88, height * 0.90, color, 0.24);
   } else if (["van", "delivery-van"].includes(style)) {
     cabinX = width * 0.22;
     cabinWidth = width * 0.25;
-    cabinHeight = height * 0.74;
+    cabinHeight = height * 0.76;
     hoodX = width * 0.42;
-    hoodWidth = width * 0.10;
+    hoodWidth = width * 0.09;
+    detail(-width * 0.15, 0, width * 0.57, height * 0.82, color, 0.42);
   } else if (style === "pickup") {
-    cabinX = width * 0.10;
-    cabinWidth = width * 0.31;
-    cabinHeight = height * 0.70;
-    hoodX = width * 0.37;
-    hoodWidth = width * 0.17;
+    cabinX = width * 0.12;
+    cabinWidth = width * 0.29;
+    cabinHeight = height * 0.68;
+    hoodX = width * 0.38;
+    hoodWidth = width * 0.16;
   } else if (style === "limousine") {
-    cabinX = -width * 0.04;
-    cabinWidth = width * 0.62;
-    hoodX = width * 0.39;
-    hoodWidth = width * 0.15;
+    cabinX = -width * 0.05;
+    cabinWidth = width * 0.64;
+    hoodX = width * 0.40;
+    hoodWidth = width * 0.14;
   } else if (style === "hearse") {
     cabinX = width * 0.10;
     cabinWidth = width * 0.30;
-    hoodX = width * 0.38;
-    hoodWidth = width * 0.16;
+    hoodX = width * 0.39;
+    hoodWidth = width * 0.15;
   }
 
-  const cabin = detail(cabinX, 0, cabinWidth, cabinHeight, 0x101722, 0.98)
-    .setStrokeStyle(1, 0x34404f, 0.8);
-  const hood = detail(hoodX, 0, hoodWidth, height * 0.64, trim, 0.18)
-    .setStrokeStyle(1, 0x111621, 0.5);
+  // Stronger glass/body separation improves mid-tone and brown cars against asphalt.
+  const cabin = detail(cabinX, 0, cabinWidth, cabinHeight, 0x0b1119, 0.99)
+    .setStrokeStyle(1, 0x3e4b58, 0.90);
+  const hood = detail(hoodX, 0, hoodWidth, height * 0.64, trim, 0.14)
+    .setStrokeStyle(1, 0x111621, 0.56);
 
-  // Windscreen/rear glass separation gives the same readable roof structure as the approved POC.
-  detail(cabinX + cabinWidth * 0.26, 0, 1.2, cabinHeight * 0.82, 0x34404f, 0.52);
-  detail(cabinX - cabinWidth * 0.27, 0, 1.0, cabinHeight * 0.78, 0x070b11, 0.62);
+  detail(cabinX + cabinWidth * 0.26, 0, 1.2, cabinHeight * 0.82, 0x455463, 0.56);
+  detail(cabinX - cabinWidth * 0.27, 0, 1.0, cabinHeight * 0.78, 0x06090e, 0.72);
 
-  // Headlights and tail lamps are intentionally small: enough to read the front without looking glossy.
   const lampH = Math.max(1.3, height * 0.18);
-  detail(width * 0.43, -height * 0.31, width * 0.10, lampH, 0xdbe5e8, 0.92);
-  detail(width * 0.43, height * 0.31, width * 0.10, lampH, 0xdbe5e8, 0.92);
-  detail(-width * 0.43, -height * 0.31, width * 0.08, lampH, 0xb64d42, 0.82);
-  detail(-width * 0.43, height * 0.31, width * 0.08, lampH, 0xb64d42, 0.82);
+  detail(width * 0.43, -height * 0.31, width * 0.09, lampH, 0xc9d4d8, 0.84);
+  detail(width * 0.43, height * 0.31, width * 0.09, lampH, 0xc9d4d8, 0.84);
+  detail(-width * 0.43, -height * 0.31, width * 0.08, lampH, 0xa74841, 0.76);
+  detail(-width * 0.43, height * 0.31, width * 0.08, lampH, 0xa74841, 0.76);
 
   if (style === "compact") {
-    // Retro compact: small square lamps and a tiny grille echo the teal reference at gameplay scale.
-    dot(width * 0.42, -height * 0.29, height * 0.18, height * 0.18, 0xf0d48f, 0.96);
-    dot(width * 0.42, height * 0.29, height * 0.18, height * 0.18, 0xf0d48f, 0.96);
+    detail(width * 0.42, -height * 0.29, height * 0.17, height * 0.17, 0xd8bd7d, 0.92);
+    detail(width * 0.42, height * 0.29, height * 0.17, height * 0.17, 0xd8bd7d, 0.92);
     detail(width * 0.39, 0, width * 0.08, height * 0.24, 0x151b21, 0.92);
-    detail(-width * 0.29, 0, width * 0.05, height * 0.78, trim, 0.22);
+    detail(-width * 0.29, 0, width * 0.05, height * 0.78, trim, 0.20);
   }
   if (style === "hatchback") {
-    detail(-width * 0.34, 0, width * 0.16, height * 0.62, 0x0b1119, 0.78);
+    detail(-width * 0.35, 0, width * 0.16, height * 0.64, 0x0b1119, 0.82);
   }
   if (style === "sedan" || style === "executive") {
-    detail(-width * 0.08, 0, width * 0.14, height * 0.46, 0x202c38, 0.76).setStrokeStyle(1, 0x0a0d12, 0.7);
+    detail(-width * 0.08, 0, width * 0.14, height * 0.46, 0x26323e, 0.84).setStrokeStyle(1, 0x090c11, 0.76);
   }
   if (style === "taxi") {
-    detail(-width * 0.04, 0, width * 0.13, height * 0.24, 0xd2ad51, 1).setStrokeStyle(1, 0x342c1b, 0.9);
+    detail(-width * 0.04, 0, width * 0.13, height * 0.24, 0xb99547, 0.96).setStrokeStyle(1, 0x342c1b, 0.9);
   }
   if (style === "muscle") {
     detail(width * 0.03, -height * 0.10, width * 0.74, 1.2, 0x15181e, 0.74);
     detail(width * 0.03, height * 0.10, width * 0.74, 1.2, 0x15181e, 0.74);
   }
   if (style === "sports") {
-    // The reference sports car's twin dark stripes become two simple longitudinal bands.
-    detail(0, -height * 0.10, width * 0.88, height * 0.10, 0x151820, 0.82);
-    detail(0, height * 0.10, width * 0.88, height * 0.10, 0x151820, 0.82);
-    detail(-width * 0.34, 0, width * 0.15, height * 0.48, 0x0a0e14, 0.76);
-    detail(width * 0.28, 0, width * 0.08, height * 0.42, 0x0a0d12, 0.78);
+    detail(0, -height * 0.10, width * 0.90, height * 0.10, 0x151820, 0.82);
+    detail(0, height * 0.10, width * 0.90, height * 0.10, 0x151820, 0.82);
+    detail(-width * 0.34, 0, width * 0.15, height * 0.48, 0x090d13, 0.80);
+    detail(width * 0.28, 0, width * 0.08, height * 0.42, 0x090c11, 0.82);
   }
   if (["suv", "police-suv"].includes(style)) {
-    detail(-width * 0.04, -height * 0.35, width * 0.58, 1.4, 0x171c24, 0.92);
-    detail(-width * 0.04, height * 0.35, width * 0.58, 1.4, 0x171c24, 0.92);
-    detail(width * 0.28, 0, width * 0.13, height * 0.25, 0x10141a, 0.78);
-    if (style === "suv") dot(-width * 0.41, 0, height * 0.42, height * 0.42, 0x11151b, 0.88);
+    detail(-width * 0.04, -height * 0.35, width * 0.60, 1.4, 0x171c24, 0.94);
+    detail(-width * 0.04, height * 0.35, width * 0.60, 1.4, 0x171c24, 0.94);
+    detail(width * 0.28, 0, width * 0.13, height * 0.25, 0x10141a, 0.80);
+    if (style === "suv") detail(-width * 0.41, 0, height * 0.40, height * 0.40, 0x11151b, 0.86);
   }
   if (style === "pickup") {
-    detail(-width * 0.28, 0, width * 0.34, height * 0.68, 0x171b20, 0.82).setStrokeStyle(1, trim, 0.38);
-    detail(-width * 0.28, 0, width * 0.23, height * 0.48, color, 0.45);
+    detail(-width * 0.29, 0, width * 0.36, height * 0.70, 0x151a20, 0.90).setStrokeStyle(1, 0x36404a, 0.56);
+    detail(-width * 0.29, 0, width * 0.22, height * 0.50, color, 0.36);
   }
   if (["van", "delivery-van"].includes(style)) {
-    detail(-width * 0.18, 0, width * 0.50, height * 0.70, trim, 0.08).setStrokeStyle(1, 0x111621, 0.48);
+    detail(-width * 0.18, 0, width * 0.52, height * 0.72, trim, 0.08).setStrokeStyle(1, 0x111621, 0.50);
     if (style === "delivery-van") detail(-width * 0.19, 0, 1.1, height * 0.62, 0x2b3540, 0.65);
   }
   if (style === "limousine") {
@@ -181,17 +183,17 @@ export function paintVehicle(scene, container, definition, archetype) {
 
   if (archetype.vehicleClass === VEHICLE_CLASSES.POLICE) {
     if (archetype.policeRole !== "unmarked") {
-      // A restrained black/white livery and a single light bar make police readable at a glance.
-      detail(-width * 0.08, 0, width * 0.35, height * 0.72, 0xe1e3e3, 0.88);
-      detail(width * 0.20, 0, width * 0.16, height * 0.72, 0x111722, 0.68);
-      detail(-width * 0.03, -height * 0.17, width * 0.10, height * 0.18, 0x4d85d8, 1);
-      detail(-width * 0.03, height * 0.17, width * 0.10, height * 0.18, 0xd84a52, 1);
+      // Softer police contrast: readable authority without becoming the brightest object on the street.
+      detail(-width * 0.08, 0, width * 0.35, height * 0.72, 0xbfc5c8, 0.82);
+      detail(width * 0.20, 0, width * 0.16, height * 0.72, 0x151b24, 0.74);
+      detail(-width * 0.03, -height * 0.17, width * 0.10, height * 0.18, 0x3f72bd, 0.94);
+      detail(-width * 0.03, height * 0.17, width * 0.10, height * 0.18, 0xb8424a, 0.94);
       if (["police-interceptor", "police-suv"].includes(style)) {
         detail(width * 0.49, 0, width * 0.06, height * 0.86, 0x10141b, 0.98);
       }
     } else {
-      detail(width * 0.14, -height * 0.18, 2.5, 1.4, 0x4d85d8, 0.94);
-      detail(width * 0.14, height * 0.18, 2.5, 1.4, 0xd84a52, 0.94);
+      detail(width * 0.14, -height * 0.18, 2.5, 1.4, 0x3f72bd, 0.90);
+      detail(width * 0.14, height * 0.18, 2.5, 1.4, 0xb8424a, 0.90);
     }
   }
 
@@ -201,7 +203,7 @@ export function paintVehicle(scene, container, definition, archetype) {
     scene.add.rectangle(-width * 0.29, height * 0.53, width * 0.18, 2.7, 0x07090d, 1),
     scene.add.rectangle(width * 0.29, height * 0.53, width * 0.18, 2.7, 0x07090d, 1)
   ];
-  const nose = scene.add.triangle(width / 2 + 1.6, 0, -2.6, -2.2, 2.6, 0, -2.6, 2.2, trim, 0.72);
+  const nose = scene.add.triangle(width / 2 + 1.6, 0, -2.6, -2.2, 2.6, 0, -2.6, 2.2, trim, 0.64);
   const vehicleLabel = archetype.vehicleClass === VEHICLE_CLASSES.POLICE
     ? (archetype.policeRole === "unmarked" ? "UNMARKED" : "POLICE")
     : archetype.label.toUpperCase();
