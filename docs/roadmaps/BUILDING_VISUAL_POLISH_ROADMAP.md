@@ -145,21 +145,28 @@ Make skylights, HVAC, hatches, vents, annexes and markers read as physical roof 
 
 #### M2.3b — Hatch hardware
 
-**Status: active**
+**Status: implementation-complete / automated-validation-pending**
 
-- [ ] add hinge/handle cue on top of the already physical hatch volume;
-- [ ] keep hardware readable but subordinate at gameplay zoom;
-- [ ] preserve bounds and deterministic rendering;
-- [ ] add focused hatch-hardware contracts;
-- [ ] validate focused/affected CI and Netlify before advancing.
+- [x] add hinge/handle cue on top of the already physical hatch volume;
+- [x] keep hardware readable but subordinate at gameplay zoom;
+- [x] preserve bounds and deterministic rendering;
+- [x] add focused hatch-hardware contracts;
+- [ ] validate the full GitHub workflow to completion before closure.
+
+Current validation evidence: unit tests are green and Netlify is green on `acf55a5d927333ca1ca4312a389e5642d8dd2cca`; browser jobs were still running at the bounded check.
 
 #### M2.3c — Vent refinement
 
-**Status: planned**
+**Status: implementation-complete / automated-validation-pending**
 
-- [ ] refine cylindrical cap/body separation;
-- [ ] add restrained vent-cap detail without icon-like concentric noise;
-- [ ] preserve bounds.
+- [x] retain cylindrical cap/body separation from the shared volume primitive;
+- [x] add a recessed exhaust throat, restrained metal collar and internal occlusion;
+- [x] add one directional rim highlight rather than concentric decorative noise;
+- [x] preserve authored bounds and deterministic rendering;
+- [x] add focused vent-refinement contracts;
+- [ ] validate GitHub unit/affected checks before closure.
+
+Netlify is green on implementation head `693e4b3bd9e494560d797306fa400a347f2763ee`.
 
 #### M2.3d — Antenna base and support geometry
 
@@ -268,4 +275,4 @@ Each hourly execution must:
 
 ## Current exact next action
 
-Implement **M2.3b — hatch hardware** on top of the existing physical hatch volume. Add restrained hinge and handle cues that remain subordinate at gameplay zoom, preserve authored bounds and deterministic rendering, add focused contracts, then validate GitHub CI and Netlify before advancing to M2.3c. Do not request intermediate user review.
+Validate the M2.3b browser workflow to completion and validate M2.3c unit/affected checks. If both remain green, mark M2.3b and M2.3c complete and begin **M2.3d — antenna base and support geometry**. Do not request intermediate user review.
