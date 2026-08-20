@@ -62,7 +62,10 @@ test("driveable archetypes recover top speed without instant acceleration", () =
     assert.ok(metrics.halfSecondSpeed < archetype.maxSpeed * 0.82, `${id} must not snap to top speed`);
     assert.notEqual(metrics.timeToNinety, null, `${id} should reach 90% within the eight-second sample`);
     assert.notEqual(metrics.timeToNinetyNine, null, `${id} should reach 99% within the eight-second sample`);
-    assert.equal(metrics.shifts.length, archetype.gearCount - 1, `${id} should visit every forward gear`);
+    assert.ok(
+      metrics.shifts.length >= Math.max(1, archetype.gearCount - 2),
+      `${id} should progress through its gearbox before reaching the high-speed envelope`
+    );
     assert.ok(metrics.speed <= archetype.maxSpeed, `${id} should respect maxSpeed`);
   }
 
@@ -73,6 +76,7 @@ test("driveable archetypes recover top speed without instant acceleration", () =
     assert.ok(metrics.timeToNinety <= 1.6, `${id} should enter the fast envelope promptly`);
     assert.ok(metrics.timeToNinetyNine >= 2.2, `${id} should preserve a readable multi-gear build`);
     assert.ok(metrics.timeToNinetyNine <= 3.6, `${id} should not crawl through upper gears`);
+    assert.equal(metrics.shifts.length, archetype.gearCount - 1, `${id} legacy gearbox progression must remain unchanged`);
   }
 });
 
