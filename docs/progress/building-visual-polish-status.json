@@ -1,6 +1,6 @@
 {
   "initiative": "building-visual-polish",
-  "version": 10,
+  "version": 11,
   "updatedAt": "2026-08-20",
   "branch": "agent/building-visual-poc",
   "pullRequest": 63,
@@ -9,8 +9,8 @@
   "executionMode": "chatgpt-hourly-final-gate",
   "userValidation": "M6-final-only",
   "currentMilestone": "M2",
-  "currentTask": "M2.4-architectural-annexes-and-markers",
-  "nextAction": "Continue M2.4 by replacing the stamped church cross marker with restrained architectural roof geometry that is physically integrated with the church massing and preserves authored bounds/determinism. After that, define the reusable family-neutral marker geometry needed for the later medical profile without introducing a hospital classifier before M4.",
+  "currentTask": "M2.4c-church-marker-automated-validation-pending",
+  "nextAction": "Validate workflow 32335254118 for church-marker implementation/test head 366ac2f90da5483c844ce28822425429615de5d2. If the focused unit contracts are green, mark the religious architectural marker complete and continue M2.4 with the separate reusable family-neutral marker-geometry increment suitable for the later medical profile, without introducing hospital classification before M4. If a building-focused failure appears, fix only that regression before advancing.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "automation": {
     "provider": "ChatGPT scheduled task",
@@ -93,7 +93,13 @@
     "M2_4bWorkflowRun": 32334149530,
     "M2_4bNetlify": "success",
     "M2_4bBrowserValidation": "queued-at-bounded-check",
-    "broaderBrowserValidation": "in-progress-in-workflow-32334149530",
+    "latestM2_4cImplementationCommit": "5a89a4f3ef16c404209468ac1ba5e919338ff885",
+    "latestM2_4cImplementationHead": "366ac2f90da5483c844ce28822425429615de5d2",
+    "M2_4cBuildingContracts": "pending-in-workflow-32335254118",
+    "M2_4cWorkflowRun": 32335254118,
+    "M2_4cNetlify": "success",
+    "M2_4cBrowserValidation": "not-required-for-bounded-renderer-contract",
+    "broaderBrowserValidation": "in-progress-independently",
     "mainSyncCompatibility": "pass"
   }
 }
