@@ -40,8 +40,6 @@ Make ViceBlood traffic feel like a real vehicle roster instead of three cosmetic
 
 ## Validation
 
-Repository-wide checks are delegated to PR CI because the execution environment cannot clone GitHub over the network.
-
 Focused validation performed before opening the PR:
 
 - `node --check` on the expanded vehicle data module.
@@ -51,24 +49,27 @@ Focused validation performed before opening the PR:
 - isolated renderer smoke: all 19 archetypes paint without breaking the `body` / `hood` / `label` visual contract.
 - isolated traffic lifecycle smoke based on `traffic-visibility-lifecycle.test.js`: spawn guard and pooled-slot reuse remain intact.
 
-Pending in PR CI:
+PR CI validation completed successfully on workflow run `32362263357`:
 
-```bash
-npm run check:fast
-npm run check:affected:plan -- --base=origin/main
-npm run check:affected -- --base=origin/main
-```
+- 652/652 unit tests passed;
+- city analysis and Foundry compiler validation passed;
+- browser boot and presentation loops passed;
+- browser campaign state loops passed;
+- browser systems shards 1/3, 2/3 and 3/3 all passed;
+- performance capture steps completed successfully on the browser-system shards.
 
-Manual browser scenarios after CI:
+The CI pass also preserves the original runtime tuning contracts for the legacy `compact`, `sedan`, `van` and `police` archetypes while exercising acceleration and speed bounds across the expanded roster.
+
+Manual visual review remains useful for presentation quality rather than correctness:
 
 1. Drive around multiple districts and confirm civilian traffic cycles through visibly different classes without spawning inside the camera guard.
 2. Hijack a sports car, SUV and van; confirm each keeps its own driving characteristics.
 3. Reach Heat 2 and confirm two motorized units are patrol + interceptor.
 4. Reach Heat 3 and confirm the third unit is a heavier police SUV performing the roadblock role.
-5. Damage a police unit and a civilian vehicle to confirm the existing `visual.hood` critical-damage contract still works.
+5. Damage a police unit and a civilian vehicle to confirm the existing `visual.hood` critical-damage contract still reads well visually.
 
 ## Delivery
 
 - Draft PR with a focused title.
 - Summary includes changed behaviour and the explicit non-goals above.
-- Local isolated checks recorded here; repository CI remains authoritative.
+- Full repository CI is green; the remaining review is visual/play-feel validation, not an automated correctness blocker.
