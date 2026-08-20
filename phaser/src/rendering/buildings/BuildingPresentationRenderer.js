@@ -149,12 +149,41 @@ function drawRoofMass(graphics, module, plan) {
   graphics.fillPoints(points, true);
 }
 
+function corrugatedRibTreatment(module) {
+  const match = /:corrugated:v:(\d+)$/.exec(String(module?.id || ""));
+  const index = match ? Number(match[1]) : 0;
+  const phase = Number.isFinite(index) ? index % 4 : 0;
+  if (phase === 3) return null;
+
+  const anchor = phase === 0;
+  return {
+    shadowWidth: anchor ? 1.25 : 1,
+    shadowAlpha: anchor ? 0.13 : 0.075,
+    highlightWidth: 0.75,
+    highlightAlpha: anchor ? 0.09 : 0.055
+  };
+}
+
 function drawRoofTextureLine(graphics, module, plan) {
   const variant = module.variant;
   if (variant === ROOF_SURFACE_KINDS.CORRUGATED) {
-    graphics.lineStyle(2, plan.palette.roofShadow, 0.2);
+    const treatment = corrugatedRibTreatment(module);
+    if (!treatment) return;
+
+    // Keep the planner's regular rib geometry intact, but visually collect it
+    // into three-rib groups with a quiet fourth lane. Lower contrast prevents
+    // the material from reading as repeated UI linework at gameplay zoom.
+    graphics.lineStyle(
+      treatment.shadowWidth,
+      plan.palette.roofShadow,
+      treatment.shadowAlpha
+    );
     graphics.lineBetween(module.x1 + 1, module.y1, module.x2 + 1, module.y2);
-    graphics.lineStyle(1, plan.palette.roofTextureHighlight, 0.2);
+    graphics.lineStyle(
+      treatment.highlightWidth,
+      plan.palette.roofTextureHighlight,
+      treatment.highlightAlpha
+    );
     graphics.lineBetween(module.x1, module.y1, module.x2, module.y2);
     return;
   }
