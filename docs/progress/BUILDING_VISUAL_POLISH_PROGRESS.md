@@ -2,6 +2,46 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-20 — M3.1 warehouse corrugation validated; M3.2 opened
+
+### Scope
+
+- Active milestone: M3.1 → M3.2
+- Task: close the implemented warehouse-corrugation material increment after focused automated validation, then advance the machine state without implementing the next material family
+- Authoritative files: `BuildingPresentationRenderer.js`, `tests/building-warehouse-corrugation.test.js`, roadmap, machine status and this append-only log
+- Acceptance criteria: grouped low-contrast rib treatment, unchanged planner-owned rib geometry, deterministic focused contracts, unit validation green, Netlify green and PR #63 remains draft/unmerged
+- Explicit non-goals: no membrane implementation in this closure step, no civic/pitched/night work, no hospital/medical profile work and no gameplay/collision/topology/navigation/AI/mission/generated-city changes
+
+### Completed
+
+- confirmed the M3.1 renderer keeps all planner-owned corrugation coordinates unchanged while visually grouping ribs in a deterministic three-visible-plus-one-quiet rhythm;
+- confirmed anchor/support alphas remain below the old uniform `0.2` treatment;
+- confirmed `tests/building-warehouse-corrugation.test.js` passes inside workflow `32342778855` and proves grouped rhythm, reduced contrast, unchanged planned modules and deterministic rendering;
+- confirmed Netlify deploy preview is green on exact implementation/test head `40feacc6789ed419da31feb1bb8d2d564d74caa1`;
+- classified browser-job cancellations in that workflow as superseded continuity noise after documentation commits moved the branch head, not a renderer regression;
+- marked M3.1 complete and opened `M3.2-membrane-seams` as the next bounded material task;
+- preserved the one-task-per-run boundary by not beginning membrane rendering here.
+
+### Validation
+
+- renderer implementation commit: `4dc22843fdc1d3597c114963f266eb3236cf64b8`;
+- focused-contract head: `40feacc6789ed419da31feb1bb8d2d564d74caa1`;
+- GitHub workflow `32342778855` unit job: **success**;
+- Netlify deploy preview on exact implementation/test head: **success** — `https://deploy-preview-63--vampire-district.netlify.app`;
+- browser jobs: cancelled only after later continuity/documentation heads superseded the implementation head; no building-focused failure recorded;
+- authored rib modules, building bounds, gameplay and collision authority: **unchanged**;
+- PR #63 remains intended to stay open, draft and unmerged through autonomous M3–M5 work.
+
+### Visual risk
+
+The warehouse surface now has a quieter, grouped material rhythm, but the final apparent density and legibility at normal gameplay zoom are intentionally deferred to M6 after the remaining surface/family passes exist. Do not compensate by changing planner spacing unless later evidence requires it.
+
+### Next
+
+M3.2: preserve the existing broad membrane seam placement while replacing the current uniform line treatment with restrained deterministic tonal variation. Keep planner-owned geometry unchanged, add focused contracts and keep Netlify green before advancing to civic surface order.
+
+---
+
 ## 2026-08-20 — M3.1 grouped low-contrast warehouse corrugation implemented
 
 ### Scope
