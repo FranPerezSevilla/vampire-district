@@ -120,16 +120,109 @@ function drawPitchedRoofRidge(graphics, module, plan) {
   graphics.lineBetween(module.x1, module.y1, module.x2, module.y2);
 }
 
+function isNightRoofMass(module) {
+  return module?.kind === MODULE_KINDS.ROOF_MASS
+    && module.surfaceKind === ROOF_SURFACE_KINDS.NIGHT
+    && Array.isArray(module.points)
+    && module.points.length >= 3
+    && module.bounds;
+}
+
+function interpolateAtBoundary(start, end, axis, value) {
+  const delta = Number(end?.[axis]) - Number(start?.[axis]);
+  const ratio = Math.abs(delta) < 0.000001
+    ? 0
+    : (value - Number(start?.[axis])) / delta;
+  return {
+    x: Number(start?.x) + (Number(end?.x) - Number(start?.x)) * ratio,
+    y: Number(start?.y) + (Number(end?.y) - Number(start?.y)) * ratio
+  };
+}
+
+function clipPolygonAgainstBoundary(points, axis, value, keepGreater) {
+  if (!Array.isArray(points) || points.length < 3) return [];
+  const result = [];
+  const inside = point => (
+    keepGreater ? Number(point?.[axis]) >= value : Number(point?.[axis]) <= value
+  );
+
+  for (let index = 0; index < points.length; index += 1) {
+    const current = points[index];
+    const previous = points[(index + points.length - 1) % points.length];
+    const currentInside = inside(current);
+    const previousInside = inside(previous);
+
+    if (currentInside) {
+      if (!previousInside) {
+        result.push(interpolateAtBoundary(previous, current, axis, value));
+      }
+      result.push({ x: Number(current.x), y: Number(current.y) });
+    } else if (previousInside) {
+      result.push(interpolateAtBoundary(previous, current, axis, value));
+    }
+  }
+  return result;
+}
+
+function clipPolygonToRect(points, rect) {
+  let result = points.map(point => ({ x: Number(point.x), y: Number(point.y) }));
+  result = clipPolygonAgainstBoundary(result, "x", rect.x, true);
+  result = clipPolygonAgainstBoundary(result, "x", rect.x + rect.w, false);
+  result = clipPolygonAgainstBoundary(result, "y", rect.y, true);
+  result = clipPolygonAgainstBoundary(result, "y", rect.y + rect.h, false);
+  return result.length >= 3 ? result : [];
+}
+
+function drawNightRoofModulation(graphics, module, plan, options) {
+  // First render the canonical roof mass and its established M1/M2 depth.
+  renderDetailedBuildingPresentation(
+    graphics,
+    { ...plan, modules: [module] },
+    options
+  );
+
+  const bounds = module.bounds;
+  if (bounds.w < 32 || bounds.h < 24) return;
+
+  // Two broad overlapping zones avoid a hard split and keep NIGHT roofs from
+  // reading as one flat purple slab. The modulation is deliberately neutral:
+  // nightclub identity remains local to frontage/accent modules rather than
+  // turning the whole roof into a neon sign.
+  const northLift = clipPolygonToRect(module.points, {
+    x: bounds.x,
+    y: bounds.y,
+    w: bounds.w,
+    h: bounds.h * 0.62
+  });
+  const southShade = clipPolygonToRect(module.points, {
+    x: bounds.x,
+    y: bounds.y + bounds.h * 0.38,
+    w: bounds.w,
+    h: bounds.h * 0.62
+  });
+
+  if (northLift.length >= 3) {
+    graphics.fillStyle(plan.palette.roofTextureHighlight, 0.025);
+    graphics.fillPoints(northLift, true);
+  }
+  if (southShade.length >= 3) {
+    graphics.fillStyle(plan.palette.roofShade, 0.055);
+    graphics.fillPoints(southShade, true);
+  }
+}
+
 function isMaterialTreatment(module) {
   return isMembraneSeam(module)
     || isCivicSurfaceJoint(module)
-    || isPitchedRoofRidge(module);
+    || isPitchedRoofRidge(module)
+    || isNightRoofMass(module);
 }
 
-function drawMaterialTreatment(graphics, module, plan) {
+function drawMaterialTreatment(graphics, module, plan, options) {
   if (isMembraneSeam(module)) drawMembraneSeam(graphics, module, plan);
   else if (isCivicSurfaceJoint(module)) drawCivicSurfaceJoint(graphics, module, plan);
   else if (isPitchedRoofRidge(module)) drawPitchedRoofRidge(graphics, module, plan);
+  else if (isNightRoofMass(module)) drawNightRoofModulation(graphics, module, plan, options);
 }
 
 function drawDebugBounds(graphics, module) {
@@ -154,7 +247,7 @@ function renderWithMaterialTreatments(graphics, plan, options = {}) {
   // Every other module continues through the established M1/M2 detail renderer.
   for (const module of modules) {
     if (isMaterialTreatment(module)) {
-      drawMaterialTreatment(graphics, module, plan);
+      drawMaterialTreatment(graphics, module, plan, options);
       if (options.showModuleBounds) drawDebugBounds(graphics, module);
       continue;
     }
