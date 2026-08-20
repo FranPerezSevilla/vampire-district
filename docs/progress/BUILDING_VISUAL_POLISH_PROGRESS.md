@@ -2,6 +2,46 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-20 — M2.4 annex service grille validated
+
+### Scope
+
+- Active milestone: M2.4
+- Task: add exactly one restrained service cue to the newly physical raised annex
+- Authoritative files: `BuildingPresentationDetailRenderer.js`, `tests/building-annex-physical.test.js`, roadmap and machine status
+- Acceptance criteria: one low-contrast recessed detail, unchanged authored annex bounds, deterministic rendering, focused unit validation green and Netlify green
+- Explicit non-goals: religious/medical marker redesign, hospital classification/profile work, gameplay, collision, topology, navigation, AI, missions or generated-city edits
+
+### Completed
+
+- added one recessed service grille to the top surface of physical `ROOF_ANNEX` modules with `variant: "raised"`;
+- limited the grille proportionally so it remains subordinate to the annex mass at gameplay scale;
+- used one dark recessed plate and two restrained louver lines rather than adding another raised prop or icon;
+- omitted the detail automatically on undersized top surfaces instead of forcing geometry outside safe space;
+- preserved the planner-owned annex bounds, module ordering and deterministic presentation;
+- extended `tests/building-annex-physical.test.js` to require exactly one grille, prove its proportions/endpoints remain within authored bounds and retain deterministic rendering;
+- kept the legacy stamped circle and outline absent from the physical route.
+
+### Validation
+
+- implementation commit: `83013eeee64726d51c08062102cd415c779a0220`;
+- focused-contract head: `342e6a7b01793913eefcec426e8cb71c31f254df`;
+- GitHub unit job: **success** in workflow `32334149530`;
+- Netlify deploy preview: **success** — `https://deploy-preview-63--vampire-district.netlify.app`;
+- broader browser jobs: queued/running independently at the bounded checkpoint and not required to prove this renderer-only annex contract;
+- authored annex/building bounds and gameplay/collision authority: **unchanged**;
+- PR #63 remains open, draft and mergeable.
+
+### Visual risk
+
+The annex now has enough local service character to avoid feeling empty without becoming a miniature equipment cluster. Do not add pipes, fans, warning stripes or extra grilles unless M6 gameplay-scale evidence proves this single cue unreadable.
+
+### Next
+
+Continue M2.4 by replacing the stamped church cross marker with restrained architectural roof geometry integrated into the church massing, preserving authored bounds and determinism. Do not introduce the reusable medical marker classifier/profile until its family-neutral geometry is addressed in the following bounded increment, and do not create a hospital classifier before M4.
+
+---
+
 ## 2026-08-20 — M2.4 raised annex routed through physical grammar
 
 ### Scope
