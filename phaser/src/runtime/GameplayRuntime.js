@@ -19,6 +19,7 @@ import { TrafficImpactConsequencesSystem } from "../streaming/TrafficImpactConse
 import { TrafficLocalBehaviorSystem } from "../streaming/TrafficLocalBehaviorSystem.js";
 import { TrafficMaterializationSystem } from "../streaming/TrafficMaterializationSystem.js";
 import { TrafficPhysicalConsequencesSystem } from "../streaming/TrafficPhysicalConsequencesSystem.js";
+import { TrafficSteeringPresentationSystem } from "../streaming/TrafficSteeringPresentationSystem.js";
 import { RawAudio } from "../systems/RawAudioSystem.js";
 import { installVehicleCollisionSofteningPolicy } from "../vehicles/VehicleCollisionSofteningPolicy.js";
 import { VehicleSystem } from "../vehicles/VehicleSystem.js";
@@ -44,12 +45,13 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.diagnostics.claim("TrafficOccupantWitnessSystem.update", "TrafficOccupantWitnessSystem");
     this.diagnostics.claim("WitnessReactionPolicy.update", "WitnessReactionPolicy");
     this.diagnostics.claim("TrafficLocalBehaviorSystem.update", "TrafficLocalBehaviorSystem");
+    this.diagnostics.claim("TrafficSteeringPresentationSystem.update", "TrafficSteeringPresentationSystem");
     this.diagnostics.claim("TrafficPhysicalConsequencesSystem.update", "TrafficPhysicalConsequencesSystem");
     this.diagnostics.claim("TrafficImpactConsequencesSystem.update", "TrafficImpactConsequencesSystem");
     this.diagnostics.claim("VehicleCollisionSofteningPolicy.updateDriving", "VehicleCollisionSofteningPolicy");
     this.diagnostics.claim("MotorizedPoliceSystem.update", "MotorizedPoliceSystem");
     this.diagnostics.claim("VehicleSystem.updateDriving", "VehicleSystem");
-    this.diagnostics.claim("VehicleSystem.enterVehicle", "VehicleSystem");
+    this.diagnostics.claim("VehicleSystem.enterVehicle", "VehicleSystem\");
     this.diagnostics.claim("PedestrianSystem.update", "PedestrianSystem");
     this.diagnostics.claim("StreetFurnitureSystem.resolveVehicleMove", "StreetFurnitureSystem");
     this.diagnostics.claim("TerritoryRuntimeSystem.update", "TerritoryRuntimeSystem");
@@ -64,6 +66,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.diagnostics.registerSystem("WitnessReactionPolicy");
     this.diagnostics.registerSystem("WitnessMarkerPolicy");
     this.diagnostics.registerSystem("TrafficLocalBehaviorSystem");
+    this.diagnostics.registerSystem("TrafficSteeringPresentationSystem");
     this.diagnostics.registerSystem("TrafficPhysicalConsequencesSystem");
     this.diagnostics.registerSystem("TrafficImpactConsequencesSystem");
     this.diagnostics.registerSystem("VehicleCollisionSofteningPolicy");
@@ -98,6 +101,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.witnessMarkerPolicy = new WitnessMarkerPolicy(scene);
     scene.trafficLocalAssignmentPolicy = installTrafficLocalAssignmentPolicy(scene);
     scene.trafficLocalBehaviorSystem = new TrafficLocalBehaviorSystem(scene);
+    scene.trafficSteeringPresentationSystem = new TrafficSteeringPresentationSystem(scene);
     scene.trafficPhysicalConsequencesSystem = new TrafficPhysicalConsequencesSystem(scene);
     scene.trafficImpactConsequencesSystem = new TrafficImpactConsequencesSystem(scene);
     scene.vehicleCollisionSofteningPolicy = installVehicleCollisionSofteningPolicy(scene);
@@ -151,6 +155,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.trafficMaterializationSystem?.update?.(dt);
     scene.trafficOccupantWitnessSystem?.update?.(dt);
     scene.trafficLocalBehaviorSystem?.update?.(dt);
+    scene.trafficSteeringPresentationSystem?.update?.(dt);
     scene.trafficPhysicalConsequencesSystem?.update?.(dt);
     scene.trafficImpactConsequencesSystem?.update?.(dt);
     diagnostics.endSystem("TrafficPipeline", profileMark);
@@ -208,6 +213,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.scene.trafficImpactConsequencesSystem = null;
     this.scene.trafficPhysicalConsequencesSystem?.destroy?.();
     this.scene.trafficPhysicalConsequencesSystem = null;
+    this.scene.trafficSteeringPresentationSystem?.destroy?.();
+    this.scene.trafficSteeringPresentationSystem = null;
     this.scene.trafficLocalBehaviorSystem?.destroy?.();
     this.scene.trafficLocalBehaviorSystem = null;
     this.scene.trafficLocalAssignmentPolicy?.destroy?.();
