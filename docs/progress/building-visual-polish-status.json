@@ -1,16 +1,16 @@
 {
   "initiative": "building-visual-polish",
-  "version": 18,
+  "version": 19,
   "updatedAt": "2026-08-20",
   "branch": "agent/building-visual-poc",
   "pullRequest": 63,
   "trackingIssue": 64,
-  "state": "final-validation-pending",
-  "executionMode": "manual-chatgpt-final-gate",
-  "userValidation": "M6-final-only",
+  "state": "complete",
+  "executionMode": "manual-chatgpt-closed",
+  "userValidation": "approved-2026-08-20",
   "currentMilestone": "M6",
-  "currentTask": "M6-final-user-validation",
-  "nextAction": "Fran reviews the final gameplay-scale package from workflow 32355086754 / artifact 9401382945 and the Netlify preview. Do not make further autonomous visual changes, do not mark PR #63 ready and do not merge until explicit approval.",
+  "currentTask": "complete",
+  "nextAction": "No further building-polish work is required in this initiative. Treat future visual improvements as new bounded iterations. PR #63 is ready for review; merge remains a separate explicit user action.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "finalReview": "docs/progress/BUILDING_VISUAL_POLISH_FINAL_REVIEW.md",
   "automation": {
@@ -18,12 +18,12 @@
     "targetBranch": "agent/building-visual-poc",
     "trackingIssue": 64,
     "enabled": false,
-    "reason": "paused by user; final visual gate is now pending"
+    "reason": "initiative complete after final user visual approval"
   },
   "branchSync": {
     "mainHeadIntegrated": "112bf924eac246ceb1adb95a06cd58bf36918356",
     "behindMainAfterLastRecordedSync": 0,
-    "pullRequestMustRemainDraft": true,
+    "pullRequestMustRemainDraft": false,
     "mergeRequiresExplicitUserApproval": true
   },
   "milestones": [
@@ -79,14 +79,14 @@
     {
       "id": "M6",
       "name": "final polish and merge readiness",
-      "status": "final-validation-pending",
+      "status": "complete",
       "tasks": [
         { "id": "M6.1", "name": "representative gameplay-scale screenshot package", "status": "complete" },
         { "id": "M6.2", "name": "north-star comparison and bounded review fixes", "status": "complete" },
         { "id": "M6.3", "name": "acceptance-rubric scorecard", "status": "complete" },
         { "id": "M6.4", "name": "focused and affected automated validation", "status": "complete" },
-        { "id": "M6.5", "name": "single final user validation", "status": "final-validation-pending" },
-        { "id": "M6.6", "name": "PR ready / merge after approval", "status": "planned" }
+        { "id": "M6.5", "name": "single final user validation", "status": "complete" },
+        { "id": "M6.6", "name": "PR ready after approval", "status": "complete" }
       ]
     }
   ],
@@ -100,10 +100,10 @@
     "unitTests": "success",
     "browserCampaign": "success",
     "browserBuildingReview": "success",
+    "browserBoot": "success",
     "browserSystemsShard1": "success",
-    "browserBoot": "in-progress-at-bounded-final-observation",
-    "browserSystemsShard2": "in-progress-at-bounded-final-observation",
-    "browserSystemsShard3": "in-progress-at-bounded-final-observation",
+    "browserSystemsShard2": "success",
+    "browserSystemsShard3": "success",
     "netlify": "success",
     "netlifyUrl": "https://deploy-preview-63--vampire-district.netlify.app",
     "scorecard": {
@@ -120,8 +120,11 @@
       "generic": 1.71,
       "mixedStreet": 1.86
     },
+    "userVisualApproval": "success",
+    "approvedAt": "2026-08-20",
     "finalReviewReport": "docs/progress/BUILDING_VISUAL_POLISH_FINAL_REVIEW.md",
     "gameplayCollisionNavigationAuthority": "unchanged",
-    "generatedCityTopology": "unchanged"
+    "generatedCityTopology": "unchanged",
+    "mergeState": "not-merged-by-design"
   }
 }
