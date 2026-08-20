@@ -191,7 +191,7 @@ Make skylights, HVAC, hatches, vents, annexes and markers read as physical roof 
 **Status: active**
 
 - [x] route raised annex presentation through shared physical-volume language where appropriate;
-- [ ] give annexes explicit top, south/east wall depth and one restrained service detail;
+- [x] give annexes explicit top, south/east wall depth and one restrained service detail;
 - [ ] integrate religious marker into roof architecture instead of a stamped symbol;
 - [ ] define reusable architectural marker treatment suitable for the later medical profile without prematurely classifying hospital buildings;
 - [ ] prop/marker scale validation at gameplay zoom remains deferred to M6;
@@ -199,10 +199,12 @@ Make skylights, HVAC, hatches, vents, annexes and markers read as physical roof 
 
 ### M2.4 interim evidence
 
-- raised `ROOF_ANNEX` modules now bypass the legacy stamped annex painter and use the shared raised-rectangle physical-volume primitive;
+- raised `ROOF_ANNEX` modules bypass the legacy stamped annex painter and use the shared raised-rectangle physical-volume primitive;
 - planned annex bounds and module ordering remain authoritative and unchanged;
-- focused annex contracts prove physical top/south/east faces, unchanged authored bounds, deterministic rendering and absence of the old icon-like circle/rectangle treatment;
-- GitHub unit job is green in workflow `32333532286` on implementation/test head `4413d768616fc4a3f4f0c371797ad0e174a78271`;
+- the physical annex now carries exactly one low-contrast recessed service grille with two restrained louvers on the top surface;
+- the service grille is renderer-only, deterministic, proportionally limited and remains inside the authored annex bounds;
+- focused annex contracts prove physical top/south/east faces, unchanged authored bounds, deterministic rendering, absence of the old icon-like circle/rectangle treatment and exactly one restrained service grille;
+- GitHub unit job is green in workflow `32334149530` on implementation/test head `342e6a7b01793913eefcec426e8cb71c31f254df`;
 - Netlify deploy preview is green on the same head;
 - broader browser jobs continue independently at this bounded checkpoint.
 
@@ -295,4 +297,4 @@ Each hourly execution must:
 
 ## Current exact next action
 
-Continue **M2.4 — architectural annexes and markers** by adding one restrained service detail to the newly physical raised annex while preserving authored bounds and deterministic rendering. Then integrate the religious marker into roof architecture and define reusable marker geometry suitable for the later medical profile. Do not create a hospital classifier/profile before M4 and do not request intermediate user review.
+Continue **M2.4 — architectural annexes and markers** by replacing the stamped church cross marker with restrained architectural roof geometry integrated into the church massing, while preserving authored bounds and deterministic rendering. Then define reusable family-neutral marker geometry suitable for the later medical profile without introducing a hospital classifier/profile before M4. Do not request intermediate user review.
