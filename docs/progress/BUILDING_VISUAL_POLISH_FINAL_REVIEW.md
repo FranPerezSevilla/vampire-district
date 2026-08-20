@@ -78,18 +78,17 @@ The first M6 review package was deliberately treated as evidence rather than as 
 
 ## Automated validation
 
-Exact visual head `bd263451386ca89a0a6f942056bd135bc03c98f7`:
+Exact visual head `bd263451386ca89a0a6f942056bd135bc03c98f7` completed workflow `32355086754` fully green:
 
 - unit tests: **success**;
 - browser campaign: **success**;
 - browser building review: **success**;
-- browser systems shard 1/3: **success** at bounded final observation;
-- browser boot: still in progress at bounded final observation;
-- browser systems shards 2/3 and 3/3: still in progress at bounded final observation;
+- browser boot: **success**;
+- browser systems shard 1/3: **success**;
+- browser systems shard 2/3: **success**;
+- browser systems shard 3/3: **success**;
 - Netlify deploy preview: **success**;
-- no building-focused failure remained when the final review package was accepted.
-
-The broader browser jobs are independent runtime regression coverage. The final M6 visual gate is supported by the green unit suite, the dedicated green browser-building-review job, green campaign coverage and green Netlify on the exact visual head. Later documentation-only commits may supersede the still-running broad jobs and must not be misreported as exact-head visual failures.
+- no building-focused or unrelated regression remains in the exact final workflow.
 
 ## Technical boundary audit
 
@@ -103,10 +102,10 @@ Throughout M0–M6:
 - normal gameplay labels remain opt-in;
 - medical profile classification remains visual-only and conservative/whole-word based.
 
-## Final state
+## Final user validation and closure
 
-The visual implementation is **ready for the single user validation gate**.
+Fran approved the final visual package on **2026-08-20**, noting that it is substantially better than the previous presentation and preferring to close the initiative now, with any future improvements handled as later iterations if needed.
 
-No further autonomous visual changes should be made while the initiative is in `final-validation-pending`.
+M6 is therefore **complete** and the building-visual-polish initiative is closed.
 
-PR #63 must remain **open, draft and unmerged** until explicit user approval. After approval, the remaining actions are administrative: update final merge-readiness evidence, mark the PR ready for review if desired, and merge only with explicit approval.
+PR #63 may now leave draft state and become ready for review. Merge remains a separate explicit user action and is not performed as part of this closure.
