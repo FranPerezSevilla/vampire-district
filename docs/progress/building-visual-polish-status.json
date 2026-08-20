@@ -1,6 +1,6 @@
 {
   "initiative": "building-visual-polish",
-  "version": 16,
+  "version": 17,
   "updatedAt": "2026-08-20",
   "branch": "agent/building-visual-poc",
   "pullRequest": 63,
@@ -9,8 +9,8 @@
   "executionMode": "chatgpt-hourly-final-gate",
   "userValidation": "M6-final-only",
   "currentMilestone": "M3",
-  "currentTask": "M3.2-membrane-seams-automated-validation-pending",
-  "nextAction": "Validate workflow 32343829124 and Netlify for M3.2 implementation/test head ed260d0e945487df4c108e20ae8a361deb62c18b. If the focused unit contracts and deploy are green, mark membrane seams complete and continue with the separate M3 civic-surface-order increment. If a building-focused failure appears, fix only that regression before advancing.",
+  "currentTask": "M3.3-civic-surface-order-automated-validation-pending",
+  "nextAction": "Validate workflow 32344451571 and Netlify for M3.3 implementation/test head 92507de3484e59067a60b2699ad99b7cc4179158. If the focused civic-surface contracts and deploy are green, mark civic surface order complete and continue with the separate M3 pitched-roof ridge-shading increment. If a building-focused failure appears, fix only that regression before advancing.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "automation": {
     "provider": "ChatGPT scheduled task",
@@ -66,7 +66,8 @@
       "status": "autonomous-in-progress",
       "tasks": [
         { "id": "M3.1", "name": "warehouse corrugation rhythm", "status": "complete" },
-        { "id": "M3.2", "name": "membrane seams", "status": "implementation-complete / automated-validation-pending" }
+        { "id": "M3.2", "name": "membrane seams", "status": "complete" },
+        { "id": "M3.3", "name": "civic surface order", "status": "implementation-complete / automated-validation-pending" }
       ]
     },
     { "id": "M4", "name": "family grammar expansion", "status": "planned" },
@@ -120,9 +121,17 @@
     "M3_1BrowserValidation": "cancelled-after-continuity-head-moved-not-required-for-bounded-renderer-contract",
     "latestM3_2ImplementationCommit": "1bb841fdd047805bc5fc0476a9a9960784a3916c",
     "latestM3_2ImplementationHead": "ed260d0e945487df4c108e20ae8a361deb62c18b",
-    "M3_2WorkflowRun": 32343829124,
-    "M3_2BuildingContracts": "pending",
-    "M3_2Netlify": "pending-at-bounded-check",
+    "M3_2ImplementationWorkflowRun": 32343829124,
+    "M3_2ContinuityWorkflowRun": 32343914136,
+    "M3_2BuildingContracts": "pass",
+    "M3_2Netlify": "success",
+    "M3_2BrowserValidation": "pass-all-browser-jobs-on-continuity-head",
+    "latestM3_3ImplementationCommit": "fbd3791dad4dff22e54e54a0821733394e9400e4",
+    "latestM3_3ImplementationHead": "92507de3484e59067a60b2699ad99b7cc4179158",
+    "M3_3WorkflowRun": 32344451571,
+    "M3_3BuildingContracts": "pending-in-workflow-32344451571",
+    "M3_3Netlify": "pending-at-bounded-check",
+    "M3_3BrowserValidation": "pending-or-supersedable",
     "mainSyncCompatibility": "pass"
   }
 }
