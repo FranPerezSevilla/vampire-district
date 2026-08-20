@@ -81,13 +81,55 @@ function drawCivicSurfaceJoint(graphics, module, plan) {
   graphics.lineBetween(module.x1, module.y1, module.x2, module.y2);
 }
 
+function isPitchedRoofRidge(module) {
+  return module?.kind === MODULE_KINDS.ROOF_RIDGE;
+}
+
+function pitchedRidgeOrientation(module) {
+  const horizontalLength = Math.abs(Number(module?.x2) - Number(module?.x1));
+  const verticalLength = Math.abs(Number(module?.y2) - Number(module?.y1));
+  return horizontalLength >= verticalLength ? "horizontal" : "vertical";
+}
+
+function drawPitchedRoofRidge(graphics, module, plan) {
+  const horizontal = pitchedRidgeOrientation(module) === "horizontal";
+  const shadeOffset = horizontal ? { x: 0, y: 1.5 } : { x: 1.5, y: 0 };
+  const lightOffset = horizontal ? { x: 0, y: -1 } : { x: -1, y: 0 };
+
+  // Read the planner-owned ridge as the meeting of two roof planes rather than
+  // a diagram stroke. South/east receives the broad low-contrast shade, while
+  // north/west gets a much quieter material lift. The final fine line stays on
+  // the exact ridge coordinate and acts only as the cap between those planes.
+  graphics.lineStyle(4, plan.palette.roofShadow, 0.11);
+  graphics.lineBetween(
+    module.x1 + shadeOffset.x,
+    module.y1 + shadeOffset.y,
+    module.x2 + shadeOffset.x,
+    module.y2 + shadeOffset.y
+  );
+
+  graphics.lineStyle(2, plan.palette.roofTextureHighlight, 0.032);
+  graphics.lineBetween(
+    module.x1 + lightOffset.x,
+    module.y1 + lightOffset.y,
+    module.x2 + lightOffset.x,
+    module.y2 + lightOffset.y
+  );
+
+  graphics.lineStyle(0.75, plan.palette.roofTextureHighlight, 0.085);
+  graphics.lineBetween(module.x1, module.y1, module.x2, module.y2);
+}
+
 function isMaterialTreatment(module) {
-  return isMembraneSeam(module) || isCivicSurfaceJoint(module);
+  return isMembraneSeam(module)
+    || isCivicSurfaceJoint(module)
+    || isPitchedRoofRidge(module);
 }
 
 function drawMaterialTreatment(graphics, module, plan) {
   if (isMembraneSeam(module)) drawMembraneSeam(graphics, module, plan);
   else if (isCivicSurfaceJoint(module)) drawCivicSurfaceJoint(graphics, module, plan);
+  else if (isPitchedRoofRidge(module)) drawPitchedRoofRidge(graphics, module, plan);
 }
 
 function drawDebugBounds(graphics, module) {
