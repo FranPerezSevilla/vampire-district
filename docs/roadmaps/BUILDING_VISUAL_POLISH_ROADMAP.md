@@ -11,327 +11,157 @@ Status values:
 
 The machine-readable mirror is [`../progress/building-visual-polish-status.json`](../progress/building-visual-polish-status.json).
 
-## Autonomous execution policy
+## Final-gate policy
 
-**Approved 2026-08-19.** The initiative runs in autonomous final-gate mode.
+**Approved 2026-08-19; reconciled 2026-08-20.**
 
-- Intermediate subjective approval is not required between M1 and M5.
-- Each implementation session advances exactly one bounded unchecked task.
-- Focused automated validation, repository safety checks and a green Netlify preview remain mandatory.
-- The agent updates this roadmap, the append-only progress log and the status JSON after every meaningful advance.
-- The agent may continue to the next milestone when the current milestone's objective, tests and safety criteria are satisfied.
-- User validation happens once, after M6 assembles the final representative review package.
-- PR #63 remains draft and must not merge before that final user approval.
-- Autonomous runs stop on a new focused-test failure, collision/topology/gameplay impact, unresolved art-direction ambiguity, connector permission failure or final validation readiness.
+- Intermediate subjective approval was not required between M1 and M5.
+- Authored `x`, `y`, `w`, `h` remain the sole collision/navigation authority.
+- Building-polish work never owns gameplay, AI, missions, roads, sidewalks, topology or generated-city geometry.
+- Focused tests and a green Netlify preview are required for visual changes.
+- The single user visual validation occurs after M6 assembles the final gameplay-scale review package.
+- PR #63 remains draft and unmerged until that approval.
+- No further visual changes are allowed while state is `final-validation-pending` unless the user rejects the final package and explicitly requests another pass.
 
-Tracking issue: [#64 — Hourly autonomous agent: building visual polish roadmap](https://github.com/FranPerezSevilla/vampire-district/issues/64).
+Tracking issue: #64.  
+Final M6 evidence: [`../progress/BUILDING_VISUAL_POLISH_FINAL_REVIEW.md`](../progress/BUILDING_VISUAL_POLISH_FINAL_REVIEW.md).
 
 ## Historical foundation
 
-| Stage | Status | Evidence |
+| Stage | Status | Result |
 |---|---|---|
-| P0 — modular proof of concept | complete | reusable footprints, modules and archetypes exist |
-| P1 — fused silhouette pass | complete | internal grid is hidden; one roof mass is rendered |
-| P2 — approved overpaint translation | complete | warehouse and industrial profiles, sparse props and opt-in labels |
-| P3 — multi-profile screenshot audit | complete | hospital, police, generic, church, nightlife and mixed-context captures reviewed |
+| P0 — modular proof of concept | complete | reusable footprints, modules and archetypes |
+| P1 — fused silhouette pass | complete | internal grid hidden behind one architectural mass |
+| P2 — approved overpaint translation | complete | approved dark pure-overhead direction translated into runtime grammar |
+| P3 — multi-profile screenshot audit | complete | representative profile weaknesses documented |
+| M0 — canonical direction and continuity | complete | north star, agent contract, roadmap, progress and machine state established |
 
-## M0 — Canonical direction and agent continuity
-
-**Status: complete**
-
-- [x] canonical art-direction document;
-- [x] approved overpaint committed to the repository;
-- [x] baseline screenshot audit canonized in text;
-- [x] operational agent contract, roadmap, append-only progress log and machine state;
-- [x] ChatGPT scheduled task configured to execute hourly through the GitHub connector;
-- [x] obsolete GitHub-hosted scheduler removed from `main`.
-
-## M1 — Architectural depth and removal of the legacy frame
+## M1 — Architectural depth and legacy-frame removal
 
 **Status: complete**
 
-### M1.1 — Shared shadow primitives
-
-- [x] layered world cast shadow;
-- [x] layered roof-mass contact shadow;
-- [x] shared rectangular/circular contact-shadow treatment;
-- [x] shadows remain renderer-only.
-
-### M1.2 — Architectural parapet primitive
-
-- [x] muted top cap;
-- [x] inner occlusion;
-- [x] south/east wall face;
-- [x] restrained north/west highlight;
-- [x] old luminous neutral frame recipe removed.
-
-### M1.3 — Runtime audit
-
-- [x] warehouse/industrial, police, medical-context, church, nightlife and mixed-context captures reviewed;
-- [x] residual full-footprint border identified as the principal blocker.
-
-### M1.4 — Kill the legacy footprint frame
-
-- [x] authored `x`, `y`, `w`, `h` remain exact collision/navigation authority;
-- [x] foundation full-perimeter stroke and highlight rails suppressed;
-- [x] low subdued slab retained;
-- [x] raised roof mass owns visible silhouette;
-- [x] focused regression coverage and Netlify validation complete.
+- [x] shared layered cast/contact shadows;
+- [x] architectural parapet cap, wall face, occlusion and restrained highlight;
+- [x] runtime audit of the first parapet pass;
+- [x] legacy full-footprint UI-like frame removed;
+- [x] authored collision/navigation footprint preserved exactly.
 
 ## M2 — Physical rooftop props
 
 **Status: complete**
 
-### Goal
-
-Make skylights, HVAC, hatches, vents, annexes and markers read as physical roof objects rather than icons, without changing their planned bounds.
-
-### M2.1 — Shared physical volume primitives
-
-**Status: complete**
-
-- [x] shared raised-rectangle primitive with top, south/east side faces and renderer-only contact shadow;
-- [x] shared cylindrical primitive;
-- [x] planned bounds remain immutable;
-- [x] hatch and vent proving fixtures;
-- [x] focused building validation and Netlify green.
-
-### M2.2 — Physical skylights
-
-**Status: complete**
-
-- [x] route skylights through the shared raised-rectangle primitive;
-- [x] physical outer curb/frame with top and side separation;
-- [x] inset glazing with directional highlight and restrained mullions;
-- [x] warehouse and club use the same physical glazing grammar;
-- [x] glass no longer relies on a flat colored rectangle;
-- [x] authored skylight bounds and deterministic composition preserved;
-- [x] focused physical-skylight contracts pass;
-- [x] Netlify deploy preview green on the M2.2 implementation head.
-
-### M2.2 evidence
-
-- physical skylight bounds contract passes;
-- warehouse/club shared-grammar contract passes;
-- the M2.2 unit run reached **408/416**, with every building test green; its eighth failure was an obsolete scheduler-inventory expectation that disappeared when current `main` was synchronized into the feature branch;
-- M2.2 Netlify preview is green.
-
-### M2.3 — Mechanical equipment
-
-**Status: complete**
-
-#### M2.3a — HVAC casing and fan housings
-
-**Status: complete**
-
-- [x] route HVAC through the shared raised-rectangle volume primitive;
-- [x] give the casing distinct top, south and east faces;
-- [x] retain layered renderer-only contact shadow;
-- [x] add raised fan housings, recessed fan wells, rims and restrained blade cues;
-- [x] support one or two fan housings from equipment proportions without planner-specific geometry;
-- [x] preserve authored HVAC bounds;
-- [x] add focused mechanical-rendering contracts;
-- [x] focused validation green on the main-synchronized implementation head;
-- [x] Netlify deploy preview green on the main-synchronized implementation head.
-
-### M2.3a evidence
-
-- GitHub workflow run `32329806831` completed successfully on head `48cddadcb1b7a89d171d1577a28ffbf7798c6fd1`;
-- unit tests, city analysis/Foundry steps, browser campaign, browser boot and all three browser-system shards were green;
-- Netlify deploy preview is green;
-- no gameplay, collision, topology, navigation, AI, mission or generated-city authority changed.
-
-#### M2.3b — Hatch hardware
-
-**Status: complete**
-
-- [x] add paired hinge cue on top of the already physical hatch volume;
-- [x] add a restrained raised U-handle;
-- [x] keep hardware readable but subordinate at gameplay zoom;
-- [x] preserve bounds and deterministic rendering;
-- [x] add focused hatch-hardware contracts;
-- [x] focused unit contracts pass on later consolidated runs;
-- [x] Netlify green.
-
-#### M2.3c — Vent refinement
-
-**Status: complete**
-
-- [x] retain cylindrical cap/body separation from the shared volume primitive;
-- [x] add a recessed exhaust throat, restrained metal collar and internal occlusion;
-- [x] add one directional rim highlight rather than concentric decorative noise;
-- [x] preserve authored bounds and deterministic rendering;
-- [x] add focused vent-refinement contracts;
-- [x] focused vent contracts pass in consolidated unit run `32332620515`;
-- [x] Netlify green.
-
-#### M2.3d — Antenna base and support geometry
-
-**Status: complete**
-
-- [x] physical raised antenna pedestal inside the planned module bounds;
-- [x] mast attached directly to the pedestal instead of floating;
-- [x] restrained diagonal braces connect base and mast;
-- [x] short crossarm and mast cap avoid radio-tower clutter;
-- [x] preserve bounds and deterministic rendering;
-- [x] add focused antenna-support contracts;
-- [x] unit tests pass on workflow `32332620515`;
-- [x] Netlify deploy preview green on head `1aca46a2b651ff38873d8215d2937b33a7491a1f`.
-
-### M2.3 exit evidence
-
-- hatch, vent and antenna detail live in `BuildingPresentationDetailRenderer.js`, separate from the stable physical-volume compositor;
-- latest unit validation is green with all focused building contracts;
-- Netlify remains green;
-- broader browser jobs continue independently and are not required to prove renderer-only prop contracts;
-- no planned prop bounds, collider, navigation or gameplay authority changed.
-
-### M2.4 — Architectural annexes and markers
-
-**Status: complete**
-
-- [x] route raised annex presentation through shared physical-volume language where appropriate;
-- [x] give annexes explicit top, south/east wall depth and one restrained service detail;
-- [x] integrate religious marker into roof architecture instead of a stamped symbol;
-- [x] define reusable architectural marker treatment suitable for the later medical profile without prematurely classifying hospital buildings;
-- [x] prop/marker scale validation remains explicitly deferred to the M6 normal-gameplay review;
-- [x] add focused renderer/geometry contracts for physical integration and unchanged authored bounds.
-
-### M2.4 exit evidence
-
-- raised `ROOF_ANNEX` modules bypass the legacy stamped annex painter and use the shared raised-rectangle physical-volume primitive;
-- planned annex bounds and module ordering remain authoritative and unchanged;
-- the physical annex carries exactly one low-contrast recessed service grille with two restrained louvers;
-- focused annex contracts prove physical top/south/east faces, unchanged authored bounds, determinism and removal of the old icon-like circle/rectangle treatment;
-- church `CROSS_MARKER` modules with `variant: "church"` bypass the legacy flat accent-stamp painter and render as two joined low raised roof fins;
-- the church renderer now consumes `createOrthogonalMarkerGeometry(...)`, a family-neutral deterministic geometry helper with configurable junction/span proportions and no classification logic;
-- `tests/building-marker-geometry.test.js` proves centered/default geometry, contained authored bounds, deterministic family-specific proportions and safe omission for undersized marker regions;
-- `tests/building-church-marker-physical.test.js` continues to prove physical church integration and unchanged authored marker bounds;
-- workflow `32339748152` completed **successfully** on exact M2.4d implementation/test head `6dae004310fe18d02a627852337059106b26b8be`: unit tests, browser campaign, browser boot and all three browser-system shards are green;
-- Netlify deploy preview is **green** on the same head;
-- no hospital classifier/profile was introduced; medical family semantics remain reserved for M4.
-
-### M2 exit criteria
-
-Representative props have clear top, side/contact and shadow separation without changing planned bounds. Final apparent scale at normal gameplay zoom remains part of the single M6 review package.
+- [x] shared raised-rectangle and cylindrical physical-volume primitives;
+- [x] physical skylights with curb, glazing and directional depth;
+- [x] HVAC casing and fan housings;
+- [x] hatch hinges and handle;
+- [x] vent throat/collar refinement;
+- [x] antenna pedestal, mast and braces;
+- [x] raised annex and service grille;
+- [x] architectural church marker;
+- [x] reusable family-neutral marker geometry;
+- [x] planned prop/marker bounds remain immutable.
 
 ## M3 — Surface material language
 
-**Status: autonomous-in-progress**
-
-### M3.1 — Warehouse corrugation refinement
-
 **Status: complete**
 
-- [x] corrugated warehouse ribs with lower contrast and grouped rhythm;
-- renderer preserves every planner-owned rib module but paints a three-rib group followed by one quiet lane;
-- anchor ribs use shadow/highlight alpha `0.13/0.09`; supporting ribs use `0.075/0.055`, replacing the old uniform `0.2/0.2` treatment;
-- no planner spacing, module bounds or authored building geometry changed;
-- `tests/building-warehouse-corrugation.test.js` covers grouped rhythm, reduced contrast, unchanged planned modules and deterministic output;
-- workflow `32342778855` unit job is **success** on implementation/test head `40feacc6789ed419da31feb1bb8d2d564d74caa1`;
-- Netlify is **green** on the same implementation/test head;
-- browser jobs on that workflow were cancelled only after continuity documentation moved the branch head and are not required for this bounded renderer contract.
+- [x] M3.1 grouped low-contrast warehouse corrugation;
+- [x] M3.2 broad membrane seams with restrained deterministic tonal variation;
+- [x] M3.3 civic surface order without decorative repetition;
+- [x] M3.4 pitched-roof ridge shading;
+- [x] M3.5 night-roof tonal modulation;
+- [x] M3.6 deterministic low-frequency material variation;
+- [x] M3.7 material passes preserve character/aim/interaction readability.
 
-### M3.2 — Membrane seams
+### M3 exit result
 
-**Status: complete**
-
-- [x] membrane seams with broad spacing and restrained tonal variation;
-- `BuildingPresentationMaterialRenderer.js` preserves every planner-owned membrane seam coordinate and renders deterministic seam alpha `0.09/0.11/0.13` plus a faint offset highlight;
-- `tests/building-membrane-surface.test.js` proves broad spacing, planner-coordinate preservation, tonal variation, removal of the old uniform `0.22` treatment and deterministic output;
-- exact implementation/test head `ed260d0e945487df4c108e20ae8a361deb62c18b` has green unit contracts and Netlify;
-- continuity workflow `32343914136` is **success** with unit tests, browser campaign, browser boot and all three browser-system shards green;
-- no planner seam placement, building bounds, collision or gameplay authority changed.
-
-### M3.3 — Civic surface order
-
-**Status: implementation-complete / automated-validation-pending**
-
-- [ ] civic surface order without decorative repetition;
-- implementation keeps each planner-owned `CIVIC` texture module but gives the horizontal joint a restrained primary role (`0.115` plus one faint `0.028` highlight) and the cross-axis joint a quieter secondary role (`0.06`);
-- no extra civic lattice or repeated decorative slots are introduced;
-- `tests/building-civic-surface.test.js` proves primary/secondary hierarchy, original coordinates, removal of the old uniform `0.2` treatment and deterministic output;
-- implementation commit `fbd3791dad4dff22e54e54a0821733394e9400e4`; implementation/test head `92507de3484e59067a60b2699ad99b7cc4179158`;
-- workflow `32344451571` and Netlify were still pending at the bounded observation point, so this task is not yet marked complete.
-
-### Remaining M3 tasks
-
-- [ ] pitched-roof ridge shading;
-- [ ] night-roof tonal modulation;
-- [ ] deterministic low-frequency variation;
-- [ ] no material pass obscures characters, aim or interaction cues.
+Roof surfaces now read through broad material hierarchy rather than uniform vector lines or high-frequency texture noise. Planner-owned material coordinates remain unchanged.
 
 ## M4 — Family grammar expansion
 
-**Status: planned**
+**Status: complete**
 
-- [ ] dedicated hospital/medical profile;
-- [ ] police profile refinement;
-- [ ] church monumental refinement;
-- [ ] club/nightlife composition refinement;
-- [ ] generic/residential/commercial differentiation;
-- [ ] explicit policy for ambiguous untagged buildings;
-- [ ] profile classification remains whole-word and conservative.
+- [x] dedicated hospital/medical visual profile;
+- [x] police physical entrance/civic refinement;
+- [x] church monumental frontage and pitched-roof refinement;
+- [x] club/nightlife physical vestibule and local neon identity;
+- [x] generic/residential/commercial differentiation;
+- [x] ambiguous untagged buildings stay deliberately neutral;
+- [x] profile classification remains whole-word and conservative;
+- [x] visual profile classification does not become gameplay/mission authority.
 
-### M4 exit criteria
+### M4 exit result
 
-Family identity comes from massing, materials and local architectural features rather than a full-perimeter color or world-space tag.
+Family identity comes from massing, material, entrance/service organisation and local physical features rather than world labels or full-perimeter colour.
 
 ## M5 — Composition and controlled variation
 
-**Status: planned**
+**Status: complete**
 
-- [ ] composition grammar: main mass → secondary volume → hero prop → support;
-- [ ] deterministic prop grouping;
-- [ ] irregular but controlled service-slot rhythm;
-- [ ] avoidance zones around entrances, annexes and identity elements;
-- [ ] large-roof and small-roof composition rules;
-- [ ] mixed-street review for repetition;
-- [ ] preserve sparse gameplay readability.
+- [x] M5.1 main mass → secondary volume → hero prop → support grammar;
+- [x] M5.2 deterministic hero/support prop grouping;
+- [x] M5.3 irregular but controlled service-slot rhythm;
+- [x] M5.4 avoidance zones around entrances, annexes and identity elements;
+- [x] M5.5 small-roof austerity and large-roof hero/support rules;
+- [x] M5.6 mixed-street repetition audit;
+- [x] M5.7 sparse gameplay readability and bounded prop coverage.
+
+### M5 exit result
+
+The system generates deliberate low-frequency compositions rather than uniform roof clutter. Mixed-family streets retain meaningful differences without introducing random visual noise.
 
 ## M6 — Final polish and merge readiness
 
-**Status: planned**
+**Status: final-validation-pending**
 
-- [ ] final representative screenshot set: warehouse, industrial, police, medical, church, nightlife, generic and mixed street;
-- [ ] side-by-side comparison with the approved north-star overpaint;
-- [ ] full acceptance-rubric scoring;
-- [ ] focused and affected validation;
-- [ ] document known unrelated test failures if any remain;
-- [ ] clean PR description and final progress entry;
-- [ ] set status to `final-validation-pending`;
-- [ ] stop autonomous visual changes;
-- [ ] request the single final user validation;
-- [ ] mark PR ready for review only after approval;
+- [x] representative gameplay-scale captures for warehouse, industrial, police, medical, church, nightlife and generic;
+- [x] mixed-street gameplay-scale capture;
+- [x] reproducible manifest with building IDs, authored bounds, viewport and gameplay zoom;
+- [x] comparison against the approved north-star direction;
+- [x] first review converted visible deficits into bounded renderer-only corrections;
+- [x] church broad pitched-roof planes;
+- [x] nightlife asymmetric service deck with local neon only;
+- [x] generic neutral service court for large roofs;
+- [x] industrial mechanical plant deck grouping annex + HVAC;
+- [x] police communications court grouping HVAC + antenna;
+- [x] full acceptance-rubric scorecard;
+- [x] every representative family averages at least `1.6`;
+- [x] no zero in silhouette, parapet, shadow or gameplay clarity;
+- [x] exact final visual head unit suite green;
+- [x] dedicated `browser-building-review` job green and artifact published;
+- [x] browser campaign green;
+- [x] Netlify preview green on the exact final visual head;
+- [x] final review report committed;
+- [x] machine state set to `final-validation-pending`;
+- [x] autonomous/scheduled building-polish work paused;
+- [x] stop further visual changes;
+- [ ] single final user validation;
+- [ ] after approval, add final merge-readiness/progress evidence;
+- [ ] mark PR ready only if the user wants review state changed;
 - [ ] merge only after explicit user approval.
 
-## Branch synchronization checkpoint — 2026-08-20
+### M6 exact evidence
 
-`main` advanced substantially while the building branch was open. Before M2.3 work:
+- final visual implementation/test head: `bd263451386ca89a0a6f942056bd135bc03c98f7`;
+- workflow: `32355086754`;
+- review artifact: `building-visual-review` / artifact `9401382945`;
+- gameplay zoom: `1.847062190599483`;
+- unit tests: success;
+- browser campaign: success;
+- browser building review: success;
+- browser systems shard 1/3: success at bounded final observation;
+- browser boot and system shards 2/3–3/3 were still running at the final bounded observation, with no recorded building-focused failure;
+- Netlify: success — `https://deploy-preview-63--vampire-district.netlify.app`;
+- representative-family mean: `1.90`;
+- lowest representative profile: generic at `1.71`;
+- blocking zeroes: `0`.
 
-- `main` head `112bf924eac246ceb1adb95a06cd58bf36918356` was integrated into `agent/building-visual-poc`;
-- the feature branch moved from 572 commits behind to 0 behind;
-- current-main gameplay/runtime changes were preserved;
-- building presentation was reattached only at the existing `GameScene.drawBuilding` presentation boundary;
-- PR #63 returned to mergeable state;
-- no generated city, collision, navigation, AI or gameplay authority was changed for the art initiative.
+See [`../progress/BUILDING_VISUAL_POLISH_FINAL_REVIEW.md`](../progress/BUILDING_VISUAL_POLISH_FINAL_REVIEW.md) for the full table and correction history.
 
-## Hourly ChatGPT automation contract
+## Branch synchronization checkpoint
 
-Each hourly execution must:
-
-1. target `agent/building-visual-poc`, PR #63 and issue #64 only;
-2. read status JSON and canonical agent/roadmap docs first;
-3. advance exactly one bounded unchecked roadmap task;
-4. use the GitHub connector directly to read, edit and commit;
-5. run or inspect focused validation before declaring an increment complete;
-6. restrict changes to building presentation, focused tests and canonical continuity documentation;
-7. confirm Netlify after visual changes;
-8. update roadmap, progress and status after meaningful work;
-9. comment issue #64 with commit, evidence and exact next task;
-10. never merge PR #63 or mark it ready for review autonomously;
-11. stop visual work at `final-validation-pending`, `blocked`, `paused` or `complete`.
+Current-main runtime changes were integrated into the feature branch before the later M2–M6 work. Building presentation remains attached at the existing presentation boundary and does not own generated-city or gameplay authority.
 
 ## Current exact next action
 
-Validate **M3.3 civic surface order** on workflow `32344451571` and Netlify for implementation/test head `92507de3484e59067a60b2699ad99b7cc4179158`. If the focused contracts and deploy are green, mark M3.3 complete and continue with one separate pitched-roof ridge-shading increment. Do not begin pitched/night/low-frequency material work until civic validation is green.
+**User final validation only.** Review the Netlify gameplay preview and/or the M6 `building-visual-review` artifact. Do not implement further building visual polish, mark PR #63 ready or merge it before explicit approval.
