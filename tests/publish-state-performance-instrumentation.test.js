@@ -61,6 +61,7 @@ test("publishState profiler measures coarse phases and selected summary groups o
   const originalNpcSummary = scene.npcSystem.summary;
   const originalFeedingSummary = scene.feedingSystem.summary;
   const originalExposureSummary = scene.exposureSystem.summary;
+  const originalWitnessSummary = scene.witnessSystem.summary;
   const originalPoliceSummary = scene.policeSystem.summary;
   const originalPropSummary = scene.propDamageSystem.summary;
   const originalAiSummary = scene.aiStateSystem.summary;
@@ -85,6 +86,7 @@ test("publishState profiler measures coarse phases and selected summary groups o
   assert.notEqual(scene.npcSystem.summary, originalNpcSummary);
   assert.notEqual(scene.feedingSystem.summary, originalFeedingSummary);
   assert.notEqual(scene.exposureSystem.summary, originalExposureSummary);
+  assert.notEqual(scene.witnessSystem.summary, originalWitnessSummary);
   assert.notEqual(scene.policeSystem.summary, originalPoliceSummary);
   assert.notEqual(scene.propDamageSystem.summary, originalPropSummary);
   assert.notEqual(scene.aiStateSystem.summary, originalAiSummary);
@@ -92,6 +94,7 @@ test("publishState profiler measures coarse phases and selected summary groups o
   scene.npcSystem.summary();
   scene.feedingSystem.summary();
   scene.exposureSystem.summary();
+  scene.witnessSystem.summary();
   scene.policeSystem.summary();
   scene.propDamageSystem.summary();
   scene.aiStateSystem.summary();
@@ -107,7 +110,8 @@ test("publishState profiler measures coarse phases and selected summary groups o
     "PublishState.Summary.MissionActors.Mission",
     "PublishState.Summary.MissionActors.Npc",
     "PublishState.Summary.MissionActors.NeedsPowers",
-    "PublishState.Summary.PressureEvidence",
+    "PublishState.Summary.PressureEvidence.Pressure",
+    "PublishState.Summary.PressureEvidence.WitnessEvidence",
     "PublishState.Summary.ResponseAI.Security",
     "PublishState.Summary.ResponseAI.WorldAI",
     "PublishState.Summary.Tail",
@@ -120,7 +124,8 @@ test("publishState profiler measures coarse phases and selected summary groups o
     "PublishState.Summary.MissionActors.Mission",
     "PublishState.Summary.MissionActors.Npc",
     "PublishState.Summary.MissionActors.NeedsPowers",
-    "PublishState.Summary.PressureEvidence",
+    "PublishState.Summary.PressureEvidence.Pressure",
+    "PublishState.Summary.PressureEvidence.WitnessEvidence",
     "PublishState.Summary.ResponseAI.Security",
     "PublishState.Summary.ResponseAI.WorldAI",
     "PublishState.Summary.Tail",
@@ -139,6 +144,7 @@ test("publishState profiler measures coarse phases and selected summary groups o
   assert.equal(scene.npcSystem.summary, originalNpcSummary);
   assert.equal(scene.feedingSystem.summary, originalFeedingSummary);
   assert.equal(scene.exposureSystem.summary, originalExposureSummary);
+  assert.equal(scene.witnessSystem.summary, originalWitnessSummary);
   assert.equal(scene.policeSystem.summary, originalPoliceSummary);
   assert.equal(scene.propDamageSystem.summary, originalPropSummary);
   assert.equal(scene.aiStateSystem.summary, originalAiSummary);
@@ -161,7 +167,8 @@ test("browser performance capture keeps grouped publishState and summary drill-d
   assert.match(instrumentation, /PublishState\.Summary\.MissionActors\.Mission/);
   assert.match(instrumentation, /PublishState\.Summary\.MissionActors\.Npc/);
   assert.match(instrumentation, /PublishState\.Summary\.MissionActors\.NeedsPowers/);
-  assert.match(instrumentation, /PublishState\.Summary\.PressureEvidence/);
+  assert.match(instrumentation, /PublishState\.Summary\.PressureEvidence\.Pressure/);
+  assert.match(instrumentation, /PublishState\.Summary\.PressureEvidence\.WitnessEvidence/);
   assert.match(instrumentation, /PublishState\.Summary\.ResponseAI\.Security/);
   assert.match(instrumentation, /PublishState\.Summary\.ResponseAI\.WorldAI/);
   assert.match(instrumentation, /PublishState\.Summary\.Tail/);
