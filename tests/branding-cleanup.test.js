@@ -59,7 +59,7 @@ test("the retired canvas prototype and one-off patch infrastructure are physical
   const workflows = await readdir(new URL("../.github/workflows/", import.meta.url));
   assert.deepEqual(workflows.sort(), [
     "build-itch-zip.yml",
-    "building-visual-polish-hourly.yml",
+    "materialize-audio-assets.yml",
     "tests.yml"
   ]);
 

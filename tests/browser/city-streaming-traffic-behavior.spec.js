@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+function baseBehaviorReason(reason) {
+  return String(reason || "").replace(/^assertive-/, "");
+}
+
 async function waitForTrafficBehavior(page) {
   await page.waitForFunction(() => Boolean(
     window.NBD_APP_READY
@@ -15,7 +19,7 @@ async function waitForTrafficBehavior(page) {
 
 test.describe.configure({ timeout: 75_000 });
 
-test("local traffic brakes for the driven vehicle, keeps its slot and resumes when clear", async ({ page }) => {
+test("local traffic reacts to the driven vehicle, keeps its slot and resumes when clear", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
@@ -85,13 +89,13 @@ test("local traffic brakes for the driven vehicle, keeps its slot and resumes wh
       missing: false,
       poolSize: scene.trafficMaterializationSystem.pool.length,
       selected,
+      playerVehicleId: playerVehicle.id,
       braking,
       recovered,
       assignmentBefore,
       assignmentDuring,
       assignmentAfter,
       slotStillActive: slot.container.active,
-      playerReactiveVehicles: brakingSnapshot.playerReactiveVehicles,
       finalPlayerReactiveVehicles: recoveredSnapshot.playerReactiveVehicles
     };
   });
@@ -101,12 +105,18 @@ test("local traffic brakes for the driven vehicle, keeps its slot and resumes wh
   expect(result.assignmentBefore.slotIndex).toBe(result.selected.slotIndex);
   expect(result.assignmentDuring.slotIndex).toBe(result.selected.slotIndex);
   expect(result.assignmentAfter.slotIndex).toBe(result.selected.slotIndex);
-  expect(result.braking.reason).toBe("player-vehicle");
+
+  const brakingReason = baseBehaviorReason(result.braking.reason);
+  // The driven car can be detected directly, as a junction occupant, or through
+  // the approved local avoidance pass. The blocker identity is the stable invariant.
+  expect(["player-vehicle", "junction-player", "obstacle-avoid"]).toContain(brakingReason);
+  expect(result.braking.blockerId).toBe(result.playerVehicleId);
   expect(result.braking.speedFactor).toBeLessThan(1);
-  expect(result.playerReactiveVehicles).toBeGreaterThan(0);
+
   expect(result.recovered.speedFactor).toBeGreaterThan(result.braking.speedFactor);
-  expect(["cruise", "catch-up", "traffic", "junction-yield"].includes(result.recovered.reason)).toBe(true);
-  expect(result.recovered.reason).not.toBe("player-vehicle");
+  expect(["player-vehicle", "junction-player"]).not.toContain(baseBehaviorReason(result.recovered.reason));
+  expect(result.recovered.blockerId).not.toBe(result.playerVehicleId);
+  expect(result.finalPlayerReactiveVehicles).toBe(0);
   expect(result.slotStillActive).toBe(true);
   expect(pageErrors).toEqual([]);
 });

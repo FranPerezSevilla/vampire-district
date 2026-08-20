@@ -14,7 +14,7 @@ async function waitForLedger(page) {
   ));
 }
 
-test("Night Ledger pauses play and connects faction relations, hidden poaching and police pursuit", async ({ page }) => {
+test("Night Ledger model stays connected while the playtest surface remains hidden", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
@@ -63,34 +63,76 @@ test("Night Ledger pauses play and connects faction relations, hidden poaching a
   await expect(page.locator("#hud-ledger-button")).toHaveClass(/danger/);
   await expect(page.locator("#hud-ledger-badge")).toHaveText("3");
 
-  await page.locator("#hud-ledger-button").click();
-  await expect(page.locator("#night-ledger")).toHaveClass(/open/);
-  await expect(page.locator("#hud-ledger-button")).toHaveAttribute("aria-expanded", "true");
-  await expect(page.locator("#night-ledger-close")).toBeFocused();
+  const initial = await page.evaluate(() => {
+    const game = window.NBD_PHASER_GAME.scene.getScene("GameScene");
+    const ui = window.NBD_PHASER_GAME.scene.getScene("UIScene");
+    const model = ui.readNightLedgerState(true);
+    const firstEstate = model.factions.find(faction => faction.id === "first_estate") || null;
+    return {
+      surface: {
+        buttonHidden: Boolean(ui.dom?.ledgerButton?.hidden),
+        buttonAriaHidden: ui.dom?.ledgerButton?.getAttribute?.("aria-hidden"),
+        buttonDisplay: ui.dom?.ledgerButton?.style?.display || "",
+        openResult: ui.toggleNightLedger(),
+        ledgerOpen: Boolean(ui.ledgerOpen),
+        gamePaused: game.sys.isPaused(),
+        registryPaused: Boolean(ui.registry.get("uiPaused"))
+      },
+      model: {
+        ready: model.ready,
+        severity: model.severity,
+        alertCount: model.alertCount,
+        latentViolationCount: model.latentViolationCount,
+        knownViolationCount: model.knownViolationCount,
+        policeState: model.police.stateLabel,
+        exposureKnownCount: model.exposure.knownCount,
+        firstEstate,
+        incidents: model.incidents.map(incident => ({
+          kind: incident.kind,
+          title: incident.title,
+          detail: incident.detail,
+          status: incident.status
+        }))
+      }
+    };
+  });
 
-  const paused = await page.evaluate(() => ({
-    gamePaused: window.NBD_PHASER_GAME.scene.getScene("GameScene").sys.isPaused(),
-    registryPaused: window.NBD_PHASER_GAME.scene.getScene("UIScene").registry.get("uiPaused")
-  }));
-  expect(paused).toEqual({ gamePaused: true, registryPaused: true });
+  expect(initial.surface).toEqual({
+    buttonHidden: true,
+    buttonAriaHidden: "true",
+    buttonDisplay: "none",
+    openResult: false,
+    ledgerOpen: false,
+    gamePaused: false,
+    registryPaused: false
+  });
+  expect(initial.model.ready).toBe(true);
+  expect(initial.model.severity).toBe("danger");
+  expect(initial.model.alertCount).toBe(3);
+  expect(initial.model.latentViolationCount).toBe(1);
+  expect(initial.model.knownViolationCount).toBe(0);
+  expect(initial.model.policeState).toBe("PURSUIT");
+  expect(initial.model.exposureKnownCount).toBe(1);
+  expect(initial.model.firstEstate).toMatchObject({
+    id: "first_estate",
+    reputation: { value: 42, tierLabel: "Favoured" },
+    latentViolationCount: 1,
+    knownViolationCount: 0
+  });
+  expect(initial.model.incidents.some(incident => incident.title === "VISIBLE POWER USE" && incident.status === "INSTITUTIONAL")).toBe(true);
+  expect(initial.model.incidents.some(incident => incident.title === "POACHING" && incident.status === "HIDDEN")).toBe(true);
 
-  await expect(page.locator("#night-ledger-content")).toContainText("The First Estate");
-  await expect(page.locator("#night-ledger-content")).toContainText("Favoured");
-  await expect(page.locator("#night-ledger-content")).toContainText("The Gutter Crown");
-  await expect(page.locator("#night-ledger-content")).toContainText("POLICE / HEAT");
-  await expect(page.locator("#night-ledger-content")).toContainText("VEIL / EVIDENCE");
-  await expect(page.locator("#night-ledger-content")).toContainText("PURSUIT");
-  await expect(page.locator("#night-ledger-content")).toContainText("VISIBLE POWER USE");
-  await expect(page.locator("#night-ledger-content")).toContainText("POACHING");
-  await expect(page.locator("#night-ledger-content")).toContainText("HIDDEN");
-  const estateCard = page.locator('[data-ledger-faction="first_estate"]');
-  const hiddenMetric = estateCard.locator('.ledger-metric.warning');
-  await expect(hiddenMetric).toContainText("1");
-  await expect(hiddenMetric).toContainText("Hidden");
-
-  await page.locator("#night-ledger-close").click();
-  await expect(page.locator("#night-ledger")).not.toHaveClass(/open/);
-  expect(await page.evaluate(() => window.NBD_PHASER_GAME.scene.getScene("GameScene").sys.isPaused())).toBe(false);
+  await page.keyboard.press("l");
+  const keyboardState = await page.evaluate(() => {
+    const game = window.NBD_PHASER_GAME.scene.getScene("GameScene");
+    const ui = window.NBD_PHASER_GAME.scene.getScene("UIScene");
+    return {
+      ledgerOpen: Boolean(ui.ledgerOpen),
+      gamePaused: game.sys.isPaused(),
+      registryPaused: Boolean(ui.registry.get("uiPaused"))
+    };
+  });
+  expect(keyboardState).toEqual({ ledgerOpen: false, gamePaused: false, registryPaused: false });
 
   await page.evaluate(assessmentId => {
     const game = window.NBD_PHASER_GAME.scene.getScene("GameScene");
@@ -106,14 +148,24 @@ test("Night Ledger pauses play and connects faction relations, hidden poaching a
     ui.ledgerRefreshAt = 0;
   }, seeded.assessmentId);
 
-  await page.keyboard.press("l");
-  await expect(page.locator("#night-ledger")).toHaveClass(/open/);
-  await expect(page.locator("#night-ledger-content")).toContainText("DISCOVERED");
-  const knownMetric = estateCard.locator('.ledger-metric.danger');
-  await expect(knownMetric).toContainText("1");
-  await expect(knownMetric).toContainText("Known");
-  await page.keyboard.press("Escape");
-  await expect(page.locator("#night-ledger")).not.toHaveClass(/open/);
-  expect(await page.evaluate(() => window.NBD_PHASER_GAME.scene.getScene("GameScene").sys.isPaused())).toBe(false);
+  const discovered = await page.evaluate(() => {
+    const ui = window.NBD_PHASER_GAME.scene.getScene("UIScene");
+    const model = ui.readNightLedgerState(true);
+    const firstEstate = model.factions.find(faction => faction.id === "first_estate") || null;
+    return {
+      ledgerOpen: Boolean(ui.ledgerOpen),
+      knownViolationCount: model.knownViolationCount,
+      latentViolationCount: model.latentViolationCount,
+      policeState: model.police.stateLabel,
+      firstEstate,
+      incidents: model.incidents.map(incident => ({ title: incident.title, status: incident.status }))
+    };
+  });
+  expect(discovered.ledgerOpen).toBe(false);
+  expect(discovered.knownViolationCount).toBe(1);
+  expect(discovered.latentViolationCount).toBe(0);
+  expect(discovered.policeState).toBe("CLEAR");
+  expect(discovered.firstEstate).toMatchObject({ knownViolationCount: 1, latentViolationCount: 0 });
+  expect(discovered.incidents.some(incident => incident.title === "POACHING" && incident.status === "DISCOVERED")).toBe(true);
   expect(pageErrors).toEqual([]);
 });

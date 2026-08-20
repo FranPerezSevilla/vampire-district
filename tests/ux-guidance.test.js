@@ -33,14 +33,14 @@ test("boolean accessibility preferences accept stored string values", () => {
   assert.equal(normalizeBooleanPreference("unknown", false), false);
 });
 
-test("weapon guidance waits for full tutorial control and completes after one cycle", () => {
+test("weapon cycling stays available without a post-tutorial wheel guidance state", () => {
   assert.equal(
     weaponGuidanceState({ tutorialComplete: false, weaponChanges: 0 }),
     WEAPON_GUIDANCE_STATES.LOCKED
   );
   assert.equal(
     weaponGuidanceState({ tutorialComplete: true, weaponChanges: 0 }),
-    WEAPON_GUIDANCE_STATES.AWAITING_CYCLE
+    WEAPON_GUIDANCE_STATES.COMPLETE
   );
   assert.equal(
     weaponGuidanceState({ tutorialComplete: true, weaponChanges: 1 }),

@@ -1,6 +1,6 @@
 import { WORLD } from "../data/balance.js";
 import { VEHICLE_OWNERSHIP } from "../data/vehicles.js";
-import { vehicleHealthPercent, vehicleSpeedKph } from "./VehicleModel.js";
+import { vehicleGearCount, vehicleHealthPercent, vehicleSpeedKph } from "./VehicleModel.js";
 
 function driftDegrees(vehicle) {
   return Math.round(Math.abs(Number(vehicle?.driftAngle) || 0) * 180 / Math.PI);
@@ -54,9 +54,7 @@ export function paintVehicle(scene, container, definition, archetype) {
     color: `#${archetype.trim.toString(16).padStart(6, "0")}`,
     backgroundColor: "rgba(5, 6, 11, .68)",
     padding: { x: 3, y: 1 }
-  }).setOrigin(0.5, 1)
-    .setRotation(-(Number(definition.angle) || 0))
-    .setVisible(Boolean(definition.showWorldLabel || archetype.showWorldLabel));
+  }).setOrigin(0.5, 1).setRotation(-(Number(definition.angle) || 0));
   label.setResolution?.(3);
   label.setStroke?.("#05060b", 2);
   container.add([...wheels, body, cabin, hood, nose, label]);
@@ -82,6 +80,9 @@ function plainVehicle(vehicle) {
     velocityY: Number(vehicle.velocityY) || 0,
     speed: vehicle.speed,
     speedKph: vehicleSpeedKph(vehicle.speed),
+    gear: Math.max(1, Math.round(Number(vehicle.gear) || 1)),
+    gearCount: vehicleGearCount(archetype),
+    shifting: (Number(vehicle.gearShiftTimer) || 0) > 0,
     health: vehicle.health,
     healthPercent: vehicleHealthPercent(vehicle.health, archetype.maxHealth),
     maxHealth: archetype.maxHealth,
@@ -101,12 +102,14 @@ export function updateVehicleHud(system) {
   }
   const trunk = system.campaign.vehicles.trunkSnapshot(vehicle.id, vehicle.archetype.trunkCapacity);
   const drift = driftDegrees(vehicle);
+  const gear = Math.max(1, Math.round(Number(vehicle.gear) || 1));
+  const gearText = vehicle.speed < -0.5 ? "R" : `G${gear}/${vehicleGearCount(vehicle.archetype)}${(vehicle.gearShiftTimer || 0) > 0 ? "↑" : ""}`;
   const driftText = drift >= 7 && Math.abs(vehicle.speed) > 24 ? ` · DRIFT ${drift}°` : "";
   const state = vehicle.disabled
     ? "WRECKED · ENTER exit"
     : `${system.handbrakeActive ? "HANDBRAKE · " : ""}SPACE handbrake · ENTER exit`;
   system.hud.setText(
-    `${vehicle.name.toUpperCase()} · ${vehicleSpeedKph(vehicle.speed)} km/h${driftText} · hull ${vehicleHealthPercent(vehicle.health, vehicle.archetype.maxHealth)}% · trunk ${trunk.used}/${trunk.capacity} · ${state}`
+    `${vehicle.name.toUpperCase()} · ${gearText} · ${vehicleSpeedKph(vehicle.speed)} km/h${driftText} · hull ${vehicleHealthPercent(vehicle.health, vehicle.archetype.maxHealth)}% · trunk ${trunk.used}/${trunk.capacity} · ${state}`
   ).setVisible(true);
 }
 
@@ -137,7 +140,7 @@ export function vehicleSystemSummary(system) {
     return `On foot · vehicles ${active}/${system.vehicles.length} active · stolen ${stolen}`;
   }
   const drift = driftDegrees(vehicle);
-  return `${vehicle.name} · ${vehicleSpeedKph(vehicle.speed)} km/h${drift >= 7 ? ` · drift ${drift}°` : ""} · hull ${vehicleHealthPercent(vehicle.health, vehicle.archetype.maxHealth)}%`;
+  return `${vehicle.name} · G${Math.max(1, Math.round(Number(vehicle.gear) || 1))} · ${vehicleSpeedKph(vehicle.speed)} km/h${drift >= 7 ? ` · drift ${drift}°` : ""} · hull ${vehicleHealthPercent(vehicle.health, vehicle.archetype.maxHealth)}%`;
 }
 
 export function publishVehicleState(system) {

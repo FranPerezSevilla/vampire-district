@@ -16,7 +16,7 @@ async function waitForTrafficImpacts(page) {
 
 test.describe.configure({ timeout: 75_000 });
 
-test("a hard traffic impact damages once, alerts police and keeps the pooled slot stable", async ({ page }) => {
+test("a hard civilian traffic impact damages once, stays mundane and keeps the pooled slot stable", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
@@ -149,7 +149,7 @@ test("a hard traffic impact damages once, alerts police and keeps the pooled slo
   expect(result.firstImpact.lastImpact.suppressed).toBe(false);
   expect(result.healthAfterFirst).toBeLessThan(result.healthBefore);
   expect(result.exposureAfterFirst).toBe(result.exposureBefore);
-  expect(result.heatAfterFirst).toBeGreaterThan(result.heatBefore);
+  expect(result.heatAfterFirst).toBe(result.heatBefore);
   expect(result.assignmentAfterFirst.slotIndex).toBe(result.assignmentBefore.slotIndex);
 
   expect(result.secondImpact.totalHardImpacts).toBe(1);

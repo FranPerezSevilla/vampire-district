@@ -2,6 +2,52 @@ import { expect, test } from "@playwright/test";
 
 test.describe.configure({ timeout: 90_000 });
 
+test("main menu exposes the canonical controls and Escape owns the in-game pause drawer", async ({ page }) => {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => Boolean(
+    window.NBD_APP_READY
+    && window.NBD_PHASER_GAME?.scene?.isActive?.("MainMenuScene")
+    && window.NBD_TITLE_SCREEN
+  ));
+
+  // The splash is the browser-audio gesture gate; a real key press lets the
+  // existing title flow reveal the DOM menu without bypassing production code.
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => window.NBD_TITLE_SCREEN_STATE?.state === "menu");
+
+  const controlsAction = page.locator('[data-title-action="controls"]');
+  await expect(controlsAction).toBeVisible();
+  await controlsAction.click();
+  await expect(page.locator("[data-title-drawer]")).toHaveAttribute("aria-hidden", "false");
+  await expect(page.locator("[data-title-drawer-title]")).toHaveText("CONTROLS");
+  const controlBody = page.locator("[data-title-drawer-body]");
+  await expect(controlBody).toContainText("Mouse wheel  Change weapon");
+  await expect(controlBody).toContainText("Hold right mouse  Feed / Drain");
+  await expect(controlBody).toContainText("Blood Sense");
+  await expect(controlBody).toContainText("Handbrake");
+  await expect(controlBody).toContainText("Horn");
+  await expect(controlBody).toContainText("Pause / back");
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator("[data-title-drawer]")).toHaveAttribute("aria-hidden", "true");
+  await page.locator('[data-title-action="new-night"]').click();
+  await page.waitForFunction(() => Boolean(
+    window.NBD_TITLE_SCREEN_STATE?.state === "world"
+    && window.NBD_PHASER_GAME?.scene?.isActive?.("UIScene")
+  ));
+
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => !window.NBD_PHASER_GAME.scene.getScene("UIScene").introOpen);
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#ui-modal")).toHaveClass(/open/);
+  await expect(page.locator("#ui-modal-title")).toHaveText("Pause Menu");
+  expect(await page.evaluate(() => window.NBD_PHASER_GAME.scene.getScene("UIScene").pauseOpen)).toBe(true);
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#ui-modal")).not.toHaveClass(/open/);
+  expect(await page.evaluate(() => window.NBD_PHASER_GAME.scene.getScene("UIScene").pauseOpen)).toBe(false);
+});
+
 test("pause menu exposes a persistent keyboard-operable high-contrast aim option", async ({ page }) => {
   await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_RC_HARNESS_READY));
@@ -9,8 +55,12 @@ test("pause menu exposes a persistent keyboard-operable high-contrast aim option
     window.NBD_RC_HARNESS.unlockPostTutorialWorld();
     return true;
   });
+  await page.waitForTimeout(100);
+  await page.waitForFunction(() => Boolean(window.NBD_RC_HARNESS?.taskRevealIdle?.()), null, {
+    timeout: 10_000
+  });
 
-  await page.keyboard.press("h");
+  await page.keyboard.press("Escape");
   await expect(page.locator("#ui-modal")).toHaveClass(/open/);
   const toggle = page.locator("[data-aim-contrast-toggle]");
   await expect(toggle).toBeVisible();

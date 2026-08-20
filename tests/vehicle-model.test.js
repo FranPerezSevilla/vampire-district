@@ -5,7 +5,10 @@ import {
   createVehicleState,
   interpolateVehicleState,
   stepVehicleKinematics,
+  vehicleCameraLookAhead,
   vehicleCameraZoom,
+  vehicleGearCount,
+  vehicleHighSpeedAccelerationMultiplier,
   vehicleExitOffsets,
   vehicleFootprintPoints,
   vehicleImpactDamage,
@@ -25,6 +28,11 @@ const archetype = {
   width: 28,
   height: 14,
   maxSpeed: 310,
+  gearCount: 5,
+  gearShiftDuration: 0.14,
+  gearHoldDuration: 0.42,
+  firstGearHoldDuration: 0.30,
+  cameraLookAhead: 72,
   reverseSpeed: 92,
   acceleration: 330,
   reverseAcceleration: 126,
@@ -126,6 +134,73 @@ test("handbrake creates a controlled slide and normal grip recovers it", () => {
     state = stepVehicleKinematics(state, { move: { x: 0, y: -1 } }, 0.05, archetype);
   }
   assert.ok(Math.abs(state.driftAngle) < driftAtRelease, "normal tyre grip should progressively align the velocity vector");
+});
+
+
+test("automatic gearbox climbs through five gears without rapid-fire upshifts", () => {
+  let state = createVehicleState(definition, archetype);
+  const seen = new Set([state.gear]);
+  const shifts = [];
+  let previousGear = state.gear;
+  for (let index = 0; index < 90; index++) {
+    state = stepVehicleKinematics(state, { move: { x: 0, y: -1 } }, 0.05, archetype);
+    seen.add(state.gear);
+    if (state.gear > previousGear) shifts.push((index + 1) * 0.05);
+    previousGear = state.gear;
+  }
+  assert.equal(vehicleGearCount(archetype), 5);
+  assert.deepEqual([...seen], [1, 2, 3, 4, 5]);
+  assert.equal(state.gear, 5);
+  assert.equal(shifts.length, 4);
+  assert.ok(shifts[0] >= 0.25, "first gear should breathe before the first upshift");
+  for (let index = 1; index < shifts.length; index++) {
+    assert.ok(shifts[index] - shifts[index - 1] >= 0.55, "successive upshifts should have a clearly audible dwell");
+  }
+  assert.ok(state.speed <= archetype.maxSpeed);
+});
+
+test("upper gears stretch the run to top speed without dulling the launch", () => {
+  let state = createVehicleState(definition, archetype);
+  let halfSecondSpeed = 0;
+  let timeToNinetyNine = null;
+  for (let index = 0; index < 120; index++) {
+    state = stepVehicleKinematics(state, { move: { x: 0, y: -1 } }, 0.05, archetype);
+    const elapsed = (index + 1) * 0.05;
+    if (index === 9) halfSecondSpeed = state.speed;
+    if (timeToNinetyNine == null && state.speed >= archetype.maxSpeed * 0.99) {
+      timeToNinetyNine = elapsed;
+    }
+  }
+  assert.ok(halfSecondSpeed > 190 && halfSecondSpeed < 235, "launch character should remain lively");
+  assert.ok(timeToNinetyNine >= 2.0, "maximum speed should still require a readable multi-gear build");
+  assert.ok(timeToNinetyNine <= 4.0, "upper gears must no longer make the car feel strangled");
+  assert.equal(vehicleHighSpeedAccelerationMultiplier(archetype.maxSpeed * 0.50, archetype.maxSpeed), 1);
+  assert.ok(vehicleHighSpeedAccelerationMultiplier(archetype.maxSpeed * 0.95, archetype.maxSpeed) < 0.10);
+  assert.ok(vehicleHighSpeedAccelerationMultiplier(archetype.maxSpeed * 0.99, archetype.maxSpeed) < 0.04);
+});
+
+test("directional vehicle camera looks ahead only during stable forward travel", () => {
+  const base = {
+    ...createVehicleState(definition, archetype),
+    speed: 250,
+    travelAngle: 0,
+    driftAngle: 0,
+    handbrake: false
+  };
+  const stable = vehicleCameraLookAhead(base, { move: { x: 0, y: -1 } }, archetype);
+  const turning = vehicleCameraLookAhead(base, { move: { x: 1, y: -1 } }, archetype);
+  const braking = vehicleCameraLookAhead(base, { move: { x: 0, y: 1 } }, archetype);
+  const drifting = vehicleCameraLookAhead(
+    { ...base, driftAngle: 0.30, handbrake: true },
+    { move: { x: 0.7, y: -1 }, handbrakeHeld: true },
+    archetype
+  );
+
+  assert.ok(stable.x > 25);
+  assert.ok(stable.strength > 0.4);
+  assert.ok(Math.abs(turning.x) < stable.x * 0.2);
+  assert.equal(braking.strength, 0);
+  assert.equal(drifting.strength, 0);
 });
 
 test("collision slide candidates search many distances and steering nudges", () => {

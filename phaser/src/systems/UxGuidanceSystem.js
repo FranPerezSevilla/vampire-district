@@ -1,10 +1,8 @@
 import { NPC_TYPES } from "../data/npcs.js";
 import {
   UX_STORAGE_KEYS,
-  WEAPON_GUIDANCE_STATES,
   normalizeBooleanPreference,
-  recoveryGuidanceState,
-  weaponGuidanceState
+  recoveryGuidanceState
 } from "../data/ux-guidance.js";
 
 const RECOVERY_TYPES = new Set([NPC_TYPES.POLICE, NPC_TYPES.HUNTER]);
@@ -70,15 +68,6 @@ function installUxStyle() {
     .weapon-hud strong { font-size: 14px !important; }
     .weapon-hud span { font-size: 13px !important; }
     .weapon-hud kbd { font-size: 12px !important; }
-    .weapon-hud.attention {
-      border-color: rgba(255, 242, 168, .78) !important;
-      box-shadow: 0 0 0 2px rgba(255, 176, 46, .12), 0 10px 32px rgba(0, 0, 0, .42) !important;
-      animation: nbd-weapon-attention 1.35s ease-in-out infinite;
-    }
-    @keyframes nbd-weapon-attention {
-      0%, 100% { transform: translateY(0); filter: brightness(.92); }
-      50% { transform: translateY(-2px); filter: brightness(1.16); }
-    }
 
     .vital-heading span,
     .wanted-copy small,
@@ -157,7 +146,6 @@ function installUxStyle() {
     }
     @media (prefers-reduced-motion: reduce) {
       .ux-guidance.visible,
-      .weapon-hud.attention,
       .hud-toast.visible,
       .task-reveal,
       .tutorial-dialogue {
@@ -206,7 +194,6 @@ export class UxGuidanceSystem {
   constructor(scene) {
     this.scene = scene;
     this.dom = ensureGuidanceDom();
-    this.weaponChanges = 0;
     this.recoveryTipShown = false;
     this.transient = null;
     this.labels = new Map();
@@ -215,12 +202,10 @@ export class UxGuidanceSystem {
       scene.registry?.set?.("aimHighContrast", storedAimPreference());
     }
 
-    this.onWeaponChanged = payload => this.handleWeaponChanged(payload);
     this.onEntityDowned = payload => this.handleEntityDowned(payload);
     this.onEntityRecovered = payload => this.handleEntityRecovered(payload);
     this.onFeedingStarted = payload => this.handleFeedingStarted(payload);
 
-    scene.events?.on?.("weapon:changed", this.onWeaponChanged);
     scene.events?.on?.("combat:entity-downed", this.onEntityDowned);
     scene.events?.on?.("combat:entity-recovered", this.onEntityRecovered);
     scene.events?.on?.("feeding:started", this.onFeedingStarted);
@@ -231,10 +216,6 @@ export class UxGuidanceSystem {
   update(_dt, frame = this.scene.currentInputFrame) {
     this.updateRecoveryLabels();
 
-    const phase = weaponGuidanceState({
-      tutorialComplete: this.tutorialComplete(),
-      weaponChanges: this.weaponChanges
-    });
     const worldVisible = this.worldGuidanceVisible(frame);
     const now = this.scene.time?.now || 0;
 
@@ -242,28 +223,15 @@ export class UxGuidanceSystem {
 
     if (!worldVisible) {
       this.renderMessage(null);
-      this.setWeaponAttention(false);
       return;
     }
 
     if (this.transient) {
       this.renderMessage(this.transient);
-      this.setWeaponAttention(phase === WEAPON_GUIDANCE_STATES.AWAITING_CYCLE);
-      return;
-    }
-
-    if (phase === WEAPON_GUIDANCE_STATES.AWAITING_CYCLE) {
-      this.renderMessage({
-        key: "WHEEL",
-        text: "Change weapon. Scroll once to equip the Iron Pipe or Pistol.",
-        kind: "weapon"
-      });
-      this.setWeaponAttention(true);
       return;
     }
 
     this.renderMessage(null);
-    this.setWeaponAttention(false);
   }
 
   tutorialComplete() {
@@ -285,10 +253,6 @@ export class UxGuidanceSystem {
       && !this.scene.missionSystem?.failed
       && !this.scene.missionSystem?.completed
     );
-  }
-
-  handleWeaponChanged() {
-    this.weaponChanges += 1;
   }
 
   handleEntityDowned(payload = {}) {
@@ -343,11 +307,6 @@ export class UxGuidanceSystem {
     if (!visible) return;
     if (this.dom.key) this.dom.key.textContent = message.key || "TIP";
     if (this.dom.text) this.dom.text.textContent = message.text;
-  }
-
-  setWeaponAttention(active) {
-    if (typeof document === "undefined") return;
-    document.querySelector(".weapon-hud")?.classList.toggle("attention", Boolean(active));
   }
 
   updateRecoveryLabels() {
@@ -408,13 +367,11 @@ export class UxGuidanceSystem {
   }
 
   destroy() {
-    this.scene.events?.off?.("weapon:changed", this.onWeaponChanged);
     this.scene.events?.off?.("combat:entity-downed", this.onEntityDowned);
     this.scene.events?.off?.("combat:entity-recovered", this.onEntityRecovered);
     this.scene.events?.off?.("feeding:started", this.onFeedingStarted);
     for (const label of this.labels.values()) label.destroy?.();
     this.labels.clear();
-    this.setWeaponAttention(false);
     this.dom?.root?.remove?.();
   }
 }

@@ -1,8 +1,15 @@
 import { WORLD } from "./data/balance.js";
+import { installBloodSensePresentationPolicy } from "./policies/BloodSensePresentationPolicy.js";
 import { installDistrictGunfireHeatPolicy } from "./policies/DistrictGunfireHeatPolicy.js";
+import { installFootPolicePedestrianPolicy } from "./policies/FootPolicePedestrianPolicy.js";
 import { installPlaytestSurfacePolicy } from "./policies/PlaytestSurfacePolicy.js";
+import { installPoliceScreenPursuitPolicy } from "./policies/PoliceScreenPursuitPolicy.js";
+import { installTrafficContextualHornPolicy } from "./policies/TrafficContextualHornPolicy.js";
+import { installTrafficFeedbackPolicy } from "./policies/TrafficFeedbackPolicy.js";
 import { installTrafficPlaytestPolicy } from "./policies/TrafficPlaytestPolicy.js";
 import { installVampireVeilPolicy } from "./policies/VampireVeilPolicy.js";
+import { installVehicleDamagePresentationPolicy } from "./policies/VehicleDamagePresentationPolicy.js";
+import { installVehicleWallCollisionAudioPolicy } from "./policies/VehicleWallCollisionAudioPolicy.js";
 import { BootScene } from "./scenes/BootScene.js";
 import { MainMenuScene } from "./scenes/MainMenuScene.js";
 import { GameScene } from "./scenes/GameScene.js";
@@ -15,6 +22,66 @@ const RESOLUTION_PRESETS = Object.freeze({
   qhd: Object.freeze({ displayWidth: 1440, renderScale: 2.25 }),
   ultra: Object.freeze({ displayWidth: 1920, renderScale: 3 })
 });
+const MAIN_MENU_THEME_URL = new URL("../assets/audio/music/main-menu-theme-01.mp3", import.meta.url).href;
+const MAIN_MENU_THEME_VOLUME = 0.28;
+const MAIN_MENU_THEME_FADE_MS = 430;
+
+function createMainMenuThemeController() {
+  // Reuse the parser-created media element so the browser can warm the theme
+  // while Phaser and the world preview are still booting. Creating a second
+  // Audio instance here would throw away that head start and risks duplicate playback.
+  const audio = document.getElementById("viceblood-main-menu-theme") || new Audio(MAIN_MENU_THEME_URL);
+  if (!audio.src) audio.src = MAIN_MENU_THEME_URL;
+  audio.loop = true;
+  audio.preload = "auto";
+  audio.volume = MAIN_MENU_THEME_VOLUME;
+  let fadeRaf = 0;
+
+  const cancelFade = () => {
+    if (fadeRaf) cancelAnimationFrame(fadeRaf);
+    fadeRaf = 0;
+  };
+
+  const start = async () => {
+    cancelFade();
+    audio.loop = true;
+    audio.volume = MAIN_MENU_THEME_VOLUME;
+    if (!audio.paused) return true;
+    try {
+      await audio.play();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const fadeOut = (durationMs = MAIN_MENU_THEME_FADE_MS) => {
+    cancelFade();
+    if (audio.paused) {
+      audio.currentTime = 0;
+      return;
+    }
+    const from = audio.volume;
+    const startedAt = performance.now();
+    const tick = now => {
+      const t = Math.min(1, (now - startedAt) / Math.max(1, durationMs));
+      audio.volume = Math.max(0, from * (1 - t));
+      if (t >= 1) {
+        fadeRaf = 0;
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = MAIN_MENU_THEME_VOLUME;
+        return;
+      }
+      fadeRaf = requestAnimationFrame(tick);
+    };
+    fadeRaf = requestAnimationFrame(tick);
+  };
+
+  return Object.freeze({ start, fadeOut, audio });
+}
+
+window.NBD_MAIN_MENU_THEME = createMainMenuThemeController();
 
 function savedResolutionKey() {
   const fallback = window.NBD_RC_TEST_MODE ? "compact" : "qhd";
@@ -58,8 +125,15 @@ function patchReadableCanvasText() {
 patchReadableCanvasText();
 installVampireVeilPolicy();
 installPlaytestSurfacePolicy();
+installBloodSensePresentationPolicy();
+installPoliceScreenPursuitPolicy();
 installTrafficPlaytestPolicy();
+installTrafficFeedbackPolicy();
+installTrafficContextualHornPolicy();
+installFootPolicePedestrianPolicy();
 installDistrictGunfireHeatPolicy();
+installVehicleDamagePresentationPolicy();
+installVehicleWallCollisionAudioPolicy();
 
 const config = {
   type: Phaser.AUTO,

@@ -9,8 +9,8 @@ import {
   sewerTunnels,
   sidewalks
 } from "../data/district.js";
-import { drawBuildingPresentation } from "../rendering/BuildingPresentation.js";
 import { ModularCharacterView } from "../rendering/ModularCharacterView.js";
+import { installVehicleExplosionPresentation } from "../vehicles/VehicleExplosionPresentation.js";
 import { GameScene as GameSceneCore } from "./GameSceneCore.js";
 
 const URBAN_RENDER_HALF_WIDTH = 680;
@@ -49,6 +49,7 @@ export class GameScene extends GameSceneCore {
     this.playerMovementDirection = { x: 0, y: -1 };
     this.playerAimDirection = { x: 0, y: -1 };
     this.playerAimUntil = -1;
+    this.removeVehicleExplosionPresentation = null;
   }
 
   create() {
@@ -59,6 +60,8 @@ export class GameScene extends GameSceneCore {
       phaseKey: "viceblood-protagonist"
     });
     this.playerPresentationPosition = { x: this.player.x, y: this.player.y };
+    this.removeVehicleExplosionPresentation?.();
+    this.removeVehicleExplosionPresentation = installVehicleExplosionPresentation(this);
   }
 
   update(time, deltaMs) {
@@ -104,6 +107,7 @@ export class GameScene extends GameSceneCore {
     if (!this.feedingSystem?.isActive?.()) {
       options.push(...(this.vehicleSystem?.collectInteractions?.() || []));
       options.push(...(this.trafficMaterializationSystem?.collectInteractions?.() || []));
+      options.push(...(this.deathRecoverySystem?.collectInteractions?.() || []));
     }
     return options;
   }
@@ -295,12 +299,25 @@ export class GameScene extends GameSceneCore {
   }
 
   drawBuilding(building) {
-    const plan = drawBuildingPresentation(this.map, building, { detailLevel: "standard" });
+    const originalQuarter = building.x < 960 && building.y < 640;
+    if (originalQuarter) {
+      super.drawBuilding(building);
+      return;
+    }
+
+    this.map.fillStyle(building.color, 1).fillRect(building.x, building.y, building.w, building.h);
+    this.map.lineStyle(2, building.trim, 0.92).strokeRect(building.x, building.y, building.w, building.h);
+    this.map.fillStyle(0xffffff, 0.07);
+    const columns = Math.max(2, Math.min(6, Math.floor(building.w / 42)));
+    for (let index = 0; index < columns; index++) {
+      const x = building.x + 16 + index * Math.max(24, (building.w - 32) / columns);
+      this.map.fillRect(x, building.y + 18, 9, 5);
+    }
+
     const focus = this.renderFocus();
-    if (plan?.showLabel
-      && this.currentLayer === LAYERS.STREET
+    if (this.currentLayer === LAYERS.STREET
       && Phaser.Math.Distance.Between(focus.x, focus.y, building.x + building.w / 2, building.y + building.h / 2) < 520) {
-      this.addMapLabel(building.sign, building.x + 9, building.y + 15, plan?.labelColor || 0xefe6ff);
+      this.addMapLabel(building.sign, building.x + 9, building.y + 15, 0xefe6ff);
     }
   }
 

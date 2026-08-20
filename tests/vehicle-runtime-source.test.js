@@ -44,6 +44,9 @@ test("campaign vehicle ownership and checkpoint safety remain explicit services"
   assert.equal(consequences.includes('"combat:entity-neutralized"'), true);
   assert.equal(driving.includes("other.disabled"), false, "disabled vehicles remain solid collision obstacles");
   assert.equal(driving.includes("applyKinematicState(vehicle, next)"), true);
+  assert.equal(driving.includes("vehicleCameraLookAhead"), true);
+  assert.equal(driving.includes("setFollowOffset"), true);
+  assert.equal(view.includes("gearCount"), true);
   assert.equal(driving.includes("Object.assign(vehicle, next)"), false, "kinematics must not restore pre-impact health or disabled state");
   assert.equal(vehicle.includes("TRUNK_FULL"), false, "capacity errors are owned by CampaignVehicleSystem");
   assert.equal(view.includes("window.NBD_VEHICLES"), true);
@@ -55,6 +58,8 @@ test("vehicle definitions cover the Milestone 12 baseline archetypes", async () 
     assert.equal(definitions.includes(`${archetype}: Object.freeze`), true, archetype);
   }
   assert.equal(definitions.includes("trunkCapacity"), true);
+  assert.equal(definitions.includes("gearCount"), true);
+  assert.equal(definitions.includes("cameraLookAhead"), true);
   assert.equal(definitions.includes('"startOwned":true'), true);
   assert.equal(definitions.includes('"ownership":"police"'), true);
 });

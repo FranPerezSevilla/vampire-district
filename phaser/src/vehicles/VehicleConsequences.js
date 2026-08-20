@@ -2,6 +2,7 @@ import { CAMPAIGN_EVENT_TYPES } from "../campaign/constants.js";
 import { LAYERS } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 import { VEHICLE_OWNERSHIP } from "../data/vehicles.js";
+import { RawAudio } from "../systems/RawAudioSystem.js";
 import { planVehiclePedestrianImpactHeat } from "./VehiclePedestrianImpactPolicy.js";
 
 const PEDESTRIAN_TYPES = new Set([
@@ -119,6 +120,33 @@ function pedestrianImpactHeatPlan(system, vehicle, lethal) {
   return { ...plan, districtId };
 }
 
+function reactToHeardPedestrianImpact(system, victim, impactSpeed) {
+  const radius = impactSpeed >= 82 ? 150 : 112;
+  const candidates = system.scene.npcSystem?.queryRadius?.(
+    victim.x,
+    victim.y,
+    radius,
+    LAYERS.STREET,
+    npc => [NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)
+  ) || [];
+  let heardOnly = 0;
+  for (const npc of candidates) {
+    if (!npc || npc === victim || npc.dead || npc.inactive || npc.hiddenBody || npc.intercepted) continue;
+    if (npc.alarmed || npc.chasingPlayer || npc.enemyAttack || npc.drainVictim) continue;
+    const sawImpact = Boolean(system.scene.witnessSystem?.canWitnessSee?.(npc, victim, Math.min(radius, 125)));
+    if (sawImpact) continue;
+    npc.soundReactionTimer = Math.max(npc.soundReactionTimer || 0, impactSpeed >= 82 ? 1.5 : 1.1);
+    npc.soundSourceX = victim.x;
+    npc.soundSourceY = victim.y;
+    npc.vx = 0;
+    npc.vy = 0;
+    npc.chasingPlayer = false;
+    system.scene.aiStateSystem?.resolveNpc?.(npc);
+    heardOnly++;
+  }
+  return heardOnly;
+}
+
 export function collideVehicleWithPedestrians(system, vehicle) {
   const impactSpeed = Math.abs(vehicle.speed);
   if (impactSpeed < 18) return;
@@ -137,6 +165,7 @@ export function collideVehicleWithPedestrians(system, vehicle) {
     system.pedestrianCooldowns.set(npc.id, 1.25);
 
     const lethal = impactSpeed >= 82;
+    RawAudio.play("civilianScream", { cooldown: 0.75 });
     if (lethal) {
       system.scene.npcSystem?.markKilled?.(npc);
       system.scene.evidenceSystem?.onKillCompleted?.(npc);
@@ -162,6 +191,7 @@ export function collideVehicleWithPedestrians(system, vehicle) {
       lethal ? "a fatal vehicle impact" : "a vehicle striking a pedestrian",
       severity
     );
+    const heardOnlyCivilians = reactToHeardPedestrianImpact(system, npc, impactSpeed);
 
     const heatPlan = pedestrianImpactHeatPlan(system, vehicle, lethal);
     if (heatPlan.heat > 0) {
@@ -182,6 +212,7 @@ export function collideVehicleWithPedestrians(system, vehicle) {
       lethal,
       speed: impactSpeed,
       bloodStains,
+      heardOnlyCivilians,
       heat: heatPlan.heat,
       heatSuppressed: heatPlan.suppressedHeat,
       impactChain: heatPlan.chainCount,

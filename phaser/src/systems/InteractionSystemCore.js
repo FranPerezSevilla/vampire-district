@@ -12,6 +12,16 @@ const TRAVERSAL_TYPES = new Set([
   "roofDrop"
 ]);
 
+const DEFAULT_AIM = Object.freeze({ x: 0, y: -1 });
+
+function compareStandardOptions(a, b) {
+  const priority = (b.priority || 0) - (a.priority || 0);
+  if (priority !== 0) return priority;
+  const distance = (a.distance || 0) - (b.distance || 0);
+  if (Math.abs(distance) > 1e-9) return distance;
+  return String(a.id || "").localeCompare(String(b.id || ""));
+}
+
 export function isTraversalAction(option) {
   return Boolean(option && TRAVERSAL_TYPES.has(option.type));
 }
@@ -26,10 +36,24 @@ export class InteractionSystem {
     return Boolean(this.menu);
   }
 
+  bestOption(options = []) {
+    if (!options.length) return null;
+    if (options.every(isTraversalAction) && this.scene?.player) {
+      const aim = this.scene.combatSystem?.aimDirection || DEFAULT_AIM;
+      return selectTraversalCandidate(this.scene.player, aim, options);
+    }
+
+    let best = null;
+    for (const option of options) {
+      if (!best || compareStandardOptions(option, best) < 0) best = option;
+    }
+    return best;
+  }
+
   sortOptions(options = []) {
     if (options.length && options.every(isTraversalAction) && this.scene?.player) {
-      const player = { x: this.scene.player.x, y: this.scene.player.y };
-      const aim = this.scene.combatSystem?.aimDirection || { x: 0, y: -1 };
+      const player = this.scene.player;
+      const aim = this.scene.combatSystem?.aimDirection || DEFAULT_AIM;
       const selected = selectTraversalCandidate(player, aim, options);
       if (!selected) return [];
       return [...options].sort((a, b) => {
@@ -43,13 +67,7 @@ export class InteractionSystem {
       });
     }
 
-    return [...options].sort((a, b) => {
-      const priority = (b.priority || 0) - (a.priority || 0);
-      if (priority !== 0) return priority;
-      const distance = (a.distance || 0) - (b.distance || 0);
-      if (Math.abs(distance) > 1e-9) return distance;
-      return String(a.id || "").localeCompare(String(b.id || ""));
-    });
+    return [...options].sort(compareStandardOptions);
   }
 
   handleAction(options) {

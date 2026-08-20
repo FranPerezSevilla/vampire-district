@@ -27,7 +27,7 @@ function paintDumpster(scene, definition) {
     color: "#b8efd7",
     backgroundColor: "rgba(5, 6, 11, .62)",
     padding: { x: 2, y: 1 }
-  }).setOrigin(0.5, 1).setVisible(Boolean(definition.showWorldLabel));
+  }).setOrigin(0.5, 1);
   label.setResolution?.(3);
   label.setStroke?.("#05060b", 2);
   container.add([body, lid, ...wheels, label]);

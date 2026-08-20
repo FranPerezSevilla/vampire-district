@@ -9,8 +9,12 @@ export const WORLD = Object.freeze({
   renderScale: 1.35
 });
 
+const SAFE_STREET_SPAWN_OFFSET_X = -64;
+
 export const PLAYER = Object.freeze({
-  startX: CITY_ANCHORS.streetSpawn.x,
+  // Start on the refuge frontage rather than directly framing the nearby
+  // traffic edge handoff/intersection where macro cars visibly recycle.
+  startX: CITY_ANCHORS.streetSpawn.x + SAFE_STREET_SPAWN_OFFSET_X,
   startY: CITY_ANCHORS.streetSpawn.y,
   startLayer: CITY_ANCHORS.streetSpawn.layer,
   baseSpeed: 112,

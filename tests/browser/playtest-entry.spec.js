@@ -2,6 +2,10 @@ import { expect, test } from "@playwright/test";
 
 test.describe.configure({ timeout: 90_000 });
 
+function normalizedText(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
 test("playtest mode presents one stable intro from the first visible frame", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
@@ -34,17 +38,19 @@ test("playtest mode presents one stable intro from the first visible frame", asy
       || document.getElementById("playtest-intro");
     return {
       id: node?.id || null,
-      title: node?.querySelector("h2")?.textContent || "",
+      title: node?.querySelector("h2")?.innerText || "",
       visible: Boolean(node && getComputedStyle(node).display !== "none")
     };
   });
   expect(["playtest-boot-cover", "playtest-intro"]).toContain(firstSurface.id);
-  expect(firstSurface.title).toBe("Hunt. Feed. Escape.");
+  expect(normalizedText(firstSurface.title)).toBe("Immortality was never the luxury you imagined.");
   expect(firstSurface.visible).toBe(true);
 
   await page.waitForFunction(() => Boolean(window.NBD_APP_READY && window.NBD_PLAYTEST_READY));
   await expect(page.locator("#playtest-boot-cover")).toHaveCount(0);
   await expect(page.locator("#playtest-intro")).toHaveClass(/open/);
+  const readyTitle = await page.locator("#playtest-intro-title").evaluate(node => node.innerText);
+  expect(normalizedText(readyTitle)).toBe("Immortality was never the luxury you imagined.");
   await expect(page.locator("#ui-modal")).not.toHaveClass(/open/);
 
   const readyState = await page.evaluate(() => {

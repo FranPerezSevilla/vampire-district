@@ -3,6 +3,8 @@ import {
   rotateTowardAngle,
   stepVehicleKinematics
 } from "../vehicles/VehicleModel.js";
+import { RawAudio } from "../systems/RawAudioSystem.js";
+import { vehicleCollisionAudioEvent } from "./VehicleCollisionAudioModel.js";
 
 function finite(value, fallback = 0) {
   const number = Number(value);
@@ -66,6 +68,12 @@ function targetStillOverlaps(candidate, target, ownRadius, clearance = 0.5) {
     < ownRadius + target.radius + clearance;
 }
 
+function targetIsPolice(target) {
+  const archetypeId = target?.vehicle?.archetype?.id || target?.slot?.archetype?.id || null;
+  const ownership = target?.vehicle?.ownership || target?.slot?.ownership || null;
+  return archetypeId === "police" || ownership === "police";
+}
+
 function applyVehicleState(system, vehicle, state) {
   vehicle.x = state.x;
   vehicle.y = state.y;
@@ -101,6 +109,7 @@ export class VehicleCollisionSofteningPolicy {
     this.totalContacts = 0;
     this.totalSoftened = 0;
     this.totalPassThroughs = 0;
+    this.policeContactHeatCooldown = 0;
     this.lastContact = null;
     this.destroyed = false;
     this.originalUpdateDriving = this.vehicleSystem.updateDriving;
@@ -252,10 +261,35 @@ export class VehicleCollisionSofteningPolicy {
     };
     const predicted = stepVehicleKinematics(vehicle, frame, dt, vehicle.archetype);
     const target = collisionTarget(system, vehicle, predicted, this.collisionPadding);
-    const result = this.originalUpdateDriving.call(system, dt, frame);
+    this.policeContactHeatCooldown = Math.max(0, this.policeContactHeatCooldown - Math.max(0, finite(dt)));
+    const previousContact = system.vehicleCollisionContact || null;
+    system.vehicleCollisionContact = target ? {
+      targetId: target.id,
+      targetKind: target.kind,
+      police: targetIsPolice(target)
+    } : null;
+    let result;
+    try {
+      result = this.originalUpdateDriving.call(system, dt, frame);
+    } finally {
+      system.vehicleCollisionContact = previousContact;
+    }
     if (!target) return result;
 
     this.totalContacts++;
+    const contactImpactSpeed = Math.abs(finite(predicted.speed, before.speed));
+    const collisionEvent = vehicleCollisionAudioEvent(contactImpactSpeed);
+    if (collisionEvent) RawAudio.play(collisionEvent, { cooldown: 0.28 });
+    if (collisionEvent && targetIsPolice(target) && this.policeContactHeatCooldown <= 0) {
+      this.policeContactHeatCooldown = 0.9;
+      this.scene.policeSystem?.addHeat?.(
+        vehicle.x,
+        vehicle.y,
+        Math.min(28, Math.max(8, contactImpactSpeed * 0.15)),
+        `${vehicle.name} collides with a police vehicle`,
+        { source: "vehicle_police_collision" }
+      );
+    }
     const rigid = this.shouldSoften(before, predicted, vehicle);
     let softened = null;
     if (rigid && !vehicle.disabled) softened = this.soften(system, vehicle, before, predicted, target, frame);

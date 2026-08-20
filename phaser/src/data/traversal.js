@@ -29,12 +29,24 @@ export function evaluateTraversalCandidate(player, aimDirection, candidate, rule
 }
 
 export function selectTraversalCandidate(player, aimDirection, candidates = [], rules = TRAVERSAL_RULES) {
-  return candidates
-    .map(candidate => ({ candidate, evaluation: evaluateTraversalCandidate(player, aimDirection, candidate, rules) }))
-    .filter(item => item.evaluation.valid)
-    .sort((a, b) => {
-      const score = a.evaluation.score - b.evaluation.score;
-      if (Math.abs(score) > 1e-9) return score;
-      return String(a.candidate.id || "").localeCompare(String(b.candidate.id || ""));
-    })[0]?.candidate || null;
+  let selected = null;
+  let selectedEvaluation = null;
+  for (const candidate of candidates) {
+    const evaluation = evaluateTraversalCandidate(player, aimDirection, candidate, rules);
+    if (!evaluation.valid) continue;
+    if (!selected) {
+      selected = candidate;
+      selectedEvaluation = evaluation;
+      continue;
+    }
+    const score = evaluation.score - selectedEvaluation.score;
+    if (score < -1e-9 || (
+      Math.abs(score) <= 1e-9
+      && String(candidate.id || "").localeCompare(String(selected.id || "")) < 0
+    )) {
+      selected = candidate;
+      selectedEvaluation = evaluation;
+    }
+  }
+  return selected;
 }
