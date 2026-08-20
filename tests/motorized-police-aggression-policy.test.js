@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 
 import {
   installMotorizedPoliceAggressionPolicy,
@@ -7,6 +8,8 @@ import {
   motorizedPoliceAggressionTiming
 } from "../phaser/src/police/MotorizedPoliceAggressionPolicy.js";
 import { MOTORIZED_POLICE_TACTICS } from "../phaser/src/police/MotorizedPolicePolicy.js";
+
+const ROOT = new URL("../", import.meta.url);
 
 test("Wanted pursuit tactics close faster without removing readable steering", () => {
   const rear = motorizedPoliceAggressionMovement(MOTORIZED_POLICE_TACTICS.REAR_QUARTER, 138, 2.35);
@@ -68,4 +71,16 @@ test("policy boosts tactical movement and restores the original authority on des
   assert.equal(system.localTacticsRadius, 520);
   assert.equal(system.pitCooldownSeconds, 5.5);
   assert.equal(system.ramCooldownSeconds, 6.5);
+});
+
+test("gameplay runtime installs aggression after local police policy and destroys it first", async () => {
+  const runtime = await readFile(new URL("phaser/src/runtime/GameplayRuntime.js", ROOT), "utf8");
+  const localInstall = runtime.indexOf("installMotorizedPoliceLocalPolicy(scene.motorizedPoliceSystem)");
+  const aggressionInstall = runtime.indexOf("installMotorizedPoliceAggressionPolicy(scene.motorizedPoliceSystem)");
+  assert.ok(localInstall >= 0 && aggressionInstall > localInstall);
+
+  const aggressionDestroy = runtime.indexOf("this.scene.motorizedPoliceAggressionPolicy?.destroy?.()");
+  const localDestroy = runtime.indexOf("this.scene.motorizedPoliceLocalPolicy?.destroy?.()");
+  const systemDestroy = runtime.indexOf("this.scene.motorizedPoliceSystem?.destroy?.()");
+  assert.ok(aggressionDestroy >= 0 && localDestroy > aggressionDestroy && systemDestroy > localDestroy);
 });
