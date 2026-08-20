@@ -22,7 +22,7 @@ The machine-readable mirror is [`../progress/building-visual-polish-status.json`
 - The agent may continue to the next milestone when the current milestone's objective, tests and safety criteria are satisfied.
 - User validation happens once, after M6 assembles the final representative review package.
 - PR #63 remains draft and must not merge before that final user approval.
-- Autonomous runs stop on a new focused-test failure, collision/topology/gameplay impact, unresolved art-direction ambiguity, missing execution credentials, or final validation readiness.
+- Autonomous runs stop on a new focused-test failure, collision/topology/gameplay impact, unresolved art-direction ambiguity, connector permission failure or final validation readiness.
 
 Tracking issue: [#64 — Hourly autonomous agent: building visual polish roadmap](https://github.com/FranPerezSevilla/vampire-district/issues/64).
 
@@ -53,7 +53,9 @@ These stages are prerequisites, not substitutes for final polish.
 - [x] machine-readable status file;
 - [x] agent-development index links to this initiative;
 - [x] autonomous final-gate execution policy;
-- [x] tracking issue for hourly execution.
+- [x] tracking issue for hourly execution;
+- [x] ChatGPT scheduled task configured to execute hourly through the GitHub connector;
+- [x] obsolete GitHub-hosted scheduler removed from `main`.
 
 ### Acceptance
 
@@ -151,7 +153,6 @@ Make skylights, HVAC, hatches, vents, annexes and markers read as objects rather
 - all new raised-rectangle, cylindrical and hatch-integration contracts pass;
 - the complete global run reports **407 passed / 414 total**;
 - the seven failures are exactly the previously documented witness/vehicle expectations;
-- the scheduler integration assertion was updated to recognize the canonical hourly workflow;
 - no planned module bounds, collider geometry or gameplay authority changed.
 
 The shared primitives are family-neutral. Skylight glass, HVAC fans, hatch hardware, antenna supports and family-specific finishes remain in M2.2–M2.4.
@@ -257,28 +258,31 @@ Eliminate blank roofs, token props and repetitive service patterns.
 - [ ] document known unrelated test failures;
 - [ ] clean PR description and final progress entry;
 - [ ] set status to `final-validation-pending`;
-- [ ] pause hourly automation automatically;
+- [ ] stop autonomous visual changes;
 - [ ] request the single final user validation;
 - [ ] mark PR ready for review only after approval;
 - [ ] merge only after explicit user approval.
 
-## Hourly automation contract
+## Hourly ChatGPT automation contract
 
-The scheduled workflow must:
+The autonomous worker is a **ChatGPT scheduled task using the connected GitHub tool**, not a GitHub Actions workflow.
 
-1. run once per hour with concurrency protection;
-2. target `agent/building-visual-poc` only;
-3. read the status JSON before doing any work;
-4. stop when state is `blocked`, `paused`, `final-validation-pending` or `complete`;
-5. use the canonical agent contract and advance exactly one bounded task;
-6. run focused building tests before committing;
-7. restrict changes to building rendering, focused tests and canonical documentation;
-8. push a validated commit to the feature branch;
-9. comment issue #64 with the result, commit and next action;
-10. never merge PR #63.
+Each hourly execution must:
 
-The workflow requires the repository Actions secret `OPENAI_API_KEY` because GitHub-hosted autonomous Codex execution cannot use the interactive ChatGPT subscription.
+1. target `agent/building-visual-poc`, PR #63 and issue #64 only;
+2. read the status JSON and canonical agent/roadmap docs before changing code;
+3. advance exactly one bounded unchecked roadmap task;
+4. use the GitHub connector directly to read, edit and commit;
+5. run or inspect focused validation before declaring an increment complete;
+6. restrict changes to building presentation, focused tests and canonical continuity documentation;
+7. confirm Netlify preview status after visual changes;
+8. update the roadmap, progress log and status JSON after meaningful work;
+9. comment issue #64 with the commit, evidence and exact next task;
+10. never merge PR #63 or mark it ready for review autonomously;
+11. stop making visual changes once `final-validation-pending`, `blocked`, `paused` or `complete` is reached.
+
+No `OPENAI_API_KEY` repository secret is required for this operating model. The GitHub-hosted scheduler added previously has been retired from `main` to prevent duplicate workers.
 
 ## Current exact next action
 
-At the next hourly run, begin M2.2 by routing skylights through the shared raised-rectangle volume primitive, adding a physical curb and inset glazing, preserving authored bounds, and adding focused contracts. Do not request intermediate user review.
+At the next ChatGPT scheduled run, begin M2.2 by routing skylights through the shared raised-rectangle volume primitive, adding a physical curb and inset glazing, preserving authored bounds, and adding focused contracts. Do not request intermediate user review.
