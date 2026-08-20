@@ -2,6 +2,46 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-20 — M2.2 physical skylights implemented; validation pending
+
+### Scope
+
+- Active milestone: M2
+- Task: replace the legacy flat skylight treatment with the shared physical-volume language
+- Authoritative files: public polish compositor and focused building-shadow tests
+- Focused tests: `tests/building-presentation.test.js` and `tests/building-visual-shadow.test.js`
+- Acceptance criteria: raised curb, inset glazing, directional highlight/shade, restrained mullions, layered contact shadow, unchanged planned bounds and shared warehouse/club treatment
+- Explicit non-goals: HVAC/mechanical redesign, hatch hardware, antenna supports, annex/marker redesign, material-surface pass, family-profile changes and unrelated gameplay/test failures
+
+### Implemented
+
+- routed `SKYLIGHT` modules through the shared `drawRaisedRectVolume` path in the public polish compositor;
+- gave skylights a renderer-only raised curb with distinct top, south and east faces;
+- added a recessed shadow well before glazing so the glass no longer sits as a flat colored rectangle;
+- inset the glass inside the physical curb while keeping the authored skylight bounds untouched;
+- added restrained south/east glass shade, north/west directional highlight and a small glint rather than uniform brightness;
+- added deterministic mullions only when the glass is large enough to support them at gameplay scale;
+- kept warehouse and club skylights on one shared renderer path rather than adding family-specific geometry;
+- added focused contracts proving authored-bound immutability, curb/glass/side separation, layered contact shadow, directional glass highlights and warehouse/club reuse.
+
+### Validation
+
+- implementation head: `1c25100fda1f6d80b4483ec739c6220eb5ff0b43`;
+- GitHub unit validation was still running at the bounded handoff check;
+- Netlify deploy preview was still pending at the bounded handoff check;
+- status is intentionally `M2.2-automated-validation-pending` so the hourly ChatGPT task validates this exact increment before beginning M2.3;
+- no planner, collider, topology, navigation, AI, mission or gameplay geometry changed.
+
+### Visual risk
+
+Automated contracts can prove physical layering and shared geometry but not final aesthetic quality at gameplay zoom. Intermediate subjective review remains intentionally deferred until M6. The main M2.2 risk is whether curb/glint intensity needs later global tuning once M3 materials are present; it must not be patched per family now.
+
+### Next
+
+The next hourly ChatGPT execution must inspect M2.2 CI and Netlify. If both are green and there is no new building-focused failure, mark M2.2 complete and begin M2.3 with HVAC casing/fan housing as the first bounded mechanical-equipment increment. If M2.2 introduced a focused failure, fix only that regression first.
+
+---
+
 ## 2026-08-19 — M2.1 validated; M2.2 physical skylights opened
 
 ### Completed
