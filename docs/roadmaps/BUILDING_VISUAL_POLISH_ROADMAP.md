@@ -219,7 +219,20 @@ Representative props have clear top, side/contact and shadow separation without 
 
 **Status: autonomous-in-progress**
 
+### M3.1 — Warehouse corrugation refinement
+
+**Status: implementation-complete / automated-validation-pending**
+
 - [ ] corrugated warehouse ribs with lower contrast and grouped rhythm;
+- renderer preserves every planner-owned rib module but paints a three-rib group followed by one quiet lane;
+- anchor ribs use shadow/highlight alpha `0.13/0.09`; supporting ribs use `0.075/0.055`, replacing the old uniform `0.2/0.2` treatment;
+- no planner spacing, module bounds or authored building geometry changed;
+- `tests/building-warehouse-corrugation.test.js` covers grouped rhythm, reduced contrast, unchanged planned modules and deterministic output;
+- Netlify is green on implementation/test head `40feacc6789ed419da31feb1bb8d2d564d74caa1`;
+- workflow `32342778855` is the focused validation gate and was still running/queued at the bounded checkpoint.
+
+### Remaining M3 tasks
+
 - [ ] membrane seams with broad spacing and tonal variation;
 - [ ] civic surface order without decorative repetition;
 - [ ] pitched-roof ridge shading;
@@ -300,4 +313,4 @@ Each hourly execution must:
 
 ## Current exact next action
 
-Begin **M3 — surface material language** with the first bounded task: reduce warehouse corrugated-rib contrast and group the rib rhythm so it reads as roof material rather than repetitive UI linework. Preserve deterministic rendering and authored geometry, add focused contracts, confirm Netlify, and do not begin membrane/civic/pitched/night material work in the same increment.
+Validate workflow `32342778855` for **M3.1 — warehouse corrugation refinement** on implementation/test head `40feacc6789ed419da31feb1bb8d2d564d74caa1`. If the focused contracts are green, mark M3.1 complete and continue with the separate membrane-seam increment. Do not begin membrane/civic/pitched/night work until that validation is confirmed.
