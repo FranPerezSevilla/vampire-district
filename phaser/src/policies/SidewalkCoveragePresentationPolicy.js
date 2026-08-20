@@ -72,16 +72,43 @@ function completedSidewalksFor(scene) {
 }
 
 /**
+ * Temporarily supplies completed pedestrian surfaces only to the two rendering
+ * operations that need them. The gameplay-facing chunk query is restored before
+ * crosswalks, population, AI or any other system can observe presentation infill.
+ */
+function withPresentationSidewalks(scene, completed, callback) {
+  const originalChunkItems = scene.chunkItems;
+  if (typeof originalChunkItems !== "function") return callback();
+  const hadOwnChunkItems = Object.prototype.hasOwnProperty.call(scene, "chunkItems");
+
+  scene.chunkItems = function viceBloodPresentationSidewalkQuery(category, bounds, fallback, options = {}) {
+    if (category === "sidewalks") {
+      const margin = Math.max(0, finite(options.margin));
+      return completed.filter(surface => intersects(surface, bounds, margin));
+    }
+    return originalChunkItems.call(this, category, bounds, fallback, options);
+  };
+
+  try {
+    return callback();
+  } finally {
+    if (hadOwnChunkItems) scene.chunkItems = originalChunkItems;
+    else delete scene.chunkItems;
+  }
+}
+
+/**
  * Restores only curb portions that a late-rendered building can overpaint. The
- * geometry helper removes crosswalk intervals, so the repair never closes a
- * legitimate pedestrian opening.
+ * canonical completed boundary is passed in explicitly so this late pass never
+ * rebuilds geometry from the gameplay-only sidewalk collection.
  */
 function installFinalCurbOverlay(prototype) {
   prototype.drawFinalBuildingCurbOverlay = function viceBloodDrawFinalBuildingCurbOverlay(
     renderBounds,
-    visibleBuildings
+    visibleBuildings,
+    boundary = this.citySurfaceGeometryCache?.boundary
   ) {
-    const boundary = this.prepareCitySurfaceGeometry(renderBounds).boundary;
+    if (!boundary) return;
     const visibleCrosswalks = this.chunkItems("crosswalks", renderBounds, crosswalks, { margin: 4 });
     const segments = buildCurbOverlaySegments(boundary, {
       occluders: visibleBuildings,
@@ -101,11 +128,10 @@ function installFinalCurbOverlay(prototype) {
 }
 
 /**
- * Supplies the entire street-render pass with the road-owned pedestrian surface set.
- *
- * The completed collection is presentation-only: collisions and pedestrian routing
- * keep the authored topology. Replaying the small orchestration method here lets the
- * final building-curb repair run after buildings but before the upper-layer darkening.
+ * Keeps completed sidewalk geometry strictly inside the street presentation path.
+ * Collisions, pedestrian spawning, navigation and normal chunk queries continue to
+ * consume the authored topology. The completed union is used only while preparing
+ * surface geometry and while filling/drawing the sidewalk network itself.
  */
 export function installSidewalkCoveragePresentationPolicy(GameSceneClass) {
   const prototype = GameSceneClass?.prototype;
@@ -116,38 +142,27 @@ export function installSidewalkCoveragePresentationPolicy(GameSceneClass) {
 
   prototype.drawDistrictStreet = function viceBloodDrawCompletedSidewalkDistrict() {
     const completed = completedSidewalksFor(this);
-    const hadOwnChunkItems = Object.prototype.hasOwnProperty.call(this, "chunkItems");
-    const originalChunkItems = this.chunkItems;
+    const bounds = this.urbanRenderBounds || this.prepareUrbanRenderWindow();
 
-    this.chunkItems = function viceBloodCompletedSidewalkQuery(category, bounds, fallback, options = {}) {
-      if (category === "sidewalks") {
-        const margin = Math.max(0, finite(options.margin));
-        return completed.filter(surface => intersects(surface, bounds, margin));
-      }
-      return originalChunkItems.call(this, category, bounds, fallback, options);
-    };
+    withPresentationSidewalks(this, completed, () => this.prepareCitySurfaceGeometry(bounds));
+    const completedBoundary = this.citySurfaceGeometryCache?.boundary;
 
-    try {
-      const bounds = this.urbanRenderBounds || this.prepareUrbanRenderWindow();
-      this.prepareCitySurfaceGeometry(bounds);
-      this.map.fillStyle(COLORS.streetBase, 1).fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
-      this.drawOpenGroundWindow(bounds);
-      for (const road of this.chunkItems("roads", bounds, roads, { margin: 12 })) this.drawRoadWindow(road);
-      this.drawCurbsideStreetDetails(bounds);
-      this.drawSidewalkNetwork();
-      this.drawCrosswalkNetwork();
-      this.drawSewerManholes();
+    this.map.fillStyle(COLORS.streetBase, 1).fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
+    this.drawOpenGroundWindow(bounds);
+    for (const road of this.chunkItems("roads", bounds, roads, { margin: 12 })) this.drawRoadWindow(road);
+    this.drawCurbsideStreetDetails(bounds);
 
-      const visibleBuildings = this.chunkItems("buildings", bounds, buildings, { margin: 80 });
-      for (const building of visibleBuildings) this.drawBuilding(building);
-      this.drawFinalBuildingCurbOverlay(bounds, visibleBuildings);
+    withPresentationSidewalks(this, completed, () => this.drawSidewalkNetwork());
 
-      if (this.currentLayer > LAYERS.STREET) {
-        this.map.fillStyle(0x000000, 0.46).fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
-      }
-    } finally {
-      if (hadOwnChunkItems) this.chunkItems = originalChunkItems;
-      else delete this.chunkItems;
+    this.drawCrosswalkNetwork();
+    this.drawSewerManholes();
+
+    const visibleBuildings = this.chunkItems("buildings", bounds, buildings, { margin: 80 });
+    for (const building of visibleBuildings) this.drawBuilding(building);
+    this.drawFinalBuildingCurbOverlay(bounds, visibleBuildings, completedBoundary);
+
+    if (this.currentLayer > LAYERS.STREET) {
+      this.map.fillStyle(0x000000, 0.46).fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
     }
   };
 }
