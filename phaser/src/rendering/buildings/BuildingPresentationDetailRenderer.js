@@ -33,8 +33,36 @@ function isRaisedAnnex(module) {
   return module?.kind === MODULE_KINDS.ROOF_ANNEX && module.variant === "raised";
 }
 
+function drawAnnexServiceGrille(graphics, geometry, plan) {
+  const top = geometry.top;
+  if (top.w < 22 || top.h < 16) return null;
+
+  const margin = Math.max(2, Math.min(4, Math.min(top.w, top.h) * 0.1));
+  const width = Math.max(8, Math.min(15, top.w * 0.24));
+  const height = Math.max(4, Math.min(7, top.h * 0.17));
+  const bounds = {
+    x: top.x + top.w - margin - width,
+    y: top.y + margin,
+    w: width,
+    h: height
+  };
+
+  // One low-contrast recessed grille gives the annex a service-room purpose
+  // without turning the roof into an equipment icon or changing planned bounds.
+  graphics.fillStyle(plan.palette.propDark, 0.72);
+  graphics.fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
+
+  graphics.lineStyle(0.75, plan.palette.serviceMid, 0.52);
+  for (const ratio of [0.34, 0.68]) {
+    const y = bounds.y + bounds.h * ratio;
+    graphics.lineBetween(bounds.x + 1, y, bounds.x + bounds.w - 1, y);
+  }
+
+  return bounds;
+}
+
 function drawPhysicalAnnex(graphics, module, plan) {
-  return drawRaisedRectVolume(graphics, module.bounds, {
+  const geometry = drawRaisedRectVolume(graphics, module.bounds, {
     depth: physicalDepth(module.bounds, 0.16, 5),
     shadowColor: plan.palette.roofShadow,
     shadowAlpha: 0.46,
@@ -46,6 +74,8 @@ function drawPhysicalAnnex(graphics, module, plan) {
     seamColor: plan.palette.parapetMid,
     seamAlpha: 0.34
   });
+  drawAnnexServiceGrille(graphics, geometry, plan);
+  return geometry;
 }
 
 function drawDebugBounds(graphics, module) {
