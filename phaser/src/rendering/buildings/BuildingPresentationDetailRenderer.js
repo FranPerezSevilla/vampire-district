@@ -1,5 +1,8 @@
 import { MODULE_KINDS } from "./BuildingPresentationCatalog.js";
-import { createRaisedRectVolumeGeometry } from "./BuildingPresentationVolumePrimitives.js";
+import {
+  createCylindricalVolumeGeometry,
+  createRaisedRectVolumeGeometry
+} from "./BuildingPresentationVolumePrimitives.js";
 import {
   clearBuildingPresentationCache as clearPolishedBuildingPresentationCache,
   drawBuildingPresentation as drawPolishedBuildingPresentation,
@@ -17,6 +20,12 @@ function hatchTopGeometry(module) {
   return createRaisedRectVolumeGeometry(module.bounds, {
     depth: physicalDepth(module.bounds, 0.18, 3)
   }).top;
+}
+
+function ventTopGeometry(module) {
+  return createCylindricalVolumeGeometry(module.bounds, {
+    depth: physicalDepth(module.bounds, 0.15, 2.5)
+  });
 }
 
 function drawHatchHardware(graphics, module, plan) {
@@ -77,9 +86,43 @@ function drawHatchHardware(graphics, module, plan) {
   );
 }
 
+function drawVentOpening(graphics, module, plan) {
+  const geometry = ventTopGeometry(module);
+  const radius = Math.max(1, geometry.radius * 0.48);
+  const innerRadius = Math.max(0.75, radius * 0.72);
+
+  // The cylindrical volume already supplies duct body and cast/contact depth.
+  // This overlay makes the top read as an actual exhaust opening rather than a
+  // solid circular token: metal collar, recessed throat and directional rim.
+  graphics.fillStyle(plan.palette.propDark, 0.9);
+  graphics.fillCircle(geometry.center.x, geometry.center.y, radius * 1.12);
+
+  graphics.fillStyle(plan.palette.serviceDark, 0.96);
+  graphics.fillCircle(geometry.center.x, geometry.center.y, radius);
+
+  graphics.fillStyle(plan.palette.roofShadow, 0.32);
+  graphics.fillCircle(
+    geometry.center.x + innerRadius * 0.1,
+    geometry.center.y + innerRadius * 0.14,
+    innerRadius
+  );
+
+  graphics.lineStyle(1, plan.palette.serviceMid, 0.68);
+  graphics.strokeCircle(geometry.center.x, geometry.center.y, radius * 1.08);
+
+  graphics.lineStyle(0.75, plan.palette.parapetLight, 0.36);
+  graphics.lineBetween(
+    geometry.center.x - radius * 0.68,
+    geometry.center.y - radius * 0.46,
+    geometry.center.x + radius * 0.28,
+    geometry.center.y - radius * 0.46
+  );
+}
+
 function drawPhysicalDetailOverlays(graphics, plan) {
   for (const module of plan?.modules || []) {
     if (module.kind === MODULE_KINDS.HATCH) drawHatchHardware(graphics, module, plan);
+    else if (module.kind === MODULE_KINDS.VENT) drawVentOpening(graphics, module, plan);
   }
 }
 
