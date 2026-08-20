@@ -2,6 +2,47 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-20 — M2.4 church marker automated validation closed
+
+### Scope
+
+- Active milestone: M2.4
+- Task: close the already implemented church architectural marker after the exact implementation/test head finished automated validation
+- Authoritative files: roadmap, machine status and this append-only progress log
+- Focused evidence: workflow `32335254118` for head `366ac2f90da5483c844ce28822425429615de5d2` and the Netlify commit status for that same head
+- Acceptance criteria: unit job green, Netlify green, no new building-focused failure, PR #63 remains open/draft/mergeable, and the next task advances without implementing it in this run
+- Explicit non-goals: no renderer changes, no reusable family-neutral marker implementation, no hospital classifier/profile, no M3 material work, no gameplay/collision/topology/navigation/AI/mission/generated-city changes
+
+### Completed
+
+- confirmed the unit-test job in workflow `32335254118` completed successfully, including the focused church-marker contracts;
+- confirmed Netlify deploy preview remains green on exact church-marker implementation/test head `366ac2f90da5483c844ce28822425429615de5d2`;
+- classified the cancelled browser jobs in that workflow as superseded continuity noise after the branch head advanced, not a renderer regression; the bounded church-marker contract does not require those browser jobs;
+- marked the religious architectural marker checkbox complete in the roadmap;
+- advanced machine state from `M2.4c-church-marker-automated-validation-pending` to `M2.4d-family-neutral-marker-geometry`;
+- preserved the one-task-per-run boundary by not beginning the reusable marker geometry in this validation-closure run;
+- rechecked PR #63: open, draft and mergeable.
+
+### Validation
+
+- church-marker implementation commit: `5a89a4f3ef16c404209468ac1ba5e919338ff885`;
+- church-marker implementation/test head: `366ac2f90da5483c844ce28822425429615de5d2`;
+- GitHub workflow `32335254118` unit job: **success**;
+- Netlify deploy preview on exact implementation/test head: **success** — `https://deploy-preview-63--vampire-district.netlify.app`;
+- browser jobs on the old workflow: cancelled after later continuity/documentation heads superseded the run; no building-focused failure recorded;
+- PR #63: **open, draft, mergeable**;
+- authored bounds, gameplay and collision authority: **unchanged**.
+
+### Visual risk
+
+The church marker is now mechanically validated as physical roof architecture. Its apparent scale and warm-highlight readability remain intentionally deferred to M6 normal-gameplay review; no additional symbol emphasis is justified here.
+
+### Next
+
+Continue M2.4 with one bounded implementation of reusable, family-neutral architectural marker geometry suitable for the later medical profile. Reuse the physical-volume language, preserve authored bounds/determinism and add focused contracts. Do not introduce hospital classification or a medical profile before M4.
+
+---
+
 ## 2026-08-20 — M2.4 church marker architectural integration implemented; validation pending
 
 ### Scope
