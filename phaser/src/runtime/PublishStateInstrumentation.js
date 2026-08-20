@@ -7,7 +7,8 @@ const PHASE_REGISTRY_COMMIT = "PublishState.RegistryCommit";
 const SUMMARY_MISSION_ACTORS_MISSION = "PublishState.Summary.MissionActors.Mission";
 const SUMMARY_MISSION_ACTORS_NPC = "PublishState.Summary.MissionActors.Npc";
 const SUMMARY_MISSION_ACTORS_NEEDS_POWERS = "PublishState.Summary.MissionActors.NeedsPowers";
-const SUMMARY_PRESSURE_EVIDENCE = "PublishState.Summary.PressureEvidence";
+const SUMMARY_PRESSURE_EVIDENCE_PRESSURE = "PublishState.Summary.PressureEvidence.Pressure";
+const SUMMARY_PRESSURE_EVIDENCE_WITNESS_EVIDENCE = "PublishState.Summary.PressureEvidence.WitnessEvidence";
 const SUMMARY_RESPONSE_AI_SECURITY = "PublishState.Summary.ResponseAI.Security";
 const SUMMARY_RESPONSE_AI_WORLD = "PublishState.Summary.ResponseAI.WorldAI";
 const SUMMARY_TAIL = "PublishState.Summary.Tail";
@@ -127,16 +128,27 @@ export function installPublishStateInstrumentation(scene, diagnostics) {
     restorers
   );
 
-  // The grouped artifact proved PublishState.Summaries is the only stable coarse
-  // winner. Deepen only selected phases with existing method boundaries rather than
-  // returning to per-summary wrappers whose overhead dominated the leaf capture.
+  // The unchanged repeat selected PressureEvidence 24/24 at the current summary
+  // resolution, but the measured group is only ~0.074 ms mean. Split it once, using
+  // WitnessSystem.summary() as the only new boundary: Exposure + Heat/Wanted remain
+  // the Pressure phase, while Witness + Evidence become WitnessEvidence. Avoid a
+  // four-leaf wrapper set whose timer overhead would be comparable to the work.
   profileBoundary(
     scene.exposureSystem,
     "summary",
-    { before: () => transitionSummaryPhase(SUMMARY_PRESSURE_EVIDENCE) },
+    { before: () => transitionSummaryPhase(SUMMARY_PRESSURE_EVIDENCE_PRESSURE) },
     isActive,
     restorers
   );
+  profileBoundary(
+    scene.witnessSystem,
+    "summary",
+    { before: () => transitionSummaryPhase(SUMMARY_PRESSURE_EVIDENCE_WITNESS_EVIDENCE) },
+    isActive,
+    restorers
+  );
+
+  // Other selected summary groups remain at their previous low-overhead boundaries.
   profileBoundary(
     scene.policeSystem,
     "summary",
