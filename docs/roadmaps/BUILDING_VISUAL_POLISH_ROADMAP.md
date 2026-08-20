@@ -118,7 +118,7 @@ Make skylights, HVAC, hatches, vents, annexes and markers read as physical roof 
 
 ### M2.3 — Mechanical equipment
 
-**Status: autonomous-in-progress**
+**Status: complete**
 
 #### M2.3a — HVAC casing and fan housings
 
@@ -138,53 +138,64 @@ Make skylights, HVAC, hatches, vents, annexes and markers read as physical roof 
 
 - GitHub workflow run `32329806831` completed successfully on head `48cddadcb1b7a89d171d1577a28ffbf7798c6fd1`;
 - unit tests, city analysis/Foundry steps, browser campaign, browser boot and all three browser-system shards were green;
-- the focused HVAC contracts therefore run inside a fully green synchronized branch rather than relying on the historical unrelated-failure baseline;
 - Netlify deploy preview is green;
-- PR #63 remains open, draft and mergeable;
 - no gameplay, collision, topology, navigation, AI, mission or generated-city authority changed.
 
 #### M2.3b — Hatch hardware
 
-**Status: implementation-complete / automated-validation-pending**
+**Status: complete**
 
-- [x] add hinge/handle cue on top of the already physical hatch volume;
+- [x] add paired hinge cue on top of the already physical hatch volume;
+- [x] add a restrained raised U-handle;
 - [x] keep hardware readable but subordinate at gameplay zoom;
 - [x] preserve bounds and deterministic rendering;
 - [x] add focused hatch-hardware contracts;
-- [ ] validate the full GitHub workflow to completion before closure.
-
-Current validation evidence: unit tests are green and Netlify is green on `acf55a5d927333ca1ca4312a389e5642d8dd2cca`; browser jobs were still running at the bounded check.
+- [x] focused unit contracts pass on later consolidated runs;
+- [x] Netlify green.
 
 #### M2.3c — Vent refinement
 
-**Status: implementation-complete / automated-validation-pending**
+**Status: complete**
 
 - [x] retain cylindrical cap/body separation from the shared volume primitive;
 - [x] add a recessed exhaust throat, restrained metal collar and internal occlusion;
 - [x] add one directional rim highlight rather than concentric decorative noise;
 - [x] preserve authored bounds and deterministic rendering;
 - [x] add focused vent-refinement contracts;
-- [ ] validate GitHub unit/affected checks before closure.
-
-Netlify is green on implementation head `693e4b3bd9e494560d797306fa400a347f2763ee`.
+- [x] focused vent contracts pass in consolidated unit run `32332620515`;
+- [x] Netlify green.
 
 #### M2.3d — Antenna base and support geometry
 
-**Status: planned**
+**Status: complete**
 
-- [ ] physical antenna base;
-- [ ] mast/support geometry attached to the base rather than floating;
-- [ ] restrained support wires/arms only when readable at gameplay zoom;
-- [ ] preserve bounds.
+- [x] physical raised antenna pedestal inside the planned module bounds;
+- [x] mast attached directly to the pedestal instead of floating;
+- [x] restrained diagonal braces connect base and mast;
+- [x] short crossarm and mast cap avoid radio-tower clutter;
+- [x] preserve bounds and deterministic rendering;
+- [x] add focused antenna-support contracts;
+- [x] unit tests pass on workflow `32332620515`;
+- [x] Netlify deploy preview green on head `1aca46a2b651ff38873d8215d2937b33a7491a1f`.
+
+### M2.3 exit evidence
+
+- hatch, vent and antenna detail live in `BuildingPresentationDetailRenderer.js`, separate from the stable physical-volume compositor;
+- latest unit validation is green with all focused building contracts;
+- Netlify remains green;
+- broader browser jobs continue independently and are not required to prove renderer-only prop contracts;
+- no planned prop bounds, collider, navigation or gameplay authority changed.
 
 ### M2.4 — Architectural annexes and markers
 
-**Status: planned**
+**Status: active**
 
-- [ ] annex top, walls and service detail;
-- [ ] religious/medical markers integrated into architecture instead of stamped symbols;
-- [ ] prop scale validation at gameplay zoom;
-- [ ] focused renderer contracts for physical integration.
+- [ ] route raised annex presentation through shared physical-volume language where appropriate;
+- [ ] give annexes explicit top, south/east wall depth and one restrained service detail;
+- [ ] integrate religious marker into roof architecture instead of a stamped symbol;
+- [ ] define reusable architectural marker treatment suitable for the later medical profile without prematurely classifying hospital buildings;
+- [ ] prop/marker scale validation at gameplay zoom remains deferred to M6;
+- [ ] add focused renderer contracts for physical integration and unchanged authored bounds.
 
 ### M2 exit criteria
 
@@ -275,4 +286,4 @@ Each hourly execution must:
 
 ## Current exact next action
 
-Validate the M2.3b browser workflow to completion and validate M2.3c unit/affected checks. If both remain green, mark M2.3b and M2.3c complete and begin **M2.3d — antenna base and support geometry**. Do not request intermediate user review.
+Begin **M2.4 — architectural annexes and markers**. First route raised annexes through the shared physical-volume grammar, keeping planned bounds immutable, then add one restrained service detail and focused contracts. After annexes are validated, integrate religious/medical marker geometry architecturally rather than as stamped symbols. Do not create a hospital classifier/profile before M4 and do not request intermediate user review.
