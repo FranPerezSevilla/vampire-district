@@ -9,6 +9,7 @@ import {
   sewerTunnels,
   sidewalks
 } from "../data/district.js";
+import { drawBuildingPresentation } from "../rendering/BuildingPresentation.js";
 import { ModularCharacterView } from "../rendering/ModularCharacterView.js";
 import { installVehicleExplosionPresentation } from "../vehicles/VehicleExplosionPresentation.js";
 import { GameScene as GameSceneCore } from "./GameSceneCore.js";
@@ -299,25 +300,12 @@ export class GameScene extends GameSceneCore {
   }
 
   drawBuilding(building) {
-    const originalQuarter = building.x < 960 && building.y < 640;
-    if (originalQuarter) {
-      super.drawBuilding(building);
-      return;
-    }
-
-    this.map.fillStyle(building.color, 1).fillRect(building.x, building.y, building.w, building.h);
-    this.map.lineStyle(2, building.trim, 0.92).strokeRect(building.x, building.y, building.w, building.h);
-    this.map.fillStyle(0xffffff, 0.07);
-    const columns = Math.max(2, Math.min(6, Math.floor(building.w / 42)));
-    for (let index = 0; index < columns; index++) {
-      const x = building.x + 16 + index * Math.max(24, (building.w - 32) / columns);
-      this.map.fillRect(x, building.y + 18, 9, 5);
-    }
-
+    const plan = drawBuildingPresentation(this.map, building, { detailLevel: "standard" });
     const focus = this.renderFocus();
-    if (this.currentLayer === LAYERS.STREET
+    if (plan?.showLabel
+      && this.currentLayer === LAYERS.STREET
       && Phaser.Math.Distance.Between(focus.x, focus.y, building.x + building.w / 2, building.y + building.h / 2) < 520) {
-      this.addMapLabel(building.sign, building.x + 9, building.y + 15, 0xefe6ff);
+      this.addMapLabel(building.sign, building.x + 9, building.y + 15, plan?.labelColor || 0xefe6ff);
     }
   }
 

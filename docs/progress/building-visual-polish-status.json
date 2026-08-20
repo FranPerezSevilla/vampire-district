@@ -1,0 +1,130 @@
+{
+  "initiative": "building-visual-polish",
+  "version": 19,
+  "updatedAt": "2026-08-20",
+  "branch": "agent/building-visual-poc",
+  "pullRequest": 63,
+  "trackingIssue": 64,
+  "state": "complete",
+  "executionMode": "manual-chatgpt-closed",
+  "userValidation": "approved-2026-08-20",
+  "currentMilestone": "M6",
+  "currentTask": "complete",
+  "nextAction": "No further building-polish work is required in this initiative. Treat future visual improvements as new bounded iterations. PR #63 is ready for review; merge remains a separate explicit user action.",
+  "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
+  "finalReview": "docs/progress/BUILDING_VISUAL_POLISH_FINAL_REVIEW.md",
+  "automation": {
+    "provider": "ChatGPT scheduled task",
+    "targetBranch": "agent/building-visual-poc",
+    "trackingIssue": 64,
+    "enabled": false,
+    "reason": "initiative complete after final user visual approval"
+  },
+  "branchSync": {
+    "mainHeadIntegrated": "112bf924eac246ceb1adb95a06cd58bf36918356",
+    "behindMainAfterLastRecordedSync": 0,
+    "pullRequestMustRemainDraft": false,
+    "mergeRequiresExplicitUserApproval": true
+  },
+  "milestones": [
+    { "id": "P0", "name": "modular proof of concept", "status": "complete" },
+    { "id": "P1", "name": "fused silhouette pass", "status": "complete" },
+    { "id": "P2", "name": "approved overpaint translation", "status": "complete" },
+    { "id": "P3", "name": "multi-profile screenshot audit", "status": "complete" },
+    { "id": "M0", "name": "canonical direction and agent continuity", "status": "complete" },
+    { "id": "M1", "name": "architectural depth and removal of the legacy frame", "status": "complete" },
+    { "id": "M2", "name": "physical rooftop props", "status": "complete" },
+    {
+      "id": "M3",
+      "name": "surface material language",
+      "status": "complete",
+      "tasks": [
+        { "id": "M3.1", "name": "warehouse corrugation rhythm", "status": "complete" },
+        { "id": "M3.2", "name": "membrane seams", "status": "complete" },
+        { "id": "M3.3", "name": "civic surface order", "status": "complete" },
+        { "id": "M3.4", "name": "pitched-roof ridge shading", "status": "complete" },
+        { "id": "M3.5", "name": "night-roof tonal modulation", "status": "complete" },
+        { "id": "M3.6", "name": "deterministic low-frequency variation", "status": "complete" },
+        { "id": "M3.7", "name": "gameplay-cue material safety", "status": "complete" }
+      ]
+    },
+    {
+      "id": "M4",
+      "name": "family grammar expansion",
+      "status": "complete",
+      "tasks": [
+        { "id": "M4.1", "name": "dedicated medical visual profile", "status": "complete" },
+        { "id": "M4.2", "name": "police family refinement", "status": "complete" },
+        { "id": "M4.3", "name": "church monumental refinement", "status": "complete" },
+        { "id": "M4.4", "name": "club/nightlife refinement", "status": "complete" },
+        { "id": "M4.5", "name": "generic/residential/commercial differentiation", "status": "complete" },
+        { "id": "M4.6", "name": "ambiguous untagged policy", "status": "complete" },
+        { "id": "M4.7", "name": "whole-word conservative classification", "status": "complete" }
+      ]
+    },
+    {
+      "id": "M5",
+      "name": "composition and controlled variation",
+      "status": "complete",
+      "tasks": [
+        { "id": "M5.1", "name": "composition grammar", "status": "complete" },
+        { "id": "M5.2", "name": "deterministic prop grouping", "status": "complete" },
+        { "id": "M5.3", "name": "controlled service-slot rhythm", "status": "complete" },
+        { "id": "M5.4", "name": "avoidance zones", "status": "complete" },
+        { "id": "M5.5", "name": "large/small roof rules", "status": "complete" },
+        { "id": "M5.6", "name": "mixed-street repetition audit", "status": "complete" },
+        { "id": "M5.7", "name": "sparse gameplay readability", "status": "complete" }
+      ]
+    },
+    {
+      "id": "M6",
+      "name": "final polish and merge readiness",
+      "status": "complete",
+      "tasks": [
+        { "id": "M6.1", "name": "representative gameplay-scale screenshot package", "status": "complete" },
+        { "id": "M6.2", "name": "north-star comparison and bounded review fixes", "status": "complete" },
+        { "id": "M6.3", "name": "acceptance-rubric scorecard", "status": "complete" },
+        { "id": "M6.4", "name": "focused and affected automated validation", "status": "complete" },
+        { "id": "M6.5", "name": "single final user validation", "status": "complete" },
+        { "id": "M6.6", "name": "PR ready after approval", "status": "complete" }
+      ]
+    }
+  ],
+  "validation": {
+    "historicalEvidence": "docs/progress/BUILDING_VISUAL_POLISH_PROGRESS.md",
+    "finalVisualHead": "bd263451386ca89a0a6f942056bd135bc03c98f7",
+    "finalWorkflowRun": 32355086754,
+    "finalReviewArtifactId": 9401382945,
+    "finalReviewArtifactName": "building-visual-review",
+    "gameplayZoom": 1.847062190599483,
+    "unitTests": "success",
+    "browserCampaign": "success",
+    "browserBuildingReview": "success",
+    "browserBoot": "success",
+    "browserSystemsShard1": "success",
+    "browserSystemsShard2": "success",
+    "browserSystemsShard3": "success",
+    "netlify": "success",
+    "netlifyUrl": "https://deploy-preview-63--vampire-district.netlify.app",
+    "scorecard": {
+      "threshold": 1.6,
+      "representativeMean": 1.9,
+      "lowestRepresentativeScore": 1.71,
+      "blockingZeroes": 0,
+      "warehouse": 2.0,
+      "industrial": 1.86,
+      "police": 1.86,
+      "medical": 2.0,
+      "church": 2.0,
+      "nightlife": 1.86,
+      "generic": 1.71,
+      "mixedStreet": 1.86
+    },
+    "userVisualApproval": "success",
+    "approvedAt": "2026-08-20",
+    "finalReviewReport": "docs/progress/BUILDING_VISUAL_POLISH_FINAL_REVIEW.md",
+    "gameplayCollisionNavigationAuthority": "unchanged",
+    "generatedCityTopology": "unchanged",
+    "mergeState": "not-merged-by-design"
+  }
+}
