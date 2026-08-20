@@ -3,8 +3,12 @@ import test from "node:test";
 
 import {
   buildCornerArc,
+  buildCornerCurbSegments,
   buildCornerCutout,
+  buildCornerCutoutPolygon,
   buildCrosswalkMarkings,
+  buildMajorRoadCentreSegments,
+  buildOpenGroundDetails,
   buildSidewalkJointSegments,
   buildStreetGridLines
 } from "../phaser/src/policies/CitySurfacePresentationPolicy.js";
@@ -29,6 +33,22 @@ test("street grid stays globally aligned and marks larger paving seams", () => {
   assert.equal(lines.find(segment => segment.y1 === 256 && segment.y2 === 256)?.major, true);
 });
 
+test("open ground details are deterministic, sparse and clipped to the render window", () => {
+  const bounds = { x: 40, y: 70, w: 520, h: 360 };
+  const first = buildOpenGroundDetails(bounds, { cellSize: 176 });
+  const second = buildOpenGroundDetails(bounds, { cellSize: 176 });
+
+  assert.deepEqual(first, second);
+  assert.ok(first.panels.length > 0);
+  assert.ok(first.scuffs.length > 0);
+  assert.ok(first.panels.every(panel => (
+    panel.x >= bounds.x
+    && panel.y >= bounds.y
+    && panel.x + panel.w <= bounds.x + bounds.w + 0.001
+    && panel.y + panel.h <= bounds.y + bounds.h + 0.001
+  )));
+});
+
 test("sidewalk panel joints follow the long axis and stay inside the visible fragment", () => {
   const walk = {
     x: 100,
@@ -48,15 +68,66 @@ test("sidewalk panel joints follow the long axis and stay inside the visible fra
   assert.ok(segments.every(segment => segment.y1 >= walk.y && segment.y2 <= walk.y + walk.h));
 });
 
-test("junction corner cutouts create a deterministic quarter-arc curb", () => {
+test("junction corner cutout only removes the intended quarter and reconnects both curb legs", () => {
   const walk = { x: 300, y: 400, w: 22, h: 22, role: "corner", corner: "nw" };
   const cutout = buildCornerCutout(walk);
   const arc = buildCornerArc(cutout, 6);
+  const polygon = buildCornerCutoutPolygon(cutout, 6);
+  const curbSegments = buildCornerCurbSegments(walk, cutout);
 
   assert.deepEqual({ x: cutout.x, y: cutout.y }, { x: 322, y: 422 });
-  assert.ok(cutout.radius >= 5 && cutout.radius <= 11);
+  assert.ok(cutout.radius >= 5 && cutout.radius <= 8);
   assert.equal(arc.length, 7);
+  assert.equal(polygon.length, 8);
+  assert.deepEqual(polygon[0], { x: cutout.x, y: cutout.y });
   assert.ok(arc.every(point => point.x <= cutout.x + 0.001 && point.y <= cutout.y + 0.001));
+  assert.equal(curbSegments.length, 2);
+  assert.deepEqual(curbSegments[0], {
+    x1: walk.x,
+    y1: walk.y + walk.h,
+    x2: cutout.x - cutout.radius,
+    y2: walk.y + walk.h,
+    major: false
+  });
+  assert.deepEqual(curbSegments[1], {
+    x1: walk.x + walk.w,
+    y1: walk.y,
+    x2: walk.x + walk.w,
+    y2: cutout.y - cutout.radius,
+    major: false
+  });
+});
+
+test("major road paint keeps a double centre line but introduces deterministic wear gaps and approach inset", () => {
+  const road = {
+    id: "road-segment:test-major",
+    x: 100,
+    y: 200,
+    w: 520,
+    h: 100,
+    orientation: "horizontal",
+    pieceKind: "segment",
+    roadClass: "major"
+  };
+  const fragment = { ...road };
+  const paint = buildMajorRoadCentreSegments(road, fragment, { approachInset: 14 });
+
+  assert.ok(paint.length >= 4);
+  assert.equal(paint.length % 2, 0);
+  assert.ok(paint.every(segment => segment.x >= road.x + 14 - 0.001));
+  assert.ok(paint.every(segment => segment.x + segment.w <= road.x + road.w - 14 + 0.001));
+  assert.ok(paint.every(segment => segment.alpha >= 0.56 && segment.alpha <= 0.74));
+
+  const firstPair = paint.slice(0, 2);
+  assert.equal(firstPair[0].x, firstPair[1].x);
+  assert.equal(firstPair[0].w, firstPair[1].w);
+  assert.notEqual(firstPair[0].y, firstPair[1].y);
+
+  const pairedRuns = paint.filter((_, index) => index % 2 === 0);
+  assert.ok(pairedRuns.some((segment, index) => {
+    const next = pairedRuns[index + 1];
+    return next && next.x > segment.x + segment.w;
+  }));
 });
 
 test("crosswalk plan renders zebra bands, tactile paving and an approach stop line", () => {
