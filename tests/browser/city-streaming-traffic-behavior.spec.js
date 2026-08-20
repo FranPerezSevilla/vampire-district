@@ -146,7 +146,7 @@ test("local traffic visibly steers around a parked car and counter-steers back i
     const selected = initial.vehicles.find(vehicle => (
       vehicle.phase > 0.12
       && vehicle.phase < 0.68
-      && baseBehaviorReason(vehicle.reason) === "lane"
+      && String(vehicle.reason || "").replace(/^assertive-/, "") === "lane"
     )) || initial.vehicles.find(vehicle => vehicle.phase > 0.12 && vehicle.phase < 0.68);
     if (!selected) return { missing: true, initial };
 
