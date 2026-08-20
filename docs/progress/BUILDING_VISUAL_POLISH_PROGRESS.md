@@ -2,6 +2,51 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-20 — M2 physical rooftop props complete; M3 opened
+
+### Scope
+
+- Active milestone: M2.4 → M3
+- Task: validate and close the family-neutral architectural-marker increment on its exact implementation/test head, then advance the machine state to the first M3 material task without implementing M3 in this run
+- Authoritative files: `BuildingPresentationMarkerGeometry.js`, `BuildingPresentationDetailRenderer.js`, `tests/building-marker-geometry.test.js`, roadmap, machine status and this append-only log
+- Acceptance criteria: reusable geometry remains family-neutral, authored bounds remain immutable, deterministic contracts pass, full workflow green, Netlify green, M2 exit criteria satisfied and PR #63 remains draft/unmerged
+- Explicit non-goals: no hospital classifier/profile, no warehouse material change yet, no membrane/civic/pitched/night material work, no gameplay/collision/topology/navigation/AI/mission/generated-city edits
+
+### Completed
+
+- confirmed `createOrthogonalMarkerGeometry(...)` provides deterministic joined orthogonal marker geometry with configurable proportions but no church/medical semantic classification;
+- confirmed the church marker consumes that shared geometry rather than retaining a private cross-segment geometry implementation;
+- confirmed `tests/building-marker-geometry.test.js` covers centered/default geometry, unchanged authored bounds, joined/contained segments, deterministic alternate proportions and safe omission for undersized regions;
+- confirmed the existing physical church-marker contracts remain part of the green building suite;
+- confirmed no hospital classifier or medical profile was introduced before M4;
+- marked the reusable-marker and focused-contract M2.4 tasks complete;
+- recorded gameplay-scale prop/marker judgement as intentionally deferred to the single M6 normal-gameplay review rather than an intermediate user gate;
+- closed M2 and opened M3 with `M3.1-corrugated-warehouse-rhythm` as the exact next bounded task.
+
+### Validation
+
+- family-neutral geometry commit: `38eb9c2682edaab7926afd797b97b229cd36413e`;
+- church renderer integration commit: `b0ad6403685789a2714c834d37d66caeb274ccea`;
+- exact implementation/test head: `6dae004310fe18d02a627852337059106b26b8be`;
+- GitHub workflow `32339748152`: **success**;
+- unit tests: **success**;
+- browser campaign: **success**;
+- browser boot: **success**;
+- browser systems shards 1/3, 2/3 and 3/3: **success**;
+- Netlify deploy preview: **success** — `https://deploy-preview-63--vampire-district.netlify.app`;
+- authored marker/building bounds, gameplay and collision authority: **unchanged**;
+- PR #63 remained open, draft and mergeable at the M2 exit checkpoint.
+
+### Visual risk
+
+Automated geometry and renderer contracts prove physical integration, containment and deterministic reuse, not final apparent prop scale. That judgement remains intentionally deferred to M6. M3 should now improve material readability without increasing high-frequency roof noise or obscuring gameplay cues.
+
+### Next
+
+Begin M3.1 with one renderer-only warehouse corrugation increment: reduce rib contrast and group the rhythm so the roof reads as corrugated material rather than evenly repeated interface lines. Preserve authored geometry and deterministic output, add focused contracts and keep Netlify green before advancing to membrane seams.
+
+---
+
 ## 2026-08-20 — M2.4 church marker automated validation closed
 
 ### Scope
@@ -192,7 +237,7 @@ Continue M2.4 with one restrained service detail on the physical raised annex, p
 - M2.3c focused unit contracts: **pass**;
 - M2.3d antenna-support contracts: **pass**;
 - GitHub unit job: **success** in workflow `32332620515`;
-- broader browser jobs: still running independently at the bounded check and not required to prove renderer-only prop contracts;
+- broader browser jobs: still running independently at the bounded check and not required to prove renderer-only detail contracts;
 - Netlify: **success** — `https://deploy-preview-63--vampire-district.netlify.app`;
 - authored prop bounds and gameplay/collision authority: **unchanged**.
 
