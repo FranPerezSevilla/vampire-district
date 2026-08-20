@@ -75,11 +75,13 @@ test("medical profile assembles a cool institutional roof with physical annex an
   };
   const plan = createBuildingPresentationPlan(building);
 
+  const foundation = plan.modules.find(module => module.kind === MODULE_KINDS.FOUNDATION);
   const roof = plan.modules.find(module => module.kind === MODULE_KINDS.ROOF_MASS);
   const annex = plan.modules.find(module => module.kind === MODULE_KINDS.ROOF_ANNEX);
   const hvac = plan.modules.find(module => module.kind === MODULE_KINDS.HVAC);
   const skylight = plan.modules.find(module => module.kind === MODULE_KINDS.SKYLIGHT);
 
+  assert.ok(foundation);
   assert.ok(roof);
   assert.equal(roof.profileId, "medical");
   assert.equal(roof.surfaceKind, ROOF_SURFACE_KINDS.SMOOTH);
@@ -87,5 +89,9 @@ test("medical profile assembles a cool institutional roof with physical annex an
   assert.equal(annex.variant, "raised");
   assert.ok(hvac, "medical profile should prioritize clean mechanical plant");
   assert.ok(skylight, "medical profile should prioritize controlled daylight/skylight structure");
-  assert.deepEqual(plan.footprint, authored, "visual medical classification must preserve authored building bounds");
+  assert.deepEqual(
+    foundation.bounds,
+    authored,
+    "visual medical classification must preserve authored building bounds"
+  );
 });
