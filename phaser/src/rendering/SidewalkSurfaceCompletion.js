@@ -1,6 +1,8 @@
 const EPSILON = 0.001;
 const DEFAULT_SIDEWALK_WIDTH = 22;
 const DEFAULT_MINIMUM_FRAGMENT_LENGTH = 8;
+const DEFAULT_AUDIT_SAMPLE_SPACING = 14;
+const DEFAULT_CURB_SAMPLE_INSET = 1;
 
 function finite(value, fallback = 0) {
   const number = Number(value);
@@ -48,6 +50,44 @@ function isAlley(segment) {
 function positiveOverlap(left, rightValue) {
   return Math.min(right(left), right(rightValue)) - Math.max(finite(left.x), finite(rightValue.x)) > EPSILON
     && Math.min(bottom(left), bottom(rightValue)) - Math.max(finite(left.y), finite(rightValue.y)) > EPSILON;
+}
+
+function pointOnSegment(point, a, b, epsilon = EPSILON) {
+  const abX = finite(b?.x) - finite(a?.x);
+  const abY = finite(b?.y) - finite(a?.y);
+  const apX = finite(point?.x) - finite(a?.x);
+  const apY = finite(point?.y) - finite(a?.y);
+  const cross = abX * apY - abY * apX;
+  if (Math.abs(cross) > epsilon * Math.max(1, Math.hypot(abX, abY))) return false;
+  const dot = apX * abX + apY * abY;
+  if (dot < -epsilon) return false;
+  return dot <= abX * abX + abY * abY + epsilon;
+}
+
+function pointInPolygon(point, points) {
+  let inside = false;
+  for (let index = 0, previous = points.length - 1; index < points.length; previous = index++) {
+    const a = points[previous];
+    const b = points[index];
+    if (pointOnSegment(point, a, b)) return true;
+    const crosses = (finite(a.y) > finite(point.y)) !== (finite(b.y) > finite(point.y));
+    if (!crosses) continue;
+    const x = finite(a.x) + ((finite(point.y) - finite(a.y)) * (finite(b.x) - finite(a.x)))
+      / ((finite(b.y) - finite(a.y)) || Number.EPSILON);
+    if (x > finite(point.x)) inside = !inside;
+  }
+  return inside;
+}
+
+function pointInSurface(point, surface) {
+  if (!surface) return false;
+  if (surface.geometry === "polygon" && Array.isArray(surface.points) && surface.points.length >= 3) {
+    return pointInPolygon(point, surface.points);
+  }
+  return finite(point.x) >= finite(surface.x) - EPSILON
+    && finite(point.x) <= right(surface) + EPSILON
+    && finite(point.y) >= finite(surface.y) - EPSILON
+    && finite(point.y) <= bottom(surface) + EPSILON;
 }
 
 function stripAxisBounds(strip) {
@@ -182,20 +222,46 @@ function stableSort(left, rightValue) {
     || String(left.id).localeCompare(String(rightValue.id));
 }
 
+function curbSamplePoint(strip, coordinate, inset) {
+  const safeInset = Math.max(0.25, Math.min(finite(inset, DEFAULT_CURB_SAMPLE_INSET), Math.min(strip.w, strip.h) / 2));
+  if (strip.orientation === "horizontal") {
+    return {
+      x: coordinate,
+      y: strip.side === "north" ? bottom(strip) - safeInset : finite(strip.y) + safeInset
+    };
+  }
+  return {
+    x: strip.side === "west" ? right(strip) - safeInset : finite(strip.x) + safeInset,
+    y: coordinate
+  };
+}
+
+function sampleCoordinates(interval, spacing) {
+  const length = interval.end - interval.start;
+  if (length <= EPSILON) return [];
+  const margin = Math.min(1, length / 4);
+  const start = interval.start + margin;
+  const end = interval.end - margin;
+  if (end <= start + EPSILON) return [(interval.start + interval.end) / 2];
+  const result = [start];
+  for (let value = start + spacing; value < end - EPSILON; value += spacing) result.push(value);
+  if (end - result[result.length - 1] > spacing * 0.35) result.push(end);
+  return result;
+}
+
 /**
- * Completes the visual road-edge sidewalk bands from the final runtime geometry.
+ * Derives missing visual sidewalk fragments from the road right-of-way.
  *
- * Generated sidewalks are authored against compile-time building footprints. A small
- * number of buildings are subsequently fitted to those sidewalks at runtime, which
- * can expose empty road frontage that never received a sidewalk surface. This pass
- * rebuilds only the newly available road-edge fragments from the final buildings,
- * while preserving junction clearances and every already-authored sidewalk surface.
+ * Buildings are deliberately not blockers. A building may visually cover the parcel
+ * side of a sidewalk when it is rendered later, but it is not allowed to delete the
+ * road-facing pedestrian band or its curb. Only another road/junction surface may
+ * interrupt that infrastructure. Existing authored sidewalks are subtracted solely to
+ * avoid duplicate fill/joint work; the final curb still comes from the geometric union.
  */
 export function buildRoadEdgeSidewalkInfill({
   roadSegments = [],
   roads = [],
   sidewalks = [],
-  buildings = [],
   world = null,
   sidewalkWidth = DEFAULT_SIDEWALK_WIDTH,
   minimumFragmentLength = DEFAULT_MINIMUM_FRAGMENT_LENGTH,
@@ -211,10 +277,9 @@ export function buildRoadEdgeSidewalkInfill({
 
     const owningRoadId = String(segment.id || "");
     const blockingRoads = roads.filter(road => String(road?.id || "") !== owningRoadId);
-    const blockingSurfaces = [...buildings, ...blockingRoads];
 
     for (const strip of baseStripsForRoad(segment, safeWidth, world)) {
-      const unobstructed = subtractSurfaces(strip, blockingSurfaces);
+      const unobstructed = subtractSurfaces(strip, blockingRoads);
       const uncovered = [];
       for (const interval of unobstructed) {
         const provisional = fragmentFromInterval(strip, interval, 0, 1);
@@ -233,4 +298,50 @@ export function buildRoadEdgeSidewalkInfill({
 export function buildCompletedSidewalkSurfaces(options = {}) {
   const authored = Array.isArray(options.sidewalks) ? options.sidewalks : [];
   return [...authored, ...buildRoadEdgeSidewalkInfill(options)];
+}
+
+/**
+ * Audits the road-facing edge of every standard road segment. The audit samples only
+ * intervals that are not occupied by another road/junction and reports coordinates
+ * where no pedestrian surface reaches the curb. This turns missing curbs into a city-
+ * wide invariant rather than a screenshot-by-screenshot discovery process.
+ */
+export function auditRoadEdgeSidewalkCoverage({
+  roadSegments = [],
+  roads = [],
+  sidewalks = [],
+  world = null,
+  sidewalkWidth = DEFAULT_SIDEWALK_WIDTH,
+  includeAlleys = false,
+  sampleSpacing = DEFAULT_AUDIT_SAMPLE_SPACING,
+  curbInset = DEFAULT_CURB_SAMPLE_INSET
+} = {}) {
+  const safeWidth = Math.max(4, finite(sidewalkWidth, DEFAULT_SIDEWALK_WIDTH));
+  const safeSpacing = Math.max(4, finite(sampleSpacing, DEFAULT_AUDIT_SAMPLE_SPACING));
+  const gaps = [];
+
+  for (const segment of roadSegments) {
+    if (!segment || finite(segment.w) <= EPSILON || finite(segment.h) <= EPSILON) continue;
+    if (!includeAlleys && isAlley(segment)) continue;
+    const owningRoadId = String(segment.id || "");
+    const blockingRoads = roads.filter(road => String(road?.id || "") !== owningRoadId);
+
+    for (const strip of baseStripsForRoad(segment, safeWidth, world)) {
+      for (const interval of subtractSurfaces(strip, blockingRoads)) {
+        for (const coordinate of sampleCoordinates(interval, safeSpacing)) {
+          const point = curbSamplePoint(strip, coordinate, curbInset);
+          if (sidewalks.some(surface => pointInSurface(point, surface))) continue;
+          gaps.push({
+            roadId: String(segment.id || ""),
+            graphEdgeId: String(segment.graphEdgeId || ""),
+            side: strip.side,
+            x: rounded(point.x),
+            y: rounded(point.y)
+          });
+        }
+      }
+    }
+  }
+
+  return { valid: gaps.length === 0, gaps };
 }

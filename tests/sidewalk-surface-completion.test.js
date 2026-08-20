@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { CITY_WORLD, roadSegments as productionRoadSegments, roads as productionRoads, sidewalks as productionSidewalks } from "../phaser/src/data/generated/city-topology-v2.js";
+
 import {
+  auditRoadEdgeSidewalkCoverage,
   buildCompletedSidewalkSurfaces,
   buildRoadEdgeSidewalkInfill
 } from "../phaser/src/rendering/SidewalkSurfaceCompletion.js";
@@ -59,27 +62,23 @@ function southWalk() {
 test("runtime-fitted building frontage receives the sidewalk fragment missing from compile-time geometry", () => {
   const segment = horizontalRoad();
   const authored = [northWalk("north-left", 0, 60), northWalk("north-right", 140, 60), southWalk()];
-  // The original building covered x=60..140 when sidewalks were compiled. At runtime
-  // it has been fitted back to x=60..100, exposing a genuine forty-pixel frontage gap.
-  const finalBuildings = [{ id: "fitted-building", x: 60, y: 70, w: 40, h: 30 }];
   const infill = buildRoadEdgeSidewalkInfill({
     roadSegments: [segment],
     roads: [segment],
     sidewalks: authored,
-    buildings: finalBuildings,
     world: { width: 400, height: 300 }
   });
 
   const north = infill.filter(surface => surface.side === "north");
   assert.deepEqual(north.map(surface => ({ x: surface.x, y: surface.y, w: surface.w, h: surface.h })), [
-    { x: 100, y: 78, w: 40, h: 22 }
+    { x: 60, y: 78, w: 80, h: 22 }
   ]);
   assert.equal(infill.some(surface => surface.side === "south"), false);
 });
 
-test("completion never paints through final buildings or duplicates authored sidewalk coverage", () => {
+test("building footprints cannot erase road-owned sidewalk or curb coverage", () => {
   const segment = horizontalRoad();
-  const building = { id: "frontage-building", x: 70, y: 78, w: 60, h: 22 };
+  const building = { id: "frontage-building", x: 40, y: 70, w: 120, h: 40 };
   const authored = [northWalk("north-left", 0, 40), northWalk("north-right", 160, 40), southWalk()];
   const infill = buildRoadEdgeSidewalkInfill({
     roadSegments: [segment],
@@ -90,10 +89,18 @@ test("completion never paints through final buildings or duplicates authored sid
     minimumFragmentLength: 8
   });
 
-  assert.ok(infill.every(surface => !overlaps(surface, building)));
+  assert.ok(infill.some(surface => surface.side === "north" && surface.x === 40 && surface.w === 120));
+  assert.ok(infill.some(surface => overlaps(surface, building)));
   assert.ok(infill.every(surface => authored.every(walk => !overlaps(surface, walk))));
-  assert.ok(infill.some(surface => surface.side === "north" && surface.x === 40 && surface.w === 30));
-  assert.ok(infill.some(surface => surface.side === "north" && surface.x === 130 && surface.w === 30));
+
+  const completed = [...authored, ...infill];
+  const audit = auditRoadEdgeSidewalkCoverage({
+    roadSegments: [segment],
+    roads: [segment],
+    sidewalks: completed,
+    world: { width: 400, height: 300 }
+  });
+  assert.deepEqual(audit, { valid: true, gaps: [] });
 });
 
 test("junction road pieces preserve intersection clearance at road-segment ends", () => {
@@ -113,7 +120,6 @@ test("junction road pieces preserve intersection clearance at road-segment ends"
     roadSegments: [segment],
     roads: [segment, junction],
     sidewalks: authored,
-    buildings: [],
     world: { width: 400, height: 300 }
   });
 
@@ -128,14 +134,12 @@ test("alley coverage remains authored unless explicitly requested", () => {
     roadSegments: [alley],
     roads: [alley],
     sidewalks: [],
-    buildings: [],
     world: { width: 400, height: 300 }
   });
   const included = buildRoadEdgeSidewalkInfill({
     roadSegments: [alley],
     roads: [alley],
     sidewalks: [],
-    buildings: [],
     world: { width: 400, height: 300 },
     includeAlleys: true
   });
@@ -151,7 +155,6 @@ test("completed sidewalk collection is deterministic and keeps authored surfaces
     roadSegments: [segment],
     roads: [segment],
     sidewalks: authored,
-    buildings: [],
     world: { width: 400, height: 300 }
   };
   const first = buildCompletedSidewalkSurfaces(options);
@@ -160,4 +163,42 @@ test("completed sidewalk collection is deterministic and keeps authored surfaces
   assert.deepEqual(first, second);
   assert.deepEqual(first.slice(0, authored.length), authored);
   assert.ok(first.slice(authored.length).every(surface => surface.presentationOnly === true));
+});
+
+test("coverage audit reports the exact road side and coordinates of an unfilled gap", () => {
+  const segment = horizontalRoad();
+  const incomplete = [northWalk("north-left", 0, 70), northWalk("north-right", 130, 70), southWalk()];
+  const audit = auditRoadEdgeSidewalkCoverage({
+    roadSegments: [segment],
+    roads: [segment],
+    sidewalks: incomplete,
+    world: { width: 400, height: 300 },
+    sampleSpacing: 10
+  });
+
+  assert.equal(audit.valid, false);
+  assert.ok(audit.gaps.length > 0);
+  assert.ok(audit.gaps.every(gap => gap.roadId === segment.id && gap.side === "north"));
+  assert.ok(audit.gaps.some(gap => gap.x > 70 && gap.x < 130 && gap.y === 99));
+});
+
+test("production city satisfies the road-edge sidewalk invariant everywhere", () => {
+  const completed = buildCompletedSidewalkSurfaces({
+    roadSegments: productionRoadSegments,
+    roads: productionRoads,
+    sidewalks: productionSidewalks,
+    world: CITY_WORLD,
+    sidewalkWidth: 22,
+    minimumFragmentLength: 8
+  });
+  const audit = auditRoadEdgeSidewalkCoverage({
+    roadSegments: productionRoadSegments,
+    roads: productionRoads,
+    sidewalks: completed,
+    world: CITY_WORLD,
+    sidewalkWidth: 22,
+    sampleSpacing: 12
+  });
+
+  assert.equal(audit.valid, true, JSON.stringify(audit.gaps.slice(0, 20)));
 });

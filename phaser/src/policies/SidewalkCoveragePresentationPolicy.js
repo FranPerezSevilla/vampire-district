@@ -1,5 +1,5 @@
 import { WORLD } from "../data/balance.js";
-import { buildings, roadSegments, roads, sidewalks } from "../data/district.js";
+import { roadSegments, roads, sidewalks } from "../data/district.js";
 import { buildCompletedSidewalkSurfaces } from "../rendering/SidewalkSurfaceCompletion.js";
 
 function finite(value, fallback = 0) {
@@ -29,7 +29,6 @@ function completedSidewalksFor(scene) {
     roadSegments,
     roads,
     sidewalks,
-    buildings,
     world: WORLD,
     sidewalkWidth: 22,
     minimumFragmentLength: 8
@@ -42,19 +41,19 @@ function completedSidewalksFor(scene) {
 }
 
 /**
- * Installs after CitySurfacePresentationPolicy and supplies its renderer with a
- * completed visual sidewalk surface set. Gameplay, navigation and generated city
- * ownership remain unchanged; only the surface collection used during street drawing
- * is replaced for the duration of drawSidewalkNetwork.
+ * Supplies the entire street-render pass with the road-owned pedestrian surface set.
+ * Patching the query for the full draw keeps sidewalk fill, canonical curb geometry,
+ * gutter bands and drains on the same source of truth. Gameplay/navigation collections
+ * remain unchanged because the replacement exists only while district surfaces render.
  */
 export function installSidewalkCoveragePresentationPolicy(GameSceneClass) {
   const prototype = GameSceneClass?.prototype;
   if (!prototype || prototype.__viceSidewalkCoveragePresentationPolicy) return;
-  const originalDrawSidewalkNetwork = prototype.drawSidewalkNetwork;
-  if (typeof originalDrawSidewalkNetwork !== "function") return;
+  const originalDrawDistrictStreet = prototype.drawDistrictStreet;
+  if (typeof originalDrawDistrictStreet !== "function") return;
   prototype.__viceSidewalkCoveragePresentationPolicy = true;
 
-  prototype.drawSidewalkNetwork = function viceBloodDrawCompletedSidewalkNetwork(...args) {
+  prototype.drawDistrictStreet = function viceBloodDrawCompletedSidewalkDistrict(...args) {
     const completed = completedSidewalksFor(this);
     const hadOwnChunkItems = Object.prototype.hasOwnProperty.call(this, "chunkItems");
     const originalChunkItems = this.chunkItems;
@@ -68,7 +67,7 @@ export function installSidewalkCoveragePresentationPolicy(GameSceneClass) {
     };
 
     try {
-      return originalDrawSidewalkNetwork.apply(this, args);
+      return originalDrawDistrictStreet.apply(this, args);
     } finally {
       if (hadOwnChunkItems) this.chunkItems = originalChunkItems;
       else delete this.chunkItems;
