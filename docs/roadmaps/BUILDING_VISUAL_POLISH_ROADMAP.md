@@ -122,7 +122,7 @@ Make skylights, HVAC, hatches, vents, annexes and markers read as physical roof 
 
 #### M2.3a — HVAC casing and fan housings
 
-**Status: implementation-complete / automated-validation-pending**
+**Status: complete**
 
 - [x] route HVAC through the shared raised-rectangle volume primitive;
 - [x] give the casing distinct top, south and east faces;
@@ -131,16 +131,27 @@ Make skylights, HVAC, hatches, vents, annexes and markers read as physical roof 
 - [x] support one or two fan housings from equipment proportions without planner-specific geometry;
 - [x] preserve authored HVAC bounds;
 - [x] add focused mechanical-rendering contracts;
-- [ ] focused validation green on the main-synchronized implementation head;
-- [ ] Netlify deploy preview green on the main-synchronized implementation head.
+- [x] focused validation green on the main-synchronized implementation head;
+- [x] Netlify deploy preview green on the main-synchronized implementation head.
+
+### M2.3a evidence
+
+- GitHub workflow run `32329806831` completed successfully on head `48cddadcb1b7a89d171d1577a28ffbf7798c6fd1`;
+- unit tests, city analysis/Foundry steps, browser campaign, browser boot and all three browser-system shards were green;
+- the focused HVAC contracts therefore run inside a fully green synchronized branch rather than relying on the historical unrelated-failure baseline;
+- Netlify deploy preview is green;
+- PR #63 remains open, draft and mergeable;
+- no gameplay, collision, topology, navigation, AI, mission or generated-city authority changed.
 
 #### M2.3b — Hatch hardware
 
-**Status: planned**
+**Status: active**
 
 - [ ] add hinge/handle cue on top of the already physical hatch volume;
 - [ ] keep hardware readable but subordinate at gameplay zoom;
-- [ ] preserve bounds and deterministic rendering.
+- [ ] preserve bounds and deterministic rendering;
+- [ ] add focused hatch-hardware contracts;
+- [ ] validate focused/affected CI and Netlify before advancing.
 
 #### M2.3c — Vent refinement
 
@@ -257,4 +268,4 @@ Each hourly execution must:
 
 ## Current exact next action
 
-Validate M2.3a on the main-synchronized branch. If the mechanical building contracts and Netlify are green, mark M2.3a complete and continue with **M2.3b — hatch hardware**. Do not request intermediate user review.
+Implement **M2.3b — hatch hardware** on top of the existing physical hatch volume. Add restrained hinge and handle cues that remain subordinate at gameplay zoom, preserve authored bounds and deterministic rendering, add focused contracts, then validate GitHub CI and Netlify before advancing to M2.3c. Do not request intermediate user review.
