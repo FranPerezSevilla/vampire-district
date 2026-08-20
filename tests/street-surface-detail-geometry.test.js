@@ -27,7 +27,7 @@ function pointsBounds(points) {
 
 test("road repairs are deterministic, irregular and kept clear of crosswalk approaches", () => {
   const road = {
-    id: "road-0",
+    id: "road-8",
     x: 0,
     y: 0,
     w: 600,
