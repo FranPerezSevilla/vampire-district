@@ -50,7 +50,7 @@ export function paintVehicle(scene, container, definition, archetype) {
     return part;
   };
   const dot = (x, y, w, h, fill, alpha = 1) => {
-    const part = scene.add.ellipse(x, y, Math.max(1, w), Math.max(1, h), fill, alpha);
+    const part = scene.add.rectangle(x, y, Math.max(1, w), Math.max(1, h), fill, alpha);
     parts.push(part);
     return part;
   };
@@ -126,7 +126,7 @@ export function paintVehicle(scene, container, definition, archetype) {
   detail(-width * 0.43, height * 0.31, width * 0.08, lampH, 0xb64d42, 0.82);
 
   if (style === "compact") {
-    // Retro compact: rounded lamps and a tiny grille echo the teal reference without importing realism.
+    // Retro compact: small square lamps and a tiny grille echo the teal reference at gameplay scale.
     dot(width * 0.42, -height * 0.29, height * 0.18, height * 0.18, 0xf0d48f, 0.96);
     dot(width * 0.42, height * 0.29, height * 0.18, height * 0.18, 0xf0d48f, 0.96);
     detail(width * 0.39, 0, width * 0.08, height * 0.24, 0x151b21, 0.92);
