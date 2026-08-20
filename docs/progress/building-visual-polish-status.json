@@ -1,6 +1,6 @@
 {
   "initiative": "building-visual-polish",
-  "version": 12,
+  "version": 13,
   "updatedAt": "2026-08-20",
   "branch": "agent/building-visual-poc",
   "pullRequest": 63,
@@ -8,9 +8,9 @@
   "state": "active",
   "executionMode": "chatgpt-hourly-final-gate",
   "userValidation": "M6-final-only",
-  "currentMilestone": "M2",
-  "currentTask": "M2.4d-family-neutral-marker-geometry",
-  "nextAction": "Continue M2.4 with one bounded increment that defines reusable family-neutral architectural marker geometry suitable for the later medical profile. Reuse the existing physical-volume language, preserve authored marker bounds and deterministic rendering, and add focused contracts. Do not introduce hospital classification/profile work before M4.",
+  "currentMilestone": "M3",
+  "currentTask": "M3.1-corrugated-warehouse-rhythm",
+  "nextAction": "Begin M3 with one bounded renderer-only material increment: lower the contrast of warehouse corrugated ribs and group their rhythm so they read as roof material rather than repeated UI lines. Preserve deterministic composition, authored geometry and gameplay readability; add focused contracts and keep Netlify green before advancing to membrane seams.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "automation": {
     "provider": "ChatGPT scheduled task",
@@ -49,7 +49,7 @@
     {
       "id": "M2",
       "name": "physical rooftop props",
-      "status": "autonomous-in-progress",
+      "status": "complete",
       "tasks": [
         { "id": "M2.1", "name": "shared physical volume primitives", "status": "complete" },
         { "id": "M2.2", "name": "physical skylights", "status": "complete" },
@@ -57,10 +57,10 @@
         { "id": "M2.3b", "name": "hatch hardware", "status": "complete" },
         { "id": "M2.3c", "name": "vent refinement", "status": "complete" },
         { "id": "M2.3d", "name": "antenna base and support geometry", "status": "complete" },
-        { "id": "M2.4", "name": "architectural annexes and markers", "status": "active" }
+        { "id": "M2.4", "name": "architectural annexes and markers", "status": "complete" }
       ]
     },
-    { "id": "M3", "name": "surface material language", "status": "planned" },
+    { "id": "M3", "name": "surface material language", "status": "autonomous-in-progress" },
     { "id": "M4", "name": "family grammar expansion", "status": "planned" },
     { "id": "M5", "name": "composition and controlled variation", "status": "planned" },
     { "id": "M6", "name": "final polish and merge readiness", "status": "planned" }
@@ -99,7 +99,15 @@
     "M2_4cWorkflowRun": 32335254118,
     "M2_4cNetlify": "success",
     "M2_4cBrowserValidation": "cancelled-after-continuity-head-moved-not-required-for-bounded-renderer-contract",
-    "broaderBrowserValidation": "continues-independently-on-newer-heads",
+    "latestM2_4dImplementationCommit": "38eb9c2682edaab7926afd797b97b229cd36413e",
+    "latestM2_4dRendererIntegrationCommit": "b0ad6403685789a2714c834d37d66caeb274ccea",
+    "latestM2_4dImplementationHead": "6dae004310fe18d02a627852337059106b26b8be",
+    "M2_4dBuildingContracts": "pass",
+    "M2_4dWorkflowRun": 32339748152,
+    "M2_4dNetlify": "success",
+    "M2_4dBrowserValidation": "pass-all-browser-jobs",
+    "M2ExitValidation": "pass",
+    "broaderBrowserValidation": "pass-on-workflow-32339748152",
     "mainSyncCompatibility": "pass"
   }
 }
