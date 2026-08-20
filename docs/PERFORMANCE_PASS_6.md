@@ -1,6 +1,49 @@
 # Performance Pass 6 — repeatable browser hotspot capture
 
-_State: `Core.Finalize` is the repeatable internal hotspot; finalize-only drill-down instrumentation is now in place before any optimization._
+_State: **CLOSED — `no optimization warranted`**. Durable browser evidence narrowed the original outer hotspot to concrete publish-state summary work, but the final owners are microcosts below ~0.05 ms mean and the winner shifts as profiler boundaries are refined. No runtime optimization is justified on current evidence._
+
+## Closure — 2026-08-20
+
+Performance Pass 6 is complete. The pass achieved its purpose: it replaced intuition-based optimization with a durable browser measurement chain, repeatedly narrowed the apparent hotspot, and stopped when the remaining concrete work became smaller than a useful optimization target.
+
+### Durable evidence chain
+
+The accepted chain is:
+
+1. **Outer runtime:** workflow `32283936765`, artifact `9377004371`, digest `sha256:0bf8d29c96325e558f401e899a25fe40843e6f2078c51e2aa515911369d4006f` — `GameplayRuntimeCore` won **24/24** snapshots and all three phases, mean **6.555 ms**.
+2. **Core drill-down:** workflow `32289072702`, artifact `9379073165`, digest `sha256:5a171ed22c4ed115cfa9ca546d10f8a619e29508a077468b10fbefc0baa45e76` — `Core.Finalize` won **23/24** snapshots and all three phases, mean **2.477 ms**.
+3. **Finalize drill-down:** workflow `32295425070`, artifact `9381206757`, digest `sha256:d6ada140a82b501d0713855faae5c9b1adf45fee881e560ec997f60198c3fa3d` — `Finalize.PublishState` won **24/24** snapshots and all three phases, mean **2.464 ms**.
+4. **Historical leaf publishState capture:** rerun of workflow `32300349044`, artifact `9384767697`, digest `sha256:7bbe62b1de63468645356f965594e6747970a9b9f1c4f2035bdc82f02068e0a1` — tiny leaf methods split wins and profiler overhead was material, so this capture is evidence against leaf-level false precision rather than optimization authority.
+5. **Grouped publishState authority:** workflow `32307180336`, artifact `9385238276`, digest `sha256:4e4e626ef144cfefb1052d5ebf2496325eead9936eb8df1c410f5dc832a938c1` — `PublishState.Summaries` won **24/24** snapshots and all three phases, mean **0.221 ms**; `RegistryCommit` was only **0.010 ms** mean.
+6. **Summary-group authority:** workflow `32307816150`, artifact `9385452788`, digest `sha256:e05344c827718e85f39d40ede4228931ae249db978cc156ec2f65199047d278b` — `PublishState.Summary.ResponseAI` won **24/24**, mean **0.088 ms**.
+7. **ResponseAI refinement:** workflow `32309937959`, artifact `9386167590`, digest `sha256:e6305c00a6a1577a2d2207704a3ea02146de296e1439681c40c5841dee88fd73` — after splitting ResponseAI, neither child remained dominant; `MissionActors` became the stable winner at **0.068 ms** mean.
+8. **MissionActors refinement:** workflow `32314488184`, artifact `9387656717`, digest `sha256:9926623f48ca41651a74643a3d9c139329366a5df8c94cf4a852bc46b9314acc` — `MissionActors.MissionNpc` won **24/24**, mean **0.081 ms**.
+9. **Mission vs NPC split:** workflow `32314947563`, artifact `9387794064`, digest `sha256:4ce06ea416adeaced615324f92172f2afb7a263b753c83eadf7e8da0c9189ff7` — `PressureEvidence` won **16/24** while `Npc` won **8/24`; the same unchanged runtime/profiler was therefore repeated before any optimization.
+10. **Unchanged repeat:** rerun of `browser-systems (shard 3/3)` from workflow `32314947563`, artifact `9388906180`, digest `sha256:76b04c7d77a11b0eb5b678676e895cc2a9eb1c02339c55fe4365f06e8d74376b` — `PressureEvidence` won **24/24** and all phases, but at only **0.074 ms** mean.
+11. **Bounded Pressure/Evidence split:** workflow `32321957805`, artifact `9390134779`, digest `sha256:359a79b155848ab4f9082e6f317e1d17fc65abda2fe1f9e4b5b16071b3a478a0` — `Pressure` measured **0.018 ms** mean and `WitnessEvidence` **0.039 ms** mean. Neither is material or the winner. The top concrete group shifted to `MissionActors.NeedsPowers` at only **0.048 ms** mean; `ResponseAI.Security` was **0.040 ms**, NPC **0.025 ms**, Tail **0.013 ms**, Mission **0.009 ms**, WorldAI **0.009 ms**, and `RegistryCommit` **0.011 ms**.
+
+### Decision
+
+**No optimization warranted.**
+
+The pass found no concrete owner large enough to justify a behavior-preserving runtime change with meaningful expected payoff. Once the instrumentation reaches concrete summary groups, all contenders are clustered at or below roughly **0.05 ms mean**, while the identity of the micro-winner changes as boundaries are refined. At that scale, additional wrappers and timing bookkeeping become comparable to the work being ranked, so further drill-down would increase measurement distortion rather than confidence.
+
+No runtime optimization is made as part of this closure. No density, gameplay, AI, traffic, police, audio, rendering, state-publication semantics or simulation order is changed.
+
+### Reopen criteria
+
+Reopen Performance Pass 6 only if new comparable evidence shows a materially larger concrete opportunity, for example:
+
+- the same concrete owner wins repeatedly across the 24-snapshot capture and all three phases at a cost clearly outside the current sub-0.05 ms microcost cluster;
+- a future change causes a repeatable outer/core/finalize regression and drill-down attributes it to one concrete owner;
+- the grouped playtest exposes a user-visible hitch that can be reproduced and correlated with `NBD_RUNTIME_DIAGNOSTICS` / `NBD_PERF_CAPTURE` evidence;
+- a system's workload or update contract changes materially enough that the current artifact chain no longer represents production behavior.
+
+Do not reopen merely because a different microgroup wins one capture.
+
+### Next step
+
+Performance optimization is no longer the gate. The next independent increment is the **grouped final automated/browser playtest** covering the accepted PR #55 behavior: death/hospital recovery, vehicle explosions/damage presentation, traffic flow and obstacle avoidance, civilian gunshot panic, police pursuit/tactics, Blood Sense-only overlays, pause/controls/upright aim, main-menu/audio gate, vehicle-wall collision audio, and the remaining horn/collision/skid/siren/footstep/engine checks that can be automated. Any runtime change after this point requires a real regression found by that validation; otherwise the branch should proceed to human in-game listening/feel validation.
 
 ## Core.Finalize drill-down checkpoint — 2026-08-19
 
