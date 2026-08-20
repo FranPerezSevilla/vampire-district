@@ -33,6 +33,10 @@ function isRaisedAnnex(module) {
   return module?.kind === MODULE_KINDS.ROOF_ANNEX && module.variant === "raised";
 }
 
+function isArchitecturalChurchMarker(module) {
+  return module?.kind === MODULE_KINDS.CROSS_MARKER && module.variant === "church";
+}
+
 function drawAnnexServiceGrille(graphics, geometry, plan) {
   const top = geometry.top;
   if (top.w < 22 || top.h < 16) return null;
@@ -78,6 +82,72 @@ function drawPhysicalAnnex(graphics, module, plan) {
   return geometry;
 }
 
+function churchMarkerSegmentBounds(module) {
+  const bounds = module?.bounds;
+  if (!bounds) return null;
+  const width = Math.max(1, Number(bounds.w) || 1);
+  const height = Math.max(1, Number(bounds.h) || 1);
+  const shortSide = Math.min(width, height);
+  if (shortSide < 6) return null;
+
+  const margin = Math.max(0.75, Math.min(1.5, shortSide * 0.08));
+  const innerWidth = Math.max(1, width - margin * 2);
+  const innerHeight = Math.max(1, height - margin * 2);
+  const stemWidth = Math.max(2, Math.min(innerWidth * 0.28, 4.5));
+  const armHeight = Math.max(2, Math.min(innerHeight * 0.24, 4));
+  const armWidth = Math.max(stemWidth, Math.min(innerWidth * 0.76, 11));
+  const centerX = Number(bounds.x) + width / 2;
+  const armCenterY = Number(bounds.y) + margin + innerHeight * 0.38;
+
+  return {
+    stem: {
+      x: centerX - stemWidth / 2,
+      y: Number(bounds.y) + margin,
+      w: stemWidth,
+      h: innerHeight
+    },
+    arm: {
+      x: centerX - armWidth / 2,
+      y: armCenterY - armHeight / 2,
+      w: armWidth,
+      h: armHeight
+    }
+  };
+}
+
+function drawArchitecturalChurchMarker(graphics, module, plan) {
+  const segments = churchMarkerSegmentBounds(module);
+  if (!segments) return null;
+
+  // The planner already anchors this marker on the nave centreline. Render it
+  // as two low raised roof fins so the cross belongs to the church massing
+  // instead of reading as a flat accent stamp.
+  const depth = physicalDepth(module.bounds, 0.1, 1.5);
+  const style = {
+    depth,
+    shadowColor: plan.palette.roofShadow,
+    topColor: plan.palette.parapetMid,
+    topAlpha: 0.96,
+    southColor: plan.palette.wall,
+    southAlpha: 0.82,
+    eastColor: plan.palette.parapetDark,
+    eastAlpha: 0.86,
+    highlightColor: plan.palette.accent,
+    highlightAlpha: 0.3,
+    seamColor: plan.palette.roofShadow,
+    seamAlpha: 0.28
+  };
+  const stem = drawRaisedRectVolume(graphics, segments.stem, {
+    ...style,
+    shadowAlpha: 0.32
+  });
+  const arm = drawRaisedRectVolume(graphics, segments.arm, {
+    ...style,
+    shadowAlpha: 0.26
+  });
+  return { stem, arm };
+}
+
 function drawDebugBounds(graphics, module) {
   if (!module?.bounds) return;
   graphics.lineStyle(1, 0xffd65c, 0.45);
@@ -89,18 +159,28 @@ function drawDebugBounds(graphics, module) {
   );
 }
 
-function renderPolishedWithPhysicalAnnexes(graphics, plan, options = {}) {
+function isPhysicalReplacement(module) {
+  return isRaisedAnnex(module) || isArchitecturalChurchMarker(module);
+}
+
+function renderPolishedWithPhysicalReplacements(graphics, plan, options = {}) {
   if (!graphics || !plan) return plan;
   const modules = plan.modules || [];
-  if (!modules.some(isRaisedAnnex)) {
+  if (!modules.some(isPhysicalReplacement)) {
     return renderPolishedBuildingPresentation(graphics, plan, options);
   }
 
-  // Preserve module ordering while replacing only the legacy raised-annex
-  // painter. The planner remains authoritative for bounds and layer order.
+  // Preserve module ordering while replacing only the legacy raised-annex and
+  // church-marker painters. The planner remains authoritative for bounds and
+  // layer order.
   for (const module of modules) {
     if (isRaisedAnnex(module)) {
       drawPhysicalAnnex(graphics, module, plan);
+      if (options.showModuleBounds) drawDebugBounds(graphics, module);
+      continue;
+    }
+    if (isArchitecturalChurchMarker(module)) {
+      drawArchitecturalChurchMarker(graphics, module, plan);
       if (options.showModuleBounds) drawDebugBounds(graphics, module);
       continue;
     }
@@ -227,7 +307,7 @@ export function clearBuildingPresentationCache(building) {
 }
 
 export function renderBuildingPresentation(graphics, plan, options = {}) {
-  const renderedPlan = renderPolishedWithPhysicalAnnexes(graphics, plan, options);
+  const renderedPlan = renderPolishedWithPhysicalReplacements(graphics, plan, options);
   if (graphics && renderedPlan) drawPhysicalDetailOverlays(graphics, renderedPlan);
   return renderedPlan;
 }
@@ -235,7 +315,7 @@ export function renderBuildingPresentation(graphics, plan, options = {}) {
 export function drawBuildingPresentation(graphics, building, options = {}) {
   const plan = drawPolishedBuildingPresentation(null, building, options);
   if (graphics && plan) {
-    renderPolishedWithPhysicalAnnexes(graphics, plan, options);
+    renderPolishedWithPhysicalReplacements(graphics, plan, options);
     drawPhysicalDetailOverlays(graphics, plan);
   }
   return plan;
