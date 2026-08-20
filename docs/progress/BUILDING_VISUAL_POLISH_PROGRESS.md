@@ -2,6 +2,49 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-20 — M2.3b unit validation green; M2.3c vent refinement implemented
+
+### Scope
+
+- Active milestone: M2
+- Task: continue from M2.3b hatch hardware into the next bounded mechanical increment while CI finishes independently
+- Authoritative files: `BuildingPresentationDetailRenderer.js`, hatch/vent focused tests, roadmap and machine status
+- Acceptance criteria: hatch contracts stay green; vent reads as a physical exhaust opening rather than a solid circle; authored bounds remain immutable; Netlify remains green
+- Explicit non-goals: antenna work, annexes/markers, material pass, family-profile changes, gameplay, collision, topology, navigation, AI, missions or generated-city edits
+
+### Completed
+
+- confirmed the M2.3b unit-test job is green on workflow `32332122399`;
+- confirmed M2.3b Netlify is green on head `acf55a5d927333ca1ca4312a389e5642d8dd2cca`;
+- kept M2.3b formally validation-pending because its browser jobs were still running at the bounded check;
+- advanced independent work into M2.3c instead of waiting passively;
+- extended `BuildingPresentationDetailRenderer.js` with deterministic vent-top detail built from the same cylindrical geometry as the physical vent body;
+- added a restrained metal collar, recessed exhaust throat, internal occlusion and one directional rim highlight;
+- avoided concentric decorative noise and preserved the existing cylindrical body/contact-shadow language;
+- preserved authored vent bounds and deterministic rendering;
+- added `tests/building-vent-refinement.test.js` covering bounds immutability, collar/throat/occlusion separation, rim treatment and determinism;
+- confirmed Netlify is green on M2.3c implementation head `693e4b3bd9e494560d797306fa400a347f2763ee`.
+
+### Validation
+
+- M2.3b unit contracts: **pass**;
+- M2.3b browser workflow: **in progress at bounded check**;
+- M2.3b Netlify: **success**;
+- M2.3c focused unit contracts: **pending on new implementation head**;
+- M2.3c Netlify: **success**;
+- PR #63 remains open, draft and mergeable;
+- no gameplay/collision authority changed.
+
+### Visual risk
+
+The vent now has a readable duct body plus a recessed opening, but final apparent scale at normal gameplay zoom remains part of the M6 review. Do not add extra rings, blades or decorative slits unless later evidence shows the current collar is unreadable.
+
+### Next
+
+The next autonomous execution must first close the pending browser validation for M2.3b and the new unit validation for M2.3c. If both remain green, mark M2.3b and M2.3c complete and begin M2.3d: physical antenna base and attached mast/support geometry.
+
+---
+
 ## 2026-08-20 — M2.3a physical HVAC validated; M2.3b hatch hardware opened
 
 ### Scope
