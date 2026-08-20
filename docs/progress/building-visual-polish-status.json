@@ -1,6 +1,6 @@
 {
   "initiative": "building-visual-polish",
-  "version": 15,
+  "version": 16,
   "updatedAt": "2026-08-20",
   "branch": "agent/building-visual-poc",
   "pullRequest": 63,
@@ -9,8 +9,8 @@
   "executionMode": "chatgpt-hourly-final-gate",
   "userValidation": "M6-final-only",
   "currentMilestone": "M3",
-  "currentTask": "M3.2-membrane-seams",
-  "nextAction": "Continue M3 with one bounded renderer-only membrane-surface increment: keep seams broadly spaced, reduce their diagram-like uniformity with restrained deterministic tonal variation, preserve planner-owned seam geometry and authored building bounds, add focused contracts, and keep Netlify green before advancing to civic surface order.",
+  "currentTask": "M3.2-membrane-seams-automated-validation-pending",
+  "nextAction": "Validate workflow 32343829124 and Netlify for M3.2 implementation/test head ed260d0e945487df4c108e20ae8a361deb62c18b. If the focused unit contracts and deploy are green, mark membrane seams complete and continue with the separate M3 civic-surface-order increment. If a building-focused failure appears, fix only that regression before advancing.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "automation": {
     "provider": "ChatGPT scheduled task",
@@ -66,7 +66,7 @@
       "status": "autonomous-in-progress",
       "tasks": [
         { "id": "M3.1", "name": "warehouse corrugation rhythm", "status": "complete" },
-        { "id": "M3.2", "name": "membrane seams", "status": "active" }
+        { "id": "M3.2", "name": "membrane seams", "status": "implementation-complete / automated-validation-pending" }
       ]
     },
     { "id": "M4", "name": "family grammar expansion", "status": "planned" },
@@ -118,6 +118,11 @@
     "M3_1BuildingContracts": "pass",
     "M3_1Netlify": "success",
     "M3_1BrowserValidation": "cancelled-after-continuity-head-moved-not-required-for-bounded-renderer-contract",
+    "latestM3_2ImplementationCommit": "1bb841fdd047805bc5fc0476a9a9960784a3916c",
+    "latestM3_2ImplementationHead": "ed260d0e945487df4c108e20ae8a361deb62c18b",
+    "M3_2WorkflowRun": 32343829124,
+    "M3_2BuildingContracts": "pending",
+    "M3_2Netlify": "pending-at-bounded-check",
     "mainSyncCompatibility": "pass"
   }
 }
