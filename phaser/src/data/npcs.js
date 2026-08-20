@@ -53,6 +53,14 @@ function reservedRoutePointIndexes(route) {
   );
 }
 
+function ambientRouteSpeed(route, routeOrder, offset) {
+  const kind = String(route?.routeKind || "sidewalk-patrol");
+  if (kind === "hospital-access") return 7 + ((routeOrder + offset) % 3);
+  if (kind === "nightlife-circulation") return 5 + ((routeOrder + offset) % 3);
+  if (kind === "church-circulation") return 4 + ((routeOrder + offset) % 2);
+  return 9 + ((routeOrder * 3 + offset * 2) % 5);
+}
+
 function ambientPedestrianDefinitions() {
   return pedestrianRoutes.flatMap((route, routeOrder) => {
     const points = route.points || [];
@@ -78,10 +86,11 @@ function ambientPedestrianDefinitions() {
         behavior: "sidewalk",
         pedestrianRouteId: route.id,
         pedestrianRouteStartIndex: pointIndex,
-        speed: 9 + ((routeOrder * 3 + offset * 2) % 5),
+        speed: ambientRouteSpeed(route, routeOrder, offset),
         dirX: 1,
         dirY: 0,
-        ambientPopulation: true
+        ambientPopulation: true,
+        ambientActivity: route.routeKind || "sidewalk-patrol"
       };
     });
   });
@@ -139,6 +148,90 @@ const BASE_NPC_DEFINITIONS = [
     speed: 9
   },
   {
+    id: "hospital_visitor_arrival",
+    type: "civilian",
+    x: 250,
+    y: 143,
+    layer: 0,
+    behavior: "sidewalk",
+    pedestrianRouteId: "hospital_perimeter_loop",
+    pedestrianRouteStartIndex: 0,
+    speed: 8,
+    ambientActivity: "hospital-arrival"
+  },
+  {
+    id: "hospital_visitor_departure",
+    type: "civilian",
+    x: 830,
+    y: 153,
+    layer: 0,
+    behavior: "sidewalk",
+    pedestrianRouteId: "hospital_perimeter_loop",
+    pedestrianRouteStartIndex: 2,
+    speed: 9,
+    ambientActivity: "hospital-departure"
+  },
+  {
+    id: "police_shift_arrival",
+    type: "civilian",
+    x: 2340,
+    y: 889,
+    layer: 0,
+    behavior: "sidewalk",
+    pedestrianRouteId: "east_promenade_loop",
+    pedestrianRouteStartIndex: 1,
+    speed: 10,
+    ambientActivity: "police-station-arrival"
+  },
+  {
+    id: "police_shift_departure",
+    type: "civilian",
+    x: 2340,
+    y: 889,
+    layer: 0,
+    behavior: "sidewalk",
+    pedestrianRouteId: "east_promenade_loop",
+    pedestrianRouteStartIndex: 3,
+    speed: 11,
+    ambientActivity: "police-station-departure"
+  },
+  {
+    id: "club_queue_1",
+    type: "civilian",
+    x: 1708,
+    y: 1660,
+    layer: 0,
+    behavior: "loiter",
+    speed: 0,
+    dirX: 1,
+    dirY: 0,
+    ambientActivity: "club-queue"
+  },
+  {
+    id: "club_queue_2",
+    type: "civilian",
+    x: 1708,
+    y: 1682,
+    layer: 0,
+    behavior: "loiter",
+    speed: 0,
+    dirX: 1,
+    dirY: 0,
+    ambientActivity: "club-queue"
+  },
+  {
+    id: "club_queue_3",
+    type: "civilian",
+    x: 1708,
+    y: 1704,
+    layer: 0,
+    behavior: "loiter",
+    speed: 0,
+    dirX: 1,
+    dirY: 0,
+    ambientActivity: "club-queue"
+  },
+  {
     id: "civ_church",
     type: "civilian",
     x: 4000,
@@ -147,7 +240,44 @@ const BASE_NPC_DEFINITIONS = [
     behavior: "loiter",
     speed: 0,
     dirX: -1,
-    dirY: 0
+    dirY: 0,
+    ambientActivity: "church-prayer"
+  },
+  {
+    id: "church_prayer_2",
+    type: "civilian",
+    x: 3984,
+    y: 710,
+    layer: 0,
+    behavior: "loiter",
+    speed: 0,
+    dirX: 0,
+    dirY: -1,
+    ambientActivity: "church-prayer"
+  },
+  {
+    id: "church_prayer_3",
+    type: "civilian",
+    x: 4016,
+    y: 710,
+    layer: 0,
+    behavior: "loiter",
+    speed: 0,
+    dirX: 0,
+    dirY: -1,
+    ambientActivity: "church-prayer"
+  },
+  {
+    id: "church_prayer_4",
+    type: "civilian",
+    x: 4000,
+    y: 726,
+    layer: 0,
+    behavior: "loiter",
+    speed: 0,
+    dirX: 0,
+    dirY: -1,
+    ambientActivity: "church-prayer"
   },
   {
     id: "journalist",
