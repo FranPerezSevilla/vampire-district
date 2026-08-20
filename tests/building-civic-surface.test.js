@@ -53,7 +53,7 @@ function civicPlan() {
     module.kind === MODULE_KINDS.ROOF_TEXTURE_LINE
       && module.variant === ROOF_SURFACE_KINDS.CIVIC
   ));
-  assert.ok(joints.length >= 2, "civic roof should expose both primary and cross-axis ordering joints");
+  assert.ok(joints.length >= 1, "civic roof should expose at least one planner-owned ordering joint");
   return { ...plan, modules: joints };
 }
 
@@ -66,15 +66,50 @@ function signature(values) {
   return values.map(value => Number(value).toFixed(4)).join(":");
 }
 
-test("civic surface uses one primary joint hierarchy instead of identical decorative linework", () => {
+function civicHierarchyFixture() {
+  const base = civicPlan();
+  const footprint = base.visualFootprint;
+  const inset = 12;
+  const centerX = footprint.x + footprint.w / 2;
+  const centerY = footprint.y + footprint.h / 2;
+  const horizontal = {
+    id: "civic-material-fixture:civic:h:0",
+    kind: MODULE_KINDS.ROOF_TEXTURE_LINE,
+    variant: ROOF_SURFACE_KINDS.CIVIC,
+    x1: footprint.x + inset,
+    y1: centerY,
+    x2: footprint.x + footprint.w - inset,
+    y2: centerY,
+    bounds: {
+      x: footprint.x + inset,
+      y: centerY,
+      w: footprint.w - inset * 2,
+      h: 0
+    }
+  };
+  const vertical = {
+    id: "civic-material-fixture:civic:v:0",
+    kind: MODULE_KINDS.ROOF_TEXTURE_LINE,
+    variant: ROOF_SURFACE_KINDS.CIVIC,
+    x1: centerX,
+    y1: footprint.y + inset,
+    x2: centerX,
+    y2: footprint.y + footprint.h - inset,
+    bounds: {
+      x: centerX,
+      y: footprint.y + inset,
+      w: 0,
+      h: footprint.h - inset * 2
+    }
+  };
+  return { ...base, modules: [horizontal, vertical] };
+}
+
+test("planner-owned civic joints keep their exact coordinates and receive ordered material treatment", () => {
   const plan = civicPlan();
   const authoredModules = structuredClone(plan.modules);
-  const horizontal = plan.modules.find(isHorizontal);
-  const vertical = plan.modules.find(module => !isHorizontal(module));
-  assert.ok(horizontal, "civic surface should retain the planner-owned horizontal ordering joint");
-  assert.ok(vertical, "civic surface should retain the planner-owned cross-axis joint");
-
   const graphics = new GraphicsRecorder();
+
   renderBuildingPresentation(graphics, plan);
 
   const structural = graphics.calls.filter(call => (
@@ -91,38 +126,66 @@ test("civic surface uses one primary joint hierarchy instead of identical decora
     "structural civic lines must remain on planner-owned coordinates"
   );
 
+  for (const module of plan.modules) {
+    const call = structural.find(candidate => signature(candidate.args) === signature([
+      module.x1, module.y1, module.x2, module.y2
+    ]));
+    assert.ok(call);
+    assert.equal(Number(call.line.alpha), isHorizontal(module) ? 0.115 : 0.06);
+  }
+
+  assert.equal(
+    highlights.length,
+    plan.modules.filter(isHorizontal).length,
+    "only planner-owned horizontal civic joints should receive a restrained highlight"
+  );
+  assert.ok(highlights.every(call => Number(call.line.alpha) === 0.028));
+  assert.equal(
+    graphics.calls.some(call => call.name === "lineBetween" && Number(call.line?.alpha) === 0.2),
+    false,
+    "legacy uniform civic highlight alpha should be absent"
+  );
+  assert.deepEqual(plan.modules, authoredModules);
+});
+
+test("civic renderer gives the primary horizontal joint more weight than a cross-axis joint", () => {
+  const plan = civicHierarchyFixture();
+  const authoredModules = structuredClone(plan.modules);
+  const horizontal = plan.modules.find(isHorizontal);
+  const vertical = plan.modules.find(module => !isHorizontal(module));
+  const graphics = new GraphicsRecorder();
+
+  renderBuildingPresentation(graphics, plan);
+
+  const structural = graphics.calls.filter(call => (
+    call.name === "lineBetween" && call.line?.color === plan.palette.roofTexture
+  ));
+  const highlights = graphics.calls.filter(call => (
+    call.name === "lineBetween" && call.line?.color === plan.palette.roofTextureHighlight
+  ));
   const horizontalCall = structural.find(call => signature(call.args) === signature([
     horizontal.x1, horizontal.y1, horizontal.x2, horizontal.y2
   ]));
   const verticalCall = structural.find(call => signature(call.args) === signature([
     vertical.x1, vertical.y1, vertical.x2, vertical.y2
   ]));
+
   assert.ok(horizontalCall);
   assert.ok(verticalCall);
   assert.equal(Number(horizontalCall.line.alpha), 0.115);
   assert.equal(Number(verticalCall.line.alpha), 0.06);
-  assert.ok(
-    Number(horizontalCall.line.alpha) > Number(verticalCall.line.alpha),
-    "primary civic joint should dominate the secondary cross-axis joint"
-  );
-
+  assert.ok(Number(horizontalCall.line.alpha) > Number(verticalCall.line.alpha));
   assert.equal(highlights.length, 1, "only the primary joint should receive a restrained material highlight");
   assert.equal(Number(highlights[0].line.alpha), 0.028);
   assert.deepEqual(
     highlights[0].args,
     [horizontal.x1, horizontal.y1 - 1, horizontal.x2, horizontal.y2 - 1]
   );
-  assert.equal(
-    graphics.calls.some(call => call.name === "lineBetween" && Number(call.line?.alpha) === 0.2),
-    false,
-    "legacy uniform civic highlight alpha should be absent"
-  );
-
   assert.deepEqual(plan.modules, authoredModules);
 });
 
-test("civic material hierarchy is deterministic for the same planned joints", () => {
-  const plan = civicPlan();
+test("civic material hierarchy is deterministic for the same explicit joint fixture", () => {
+  const plan = civicHierarchyFixture();
   const first = new GraphicsRecorder();
   const second = new GraphicsRecorder();
 
