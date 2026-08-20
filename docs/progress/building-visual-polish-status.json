@@ -94,7 +94,7 @@
     "M2_4bNetlify": "success",
     "M2_4bBrowserValidation": "queued-at-bounded-check",
     "broaderBrowserValidation": "in-progress-in-workflow-32334149530",
-    "continuityHead": "21ff59fd1e1c55c2f3453d83a6a63c9b3f733da6",
+    "continuityHead": "07c78ddf35648cf9c7eb9d6b3ca6e732e6357274",
     "mainSyncCompatibility": "pass"
   }
 }
