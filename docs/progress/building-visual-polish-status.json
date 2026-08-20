@@ -1,6 +1,6 @@
 {
   "initiative": "building-visual-polish",
-  "version": 13,
+  "version": 14,
   "updatedAt": "2026-08-20",
   "branch": "agent/building-visual-poc",
   "pullRequest": 63,
@@ -9,8 +9,8 @@
   "executionMode": "chatgpt-hourly-final-gate",
   "userValidation": "M6-final-only",
   "currentMilestone": "M3",
-  "currentTask": "M3.1-corrugated-warehouse-rhythm",
-  "nextAction": "Begin M3 with one bounded renderer-only material increment: lower the contrast of warehouse corrugated ribs and group their rhythm so they read as roof material rather than repeated UI lines. Preserve deterministic composition, authored geometry and gameplay readability; add focused contracts and keep Netlify green before advancing to membrane seams.",
+  "currentTask": "M3.1-corrugated-warehouse-validation-pending",
+  "nextAction": "Validate workflow 32342778855 for M3.1 implementation/test head 40feacc6789ed419da31feb1bb8d2d564d74caa1. If focused unit validation remains green, mark warehouse corrugation refinement complete and continue M3 with membrane seams using broad spacing and restrained tonal variation. If a building-focused failure appears, fix only that regression before advancing.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "automation": {
     "provider": "ChatGPT scheduled task",
@@ -99,15 +99,16 @@
     "M2_4cWorkflowRun": 32335254118,
     "M2_4cNetlify": "success",
     "M2_4cBrowserValidation": "cancelled-after-continuity-head-moved-not-required-for-bounded-renderer-contract",
-    "latestM2_4dImplementationCommit": "38eb9c2682edaab7926afd797b97b229cd36413e",
-    "latestM2_4dRendererIntegrationCommit": "b0ad6403685789a2714c834d37d66caeb274ccea",
     "latestM2_4dImplementationHead": "6dae004310fe18d02a627852337059106b26b8be",
     "M2_4dBuildingContracts": "pass",
     "M2_4dWorkflowRun": 32339748152,
     "M2_4dNetlify": "success",
     "M2_4dBrowserValidation": "pass-all-browser-jobs",
-    "M2ExitValidation": "pass",
-    "broaderBrowserValidation": "pass-on-workflow-32339748152",
+    "latestM3_1ImplementationCommit": "4dc22843fdc1d3597c114963f266eb3236cf64b8",
+    "latestM3_1ImplementationHead": "40feacc6789ed419da31feb1bb8d2d564d74caa1",
+    "M3_1WorkflowRun": 32342778855,
+    "M3_1BuildingContracts": "validation-running-at-bounded-check",
+    "M3_1Netlify": "success",
     "mainSyncCompatibility": "pass"
   }
 }
