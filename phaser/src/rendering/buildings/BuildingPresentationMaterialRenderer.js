@@ -6,6 +6,16 @@ import {
   renderBuildingPresentation as renderDetailedBuildingPresentation
 } from "./BuildingPresentationDetailRenderer.js";
 
+function stableMaterialHash(value) {
+  const text = String(value || "");
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
 function membraneSeamIndex(module) {
   const match = /:membrane:h:(\d+)$/.exec(String(module?.id || ""));
   if (match) return Number(match[1]);
@@ -128,6 +138,14 @@ function isNightRoofMass(module) {
     && module.bounds;
 }
 
+function isLowFrequencyRoofMass(module) {
+  return module?.kind === MODULE_KINDS.ROOF_MASS
+    && module.surfaceKind !== ROOF_SURFACE_KINDS.NIGHT
+    && Array.isArray(module.points)
+    && module.points.length >= 3
+    && module.bounds;
+}
+
 function interpolateAtBoundary(start, end, axis, value) {
   const delta = Number(end?.[axis]) - Number(start?.[axis]);
   const ratio = Math.abs(delta) < 0.000001
@@ -173,6 +191,55 @@ function clipPolygonToRect(points, rect) {
   return result.length >= 3 ? result : [];
 }
 
+function lowFrequencyRoofVariation(module) {
+  const bounds = module.bounds;
+  const hash = stableMaterialHash(module.id);
+  const horizontal = (hash & 1) === 0;
+  const leading = (hash & 2) === 0;
+  const ratio = 0.44 + ((hash >>> 2) % 3) * 0.05;
+  const shade = (hash & 16) === 0;
+
+  const rect = horizontal
+    ? {
+      x: bounds.x,
+      y: leading ? bounds.y : bounds.y + bounds.h * (1 - ratio),
+      w: bounds.w,
+      h: bounds.h * ratio
+    }
+    : {
+      x: leading ? bounds.x : bounds.x + bounds.w * (1 - ratio),
+      y: bounds.y,
+      w: bounds.w * ratio,
+      h: bounds.h
+    };
+
+  return {
+    points: clipPolygonToRect(module.points, rect),
+    colorRole: shade ? "shade" : "lift",
+    alpha: shade ? 0.022 : 0.018
+  };
+}
+
+function drawLowFrequencyRoofVariation(graphics, module, plan, options) {
+  renderDetailedBuildingPresentation(
+    graphics,
+    { ...plan, modules: [module] },
+    options
+  );
+
+  const bounds = module.bounds;
+  if (bounds.w < 48 || bounds.h < 36) return;
+
+  const variation = lowFrequencyRoofVariation(module);
+  if (variation.points.length < 3) return;
+
+  const color = variation.colorRole === "shade"
+    ? plan.palette.roofShade
+    : plan.palette.roofTextureHighlight;
+  graphics.fillStyle(color, variation.alpha);
+  graphics.fillPoints(variation.points, true);
+}
+
 function drawNightRoofModulation(graphics, module, plan, options) {
   // First render the canonical roof mass and its established M1/M2 depth.
   renderDetailedBuildingPresentation(
@@ -215,7 +282,8 @@ function isMaterialTreatment(module) {
   return isMembraneSeam(module)
     || isCivicSurfaceJoint(module)
     || isPitchedRoofRidge(module)
-    || isNightRoofMass(module);
+    || isNightRoofMass(module)
+    || isLowFrequencyRoofMass(module);
 }
 
 function drawMaterialTreatment(graphics, module, plan, options) {
@@ -223,6 +291,7 @@ function drawMaterialTreatment(graphics, module, plan, options) {
   else if (isCivicSurfaceJoint(module)) drawCivicSurfaceJoint(graphics, module, plan);
   else if (isPitchedRoofRidge(module)) drawPitchedRoofRidge(graphics, module, plan);
   else if (isNightRoofMass(module)) drawNightRoofModulation(graphics, module, plan, options);
+  else if (isLowFrequencyRoofMass(module)) drawLowFrequencyRoofVariation(graphics, module, plan, options);
 }
 
 function drawDebugBounds(graphics, module) {
