@@ -1,6 +1,6 @@
 {
   "initiative": "building-visual-polish",
-  "version": 9,
+  "version": 10,
   "updatedAt": "2026-08-20",
   "branch": "agent/building-visual-poc",
   "pullRequest": 63,
@@ -10,7 +10,7 @@
   "userValidation": "M6-final-only",
   "currentMilestone": "M2",
   "currentTask": "M2.4-architectural-annexes-and-markers",
-  "nextAction": "Continue M2.4 by adding one restrained service detail to the newly physical raised annex while preserving authored bounds and deterministic rendering. Then integrate the religious marker into roof architecture and define reusable marker geometry suitable for the later medical profile without introducing a hospital classifier before M4.",
+  "nextAction": "Continue M2.4 by replacing the stamped church cross marker with restrained architectural roof geometry that is physically integrated with the church massing and preserves authored bounds/determinism. After that, define the reusable family-neutral marker geometry needed for the later medical profile without introducing a hospital classifier before M4.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "automation": {
     "provider": "ChatGPT scheduled task",
@@ -87,8 +87,13 @@
     "M2_4aBuildingContracts": "pass",
     "M2_4aWorkflowRun": 32333532286,
     "M2_4aNetlify": "success",
-    "M2_4aBrowserValidation": "in-progress-at-bounded-check",
-    "broaderBrowserValidation": "in-progress-in-workflow-32333532286",
+    "M2_4aBrowserValidation": "superseded-after-continuity-head-moved",
+    "latestM2_4bImplementationHead": "342e6a7b01793913eefcec426e8cb71c31f254df",
+    "M2_4bBuildingContracts": "pass",
+    "M2_4bWorkflowRun": 32334149530,
+    "M2_4bNetlify": "success",
+    "M2_4bBrowserValidation": "queued-at-bounded-check",
+    "broaderBrowserValidation": "in-progress-in-workflow-32334149530",
     "mainSyncCompatibility": "pass"
   }
 }
