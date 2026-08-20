@@ -14,9 +14,6 @@ export const MOTORIZED_POLICE_TACTICS = Object.freeze({
   ROADBLOCK: "roadblock"
 });
 
-export const MOTORIZED_POLICE_ROUTE_AGGRESSION = 1.2;
-export const MOTORIZED_POLICE_STEERING_AGGRESSION = 1.18;
-
 export function finite(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
@@ -83,7 +80,7 @@ export function rotateToward(current, target, maximumStep) {
   let delta = (finite(target) - finite(current) + Math.PI) % tau;
   if (delta < 0) delta += tau;
   delta -= Math.PI;
-  const step = Math.max(0, finite(maximumStep)) * MOTORIZED_POLICE_STEERING_AGGRESSION;
+  const step = Math.max(0, finite(maximumStep));
   return finite(current) + Math.max(-step, Math.min(step, delta));
 }
 
@@ -99,9 +96,7 @@ export function policeTacticLabel(tactic) {
 export function desiredMotorizedUnits(level) {
   const wanted = Math.max(0, Math.floor(finite(level)));
   if (wanted >= 3) return 3;
-  // Wanted 2 deliberately has a third pursuit cruiser in reserve. This keeps at least two
-  // cars applying mobile pressure if one unit is blocked, disabled or transitions to officers.
-  if (wanted >= 2) return 3;
+  if (wanted >= 2) return 2;
   return 0;
 }
 
@@ -190,7 +185,7 @@ export function advancePoliceRoute(state, seconds, {
   let progress = clamp01(state?.progress);
   let remaining = Math.max(0, finite(seconds));
   let completedLegs = 0;
-  const multiplier = Math.max(0.05, finite(speedMultiplier, 1)) * MOTORIZED_POLICE_ROUTE_AGGRESSION;
+  const multiplier = Math.max(0.05, finite(speedMultiplier, 1));
   let arrived = false;
   let guard = legs.length + 4;
 
