@@ -236,8 +236,8 @@ export class HeatSystem {
         continue;
       }
       // Wanted 2/3 are sticky by design: only an explicit gameplay action may downgrade them.
-      // Natural cooling is reserved for the final "lost the trail" transition from Wanted 1 to clear.
-      if (heatLevelFromValue(before) !== 1) continue;
+      // Once Heat is below Wanted 2, natural cooling may carry Wanted 1 all the way to zero.
+      if (before >= HEAT_LEVEL_THRESHOLDS[2]) continue;
       const chasing = (this.scene.policeSystem?.police?.() || []).some(cop => cop.chasingPlayer);
       const rate = chasing ? 0.18 : 1.2;
       const after = Math.max(0, before - seconds * rate * Math.max(0, finite(multiplier, 1)));
