@@ -77,7 +77,49 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
     ],
     sidewalkId: "sidewalk:road-edge:h:162:202:918:202:north",
     graphEdgeId: "road-edge:h:162:202:918:202",
-    routeKind: "sidewalk-patrol",
+    routeKind: "hospital-access",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "hospital_west_access_loop",
+    name: "Hospital west visitor circulation",
+    points: [
+      { x: 270, y: 143 },
+      { x: 420, y: 143 },
+      { x: 420, y: 153 },
+      { x: 270, y: 153 }
+    ],
+    sidewalkId: "sidewalk:road-edge:h:162:202:918:202:north",
+    graphEdgeId: "road-edge:h:162:202:918:202",
+    routeKind: "hospital-access",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "hospital_central_access_loop",
+    name: "Hospital central visitor circulation",
+    points: [
+      { x: 450, y: 143 },
+      { x: 610, y: 143 },
+      { x: 610, y: 153 },
+      { x: 450, y: 153 }
+    ],
+    sidewalkId: "sidewalk:road-edge:h:162:202:918:202:north",
+    graphEdgeId: "road-edge:h:162:202:918:202",
+    routeKind: "hospital-access",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "hospital_east_access_loop",
+    name: "Hospital east visitor circulation",
+    points: [
+      { x: 650, y: 143 },
+      { x: 810, y: 143 },
+      { x: 810, y: 153 },
+      { x: 650, y: 153 }
+    ],
+    sidewalkId: "sidewalk:road-edge:h:162:202:918:202:north",
+    graphEdgeId: "road-edge:h:162:202:918:202",
+    routeKind: "hospital-access",
     generated: false
   }),
   freezePedestrianRoute({
@@ -95,6 +137,34 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
     generated: false
   }),
   freezePedestrianRoute({
+    id: "west_market_north_loop",
+    name: "West Market north nightlife circulation",
+    points: [
+      { x: 503, y: 1320 },
+      { x: 513, y: 1320 },
+      { x: 513, y: 1380 },
+      { x: 503, y: 1380 }
+    ],
+    sidewalkId: "sidewalk:road-edge:v:554:1192:554:1920:west:fragment:01",
+    graphEdgeId: "road-edge:v:554:1192:554:1920",
+    routeKind: "nightlife-circulation",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "west_market_south_loop",
+    name: "West Market south nightlife circulation",
+    points: [
+      { x: 503, y: 1420 },
+      { x: 513, y: 1420 },
+      { x: 513, y: 1480 },
+      { x: 503, y: 1480 }
+    ],
+    sidewalkId: "sidewalk:road-edge:v:554:1192:554:1920:west:fragment:01",
+    graphEdgeId: "road-edge:v:554:1192:554:1920",
+    routeKind: "nightlife-circulation",
+    generated: false
+  }),
+  freezePedestrianRoute({
     id: "old_quarter_service_loop",
     name: "Old Quarter service avenue loop",
     points: [
@@ -105,7 +175,35 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
     ],
     sidewalkId: "sidewalk:road-edge:v:1754:1574:1754:1920:west",
     graphEdgeId: "road-edge:v:1754:1574:1754:1920",
-    routeKind: "sidewalk-patrol",
+    routeKind: "nightlife-circulation",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "old_quarter_north_service_loop",
+    name: "Old Quarter north frontage loop",
+    points: [
+      { x: 1703, y: 1660 },
+      { x: 1713, y: 1660 },
+      { x: 1713, y: 1710 },
+      { x: 1703, y: 1710 }
+    ],
+    sidewalkId: "sidewalk:road-edge:v:1754:1574:1754:1920:west",
+    graphEdgeId: "road-edge:v:1754:1574:1754:1920",
+    routeKind: "nightlife-circulation",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "old_quarter_south_service_loop",
+    name: "Old Quarter south frontage loop",
+    points: [
+      { x: 1703, y: 1760 },
+      { x: 1713, y: 1760 },
+      { x: 1713, y: 1810 },
+      { x: 1703, y: 1810 }
+    ],
+    sidewalkId: "sidewalk:road-edge:v:1754:1574:1754:1920:west",
+    graphEdgeId: "road-edge:v:1754:1574:1754:1920",
+    routeKind: "nightlife-circulation",
     generated: false
   }),
   freezePedestrianRoute({
@@ -116,6 +214,34 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
       { x: 4241, y: 1250 },
       { x: 4241, y: 1540 },
       { x: 4231, y: 1540 }
+    ],
+    sidewalkId: "sidewalk:road-edge:v:4284:1156:4284:1636:west",
+    graphEdgeId: "road-edge:v:4284:1156:4284:1636",
+    routeKind: "sidewalk-patrol",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "university_north_loop",
+    name: "University north frontage loop",
+    points: [
+      { x: 4231, y: 1280 },
+      { x: 4241, y: 1280 },
+      { x: 4241, y: 1350 },
+      { x: 4231, y: 1350 }
+    ],
+    sidewalkId: "sidewalk:road-edge:v:4284:1156:4284:1636:west",
+    graphEdgeId: "road-edge:v:4284:1156:4284:1636",
+    routeKind: "sidewalk-patrol",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "university_south_loop",
+    name: "University south frontage loop",
+    points: [
+      { x: 4231, y: 1440 },
+      { x: 4241, y: 1440 },
+      { x: 4241, y: 1510 },
+      { x: 4231, y: 1510 }
     ],
     sidewalkId: "sidewalk:road-edge:v:4284:1156:4284:1636:west",
     graphEdgeId: "road-edge:v:4284:1156:4284:1636",
@@ -137,6 +263,34 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
     generated: false
   }),
   freezePedestrianRoute({
+    id: "canal_west_north_loop",
+    name: "Canal West north frontage loop",
+    points: [
+      { x: 703, y: 2310 },
+      { x: 713, y: 2310 },
+      { x: 713, y: 2370 },
+      { x: 703, y: 2370 }
+    ],
+    sidewalkId: "sidewalk:road-edge:v:752:2212:752:2572:west",
+    graphEdgeId: "road-edge:v:752:2212:752:2572",
+    routeKind: "sidewalk-patrol",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "canal_west_south_loop",
+    name: "Canal West south frontage loop",
+    points: [
+      { x: 703, y: 2410 },
+      { x: 713, y: 2410 },
+      { x: 713, y: 2470 },
+      { x: 703, y: 2470 }
+    ],
+    sidewalkId: "sidewalk:road-edge:v:752:2212:752:2572:west",
+    graphEdgeId: "road-edge:v:752:2212:752:2572",
+    routeKind: "sidewalk-patrol",
+    generated: false
+  }),
+  freezePedestrianRoute({
     id: "north_harbor_vertical_loop",
     name: "North Harbor avenue loop",
     points: [
@@ -151,6 +305,34 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
     generated: false
   }),
   freezePedestrianRoute({
+    id: "north_harbor_north_loop",
+    name: "North Harbor north frontage loop",
+    points: [
+      { x: 4423, y: 40 },
+      { x: 4433, y: 40 },
+      { x: 4433, y: 190 },
+      { x: 4423, y: 190 }
+    ],
+    sidewalkId: "sidewalk:road-edge:v:4500:0:4500:960:west",
+    graphEdgeId: "road-edge:v:4500:0:4500:960",
+    routeKind: "sidewalk-patrol",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "north_harbor_south_loop",
+    name: "North Harbor south frontage loop",
+    points: [
+      { x: 4423, y: 650 },
+      { x: 4433, y: 650 },
+      { x: 4433, y: 740 },
+      { x: 4423, y: 740 }
+    ],
+    sidewalkId: "sidewalk:road-edge:v:4500:0:4500:960:west",
+    graphEdgeId: "road-edge:v:4500:0:4500:960",
+    routeKind: "church-circulation",
+    generated: false
+  }),
+  freezePedestrianRoute({
     id: "south_harbor_freight_loop",
     name: "South Harbor freight frontage loop",
     points: [
@@ -158,6 +340,34 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
       { x: 4420, y: 3003 },
       { x: 4420, y: 3013 },
       { x: 4140, y: 3013 }
+    ],
+    sidewalkId: "sidewalk:road-edge:h:4080:3052:4500:3052:north",
+    graphEdgeId: "road-edge:h:4080:3052:4500:3052",
+    routeKind: "sidewalk-patrol",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "south_harbor_west_loop",
+    name: "South Harbor west frontage loop",
+    points: [
+      { x: 4095, y: 3003 },
+      { x: 4130, y: 3003 },
+      { x: 4130, y: 3013 },
+      { x: 4095, y: 3013 }
+    ],
+    sidewalkId: "sidewalk:road-edge:h:4080:3052:4500:3052:north",
+    graphEdgeId: "road-edge:h:4080:3052:4500:3052",
+    routeKind: "sidewalk-patrol",
+    generated: false
+  }),
+  freezePedestrianRoute({
+    id: "south_harbor_east_loop",
+    name: "South Harbor east frontage loop",
+    points: [
+      { x: 4320, y: 3003 },
+      { x: 4400, y: 3003 },
+      { x: 4400, y: 3013 },
+      { x: 4320, y: 3013 }
     ],
     sidewalkId: "sidewalk:road-edge:h:4080:3052:4500:3052:north",
     graphEdgeId: "road-edge:h:4080:3052:4500:3052",

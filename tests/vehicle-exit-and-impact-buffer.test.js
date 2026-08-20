@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { heatLevelFromValue } from "../phaser/src/data/attention.js";
 import { chooseVehicleExitPoint } from "../phaser/src/vehicles/VehicleInteractions.js";
@@ -115,4 +116,17 @@ test("an isolated pixel-sized exit is rejected instead of trapping the player", 
   };
 
   assert.equal(chooseVehicleExitPoint(system, vehicle), null);
+});
+
+test("driving disables the hidden street body and exiting resets it before restoring movement", () => {
+  const code = readFileSync(
+    new URL("../phaser/src/vehicles/VehicleInteractions.js", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(code, /function disableStreetBodyWhileDriving/);
+  assert.match(code, /body\.setEnable\?\.\(false\)/);
+  assert.match(code, /disableStreetBodyWhileDriving\(system\.scene\)/);
+  assert.match(code, /player\.body\.reset\?\.\(exitPoint\.x, exitPoint\.y\)/);
+  assert.match(code, /player\.body\.setEnable\?\.\(true\)/);
 });
