@@ -2,6 +2,47 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-20 — M2.3a physical HVAC validated; M2.3b hatch hardware opened
+
+### Scope
+
+- Active milestone: M2
+- Task: validate the already implemented M2.3a physical HVAC increment on the branch synchronized with current `main`
+- Authoritative files: `phaser/src/rendering/buildings/BuildingPresentationPolishRenderer.js`, `tests/building-mechanical-polish.test.js`, roadmap and machine status
+- Focused evidence: physical HVAC bounds/casing/fan-housing contracts inside GitHub workflow run `32329806831`
+- Acceptance criteria: no new building-focused failure, synchronized branch remains compatible, Netlify green, PR #63 remains draft/mergeable
+- Explicit non-goals: no M2.3b hatch code in this run; no vent/antenna work; no gameplay, collision, topology, navigation, AI, mission or generated-city changes
+
+### Completed
+
+- confirmed workflow run `32329806831` completed successfully on `48cddadcb1b7a89d171d1577a28ffbf7798c6fd1`;
+- confirmed the unit-test job is green, which includes the dedicated HVAC contracts in `tests/building-mechanical-polish.test.js`;
+- confirmed city analysis/Foundry steps, browser campaign, browser boot and all three browser-system shards are green on the synchronized branch;
+- confirmed the Netlify deploy preview is green;
+- confirmed PR #63 remains open, draft and mergeable;
+- marked M2.3a complete and opened M2.3b hatch hardware as the next bounded task.
+
+### Validation
+
+- GitHub workflow: **success** (`32329806831`);
+- unit tests: **success**;
+- browser campaign: **success**;
+- browser boot: **success**;
+- browser systems: **3/3 shards success**;
+- Netlify: **success** — `https://deploy-preview-63--vampire-district.netlify.app`;
+- main-synchronization compatibility: **pass**;
+- no unrelated failure baseline remains on this validated head.
+
+### Visual risk
+
+The HVAC contracts prove physical top/side/contact separation, unchanged authored bounds and fan-housing integration. Final aesthetic judgement at normal gameplay zoom remains intentionally deferred until M6; no family-specific tuning is justified during this validation-only increment.
+
+### Next
+
+M2.3b: add restrained hinge and handle hardware on top of the existing physical hatch volume, keep the cues subordinate at gameplay zoom, preserve authored bounds/determinism, add focused contracts, then validate CI and Netlify before advancing to vent refinement.
+
+---
+
 ## 2026-08-20 — M2.2 physical skylights implemented; validation pending
 
 ### Scope
