@@ -192,7 +192,7 @@ Make skylights, HVAC, hatches, vents, annexes and markers read as physical roof 
 
 - [x] route raised annex presentation through shared physical-volume language where appropriate;
 - [x] give annexes explicit top, south/east wall depth and one restrained service detail;
-- [ ] integrate religious marker into roof architecture instead of a stamped symbol — implementation complete on `366ac2f90da5483c844ce28822425429615de5d2`, automated unit validation pending;
+- [x] integrate religious marker into roof architecture instead of a stamped symbol;
 - [ ] define reusable architectural marker treatment suitable for the later medical profile without prematurely classifying hospital buildings;
 - [ ] prop/marker scale validation at gameplay zoom remains deferred to M6;
 - [ ] add focused renderer contracts for physical integration and unchanged authored bounds.
@@ -206,12 +206,12 @@ Make skylights, HVAC, hatches, vents, annexes and markers read as physical roof 
 - focused annex contracts prove physical top/south/east faces, unchanged authored bounds, deterministic rendering, absence of the old icon-like circle/rectangle treatment and exactly one restrained service grille;
 - GitHub unit job is green in workflow `32334149530` on implementation/test head `342e6a7b01793913eefcec426e8cb71c31f254df`;
 - Netlify deploy preview is green on the same head;
-- church `CROSS_MARKER` modules with `variant: "church"` now bypass the legacy flat accent-stamp painter and render as two joined, low raised roof fins aligned to the planner-owned nave centreline;
+- church `CROSS_MARKER` modules with `variant: "church"` bypass the legacy flat accent-stamp painter and render as two joined, low raised roof fins aligned to the planner-owned nave centreline;
 - the church marker uses neutral architectural top/south/east faces with warm identity restricted to restrained north/west highlights, preserving the existing marker bounds and planner authority;
-- `tests/building-church-marker-physical.test.js` covers removal of the flat stamp, joined vertical/horizontal raised faces, containment inside authored marker bounds and deterministic output;
-- Netlify deploy preview is green on church-marker implementation/test head `366ac2f90da5483c844ce28822425429615de5d2`;
-- GitHub workflow `32335254118` had the unit job still running at the bounded observation point, so the religious-marker checkbox remains open until that exact head is confirmed green;
-- broader browser jobs continue independently at this bounded checkpoint.
+- `tests/building-church-marker-physical.test.js` proves removal of the flat stamp, joined vertical/horizontal raised faces, containment inside authored marker bounds and deterministic output;
+- GitHub workflow `32335254118` unit job completed **successfully** for church-marker implementation/test head `366ac2f90da5483c844ce28822425429615de5d2`;
+- Netlify deploy preview is **green** on that exact church-marker head;
+- browser jobs on workflow `32335254118` were cancelled after the branch head advanced through continuity/documentation commits; they are not required for this bounded renderer-only contract and do not represent a building regression.
 
 ### M2 exit criteria
 
@@ -302,4 +302,4 @@ Each hourly execution must:
 
 ## Current exact next action
 
-First validate GitHub workflow `32335254118` for church-marker implementation/test head `366ac2f90da5483c844ce28822425429615de5d2`. If the focused unit job is green, mark the religious architectural marker complete and begin the separate reusable family-neutral marker-geometry increment suitable for the later medical profile. Do not introduce hospital classification/profile work before M4 and do not request intermediate user review. If the marker contracts fail, fix only that renderer/test regression before advancing.
+Continue **M2.4** with one separate bounded increment that defines reusable, family-neutral architectural marker geometry suitable for the later medical profile. Reuse the existing physical-volume language, preserve authored marker bounds and determinism, and add focused contracts. Do not add a hospital classifier/profile before M4, do not alter gameplay/collision/topology, and do not request intermediate user review.
