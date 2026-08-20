@@ -1,6 +1,6 @@
 {
   "initiative": "building-visual-polish",
-  "version": 6,
+  "version": 7,
   "updatedAt": "2026-08-20",
   "branch": "agent/building-visual-poc",
   "pullRequest": 63,
@@ -9,8 +9,8 @@
   "executionMode": "chatgpt-hourly-final-gate",
   "userValidation": "M6-final-only",
   "currentMilestone": "M2",
-  "currentTask": "M2.3b-hatch-hardware-automated-validation-pending",
-  "nextAction": "Validate the M2.3b hatch-hardware implementation head with focused building contracts and Netlify. If green, mark M2.3b complete, reconcile roadmap/progress documentation for this manual increment, and begin M2.3c vent refinement without requesting intermediate user review.",
+  "currentTask": "M2.3c-vent-refinement-automated-validation-pending",
+  "nextAction": "Validate the M2.3b hatch-hardware browser workflow to completion and validate the M2.3c vent-refinement unit contracts plus Netlify. If green, mark M2.3b and M2.3c complete and begin M2.3d antenna base/support geometry without requesting intermediate user review.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "automation": {
     "provider": "ChatGPT scheduled task",
@@ -55,7 +55,7 @@
         { "id": "M2.2", "name": "physical skylights", "status": "complete" },
         { "id": "M2.3a", "name": "physical HVAC casing and fan housings", "status": "complete" },
         { "id": "M2.3b", "name": "hatch hardware", "status": "implementation-complete / automated-validation-pending" },
-        { "id": "M2.3c", "name": "vent refinement", "status": "planned" },
+        { "id": "M2.3c", "name": "vent refinement", "status": "implementation-complete / automated-validation-pending" },
         { "id": "M2.3d", "name": "antenna base and support geometry", "status": "planned" },
         { "id": "M2.4", "name": "architectural annexes and markers", "status": "planned" }
       ]
@@ -74,9 +74,14 @@
     "M2_3aBuildingContracts": "pass",
     "M2_3aWorkflowRun": 32329806831,
     "M2_3aNetlify": "success",
-    "latestM2_3bImplementationHead": "f85e835dec1d31a3d5b445b7278cafbc95627cf7",
-    "M2_3bBuildingContracts": "pending",
-    "M2_3bNetlify": "pending",
+    "latestM2_3bImplementationHead": "acf55a5d927333ca1ca4312a389e5642d8dd2cca",
+    "M2_3bUnitContracts": "pass",
+    "M2_3bWorkflowRun": 32332122399,
+    "M2_3bBrowserValidation": "in-progress-at-bounded-check",
+    "M2_3bNetlify": "success",
+    "latestM2_3cImplementationHead": "693e4b3bd9e494560d797306fa400a347f2763ee",
+    "M2_3cUnitContracts": "pending",
+    "M2_3cNetlify": "success",
     "mainSyncCompatibility": "pass"
   }
 }
