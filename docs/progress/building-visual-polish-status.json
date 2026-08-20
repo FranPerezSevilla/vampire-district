@@ -9,8 +9,8 @@
   "executionMode": "chatgpt-hourly-final-gate",
   "userValidation": "M6-final-only",
   "currentMilestone": "M2",
-  "currentTask": "M2.2-physical-skylights",
-  "nextAction": "At the next ChatGPT scheduled run, route skylights through the shared raised-rectangle volume primitive, add a physical curb and inset glazing with directional highlight, preserve authored bounds, and add focused physical-skylight contracts.",
+  "currentTask": "M2.2-automated-validation-pending",
+  "nextAction": "Validate M2.2 implementation head 1c25100fda1f6d80b4483ec739c6220eb5ff0b43. If focused building contracts and Netlify are green, mark M2.2 complete and begin M2.3 with HVAC casing/fan housing. If a new building-focused failure exists, fix only that M2.2 regression before advancing.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "automation": {
     "provider": "ChatGPT scheduled task",
@@ -45,7 +45,7 @@
       "status": "autonomous-in-progress",
       "tasks": [
         { "id": "M2.1", "name": "shared physical volume primitives", "status": "complete" },
-        { "id": "M2.2", "name": "skylights", "status": "active" },
+        { "id": "M2.2", "name": "skylights", "status": "implementation-complete / automated-validation-pending" },
         { "id": "M2.3", "name": "mechanical equipment", "status": "planned" },
         { "id": "M2.4", "name": "architectural annexes and markers", "status": "planned" }
       ]
@@ -58,9 +58,10 @@
   "validation": {
     "latestM1Head": "454f00a03dfd9d80f8cdc27b849ff4ad982955c2",
     "latestM2ValidatedHead": "20d49ac4478e97e82c7e0cfc1f76432270c6f16a",
-    "buildingFocusedContracts": "pass",
-    "globalUnitResult": "407/414",
-    "netlify": "success"
+    "latestM2ImplementationHead": "1c25100fda1f6d80b4483ec739c6220eb5ff0b43",
+    "buildingFocusedContracts": "pending",
+    "globalUnitResult": "pending",
+    "netlify": "pending"
   },
   "knownUnrelatedCiFailures": [
     "tests/urban-witness-network.test.js (2 expectations)",
