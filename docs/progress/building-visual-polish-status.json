@@ -1,6 +1,6 @@
 {
   "initiative": "building-visual-polish",
-  "version": 7,
+  "version": 8,
   "updatedAt": "2026-08-20",
   "branch": "agent/building-visual-poc",
   "pullRequest": 63,
@@ -9,8 +9,8 @@
   "executionMode": "chatgpt-hourly-final-gate",
   "userValidation": "M6-final-only",
   "currentMilestone": "M2",
-  "currentTask": "M2.3c-vent-refinement-automated-validation-pending",
-  "nextAction": "Validate the M2.3b hatch-hardware browser workflow to completion and validate the M2.3c vent-refinement unit contracts plus Netlify. If green, mark M2.3b and M2.3c complete and begin M2.3d antenna base/support geometry without requesting intermediate user review.",
+  "currentTask": "M2.4-architectural-annexes-and-markers",
+  "nextAction": "Begin M2.4 by routing raised annexes through the shared physical-volume grammar while preserving planned bounds, add one restrained service detail and focused contracts, then continue with architectural religious/medical marker integration without introducing a hospital classifier before M4.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "automation": {
     "provider": "ChatGPT scheduled task",
@@ -54,10 +54,10 @@
         { "id": "M2.1", "name": "shared physical volume primitives", "status": "complete" },
         { "id": "M2.2", "name": "physical skylights", "status": "complete" },
         { "id": "M2.3a", "name": "physical HVAC casing and fan housings", "status": "complete" },
-        { "id": "M2.3b", "name": "hatch hardware", "status": "implementation-complete / automated-validation-pending" },
-        { "id": "M2.3c", "name": "vent refinement", "status": "implementation-complete / automated-validation-pending" },
-        { "id": "M2.3d", "name": "antenna base and support geometry", "status": "planned" },
-        { "id": "M2.4", "name": "architectural annexes and markers", "status": "planned" }
+        { "id": "M2.3b", "name": "hatch hardware", "status": "complete" },
+        { "id": "M2.3c", "name": "vent refinement", "status": "complete" },
+        { "id": "M2.3d", "name": "antenna base and support geometry", "status": "complete" },
+        { "id": "M2.4", "name": "architectural annexes and markers", "status": "active" }
       ]
     },
     { "id": "M3", "name": "surface material language", "status": "planned" },
@@ -69,19 +69,21 @@
     "latestM2_2Head": "0523ddbd7cf13403895644cd6979c5707bde1089",
     "M2_2BuildingContracts": "pass",
     "M2_2Netlify": "success",
-    "latestM2_3aImplementationHead": "51b752d1fe49f65f3531138df1d5ad2ac5cc86ea",
     "latestM2_3aValidatedHead": "48cddadcb1b7a89d171d1577a28ffbf7798c6fd1",
-    "M2_3aBuildingContracts": "pass",
     "M2_3aWorkflowRun": 32329806831,
+    "M2_3aBuildingContracts": "pass",
     "M2_3aNetlify": "success",
     "latestM2_3bImplementationHead": "acf55a5d927333ca1ca4312a389e5642d8dd2cca",
-    "M2_3bUnitContracts": "pass",
-    "M2_3bWorkflowRun": 32332122399,
-    "M2_3bBrowserValidation": "in-progress-at-bounded-check",
+    "M2_3bBuildingContracts": "pass-on-later-consolidated-run",
     "M2_3bNetlify": "success",
     "latestM2_3cImplementationHead": "693e4b3bd9e494560d797306fa400a347f2763ee",
-    "M2_3cUnitContracts": "pending",
+    "M2_3cBuildingContracts": "pass-on-workflow-32332620515",
     "M2_3cNetlify": "success",
+    "latestM2_3dImplementationHead": "1aca46a2b651ff38873d8215d2937b33a7491a1f",
+    "M2_3dBuildingContracts": "pass",
+    "M2_3dWorkflowRun": 32332620515,
+    "M2_3dNetlify": "success",
+    "broaderBrowserValidation": "in-progress-in-workflow-32332620515",
     "mainSyncCompatibility": "pass"
   }
 }
