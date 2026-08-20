@@ -27,20 +27,20 @@ function defineArchetype(spec) {
     occupantMax: 1,
     conditionProfile: "used",
     bodyStyle: "sedan",
-    palettes: freezePalette(spec.palettes || [{ color: spec.color, trim: spec.trim }]),
-    ...spec
+    ...spec,
+    palettes: freezePalette(spec.palettes || [{ color: spec.color, trim: spec.trim }])
   });
 }
 
 export const VEHICLE_ARCHETYPES = Object.freeze({
   compact: defineArchetype({
-    id: "compact", label: "Compact old car", bodyStyle: "compact", width: 27, height: 14,
-    maxSpeed: 330, gearCount: 5, gearShiftDuration: 0.14, gearHoldDuration: 0.42, firstGearHoldDuration: 0.30,
-    cameraLookAhead: 70, reverseSpeed: 90, acceleration: 325, reverseAcceleration: 124, launchBoost: 0.54,
-    brake: 296, handbrakeBrake: 176, handbrakeThrottleFactor: 0.20, handbrakeSteerMultiplier: 1.44,
-    handbrakeDriftKick: 0.58, grip: 9.5, handbrakeGrip: 1.45, drag: 45, steerRate: 3.28,
-    maxHealth: 70, trunkCapacity: 2, cameraZoomFactor: 0.70, mass: 0.72, collisionPush: 0.76,
-    trafficWeight: 14, conditionProfile: "aged", color: 0x6f9f96, trim: 0xd1e9dc,
+    id: "compact", label: "Compact old car", bodyStyle: "compact", width: 28, height: 14,
+    maxSpeed: 340, gearCount: 5, gearShiftDuration: 0.14, gearHoldDuration: 0.42, firstGearHoldDuration: 0.30,
+    cameraLookAhead: 72, reverseSpeed: 92, acceleration: 330, reverseAcceleration: 126, launchBoost: 0.55,
+    brake: 296, handbrakeBrake: 176, handbrakeThrottleFactor: 0.20, handbrakeSteerMultiplier: 1.42,
+    handbrakeDriftKick: 0.58, grip: 9.4, handbrakeGrip: 1.45, drag: 45, steerRate: 3.20,
+    maxHealth: 72, trunkCapacity: 2, cameraZoomFactor: 0.69, mass: 0.72, collisionPush: 0.76,
+    trafficWeight: 14, conditionProfile: "aged", color: 0x78c7a3, trim: 0xd7ffec,
     palettes: [{ color: 0x6f9f96, trim: 0xd1e9dc }, { color: 0x786c62, trim: 0xd8c9b6 }, { color: 0x6d7887, trim: 0xcad5df }]
   }),
   hatchback: defineArchetype({
@@ -60,7 +60,7 @@ export const VEHICLE_ARCHETYPES = Object.freeze({
     brake: 290, handbrakeBrake: 172, handbrakeThrottleFactor: 0.18, handbrakeSteerMultiplier: 1.38,
     handbrakeDriftKick: 0.54, grip: 8.8, handbrakeGrip: 1.38, drag: 42, steerRate: 2.96,
     maxHealth: 88, trunkCapacity: 4, cameraZoomFactor: 0.66, mass: 1.00, collisionPush: 1.00,
-    trafficWeight: 18, occupantMax: 2, color: 0x8f7e70, trim: 0xe5d6c8,
+    trafficWeight: 18, occupantMax: 2, color: 0x9a7ab8, trim: 0xefe6ff,
     palettes: [{ color: 0x8f7e70, trim: 0xe5d6c8 }, { color: 0x707987, trim: 0xd8dee7 }, { color: 0x6f6b78, trim: 0xd9d2e1 }, { color: 0x7f775d, trim: 0xe0d8b8 }]
   }),
   executive: defineArchetype({
@@ -140,7 +140,7 @@ export const VEHICLE_ARCHETYPES = Object.freeze({
     brake: 260, handbrakeBrake: 184, handbrakeThrottleFactor: 0.12, handbrakeSteerMultiplier: 1.26,
     handbrakeDriftKick: 0.34, grip: 7.8, handbrakeGrip: 1.70, drag: 40, steerRate: 2.38,
     maxHealth: 118, trunkCapacity: 7, cameraZoomFactor: 0.72, mass: 1.62, collisionPush: 1.62,
-    trafficWeight: 8, occupantMax: 2, color: 0x70685d, trim: 0xd7c9b5,
+    trafficWeight: 8, occupantMax: 2, color: 0x6e5b37, trim: 0xffcf87,
     palettes: [{ color: 0x70685d, trim: 0xd7c9b5 }, { color: 0x6a7078, trim: 0xd5dbe2 }, { color: 0x4f5e61, trim: 0xc2d1d2 }]
   }),
   delivery_van: defineArchetype({
@@ -190,7 +190,7 @@ export const VEHICLE_ARCHETYPES = Object.freeze({
     reverseSpeed: 106, acceleration: 360, reverseAcceleration: 136, launchBoost: 0.60, brake: 318,
     handbrakeBrake: 180, handbrakeThrottleFactor: 0.22, handbrakeSteerMultiplier: 1.46, handbrakeDriftKick: 0.64,
     grip: 9.7, handbrakeGrip: 1.34, drag: 46, steerRate: 3.12, maxHealth: 104, trunkCapacity: 3,
-    cameraZoomFactor: 0.62, mass: 1.18, collisionPush: 1.18, color: 0x202a36, trim: 0xd5dde7,
+    cameraZoomFactor: 0.62, mass: 1.18, collisionPush: 1.18, color: 0x294c7a, trim: 0x9dcaff,
     palettes: [{ color: 0x202a36, trim: 0xd5dde7 }]
   }),
   police_interceptor: defineArchetype({
