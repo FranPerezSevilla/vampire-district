@@ -1,4 +1,4 @@
-import { MODULE_KINDS } from "./BuildingPresentationCatalog.js";
+import { FRONTAGE_KINDS, MODULE_KINDS } from "./BuildingPresentationCatalog.js";
 import { createOrthogonalMarkerGeometry } from "./BuildingPresentationMarkerGeometry.js";
 import {
   createCylindricalVolumeGeometry,
@@ -36,6 +36,10 @@ function isRaisedAnnex(module) {
 
 function isArchitecturalChurchMarker(module) {
   return module?.kind === MODULE_KINDS.CROSS_MARKER && module.variant === "church";
+}
+
+function isPhysicalPoliceFrontage(module) {
+  return module?.kind === MODULE_KINDS.FRONTAGE && module.variant === FRONTAGE_KINDS.POLICE;
 }
 
 function drawAnnexServiceGrille(graphics, geometry, plan) {
@@ -81,6 +85,95 @@ function drawPhysicalAnnex(graphics, module, plan) {
   });
   drawAnnexServiceGrille(graphics, geometry, plan);
   return geometry;
+}
+
+function frontageEdgeBand(bounds, edge, thickness) {
+  const amount = Math.max(1, Math.min(
+    Number(thickness) || 1,
+    Math.min(bounds.w, bounds.h) * 0.34
+  ));
+  if (edge === "north") return { x: bounds.x, y: bounds.y, w: bounds.w, h: amount };
+  if (edge === "east") return {
+    x: bounds.x + bounds.w - amount,
+    y: bounds.y,
+    w: amount,
+    h: bounds.h
+  };
+  if (edge === "west") return { x: bounds.x, y: bounds.y, w: amount, h: bounds.h };
+  return {
+    x: bounds.x,
+    y: bounds.y + bounds.h - amount,
+    w: bounds.w,
+    h: amount
+  };
+}
+
+function policeEntryRecess(bounds, edge) {
+  const horizontal = edge === "north" || edge === "south";
+  if (horizontal) {
+    const width = Math.max(5, Math.min(14, bounds.w * 0.28));
+    const height = Math.max(1.5, Math.min(3, bounds.h * 0.3));
+    return {
+      x: bounds.x + (bounds.w - width) / 2,
+      y: edge === "north" ? bounds.y : bounds.y + bounds.h - height,
+      w: width,
+      h: height
+    };
+  }
+  const width = Math.max(1.5, Math.min(3, bounds.w * 0.3));
+  const height = Math.max(5, Math.min(14, bounds.h * 0.28));
+  return {
+    x: edge === "west" ? bounds.x : bounds.x + bounds.w - width,
+    y: bounds.y + (bounds.h - height) / 2,
+    w: width,
+    h: height
+  };
+}
+
+function drawPhysicalPoliceFrontage(graphics, module, plan) {
+  const geometry = drawRaisedRectVolume(graphics, module.bounds, {
+    depth: physicalDepth(module.bounds, 0.13, 3),
+    shadowColor: plan.palette.roofShadow,
+    shadowAlpha: 0.4,
+    topColor: plan.palette.canopy,
+    topAlpha: 0.98,
+    southColor: plan.palette.wall,
+    southAlpha: 0.84,
+    eastColor: plan.palette.serviceDark,
+    eastAlpha: 0.88,
+    highlightColor: plan.palette.parapetLight,
+    highlightAlpha: 0.2,
+    seamColor: plan.palette.parapetMid,
+    seamAlpha: 0.3
+  });
+
+  const top = geometry.top;
+  const edge = ["north", "east", "south", "west"].includes(module.edge)
+    ? module.edge
+    : "south";
+  const accentBand = frontageEdgeBand(
+    top,
+    edge,
+    Math.max(1.25, Math.min(2.5, Math.min(top.w, top.h) * 0.18))
+  );
+  graphics.fillStyle(plan.palette.accent, 0.68);
+  graphics.fillRect(accentBand.x, accentBand.y, accentBand.w, accentBand.h);
+
+  const recess = policeEntryRecess(top, edge);
+  graphics.fillStyle(plan.palette.serviceDark, 0.9);
+  graphics.fillRect(recess.x, recess.y, recess.w, recess.h);
+
+  // A single restrained threshold highlight reads as a controlled public entry.
+  // Police identity stays local to this frontage instead of becoming a glowing
+  // perimeter or a stamped badge/cross on the roof.
+  graphics.lineStyle(0.75, plan.palette.accentSoft, 0.34);
+  if (edge === "north" || edge === "south") {
+    graphics.lineBetween(recess.x + 1, recess.y, recess.x + recess.w - 1, recess.y);
+  } else {
+    graphics.lineBetween(recess.x, recess.y + 1, recess.x, recess.y + recess.h - 1);
+  }
+
+  return { geometry, accentBand, recess };
 }
 
 function drawArchitecturalChurchMarker(graphics, module, plan) {
@@ -136,7 +229,9 @@ function drawDebugBounds(graphics, module) {
 }
 
 function isPhysicalReplacement(module) {
-  return isRaisedAnnex(module) || isArchitecturalChurchMarker(module);
+  return isRaisedAnnex(module)
+    || isArchitecturalChurchMarker(module)
+    || isPhysicalPoliceFrontage(module);
 }
 
 function renderPolishedWithPhysicalReplacements(graphics, plan, options = {}) {
@@ -146,9 +241,9 @@ function renderPolishedWithPhysicalReplacements(graphics, plan, options = {}) {
     return renderPolishedBuildingPresentation(graphics, plan, options);
   }
 
-  // Preserve module ordering while replacing only the legacy raised-annex and
-  // church-marker painters. The planner remains authoritative for bounds and
-  // layer order.
+  // Preserve module ordering while replacing only legacy painters that now have
+  // a physical architectural treatment. The planner remains authoritative for
+  // bounds and layer order.
   for (const module of modules) {
     if (isRaisedAnnex(module)) {
       drawPhysicalAnnex(graphics, module, plan);
@@ -157,6 +252,11 @@ function renderPolishedWithPhysicalReplacements(graphics, plan, options = {}) {
     }
     if (isArchitecturalChurchMarker(module)) {
       drawArchitecturalChurchMarker(graphics, module, plan);
+      if (options.showModuleBounds) drawDebugBounds(graphics, module);
+      continue;
+    }
+    if (isPhysicalPoliceFrontage(module)) {
+      drawPhysicalPoliceFrontage(graphics, module, plan);
       if (options.showModuleBounds) drawDebugBounds(graphics, module);
       continue;
     }
