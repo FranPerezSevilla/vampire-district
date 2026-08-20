@@ -32,6 +32,25 @@ test("parked obstacle avoidance waits for lateral clearance before committing wh
   assert.equal(established.blockerId, "parked-car");
 });
 
+test("the same readable steering can pass a stopped player vehicle without treating moving traffic as parked", () => {
+  const stoppedPlayer = parkedAvoidanceDecision({
+    desiredSpeedFactor: 0.2,
+    reason: "player-vehicle",
+    gap: 42,
+    blockerId: "player-car"
+  }, { offset: 20, targetOffset: 28 });
+  assert.equal(stoppedPlayer.reason, "steering-around-stopped-player");
+  assert.ok(stoppedPlayer.desiredSpeedFactor > 0.35);
+
+  const movingTraffic = {
+    desiredSpeedFactor: 0.4,
+    reason: "traffic",
+    gap: 42,
+    blockerId: "lead-car"
+  };
+  assert.equal(parkedAvoidanceDecision(movingTraffic), movingTraffic);
+});
+
 test("steering pose changes laterally over time instead of teleporting and counter-steers home", () => {
   let pose = { offset: 0, steerAngle: 0 };
   pose = stepTrafficSteeringPose(pose, { targetOffset: 28, dt: 0.1, lateralRate: 48 });
@@ -52,10 +71,18 @@ test("steering pose changes laterally over time instead of teleporting and count
   assert.equal(sawCounterSteer, true);
 });
 
+test("steering clearance checks persistent geometry, active traffic and intact street furniture", async () => {
+  const steering = await readFile(new URL("phaser/src/streaming/TrafficSteeringPresentationSystem.js", ROOT), "utf8");
+  assert.equal(steering.includes("originalVehicleCanOccupy"), true);
+  assert.equal(steering.includes("streetFurnitureSystem?.dumpsters"), true);
+  assert.equal(steering.includes("this.activeSlots()"), true);
+  assert.equal(steering.includes("playerAvoidanceMaxSpeed"), true);
+});
+
 test("gameplay runtime composes steering between lane behavior and physical consequences", async () => {
   const runtime = await readFile(new URL("phaser/src/runtime/GameplayRuntime.js", ROOT), "utf8");
-  assert.equal(runtime.includes('TrafficSteeringPresentationSystem'), true);
-  assert.equal(runtime.includes('new TrafficSteeringPresentationSystem(scene)'), true);
+  assert.equal(runtime.includes("TrafficSteeringPresentationSystem"), true);
+  assert.equal(runtime.includes("new TrafficSteeringPresentationSystem(scene)"), true);
   assert.equal(runtime.includes('registerSystem("TrafficSteeringPresentationSystem")'), true);
 
   const behaviorUpdate = runtime.indexOf("scene.trafficLocalBehaviorSystem?.update?.(dt)");
