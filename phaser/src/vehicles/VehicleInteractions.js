@@ -65,6 +65,14 @@ export function chooseVehicleExitPoint(system, vehicle) {
   return null;
 }
 
+function disableStreetBodyWhileDriving(scene) {
+  const body = scene.player?.body;
+  if (!body) return;
+  body.setVelocity?.(0, 0);
+  body.setEnable?.(false);
+  body.enable = false;
+}
+
 function restoreStreetControl(scene, exitPoint) {
   const player = scene.player;
   scene.currentLayer = LAYERS.STREET;
@@ -73,6 +81,9 @@ function restoreStreetControl(scene, exitPoint) {
   player?.setVisible?.(true);
   player?.setPosition?.(exitPoint.x, exitPoint.y);
   if (player?.body) {
+    // The hidden player body is disabled while driving so police/traffic cannot leave stale
+    // collision flags on it. reset() clears touching/blocked state before street control returns.
+    player.body.reset?.(exitPoint.x, exitPoint.y);
     player.body.enable = true;
     player.body.setEnable?.(true);
     player.body.setVelocity?.(0, 0);
@@ -167,6 +178,7 @@ export function enterVehicle(system, vehicleId, { force = false } = {}) {
   vehicle.parked = false;
   system.scene.currentLayer = LAYERS.STREET;
   system.scene.player.setPosition(vehicle.x, vehicle.y).setVisible(false);
+  disableStreetBodyWhileDriving(system.scene);
   system.scene.cameras.main.startFollow(vehicle.container, true, 0.10, 0.10);
   system.scene.registry?.set?.("vehicleOccupied", vehicle.id);
   system.scene.inputSystem?.resetWorldEdges?.();
