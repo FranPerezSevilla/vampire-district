@@ -248,6 +248,79 @@ test("hatch proving fixture uses shared physical top-side-contact grammar", () =
   assert.ok(contactShadows.length >= 3);
 });
 
+test("physical skylight keeps authored bounds while separating curb, glazing and directional depth", () => {
+  const sourcePlan = createBuildingPresentationPlan(building({
+    sign: "WARE",
+    presentation: { profile: "warehouse" }
+  }));
+  const skylight = sourcePlan.modules.find(module => module.kind === MODULE_KINDS.SKYLIGHT);
+  assert.ok(skylight);
+  const authoredBounds = { ...skylight.bounds };
+
+  const graphics = new GraphicsRecorder();
+  renderBuildingPresentation(graphics, {
+    ...sourcePlan,
+    modules: [skylight]
+  });
+
+  assert.deepEqual(skylight.bounds, authoredBounds);
+  const fills = graphics.calls.filter(call => call.name === "fillRect");
+  assert.ok(fills.some(call => call.style?.color === sourcePlan.palette.propDark));
+  assert.ok(fills.some(call => call.style?.color === sourcePlan.palette.serviceDark));
+  assert.ok(fills.some(call => call.style?.color === sourcePlan.palette.wall));
+
+  const glassFills = fills.filter(call => call.style?.color === sourcePlan.palette.glass);
+  assert.ok(glassFills.length >= 1);
+  const [glassX, glassY, glassW, glassH] = glassFills[0].args.map(Number);
+  assert.ok(glassX > authoredBounds.x);
+  assert.ok(glassY > authoredBounds.y);
+  assert.ok(glassX + glassW < authoredBounds.x + authoredBounds.w);
+  assert.ok(glassY + glassH < authoredBounds.y + authoredBounds.h);
+
+  const contactShadows = fills.filter(call => call.style?.color === sourcePlan.palette.roofShadow);
+  assert.ok(contactShadows.length >= 3);
+  assert.ok(new Set(contactShadows.map(call => call.style.alpha)).size >= 3);
+
+  const glassHighlights = graphics.calls.filter(call => (
+    call.name === "lineBetween"
+      && call.line?.color === sourcePlan.palette.glassHighlight
+  ));
+  assert.ok(glassHighlights.length >= 2);
+
+  const mullions = graphics.calls.filter(call => (
+    call.name === "lineBetween"
+      && call.line?.color === sourcePlan.palette.serviceMid
+  ));
+  assert.ok(mullions.length >= 1);
+});
+
+test("warehouse and club skylights share the physical glazing language without family-specific geometry", () => {
+  for (const [profile, sign] of [["warehouse", "WARE"], ["club", "NEON"]]) {
+    const sourcePlan = createBuildingPresentationPlan(building({
+      sign,
+      presentation: {
+        profile,
+        detailLevel: "rich",
+        propKinds: [MODULE_KINDS.SKYLIGHT],
+        seed: 915
+      }
+    }));
+    const skylight = sourcePlan.modules.find(module => module.kind === MODULE_KINDS.SKYLIGHT);
+    assert.ok(skylight, `${profile} should plan a skylight`);
+
+    const graphics = new GraphicsRecorder();
+    renderBuildingPresentation(graphics, {
+      ...sourcePlan,
+      modules: [skylight]
+    });
+
+    const fills = graphics.calls.filter(call => call.name === "fillRect");
+    assert.ok(fills.some(call => call.style?.color === sourcePlan.palette.glass));
+    assert.ok(fills.some(call => call.style?.color === sourcePlan.palette.propDark));
+    assert.ok(fills.filter(call => call.style?.color === sourcePlan.palette.roofShadow).length >= 3);
+  }
+});
+
 test("rectangular roof props receive several local contact-shadow passes", () => {
   const sourcePlan = createBuildingPresentationPlan(building({
     sign: "WARE",
