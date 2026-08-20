@@ -54,7 +54,7 @@ export const BUILDING_VISUAL_PROFILES = deepFreeze({
   default: {
     id: "default",
     surfaceKind: ROOF_SURFACE_KINDS.SMOOTH,
-    layoutCandidates: ["rectangle", "rectangle", "rectangle", "rectangle", "l-shape", "stepped", "t-shape"],
+    layoutCandidates: ["rectangle", "rectangle", "rectangle", "rectangle", "rectangle", "l-shape", "stepped"],
     frontage: FRONTAGE_KINDS.GENERIC,
     signatureProps: [],
     propPool: [MODULE_KINDS.HATCH, MODULE_KINDS.VENT, MODULE_KINDS.SKYLIGHT],
@@ -245,14 +245,16 @@ function normalizedProfile(value) {
 }
 
 function classificationWords(building = {}) {
+  // A district name describes context, not the building itself. Keeping it out
+  // of visual classification prevents untagged blocks from inheriting a family
+  // merely because they sit in a warehouse/medical/commercial neighbourhood.
   return new Set([
     building.id,
     building.sign,
     building.label,
     building.name,
     building.kind,
-    building.landmarkId,
-    building.districtId
+    building.landmarkId
   ].flatMap(normalizedWords));
 }
 
