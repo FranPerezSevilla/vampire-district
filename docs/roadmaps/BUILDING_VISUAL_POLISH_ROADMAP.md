@@ -221,15 +221,16 @@ Representative props have clear top, side/contact and shadow separation without 
 
 ### M3.1 — Warehouse corrugation refinement
 
-**Status: implementation-complete / automated-validation-pending**
+**Status: complete**
 
-- [ ] corrugated warehouse ribs with lower contrast and grouped rhythm;
+- [x] corrugated warehouse ribs with lower contrast and grouped rhythm;
 - renderer preserves every planner-owned rib module but paints a three-rib group followed by one quiet lane;
 - anchor ribs use shadow/highlight alpha `0.13/0.09`; supporting ribs use `0.075/0.055`, replacing the old uniform `0.2/0.2` treatment;
 - no planner spacing, module bounds or authored building geometry changed;
 - `tests/building-warehouse-corrugation.test.js` covers grouped rhythm, reduced contrast, unchanged planned modules and deterministic output;
-- Netlify is green on implementation/test head `40feacc6789ed419da31feb1bb8d2d564d74caa1`;
-- workflow `32342778855` is the focused validation gate and was still running/queued at the bounded checkpoint.
+- workflow `32342778855` unit job is **success** on implementation/test head `40feacc6789ed419da31feb1bb8d2d564d74caa1`;
+- Netlify is **green** on the same implementation/test head;
+- browser jobs on that workflow were cancelled only after continuity documentation moved the branch head and are not required for this bounded renderer contract.
 
 ### Remaining M3 tasks
 
@@ -313,4 +314,4 @@ Each hourly execution must:
 
 ## Current exact next action
 
-Validate workflow `32342778855` for **M3.1 — warehouse corrugation refinement** on implementation/test head `40feacc6789ed419da31feb1bb8d2d564d74caa1`. If the focused contracts are green, mark M3.1 complete and continue with the separate membrane-seam increment. Do not begin membrane/civic/pitched/night work until that validation is confirmed.
+Continue **M3** with one bounded membrane-surface increment: preserve broad planner-owned seams but replace the current uniform diagram-line treatment with restrained deterministic tonal variation. Keep authored geometry unchanged, add focused contracts, confirm Netlify, and do not begin civic/pitched/night work in the same increment.
