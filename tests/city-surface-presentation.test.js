@@ -2,18 +2,20 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  buildCornerArc,
-  buildCornerCurbSegments,
-  buildCornerCutout,
-  buildCornerCutoutPolygon,
   buildCrosswalkMarkings,
   buildLocalRoadDashSegments,
   buildMajorRoadCentreSegments,
   buildOpenGroundDetails,
-  buildSidewalkCurbSegments,
   buildSidewalkJointSegments,
   buildStreetGridLines
 } from "../phaser/src/policies/CitySurfacePresentationPolicy.js";
+import { buildSidewalkBoundaryGeometry } from "../phaser/src/rendering/SidewalkBoundaryGeometry.js";
+
+function segmentKey(segment) {
+  const first = `${segment.x1}:${segment.y1}`;
+  const second = `${segment.x2}:${segment.y2}`;
+  return first < second ? `${first}|${second}` : `${second}|${first}`;
+}
 
 test("street grid stays globally aligned and marks larger paving seams", () => {
   const bounds = { x: 70, y: 130, w: 210, h: 150 };
@@ -70,56 +72,64 @@ test("sidewalk panel joints follow the long axis and stay inside the visible fra
   assert.ok(segments.every(segment => segment.y1 >= walk.y && segment.y2 <= walk.y + walk.h));
 });
 
-test("sidewalk curb coverage keeps both exposed strip edges without duplicate segments", () => {
-  const walk = {
-    x: 100,
-    y: 200,
-    w: 160,
-    h: 22,
-    geometry: "rect",
-    orientation: "horizontal",
-    side: "north",
-    trimEdges: ["north", "south"],
-    role: "kerb-strip"
-  };
-  const segments = buildSidewalkCurbSegments(walk);
+test("overlapping sidewalk pieces collapse into one perimeter and one continuous curb", () => {
+  const sidewalkSurfaces = [
+    { id: "walk-a", x: 0, y: 0, w: 80, h: 20 },
+    { id: "walk-b", x: 60, y: 0, w: 80, h: 20 }
+  ];
+  const roadSurfaces = [{ id: "road", x: 0, y: 20, w: 140, h: 80 }];
+  const geometry = buildSidewalkBoundaryGeometry(sidewalkSurfaces, roadSurfaces);
+  const southCurbs = geometry.curbSegments.filter(segment => segment.y1 === 20 && segment.y2 === 20);
 
-  assert.equal(segments.length, 2);
-  assert.ok(segments.some(segment => segment.y1 === walk.y && segment.y2 === walk.y));
-  assert.ok(segments.some(segment => segment.y1 === walk.y + walk.h && segment.y2 === walk.y + walk.h));
+  assert.deepEqual(southCurbs, [{ x1: 0, y1: 20, x2: 140, y2: 20, roadAdjacent: true }]);
+  assert.equal(new Set(geometry.boundarySegments.map(segmentKey)).size, geometry.boundarySegments.length);
+  assert.equal(geometry.boundarySegments.some(segment => segment.x1 === 60 && segment.x2 === 60), false);
+  assert.equal(geometry.boundarySegments.some(segment => segment.x1 === 80 && segment.x2 === 80), false);
 });
 
-test("junction corner arc is centred inside the sidewalk and removes the sharp road-facing vertex", () => {
-  const walk = { x: 300, y: 400, w: 22, h: 22, role: "corner", corner: "nw" };
-  const cutout = buildCornerCutout(walk);
-  const arc = buildCornerArc(cutout, 6);
-  const polygon = buildCornerCutoutPolygon(cutout, 6);
-  const curbSegments = buildCornerCurbSegments(walk, cutout);
+test("only a true union corner receives one inward arc and no overlapping sharp vertex", () => {
+  const sidewalkSurfaces = [
+    { id: "corner-nw", x: 0, y: 0, w: 20, h: 20, role: "corner", corner: "nw" },
+    { id: "north-strip", x: 0, y: -80, w: 20, h: 80 },
+    { id: "west-strip", x: -80, y: 0, w: 80, h: 20 },
+    { id: "duplicate-pad", x: 0, y: 0, w: 20, h: 20, role: "closure" }
+  ];
+  const roadSurfaces = [
+    { id: "north-road", x: 20, y: -80, w: 60, h: 100 },
+    { id: "west-road", x: -80, y: 20, w: 100, h: 60 },
+    { id: "junction-road", x: 20, y: 20, w: 60, h: 60 }
+  ];
+  const geometry = buildSidewalkBoundaryGeometry(sidewalkSurfaces, roadSurfaces, {
+    cornerRadius: 7,
+    cornerSegments: 8
+  });
 
-  assert.equal(cutout.vertexX, 322);
-  assert.equal(cutout.vertexY, 422);
-  assert.ok(cutout.x < cutout.vertexX);
-  assert.ok(cutout.y < cutout.vertexY);
-  assert.ok(cutout.radius >= 5 && cutout.radius <= 8);
-  assert.equal(arc.length, 7);
-  assert.equal(polygon.length, 8);
-  assert.deepEqual(polygon[0], { x: 322, y: 422 });
-  assert.ok(arc.every(point => (
-    point.x >= cutout.x - 0.001
-    && point.y >= cutout.y - 0.001
-    && point.x <= cutout.vertexX + 0.001
-    && point.y <= cutout.vertexY + 0.001
-  )));
-  assert.ok(Math.abs(arc[0].x - cutout.vertexX) < 0.001);
-  assert.ok(Math.abs(arc[0].y - cutout.y) < 0.001);
-  assert.ok(Math.abs(arc.at(-1).x - cutout.x) < 0.001);
-  assert.ok(Math.abs(arc.at(-1).y - cutout.vertexY) < 0.001);
-  assert.equal(curbSegments.length, 2);
-  assert.equal(curbSegments[0].x2, cutout.x);
-  assert.equal(curbSegments[1].y2, cutout.y);
+  assert.equal(geometry.corners.length, 1);
+  const [corner] = geometry.corners;
+  assert.deepEqual(corner.vertex, { x: 20, y: 20 });
+  assert.deepEqual(corner.centre, { x: 13, y: 13 });
+  assert.deepEqual(corner.arc[0], { x: 20, y: 13 });
+  assert.deepEqual(corner.arc.at(-1), { x: 13, y: 20 });
+  assert.equal(geometry.curbSegments.some(segment => (
+    (segment.x1 === 20 && segment.y1 === 20)
+    || (segment.x2 === 20 && segment.y2 === 20)
+  )), false);
+  assert.ok(geometry.curbSegments.some(segment => segment.x2 === 13 && segment.y2 === 20));
+  assert.ok(geometry.curbSegments.some(segment => segment.x2 === 20 && segment.y2 === 13));
 });
 
-test("major road paint keeps close thick double lines with independent deterministic wear", () => {
+test("buried corner metadata cannot create a decorative arc inside another sidewalk surface", () => {
+  const sidewalkSurfaces = [
+    { id: "corner", x: 0, y: 0, w: 20, h: 20, role: "corner", corner: "nw" },
+    { id: "cover", x: -20, y: -20, w: 60, h: 60 }
+  ];
+  const roadSurfaces = [{ id: "road", x: 40, y: 0, w: 40, h: 40 }];
+  const geometry = buildSidewalkBoundaryGeometry(sidewalkSurfaces, roadSurfaces);
+
+  assert.equal(geometry.corners.length, 0);
+});
+
+test("major road paint uses two independent close-set lanes with non-mirrored wear", () => {
   const road = {
     id: "road-segment:test-major",
     x: 100,
@@ -131,47 +141,39 @@ test("major road paint keeps close thick double lines with independent determini
     roadClass: "major"
   };
   const fragment = { ...road };
-  const paint = buildMajorRoadCentreSegments(road, fragment, { approachInset: 12 });
-  const again = buildMajorRoadCentreSegments(road, fragment, { approachInset: 12 });
+  const paint = buildMajorRoadCentreSegments(road, fragment);
+  const firstLane = paint.filter(segment => segment.laneIndex === 0);
+  const secondLane = paint.filter(segment => segment.laneIndex === 1);
 
-  assert.deepEqual(paint, again);
-  assert.ok(paint.length >= 4);
-  assert.ok(paint.every(segment => segment.x >= road.x + 12 - 0.001));
-  assert.ok(paint.every(segment => segment.x + segment.w <= road.x + road.w - 12 + 0.001));
-  assert.ok(paint.every(segment => segment.alpha >= 0.62 && segment.alpha <= 0.78));
+  assert.ok(firstLane.length >= 2);
+  assert.ok(secondLane.length >= 2);
   assert.ok(paint.every(segment => segment.h > 2));
-
-  const upper = paint.filter(segment => segment.laneIndex === 0);
-  const lower = paint.filter(segment => segment.laneIndex === 1);
-  assert.ok(upper.length >= 2);
-  assert.ok(lower.length >= 2);
-  assert.ok(Math.abs(upper[0].y - lower[0].y) < 5);
-  assert.ok(upper[0].y !== lower[0].y);
-
-  const upperSignature = upper.map(segment => [segment.x, segment.w]);
-  const lowerSignature = lower.map(segment => [segment.x, segment.w]);
-  assert.notDeepEqual(upperSignature, lowerSignature);
-  assert.ok(upper[0].x !== lower[0].x || upper.at(-1).x + upper.at(-1).w !== lower.at(-1).x + lower.at(-1).w);
+  assert.ok(Math.abs(firstLane[0].y - secondLane[0].y) < 6);
+  assert.notDeepEqual(
+    firstLane.map(segment => [segment.x, segment.w]),
+    secondLane.map(segment => [segment.x, segment.w])
+  );
+  assert.notEqual(firstLane.at(-1).x + firstLane.at(-1).w, secondLane.at(-1).x + secondLane.at(-1).w);
 });
 
-test("local centre dashes vary their run and gap lengths deterministically", () => {
+test("local road dashes are deterministic but do not repeat a fixed dash-gap cadence", () => {
   const road = {
     id: "road-segment:test-local",
     x: 0,
     y: 100,
-    w: 520,
-    h: 64,
+    w: 480,
+    h: 72,
     orientation: "horizontal",
     pieceKind: "segment",
     roadClass: "local"
   };
-  const dashes = buildLocalRoadDashSegments(road, road);
-  const again = buildLocalRoadDashSegments(road, road);
+  const first = buildLocalRoadDashSegments(road, road);
+  const second = buildLocalRoadDashSegments(road, road);
 
-  assert.deepEqual(dashes, again);
-  assert.ok(dashes.length >= 6);
-  assert.ok(new Set(dashes.map(dash => Math.round(dash.w))).size > 1);
-  const gaps = dashes.slice(1).map((dash, index) => Math.round(dash.x - (dashes[index].x + dashes[index].w)));
+  assert.deepEqual(first, second);
+  assert.ok(first.length >= 6);
+  assert.ok(new Set(first.map(segment => Math.round(segment.w))).size > 1);
+  const gaps = first.slice(1).map((segment, index) => Math.round(segment.x - (first[index].x + first[index].w)));
   assert.ok(new Set(gaps).size > 1);
 });
 

@@ -1,5 +1,6 @@
 import { COLORS } from "../data/balance.js";
 import { buildings, crosswalks, LAYERS, roads, sidewalks } from "../data/district.js";
+import { buildSidewalkBoundaryGeometry } from "../rendering/SidewalkBoundaryGeometry.js";
 
 const OPEN_GROUND_GRID = 64;
 const OPEN_GROUND_MAJOR_EVERY = 4;
@@ -8,6 +9,7 @@ const SIDEWALK_JOINT_SPACING = 28;
 const CROSSWALK_STRIPE = 5;
 const CROSSWALK_GAP = 5;
 const CROSSWALK_INSET = 3;
+const SIDEWALK_GEOMETRY_MARGIN = 56;
 
 function finite(value, fallback = 0) {
   const number = Number(value);
@@ -31,6 +33,15 @@ function clippedRect(area, bounds) {
   return maxX > x && maxY > y ? { x, y, w: maxX - x, h: maxY - y } : null;
 }
 
+function expandedRect(rect, amount) {
+  return {
+    x: finite(rect.x) - amount,
+    y: finite(rect.y) - amount,
+    w: finite(rect.w) + amount * 2,
+    h: finite(rect.h) + amount * 2
+  };
+}
+
 function hashString(value) {
   let hash = 2166136261;
   for (const character of String(value || "")) {
@@ -42,6 +53,34 @@ function hashString(value) {
 
 function line(x1, y1, x2, y2, major = false) {
   return { x1, y1, x2, y2, major };
+}
+
+function drawLine(graphics, segment) {
+  graphics.lineBetween(segment.x1, segment.y1, segment.x2, segment.y2);
+}
+
+function segmentIntersectsBounds(segment, bounds, margin = 1) {
+  const x = Math.min(segment.x1, segment.x2);
+  const y = Math.min(segment.y1, segment.y2);
+  const w = Math.abs(segment.x2 - segment.x1);
+  const h = Math.abs(segment.y2 - segment.y1);
+  return x <= right(bounds) + margin
+    && x + w >= bounds.x - margin
+    && y <= bottom(bounds) + margin
+    && y + h >= bounds.y - margin;
+}
+
+function drawPolygonOutline(graphics, points) {
+  if (!Array.isArray(points) || points.length < 2) return;
+  for (let index = 0; index < points.length; index++) {
+    const from = points[index];
+    const to = points[(index + 1) % points.length];
+    graphics.lineBetween(from.x, from.y, to.x, to.y);
+  }
+}
+
+function surfaceSetKey(items) {
+  return items.map((item, index) => String(item.id || `${item.x}:${item.y}:${index}`)).sort().join("|");
 }
 
 export function buildStreetGridLines(bounds, {
@@ -134,111 +173,6 @@ export function buildSidewalkJointSegments(walk, bounds, spacing = SIDEWALK_JOIN
     }
   }
   return segments;
-}
-
-export function buildCornerCutout(walk) {
-  if (!walk || walk.role !== "corner" || !walk.corner) return null;
-  const radius = Math.max(5, Math.min(8, finite(walk.w) * 0.34, finite(walk.h) * 0.34));
-  if (walk.corner === "nw") {
-    return {
-      x: right(walk) - radius,
-      y: bottom(walk) - radius,
-      vertexX: right(walk),
-      vertexY: bottom(walk),
-      radius,
-      corner: walk.corner
-    };
-  }
-  if (walk.corner === "ne") {
-    return {
-      x: finite(walk.x) + radius,
-      y: bottom(walk) - radius,
-      vertexX: finite(walk.x),
-      vertexY: bottom(walk),
-      radius,
-      corner: walk.corner
-    };
-  }
-  if (walk.corner === "se") {
-    return {
-      x: finite(walk.x) + radius,
-      y: finite(walk.y) + radius,
-      vertexX: finite(walk.x),
-      vertexY: finite(walk.y),
-      radius,
-      corner: walk.corner
-    };
-  }
-  if (walk.corner === "sw") {
-    return {
-      x: right(walk) - radius,
-      y: finite(walk.y) + radius,
-      vertexX: right(walk),
-      vertexY: finite(walk.y),
-      radius,
-      corner: walk.corner
-    };
-  }
-  return null;
-}
-
-export function buildCornerArc(cutout, segments = 8) {
-  if (!cutout) return [];
-  const ranges = {
-    nw: [0, Math.PI * 0.5],
-    ne: [Math.PI * 0.5, Math.PI],
-    se: [Math.PI, Math.PI * 1.5],
-    sw: [Math.PI * 1.5, Math.PI * 2]
-  };
-  const range = ranges[cutout.corner];
-  if (!range) return [];
-  const points = [];
-  for (let index = 0; index <= segments; index++) {
-    const t = index / segments;
-    const angle = range[0] + (range[1] - range[0]) * t;
-    points.push({
-      x: cutout.x + Math.cos(angle) * cutout.radius,
-      y: cutout.y + Math.sin(angle) * cutout.radius
-    });
-  }
-  return points;
-}
-
-export function buildCornerCutoutPolygon(cutout, segments = 8) {
-  if (!cutout) return [];
-  return [
-    { x: cutout.vertexX, y: cutout.vertexY },
-    ...buildCornerArc(cutout, segments)
-  ];
-}
-
-export function buildCornerCurbSegments(walk, cutout = buildCornerCutout(walk)) {
-  if (!walk || !cutout) return [];
-  if (walk.corner === "nw") {
-    return [
-      line(walk.x, bottom(walk), cutout.x, bottom(walk)),
-      line(right(walk), walk.y, right(walk), cutout.y)
-    ];
-  }
-  if (walk.corner === "ne") {
-    return [
-      line(cutout.x, bottom(walk), right(walk), bottom(walk)),
-      line(walk.x, walk.y, walk.x, cutout.y)
-    ];
-  }
-  if (walk.corner === "se") {
-    return [
-      line(cutout.x, walk.y, right(walk), walk.y),
-      line(walk.x, cutout.y, walk.x, bottom(walk))
-    ];
-  }
-  if (walk.corner === "sw") {
-    return [
-      line(walk.x, walk.y, cutout.x, walk.y),
-      line(right(walk), cutout.y, right(walk), bottom(walk))
-    ];
-  }
-  return [];
 }
 
 export function buildCrosswalkMarkings(crossing, {
@@ -390,72 +324,6 @@ export function buildLocalRoadDashSegments(road, fragment, {
   return segments;
 }
 
-function drawLine(graphics, segment) {
-  graphics.lineBetween(segment.x1, segment.y1, segment.x2, segment.y2);
-}
-
-function rectEdgeSegment(rect, edge) {
-  if (edge === "north") return line(rect.x, rect.y, right(rect), rect.y);
-  if (edge === "south") return line(rect.x, bottom(rect), right(rect), bottom(rect));
-  if (edge === "west") return line(rect.x, rect.y, rect.x, bottom(rect));
-  if (edge === "east") return line(right(rect), rect.y, right(rect), bottom(rect));
-  return null;
-}
-
-function drawRectEdge(graphics, rect, edge) {
-  const segment = rectEdgeSegment(rect, edge);
-  if (segment) drawLine(graphics, segment);
-}
-
-function roadFacingEdge(walk) {
-  if (walk.side === "north") return "south";
-  if (walk.side === "south") return "north";
-  if (walk.side === "west") return "east";
-  if (walk.side === "east") return "west";
-  return null;
-}
-
-function segmentKey(segment) {
-  const first = `${segment.x1}:${segment.y1}`;
-  const second = `${segment.x2}:${segment.y2}`;
-  return first < second ? `${first}|${second}` : `${second}|${first}`;
-}
-
-export function buildSidewalkCurbSegments(walk) {
-  if (!walk) return [];
-  if (walk.role === "corner") return buildCornerCurbSegments(walk);
-
-  const candidates = [];
-  const curbEdge = roadFacingEdge(walk);
-  if (curbEdge) {
-    const segment = rectEdgeSegment(walk, curbEdge);
-    if (segment) candidates.push(segment);
-  }
-
-  for (const edge of walk.trimEdges || []) {
-    const segment = rectEdgeSegment(walk, edge);
-    if (segment) candidates.push(segment);
-  }
-
-  for (const segment of walk.trimSegments || []) {
-    if (!Array.isArray(segment) || segment.length !== 2) continue;
-    candidates.push(line(segment[0].x, segment[0].y, segment[1].x, segment[1].y));
-  }
-
-  const unique = new Map();
-  for (const segment of candidates) unique.set(segmentKey(segment), segment);
-  return [...unique.values()];
-}
-
-function drawPolygonOutline(graphics, points) {
-  if (!Array.isArray(points) || points.length < 2) return;
-  for (let index = 0; index < points.length; index++) {
-    const from = points[index];
-    const to = points[(index + 1) % points.length];
-    graphics.lineBetween(from.x, from.y, to.x, to.y);
-  }
-}
-
 function drawRoadWear(graphics, road, fragment) {
   if (!fragment || road.pieceKind !== "segment") return;
   const phase = hashString(road.id) % 96;
@@ -537,7 +405,7 @@ export function installCitySurfacePresentationPolicy(GameSceneClass) {
   prototype.drawRoadWindow = function viceBloodDrawRoadWindow(road) {
     if (road.geometry === "polygon" && Array.isArray(road.points)) {
       this.map.fillStyle(COLORS.road, 1).fillPoints(road.points, true);
-      this.map.lineStyle(1, COLORS.roadEdge, 0.20);
+      this.map.lineStyle(1, COLORS.roadEdge, 0.18);
       drawPolygonOutline(this.map, road.points);
       return;
     }
@@ -548,24 +416,13 @@ export function installCitySurfacePresentationPolicy(GameSceneClass) {
     if (road.pieceKind !== "segment") return;
 
     const horizontal = road.orientation === "horizontal" || road.w > road.h;
-    this.map.fillStyle(COLORS.roadEdge, 0.24);
+    this.map.fillStyle(COLORS.roadEdge, 0.22);
     if (horizontal) {
-      this.map.fillRect(fragment.x, road.y, fragment.w, 2);
-      this.map.fillRect(fragment.x, road.y + road.h - 2, fragment.w, 2);
+      this.map.fillRect(fragment.x, road.y, fragment.w, 1);
+      this.map.fillRect(fragment.x, road.y + road.h - 1, fragment.w, 1);
     } else {
-      this.map.fillRect(road.x, fragment.y, 2, fragment.h);
-      this.map.fillRect(road.x + road.w - 2, fragment.y, 2, fragment.h);
-    }
-
-    if (inferredRoadClass(road) !== "alley") {
-      this.map.fillStyle(COLORS.sidewalkCurb, 0.34);
-      if (horizontal) {
-        this.map.fillRect(fragment.x, road.y, fragment.w, 1);
-        this.map.fillRect(fragment.x, road.y + road.h - 1, fragment.w, 1);
-      } else {
-        this.map.fillRect(road.x, fragment.y, 1, fragment.h);
-        this.map.fillRect(road.x + road.w - 1, fragment.y, 1, fragment.h);
-      }
+      this.map.fillRect(road.x, fragment.y, 1, fragment.h);
+      this.map.fillRect(road.x + road.w - 1, fragment.y, 1, fragment.h);
     }
 
     drawRoadWear(this.map, road, fragment);
@@ -575,7 +432,22 @@ export function installCitySurfacePresentationPolicy(GameSceneClass) {
   };
 
   prototype.drawSidewalkNetwork = function viceBloodDrawSidewalkNetwork() {
-    const visible = this.chunkItems("sidewalks", this.urbanRenderBounds, sidewalks, { margin: 8 });
+    const renderBounds = this.urbanRenderBounds || this.calculateUrbanRenderBounds();
+    const visible = this.chunkItems("sidewalks", renderBounds, sidewalks, { margin: 8 });
+    const geometryBounds = expandedRect(renderBounds, SIDEWALK_GEOMETRY_MARGIN);
+    const geometrySidewalks = this.chunkItems("sidewalks", geometryBounds, sidewalks, { margin: SIDEWALK_GEOMETRY_MARGIN });
+    const geometryRoads = this.chunkItems("roads", geometryBounds, roads, { margin: SIDEWALK_GEOMETRY_MARGIN });
+    const geometryKey = `${this.urbanRenderSectorKey}:${surfaceSetKey(geometrySidewalks)}:${surfaceSetKey(geometryRoads)}`;
+    if (this.citySurfaceBoundaryCache?.key !== geometryKey) {
+      this.citySurfaceBoundaryCache = {
+        key: geometryKey,
+        geometry: buildSidewalkBoundaryGeometry(geometrySidewalks, geometryRoads, {
+          cornerRadius: 7,
+          cornerSegments: 10
+        })
+      };
+    }
+    const geometry = this.citySurfaceBoundaryCache.geometry;
 
     this.map.fillStyle(COLORS.sidewalk, 1);
     for (const walk of visible) {
@@ -583,43 +455,38 @@ export function installCitySurfacePresentationPolicy(GameSceneClass) {
         this.map.fillPoints(walk.points, true);
         continue;
       }
-      const fragment = clippedRect(walk, this.urbanRenderBounds);
+      const fragment = clippedRect(walk, renderBounds);
       if (fragment) this.map.fillRect(fragment.x, fragment.y, fragment.w, fragment.h);
     }
 
-    const cornerEntries = visible
-      .filter(walk => walk.role === "corner")
-      .map(walk => ({ walk, cutout: buildCornerCutout(walk) }))
-      .filter(entry => entry.cutout);
     this.map.fillStyle(COLORS.road, 1);
-    for (const { cutout } of cornerEntries) {
-      const polygon = buildCornerCutoutPolygon(cutout);
-      if (polygon.length >= 3) this.map.fillPoints(polygon, true);
+    for (const corner of geometry.corners) {
+      if (corner.cutout.length >= 3) this.map.fillPoints(corner.cutout, true);
     }
 
-    this.map.lineStyle(1, COLORS.sidewalkJoint, 0.42);
+    this.map.lineStyle(1, COLORS.sidewalkJoint, 0.40);
     for (const walk of visible) {
-      for (const segment of buildSidewalkJointSegments(walk, this.urbanRenderBounds)) drawLine(this.map, segment);
+      for (const segment of buildSidewalkJointSegments(walk, renderBounds)) drawLine(this.map, segment);
     }
 
-    this.map.lineStyle(1, COLORS.sidewalkTrim, 0.38);
-    for (const walk of visible) {
-      if (walk.role === "corner") continue;
-      if (walk.geometry === "polygon" && Array.isArray(walk.points)) drawPolygonOutline(this.map, walk.points);
-      for (const edge of walk.trimEdges || []) drawRectEdge(this.map, walk, edge);
+    this.map.lineStyle(1, COLORS.sidewalkTrim, 0.44);
+    for (const segment of geometry.outerBoundarySegments) {
+      if (segmentIntersectsBounds(segment, renderBounds)) drawLine(this.map, segment);
     }
 
-    this.map.lineStyle(2, COLORS.sidewalkCurb, 0.76);
-    for (const walk of visible) {
-      if (walk.role === "corner") continue;
-      for (const segment of buildSidewalkCurbSegments(walk)) drawLine(this.map, segment);
+    this.map.lineStyle(2, COLORS.sidewalkCurb, 0.78);
+    for (const segment of geometry.curbSegments) {
+      if (segmentIntersectsBounds(segment, renderBounds)) drawLine(this.map, segment);
     }
-
-    for (const { walk, cutout } of cornerEntries) {
-      for (const segment of buildCornerCurbSegments(walk, cutout)) drawLine(this.map, segment);
-      const points = buildCornerArc(cutout);
-      for (let index = 0; index < points.length - 1; index++) {
-        this.map.lineBetween(points[index].x, points[index].y, points[index + 1].x, points[index + 1].y);
+    for (const corner of geometry.corners) {
+      for (let index = 0; index < corner.arc.length - 1; index++) {
+        const segment = line(
+          corner.arc[index].x,
+          corner.arc[index].y,
+          corner.arc[index + 1].x,
+          corner.arc[index + 1].y
+        );
+        if (segmentIntersectsBounds(segment, renderBounds)) drawLine(this.map, segment);
       }
     }
   };
