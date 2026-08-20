@@ -80,6 +80,15 @@ function isNightRoofMass(module) {
     && module.bounds;
 }
 
+function isDefaultRoofMass(module) {
+  return module?.kind === MODULE_KINDS.ROOF_MASS
+    && module.profileId === "default"
+    && module.surfaceKind === ROOF_SURFACE_KINDS.SMOOTH
+    && Array.isArray(module.points)
+    && module.points.length >= 3
+    && module.bounds;
+}
+
 function ridgeCenters(plan, bounds) {
   const ridges = (plan.modules || []).filter(module => module.kind === MODULE_KINDS.ROOF_RIDGE);
   const vertical = ridges.find(module => (
@@ -135,9 +144,12 @@ function drawPitchedRoofPlanes(graphics, module, plan, options) {
   drawZone(graphics, south, plan.palette.roofShade, 0.03);
 }
 
+function rooftopProps(plan) {
+  return (plan.modules || []).filter(module => ROOFTOP_PROP_KINDS.has(module.kind) && module.bounds);
+}
+
 function largestRooftopProp(plan) {
-  return (plan.modules || [])
-    .filter(module => ROOFTOP_PROP_KINDS.has(module.kind) && module.bounds)
+  return rooftopProps(plan)
     .sort((a, b) => (
       Number(b.bounds.w) * Number(b.bounds.h) - Number(a.bounds.w) * Number(a.bounds.h)
     ))[0] || null;
@@ -168,8 +180,6 @@ function drawNightlifeRoofDeck(graphics, module, plan, options) {
   const deck = clipPolygonToRect(module.points, rect);
   if (deck.length < 3) return;
 
-  // The dark service deck balances the hero rooflight and creates one deliberate
-  // asymmetry. It is material hierarchy, not a new gameplay module or neon box.
   drawZone(graphics, deck, plan.palette.serviceDark, 0.28);
 
   const lineY = rect.y + Math.min(rect.h - 2, 3);
@@ -183,8 +193,68 @@ function drawNightlifeRoofDeck(graphics, module, plan, options) {
   );
 }
 
+function boundedRectAroundProps(bounds, props) {
+  if (props.length === 0) return null;
+  const minX = Math.min(...props.map(prop => prop.bounds.x));
+  const minY = Math.min(...props.map(prop => prop.bounds.y));
+  const maxX = Math.max(...props.map(prop => prop.bounds.x + prop.bounds.w));
+  const maxY = Math.max(...props.map(prop => prop.bounds.y + prop.bounds.h));
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  const inset = Math.max(8, Math.min(14, Math.min(bounds.w, bounds.h) * 0.07));
+  const availableWidth = Math.max(1, bounds.w - inset * 2);
+  const availableHeight = Math.max(1, bounds.h - inset * 2);
+  const width = Math.min(
+    availableWidth,
+    Math.max(64, Math.min(bounds.w * 0.72, (maxX - minX) + bounds.w * 0.12))
+  );
+  const height = Math.min(
+    availableHeight,
+    Math.max(30, Math.min(bounds.h * 0.38, (maxY - minY) + bounds.h * 0.18))
+  );
+  const minimumX = bounds.x + inset;
+  const maximumX = bounds.x + bounds.w - inset - width;
+  const minimumY = bounds.y + inset;
+  const maximumY = bounds.y + bounds.h - inset - height;
+  return {
+    x: Math.max(minimumX, Math.min(centerX - width / 2, maximumX)),
+    y: Math.max(minimumY, Math.min(centerY - height / 2, maximumY)),
+    w: width,
+    h: height
+  };
+}
+
+function drawGenericServiceCourt(graphics, module, plan, options) {
+  renderCompositionBuildingPresentation(
+    graphics,
+    { ...plan, modules: [module] },
+    options
+  );
+
+  const bounds = module.bounds;
+  if (bounds.w < 120 || bounds.h < 70) return;
+  const props = rooftopProps(plan);
+  const rect = boundedRectAroundProps(bounds, props);
+  if (!rect) return;
+  const court = clipPolygonToRect(module.points, rect);
+  if (court.length < 3) return;
+
+  // Generic roofs stay intentionally neutral. A single low-frequency service
+  // court groups the existing hero/support props into one authored composition
+  // instead of leaving isolated symbols floating on a blank slab.
+  drawZone(graphics, court, plan.palette.roofShade, 0.085);
+
+  if (plan.layoutId === "rectangle") {
+    const inset = Math.max(5, Math.min(12, rect.w * 0.08));
+    graphics.lineStyle(1, plan.palette.roofTextureHighlight, 0.12);
+    graphics.lineBetween(rect.x + inset, rect.y + 1, rect.x + rect.w - inset, rect.y + 1);
+  }
+}
+
 function isFinalTreatment(module) {
-  return isPitchedRoofMass(module) || isNightRoofMass(module);
+  return isPitchedRoofMass(module)
+    || isNightRoofMass(module)
+    || isDefaultRoofMass(module);
 }
 
 function renderWithFinalTreatments(graphics, plan, options = {}) {
@@ -201,6 +271,10 @@ function renderWithFinalTreatments(graphics, plan, options = {}) {
     }
     if (isNightRoofMass(module)) {
       drawNightlifeRoofDeck(graphics, module, plan, options);
+      continue;
+    }
+    if (isDefaultRoofMass(module)) {
+      drawGenericServiceCourt(graphics, module, plan, options);
       continue;
     }
     renderCompositionBuildingPresentation(
