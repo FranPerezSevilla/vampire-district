@@ -1,6 +1,6 @@
 {
   "initiative": "building-visual-polish",
-  "version": 14,
+  "version": 15,
   "updatedAt": "2026-08-20",
   "branch": "agent/building-visual-poc",
   "pullRequest": 63,
@@ -9,8 +9,8 @@
   "executionMode": "chatgpt-hourly-final-gate",
   "userValidation": "M6-final-only",
   "currentMilestone": "M3",
-  "currentTask": "M3.1-corrugated-warehouse-validation-pending",
-  "nextAction": "Validate workflow 32342778855 for M3.1 implementation/test head 40feacc6789ed419da31feb1bb8d2d564d74caa1. If focused unit validation remains green, mark warehouse corrugation refinement complete and continue M3 with membrane seams using broad spacing and restrained tonal variation. If a building-focused failure appears, fix only that regression before advancing.",
+  "currentTask": "M3.2-membrane-seams",
+  "nextAction": "Continue M3 with one bounded renderer-only membrane-surface increment: keep seams broadly spaced, reduce their diagram-like uniformity with restrained deterministic tonal variation, preserve planner-owned seam geometry and authored building bounds, add focused contracts, and keep Netlify green before advancing to civic surface order.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "automation": {
     "provider": "ChatGPT scheduled task",
@@ -60,7 +60,15 @@
         { "id": "M2.4", "name": "architectural annexes and markers", "status": "complete" }
       ]
     },
-    { "id": "M3", "name": "surface material language", "status": "autonomous-in-progress" },
+    {
+      "id": "M3",
+      "name": "surface material language",
+      "status": "autonomous-in-progress",
+      "tasks": [
+        { "id": "M3.1", "name": "warehouse corrugation rhythm", "status": "complete" },
+        { "id": "M3.2", "name": "membrane seams", "status": "active" }
+      ]
+    },
     { "id": "M4", "name": "family grammar expansion", "status": "planned" },
     { "id": "M5", "name": "composition and controlled variation", "status": "planned" },
     { "id": "M6", "name": "final polish and merge readiness", "status": "planned" }
@@ -107,8 +115,9 @@
     "latestM3_1ImplementationCommit": "4dc22843fdc1d3597c114963f266eb3236cf64b8",
     "latestM3_1ImplementationHead": "40feacc6789ed419da31feb1bb8d2d564d74caa1",
     "M3_1WorkflowRun": 32342778855,
-    "M3_1BuildingContracts": "validation-running-at-bounded-check",
+    "M3_1BuildingContracts": "pass",
     "M3_1Netlify": "success",
+    "M3_1BrowserValidation": "cancelled-after-continuity-head-moved-not-required-for-bounded-renderer-contract",
     "mainSyncCompatibility": "pass"
   }
 }
