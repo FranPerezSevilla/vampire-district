@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 
 import {
   trafficMassResponse,
@@ -7,6 +8,8 @@ import {
   vehicleCollisionPush
 } from "../phaser/src/streaming/TrafficMassCollisionPolicy.js";
 import { VEHICLE_ARCHETYPES } from "../phaser/src/data/vehicles.js";
+
+const ROOT = new URL("../", import.meta.url);
 
 test("legacy or incomplete archetypes retain neutral collision mass defaults", () => {
   assert.equal(vehicleCollisionMass({}), 1);
@@ -44,4 +47,15 @@ test("mass response remains bounded for extreme catalogue differences", () => {
   assert.ok(lightest.impulseScale >= 0.62);
   assert.ok(heaviest.retentionScale <= 1.14);
   assert.ok(lightest.retentionScale >= 0.78);
+});
+
+test("gameplay runtime installs mass weighting only after physical traffic authority exists", async () => {
+  const runtime = await readFile(new URL("phaser/src/runtime/GameplayRuntime.js", ROOT), "utf8");
+  const physicalCreate = runtime.indexOf("new TrafficPhysicalConsequencesSystem(scene)");
+  const massInstall = runtime.indexOf("installTrafficMassCollisionPolicy(scene.trafficPhysicalConsequencesSystem)");
+  assert.ok(physicalCreate >= 0 && massInstall > physicalCreate);
+
+  const massDestroy = runtime.indexOf("this.scene.trafficMassCollisionPolicy?.destroy?.()");
+  const physicalDestroy = runtime.indexOf("this.scene.trafficPhysicalConsequencesSystem?.destroy?.()");
+  assert.ok(massDestroy >= 0 && physicalDestroy > massDestroy);
 });
