@@ -2,6 +2,47 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-20 — M3.1 grouped low-contrast warehouse corrugation implemented
+
+### Scope
+
+- Active milestone: M3.1
+- Task: refine warehouse corrugated roof material so repeated ribs stop reading as uniform interface linework
+- Authoritative files: `BuildingPresentationRenderer.js`, `tests/building-warehouse-corrugation.test.js`, roadmap and machine status
+- Focused validation: workflow `32342778855` for implementation/test head `40feacc6789ed419da31feb1bb8d2d564d74caa1`
+- Acceptance criteria: lower rib contrast, grouped deterministic rhythm, unchanged planner-owned rib modules/authored geometry, focused contracts and green Netlify before completion
+- Explicit non-goals: planner spacing changes, membrane/civic/pitched/night material work, hospital/medical profile work, gameplay/collision/topology/navigation/AI/mission/generated-city edits
+
+### Implemented
+
+- retained every planner-owned corrugated `ROOF_TEXTURE_LINE` module and its existing coordinates;
+- changed only base-renderer presentation for corrugated variants;
+- converted the old uniform shadow/highlight pair (`0.2/0.2`) into a repeating three-rib visual group followed by one quiet lane;
+- anchor ribs now use restrained shadow/highlight alpha `0.13/0.09`;
+- supporting ribs use `0.075/0.055`;
+- the fourth planned rib in each group is intentionally not painted, creating a broad low-frequency grouping cue without changing planner spacing or module geometry;
+- added `tests/building-warehouse-corrugation.test.js` proving the grouped 3+1 rhythm, reduced contrast, unchanged planned modules and deterministic output;
+- kept all non-corrugated roof surface branches unchanged.
+
+### Validation
+
+- renderer implementation commit: `4dc22843fdc1d3597c114963f266eb3236cf64b8`;
+- focused-test head: `40feacc6789ed419da31feb1bb8d2d564d74caa1`;
+- Netlify deploy preview on exact implementation/test head: **success** — `https://deploy-preview-63--vampire-district.netlify.app`;
+- GitHub workflow `32342778855`: running/queued at the bounded observation point; completion is not claimed yet;
+- authored rib modules, building bounds and gameplay/collision authority: **unchanged**;
+- PR #63 remains open, draft and unmerged.
+
+### Visual risk
+
+The renderer contract proves reduced contrast and low-frequency grouping but not final apparent density at normal gameplay zoom. Do not retune planner spacing in this increment. Any remaining density judgement belongs to the M6 representative visual review after the rest of M3/M4 material and family language exists.
+
+### Next
+
+First validate workflow `32342778855`. If the focused unit contracts are green, mark M3.1 complete and continue with the separate M3 membrane-seam increment: broad spacing plus restrained tonal variation. If a building-focused failure appears, fix only that regression before advancing.
+
+---
+
 ## 2026-08-20 — M2 physical rooftop props complete; M3 opened
 
 ### Scope
