@@ -139,20 +139,56 @@ export function buildSidewalkJointSegments(walk, bounds, spacing = SIDEWALK_JOIN
 export function buildCornerCutout(walk) {
   if (!walk || walk.role !== "corner" || !walk.corner) return null;
   const radius = Math.max(5, Math.min(8, finite(walk.w) * 0.34, finite(walk.h) * 0.34));
-  if (walk.corner === "nw") return { x: right(walk), y: bottom(walk), radius, corner: walk.corner };
-  if (walk.corner === "ne") return { x: finite(walk.x), y: bottom(walk), radius, corner: walk.corner };
-  if (walk.corner === "se") return { x: finite(walk.x), y: finite(walk.y), radius, corner: walk.corner };
-  if (walk.corner === "sw") return { x: right(walk), y: finite(walk.y), radius, corner: walk.corner };
+  if (walk.corner === "nw") {
+    return {
+      x: right(walk) - radius,
+      y: bottom(walk) - radius,
+      vertexX: right(walk),
+      vertexY: bottom(walk),
+      radius,
+      corner: walk.corner
+    };
+  }
+  if (walk.corner === "ne") {
+    return {
+      x: finite(walk.x) + radius,
+      y: bottom(walk) - radius,
+      vertexX: finite(walk.x),
+      vertexY: bottom(walk),
+      radius,
+      corner: walk.corner
+    };
+  }
+  if (walk.corner === "se") {
+    return {
+      x: finite(walk.x) + radius,
+      y: finite(walk.y) + radius,
+      vertexX: finite(walk.x),
+      vertexY: finite(walk.y),
+      radius,
+      corner: walk.corner
+    };
+  }
+  if (walk.corner === "sw") {
+    return {
+      x: right(walk) - radius,
+      y: finite(walk.y) + radius,
+      vertexX: right(walk),
+      vertexY: finite(walk.y),
+      radius,
+      corner: walk.corner
+    };
+  }
   return null;
 }
 
 export function buildCornerArc(cutout, segments = 8) {
   if (!cutout) return [];
   const ranges = {
-    nw: [Math.PI, Math.PI * 1.5],
-    ne: [Math.PI * 1.5, Math.PI * 2],
-    se: [0, Math.PI * 0.5],
-    sw: [Math.PI * 0.5, Math.PI]
+    nw: [0, Math.PI * 0.5],
+    ne: [Math.PI * 0.5, Math.PI],
+    se: [Math.PI, Math.PI * 1.5],
+    sw: [Math.PI * 1.5, Math.PI * 2]
   };
   const range = ranges[cutout.corner];
   if (!range) return [];
@@ -170,34 +206,36 @@ export function buildCornerArc(cutout, segments = 8) {
 
 export function buildCornerCutoutPolygon(cutout, segments = 8) {
   if (!cutout) return [];
-  return [{ x: cutout.x, y: cutout.y }, ...buildCornerArc(cutout, segments)];
+  return [
+    { x: cutout.vertexX, y: cutout.vertexY },
+    ...buildCornerArc(cutout, segments)
+  ];
 }
 
 export function buildCornerCurbSegments(walk, cutout = buildCornerCutout(walk)) {
   if (!walk || !cutout) return [];
-  const radius = cutout.radius;
   if (walk.corner === "nw") {
     return [
-      line(walk.x, bottom(walk), cutout.x - radius, bottom(walk)),
-      line(right(walk), walk.y, right(walk), cutout.y - radius)
+      line(walk.x, bottom(walk), cutout.x, bottom(walk)),
+      line(right(walk), walk.y, right(walk), cutout.y)
     ];
   }
   if (walk.corner === "ne") {
     return [
-      line(cutout.x + radius, bottom(walk), right(walk), bottom(walk)),
-      line(walk.x, walk.y, walk.x, cutout.y - radius)
+      line(cutout.x, bottom(walk), right(walk), bottom(walk)),
+      line(walk.x, walk.y, walk.x, cutout.y)
     ];
   }
   if (walk.corner === "se") {
     return [
-      line(cutout.x + radius, walk.y, right(walk), walk.y),
-      line(walk.x, cutout.y + radius, walk.x, bottom(walk))
+      line(cutout.x, walk.y, right(walk), walk.y),
+      line(walk.x, cutout.y, walk.x, bottom(walk))
     ];
   }
   if (walk.corner === "sw") {
     return [
-      line(walk.x, walk.y, cutout.x - radius, walk.y),
-      line(right(walk), cutout.y + radius, right(walk), bottom(walk))
+      line(walk.x, walk.y, cutout.x, walk.y),
+      line(right(walk), cutout.y, right(walk), bottom(walk))
     ];
   }
   return [];
@@ -246,43 +284,109 @@ export function buildCrosswalkMarkings(crossing, {
 }
 
 export function buildMajorRoadCentreSegments(road, fragment, {
-  approachInset = 14,
-  minimumPaintLength = 92,
-  paintVariance = 64,
-  minimumWearGap = 3,
-  wearGapVariance = 6
+  approachInset = 12,
+  minimumPaintLength = 146,
+  paintVariance = 118,
+  minimumWearGap = 2,
+  wearGapVariance = 5,
+  lineThickness = 2.25,
+  lineSeparation = 1.25
 } = {}) {
   if (!road || !fragment) return [];
   const horizontal = road.orientation === "horizontal" || road.w > road.h;
-  const roadStart = (horizontal ? finite(road.x) : finite(road.y)) + approachInset;
-  const roadEnd = (horizontal ? right(road) : bottom(road)) - approachInset;
+  const axisStart = horizontal ? finite(road.x) : finite(road.y);
+  const axisEnd = horizontal ? right(road) : bottom(road);
   const fragmentStart = horizontal ? finite(fragment.x) : finite(fragment.y);
   const fragmentEnd = horizontal ? right(fragment) : bottom(fragment);
-  if (roadEnd <= roadStart || fragmentEnd <= fragmentStart) return [];
+  if (axisEnd <= axisStart || fragmentEnd <= fragmentStart) return [];
 
+  const centre = horizontal ? road.y + road.h / 2 : road.x + road.w / 2;
+  const laneOffsets = [
+    -(lineSeparation / 2 + lineThickness),
+    lineSeparation / 2
+  ];
   const segments = [];
-  let cursor = roadStart;
-  let index = 0;
-  while (cursor < roadEnd) {
-    const seed = hashString(`${road.id}:major-paint:${index}`);
-    const paintLength = minimumPaintLength + (seed % Math.max(1, Math.round(paintVariance)));
-    const wearGap = minimumWearGap + ((seed >>> 9) % Math.max(1, Math.round(wearGapVariance)));
-    const paintEnd = Math.min(roadEnd, cursor + paintLength);
-    const visibleStart = Math.max(cursor, fragmentStart);
-    const visibleEnd = Math.min(paintEnd, fragmentEnd);
-    if (visibleEnd > visibleStart) {
-      const alpha = 0.56 + ((seed >>> 16) % 19) / 100;
-      const centre = horizontal ? road.y + road.h / 2 : road.x + road.w / 2;
-      const offsets = [-3, 2];
-      for (const offset of offsets) {
+
+  for (let laneIndex = 0; laneIndex < 2; laneIndex++) {
+    const laneSeed = hashString(`${road.id}:major-paint:lane:${laneIndex}`);
+    const roadStart = axisStart + approachInset + (laneSeed % 5);
+    const roadEnd = axisEnd - approachInset - ((laneSeed >>> 4) % 8);
+    if (roadEnd <= roadStart) continue;
+
+    let cursor = roadStart + ((laneSeed >>> 8) % 6);
+    let index = 0;
+    while (cursor < roadEnd) {
+      const seed = hashString(`${road.id}:major-paint:${laneIndex}:${index}`);
+      const laneBias = laneIndex === 0 ? 18 : 0;
+      const paintLength = minimumPaintLength + laneBias + (seed % Math.max(1, Math.round(paintVariance)));
+      const wearGap = minimumWearGap + ((seed >>> 9) % Math.max(1, Math.round(wearGapVariance)));
+      const paintEnd = Math.min(roadEnd, cursor + paintLength);
+      const visibleStart = Math.max(cursor, fragmentStart);
+      const visibleEnd = Math.min(paintEnd, fragmentEnd);
+      if (visibleEnd > visibleStart) {
+        const alpha = 0.62 + ((seed >>> 16) % 17) / 100;
+        const offset = laneOffsets[laneIndex];
         segments.push(horizontal
-          ? { x: visibleStart, y: centre + offset, w: visibleEnd - visibleStart, h: 1.5, alpha }
-          : { x: centre + offset, y: visibleStart, w: 1.5, h: visibleEnd - visibleStart, alpha });
+          ? {
+              x: visibleStart,
+              y: centre + offset,
+              w: visibleEnd - visibleStart,
+              h: lineThickness,
+              alpha,
+              laneIndex
+            }
+          : {
+              x: centre + offset,
+              y: visibleStart,
+              w: lineThickness,
+              h: visibleEnd - visibleStart,
+              alpha,
+              laneIndex
+            });
       }
+      cursor = paintEnd + wearGap;
+      index += 1;
     }
-    cursor = paintEnd + wearGap;
+  }
+
+  return segments;
+}
+
+export function buildLocalRoadDashSegments(road, fragment, {
+  minimumDashLength = 12,
+  dashVariance = 10,
+  minimumGap = 17,
+  gapVariance = 13,
+  thickness = 2
+} = {}) {
+  if (!road || !fragment) return [];
+  const horizontal = road.orientation === "horizontal" || road.w > road.h;
+  const fragmentStart = horizontal ? finite(fragment.x) : finite(fragment.y);
+  const fragmentEnd = horizontal ? right(fragment) : bottom(fragment);
+  const roadStart = horizontal ? finite(road.x) : finite(road.y);
+  const phaseSeed = hashString(`${road.id}:local-dashes`);
+  const centre = horizontal ? road.y + Math.floor(road.h / 2) : road.x + Math.floor(road.w / 2);
+  const segments = [];
+  let cursor = roadStart + (phaseSeed % 19);
+  let index = 0;
+
+  while (cursor < fragmentEnd) {
+    const seed = hashString(`${road.id}:local-dash:${index}`);
+    const dashLength = minimumDashLength + (seed % Math.max(1, Math.round(dashVariance)));
+    const gap = minimumGap + ((seed >>> 8) % Math.max(1, Math.round(gapVariance)));
+    const dashEnd = cursor + dashLength;
+    const visibleStart = Math.max(cursor, fragmentStart);
+    const visibleEnd = Math.min(dashEnd, fragmentEnd);
+    if (visibleEnd > visibleStart) {
+      const alpha = 0.54 + ((seed >>> 15) % 15) / 100;
+      segments.push(horizontal
+        ? { x: visibleStart, y: centre - thickness / 2, w: visibleEnd - visibleStart, h: thickness, alpha }
+        : { x: centre - thickness / 2, y: visibleStart, w: thickness, h: visibleEnd - visibleStart, alpha });
+    }
+    cursor = dashEnd + gap;
     index += 1;
   }
+
   return segments;
 }
 
@@ -290,11 +394,17 @@ function drawLine(graphics, segment) {
   graphics.lineBetween(segment.x1, segment.y1, segment.x2, segment.y2);
 }
 
+function rectEdgeSegment(rect, edge) {
+  if (edge === "north") return line(rect.x, rect.y, right(rect), rect.y);
+  if (edge === "south") return line(rect.x, bottom(rect), right(rect), bottom(rect));
+  if (edge === "west") return line(rect.x, rect.y, rect.x, bottom(rect));
+  if (edge === "east") return line(right(rect), rect.y, right(rect), bottom(rect));
+  return null;
+}
+
 function drawRectEdge(graphics, rect, edge) {
-  if (edge === "north") graphics.lineBetween(rect.x, rect.y, right(rect), rect.y);
-  else if (edge === "south") graphics.lineBetween(rect.x, bottom(rect), right(rect), bottom(rect));
-  else if (edge === "west") graphics.lineBetween(rect.x, rect.y, rect.x, bottom(rect));
-  else if (edge === "east") graphics.lineBetween(right(rect), rect.y, right(rect), bottom(rect));
+  const segment = rectEdgeSegment(rect, edge);
+  if (segment) drawLine(graphics, segment);
 }
 
 function roadFacingEdge(walk) {
@@ -303,6 +413,38 @@ function roadFacingEdge(walk) {
   if (walk.side === "west") return "east";
   if (walk.side === "east") return "west";
   return null;
+}
+
+function segmentKey(segment) {
+  const first = `${segment.x1}:${segment.y1}`;
+  const second = `${segment.x2}:${segment.y2}`;
+  return first < second ? `${first}|${second}` : `${second}|${first}`;
+}
+
+export function buildSidewalkCurbSegments(walk) {
+  if (!walk) return [];
+  if (walk.role === "corner") return buildCornerCurbSegments(walk);
+
+  const candidates = [];
+  const curbEdge = roadFacingEdge(walk);
+  if (curbEdge) {
+    const segment = rectEdgeSegment(walk, curbEdge);
+    if (segment) candidates.push(segment);
+  }
+
+  for (const edge of walk.trimEdges || []) {
+    const segment = rectEdgeSegment(walk, edge);
+    if (segment) candidates.push(segment);
+  }
+
+  for (const segment of walk.trimSegments || []) {
+    if (!Array.isArray(segment) || segment.length !== 2) continue;
+    candidates.push(line(segment[0].x, segment[0].y, segment[1].x, segment[1].y));
+  }
+
+  const unique = new Map();
+  for (const segment of candidates) unique.set(segmentKey(segment), segment);
+  return [...unique.values()];
 }
 
 function drawPolygonOutline(graphics, points) {
@@ -345,24 +487,9 @@ function inferredRoadClass(road) {
 }
 
 function drawLocalRoadDashes(graphics, road, fragment) {
-  const horizontal = road.orientation === "horizontal" || road.w > road.h;
-  graphics.fillStyle(COLORS.roadStripe, 0.64);
-  if (horizontal) {
-    const y = road.y + Math.floor(road.h / 2) - 1;
-    const start = Math.floor(fragment.x / 40) * 40;
-    for (let x = start; x < right(fragment); x += 40) {
-      const dashX = Math.max(x, fragment.x);
-      const width = Math.min(15, right(fragment) - dashX);
-      if (width > 0) graphics.fillRect(dashX, y, width, 2);
-    }
-  } else {
-    const x = road.x + Math.floor(road.w / 2) - 1;
-    const start = Math.floor(fragment.y / 40) * 40;
-    for (let y = start; y < bottom(fragment); y += 40) {
-      const dashY = Math.max(y, fragment.y);
-      const height = Math.min(15, bottom(fragment) - dashY);
-      if (height > 0) graphics.fillRect(x, dashY, 2, height);
-    }
+  for (const dash of buildLocalRoadDashSegments(road, fragment)) {
+    graphics.fillStyle(COLORS.roadStripe, dash.alpha);
+    graphics.fillRect(dash.x, dash.y, dash.w, dash.h);
   }
 }
 
@@ -421,13 +548,24 @@ export function installCitySurfacePresentationPolicy(GameSceneClass) {
     if (road.pieceKind !== "segment") return;
 
     const horizontal = road.orientation === "horizontal" || road.w > road.h;
-    this.map.fillStyle(COLORS.roadEdge, 0.28);
+    this.map.fillStyle(COLORS.roadEdge, 0.24);
     if (horizontal) {
       this.map.fillRect(fragment.x, road.y, fragment.w, 2);
       this.map.fillRect(fragment.x, road.y + road.h - 2, fragment.w, 2);
     } else {
       this.map.fillRect(road.x, fragment.y, 2, fragment.h);
       this.map.fillRect(road.x + road.w - 2, fragment.y, 2, fragment.h);
+    }
+
+    if (inferredRoadClass(road) !== "alley") {
+      this.map.fillStyle(COLORS.sidewalkCurb, 0.34);
+      if (horizontal) {
+        this.map.fillRect(fragment.x, road.y, fragment.w, 1);
+        this.map.fillRect(fragment.x, road.y + road.h - 1, fragment.w, 1);
+      } else {
+        this.map.fillRect(road.x, fragment.y, 1, fragment.h);
+        this.map.fillRect(road.x + road.w - 1, fragment.y, 1, fragment.h);
+      }
     }
 
     drawRoadWear(this.map, road, fragment);
@@ -464,21 +602,17 @@ export function installCitySurfacePresentationPolicy(GameSceneClass) {
       for (const segment of buildSidewalkJointSegments(walk, this.urbanRenderBounds)) drawLine(this.map, segment);
     }
 
-    this.map.lineStyle(1, COLORS.sidewalkTrim, 0.42);
+    this.map.lineStyle(1, COLORS.sidewalkTrim, 0.38);
     for (const walk of visible) {
+      if (walk.role === "corner") continue;
       if (walk.geometry === "polygon" && Array.isArray(walk.points)) drawPolygonOutline(this.map, walk.points);
       for (const edge of walk.trimEdges || []) drawRectEdge(this.map, walk, edge);
     }
 
-    this.map.lineStyle(2, COLORS.sidewalkCurb, 0.72);
+    this.map.lineStyle(2, COLORS.sidewalkCurb, 0.76);
     for (const walk of visible) {
       if (walk.role === "corner") continue;
-      const curbEdge = roadFacingEdge(walk);
-      if (curbEdge) drawRectEdge(this.map, walk, curbEdge);
-      for (const segment of walk.trimSegments || []) {
-        if (!Array.isArray(segment) || segment.length !== 2) continue;
-        this.map.lineBetween(segment[0].x, segment[0].y, segment[1].x, segment[1].y);
-      }
+      for (const segment of buildSidewalkCurbSegments(walk)) drawLine(this.map, segment);
     }
 
     for (const { walk, cutout } of cornerEntries) {
