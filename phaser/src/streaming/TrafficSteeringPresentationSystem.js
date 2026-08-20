@@ -10,7 +10,8 @@ const DEFAULTS = Object.freeze({
   passSpeedFactor: 0.62,
   clearanceForward: 48,
   clearancePadding: 4,
-  cooldownSeconds: 0.8
+  cooldownSeconds: 0.8,
+  playerAvoidanceMaxSpeed: 24
 });
 
 function finite(value, fallback = 0) {
@@ -55,7 +56,8 @@ export function parkedAvoidanceDecision(baseDecision, {
   avoidanceMinGap = DEFAULTS.avoidanceMinGap
 } = {}) {
   const base = baseDecision || {};
-  if (base.reason !== "parked-vehicle" || base.gap === null || base.gap === undefined) return base;
+  if (!["parked-vehicle", "player-vehicle"].includes(base.reason)
+    || base.gap === null || base.gap === undefined) return base;
   const target = Math.max(1, Math.abs(finite(targetOffset, DEFAULTS.lateralDistance)));
   const readiness = clamp(Math.abs(finite(offset)) / target, 0, 1);
   const gap = finite(base.gap, Infinity);
@@ -67,7 +69,9 @@ export function parkedAvoidanceDecision(baseDecision, {
   return {
     ...base,
     desiredSpeedFactor,
-    reason: "steering-around-parked"
+    reason: base.reason === "player-vehicle"
+      ? "steering-around-stopped-player"
+      : "steering-around-parked"
   };
 }
 
@@ -121,6 +125,7 @@ export class TrafficSteeringPresentationSystem {
     this.clearanceForward = Math.max(24, finite(options.clearanceForward, DEFAULTS.clearanceForward));
     this.clearancePadding = Math.max(0, finite(options.clearancePadding, DEFAULTS.clearancePadding));
     this.cooldownSeconds = Math.max(0.2, finite(options.cooldownSeconds, DEFAULTS.cooldownSeconds));
+    this.playerAvoidanceMaxSpeed = Math.max(0, finite(options.playerAvoidanceMaxSpeed, DEFAULTS.playerAvoidanceMaxSpeed));
     this.totalAvoidances = 0;
     this.ready = false;
     this.destroyed = false;
@@ -198,6 +203,11 @@ export class TrafficSteeringPresentationSystem {
     for (const sample of samples) {
       if (typeof worldAllows === "function"
         && !worldAllows.call(this.vehicleSystem, proxy, sample.x, sample.y, angle)) return false;
+      for (const prop of this.scene.streetFurnitureSystem?.dumpsters || []) {
+        if (prop?.broken) continue;
+        if (Math.hypot(finite(prop?.x) - sample.x, finite(prop?.y) - sample.y)
+          < radius + Math.max(4, finite(prop?.hitRadius, 14)) + this.clearancePadding) return false;
+      }
       for (const other of this.activeSlots()) {
         if (other === slot) continue;
         if (Math.hypot(finite(other.x) - sample.x, finite(other.y) - sample.y)
@@ -214,15 +224,24 @@ export class TrafficSteeringPresentationSystem {
     return 0;
   }
 
+  avoidableBlocker(base) {
+    if (base?.reason === "parked-vehicle") return true;
+    if (base?.reason !== "player-vehicle") return false;
+    const playerVehicle = this.vehicleSystem.currentVehicle?.();
+    return Boolean(playerVehicle
+      && playerVehicle.id === base.blockerId
+      && Math.abs(finite(playerVehicle.speed)) <= this.playerAvoidanceMaxSpeed);
+  }
+
   decorateDecision(slot, base) {
     const state = this.stateFor(slot);
     if (!state) return base;
     const gap = base?.gap === null || base?.gap === undefined ? Infinity : finite(base.gap, Infinity);
-    const parkedAhead = base?.reason === "parked-vehicle"
+    const avoidableAhead = this.avoidableBlocker(base)
       && gap >= this.avoidanceMinGap
       && gap <= this.avoidanceMaxGap;
 
-    if (parkedAhead && state.cooldown <= 0) {
+    if (avoidableAhead && state.cooldown <= 0) {
       if (!state.active || state.blockerId !== base.blockerId) {
         const side = this.chooseSide(slot, state);
         if (side) {
@@ -241,7 +260,7 @@ export class TrafficSteeringPresentationSystem {
           avoidanceMinGap: this.avoidanceMinGap
         });
       }
-    } else if (state.active && base?.reason !== "parked-vehicle") {
+    } else if (state.active && !this.avoidableBlocker(base)) {
       state.active = false;
       state.blockerId = null;
       state.cooldown = this.cooldownSeconds;
@@ -267,7 +286,7 @@ export class TrafficSteeringPresentationSystem {
     slot.y = finite(slot.y) + normalY * state.offset;
     slot.steeringOffset = state.offset;
     slot.steeringAngle = state.steerAngle;
-    slot.steeringReason = state.active ? "parked-avoidance" : (state.offset ? "lane-recovery" : "lane");
+    slot.steeringReason = state.active ? "obstacle-avoidance" : (state.offset ? "lane-recovery" : "lane");
     slot.container
       ?.setPosition?.(slot.x, slot.y)
       ?.setRotation?.(angle + state.steerAngle);
