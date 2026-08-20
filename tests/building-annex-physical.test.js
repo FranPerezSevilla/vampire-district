@@ -127,6 +127,45 @@ test("raised annex uses physical top and wall faces without mutating authored bo
   );
 });
 
+test("raised annex carries one restrained recessed service grille inside authored bounds", () => {
+  const plan = annexPlan();
+  const annex = plan.modules[0];
+  const authoredBounds = { ...annex.bounds };
+  const graphics = new GraphicsRecorder();
+
+  renderBuildingPresentation(graphics, plan);
+
+  const grilles = graphics.calls.filter(call => (
+    call.name === "fillRect"
+      && call.style?.color === plan.palette.propDark
+      && Number(call.style?.alpha) === 0.72
+  ));
+  assert.equal(grilles.length, 1, "annex should have exactly one restrained service grille");
+
+  const [x, y, w, h] = grilles[0].args.map(Number);
+  assert.ok(x >= authoredBounds.x);
+  assert.ok(y >= authoredBounds.y);
+  assert.ok(x + w <= authoredBounds.x + authoredBounds.w);
+  assert.ok(y + h <= authoredBounds.y + authoredBounds.h);
+  assert.ok(w <= authoredBounds.w * 0.3);
+  assert.ok(h <= authoredBounds.h * 0.22);
+
+  const louvers = graphics.calls.filter(call => (
+    call.name === "lineBetween"
+      && call.line?.color === plan.palette.serviceMid
+      && Number(call.line?.alpha) === 0.52
+  ));
+  assert.equal(louvers.length, 2);
+  for (const call of louvers) {
+    const [x1, y1, x2, y2] = call.args.map(Number);
+    assert.ok(x1 >= x && x2 <= x + w);
+    assert.ok(y1 >= y && y1 <= y + h);
+    assert.ok(y2 >= y && y2 <= y + h);
+  }
+
+  assert.deepEqual(annex.bounds, authoredBounds);
+});
+
 test("raised annex physical rendering is deterministic for the same planned module", () => {
   const plan = annexPlan();
   const first = new GraphicsRecorder();
