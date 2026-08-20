@@ -1,4 +1,5 @@
 import { MODULE_KINDS } from "./BuildingPresentationCatalog.js";
+import { createOrthogonalMarkerGeometry } from "./BuildingPresentationMarkerGeometry.js";
 import {
   createCylindricalVolumeGeometry,
   createRaisedRectVolumeGeometry,
@@ -82,46 +83,21 @@ function drawPhysicalAnnex(graphics, module, plan) {
   return geometry;
 }
 
-function churchMarkerSegmentBounds(module) {
-  const bounds = module?.bounds;
-  if (!bounds) return null;
-  const width = Math.max(1, Number(bounds.w) || 1);
-  const height = Math.max(1, Number(bounds.h) || 1);
-  const shortSide = Math.min(width, height);
-  if (shortSide < 6) return null;
-
-  const margin = Math.max(0.75, Math.min(1.5, shortSide * 0.08));
-  const innerWidth = Math.max(1, width - margin * 2);
-  const innerHeight = Math.max(1, height - margin * 2);
-  const stemWidth = Math.max(2, Math.min(innerWidth * 0.28, 4.5));
-  const armHeight = Math.max(2, Math.min(innerHeight * 0.24, 4));
-  const armWidth = Math.max(stemWidth, Math.min(innerWidth * 0.76, 11));
-  const centerX = Number(bounds.x) + width / 2;
-  const armCenterY = Number(bounds.y) + margin + innerHeight * 0.38;
-
-  return {
-    stem: {
-      x: centerX - stemWidth / 2,
-      y: Number(bounds.y) + margin,
-      w: stemWidth,
-      h: innerHeight
-    },
-    arm: {
-      x: centerX - armWidth / 2,
-      y: armCenterY - armHeight / 2,
-      w: armWidth,
-      h: armHeight
-    }
-  };
-}
-
 function drawArchitecturalChurchMarker(graphics, module, plan) {
-  const segments = churchMarkerSegmentBounds(module);
+  const segments = createOrthogonalMarkerGeometry(module.bounds, {
+    junctionRatio: 0.38,
+    stemWidthRatio: 0.28,
+    armHeightRatio: 0.24,
+    armSpanRatio: 0.76,
+    maximumStemWidth: 4.5,
+    maximumArmHeight: 4,
+    maximumArmSpan: 11
+  });
   if (!segments) return null;
 
-  // The planner already anchors this marker on the nave centreline. Render it
-  // as two low raised roof fins so the cross belongs to the church massing
-  // instead of reading as a flat accent stamp.
+  // The planner already anchors this marker on the nave centreline. The shared
+  // geometry is family-neutral; church identity comes from placement,
+  // proportions and the restrained warm material highlight supplied here.
   const depth = physicalDepth(module.bounds, 0.1, 1.5);
   const style = {
     depth,
