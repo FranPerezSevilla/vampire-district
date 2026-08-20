@@ -80,7 +80,7 @@ Tracking issue: [#64 — Hourly autonomous agent: building visual polish roadmap
 
 ## M2 — Physical rooftop props
 
-**Status: autonomous-in-progress**
+**Status: complete**
 
 ### Goal
 
@@ -188,38 +188,36 @@ Make skylights, HVAC, hatches, vents, annexes and markers read as physical roof 
 
 ### M2.4 — Architectural annexes and markers
 
-**Status: active**
+**Status: complete**
 
 - [x] route raised annex presentation through shared physical-volume language where appropriate;
 - [x] give annexes explicit top, south/east wall depth and one restrained service detail;
 - [x] integrate religious marker into roof architecture instead of a stamped symbol;
-- [ ] define reusable architectural marker treatment suitable for the later medical profile without prematurely classifying hospital buildings;
-- [ ] prop/marker scale validation at gameplay zoom remains deferred to M6;
-- [ ] add focused renderer contracts for physical integration and unchanged authored bounds.
+- [x] define reusable architectural marker treatment suitable for the later medical profile without prematurely classifying hospital buildings;
+- [x] prop/marker scale validation remains explicitly deferred to the M6 normal-gameplay review;
+- [x] add focused renderer/geometry contracts for physical integration and unchanged authored bounds.
 
-### M2.4 interim evidence
+### M2.4 exit evidence
 
 - raised `ROOF_ANNEX` modules bypass the legacy stamped annex painter and use the shared raised-rectangle physical-volume primitive;
 - planned annex bounds and module ordering remain authoritative and unchanged;
-- the physical annex now carries exactly one low-contrast recessed service grille with two restrained louvers on the top surface;
-- the service grille is renderer-only, deterministic, proportionally limited and remains inside the authored annex bounds;
-- focused annex contracts prove physical top/south/east faces, unchanged authored bounds, deterministic rendering, absence of the old icon-like circle/rectangle treatment and exactly one restrained service grille;
-- GitHub unit job is green in workflow `32334149530` on implementation/test head `342e6a7b01793913eefcec426e8cb71c31f254df`;
-- Netlify deploy preview is green on the same head;
-- church `CROSS_MARKER` modules with `variant: "church"` bypass the legacy flat accent-stamp painter and render as two joined, low raised roof fins aligned to the planner-owned nave centreline;
-- the church marker uses neutral architectural top/south/east faces with warm identity restricted to restrained north/west highlights, preserving the existing marker bounds and planner authority;
-- `tests/building-church-marker-physical.test.js` proves removal of the flat stamp, joined vertical/horizontal raised faces, containment inside authored marker bounds and deterministic output;
-- GitHub workflow `32335254118` unit job completed **successfully** for church-marker implementation/test head `366ac2f90da5483c844ce28822425429615de5d2`;
-- Netlify deploy preview is **green** on that exact church-marker head;
-- browser jobs on workflow `32335254118` were cancelled after the branch head advanced through continuity/documentation commits; they are not required for this bounded renderer-only contract and do not represent a building regression.
+- the physical annex carries exactly one low-contrast recessed service grille with two restrained louvers;
+- focused annex contracts prove physical top/south/east faces, unchanged authored bounds, determinism and removal of the old icon-like circle/rectangle treatment;
+- church `CROSS_MARKER` modules with `variant: "church"` bypass the legacy flat accent-stamp painter and render as two joined low raised roof fins;
+- the church renderer now consumes `createOrthogonalMarkerGeometry(...)`, a family-neutral deterministic geometry helper with configurable junction/span proportions and no classification logic;
+- `tests/building-marker-geometry.test.js` proves centered/default geometry, contained authored bounds, deterministic family-specific proportions and safe omission for undersized marker regions;
+- `tests/building-church-marker-physical.test.js` continues to prove physical church integration and unchanged authored marker bounds;
+- workflow `32339748152` completed **successfully** on exact M2.4d implementation/test head `6dae004310fe18d02a627852337059106b26b8be`: unit tests, browser campaign, browser boot and all three browser-system shards are green;
+- Netlify deploy preview is **green** on the same head;
+- no hospital classifier/profile was introduced; medical family semantics remain reserved for M4.
 
 ### M2 exit criteria
 
-Representative props have clear top, side/contact and shadow separation at normal gameplay scale, without changing planned bounds.
+Representative props have clear top, side/contact and shadow separation without changing planned bounds. Final apparent scale at normal gameplay zoom remains part of the single M6 review package.
 
 ## M3 — Surface material language
 
-**Status: planned**
+**Status: autonomous-in-progress**
 
 - [ ] corrugated warehouse ribs with lower contrast and grouped rhythm;
 - [ ] membrane seams with broad spacing and tonal variation;
@@ -302,4 +300,4 @@ Each hourly execution must:
 
 ## Current exact next action
 
-Continue **M2.4** with one separate bounded increment that defines reusable, family-neutral architectural marker geometry suitable for the later medical profile. Reuse the existing physical-volume language, preserve authored marker bounds and determinism, and add focused contracts. Do not add a hospital classifier/profile before M4, do not alter gameplay/collision/topology, and do not request intermediate user review.
+Begin **M3 — surface material language** with the first bounded task: reduce warehouse corrugated-rib contrast and group the rib rhythm so it reads as roof material rather than repetitive UI linework. Preserve deterministic rendering and authored geometry, add focused contracts, confirm Netlify, and do not begin membrane/civic/pitched/night material work in the same increment.
