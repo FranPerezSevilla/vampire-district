@@ -1,6 +1,6 @@
 {
   "initiative": "building-visual-polish",
-  "version": 8,
+  "version": 9,
   "updatedAt": "2026-08-20",
   "branch": "agent/building-visual-poc",
   "pullRequest": 63,
@@ -10,7 +10,7 @@
   "userValidation": "M6-final-only",
   "currentMilestone": "M2",
   "currentTask": "M2.4-architectural-annexes-and-markers",
-  "nextAction": "Begin M2.4 by routing raised annexes through the shared physical-volume grammar while preserving planned bounds, add one restrained service detail and focused contracts, then continue with architectural religious/medical marker integration without introducing a hospital classifier before M4.",
+  "nextAction": "Continue M2.4 by adding one restrained service detail to the newly physical raised annex while preserving authored bounds and deterministic rendering. Then integrate the religious marker into roof architecture and define reusable marker geometry suitable for the later medical profile without introducing a hospital classifier before M4.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "automation": {
     "provider": "ChatGPT scheduled task",
@@ -83,7 +83,12 @@
     "M2_3dBuildingContracts": "pass",
     "M2_3dWorkflowRun": 32332620515,
     "M2_3dNetlify": "success",
-    "broaderBrowserValidation": "in-progress-in-workflow-32332620515",
+    "latestM2_4aImplementationHead": "4413d768616fc4a3f4f0c371797ad0e174a78271",
+    "M2_4aBuildingContracts": "pass",
+    "M2_4aWorkflowRun": 32333532286,
+    "M2_4aNetlify": "success",
+    "M2_4aBrowserValidation": "in-progress-at-bounded-check",
+    "broaderBrowserValidation": "in-progress-in-workflow-32333532286",
     "mainSyncCompatibility": "pass"
   }
 }
