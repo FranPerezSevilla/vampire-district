@@ -1,3 +1,4 @@
+import { installMotorizedPoliceAggressionPolicy } from "../police/MotorizedPoliceAggressionPolicy.js";
 import { installMotorizedPoliceLocalPolicy } from "../police/MotorizedPoliceLocalPolicy.js";
 import { MotorizedPoliceSystem } from "../police/MotorizedPoliceSystem.js";
 import { PedestrianSystem } from "../systems/PedestrianSystem.js";
@@ -17,6 +18,7 @@ import { MacroTrafficPoliceSystem } from "../streaming/MacroTrafficPoliceSystem.
 import { installTrafficLocalAssignmentPolicy } from "../streaming/TrafficLocalAssignmentPolicy.js";
 import { TrafficImpactConsequencesSystem } from "../streaming/TrafficImpactConsequencesSystem.js";
 import { TrafficLocalBehaviorSystem } from "../streaming/TrafficLocalBehaviorSystem.js";
+import { installTrafficMassCollisionPolicy } from "../streaming/TrafficMassCollisionPolicy.js";
 import { TrafficMaterializationSystem } from "../streaming/TrafficMaterializationSystem.js";
 import { TrafficPhysicalConsequencesSystem } from "../streaming/TrafficPhysicalConsequencesSystem.js";
 import { TrafficSteeringPresentationSystem } from "../streaming/TrafficSteeringPresentationSystem.js";
@@ -103,10 +105,12 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.trafficLocalBehaviorSystem = new TrafficLocalBehaviorSystem(scene);
     scene.trafficSteeringPresentationSystem = new TrafficSteeringPresentationSystem(scene);
     scene.trafficPhysicalConsequencesSystem = new TrafficPhysicalConsequencesSystem(scene);
+    scene.trafficMassCollisionPolicy = installTrafficMassCollisionPolicy(scene.trafficPhysicalConsequencesSystem);
     scene.trafficImpactConsequencesSystem = new TrafficImpactConsequencesSystem(scene);
     scene.vehicleCollisionSofteningPolicy = installVehicleCollisionSofteningPolicy(scene);
     scene.motorizedPoliceSystem = new MotorizedPoliceSystem(scene, { maxUnits: 3 });
     scene.motorizedPoliceLocalPolicy = installMotorizedPoliceLocalPolicy(scene.motorizedPoliceSystem);
+    scene.motorizedPoliceAggressionPolicy = installMotorizedPoliceAggressionPolicy(scene.motorizedPoliceSystem);
     scene.territoryRuntimeSystem = new TerritoryRuntimeSystem(scene);
     scene.huntingLawRuntimeSystem = new HuntingLawRuntimeSystem(scene);
     scene.npcSystem?.refreshVisibility?.();
@@ -203,6 +207,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.scene.huntingLawRuntimeSystem = null;
     this.scene.territoryRuntimeSystem?.destroy?.();
     this.scene.territoryRuntimeSystem = null;
+    this.scene.motorizedPoliceAggressionPolicy?.destroy?.();
+    this.scene.motorizedPoliceAggressionPolicy = null;
     this.scene.motorizedPoliceLocalPolicy?.destroy?.();
     this.scene.motorizedPoliceLocalPolicy = null;
     this.scene.motorizedPoliceSystem?.destroy?.();
@@ -211,6 +217,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.scene.vehicleCollisionSofteningPolicy = null;
     this.scene.trafficImpactConsequencesSystem?.destroy?.();
     this.scene.trafficImpactConsequencesSystem = null;
+    this.scene.trafficMassCollisionPolicy?.destroy?.();
+    this.scene.trafficMassCollisionPolicy = null;
     this.scene.trafficPhysicalConsequencesSystem?.destroy?.();
     this.scene.trafficPhysicalConsequencesSystem = null;
     this.scene.trafficSteeringPresentationSystem?.destroy?.();
