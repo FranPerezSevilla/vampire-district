@@ -34,4 +34,4 @@ export {
   clearBuildingPresentationCache,
   drawBuildingPresentation,
   renderBuildingPresentation
-} from "./buildings/BuildingPresentationFinalRenderer.js";
+} from "./buildings/BuildingPresentationReviewRenderer.js";
