@@ -2,6 +2,48 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-20 — M2.3 mechanical equipment closed; M2.4 opened
+
+### Scope
+
+- Active milestone: M2
+- Task: finish the mechanical-prop family by anchoring the police antenna physically, while reconciling the already implemented hatch and vent increments
+- Authoritative files: `BuildingPresentationDetailRenderer.js`, focused hatch/vent/antenna tests, roadmap and machine status
+- Acceptance criteria: physical base/mast/support relationship, deterministic rendering, unchanged authored bounds, focused unit validation green, Netlify green
+- Explicit non-goals: no annex implementation in this increment, no hospital classifier/profile, no gameplay/collision/topology/navigation/AI/mission/generated-city changes
+
+### Completed
+
+- confirmed M2.3b hatch hardware remains covered by green unit tests on later consolidated heads and Netlify is green;
+- confirmed M2.3c vent refinement passes inside workflow `32332620515` and Netlify remains green;
+- added a physical raised pedestal for `ANTENNA` modules inside their existing planned bounds;
+- attached the mast directly to that pedestal rather than leaving a floating symbol;
+- added two restrained diagonal braces, a short crossarm and mast cap without introducing radio-tower clutter;
+- added `tests/building-antenna-support.test.js` covering pedestal/mast/braces, authored-bound preservation and determinism;
+- confirmed the latest unit-test job in workflow `32332620515` is green with the antenna contracts included;
+- confirmed Netlify is green on antenna implementation head `1aca46a2b651ff38873d8215d2937b33a7491a1f`;
+- closed M2.3 and opened M2.4 architectural annexes and markers.
+
+### Validation
+
+- M2.3b focused unit contracts: **pass on consolidated later run**;
+- M2.3c focused unit contracts: **pass**;
+- M2.3d antenna-support contracts: **pass**;
+- GitHub unit job: **success** in workflow `32332620515`;
+- broader browser jobs: still running independently at the bounded check and not required to prove renderer-only detail contracts;
+- Netlify: **success** — `https://deploy-preview-63--vampire-district.netlify.app`;
+- authored prop bounds and gameplay/collision authority: **unchanged**.
+
+### Visual risk
+
+The antenna is intentionally modest: pedestal, mast, braces and one crossarm. Do not add cables, arrays or extra bars unless final M6 gameplay-scale evidence shows the structure is unreadable. The next quality bottleneck is now architectural annex/marker integration rather than mechanical props.
+
+### Next
+
+M2.4: route raised annexes through the shared physical-volume grammar, preserve planned bounds, add one restrained service detail and focused contracts. Then integrate church/medical-style markers into architecture rather than stamping symbols. Do not introduce a hospital classifier/profile before M4.
+
+---
+
 ## 2026-08-20 — M2.3b unit validation green; M2.3c vent refinement implemented
 
 ### Scope
