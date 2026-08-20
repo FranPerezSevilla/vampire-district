@@ -51,7 +51,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.diagnostics.claim("VehicleCollisionSofteningPolicy.updateDriving", "VehicleCollisionSofteningPolicy");
     this.diagnostics.claim("MotorizedPoliceSystem.update", "MotorizedPoliceSystem");
     this.diagnostics.claim("VehicleSystem.updateDriving", "VehicleSystem");
-    this.diagnostics.claim("VehicleSystem.enterVehicle", "VehicleSystem\");
+    this.diagnostics.claim("VehicleSystem.enterVehicle", "VehicleSystem");
     this.diagnostics.claim("PedestrianSystem.update", "PedestrianSystem");
     this.diagnostics.claim("StreetFurnitureSystem.resolveVehicleMove", "StreetFurnitureSystem");
     this.diagnostics.claim("TerritoryRuntimeSystem.update", "TerritoryRuntimeSystem");
