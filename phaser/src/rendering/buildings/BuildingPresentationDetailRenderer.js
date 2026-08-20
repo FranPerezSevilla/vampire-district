@@ -29,6 +29,60 @@ function ventTopGeometry(module) {
   });
 }
 
+function isRaisedAnnex(module) {
+  return module?.kind === MODULE_KINDS.ROOF_ANNEX && module.variant === "raised";
+}
+
+function drawPhysicalAnnex(graphics, module, plan) {
+  return drawRaisedRectVolume(graphics, module.bounds, {
+    depth: physicalDepth(module.bounds, 0.16, 5),
+    shadowColor: plan.palette.roofShadow,
+    shadowAlpha: 0.46,
+    topColor: plan.palette.annexRoof,
+    southColor: plan.palette.wall,
+    eastColor: plan.palette.serviceDark,
+    highlightColor: plan.palette.parapetLight,
+    highlightAlpha: 0.22,
+    seamColor: plan.palette.parapetMid,
+    seamAlpha: 0.34
+  });
+}
+
+function drawDebugBounds(graphics, module) {
+  if (!module?.bounds) return;
+  graphics.lineStyle(1, 0xffd65c, 0.45);
+  graphics.strokeRect(
+    module.bounds.x,
+    module.bounds.y,
+    module.bounds.w,
+    module.bounds.h
+  );
+}
+
+function renderPolishedWithPhysicalAnnexes(graphics, plan, options = {}) {
+  if (!graphics || !plan) return plan;
+  const modules = plan.modules || [];
+  if (!modules.some(isRaisedAnnex)) {
+    return renderPolishedBuildingPresentation(graphics, plan, options);
+  }
+
+  // Preserve module ordering while replacing only the legacy raised-annex
+  // painter. The planner remains authoritative for bounds and layer order.
+  for (const module of modules) {
+    if (isRaisedAnnex(module)) {
+      drawPhysicalAnnex(graphics, module, plan);
+      if (options.showModuleBounds) drawDebugBounds(graphics, module);
+      continue;
+    }
+    renderPolishedBuildingPresentation(
+      graphics,
+      { ...plan, modules: [module] },
+      options
+    );
+  }
+  return plan;
+}
+
 function drawHatchHardware(graphics, module, plan) {
   const top = hatchTopGeometry(module);
   const shortSide = Math.max(1, Math.min(top.w, top.h));
@@ -143,13 +197,16 @@ export function clearBuildingPresentationCache(building) {
 }
 
 export function renderBuildingPresentation(graphics, plan, options = {}) {
-  const renderedPlan = renderPolishedBuildingPresentation(graphics, plan, options);
+  const renderedPlan = renderPolishedWithPhysicalAnnexes(graphics, plan, options);
   if (graphics && renderedPlan) drawPhysicalDetailOverlays(graphics, renderedPlan);
   return renderedPlan;
 }
 
 export function drawBuildingPresentation(graphics, building, options = {}) {
-  const plan = drawPolishedBuildingPresentation(graphics, building, options);
-  if (graphics && plan) drawPhysicalDetailOverlays(graphics, plan);
+  const plan = drawPolishedBuildingPresentation(null, building, options);
+  if (graphics && plan) {
+    renderPolishedWithPhysicalAnnexes(graphics, plan, options);
+    drawPhysicalDetailOverlays(graphics, plan);
+  }
   return plan;
 }
