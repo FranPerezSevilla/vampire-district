@@ -22,13 +22,21 @@ function industrialPlantTargets(plan) {
   ));
 }
 
+function targetCenter(module) {
+  return {
+    x: module.bounds.x + module.bounds.w / 2,
+    y: module.bounds.y + module.bounds.h / 2
+  };
+}
+
 function industrialPlantDeckBounds(roofBounds, targets) {
   if (!roofBounds || targets.length === 0) return null;
-  const minimumX = Math.min(...targets.map(module => module.bounds.x));
-  const minimumY = Math.min(...targets.map(module => module.bounds.y));
-  const maximumX = Math.max(...targets.map(module => module.bounds.x + module.bounds.w));
-  const maximumY = Math.max(...targets.map(module => module.bounds.y + module.bounds.h));
-  const padding = Math.max(8, Math.min(14, Math.min(roofBounds.w, roofBounds.h) * 0.07));
+  const centers = targets.map(targetCenter);
+  const minimumX = Math.min(...centers.map(point => point.x));
+  const minimumY = Math.min(...centers.map(point => point.y));
+  const maximumX = Math.max(...centers.map(point => point.x));
+  const maximumY = Math.max(...centers.map(point => point.y));
+  const padding = Math.max(12, Math.min(20, Math.min(roofBounds.w, roofBounds.h) * 0.09));
   const inset = Math.max(6, Math.min(10, Math.min(roofBounds.w, roofBounds.h) * 0.045));
   const available = {
     x: roofBounds.x + inset,
@@ -36,10 +44,15 @@ function industrialPlantDeckBounds(roofBounds, targets) {
     w: Math.max(1, roofBounds.w - inset * 2),
     h: Math.max(1, roofBounds.h - inset * 2)
   };
+
+  // M6 review found that a percentage cap could leave the annex and hero HVAC
+  // looking unrelated on wide industrial roofs. Size the material deck from the
+  // actual planned object centres instead: every target centre is guaranteed to
+  // remain inside the deck while the deck itself remains inside the roof mass.
   const desiredWidth = Math.max(70, maximumX - minimumX + padding * 2);
   const desiredHeight = Math.max(42, maximumY - minimumY + padding * 2);
-  const width = Math.min(available.w, roofBounds.w * 0.72, desiredWidth);
-  const height = Math.min(available.h, roofBounds.h * 0.5, desiredHeight);
+  const width = Math.min(available.w, desiredWidth);
+  const height = Math.min(available.h, desiredHeight);
   const centerX = (minimumX + maximumX) / 2;
   const centerY = (minimumY + maximumY) / 2;
   const maximumDeckX = available.x + available.w - width;
