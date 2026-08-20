@@ -1,6 +1,6 @@
 {
   "initiative": "building-visual-polish",
-  "version": 3,
+  "version": 4,
   "updatedAt": "2026-08-20",
   "branch": "agent/building-visual-poc",
   "pullRequest": 63,
@@ -9,8 +9,8 @@
   "executionMode": "chatgpt-hourly-final-gate",
   "userValidation": "M6-final-only",
   "currentMilestone": "M2",
-  "currentTask": "M2.2-automated-validation-pending",
-  "nextAction": "Validate M2.2 implementation head 1c25100fda1f6d80b4483ec739c6220eb5ff0b43. If focused building contracts and Netlify are green, mark M2.2 complete and begin M2.3 with HVAC casing/fan housing. If a new building-focused failure exists, fix only that M2.2 regression before advancing.",
+  "currentTask": "M2.3a-physical-hvac-automated-validation-pending",
+  "nextAction": "Validate the main-synchronized physical HVAC implementation and Netlify preview. If building-focused contracts are green, close M2.3a and continue M2.3b with hatch hardware, then vent refinement and antenna support geometry without requesting intermediate user review.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "automation": {
     "provider": "ChatGPT scheduled task",
@@ -21,6 +21,13 @@
     "requiresRepositorySecret": false,
     "githubHostedWorkflow": "retired",
     "retirementCommitOnMain": "0f1ec8e66b675ca7ac735af07227f221d6dc0998"
+  },
+  "branchSync": {
+    "mainHeadIntegrated": "112bf924eac246ceb1adb95a06cd58bf36918356",
+    "mergeCommit": "8ff5bd1486b6c692ef8d0d4c43b736617091343a",
+    "runtimeReintegrationCommit": "cf02e6c52c08829528602d3337bed62748fdcebf",
+    "behindMainAfterSync": 0,
+    "pullRequestMergeableAfterSync": true
   },
   "milestones": [
     { "id": "P0", "name": "modular proof of concept", "status": "complete" },
@@ -45,8 +52,11 @@
       "status": "autonomous-in-progress",
       "tasks": [
         { "id": "M2.1", "name": "shared physical volume primitives", "status": "complete" },
-        { "id": "M2.2", "name": "skylights", "status": "implementation-complete / automated-validation-pending" },
-        { "id": "M2.3", "name": "mechanical equipment", "status": "planned" },
+        { "id": "M2.2", "name": "physical skylights", "status": "complete" },
+        { "id": "M2.3a", "name": "physical HVAC casing and fan housings", "status": "implementation-complete / automated-validation-pending" },
+        { "id": "M2.3b", "name": "hatch hardware", "status": "planned" },
+        { "id": "M2.3c", "name": "vent refinement", "status": "planned" },
+        { "id": "M2.3d", "name": "antenna base and support geometry", "status": "planned" },
         { "id": "M2.4", "name": "architectural annexes and markers", "status": "planned" }
       ]
     },
@@ -56,15 +66,12 @@
     { "id": "M6", "name": "final polish and merge readiness", "status": "planned" }
   ],
   "validation": {
-    "latestM1Head": "454f00a03dfd9d80f8cdc27b849ff4ad982955c2",
-    "latestM2ValidatedHead": "20d49ac4478e97e82c7e0cfc1f76432270c6f16a",
-    "latestM2ImplementationHead": "1c25100fda1f6d80b4483ec739c6220eb5ff0b43",
-    "buildingFocusedContracts": "pending",
-    "globalUnitResult": "pending",
-    "netlify": "pending"
-  },
-  "knownUnrelatedCiFailures": [
-    "tests/urban-witness-network.test.js (2 expectations)",
-    "tests/vehicle-exit-and-impact-buffer.test.js (5 expectations)"
-  ]
+    "latestM2_2Head": "0523ddbd7cf13403895644cd6979c5707bde1089",
+    "M2_2BuildingContracts": "pass",
+    "M2_2Netlify": "success",
+    "latestM2_3aImplementationHead": "51b752d1fe49f65f3531138df1d5ad2ac5cc86ea",
+    "M2_3aBuildingContracts": "pending",
+    "M2_3aNetlify": "pending",
+    "mainSyncCompatibility": "pending"
+  }
 }
