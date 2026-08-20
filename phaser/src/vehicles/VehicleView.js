@@ -1,9 +1,25 @@
 import { WORLD } from "../data/balance.js";
-import { VEHICLE_OWNERSHIP } from "../data/vehicles.js";
+import { VEHICLE_CLASSES, VEHICLE_OWNERSHIP } from "../data/vehicles.js";
 import { vehicleGearCount, vehicleHealthPercent, vehicleSpeedKph } from "./VehicleModel.js";
 
 function driftDegrees(vehicle) {
   return Math.round(Math.abs(Number(vehicle?.driftAngle) || 0) * 180 / Math.PI);
+}
+
+function stableHash(value) {
+  let hash = 2166136261;
+  for (const character of String(value || "vehicle")) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function vehiclePalette(definition, archetype) {
+  const palettes = Array.isArray(archetype?.palettes) && archetype.palettes.length
+    ? archetype.palettes
+    : [{ color: archetype.color, trim: archetype.trim }];
+  return palettes[stableHash(definition?.id || archetype?.id) % palettes.length] || palettes[0];
 }
 
 export function createVehicleHud(scene) {
@@ -23,42 +39,125 @@ export function createVehicleHud(scene) {
 export function paintVehicle(scene, container, definition, archetype) {
   const width = archetype.width;
   const height = archetype.height;
-  const wheelColor = 0x08090e;
-  const body = scene.add.rectangle(0, 0, width, height, archetype.color, 1)
-    .setStrokeStyle(1, archetype.trim, 0.95);
-  const cabin = scene.add.rectangle(-width * 0.04, 0, width * 0.42, height * 0.70, 0x111522, 0.96)
-    .setStrokeStyle(1, archetype.trim, 0.55);
-  const hood = scene.add.rectangle(width * 0.33, 0, width * 0.18, height * 0.62, archetype.trim, 0.38);
+  const palette = vehiclePalette(definition, archetype);
+  const color = Number(palette?.color ?? archetype.color);
+  const trim = Number(palette?.trim ?? archetype.trim);
+  const style = String(archetype.bodyStyle || "sedan");
+  const parts = [];
+  const detail = (x, y, w, h, fill, alpha = 1) => {
+    const part = scene.add.rectangle(x, y, Math.max(1, w), Math.max(1, h), fill, alpha);
+    parts.push(part);
+    return part;
+  };
+
+  const body = detail(0, 0, width, height, color, 1).setStrokeStyle(1, trim, 0.95);
+  let cabinX = -width * 0.04;
+  let cabinWidth = width * 0.42;
+  let cabinHeight = height * 0.70;
+  let hoodX = width * 0.33;
+  let hoodWidth = width * 0.18;
+
+  if (["compact", "hatchback", "junker"].includes(style)) {
+    cabinX = -width * 0.08;
+    cabinWidth = width * 0.50;
+    hoodWidth = width * 0.16;
+  } else if (["muscle", "sports", "coupe", "police-interceptor"].includes(style)) {
+    cabinX = -width * 0.11;
+    cabinWidth = width * 0.34;
+    cabinHeight = height * 0.62;
+    hoodX = width * 0.30;
+    hoodWidth = width * 0.28;
+  } else if (["suv", "police-suv"].includes(style)) {
+    cabinWidth = width * 0.58;
+    cabinHeight = height * 0.72;
+  } else if (["van", "delivery-van"].includes(style)) {
+    cabinX = width * 0.22;
+    cabinWidth = width * 0.27;
+    cabinHeight = height * 0.78;
+    hoodX = width * 0.43;
+    hoodWidth = width * 0.09;
+  } else if (style === "pickup") {
+    cabinX = width * 0.16;
+    cabinWidth = width * 0.28;
+    hoodX = width * 0.39;
+    hoodWidth = width * 0.14;
+  } else if (style === "limousine") {
+    cabinWidth = width * 0.66;
+    hoodX = width * 0.39;
+    hoodWidth = width * 0.15;
+  } else if (style === "hearse") {
+    cabinX = width * 0.16;
+    cabinWidth = width * 0.26;
+    hoodX = width * 0.40;
+    hoodWidth = width * 0.14;
+  }
+
+  const cabin = detail(cabinX, 0, cabinWidth, cabinHeight, 0x111522, 0.96)
+    .setStrokeStyle(1, trim, 0.55);
+  const hood = detail(hoodX, 0, hoodWidth, height * 0.62, trim, 0.30);
+
+  if (style === "hatchback") detail(-width * 0.38, 0, width * 0.14, height * 0.64, 0x111522, 0.78);
+  if (style === "taxi") detail(-width * 0.03, 0, width * 0.14, height * 0.25, 0xf3c64d, 1).setStrokeStyle(1, 0x2b2417, 0.9);
+  if (style === "muscle") {
+    detail(0, -height * 0.10, width * 0.84, 1.7, 0x16171b, 0.80);
+    detail(0, height * 0.10, width * 0.84, 1.7, 0x16171b, 0.80);
+  }
+  if (style === "sports") {
+    detail(-width * 0.36, 0, width * 0.16, height * 0.55, 0x15171c, 0.72);
+    detail(width * 0.27, 0, width * 0.10, height * 0.50, 0x0c0d11, 0.70);
+  }
+  if (["suv", "police-suv"].includes(style)) {
+    detail(-width * 0.08, -height * 0.37, width * 0.50, 1.5, 0x15171b, 0.95);
+    detail(-width * 0.08, height * 0.37, width * 0.50, 1.5, 0x15171b, 0.95);
+  }
+  if (style === "pickup") detail(-width * 0.27, 0, width * 0.38, height * 0.70, 0x282520, 0.94).setStrokeStyle(1, trim, 0.50);
+  if (["van", "delivery-van"].includes(style)) detail(-width * 0.19, 0, width * 0.50, height * 0.72, trim, 0.10).setStrokeStyle(1, trim, 0.25);
+  if (style === "limousine") {
+    detail(-width * 0.08, 0, 1.2, height * 0.60, trim, 0.42);
+    detail(-width * 0.24, 0, 1.2, height * 0.60, trim, 0.42);
+  }
+  if (style === "hearse") {
+    detail(-width * 0.24, 0, width * 0.48, height * 0.72, 0x121318, 0.90).setStrokeStyle(1, trim, 0.38);
+    detail(-width * 0.24, 0, width * 0.23, 1.4, trim, 0.62);
+    detail(-width * 0.24, 0, 1.4, height * 0.30, trim, 0.62);
+  }
+  if (["coupe", "junker"].includes(style)) {
+    detail(-width * 0.24, height * 0.22, width * 0.18, height * 0.20, 0x553a30, 0.68).setRotation(-0.10);
+  }
+
+  if (archetype.vehicleClass === VEHICLE_CLASSES.POLICE) {
+    if (archetype.policeRole !== "unmarked") {
+      detail(-width * 0.12, 0, width * 0.28, height * 0.66, 0xe4e8ed, 0.82);
+      detail(-width * 0.04, -height * 0.18, 5.5, 2.2, 0x4f8dff, 1);
+      detail(-width * 0.04, height * 0.18, 5.5, 2.2, 0xff3b50, 1);
+    } else {
+      detail(width * 0.12, -height * 0.17, 2.6, 1.5, 0x4f8dff, 0.92);
+      detail(width * 0.12, height * 0.17, 2.6, 1.5, 0xff3b50, 0.92);
+    }
+  }
+
   const wheels = [
-    scene.add.rectangle(-width * 0.28, -height * 0.60, width * 0.20, 3, wheelColor, 1),
-    scene.add.rectangle(width * 0.28, -height * 0.60, width * 0.20, 3, wheelColor, 1),
-    scene.add.rectangle(-width * 0.28, height * 0.60, width * 0.20, 3, wheelColor, 1),
-    scene.add.rectangle(width * 0.28, height * 0.60, width * 0.20, 3, wheelColor, 1)
+    scene.add.rectangle(-width * 0.28, -height * 0.60, width * 0.20, 3, 0x08090e, 1),
+    scene.add.rectangle(width * 0.28, -height * 0.60, width * 0.20, 3, 0x08090e, 1),
+    scene.add.rectangle(-width * 0.28, height * 0.60, width * 0.20, 3, 0x08090e, 1),
+    scene.add.rectangle(width * 0.28, height * 0.60, width * 0.20, 3, 0x08090e, 1)
   ];
-  const nose = scene.add.triangle(
-    width / 2 + 2,
-    0,
-    -3,
-    -3,
-    3,
-    0,
-    -3,
-    3,
-    archetype.trim,
-    0.92
-  );
-  const label = scene.add.text(0, -height - 5, archetype.id === "police" ? "POLICE" : archetype.label.toUpperCase(), {
+  const nose = scene.add.triangle(width / 2 + 2, 0, -3, -3, 3, 0, -3, 3, trim, 0.92);
+  const vehicleLabel = archetype.vehicleClass === VEHICLE_CLASSES.POLICE
+    ? (archetype.policeRole === "unmarked" ? "UNMARKED" : "POLICE")
+    : archetype.label.toUpperCase();
+  const label = scene.add.text(0, -height - 5, vehicleLabel, {
     fontFamily: "Arial, Helvetica, sans-serif",
     fontSize: "12px",
     fontStyle: "bold",
-    color: `#${archetype.trim.toString(16).padStart(6, "0")}`,
+    color: `#${trim.toString(16).padStart(6, "0")}`,
     backgroundColor: "rgba(5, 6, 11, .68)",
     padding: { x: 3, y: 1 }
   }).setOrigin(0.5, 1).setRotation(-(Number(definition.angle) || 0));
   label.setResolution?.(3);
   label.setStroke?.("#05060b", 2);
-  container.add([...wheels, body, cabin, hood, nose, label]);
-  return { body, cabin, hood, wheels, nose, label };
+  container.add([...parts, ...wheels, nose, label]);
+  return { body, cabin, hood, wheels, nose, label, details: parts.slice(3) };
 }
 
 function plainVehicle(vehicle) {
