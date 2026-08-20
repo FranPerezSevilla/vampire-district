@@ -121,9 +121,6 @@ function drawArchitecturalParapet(graphics, module, plan, line, args) {
   const alpha = Number(line.alpha) || 0;
   const depth = Math.max(3, Number(plan.effects?.wallDepth) || 5);
 
-  // The wide dark pass from the base painter is translated into actual wall
-  // depth only on the shadow-facing sides. It is deliberately omitted on the
-  // north/west sides so the roof contour cannot read as a closed UI frame.
   if (width >= 5 && color === plan.palette.parapetDark) {
     if (!lightFacing) {
       const outward = outwardOffset(orientation, depth * 0.36);
@@ -145,8 +142,6 @@ function drawArchitecturalParapet(graphics, module, plan, line, args) {
     return;
   }
 
-  // One restrained architectural cap replaces the former luminous double
-  // outline. Family identity remains the job of explicit accent modules.
   if (width >= 3 && (
     color === plan.palette.parapetLight
       || color === plan.palette.parapetMid
@@ -232,7 +227,6 @@ function drawPhysicalSkylight(graphics, module, plan) {
     h: Math.max(0.5, geometry.top.h - curb * 2)
   };
 
-  // A recessed dark well separates the glazing from the raised metal curb.
   graphics.fillStyle(plan.palette.roofShadow, 0.22);
   graphics.fillRect(
     glass.x + Math.min(1.2, curb * 0.35),
@@ -244,8 +238,6 @@ function drawPhysicalSkylight(graphics, module, plan) {
   graphics.fillStyle(plan.palette.glass, 1);
   graphics.fillRect(glass.x, glass.y, glass.w, glass.h);
 
-  // Keep the glass dimensional without turning it into noisy texture: a small
-  // shadow-facing band, one cool directional glint and restrained mullions.
   const shadeX = Math.max(0.75, Math.min(2.5, glass.w * 0.08));
   const shadeY = Math.max(0.75, Math.min(2.5, glass.h * 0.1));
   graphics.fillStyle(plan.palette.roofShadow, 0.16);
@@ -276,6 +268,65 @@ function drawPhysicalSkylight(graphics, module, plan) {
   }
 
   return { ...geometry, curb, glass };
+}
+
+function drawPhysicalHvac(graphics, module, plan) {
+  const geometry = drawRaisedRectVolume(graphics, module.bounds, {
+    depth: physicalDepth(module.bounds, 0.14, 4),
+    shadowColor: plan.palette.roofShadow,
+    shadowAlpha: 0.5,
+    topColor: plan.palette.prop,
+    southColor: plan.palette.propDark,
+    eastColor: plan.palette.serviceDark,
+    highlightColor: plan.palette.parapetLight,
+    highlightAlpha: 0.2,
+    seamColor: plan.palette.serviceMid,
+    seamAlpha: 0.38
+  });
+
+  const top = geometry.top;
+  const padding = Math.max(2, Math.min(5, Math.min(top.w, top.h) * 0.12));
+  const usableHeight = Math.max(2, top.h - padding * 2);
+  const fanCount = top.w >= top.h * 1.45 ? 2 : 1;
+  const fanCellWidth = Math.max(2, (top.w - padding * 2) / fanCount);
+  const radius = Math.max(2, Math.min(usableHeight * 0.36, fanCellWidth * 0.31));
+  const fanCenters = [];
+
+  // A subtle casing seam makes the top read as fabricated equipment rather
+  // than a single icon rectangle without introducing high-frequency clutter.
+  graphics.lineStyle(1, plan.palette.serviceMid, 0.28);
+  graphics.lineBetween(
+    top.x + padding,
+    top.y + top.h - padding,
+    top.x + top.w - padding,
+    top.y + top.h - padding
+  );
+
+  for (let index = 0; index < fanCount; index += 1) {
+    const x = top.x + padding + fanCellWidth * (index + 0.5);
+    const y = top.y + top.h * 0.48;
+    fanCenters.push({ x, y, radius });
+
+    // Raised housing, recessed fan well and rim are intentionally separate.
+    graphics.fillStyle(plan.palette.propDark, 0.96);
+    graphics.fillCircle(x, y, radius * 1.12);
+    graphics.fillStyle(plan.palette.serviceDark, 0.94);
+    graphics.fillCircle(x, y, radius * 0.82);
+    graphics.fillStyle(plan.palette.roofShadow, 0.24);
+    graphics.fillCircle(x + radius * 0.08, y + radius * 0.1, radius * 0.55);
+
+    graphics.lineStyle(1, plan.palette.parapetLight, 0.34);
+    graphics.strokeCircle(x, y, radius * 1.12);
+    graphics.lineStyle(1, plan.palette.serviceMid, 0.62);
+    graphics.strokeCircle(x, y, radius * 0.72);
+
+    const blade = radius * 0.55;
+    graphics.lineStyle(1, plan.palette.prop, 0.55);
+    graphics.lineBetween(x - blade, y, x + blade, y);
+    graphics.lineBetween(x, y - blade, x, y + blade);
+  }
+
+  return { ...geometry, fanCenters };
 }
 
 function drawPhysicalHatch(graphics, module, plan) {
@@ -415,11 +466,7 @@ function createModuleGraphicsProxy(graphics, module, plan) {
     },
 
     lineBetween(...args) {
-      if (module.kind === MODULE_KINDS.FOUNDATION) {
-        // Keep the full authored rectangle as an invisible collision authority,
-        // but do not paint its old top/left frame or wall-highlight rails.
-        return proxy;
-      }
+      if (module.kind === MODULE_KINDS.FOUNDATION) return proxy;
       if (module.kind === MODULE_KINDS.PARAPET_EDGE) {
         drawArchitecturalParapet(graphics, module, plan, state.line, args);
       } else {
@@ -432,11 +479,7 @@ function createModuleGraphicsProxy(graphics, module, plan) {
       if (
         module.kind === MODULE_KINDS.FOUNDATION
           && state.line.color === plan.palette.parapetDark
-      ) {
-        // The footprint remains fully rendered as a low slab and fully active as
-        // collision, but its complete rectangular outline is intentionally gone.
-        return proxy;
-      }
+      ) return proxy;
       if (
         module.kind === MODULE_KINDS.ROOF_ANNEX
           && state.line.color === plan.palette.parapetDark
@@ -480,6 +523,8 @@ export function renderBuildingPresentation(graphics, plan, options = {}) {
     const moduleGraphics = createModuleGraphicsProxy(graphics, module, plan);
     if (module.kind === MODULE_KINDS.SKYLIGHT) {
       drawPhysicalSkylight(moduleGraphics, module, plan);
+    } else if (module.kind === MODULE_KINDS.HVAC) {
+      drawPhysicalHvac(moduleGraphics, module, plan);
     } else if (module.kind === MODULE_KINDS.HATCH) {
       drawPhysicalHatch(moduleGraphics, module, plan);
     } else if (module.kind === MODULE_KINDS.VENT) {
