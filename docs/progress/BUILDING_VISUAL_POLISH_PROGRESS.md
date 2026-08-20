@@ -2,6 +2,46 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-20 — M2.4 raised annex routed through physical grammar
+
+### Scope
+
+- Active milestone: M2.4
+- Task: replace the legacy raised-annex painter with the shared renderer-only physical-volume grammar
+- Authoritative files: `BuildingPresentationDetailRenderer.js`, `tests/building-annex-physical.test.js`, roadmap and machine status
+- Acceptance criteria: physical top/south/east separation, deterministic rendering, unchanged authored bounds, no legacy icon-like annex circle/rectangle treatment, focused unit validation green and Netlify green
+- Explicit non-goals: annex service-detail refinement, marker redesign, hospital classification/profile work, gameplay, collision, topology, navigation, AI, missions or generated-city edits
+
+### Completed
+
+- routed only `ROOF_ANNEX` modules with `variant: "raised"` through the shared `drawRaisedRectVolume` grammar;
+- preserved planner-owned module ordering and authored annex bounds;
+- replaced the old stamped annex path rather than layering a second treatment over it;
+- removed the old icon-like circular annex detail from this physical route so the next bounded task can add one restrained architectural service cue deliberately;
+- added `tests/building-annex-physical.test.js` covering top/south/east physical faces, bounds immutability, deterministic output and absence of the legacy circle/rectangle treatment;
+- updated roadmap, machine state, PR #63 description and issue #64 continuity to point at the annex service-detail increment next.
+
+### Validation
+
+- implementation commit: `92ddeb1a5d72f967ce339e908c366f1ff0c88171`;
+- focused-contract head: `4413d768616fc4a3f4f0c371797ad0e174a78271`;
+- GitHub unit job: **success** in workflow `32333532286`;
+- browser campaign on that workflow: **success**; remaining browser jobs were superseded/cancelled after continuity commits moved the branch head;
+- current continuity head retained a green unit job while its broader browser jobs continued independently;
+- Netlify deploy preview: **success** — `https://deploy-preview-63--vampire-district.netlify.app`;
+- authored annex/building bounds and gameplay/collision authority: **unchanged**;
+- PR #63 remains open, draft and mergeable.
+
+### Visual risk
+
+The annex now reads as a real raised roof volume instead of a stamped module, but it is intentionally sparse. Do not reintroduce the old circular symbol or dense rooftop decoration. The next increment should add exactly one restrained service cue that remains subordinate at gameplay zoom.
+
+### Next
+
+Continue M2.4 with one restrained service detail on the physical raised annex, preserving bounds and determinism. After that, integrate religious and reusable medical-style marker geometry architecturally without introducing a hospital classifier/profile before M4.
+
+---
+
 ## 2026-08-20 — M2.3 mechanical equipment closed; M2.4 opened
 
 ### Scope
