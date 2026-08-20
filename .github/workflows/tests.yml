@@ -132,6 +132,46 @@ jobs:
             test-results/
           retention-days: 7
 
+  browser-building-review:
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 63
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install exact browser dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+      - name: Verify pinned local Phaser
+        run: test -f node_modules/phaser/dist/phaser.min.js
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Capture representative building review set
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout --signal=INT --kill-after=30s 8m npm run test:browser:building-review 2>&1 | tee browser-building-review.log
+      - name: Upload building visual review package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: building-visual-review
+          path: .artifacts/building-review/
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Upload building review diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-building-review-diagnostics
+          path: |
+            browser-building-review.log
+            playwright-report/
+            test-results/
+          retention-days: 7
+
   browser-campaign:
     runs-on: ubuntu-latest
     timeout-minutes: 18
