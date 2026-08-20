@@ -6,7 +6,6 @@ import { MOTORIZED_POLICE_ROLES } from "./MotorizedPolicePolicy.js";
 const POLICE_SIREN_EVENT = "policeSirenLoop";
 const POLICE_SIREN_AUDIBLE_RADIUS = 1080;
 const POLICE_SIREN_PAN_DISTANCE = 360;
-const MIN_MOBILE_PURSUIT_UNITS = 2;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, Number(value) || 0));
@@ -14,21 +13,6 @@ function clamp(value, min, max) {
 
 function distance(a, b) {
   return Math.hypot((Number(a?.x) || 0) - (Number(b?.x) || 0), (Number(a?.y) || 0) - (Number(b?.y) || 0));
-}
-
-export function mobilePursuitUnitCount(units = []) {
-  return (Array.isArray(units) ? units : []).filter(unit => (
-    unit?.role === MOTORIZED_POLICE_ROLES.PURSUIT
-    && !unit.disabled
-    && !unit.officersDismounted
-  )).length;
-}
-
-export function mayDismountPursuitUnit(units = [], unit, wantedLevel) {
-  if (!unit || unit.role !== MOTORIZED_POLICE_ROLES.PURSUIT) return true;
-  if (Math.max(0, Number(wantedLevel) || 0) < 2) return true;
-  if (unit.disabled || unit.officersDismounted) return true;
-  return mobilePursuitUnitCount(units) > MIN_MOBILE_PURSUIT_UNITS;
 }
 
 export function installMotorizedPoliceLocalPolicy(system) {
@@ -157,9 +141,6 @@ export function installMotorizedPoliceLocalPolicy(system) {
       && !blockedLongEnough) {
       return [];
     }
-    // Wanted 2+ must keep two cruisers physically chasing. The extra Wanted 2 cruiser
-    // may deploy officers, while Wanted 3's roadblock remains free to dismount separately.
-    if (!mayDismountPursuitUnit(this.units, unit, this.wantedLevel?.())) return [];
     return originalDismountUnit.call(this, unitId, reason);
   }
 

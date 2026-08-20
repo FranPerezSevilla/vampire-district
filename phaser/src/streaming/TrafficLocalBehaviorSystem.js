@@ -29,22 +29,6 @@ function vehicleRadius(archetype) {
   return Math.max(finite(archetype?.width, 28), finite(archetype?.height, 14)) * 0.43;
 }
 
-function hashText(value) {
-  let hash = 2166136261;
-  for (const char of String(value || "traffic")) {
-    hash ^= char.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
-export function trafficObstacleAvoidancePlan(reason, tokenId, vehicleRadiusValue = 14) {
-  if (!["player-vehicle", "parked-vehicle"].includes(String(reason || ""))) return null;
-  const side = (hashText(tokenId) & 1) === 0 ? -1 : 1;
-  const clearance = clamp(Math.max(16, finite(vehicleRadiusValue, 14) * 1.25), 16, 24);
-  return { side, lateralOffset: side * clearance };
-}
-
 export function civilianTrafficPlayerImpact(slot, player, speed) {
   if (!slot || !player) return null;
   const width = Math.max(18, finite(slot.archetype?.width, 28));
@@ -158,7 +142,6 @@ export class TrafficLocalBehaviorSystem {
     this.catchUpSpeed = 1.24;
     this.junctionApproachDistance = 82;
     this.junctionRadius = 30;
-    this.avoidanceLateralRate = 38;
     this.ready = false;
     this.destroyed = false;
     this.lastPublishedKey = "";
@@ -191,7 +174,6 @@ export class TrafficLocalBehaviorSystem {
     this.catchUpSpeed = clamp(option("catchUpSpeed", 1.24), 1, 1.5);
     this.junctionApproachDistance = Math.max(this.followDistance, option("junctionApproachDistance", 82));
     this.junctionRadius = Math.max(12, option("junctionRadius", 30));
-    this.avoidanceLateralRate = Math.max(12, option("avoidanceLateralRate", 38));
     this.junctions = (this.materializer.lanes?.junctions || []).map(item => ({
       id: String(item.id),
       x: finite(item.x),
@@ -245,8 +227,6 @@ export class TrafficLocalBehaviorSystem {
         lag: 0,
         stoppedSeconds: 0,
         junctionId: null,
-        avoidanceOffset: 0,
-        avoidanceTarget: 0,
         engineSpeed: 0,
         engineGear: 1,
         engineGearShiftTimer: 0,
@@ -371,32 +351,24 @@ export class TrafficLocalBehaviorSystem {
 
   decisionFor(slot, state, token, active) {
     const lane = this.laneFor(state);
-    if (!lane) return { desiredSpeedFactor: 1, reason: "no-lane", gap: null, junctionId: null, lane: null, avoidanceOffset: 0 };
+    if (!lane) return { desiredSpeedFactor: 1, reason: "no-lane", gap: null, junctionId: null, lane: null };
     const blockers = [
       this.nearestLead(slot, state, lane, active),
       this.nearestPersistentBlocker(slot, state, lane),
       this.junctionBlocker(slot, state, lane, active)
     ].filter(Boolean).sort((left, right) => left.gap - right.gap || left.reason.localeCompare(right.reason));
     const blocker = blockers[0] || null;
-    const avoidance = blocker
-      ? trafficObstacleAvoidancePlan(blocker.reason, state.tokenId, slot.radius)
-      : null;
     let desiredSpeedFactor = 1;
     if (blocker) {
-      if (avoidance) {
-        const clearance = clamp(blocker.gap / Math.max(1, this.playerLookAhead), 0, 1);
-        desiredSpeedFactor = clamp(0.48 + clearance * 0.32, 0.48, 0.8);
-      } else {
-        const persistentBlocker = blocker.reason === "player-on-foot";
-        const responseDistance = persistentBlocker ? this.playerLookAhead : this.followDistance;
-        if (blocker.gap <= this.hardStopDistance) desiredSpeedFactor = 0;
-        else if (blocker.gap < responseDistance) {
-          desiredSpeedFactor = clamp(
-            (blocker.gap - this.hardStopDistance) / Math.max(1, responseDistance - this.hardStopDistance),
-            0,
-            1
-          );
-        }
+      const persistentBlocker = ["player-vehicle", "player-on-foot", "parked-vehicle"].includes(blocker.reason);
+      const responseDistance = persistentBlocker ? this.playerLookAhead : this.followDistance;
+      if (blocker.gap <= this.hardStopDistance) desiredSpeedFactor = 0;
+      else if (blocker.gap < responseDistance) {
+        desiredSpeedFactor = clamp(
+          (blocker.gap - this.hardStopDistance) / Math.max(1, responseDistance - this.hardStopDistance),
+          0,
+          1
+        );
       }
     } else if (state.lag > 0.008) {
       desiredSpeedFactor = Math.min(this.catchUpSpeed, 1 + state.lag * 3.2);
@@ -407,21 +379,13 @@ export class TrafficLocalBehaviorSystem {
       gap: blocker ? blocker.gap : null,
       blockerId: blocker?.blockerId || null,
       junctionId: blocker?.junctionId || null,
-      avoidanceOffset: avoidance?.lateralOffset || 0,
       lane
     };
   }
 
   applyDecision(slot, state, token, decision, dt) {
     const seconds = Math.max(0, finite(dt));
-    const previousAvoidanceOffset = finite(state.avoidanceOffset);
-    state.avoidanceTarget = finite(decision.avoidanceOffset);
-    state.avoidanceOffset = moveToward(
-      previousAvoidanceOffset,
-      state.avoidanceTarget,
-      this.avoidanceLateralRate * seconds
-    );
-    const emergencyStop = decision.gap !== null && decision.gap <= 0 && Math.abs(state.avoidanceTarget) < 0.001;
+    const emergencyStop = decision.gap !== null && decision.gap <= 0;
     const rate = decision.desiredSpeedFactor < state.speedFactor ? this.brakingRate : this.accelerationRate;
     state.desiredSpeedFactor = decision.desiredSpeedFactor;
     state.speedFactor = emergencyStop
@@ -462,23 +426,17 @@ export class TrafficLocalBehaviorSystem {
       ? this.materializer.constructor.pointAlongPolyline(decision.lane?.points || [], visualPhase)
       : null;
     const sampled = point || this.sampleLane(decision.lane, visualPhase);
-    const lateralDelta = state.avoidanceOffset - previousAvoidanceOffset;
-    const forwardPixels = decision.lane ? advance * decision.lane.length : 0;
-    const steerAngle = clamp(Math.atan2(lateralDelta, Math.max(5, forwardPixels)), -0.34, 0.34);
-    const normalX = -Math.sin(sampled.angle);
-    const normalY = Math.cos(sampled.angle);
     slot.authoritativePhase = wrapPhase(token.phase);
     slot.phase = visualPhase;
-    slot.x = sampled.x + normalX * state.avoidanceOffset;
-    slot.y = sampled.y + normalY * state.avoidanceOffset;
-    slot.angle = sampled.angle + steerAngle;
+    slot.x = sampled.x;
+    slot.y = sampled.y;
+    slot.angle = sampled.angle;
     slot.speedFactor = state.speedFactor;
     slot.desiredSpeedFactor = state.desiredSpeedFactor;
     slot.behaviorReason = state.reason;
     slot.behaviorGap = state.gap;
     slot.behaviorLag = state.lag;
     slot.behaviorBlockerId = state.blockerId;
-    slot.avoidanceOffset = state.avoidanceOffset;
     slot.junctionId = state.junctionId;
     slot.container
       .setPosition(slot.x, slot.y)
@@ -657,7 +615,6 @@ export class TrafficLocalBehaviorSystem {
         gap: state.gap === null ? null : round(state.gap, 1),
         blockerId: state.blockerId || null,
         junctionId: state.junctionId || null,
-        avoidanceOffset: round(state.avoidanceOffset, 1),
         stoppedSeconds: round(state.stoppedSeconds, 2),
         engineSpeed: round(state.engineSpeed, 1),
         gear: state.engineGear,
@@ -669,7 +626,6 @@ export class TrafficLocalBehaviorSystem {
       activeVehicles: entries.length,
       brakingVehicles: entries.filter(item => item.speedFactor < 0.95 && item.speedFactor > 0.03).length,
       stoppedVehicles: entries.filter(item => item.speedFactor <= 0.03).length,
-      avoidingVehicles: entries.filter(item => Math.abs(item.avoidanceOffset) > 0.5).length,
       yieldingVehicles: entries.filter(item => item.reason.startsWith("junction")).length,
       followingVehicles: entries.filter(item => item.reason === "traffic").length,
       playerReactiveVehicles: entries.filter(item => item.reason === "player-vehicle" || item.reason === "player-on-foot" || item.reason === "junction-player").length,
@@ -686,13 +642,13 @@ export class TrafficLocalBehaviorSystem {
     const snapshot = this.snapshot();
     const key = JSON.stringify([
       snapshot.ready,
-      snapshot.vehicles.map(item => [item.tokenId, item.reason, item.speedFactor, item.avoidanceOffset, item.junctionId]),
+      snapshot.vehicles.map(item => [item.tokenId, item.reason, item.speedFactor, item.junctionId]),
       snapshot.initializationError
     ]);
     if (!force && key === this.lastPublishedKey) return snapshot;
     this.lastPublishedKey = key;
     this.scene.statePublisher?.setMany?.({
-      trafficBehaviorText: `Traffic AI · ${snapshot.activeVehicles} active · ${snapshot.brakingVehicles} braking · ${snapshot.avoidingVehicles} steering around`,
+      trafficBehaviorText: `Traffic AI · ${snapshot.activeVehicles} active · ${snapshot.brakingVehicles} braking · ${snapshot.stoppedVehicles} stopped`,
       trafficBehaviorState: snapshot
     });
     if (typeof window !== "undefined") window.NBD_TRAFFIC_BEHAVIOR_READY = snapshot.ready;

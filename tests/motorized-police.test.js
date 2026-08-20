@@ -8,8 +8,6 @@ import {
   laneDirection,
   motorizedRole,
   MOTORIZED_POLICE_ROLES,
-  MOTORIZED_POLICE_ROUTE_AGGRESSION,
-  MOTORIZED_POLICE_STEERING_AGGRESSION,
   MOTORIZED_POLICE_TACTICS,
   policeTacticLabel,
   predictInterceptPoint,
@@ -52,14 +50,13 @@ const lanes = Object.freeze({
   }
 });
 
-test("wanted two deploys three pursuit cruisers and wanted three converts the third to roadblock", () => {
+test("wanted levels deploy two pursuit cruisers at two and add a roadblock cruiser at three", () => {
   assert.equal(desiredMotorizedUnits(0), 0);
   assert.equal(desiredMotorizedUnits(1), 0);
-  assert.equal(desiredMotorizedUnits(2), 3);
+  assert.equal(desiredMotorizedUnits(2), 2);
   assert.equal(desiredMotorizedUnits(3), 3);
   assert.equal(motorizedRole(0, 2), MOTORIZED_POLICE_ROLES.PURSUIT);
   assert.equal(motorizedRole(1, 2), MOTORIZED_POLICE_ROLES.PURSUIT);
-  assert.equal(motorizedRole(2, 2), MOTORIZED_POLICE_ROLES.PURSUIT);
   assert.equal(motorizedRole(0, 3), MOTORIZED_POLICE_ROLES.PURSUIT);
   assert.equal(motorizedRole(1, 3), MOTORIZED_POLICE_ROLES.PURSUIT);
   assert.equal(motorizedRole(2, 3), MOTORIZED_POLICE_ROLES.ROADBLOCK);
@@ -84,16 +81,14 @@ test("response origins prefer the closest available external district paths", ()
   assert.equal(chooseResponseOrigin(graph, "a", 2, ["b", "d", "c"]), "d");
 });
 
-test("route advancement uses the more aggressive police response multiplier", () => {
-  assert.ok(MOTORIZED_POLICE_ROUTE_AGGRESSION > 1);
-  assert.ok(MOTORIZED_POLICE_STEERING_AGGRESSION > 1);
+test("route advancement crosses legs and respects a partial final roadblock phase", () => {
   const legs = buildPoliceRoute(graph, lanes, ["a", "b", "c"]);
   const pursuit = advancePoliceRoute({ legs, legIndex: 0, progress: 0 }, 8, {
     speedMultiplier: 1,
     finalStopPhase: 1
   });
   assert.equal(pursuit.legIndex, 1);
-  assert.ok(pursuit.progress > 0.92 && pursuit.progress < 0.95);
+  assert.ok(pursuit.progress > 0.65 && pursuit.progress < 0.68);
   assert.equal(pursuit.arrived, false);
 
   const roadblock = advancePoliceRoute({ legs, legIndex: 0, progress: 0 }, 20, {
@@ -105,8 +100,8 @@ test("route advancement uses the more aggressive police response multiplier", ()
   assert.equal(roadblock.arrived, true);
 });
 
-test("officer reservation reflects the extra wanted-two pursuit cruiser", () => {
-  assert.equal(reservedOfficerCount(2, [], 2), 6);
+test("officer reservation ends only after each cruiser has dismounted", () => {
+  assert.equal(reservedOfficerCount(2, [], 2), 4);
   assert.equal(reservedOfficerCount(3, [], 2), 6);
   assert.equal(reservedOfficerCount(3, [
     { index: 0, officersDismounted: true },
@@ -119,6 +114,7 @@ test("officer reservation reflects the extra wanted-two pursuit cruiser", () => 
     { index: 2, officersDismounted: true }
   ], 2), 0);
 });
+
 
 test("intercept prediction leads a moving target but clamps extreme velocity", () => {
   const led = predictInterceptPoint({ x: 10, y: 20, velocityX: 40, velocityY: 0 }, {
@@ -146,5 +142,5 @@ test("pursuit units choose opposite rear quarters and readable committed tactics
   assert.equal(right.side, 1);
   assert.equal(policeTacticLabel(MOTORIZED_POLICE_TACTICS.RAM_TELEGRAPH), "RAM!");
   assert.equal(policeTacticLabel(MOTORIZED_POLICE_TACTICS.PIT_COMMIT), "PIT");
-  assert.ok(rotateToward(0, Math.PI, 0.2) <= 0.2 * MOTORIZED_POLICE_STEERING_AGGRESSION + 1e-9);
+  assert.ok(rotateToward(0, Math.PI, 0.2) <= 0.2 + 1e-9);
 });

@@ -12,10 +12,7 @@ import {
   DEFAULT_CIVILIAN_TRAFFIC_SPEED_MULTIPLIER,
   effectiveTrafficTravelSeconds
 } from "../phaser/src/streaming/MacroTrafficPoliceSystem.js";
-import {
-  advancePoliceRoute,
-  MOTORIZED_POLICE_ROUTE_AGGRESSION
-} from "../phaser/src/police/MotorizedPolicePolicy.js";
+import { advancePoliceRoute } from "../phaser/src/police/MotorizedPolicePolicy.js";
 
 function accelerationMetrics(id) {
   const archetype = VEHICLE_ARCHETYPES[id];
@@ -89,9 +86,8 @@ test("wanted route response remains faster than the quicker player cars", () => 
   const wantedTwoSpeed = wantedTwo.progress * edgeLength;
   const wantedThreeSpeed = wantedThree.progress * edgeLength;
 
-  assert.equal(MOTORIZED_POLICE_ROUTE_AGGRESSION, 1.2);
-  assert.ok(Math.abs(wantedTwoSpeed - 397.5 * MOTORIZED_POLICE_ROUTE_AGGRESSION) < 0.001);
-  assert.ok(Math.abs(wantedThreeSpeed - 420 * MOTORIZED_POLICE_ROUTE_AGGRESSION) < 0.001);
+  assert.ok(Math.abs(wantedTwoSpeed - 397.5) < 0.001);
+  assert.ok(Math.abs(wantedThreeSpeed - 420) < 0.001);
   assert.ok(wantedTwoSpeed > VEHICLE_ARCHETYPES.sedan.maxSpeed);
   assert.ok(wantedThreeSpeed > VEHICLE_ARCHETYPES.police.maxSpeed);
 });
