@@ -1,6 +1,6 @@
 {
   "initiative": "building-visual-polish",
-  "version": 11,
+  "version": 12,
   "updatedAt": "2026-08-20",
   "branch": "agent/building-visual-poc",
   "pullRequest": 63,
@@ -9,8 +9,8 @@
   "executionMode": "chatgpt-hourly-final-gate",
   "userValidation": "M6-final-only",
   "currentMilestone": "M2",
-  "currentTask": "M2.4c-church-marker-automated-validation-pending",
-  "nextAction": "Validate workflow 32335254118 for church-marker implementation/test head 366ac2f90da5483c844ce28822425429615de5d2. If the focused unit contracts are green, mark the religious architectural marker complete and continue M2.4 with the separate reusable family-neutral marker-geometry increment suitable for the later medical profile, without introducing hospital classification before M4. If a building-focused failure appears, fix only that regression before advancing.",
+  "currentTask": "M2.4d-family-neutral-marker-geometry",
+  "nextAction": "Continue M2.4 with one bounded increment that defines reusable family-neutral architectural marker geometry suitable for the later medical profile. Reuse the existing physical-volume language, preserve authored marker bounds and deterministic rendering, and add focused contracts. Do not introduce hospital classification/profile work before M4.",
   "northStar": "docs/assets/building-visual-polish/north-star-overpaint.webp",
   "automation": {
     "provider": "ChatGPT scheduled task",
@@ -95,11 +95,11 @@
     "M2_4bBrowserValidation": "queued-at-bounded-check",
     "latestM2_4cImplementationCommit": "5a89a4f3ef16c404209468ac1ba5e919338ff885",
     "latestM2_4cImplementationHead": "366ac2f90da5483c844ce28822425429615de5d2",
-    "M2_4cBuildingContracts": "pending-in-workflow-32335254118",
+    "M2_4cBuildingContracts": "pass",
     "M2_4cWorkflowRun": 32335254118,
     "M2_4cNetlify": "success",
-    "M2_4cBrowserValidation": "not-required-for-bounded-renderer-contract",
-    "broaderBrowserValidation": "in-progress-independently",
+    "M2_4cBrowserValidation": "cancelled-after-continuity-head-moved-not-required-for-bounded-renderer-contract",
+    "broaderBrowserValidation": "continues-independently-on-newer-heads",
     "mainSyncCompatibility": "pass"
   }
 }
