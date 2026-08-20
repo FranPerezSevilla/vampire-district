@@ -2,6 +2,47 @@
 
 This file is append-only. Newest entries go at the top. Do not rewrite historical entries; append a correction when necessary.
 
+## 2026-08-20 — M2.4 church marker architectural integration implemented; validation pending
+
+### Scope
+
+- Active milestone: M2.4
+- Task: replace the stamped church cross marker with restrained architectural roof geometry integrated into the existing church massing
+- Authoritative files: `BuildingPresentationDetailRenderer.js`, `tests/building-church-marker-physical.test.js`, roadmap and machine status
+- Focused tests: `tests/building-church-marker-physical.test.js` plus the repository unit job that includes the building suite
+- Acceptance criteria: no legacy flat accent-stamp route for church markers, joined raised stem/arm with top/south/east separation, unchanged authored marker bounds, deterministic rendering, Netlify green and focused unit validation green before the task is closed
+- Explicit non-goals: reusable medical/family-neutral marker geometry, hospital classification/profile work, church ridge/material redesign, M4 church monumentality, gameplay, collision, topology, navigation, AI, missions or generated-city edits
+
+### Completed
+
+- intercepted only `CROSS_MARKER` modules with `variant: "church"` in `BuildingPresentationDetailRenderer.js` so they no longer reach the legacy flat base-renderer cross painter;
+- retained the planner-owned cross-marker module and its authored bounds rather than changing catalog, planner or semantic classification;
+- converted the marker into two joined low raised roof fins: a nave-aligned vertical stem and a shorter transverse arm;
+- reused the existing raised-volume language for contact shadow, top plane and south/east faces, while keeping the top material neutral and limiting religious warmth to restrained north/west highlights;
+- omitted the architectural marker safely when a future/tiny marker is too small to support physical geometry instead of forcing malformed shapes outside its planned bounds;
+- added `tests/building-church-marker-physical.test.js` proving the old flat accent rectangles are absent, the two raised top faces form one joined cross, every structural face stays within authored marker bounds and identical planned input renders deterministically;
+- left the reusable family-neutral/medical marker treatment for the next bounded increment, as required by the one-task-per-run contract.
+
+### Validation
+
+- implementation commit: `5a89a4f3ef16c404209468ac1ba5e919338ff885`;
+- focused-contract head: `366ac2f90da5483c844ce28822425429615de5d2`;
+- Netlify deploy preview on that implementation/test head: **success** — `https://deploy-preview-63--vampire-district.netlify.app`;
+- GitHub workflow: `32335254118`;
+- unit job state at the repository-mandated bounded observation point: **in progress**; the religious-marker roadmap checkbox therefore remains open rather than claiming unverified completion;
+- no planner, authored `x`/`y`/`w`/`h`, collider, navigation, topology, AI, mission or generated-city authority changed;
+- PR #63 was open, draft and mergeable at the pre-implementation checkpoint and was not merged or marked ready for review.
+
+### Visual risk
+
+The marker now reads as roof construction rather than a bright decal, but its final apparent scale and whether the warm edge cue survives normal gameplay zoom remain subjective M6 review items. Do not enlarge it or add a stronger icon treatment before that evidence exists; M3/M4 will separately improve pitched-roof structure and church monumentality.
+
+### Next
+
+First validate workflow `32335254118` for exact implementation/test head `366ac2f90da5483c844ce28822425429615de5d2`. If the unit job is green, mark the religious architectural marker complete and advance to the separate reusable family-neutral marker-geometry treatment suitable for the later medical profile, without introducing hospital classification before M4. If a new building-focused failure appears, fix only that regression before advancing.
+
+---
+
 ## 2026-08-20 — M2.4 annex service grille validated
 
 ### Scope
@@ -110,7 +151,7 @@ Continue M2.4 with one restrained service detail on the physical raised annex, p
 - M2.3c focused unit contracts: **pass**;
 - M2.3d antenna-support contracts: **pass**;
 - GitHub unit job: **success** in workflow `32332620515`;
-- broader browser jobs: still running independently at the bounded check and not required to prove renderer-only detail contracts;
+- broader browser jobs: still running independently at the bounded check and not required to prove renderer-only prop contracts;
 - Netlify: **success** — `https://deploy-preview-63--vampire-district.netlify.app`;
 - authored prop bounds and gameplay/collision authority: **unchanged**.
 
@@ -540,7 +581,7 @@ Run CI and Netlify, then complete M1.3 visual validation with warehouse, industr
 
 ### Completed
 
-- committed the approved in-context overpaint as the primary north star;
+- committed the approved north-star overpaint as the primary north star;
 - incorporated the supporting concept-board and modular-kit conclusions into the canonical text;
 - documented the seven-profile runtime screenshot audit in durable written form;
 - documented the consolidated cross-profile diagnosis;
