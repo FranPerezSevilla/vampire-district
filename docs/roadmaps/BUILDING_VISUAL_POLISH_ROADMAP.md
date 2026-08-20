@@ -190,12 +190,21 @@ Make skylights, HVAC, hatches, vents, annexes and markers read as physical roof 
 
 **Status: active**
 
-- [ ] route raised annex presentation through shared physical-volume language where appropriate;
+- [x] route raised annex presentation through shared physical-volume language where appropriate;
 - [ ] give annexes explicit top, south/east wall depth and one restrained service detail;
 - [ ] integrate religious marker into roof architecture instead of a stamped symbol;
 - [ ] define reusable architectural marker treatment suitable for the later medical profile without prematurely classifying hospital buildings;
 - [ ] prop/marker scale validation at gameplay zoom remains deferred to M6;
 - [ ] add focused renderer contracts for physical integration and unchanged authored bounds.
+
+### M2.4 interim evidence
+
+- raised `ROOF_ANNEX` modules now bypass the legacy stamped annex painter and use the shared raised-rectangle physical-volume primitive;
+- planned annex bounds and module ordering remain authoritative and unchanged;
+- focused annex contracts prove physical top/south/east faces, unchanged authored bounds, deterministic rendering and absence of the old icon-like circle/rectangle treatment;
+- GitHub unit job is green in workflow `32333532286` on implementation/test head `4413d768616fc4a3f4f0c371797ad0e174a78271`;
+- Netlify deploy preview is green on the same head;
+- broader browser jobs continue independently at this bounded checkpoint.
 
 ### M2 exit criteria
 
@@ -286,4 +295,4 @@ Each hourly execution must:
 
 ## Current exact next action
 
-Begin **M2.4 — architectural annexes and markers**. First route raised annexes through the shared physical-volume grammar, keeping planned bounds immutable, then add one restrained service detail and focused contracts. After annexes are validated, integrate religious/medical marker geometry architecturally rather than as stamped symbols. Do not create a hospital classifier/profile before M4 and do not request intermediate user review.
+Continue **M2.4 — architectural annexes and markers** by adding one restrained service detail to the newly physical raised annex while preserving authored bounds and deterministic rendering. Then integrate the religious marker into roof architecture and define reusable marker geometry suitable for the later medical profile. Do not create a hospital classifier/profile before M4 and do not request intermediate user review.
