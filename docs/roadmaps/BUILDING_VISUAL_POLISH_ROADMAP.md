@@ -232,10 +232,30 @@ Representative props have clear top, side/contact and shadow separation without 
 - Netlify is **green** on the same implementation/test head;
 - browser jobs on that workflow were cancelled only after continuity documentation moved the branch head and are not required for this bounded renderer contract.
 
+### M3.2 — Membrane seams
+
+**Status: complete**
+
+- [x] membrane seams with broad spacing and restrained tonal variation;
+- `BuildingPresentationMaterialRenderer.js` preserves every planner-owned membrane seam coordinate and renders deterministic seam alpha `0.09/0.11/0.13` plus a faint offset highlight;
+- `tests/building-membrane-surface.test.js` proves broad spacing, planner-coordinate preservation, tonal variation, removal of the old uniform `0.22` treatment and deterministic output;
+- exact implementation/test head `ed260d0e945487df4c108e20ae8a361deb62c18b` has green unit contracts and Netlify;
+- continuity workflow `32343914136` is **success** with unit tests, browser campaign, browser boot and all three browser-system shards green;
+- no planner seam placement, building bounds, collision or gameplay authority changed.
+
+### M3.3 — Civic surface order
+
+**Status: implementation-complete / automated-validation-pending**
+
+- [ ] civic surface order without decorative repetition;
+- implementation keeps each planner-owned `CIVIC` texture module but gives the horizontal joint a restrained primary role (`0.115` plus one faint `0.028` highlight) and the cross-axis joint a quieter secondary role (`0.06`);
+- no extra civic lattice or repeated decorative slots are introduced;
+- `tests/building-civic-surface.test.js` proves primary/secondary hierarchy, original coordinates, removal of the old uniform `0.2` treatment and deterministic output;
+- implementation commit `fbd3791dad4dff22e54e54a0821733394e9400e4`; implementation/test head `92507de3484e59067a60b2699ad99b7cc4179158`;
+- workflow `32344451571` and Netlify were still pending at the bounded observation point, so this task is not yet marked complete.
+
 ### Remaining M3 tasks
 
-- [ ] membrane seams with broad spacing and tonal variation;
-- [ ] civic surface order without decorative repetition;
 - [ ] pitched-roof ridge shading;
 - [ ] night-roof tonal modulation;
 - [ ] deterministic low-frequency variation;
@@ -314,4 +334,4 @@ Each hourly execution must:
 
 ## Current exact next action
 
-Continue **M3** with one bounded membrane-surface increment: preserve broad planner-owned seams but replace the current uniform diagram-line treatment with restrained deterministic tonal variation. Keep authored geometry unchanged, add focused contracts, confirm Netlify, and do not begin civic/pitched/night work in the same increment.
+Validate **M3.3 civic surface order** on workflow `32344451571` and Netlify for implementation/test head `92507de3484e59067a60b2699ad99b7cc4179158`. If the focused contracts and deploy are green, mark M3.3 complete and continue with one separate pitched-roof ridge-shading increment. Do not begin pitched/night/low-frequency material work until civic validation is green.
