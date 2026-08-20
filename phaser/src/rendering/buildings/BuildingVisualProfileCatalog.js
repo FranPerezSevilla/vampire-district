@@ -40,6 +40,10 @@ const PROFILE_ALIASES = deepFreeze({
   foundry: "industrial",
   garage: "industrial",
   workshop: "industrial",
+  hospital: "medical",
+  clinic: "medical",
+  infirmary: "medical",
+  healthcare: "medical",
   retail: "commercial",
   office: "commercial",
   nightclub: "club",
@@ -133,6 +137,28 @@ export const BUILDING_VISUAL_PROFILES = deepFreeze({
     shadowDepthScale: 1.18,
     showLabel: false
   },
+  medical: {
+    id: "medical",
+    surfaceKind: ROOF_SURFACE_KINDS.SMOOTH,
+    layoutCandidates: ["rectangle", "rectangle", "l-shape", "stepped"],
+    frontage: FRONTAGE_KINDS.GENERIC,
+    signatureProps: [MODULE_KINDS.HVAC, MODULE_KINDS.SKYLIGHT],
+    propPool: [MODULE_KINDS.HATCH, MODULE_KINDS.VENT],
+    roofTint: 0x2a4854,
+    roofTintAmount: 0.3,
+    textureSpacing: 36,
+    serviceStrip: null,
+    serviceLight: false,
+    annex: {
+      kind: "raised",
+      chance: 1,
+      anchor: "north-east",
+      widthRatio: 0.25,
+      heightRatio: 0.3
+    },
+    shadowDepthScale: 1.06,
+    showLabel: false
+  },
   police: {
     id: "police",
     surfaceKind: ROOF_SURFACE_KINDS.CIVIC,
@@ -191,6 +217,10 @@ const PROFILE_RULES = deepFreeze([
   {
     profileId: "industrial",
     tokens: ["works", "factory", "foundry", "plant", "garage", "workshop", "mill", "industrial", "forge"]
+  },
+  {
+    profileId: "medical",
+    tokens: ["hospital", "clinic", "medical", "infirmary", "healthcare"]
   },
   {
     profileId: "residential",
