@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const ROUTES = ["/", "/phaser/"];
+const PEDESTRIANS_PER_ROUTE = 6;
 
 test.describe.configure({ timeout: 75_000 });
 
@@ -52,7 +53,11 @@ for (const route of ROUTES) {
     expect(state.cameraBounds.height).toBeGreaterThanOrEqual(3600);
     expect(state.gameSize.width).toBeLessThan(4800 * 2);
     expect(state.pedestrians.count).toBeGreaterThanOrEqual(30);
-    expect(state.pedestrians.count).toBeLessThanOrEqual(72);
+    // The authored population scales with route coverage; a fixed city-wide ceiling
+    // becomes stale whenever the pedestrian network grows.
+    expect(state.pedestrians.count).toBe(
+      state.pedestrians.routes.length * PEDESTRIANS_PER_ROUTE
+    );
     expect(state.pedestrians.pedestrians.every(item => item.onPedestrianSurface)).toBe(true);
     expect(state.police).toBe(2);
     expect(state.retiredLightProps).toBe(0);
@@ -187,7 +192,7 @@ test("a lethal vehicle impact leaves persistent visible blood evidence", async (
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const npc = scene.npcSystem.npcs.find(candidate => candidate.id === "civ_cross_1");
     const vehicle = scene.vehicleSystem.vehicle("refuge_compact");
-    scene.switchLayer(0, { x: npc.x, y: npc.y }, "Urban test: impact.");
+    scene.switchLayer(LAYERS.STREET, { x: npc.x, y: npc.y }, "Urban test: impact.");
     scene.vehicleSystem.enterVehicle(vehicle.id, { force: true });
     vehicle.x = npc.x;
     vehicle.y = npc.y;
