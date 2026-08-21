@@ -98,9 +98,12 @@ async function prepare(page, target, zoom, label) {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const center = { x: Number(target.x), y: Number(target.y) };
     await window.NBD_CITY_STREAM.forceFocus(center.x, center.y);
+    // Keep the review subject centred but deliberately place the player away
+    // from it. Earlier captures allowed [0,0] first, hiding the tiny grime
+    // fragments directly under the player sprite and weakening visual evidence.
     const offsets = [
-      [0, 0], [0, 44], [0, -44], [44, 0], [-44, 0],
-      [0, 76], [76, 0], [-76, 0]
+      [0, 44], [0, -44], [44, 0], [-44, 0],
+      [0, 76], [76, 0], [-76, 0], [0, 0]
     ];
     const stand = offsets
       .map(([dx, dy]) => ({ x: center.x + dx, y: center.y + dy }))
@@ -179,6 +182,7 @@ test("captures sparse service-frontage grime with a clean control area", async (
   expect(service.playerVisible).toBe(true);
   expect(service.descriptors.some(item => item.sourceId === discovery.targets.service.sourceId)).toBe(true);
   expect(service.descriptors.length).toBeLessThanOrEqual(12);
+  expect(Math.hypot(service.player.x - service.center.x, service.player.y - service.center.y)).toBeGreaterThanOrEqual(40);
 
   const mixed = await capture(page, discovery.targets.mixed, discovery.normalZoom, "mixed-grime-context");
   expect(mixed.layer).toBe(0);
@@ -192,7 +196,7 @@ test("captures sparse service-frontage grime with a clean control area", async (
   expect(darkControl.descriptors.length).toBeLessThanOrEqual(12);
 
   await writeFile(path.join(OUTPUT_DIR, "grime-manifest.json"), `${JSON.stringify({
-    schemaVersion: 1,
+    schemaVersion: 2,
     initiative: "city-noir-atmosphere",
     milestone: "M5.2",
     purpose: "gameplay-scale evidence for deterministic low-frequency service-frontage grime and a sparse control area",
