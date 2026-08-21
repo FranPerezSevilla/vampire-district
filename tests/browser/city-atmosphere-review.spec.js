@@ -20,6 +20,7 @@ async function discoverReviewTargets(page) {
     const district = await import("/phaser/src/data/district.js");
     const presentation = await import("/phaser/src/rendering/BuildingPresentation.js");
     const balance = await import("/phaser/src/data/balance.js");
+    const practical = await import("/phaser/src/policies/CityPracticalLightPresentationPolicy.js");
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const camera = scene.cameras.main;
     const normalZoom = Number(camera.zoom) || 1;
@@ -40,6 +41,7 @@ async function discoverReviewTargets(page) {
         area: Math.max(0, Number(building.w) || 0) * Math.max(0, Number(building.h) || 0)
       };
     });
+    const buildingById = new Map(buildingRows.map(item => [String(item.id), item]));
 
     const familyFor = item => {
       if (["police", "medical", "church", "club", "industrial", "warehouse"].includes(item.profile)) {
@@ -120,7 +122,6 @@ async function discoverReviewTargets(page) {
         Math.abs(item.x - anchor.x) <= visibleWidth * 0.46
         && Math.abs(item.y - anchor.y) <= visibleHeight * 0.46
       ));
-      // Prefer a readable rhythm of a few sources over either isolation or blanket coverage.
       const densityPenalty = Math.abs(nearby.length - 3);
       const edgeSafe = anchor.x > visibleWidth * 0.5
         && anchor.x < Number(district.CITY_WORLD.width) - visibleWidth * 0.5
@@ -139,6 +140,64 @@ async function discoverReviewTargets(page) {
       }
     }
 
+    const fullWorld = { x: 0, y: 0, w: district.CITY_WORLD.width, h: district.CITY_WORLD.height };
+    const buildingLights = practical.buildContextualBuildingLightDescriptors(district.buildings, fullWorld);
+    const streetLights = practical.buildWarmStreetLightDescriptors(district.lights, fullWorld);
+    const allPractical = [...streetLights, ...buildingLights];
+
+    const contextualTarget = family => {
+      const candidates = buildingLights.filter(item => item.family === family);
+      if (!candidates.length) return null;
+      return candidates
+        .map(item => {
+          const building = buildingById.get(String(item.buildingId));
+          const x = building ? building.x + building.w / 2 : item.x;
+          const y = building ? building.y + building.h / 2 : item.y;
+          const edgeSafe = x > visibleWidth * 0.5
+            && x < Number(district.CITY_WORLD.width) - visibleWidth * 0.5
+            && y > visibleHeight * 0.5
+            && y < Number(district.CITY_WORLD.height) - visibleHeight * 0.5;
+          const nearby = allPractical.filter(other => (
+            Math.abs(other.x - x) <= visibleWidth * 0.44
+              && Math.abs(other.y - y) <= visibleHeight * 0.44
+          ));
+          return {
+            x,
+            y,
+            family,
+            buildingId: item.buildingId,
+            sourceId: item.sourceId,
+            profileId: item.profileId,
+            score: (edgeSafe ? 100 : 0) + Math.min(nearby.length, 12),
+            nearbyFamilies: [...new Set(nearby.map(other => other.family))]
+          };
+        })
+        .sort((a, b) => b.score - a.score || String(a.sourceId).localeCompare(String(b.sourceId)))[0];
+    };
+
+    let mixedFamilies = null;
+    for (const anchor of allPractical) {
+      const nearby = allPractical.filter(other => (
+        Math.abs(other.x - anchor.x) <= visibleWidth * 0.44
+          && Math.abs(other.y - anchor.y) <= visibleHeight * 0.44
+      ));
+      const families = [...new Set(nearby.map(item => item.family))];
+      const edgeSafe = anchor.x > visibleWidth * 0.5
+        && anchor.x < Number(district.CITY_WORLD.width) - visibleWidth * 0.5
+        && anchor.y > visibleHeight * 0.5
+        && anchor.y < Number(district.CITY_WORLD.height) - visibleHeight * 0.5;
+      const score = families.length * 100 + (edgeSafe ? 40 : 0) + Math.min(nearby.length, 20);
+      if (!mixedFamilies || score > mixedFamilies.score) {
+        mixedFamilies = {
+          x: anchor.x,
+          y: anchor.y,
+          score,
+          families,
+          sourceIds: nearby.map(item => item.sourceId).slice(0, 20)
+        };
+      }
+    }
+
     return {
       normalZoom,
       viewport: {
@@ -148,7 +207,16 @@ async function discoverReviewTargets(page) {
         worldViewHeight: visibleHeight
       },
       palette: balance.COLORS,
-      targets: { intersection, mixedStreet, darkBlock, warmLight }
+      targets: {
+        intersection,
+        mixedStreet,
+        darkBlock,
+        warmLight,
+        civicCool: contextualTarget(practical.PRACTICAL_LIGHT_FAMILIES.COOL_CIVIC),
+        nightlife: contextualTarget(practical.PRACTICAL_LIGHT_FAMILIES.NIGHTLIFE_ACCENT),
+        industrial: contextualTarget(practical.PRACTICAL_LIGHT_FAMILIES.INDUSTRIAL_DIRTY),
+        mixedFamilies
+      }
     };
   });
 }
@@ -189,8 +257,13 @@ async function prepareCapture(page, target, normalZoom, label) {
       ? scene.cityPracticalLightDescriptors.map(descriptor => ({
           sourceId: descriptor.sourceId,
           family: descriptor.family,
+          buildingId: descriptor.buildingId || null,
+          profileId: descriptor.profileId || null,
+          sourceKind: descriptor.sourceKind || null,
           x: descriptor.x,
           y: descriptor.y,
+          width: descriptor.width,
+          height: descriptor.height,
           radius: descriptor.radius
         }))
       : [];
@@ -204,6 +277,7 @@ async function prepareCapture(page, target, normalZoom, label) {
       playerVisible,
       visibleHalfExtents: { x: halfWorldWidth, y: halfWorldHeight },
       practicalLights,
+      practicalFamilies: [...new Set(practicalLights.map(item => item.family))],
       zoom,
       layer: scene.currentLayer,
       renderSectorKey: scene.urbanRenderSectorKey || null
@@ -228,9 +302,9 @@ async function captureCanvas(page, target, normalZoom, name) {
   return state;
 }
 
-test.describe.configure({ timeout: 120_000 });
+test.describe.configure({ timeout: 150_000 });
 
-test("captures gameplay-scale night hierarchy and first practical-light evidence", async ({ page }) => {
+test("captures gameplay-scale night hierarchy and contextual practical-light evidence", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await mkdir(OUTPUT_DIR, { recursive: true });
@@ -242,15 +316,24 @@ test("captures gameplay-scale night hierarchy and first practical-light evidence
   expect(discovery.targets.intersection, "missing representative intersection").toBeTruthy();
   expect(discovery.targets.mixedStreet, "missing mixed street").toBeTruthy();
   expect(discovery.targets.darkBlock, "missing neutral dark block").toBeTruthy();
-  expect(discovery.targets.warmLight, "missing practical-light review target").toBeTruthy();
+  expect(discovery.targets.warmLight, "missing warm practical-light review target").toBeTruthy();
+  expect(discovery.targets.civicCool, "missing cool civic review target").toBeTruthy();
+  expect(discovery.targets.nightlife, "missing nightlife review target").toBeTruthy();
+  expect(discovery.targets.industrial, "missing industrial review target").toBeTruthy();
+  expect(discovery.targets.mixedFamilies, "missing mixed-family review target").toBeTruthy();
   expect(discovery.targets.intersection.score).toBeGreaterThanOrEqual(2);
   expect(discovery.targets.mixedStreet.families.length).toBeGreaterThanOrEqual(3);
+  expect(discovery.targets.mixedFamilies.families.length).toBeGreaterThanOrEqual(2);
 
   const targetsByName = {
     intersection: discovery.targets.intersection,
     "mixed-street": discovery.targets.mixedStreet,
     "dark-block": discovery.targets.darkBlock,
-    "warm-light": discovery.targets.warmLight
+    "warm-light": discovery.targets.warmLight,
+    "civic-cool": discovery.targets.civicCool,
+    nightlife: discovery.targets.nightlife,
+    industrial: discovery.targets.industrial,
+    "mixed-families": discovery.targets.mixedFamilies
   };
   const captures = {};
   for (const [name, target] of Object.entries(targetsByName)) {
@@ -259,16 +342,20 @@ test("captures gameplay-scale night hierarchy and first practical-light evidence
     expect(captures[name].layer).toBe(0);
     expect(captures[name].playerVisible).toBe(true);
   }
-  expect(captures["warm-light"].practicalLights.length).toBeGreaterThanOrEqual(1);
+
   expect(captures["warm-light"].practicalLights.some(light => (
     light.sourceId === discovery.targets.warmLight.sourceId
   ))).toBe(true);
+  expect(captures["civic-cool"].practicalFamilies).toContain("cool-civic");
+  expect(captures.nightlife.practicalFamilies).toContain("nightlife-accent");
+  expect(captures.industrial.practicalFamilies).toContain("industrial-dirty");
+  expect(captures["mixed-families"].practicalFamilies.length).toBeGreaterThanOrEqual(2);
 
   const manifest = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     initiative: "city-noir-atmosphere",
-    milestone: "M2.3+M3.2",
-    purpose: "gameplay-scale evidence for night value hierarchy, readability and the first sparse warm practical-light family",
+    milestone: "M3.4",
+    purpose: "gameplay-scale evidence for night hierarchy, warm base light and sparse contextual civic/nightlife/industrial accents",
     gameplayZoom: discovery.normalZoom,
     viewport: discovery.viewport,
     palette: discovery.palette,
@@ -277,7 +364,11 @@ test("captures gameplay-scale night hierarchy and first practical-light evidence
       intersection: { filename: "intersection.png", state: captures.intersection },
       mixedStreet: { filename: "mixed-street.png", state: captures["mixed-street"] },
       darkBlock: { filename: "dark-block.png", state: captures["dark-block"] },
-      warmLight: { filename: "warm-light.png", state: captures["warm-light"] }
+      warmLight: { filename: "warm-light.png", state: captures["warm-light"] },
+      civicCool: { filename: "civic-cool.png", state: captures["civic-cool"] },
+      nightlife: { filename: "nightlife.png", state: captures.nightlife },
+      industrial: { filename: "industrial.png", state: captures.industrial },
+      mixedFamilies: { filename: "mixed-families.png", state: captures["mixed-families"] }
     }
   };
   await writeFile(
