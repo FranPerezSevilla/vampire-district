@@ -137,7 +137,11 @@ export function installTrafficLifecyclePolicy(materializer, {
   }
 
   function lifecycleRelease(slot, options = {}) {
-    const forced = Boolean(options?.force || options?.hijack);
+    const forced = Boolean(
+      options?.force
+      || options?.hijack
+      || materializer.__nbdForceTrafficLifecycleRelease
+    );
     if (!forced && protectedSlot(slot)) {
       preventedLifecycleDespawns++;
       slot.lifecycleRetentionReason = states.get(slot.tokenId)?.lifecycle || "protected";
