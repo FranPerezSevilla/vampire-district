@@ -1,10 +1,8 @@
 import {
   advanceTrafficRouteAgent,
+  chooseTrafficRouteTransition,
   createTrafficRouteAgent
 } from "./TrafficRouteCursor.js";
-import {
-  findTrafficRouteTokenForTransition
-} from "./TrafficRouteTraversalHarness.js";
 import {
   trafficRouteAgentMaterializationToken
 } from "./TrafficRouteMaterializationPolicy.js";
@@ -34,6 +32,26 @@ function preferredTransitions(topology, turnType = null) {
     ...list.filter(transition => transition.requiresConnector),
     ...list.filter(transition => !transition.requiresConnector)
   ];
+}
+
+function controlledTokenForTransition(topology, transition, {
+  prefix = "controlled-route",
+  routeHop = 0,
+  maxAttempts = 10000
+} = {}) {
+  if (!transition?.incomingLaneId) return null;
+  const attempts = Math.max(1, Math.floor(finite(maxAttempts, 10000)));
+  for (let index = 0; index < attempts; index++) {
+    const tokenId = `${prefix}:${transition.id}:${index}`;
+    const chosen = chooseTrafficRouteTransition(
+      topology,
+      transition.incomingLaneId,
+      tokenId,
+      routeHop
+    );
+    if (chosen?.id === transition.id) return tokenId;
+  }
+  return null;
 }
 
 export function controlledRouteTransition(topology, {
@@ -174,10 +192,8 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
     const localTopology = topology();
     const transition = controlledRouteTransition(localTopology, { transitionId, turnType });
     if (!transition) throw new Error(`No preferred controlled route transition for ${transitionId || turnType || "request"}.`);
-    const tokenId = findTrafficRouteTokenForTransition(localTopology, transition.id, {
-      prefix: "controlled-route"
-    });
-    if (!tokenId) throw new Error(`Could not find deterministic controlled token for ${transition.id}.`);
+    const tokenId = controlledTokenForTransition(localTopology, transition);
+    if (!tokenId) throw new Error(`Could not resolve deterministic controlled token for ${transition.id}.`);
 
     const selectedSlot = chooseSlot(slotIndex);
     if (!selectedSlot) throw new Error("Controlled route activation requires an existing materialization pool slot.");
