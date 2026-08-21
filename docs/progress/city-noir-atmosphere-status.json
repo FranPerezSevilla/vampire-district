@@ -1,11 +1,11 @@
 {
   "initiative": "city-noir-atmosphere",
-  "version": 1,
+  "version": 2,
   "updatedAt": "2026-08-21",
   "branch": "agent/city-noir-atmosphere",
-  "state": "planned",
-  "currentMilestone": "M1",
-  "currentTask": "M1.1-resolve-pr69-dependency",
+  "state": "autonomous-in-progress",
+  "currentMilestone": "M2",
+  "currentTask": "M2.3-readability-browser-evidence",
   "dependency": {
     "pullRequest": 69,
     "title": "City street visual pass",
@@ -15,8 +15,21 @@
       "street-surface-detail"
     ],
     "stateAtBootstrap": "open-draft",
-    "rule": "Do not duplicate PR #69. Synchronize with post-merge main before modifying overlapping street-surface presentation."
+    "state": "merged-and-integrated",
+    "mergedMainCommit": "f803c974817c92666b82a60fac808d54c2c4bc05",
+    "integrationCommit": "a408a1342989868ad62a09e0df12d0742830ee4a",
+    "rule": "PR #69 remains the sole road/sidewalk/crosswalk surface authority. Atmosphere work layers above it and does not duplicate curb, gutter, drain, crack, repair or road-paint geometry."
   },
+  "completedTasks": [
+    "M0.1",
+    "M0.2",
+    "M0.3",
+    "M1.1",
+    "M1.2",
+    "M2.1",
+    "M2.2",
+    "M2.3-focused-value-assertions"
+  ],
   "milestones": {
     "M0": {
       "title": "Canonical direction, references and agent continuity",
@@ -24,11 +37,11 @@
     },
     "M1": {
       "title": "Integrate the street-surface foundation",
-      "state": "waiting-on-dependency"
+      "state": "complete"
     },
     "M2": {
       "title": "Global value hierarchy and night exposure",
-      "state": "planned"
+      "state": "autonomous-in-progress"
     },
     "M3": {
       "title": "Practical-light islands",
@@ -59,10 +72,26 @@
       "state": "planned"
     }
   },
+  "m2": {
+    "implementation": "palette-refinement",
+    "changedAuthority": "phaser/src/data/balance.js COLORS",
+    "broadSurfaceOrder": [
+      "void",
+      "streetBase",
+      "road",
+      "sidewalk"
+    ],
+    "preservedHighValueWorldMarks": [
+      "crosswalk",
+      "player"
+    ],
+    "focusedTest": "tests/city-night-value-hierarchy.test.js",
+    "browserEvidence": "pending"
+  },
   "finalGate": {
     "requiresUserVisualApproval": true,
     "autonomousWorkStopsAt": "final-validation-pending",
     "autoMergeAllowed": false
   },
-  "nextAction": "Check PR #69. If still unmerged, do not implement overlapping street-surface work. Once merged, synchronize this branch with post-merge main, audit the new baseline and advance M1."
+  "nextAction": "Complete M2.3: inspect CI/affected checks and obtain gameplay-scale browser evidence that a dark block dominates while road edges, player and nearby NPC/threat readability remain intact. If accepted by the M2 rubric, mark M2 complete and advance to M3.1 practical-light descriptor work."
 }
