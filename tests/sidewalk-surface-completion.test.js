@@ -116,6 +116,10 @@ function junctionLegs(directions) {
   return result;
 }
 
+function geometry(surface) {
+  return [surface.x, surface.y, surface.w, surface.h];
+}
+
 test("road-edge pavement is a full authoritative band even when authored sidewalks contain a gap", () => {
   const segment = horizontalRoad();
   const authored = [northWalk("north-left", 0, 60), northWalk("north-right", 140, 60)];
@@ -180,7 +184,7 @@ test("alleys and service roads receive the same road-edge sidewalk contract", ()
   assert.deepEqual(generated.map(surface => surface.side).sort(), ["north", "south"]);
 });
 
-test("crossroads receive all four authoritative corner pads", () => {
+test("crossroads leave only four paved corners around the four carriageway openings", () => {
   const junction = junctionFixture("crossroad");
   const generated = buildJunctionSidewalkInfill({
     roadJunctions: [junction],
@@ -188,21 +192,18 @@ test("crossroads receive all four authoritative corner pads", () => {
     world: { width: 400, height: 400 },
     sidewalkWidth: 22
   });
-  const corners = generated.filter(surface => surface.role === "corner");
-  assert.equal(corners.length, 4);
-  assert.deepEqual(
-    corners.map(surface => [surface.corner, surface.x, surface.y, surface.w, surface.h]).sort(),
-    [
-      ["ne", 160, 78, 22, 22],
-      ["nw", 78, 78, 22, 22],
-      ["se", 160, 160, 22, 22],
-      ["sw", 78, 160, 22, 22]
-    ]
-  );
-  assert.ok(corners.every(surface => surface.authoritativeJunctionSidewalk === true));
+  assert.deepEqual(generated.map(geometry).sort((a, b) => a[1] - b[1] || a[0] - b[0]), [
+    [78, 78, 22, 22],
+    [160, 78, 22, 22],
+    [78, 160, 22, 22],
+    [160, 160, 22, 22]
+  ]);
+  assert.ok(generated.every(surface => surface.authoritativeJunctionSidewalk === true));
+  const northRoadOpening = { x: 100, y: 78, w: 60, h: 22 };
+  assert.ok(generated.every(surface => !overlaps(surface, northRoadOpening)));
 });
 
-test("a T junction closes only its missing leg while retaining corner pavement", () => {
+test("a T junction paves the closed side and keeps the open road mouth clear", () => {
   const junction = junctionFixture("t-junction");
   const generated = buildJunctionSidewalkInfill({
     roadJunctions: [junction],
@@ -210,14 +211,16 @@ test("a T junction closes only its missing leg while retaining corner pavement",
     world: { width: 400, height: 400 },
     sidewalkWidth: 22
   });
-  const closures = generated.filter(surface => surface.role === "closure");
-  assert.deepEqual(closures.map(surface => [surface.side, surface.x, surface.y, surface.w, surface.h]), [
-    ["north", 100, 78, 60, 22]
+  assert.deepEqual(generated.map(geometry).sort((a, b) => a[1] - b[1] || a[0] - b[0]), [
+    [78, 78, 104, 22],
+    [78, 160, 22, 22],
+    [160, 160, 22, 22]
   ]);
-  assert.equal(generated.filter(surface => surface.role === "corner").length, 4);
+  const southRoadOpening = { x: 100, y: 160, w: 60, h: 22 };
+  assert.ok(generated.every(surface => !overlaps(surface, southRoadOpening)));
 });
 
-test("straight junction authority bridges the two side pavements", () => {
+test("straight junction authority bridges both pavement sides without covering carriageway", () => {
   const junction = junctionFixture("straight");
   const generated = buildJunctionSidewalkInfill({
     roadJunctions: [junction],
@@ -225,13 +228,13 @@ test("straight junction authority bridges the two side pavements", () => {
     world: { width: 400, height: 400 },
     sidewalkWidth: 22
   });
-  assert.deepEqual(
-    generated.map(surface => [surface.role, surface.side]).sort(),
-    [["closure", "north"], ["closure", "south"]]
-  );
+  assert.deepEqual(generated.map(geometry).sort((a, b) => a[1] - b[1]), [
+    [78, 78, 104, 22],
+    [78, 160, 104, 22]
+  ]);
 });
 
-test("junction completion ignores a building footprint instead of deleting the cap", () => {
+test("junction completion ignores a building footprint instead of deleting pavement", () => {
   const junction = junctionFixture("crossroad");
   const building = { id: "legacy-corner-building", x: 78, y: 78, w: 22, h: 22 };
   const generated = buildJunctionSidewalkInfill({
@@ -241,9 +244,48 @@ test("junction completion ignores a building footprint instead of deleting the c
     world: { width: 400, height: 400 },
     sidewalkWidth: 22
   });
-  const northwest = generated.find(surface => surface.corner === "nw");
+  const northwest = generated.find(surface => surface.x === 78 && surface.y === 78);
   assert.ok(northwest);
   assert.ok(overlaps(northwest, building));
+});
+
+test("compound junction clusters subtract each local road mouth from the correct boundary side", () => {
+  const cluster = {
+    id: "road-junction-cluster:test",
+    graphNodeId: "node:nw",
+    graphNodeIds: ["node:nw", "node:ne", "node:sw", "node:se"],
+    x: 100,
+    y: 100,
+    w: 200,
+    h: 120,
+    geometry: "rect",
+    pieceKind: "junction",
+    junctionKind: "complex-cluster",
+    kind: "road"
+  };
+  const segments = [
+    { ...horizontalRoad(), id: "north-leg", x: 120, y: 0, w: 60, h: 100, orientation: "vertical", fromNodeId: "outside:north", toNodeId: "node:nw" },
+    { ...horizontalRoad(), id: "south-leg", x: 220, y: 220, w: 60, h: 100, orientation: "vertical", fromNodeId: "node:se", toNodeId: "outside:south" },
+    { ...horizontalRoad(), id: "west-leg", x: 0, y: 120, w: 100, h: 60, orientation: "horizontal", fromNodeId: "outside:west", toNodeId: "node:nw" },
+    { ...horizontalRoad(), id: "east-leg", x: 300, y: 140, w: 100, h: 60, orientation: "horizontal", fromNodeId: "node:ne", toNodeId: "outside:east" }
+  ];
+  const generated = buildJunctionSidewalkInfill({
+    roadJunctions: [cluster],
+    roadSegments: segments,
+    world: { width: 500, height: 500 },
+    sidewalkWidth: 22
+  });
+
+  const northOpening = { x: 120, y: 78, w: 60, h: 22 };
+  const southOpening = { x: 220, y: 220, w: 60, h: 22 };
+  const westOpening = { x: 78, y: 120, w: 22, h: 60 };
+  const eastOpening = { x: 300, y: 140, w: 22, h: 60 };
+  assert.ok(generated.length >= 4);
+  for (const opening of [northOpening, southOpening, westOpening, eastOpening]) {
+    assert.ok(generated.every(surface => !overlaps(surface, opening)));
+  }
+  assert.ok(generated.some(surface => surface.side === "north" && surface.x === 78 && surface.w === 42));
+  assert.ok(generated.some(surface => surface.side === "north" && surface.x === 180 && surface.w === 142));
 });
 
 test("completion never invents pavement between the 22 px band and a distant facade", () => {
