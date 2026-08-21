@@ -135,12 +135,21 @@ export function installMotorizedPoliceContainmentPolicy(system, {
   const originalDismountUnit = system.dismountUnit;
   const originalReconcile = system.reconcile;
   const originalSnapshot = system.snapshot;
+  const originalReservedOfficerCount = system.reservedOfficerCount;
   const originalMaxUnits = system.maxUnits;
   let preventedDismounts = 0;
   let transitions = 0;
 
   system.maxUnits = Math.max(4, finite(system.maxUnits, 3));
   system.ensureSlots?.(system.maxUnits);
+
+  function containmentReservedOfficerCount(level = this.wantedLevel()) {
+    const fleet = desiredContainmentFleet(level);
+    const perUnit = Math.max(1, Math.floor(finite(this.officersPerUnit, 2)));
+    return this.units
+      .filter(unit => unit.index < fleet.total && !unit.officersDismounted)
+      .reduce(total => total + perUnit, 0);
+  }
 
   function containmentReconcile(force = false) {
     if (!this.ready || this.destroyed) return false;
@@ -272,6 +281,7 @@ export function installMotorizedPoliceContainmentPolicy(system, {
       desiredRoadblocks: fleet.roadblocks,
       activePursuers: this.units.filter(unit => unit.role === MOTORIZED_POLICE_ROLES.PURSUIT).length,
       activeRoadblocks: this.units.filter(unit => unit.role === MOTORIZED_POLICE_ROLES.ROADBLOCK).length,
+      reservedOfficers: containmentReservedOfficerCount.call(this, snapshot.wantedLevel),
       units: snapshot.units.map(item => {
         const unit = this.units.find(candidate => candidate.id === item.id);
         return { ...item, pursuitState: unit?.pursuitState || null };
@@ -283,6 +293,7 @@ export function installMotorizedPoliceContainmentPolicy(system, {
   system.updateLocalTactic = stateMachineUpdateLocalTactic;
   system.updateUnit = containmentUpdateUnit;
   system.dismountUnit = containmentDismountUnit;
+  system.reservedOfficerCount = containmentReservedOfficerCount;
   system.snapshot = containmentSnapshot;
 
   const policy = {
@@ -307,6 +318,7 @@ export function installMotorizedPoliceContainmentPolicy(system, {
       if (system.updateLocalTactic === stateMachineUpdateLocalTactic) system.updateLocalTactic = originalUpdateLocalTactic;
       if (system.updateUnit === containmentUpdateUnit) system.updateUnit = originalUpdateUnit;
       if (system.dismountUnit === containmentDismountUnit) system.dismountUnit = originalDismountUnit;
+      if (system.reservedOfficerCount === containmentReservedOfficerCount) system.reservedOfficerCount = originalReservedOfficerCount;
       if (system.snapshot === containmentSnapshot) system.snapshot = originalSnapshot;
       system.maxUnits = originalMaxUnits;
       if (system.__nbdContainmentPolicy === policy) delete system.__nbdContainmentPolicy;
