@@ -321,12 +321,18 @@ test("legacy slot updates clear stale route metadata instead of leaking it to an
   assert.equal(slot.routeConnectorId, null);
 });
 
-test("M5 metadata substrate is active but normal visible route movement remains disabled", async () => {
+test("M5 metadata substrate remains dormant until controlled M6 activation is explicitly enabled", async () => {
   const source = await readFile(
     new URL("phaser/src/streaming/TrafficLocalAssignmentPolicy.js", ROOT),
     "utf8"
   );
+  const controlledSource = await readFile(
+    new URL("phaser/src/streaming/TrafficControlledRouteActivationPolicy.js", ROOT),
+    "utf8"
+  );
   assert.equal(source.includes("installTrafficRouteMaterializationMetadataPolicy"), true);
-  assert.equal(source.includes("routeMovementActive: false"), true);
+  assert.equal(source.includes("routeMovementActive: Boolean(controlled.enabled)"), true);
   assert.equal(source.includes('laneAuthority: "authored-local-lanes"'), true);
+  assert.equal(controlledSource.includes("defaultEnabled: false"), true);
+  assert.equal(controlledSource.includes('defaultTrafficAuthority: "authored-local-lanes"'), true);
 });
