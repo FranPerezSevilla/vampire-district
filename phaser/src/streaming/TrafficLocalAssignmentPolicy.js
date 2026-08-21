@@ -1,6 +1,7 @@
 import { LAYERS } from "../data/district.js";
 import { cameraWorldBounds } from "./TrafficMaterializationSystem.js";
 import { installTrafficLifecyclePolicy } from "./TrafficLifecyclePolicy.js";
+import { installTrafficShadowRoutePolicy } from "./TrafficShadowRoutePolicy.js";
 
 const CAMERA_RETENTION_MARGIN = 360;
 const VIEWPORT_GUARD_MARGIN = 120;
@@ -58,9 +59,9 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   }
   if (materializer.__nbdLocalAssignmentPolicy) return materializer.__nbdLocalAssignmentPolicy;
 
-  // M1 retired the provisional legacy-endpoint junction inference. The only future
-  // route authority is compiler-owned `localTopology` from the generated lane pack.
-  // It remains diagnostic/read-only here; authored legacy lanes still move cars.
+  // Compiler-owned localTopology is the only future physical route authority. M3
+  // advances a separate route population in shadow mode only; authored legacy lanes
+  // still own every visible civilian vehicle until later activation milestones.
   const originalEligible = materializer.eligible;
   const originalRelease = materializer.release;
   const originalHijack = materializer.hijack;
@@ -68,6 +69,7 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   let releaseBypassDepth = 0;
   let preventedVisibleDespawns = 0;
   let lastPreventedTokenId = null;
+  let shadowRoutePolicy = null;
 
   function visibleRetention(slot) {
     if (scene.currentLayer !== LAYERS.STREET || !slot?.tokenId) return false;
@@ -125,7 +127,13 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       macroRouteContinuityActive: false,
       legacyEndpointJunctionInferenceActive: false,
       laneAuthority: "authored-local-lanes",
-      compilerLocalTopology: compilerLocalTopologySnapshot(this.lanes)
+      compilerLocalTopology: compilerLocalTopologySnapshot(this.lanes),
+      shadowRouteContinuity: shadowRoutePolicy?.snapshot?.() || {
+        ready: false,
+        mode: "shadow",
+        movementAuthority: false,
+        macroMutationAuthority: false
+      }
     };
   }
 
@@ -134,9 +142,10 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   materializer.hijack = localBehaviorHijack;
   materializer.snapshot = localBehaviorSnapshot;
 
-  // Lifecycle retention remains independent from routing. No junction topology policy
-  // mutates the loaded legacy edge collection during M1/M2.
+  // Lifecycle retention stays independent. Shadow continuity wraps only macro tick
+  // timing and never replaces aggregate traffic flow or visible lane movement.
   const lifecyclePolicy = installTrafficLifecyclePolicy(materializer);
+  shadowRoutePolicy = installTrafficShadowRoutePolicy(materializer);
 
   const policy = {
     originalEligible,
@@ -149,8 +158,10 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     localBehaviorSnapshot,
     routeContinuityPolicy: null,
     lifecyclePolicy,
+    shadowRoutePolicy,
     laneJunctionTopologyPolicy: null,
     destroy() {
+      shadowRoutePolicy?.destroy?.();
       lifecyclePolicy?.destroy?.();
       if (materializer.eligible === localBehaviorEligible) materializer.eligible = originalEligible;
       if (materializer.release === localBehaviorRelease) materializer.release = originalRelease;
