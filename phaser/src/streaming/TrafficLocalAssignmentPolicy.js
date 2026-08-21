@@ -1,5 +1,4 @@
 import { LAYERS } from "../data/district.js";
-import { installMacroTrafficRouteContinuityPolicy } from "./MacroTrafficRouteContinuityPolicy.js";
 import { cameraWorldBounds } from "./TrafficMaterializationSystem.js";
 import { installTrafficLifecyclePolicy } from "./TrafficLifecyclePolicy.js";
 
@@ -36,7 +35,11 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   }
   if (materializer.__nbdLocalAssignmentPolicy) return materializer.__nbdLocalAssignmentPolicy;
 
-  const routeContinuityPolicy = installMacroTrafficRouteContinuityPolicy(scene.macroTrafficPoliceSystem);
+  // Do not install macro route continuity here. The macro graph describes district
+  // connectivity, not lane-level drivable geometry. Using it as local lane authority
+  // lets vehicles cut across sidewalks/buildings and enter the wrong side of roads.
+  // Local traffic must remain governed by the authored lane system until a real
+  // lane-to-lane junction graph exists.
   const originalEligible = materializer.eligible;
   const originalRelease = materializer.release;
   const originalHijack = materializer.hijack;
@@ -97,7 +100,9 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       viewportRetentionMargin: VIEWPORT_GUARD_MARGIN,
       retainedVisibleCount: (this.pool || []).filter(visibleRetention).length,
       preventedVisibleDespawns,
-      lastPreventedTokenId
+      lastPreventedTokenId,
+      macroRouteContinuityActive: false,
+      laneAuthority: "authored-local-lanes"
     };
   }
 
@@ -106,8 +111,8 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   materializer.hijack = localBehaviorHijack;
   materializer.snapshot = localBehaviorSnapshot;
 
-  // Lifecycle installs last so it can strengthen the existing viewport retention
-  // with explicit crossing/recently-visible states while preserving forced hijacks.
+  // Lifecycle retention remains useful independently: it prevents visible churn
+  // without changing where a car is allowed to drive.
   const lifecyclePolicy = installTrafficLifecyclePolicy(materializer);
 
   const policy = {
@@ -119,7 +124,7 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     localBehaviorRelease,
     localBehaviorHijack,
     localBehaviorSnapshot,
-    routeContinuityPolicy,
+    routeContinuityPolicy: null,
     lifecyclePolicy,
     destroy() {
       lifecyclePolicy?.destroy?.();
@@ -127,7 +132,6 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       if (materializer.release === localBehaviorRelease) materializer.release = originalRelease;
       if (materializer.hijack === localBehaviorHijack) materializer.hijack = originalHijack;
       if (materializer.snapshot === localBehaviorSnapshot) materializer.snapshot = originalSnapshot;
-      routeContinuityPolicy?.destroy?.();
       delete materializer.__nbdForceTrafficLifecycleRelease;
       if (materializer.__nbdLocalAssignmentPolicy === policy) delete materializer.__nbdLocalAssignmentPolicy;
     }
