@@ -65,92 +65,106 @@ M5 may add **contextual, low-frequency, non-interactive** dressing that is drive
 
 Narrative posters, readable graffiti and signage are deferred to M7 environmental storytelling so M5 remains material/dirt focused.
 
-## M5.2 — first implementation slice: `service-frontage-grime`
+## M5.2 — `service-frontage-grime` — complete
 
-Implement **one family only** before expanding M5.
+The first M5 runtime family is implemented in `phaser/src/policies/CityGrimePresentationPolicy.js` and installed as a static presentation-only layer.
 
 ### Source authority
 
-Reuse existing building presentation semantics and frontage definitions. Do not infer a second building outline or invent service doors as gameplay objects.
+The family reuses existing building presentation semantics and frontage definitions. It does not infer a second building outline or create service doors as gameplay objects.
 
-Candidate semantic preference:
+Selection remains biased toward service-like contexts:
 
 - industrial / warehouse;
 - commercial/service-like buildings;
-- selected medical/service frontage only where the existing presentation profile exposes a suitable edge;
-- neutral buildings only at a much lower deterministic rate if needed after visual review.
+- other profiles only through the deliberately bounded fallback rules protected by tests.
 
-### Placement contract
+### Placement contract delivered
 
-For each selected building:
+For each selected building the implementation:
 
-1. derive a stable source ID from the existing building ID and presentation profile;
-2. use the existing frontage/service edge as the placement axis;
-3. project a compact patch just outside the building footprint;
-4. reject any receiving centre that lands on road or crosswalk authority;
-5. prefer non-road ground / pedestrian-side frontage where compatible;
-6. keep the whole composition near the source building rather than filling a district cell;
-7. render only inside the bounded urban render window plus a small fixed margin.
+1. derives a stable source ID from the existing building ID/profile;
+2. uses existing frontage semantics as the placement anchor;
+3. projects compact irregular dirt fragments close to the building;
+4. rejects road and crosswalk receiving points;
+5. remains outside gameplay/topology state;
+6. culls against the active urban render window;
+7. emits at most a small hard-capped fragment count per selected source.
 
-### Visual contract
+### Visual contract delivered
 
-- irregular broken shapes, not clean circles or rectangles;
-- very low contrast against the receiving material;
-- 1–3 fragments per selected building, not dozens;
+- irregular broken polygon fragments rather than clean circles/rectangles;
+- restrained neutral dirt colour/value;
+- maximum two fragments in the accepted production slice;
 - no bright/saturated colour;
-- no repeated checker/grid cadence;
-- no visual resemblance to M4 light reflections;
-- no more than one selected grime composition per building;
-- most buildings remain untouched.
+- no repeated world-grid cadence;
+- no visual coupling to M4 reflection sources;
+- most buildings remain untouched;
+- accepted production fragments remain compact and bounded, with alpha protected in focused tests.
+
+The first visual iteration was too subtle at gameplay scale. The accepted correction increased fragment scale/alpha only inside the already-bounded service-frontage family, then added explicit tests preventing future drift beyond the restrained range.
 
 ### Determinism and cost
 
-- deterministic hash from stable building/source IDs only;
+- deterministic stable-ID hashing;
 - no unseeded `Math.random()`;
-- hard density cap;
-- minimum spacing between selected compositions;
-- static composition generated/drawn with the static city presentation pass, not a whole-world per-frame scan;
-- unknown/missing presentation semantics fail soft by producing no descriptor.
+- hard descriptor and per-building fragment caps;
+- static redraw only, not a whole-world per-frame scan;
+- render-window culling;
+- missing/unsupported semantics fail soft.
 
-## M5.2 focused tests
+## M5.2 focused tests — complete
 
-Add focused tests before accepting the runtime slice:
+`tests/city-service-frontage-grime-presentation.test.js` protects:
 
-- descriptor generation is deterministic;
-- input buildings/presentation definitions are not mutated;
-- only intended building/profile families are selected;
-- descriptor source IDs remain stable;
-- receiving points do not land on road/crosswalk authority;
-- render-window culling removes distant descriptors;
-- density and per-building fragment caps hold;
-- no generated topology/gameplay data changes;
-- family name remains `service-frontage-grime` and cannot be confused with #69 repair/gutter/scuff geometry.
+- deterministic descriptor generation;
+- input/source non-mutation;
+- allowed profile/source semantics;
+- stable source IDs;
+- road/crosswalk rejection;
+- render-window culling;
+- descriptor/fragment caps;
+- compact fragment dimensions;
+- accepted restrained alpha range;
+- production-city receiver safety;
+- family identity `service-frontage-grime`.
 
-## M5.2 gameplay-scale evidence
+## M5.2 gameplay-scale evidence — complete
 
-Capture at normal gameplay zoom:
+Browser review: `tests/browser/city-grime-review.spec.js`.
 
-- one industrial/service frontage with visible but restrained grime;
-- one mixed street showing most buildings remain clean/dark enough to preserve hierarchy;
-- one ordinary/dark control location without service-grime spam.
+Validated implementation head: `485ad7074f1ddfcbb1ab8e8f70d33125cd4a0aa4`.
 
-Acceptance:
+- `Tests` run `32488128735`: **success**.
+- `City atmosphere review` run `32488128814`: **success**.
+- artifact `9448812773`: `city-atmosphere-review`.
+- captures:
+  - `service-frontage-grime.png`;
+  - `mixed-grime-context.png`;
+  - `grime-dark-control.png`.
 
-- the city feels less sterile at the selected service location;
-- dirt remains subordinate to lighting, navigation and actors;
-- no repeated procedural grid becomes visible;
-- #69 details remain visually distinct and authoritative;
-- no false pickup/interactable/collision cue appears.
+Acceptance result:
 
-## M5.3 — later service-corner composition
+- selected industrial/service frontage reads less sterile;
+- dirt remains subordinate to lights, navigation, actors and building mass;
+- no repeated procedural grid is visible;
+- #69 street-surface detail remains distinct and authoritative;
+- no pickup/interactable/collision cue was introduced;
+- the control area remains sparse.
 
-Only after M5.2 passes visual review, consider a second sparse family using existing service semantics and existing gameplay dumpster positions read-only:
+M5.2 is technically and visually accepted.
 
-- tiny paper/litter group;
-- compact grime accumulation around a service corner;
+## M5.3 — service-corner composition — planned / awaiting user checkpoint
+
+Do **not** begin M5.3 automatically under the default execution cadence. M5.2 is now documented and the agent must report this checkpoint and wait for the user’s next indication.
+
+If the user authorizes the next bounded task, consider exactly one sparse service-corner composition using existing semantics and existing gameplay dumpster positions read-only:
+
+- tiny paper/litter group; or
+- compact grime accumulation around a service corner; or
 - optional mechanical residue where an existing building semantic justifies it.
 
-Do not add readable posters/graffiti/signage here; that belongs to M7.
+Choose one family first, not all three. Do not add readable posters/graffiti/signage here; that belongs to M7.
 
 ## Exit gate
 
@@ -163,6 +177,10 @@ M5 closes only when:
 - decorative dressing remains non-interactive/non-collidable;
 - focused tests and gameplay-scale evidence pass.
 
-## Stop rules
+## Execution cadence / stop rule
 
-Continue autonomously through bounded visual corrections. Stop only for a genuine authority conflict, unrelated persistent CI blocker, a subjective art-direction fork that cannot be resolved from `CITY_NOIR_ATMOSPHERE.md`, or the initiative-wide M9 user gate.
+The initiative-wide default is **task → validate → document → report → wait for user direction**.
+
+After a bounded M5 task is complete, update this task document, machine state, progress log and PR summary as needed, report the checkpoint, and stop before starting the next bounded task.
+
+Only an explicit user batch instruction (for example, “hazlo todo de golpe” or “continúa hasta que necesites mi intervención”) removes the wait step for the scope granted. Batch mode never removes the documentation requirement between tasks.
