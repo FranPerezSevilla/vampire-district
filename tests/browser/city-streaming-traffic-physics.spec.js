@@ -85,6 +85,7 @@ test("the driven car softly pushes local traffic without damage, heat or slot re
     });
 
     const physicsAfterImpact = window.NBD_TRAFFIC_PHYSICS.snapshot();
+    const massPolicyAfterImpact = scene.trafficMassCollisionPolicy?.snapshot?.() || null;
     const contactAfterImpact = physicsAfterImpact.contacts.find(item => item.tokenId === selected.tokenId);
     const assignmentAfterImpact = window.NBD_TRAFFIC.snapshot().materialized.find(item => item.tokenId === selected.tokenId);
     const healthAfterImpact = vehicle.health;
@@ -128,12 +129,14 @@ test("the driven car softly pushes local traffic without damage, heat or slot re
 
     return {
       missing: false,
+      drivenVehicleId: vehicle.id,
       poolSize: scene.trafficMaterializationSystem.pool.length,
       assignmentBefore,
       assignmentAfterImpact,
       assignmentRecovered,
       physicsAfterImpact,
       physicsRecovered,
+      massPolicyAfterImpact,
       contactAfterImpact,
       contactRecovered,
       offsetBeforeRecovery,
@@ -157,6 +160,10 @@ test("the driven car softly pushes local traffic without damage, heat or slot re
   expect(result.contactAfterImpact.offsetDistance).toBeGreaterThan(0);
   expect(result.assignmentAfterImpact.slotIndex).toBe(result.assignmentBefore.slotIndex);
   expect(result.assignmentRecovered.slotIndex).toBe(result.assignmentBefore.slotIndex);
+  expect(result.massPolicyAfterImpact.weightedContacts).toBeGreaterThan(0);
+  expect(result.massPolicyAfterImpact.lastResponse.vehicleId).toBe(result.drivenVehicleId);
+  expect(result.massPolicyAfterImpact.lastResponse.tokenId).toBe(result.assignmentBefore.tokenId);
+  expect(result.massPolicyAfterImpact.lastResponse.impulseScale).toBeGreaterThan(0);
   expect(result.healthAfterImpact).toBe(result.healthBefore);
   expect(result.exposureAfterImpact).toBe(result.exposureBefore);
   expect(result.heatAfterImpact).toBe(result.heatBefore);
