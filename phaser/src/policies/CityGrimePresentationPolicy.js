@@ -78,7 +78,7 @@ export function pointInsideSurface(point, surface) {
     const xj = finite(points[previous].x);
     const yj = finite(points[previous].y);
     const intersects = ((yi > y) !== (yj > y))
-      && (x < (xj - xi) * (y - yi) / Math.max(1e-9, yj - yi) + xi);
+      && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
     if (intersects) inside = !inside;
   }
   return inside;
