@@ -8,6 +8,11 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, finite(value, min)));
 }
 
+function round(value, digits = 6) {
+  const factor = 10 ** digits;
+  return Math.round(finite(value) * factor) / factor;
+}
+
 function stableHash(value) {
   let hash = 2166136261;
   for (const character of String(value || "traffic")) {
@@ -39,6 +44,12 @@ function endpointTangent(points, end = false) {
   return unitVector(finite(to?.x) - finite(from?.x), finite(to?.y) - finite(from?.y));
 }
 
+function angularGap(left, right) {
+  const a = unitVector(left?.x, left?.y);
+  const b = unitVector(right?.x, right?.y);
+  return Math.acos(clamp(a.x * b.x + a.y * b.y, -1, 1));
+}
+
 function quadraticPoint(start, control, end, t) {
   const phase = clamp(t, 0, 1);
   const inverse = 1 - phase;
@@ -46,6 +57,28 @@ function quadraticPoint(start, control, end, t) {
     x: inverse * inverse * finite(start?.x) + 2 * inverse * phase * finite(control?.x) + phase * phase * finite(end?.x),
     y: inverse * inverse * finite(start?.y) + 2 * inverse * phase * finite(control?.y) + phase * phase * finite(end?.y)
   };
+}
+
+function countBy(items, keyFn) {
+  const counts = {};
+  for (const item of items || []) {
+    const key = String(keyFn(item) || "unknown");
+    counts[key] = (counts[key] || 0) + 1;
+  }
+  return Object.fromEntries(Object.entries(counts).sort(([left], [right]) => left.localeCompare(right)));
+}
+
+function duplicateGroups(items, keyFn) {
+  const groups = new Map();
+  for (const item of items || []) {
+    const key = String(keyFn(item));
+    const list = groups.get(key) || [];
+    list.push(item);
+    groups.set(key, list);
+  }
+  return [...groups.entries()]
+    .filter(([, list]) => list.length > 1)
+    .sort(([left], [right]) => left.localeCompare(right));
 }
 
 export function trafficLaneKey(edgeId, direction = "forward") {
@@ -66,7 +99,9 @@ export function classifyTrafficTurn(incomingTangent, outgoingTangent, sameEdge =
 
 export function buildTrafficJunctionConnector(incoming, outgoing, junction, {
   samples = 9,
-  endpointTolerance = 22
+  endpointTolerance = 22,
+  endpointContinuityTolerance = 0.001,
+  tangentContinuityTolerance = Math.PI * 0.48
 } = {}) {
   if (!incoming?.end || !outgoing?.start || !junction) return null;
   const start = { x: finite(incoming.end.x), y: finite(incoming.end.y) };
@@ -82,6 +117,13 @@ export function buildTrafficJunctionConnector(incoming, outgoing, junction, {
   const maximumRadius = points.reduce((maximum, point) => Math.max(maximum, distance(point, junction)), 0);
   const envelopeRadius = Math.max(12, finite(junction.radius, 30)) + Math.max(0, finite(endpointTolerance, 22));
   const turn = classifyTrafficTurn(incoming.endTangent, outgoing.startTangent, incoming.edgeId === outgoing.edgeId);
+  const connectorStartTangent = endpointTangent(points, false);
+  const connectorEndTangent = endpointTangent(points, true);
+  const startEndpointGap = distance(points[0], start);
+  const endEndpointGap = distance(points[points.length - 1], end);
+  const startTangentGapRadians = angularGap(incoming.endTangent, connectorStartTangent);
+  const endTangentGapRadians = angularGap(connectorEndTangent, outgoing.startTangent);
+  const connectorLength = points.slice(1).reduce((total, point, index) => total + distance(points[index], point), 0);
   const id = `${incoming.key}->${outgoing.key}@${junction.id}`;
   return {
     id,
@@ -97,23 +139,41 @@ export function buildTrafficJunctionConnector(incoming, outgoing, junction, {
     turnAngle: turn.angle,
     uTurn: turn.type === "u-turn",
     points,
+    connectorLength,
     maximumRadius,
     envelopeRadius,
-    withinJunctionEnvelope: maximumRadius <= envelopeRadius + 0.001
+    withinJunctionEnvelope: maximumRadius <= envelopeRadius + 0.001,
+    startEndpointGap,
+    endEndpointGap,
+    endpointContinuityFailure: startEndpointGap > endpointContinuityTolerance
+      || endEndpointGap > endpointContinuityTolerance,
+    startTangentGapRadians,
+    endTangentGapRadians,
+    tangentContinuityFailure: startTangentGapRadians > tangentContinuityTolerance
+      || endTangentGapRadians > tangentContinuityTolerance
   };
 }
 
-function nearestJunction(point, junctions, endpointTolerance) {
-  let best = null;
-  for (const junction of junctions) {
-    const gap = distance(point, junction);
-    const envelope = Math.max(12, finite(junction.radius, 30)) + endpointTolerance;
-    if (gap > envelope) continue;
-    if (!best || gap < best.distance || (Math.abs(gap - best.distance) < 0.001 && junction.id.localeCompare(best.junction.id) < 0)) {
-      best = { junction, distance: gap };
-    }
-  }
-  return best?.junction || null;
+function junctionMatches(point, junctions, endpointTolerance) {
+  return junctions
+    .map(junction => {
+      const gap = distance(point, junction);
+      const envelopeRadius = Math.max(12, finite(junction.radius, 30)) + endpointTolerance;
+      return {
+        junctionId: junction.id,
+        distance: gap,
+        envelopeRadius,
+        junction
+      };
+    })
+    .filter(match => match.distance <= match.envelopeRadius + 0.001)
+    .sort((left, right) => left.distance - right.distance || left.junctionId.localeCompare(right.junctionId));
+}
+
+function ownershipStatus(matches) {
+  if (!matches.length) return "unmatched";
+  if (matches.length > 1) return "ambiguous";
+  return "unique";
 }
 
 function directedLanes(manifest, endpointTolerance) {
@@ -132,6 +192,10 @@ function directedLanes(manifest, endpointTolerance) {
       if (!Array.isArray(points) || points.length < 2) continue;
       const start = { x: finite(points[0]?.x), y: finite(points[0]?.y) };
       const end = { x: finite(points[points.length - 1]?.x), y: finite(points[points.length - 1]?.y) };
+      const startMatches = junctionMatches(start, junctions, endpointTolerance);
+      const endMatches = junctionMatches(end, junctions, endpointTolerance);
+      const startOwnership = ownershipStatus(startMatches);
+      const endOwnership = ownershipStatus(endMatches);
       const lane = {
         key: trafficLaneKey(edgeId, direction),
         edgeId,
@@ -141,8 +205,20 @@ function directedLanes(manifest, endpointTolerance) {
         end,
         startTangent: endpointTangent(points, false),
         endTangent: endpointTangent(points, true),
-        startJunctionId: nearestJunction(start, junctions, endpointTolerance)?.id || null,
-        endJunctionId: nearestJunction(end, junctions, endpointTolerance)?.id || null
+        startOwnership,
+        endOwnership,
+        startJunctionId: startOwnership === "unique" ? startMatches[0].junctionId : null,
+        endJunctionId: endOwnership === "unique" ? endMatches[0].junctionId : null,
+        startJunctionMatches: startMatches.map(match => ({
+          junctionId: match.junctionId,
+          distance: round(match.distance),
+          envelopeRadius: round(match.envelopeRadius)
+        })),
+        endJunctionMatches: endMatches.map(match => ({
+          junctionId: match.junctionId,
+          distance: round(match.distance),
+          envelopeRadius: round(match.envelopeRadius)
+        }))
       };
       lanes.push(lane);
     }
@@ -150,9 +226,36 @@ function directedLanes(manifest, endpointTolerance) {
   return { lanes, junctions };
 }
 
+function endpointAudit(lanes, status) {
+  const findings = [];
+  for (const lane of lanes) {
+    for (const endpoint of ["start", "end"]) {
+      const ownership = lane[`${endpoint}Ownership`];
+      if (ownership !== status) continue;
+      const point = lane[endpoint];
+      findings.push({
+        laneKey: lane.key,
+        edgeId: lane.edgeId,
+        direction: lane.direction,
+        endpoint,
+        x: round(point.x),
+        y: round(point.y),
+        ownership,
+        matches: lane[`${endpoint}JunctionMatches`]
+      });
+    }
+  }
+  return findings.sort((left, right) => (
+    left.laneKey.localeCompare(right.laneKey) || left.endpoint.localeCompare(right.endpoint)
+  ));
+}
+
 export function buildTrafficLaneJunctionTopology(manifest, {
   endpointTolerance = 22,
-  connectorSamples = 9
+  connectorSamples = 9,
+  endpointContinuityTolerance = 0.001,
+  tangentContinuityTolerance = Math.PI * 0.48,
+  minimumConnectorLength = 0.5
 } = {}) {
   if (!manifest?.edges || typeof manifest.edges !== "object") {
     throw new TypeError("Traffic lane topology requires a lane manifest with edges.");
@@ -164,12 +267,12 @@ export function buildTrafficLaneJunctionTopology(manifest, {
   const incomingByJunction = new Map();
   const outgoingByJunction = new Map();
   for (const lane of lanes) {
-    if (lane.endJunctionId) {
+    if (lane.endOwnership === "unique" && lane.endJunctionId) {
       const list = incomingByJunction.get(lane.endJunctionId) || [];
       list.push(lane);
       incomingByJunction.set(lane.endJunctionId, list);
     }
-    if (lane.startJunctionId) {
+    if (lane.startOwnership === "unique" && lane.startJunctionId) {
       const list = outgoingByJunction.get(lane.startJunctionId) || [];
       list.push(lane);
       outgoingByJunction.set(lane.startJunctionId, list);
@@ -177,8 +280,7 @@ export function buildTrafficLaneJunctionTopology(manifest, {
   }
 
   const connections = [];
-  const connectionByEdgeId = new Map();
-  const outgoingByLane = new Map();
+  const candidateByLane = new Map();
   for (const [junctionId, incoming] of incomingByJunction.entries()) {
     const junction = junctionById.get(junctionId);
     const outgoing = outgoingByJunction.get(junctionId) || [];
@@ -187,21 +289,151 @@ export function buildTrafficLaneJunctionTopology(manifest, {
         if (from.key === to.key) continue;
         const connector = buildTrafficJunctionConnector(from, to, junction, {
           samples: connectorSamples,
-          endpointTolerance: tolerance
+          endpointTolerance: tolerance,
+          endpointContinuityTolerance,
+          tangentContinuityTolerance
         });
         if (!connector) continue;
+        connector.sameJunctionOwnership = from.endJunctionId === junctionId && to.startJunctionId === junctionId;
+        connector.lanePairKey = `${from.key}->${to.key}`;
         connections.push(connector);
-        connectionByEdgeId.set(connector.connectorEdgeId, connector);
-        const options = outgoingByLane.get(from.key) || [];
-        options.push(connector);
-        outgoingByLane.set(from.key, options);
+        const candidates = candidateByLane.get(from.key) || [];
+        candidates.push(connector);
+        candidateByLane.set(from.key, candidates);
       }
     }
   }
 
+  const duplicateConnectorIdGroups = duplicateGroups(connections, connection => connection.connectorEdgeId);
+  const duplicateLanePairGroups = duplicateGroups(connections, connection => connection.lanePairKey);
+  const duplicateConnectorIds = new Set(duplicateConnectorIdGroups.map(([key]) => key));
+  const duplicateLanePairs = new Set(duplicateLanePairGroups.map(([key]) => key));
+
+  for (const connection of connections) {
+    const rejectionReasons = [];
+    const auditWarnings = [];
+    if (!connection.withinJunctionEnvelope) rejectionReasons.push("outside-junction-envelope");
+    if (connection.endpointContinuityFailure) rejectionReasons.push("endpoint-continuity");
+    if (!connection.sameJunctionOwnership) rejectionReasons.push("junction-ownership-mismatch");
+    if (!Number.isFinite(connection.turnAngle)) rejectionReasons.push("non-finite-turn-angle");
+    if (connection.connectorLength < minimumConnectorLength) rejectionReasons.push("zero-or-near-zero-length");
+    if (duplicateConnectorIds.has(connection.connectorEdgeId)) rejectionReasons.push("duplicate-connector-id");
+    if (duplicateLanePairs.has(connection.lanePairKey)) rejectionReasons.push("duplicate-lane-pair");
+    if (connection.tangentContinuityFailure) auditWarnings.push("tangent-continuity");
+    connection.rejectionReasons = rejectionReasons;
+    connection.auditWarnings = auditWarnings;
+    connection.activatable = rejectionReasons.length === 0;
+  }
+
+  const activatableConnections = connections.filter(connection => connection.activatable);
+  const rejectedConnections = connections.filter(connection => !connection.activatable);
+  const connectionByEdgeId = new Map(activatableConnections.map(connection => [connection.connectorEdgeId, connection]));
+  const outgoingByLane = new Map();
+  for (const connection of activatableConnections) {
+    const options = outgoingByLane.get(connection.incomingLaneKey) || [];
+    options.push(connection);
+    outgoingByLane.set(connection.incomingLaneKey, options);
+  }
   for (const options of outgoingByLane.values()) {
     options.sort((left, right) => left.outgoingLaneKey.localeCompare(right.outgoingLaneKey));
   }
+
+  const unmatchedEndpoints = endpointAudit(lanes, "unmatched");
+  const ambiguousEndpoints = endpointAudit(lanes, "ambiguous");
+  const orphanLanes = lanes
+    .filter(lane => (outgoingByLane.get(lane.key) || []).length === 0)
+    .map(lane => {
+      let reason = "no-outgoing-lane-at-junction";
+      if (lane.endOwnership === "unmatched") reason = "end-unmatched";
+      else if (lane.endOwnership === "ambiguous") reason = "end-ambiguous";
+      else if ((candidateByLane.get(lane.key) || []).length > 0) reason = "all-connectors-rejected";
+      return { laneKey: lane.key, edgeId: lane.edgeId, direction: lane.direction, reason };
+    })
+    .sort((left, right) => left.laneKey.localeCompare(right.laneKey));
+
+  const tangentContinuityFailures = connections
+    .filter(connection => connection.tangentContinuityFailure)
+    .map(connection => ({
+      connectorEdgeId: connection.connectorEdgeId,
+      lanePairKey: connection.lanePairKey,
+      turnType: connection.turnType,
+      startGapRadians: round(connection.startTangentGapRadians),
+      endGapRadians: round(connection.endTangentGapRadians)
+    }))
+    .sort((left, right) => left.connectorEdgeId.localeCompare(right.connectorEdgeId));
+  const endpointContinuityFailures = connections
+    .filter(connection => connection.endpointContinuityFailure)
+    .map(connection => ({
+      connectorEdgeId: connection.connectorEdgeId,
+      lanePairKey: connection.lanePairKey,
+      startGap: round(connection.startEndpointGap),
+      endGap: round(connection.endEndpointGap)
+    }))
+    .sort((left, right) => left.connectorEdgeId.localeCompare(right.connectorEdgeId));
+
+  const connectedLaneCount = lanes.length - orphanLanes.length;
+  const unsafeConnectorCount = connections.filter(connection => !connection.withinJunctionEnvelope).length;
+  const unsafeActivatableConnectorCount = activatableConnections.filter(connection => (
+    !connection.withinJunctionEnvelope
+    || connection.endpointContinuityFailure
+    || !connection.sameJunctionOwnership
+  )).length;
+  const connectorCountsByTurnType = countBy(connections, connection => connection.turnType);
+  const activatableConnectorCountsByTurnType = countBy(activatableConnections, connection => connection.turnType);
+  const rejectionReasonCounts = countBy(
+    rejectedConnections.flatMap(connection => connection.rejectionReasons.map(reason => ({ reason }))),
+    item => item.reason
+  );
+  const orphanReasonCounts = countBy(orphanLanes, lane => lane.reason);
+
+  const snapshot = () => ({
+    directedLaneCount: lanes.length,
+    junctionCount: junctions.length,
+    connectionCount: connections.length,
+    activatableConnectorCount: activatableConnections.length,
+    rejectedConnectorCount: rejectedConnections.length,
+    connectedLaneCount,
+    orphanLaneCount: orphanLanes.length,
+    unsafeConnectorCount,
+    unsafeActivatableConnectorCount,
+    unmatchedEndpointCount: unmatchedEndpoints.length,
+    ambiguousEndpointCount: ambiguousEndpoints.length,
+    duplicateConnectorIdCount: duplicateConnectorIdGroups.length,
+    duplicateLanePairCount: duplicateLanePairGroups.length,
+    endpointContinuityFailureCount: endpointContinuityFailures.length,
+    tangentContinuityFailureCount: tangentContinuityFailures.length,
+    connectorCountsByTurnType,
+    activatableConnectorCountsByTurnType,
+    rejectionReasonCounts,
+    orphanReasonCounts
+  });
+
+  const diagnostics = () => ({
+    summary: snapshot(),
+    unmatchedEndpoints: unmatchedEndpoints.map(item => ({ ...item, matches: [...item.matches] })),
+    ambiguousEndpoints: ambiguousEndpoints.map(item => ({ ...item, matches: [...item.matches] })),
+    orphanLanes: orphanLanes.map(item => ({ ...item })),
+    rejectedConnectors: rejectedConnections
+      .map(connection => ({
+        connectorEdgeId: connection.connectorEdgeId,
+        lanePairKey: connection.lanePairKey,
+        junctionId: connection.junctionId,
+        turnType: connection.turnType,
+        rejectionReasons: [...connection.rejectionReasons],
+        auditWarnings: [...connection.auditWarnings]
+      }))
+      .sort((left, right) => left.connectorEdgeId.localeCompare(right.connectorEdgeId)),
+    tangentContinuityFailures,
+    endpointContinuityFailures,
+    duplicateConnectorIds: duplicateConnectorIdGroups.map(([key, items]) => ({
+      connectorEdgeId: key,
+      occurrences: items.length
+    })),
+    duplicateLanePairs: duplicateLanePairGroups.map(([key, items]) => ({
+      lanePairKey: key,
+      occurrences: items.length
+    }))
+  });
 
   function continuations(edgeId, direction) {
     return [...(outgoingByLane.get(trafficLaneKey(edgeId, direction)) || [])];
@@ -216,28 +448,23 @@ export function buildTrafficLaneJunctionTopology(manifest, {
     return choices[index] || null;
   }
 
-  const connectedLaneCount = lanes.filter(lane => (outgoingByLane.get(lane.key) || []).length > 0).length;
-  const unsafeConnectorCount = connections.filter(connection => !connection.withinJunctionEnvelope).length;
-  const snapshot = () => ({
-    directedLaneCount: lanes.length,
-    junctionCount: junctions.length,
-    connectionCount: connections.length,
-    connectedLaneCount,
-    orphanLaneCount: lanes.length - connectedLaneCount,
-    unsafeConnectorCount
-  });
-
   return {
     directedLanes: lanes,
     junctions,
     connections,
+    activatableConnections,
+    rejectedConnections,
     laneByKey,
     junctionById,
     connectionByEdgeId,
     outgoingByLane,
+    unmatchedEndpoints,
+    ambiguousEndpoints,
+    orphanLanes,
     continuations,
     chooseContinuation,
-    snapshot
+    snapshot,
+    diagnostics
   };
 }
 
@@ -251,6 +478,25 @@ export function installTrafficLaneJunctionTopologyPolicy(materializer, options =
   let ready = false;
   let destroyed = false;
   const injectedConnectorEdgeIds = new Set();
+  const emptySnapshot = {
+    ready: false,
+    directedLaneCount: 0,
+    junctionCount: 0,
+    connectionCount: 0,
+    activatableConnectorCount: 0,
+    rejectedConnectorCount: 0,
+    connectedLaneCount: 0,
+    orphanLaneCount: 0,
+    unsafeConnectorCount: 0,
+    unsafeActivatableConnectorCount: 0,
+    unmatchedEndpointCount: 0,
+    ambiguousEndpointCount: 0,
+    duplicateConnectorIdCount: 0,
+    duplicateLanePairCount: 0,
+    endpointContinuityFailureCount: 0,
+    tangentContinuityFailureCount: 0,
+    injectedConnectorLaneCount: 0
+  };
   const policy = {
     get ready() {
       return ready;
@@ -262,7 +508,7 @@ export function installTrafficLaneJunctionTopologyPolicy(materializer, options =
     snapshot() {
       return topology
         ? { ready: true, ...topology.snapshot(), injectedConnectorLaneCount: injectedConnectorEdgeIds.size }
-        : { ready: false, directedLaneCount: 0, junctionCount: 0, connectionCount: 0, connectedLaneCount: 0, orphanLaneCount: 0, unsafeConnectorCount: 0, injectedConnectorLaneCount: 0 };
+        : { ...emptySnapshot };
     },
     destroy() {
       destroyed = true;
@@ -280,18 +526,20 @@ export function installTrafficLaneJunctionTopologyPolicy(materializer, options =
   policy.initialization = Promise.resolve(materializer.initialization).then(() => {
     if (destroyed) return policy;
     topology = buildTrafficLaneJunctionTopology(materializer.lanes, options);
-    for (const connection of topology.connections) {
-      if (!connection.withinJunctionEnvelope) continue;
+    for (const connection of topology.activatableConnections) {
       materializer.lanes.edges[connection.connectorEdgeId] = {
         forward: connection.points.map(point => ({ ...point })),
         reverse: [...connection.points].reverse().map(point => ({ ...point })),
         centerline: connection.points.map(point => ({ ...point })),
         laneOffset: 0,
         junctionConnector: true,
+        activatable: true,
         junctionId: connection.junctionId,
         turnType: connection.turnType,
         incomingEdgeId: connection.incomingEdgeId,
-        outgoingEdgeId: connection.outgoingEdgeId
+        outgoingEdgeId: connection.outgoingEdgeId,
+        incomingLaneKey: connection.incomingLaneKey,
+        outgoingLaneKey: connection.outgoingLaneKey
       };
       injectedConnectorEdgeIds.add(connection.connectorEdgeId);
     }
