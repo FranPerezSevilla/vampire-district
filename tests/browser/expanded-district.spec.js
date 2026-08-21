@@ -51,8 +51,10 @@ for (const route of ROUTES) {
     expect(state.cameraBounds.width).toBeGreaterThanOrEqual(4800);
     expect(state.cameraBounds.height).toBeGreaterThanOrEqual(3600);
     expect(state.gameSize.width).toBeLessThan(4800 * 2);
-    expect(state.pedestrians.count).toBeGreaterThanOrEqual(30);
-    expect(state.pedestrians.count).toBeLessThanOrEqual(72);
+    // The expanded pedestrian-city-life pass intentionally more than doubled routed
+    // population while keeping density distributed across many sidewalk loops.
+    expect(state.pedestrians.count).toBeGreaterThanOrEqual(132);
+    expect(state.pedestrians.count).toBeLessThanOrEqual(144);
     expect(state.pedestrians.pedestrians.every(item => item.onPedestrianSurface)).toBe(true);
     expect(state.police).toBe(2);
     expect(state.retiredLightProps).toBe(0);
