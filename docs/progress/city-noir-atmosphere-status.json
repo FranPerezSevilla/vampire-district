@@ -1,32 +1,23 @@
 {
   "initiative": "city-noir-atmosphere",
-  "version": 9,
+  "version": 10,
   "updatedAt": "2026-08-21",
   "branch": "agent/city-noir-atmosphere",
   "state": "autonomous-in-progress",
-  "currentMilestone": "M5",
-  "currentTask": "checkpoint-after-M5.2",
+  "currentMilestone": "M6",
+  "currentTask": "M6.1-shadow-language-audit",
   "executionCadence": {
     "default": "task-validate-document-report-wait",
     "waitForUserAfterEachBoundedTask": true,
     "genericContinueAuthorizes": "next-bounded-task-only",
     "batchOverrideRequiresExplicitUserInstruction": true,
-    "batchExamples": [
-      "hazlo todo de golpe",
-      "continua hasta que necesites mi intervencion"
-    ],
     "documentationRequiredInBatchMode": true,
-    "rule": "Every bounded task must be validated and documented before the next task starts. By default, report the checkpoint and wait for the user's next indication. An explicit batch instruction removes only the wait step for the granted scope, never the documentation step."
+    "activeBatchScope": "M5.3 then, only if green, M6.1",
+    "rule": "Every bounded task must be validated and documented before the next task starts. The current batch scope ends after M6.1; do not implement M6.2 without new user direction."
   },
   "dependency": {
     "pullRequest": 69,
     "title": "City street visual pass",
-    "requiredFor": [
-      "road-surface-atmosphere",
-      "sidewalk-atmosphere",
-      "street-surface-detail"
-    ],
-    "stateAtBootstrap": "open-draft",
     "state": "merged-and-integrated",
     "mergedMainCommit": "f803c974817c92666b82a60fac808d54c2c4bc05",
     "integrationCommit": "a408a1342989868ad62a09e0df12d0742830ee4a",
@@ -35,9 +26,8 @@
   "branchSync": {
     "lastIntegratedMain": "805ea5d107dcddcef4cd564294569455093af4b0",
     "observedMain": "805ea5d107dcddcef4cd564294569455093af4b0",
-    "observedMainChange": "merged PR #71 vehicle dynamics",
     "state": "synced",
-    "evidence": "main...agent/city-noir-atmosphere behind_by=0 after M5.2 implementation",
+    "evidence": "main...agent/city-noir-atmosphere behind_by=0 before M5.3",
     "rule": "Unrelated vehicle/traffic work is integrated only for branch continuity and must not expand atmosphere scope."
   },
   "completedTasks": [
@@ -75,7 +65,11 @@
     "M5.2-service-frontage-grime",
     "M5.2-focused-tests",
     "M5.2-gameplay-scale-browser-evidence",
-    "M5.2-documentation-checkpoint"
+    "M5.2-documentation-checkpoint",
+    "M5.3-service-corner-litter",
+    "M5.3-focused-tests",
+    "M5.3-gameplay-scale-browser-evidence",
+    "M5.3-documentation-checkpoint"
   ],
   "milestones": {
     "M0": { "title": "Canonical direction, references and agent continuity", "state": "complete" },
@@ -83,8 +77,8 @@
     "M2": { "title": "Global value hierarchy and night exposure", "state": "complete" },
     "M3": { "title": "Practical-light islands", "state": "complete" },
     "M4": { "title": "Wet asphalt and local reflection language", "state": "complete" },
-    "M5": { "title": "Low-frequency grime and urban surface dressing", "state": "autonomous-in-progress" },
-    "M6": { "title": "Grounding and shadow consistency", "state": "planned" },
+    "M5": { "title": "Low-frequency grime and urban surface dressing", "state": "complete" },
+    "M6": { "title": "Grounding and shadow consistency", "state": "autonomous-in-progress" },
     "M7": { "title": "Environmental storytelling and atmospheric set dressing", "state": "planned" },
     "M8": { "title": "District colour/material identity", "state": "planned" },
     "M9": { "title": "Final gameplay-scale review and bounded corrections", "state": "planned" }
@@ -92,8 +86,6 @@
   "m2": {
     "implementation": "palette-refinement",
     "changedAuthority": "phaser/src/data/balance.js COLORS",
-    "broadSurfaceOrder": ["void", "streetBase", "road", "sidewalk"],
-    "preservedHighValueWorldMarks": ["crosswalk", "player"],
     "focusedTest": "tests/city-night-value-hierarchy.test.js",
     "browserEvidence": {
       "state": "passed",
@@ -104,11 +96,6 @@
     }
   },
   "m3": {
-    "sourceAuthorities": [
-      "phaser/src/data/district.js lights",
-      "existing building presentation definitions/profiles",
-      "existing vehicle model/view and runtime slot state"
-    ],
     "presentationPolicies": [
       "phaser/src/policies/CityPracticalLightPresentationPolicy.js",
       "phaser/src/policies/CityVehicleLightPresentationPolicy.js"
@@ -124,38 +111,9 @@
       "police-red",
       "police-blue"
     ],
-    "focusedTests": [
-      "tests/city-practical-light-presentation.test.js",
-      "tests/city-vehicle-light-presentation.test.js"
-    ],
     "browserEvidence": {
-      "state": "passed",
-      "warmStreet": {
-        "workflowRun": 32465404259,
-        "artifactId": 9440519917,
-        "head": "c4dee832f3a3b623e55c3031ca2d55a8f989bb9d",
-        "capture": "warm-light.png"
-      },
-      "warmFrontage": {
-        "workflowRun": 32465707840,
-        "artifactId": 9440621156,
-        "head": "b31dd74b6f659e328b1d4bb3324411d80b8a1c6d",
-        "capture": "mixed-street.png"
-      },
-      "contextualFamilies": {
-        "workflowRun": 32468999890,
-        "artifactId": 9441823514,
-        "head": "06d18d039c01f67eb3312329aff224279de28f3e",
-        "captures": ["civic-cool.png", "nightlife.png", "industrial.png", "mixed-families.png"],
-        "visualAssessment": "accepted: contextual families remain localized and subordinate to the dark/warm base; nightlife is the strongest special accent, civic/industrial remain restrained"
-      },
-      "vehicleAndEmergency": {
-        "workflowRun": 32470828688,
-        "artifactId": 9442522378,
-        "head": "82cb34a884a00d470a7229ac10ccb1216d4aa9d7",
-        "captures": ["vehicle-lights.png", "police-lights-red.png", "police-lights-blue.png"],
-        "visualAssessment": "accepted as M3 source contribution: vehicle light is intentionally subtle and police pulses stay compact; M4 wet receivers are expected to make these sources read more strongly without enlarging the emitters"
-      }
+      "contextualFamilies": { "workflowRun": 32468999890, "artifactId": 9441823514 },
+      "vehicleAndEmergency": { "workflowRun": 32470828688, "artifactId": 9442522378 }
     }
   },
   "m4": {
@@ -169,27 +127,13 @@
       "state": "passed",
       "workflowRun": 32475694166,
       "artifactId": 9444326985,
-      "head": "62e2eb4fd4aade64e1f4e6393996e09d4e7db4f9",
-      "captures": [
-        "wet-warm-street.png",
-        "wet-nightlife.png",
-        "wet-dark-control.png",
-        "wet-vehicle.png",
-        "wet-police-red.png",
-        "wet-police-blue.png"
-      ],
-      "visualAssessment": "accepted: broken low-alpha response remains road-bound and local; dark asphalt dominates between reflections; nightlife and police colour stay sparse; gameplay readability is preserved",
-      "fixtureNote": "The authored club source lies beyond the bounded nightlife receiver reach in the review location. Browser evidence uses a test-only nightlife source placed on the nearest real generated road and runs that fixture through the unchanged production descriptor builder and renderer. Production max reach remains 90px."
+      "head": "62e2eb4fd4aade64e1f4e6393996e09d4e7db4f9"
     },
-    "validation": {
-      "testsWorkflowRun": 32475694164,
-      "conclusion": "success",
-      "note": "unit tests and all browser-system shards passed on the validated implementation head"
-    }
+    "validation": { "testsWorkflowRun": 32475694164, "conclusion": "success" }
   },
   "m5": {
     "task": "docs/agent-tasks/2026-08-21-city-noir-m5-grime-dressing.md",
-    "state": "checkpoint-after-M5.2",
+    "state": "complete",
     "auditState": "complete",
     "ownedByStreetSurfaceAuthority": [
       "open-ground-grid",
@@ -206,57 +150,52 @@
       "junction-pavement-caps",
       "crosswalk-stop-line-and-tactile-geometry"
     ],
-    "ownedByOtherAtmosphereMilestones": [
-      "M4-light-coupled-wet-road-response"
-    ],
-    "gameplayAuthoritiesNotToDuplicate": [
-      "StreetFurnitureSystem gameplay dumpsters and body-containment state"
-    ],
-    "rejectedGenericFamilies": [
-      "world-wide-tyre-scuff-field",
-      "generic-damp-or-gutter-stains",
-      "road-wide-oil-stains",
-      "road-repair-or-crack-variants",
-      "uniform-grid-litter",
-      "reflection-like-puddles",
-      "new-gameplay-street-furniture"
-    ],
-    "permittedContextualFamilies": [
-      "service-frontage-grime",
-      "later-service-corner-litter-read-only"
-    ],
-    "deferredToM7": [
-      "readable-posters",
-      "graffiti-worldbuilding",
-      "decorative-signage"
-    ],
     "m5_2": {
       "state": "complete",
       "family": "service-frontage-grime",
       "authority": "phaser/src/policies/CityGrimePresentationPolicy.js",
       "focusedTest": "tests/city-service-frontage-grime-presentation.test.js",
-      "browserTest": "tests/browser/city-grime-review.spec.js",
       "validatedHead": "485ad7074f1ddfcbb1ab8e8f70d33125cd4a0aa4",
       "validation": {
         "testsWorkflowRun": 32488128735,
         "atmosphereWorkflowRun": 32488128814,
         "artifactId": 9448812773,
         "conclusion": "success"
+      }
+    },
+    "m5_3": {
+      "state": "complete",
+      "family": "service-corner-litter",
+      "authority": "phaser/src/policies/CityServiceCornerDressingPolicy.js",
+      "sourceAuthority": "existing M5.2 service-strip descriptors plus read-only building geometry",
+      "focusedTest": "tests/city-service-corner-dressing-presentation.test.js",
+      "browserTest": "tests/browser/city-grime-review.spec.js",
+      "validatedHead": "034e165ecd9436e6b697ad248d7bab9b605214a8",
+      "validation": {
+        "testsWorkflowRun": 32491558013,
+        "atmosphereWorkflowRun": 32491558002,
+        "artifactId": 9450153767,
+        "conclusion": "success"
       },
       "captures": [
+        "service-corner-dressing.png",
         "service-frontage-grime.png",
         "mixed-grime-context.png",
         "grime-dark-control.png"
       ],
-      "visualAssessment": "accepted: selected service/industrial frontage reads less sterile while the family remains contextual, compact and subordinate; mixed/dark controls preserve sparse city hierarchy"
-    },
-    "nextPlannedTask": "M5.3-service-corner-composition",
-    "nextTaskState": "awaiting-user-direction"
+      "visualAssessment": "accepted: tiny industrial/service-corner debris is discoverable but subordinate; mixed and dark controls stay sparse; no world-wide litter field or gameplay cue is introduced",
+      "reviewHarnessCorrection": "The first browser run attempted to sort the intentionally frozen descriptor array in place. The harness now sorts a copied array; production immutability and rendering were unchanged."
+    }
+  },
+  "m6": {
+    "state": "starting",
+    "currentTask": "M6.1-shadow-language-audit",
+    "rule": "Audit existing building, character, vehicle and street-prop grounding before adding any new shadow layer. Do not rewrite PR #63 building shadows. This batch ends after the audit/documentation checkpoint."
   },
   "finalGate": {
     "requiresUserVisualApproval": true,
     "autonomousWorkStopsAt": "final-validation-pending",
     "autoMergeAllowed": false
   },
-  "nextAction": "Checkpoint complete after M5.2. Report the documented result and wait for user direction. If the user says to continue, authorize only the next bounded task M5.3 service-corner composition unless they explicitly request batch execution."
+  "nextAction": "Execute M6.1 only: audit existing building, character, vehicle and street-prop shadow/contact language at current branch state; identify the smallest real grounding deficit and lock M6.2 scope in a dedicated task document. Do not implement M6.2 in the current batch."
 }
