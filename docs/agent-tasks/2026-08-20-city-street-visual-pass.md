@@ -58,7 +58,7 @@ The completion layer is presentation-only at runtime: collision, traffic, pedest
 - [x] Existing authority remains unique.
 - [x] Regression coverage exists for the changed behaviour.
 - [x] Relevant documentation is updated only if its contract changed.
-- [ ] Existing street scenario boots with the new presentation and unchanged navigation/collision data.
+- [ ] Existing street scenario boots with the new presentation and unchanged navigation/collision data (CI browser checks pending).
 
 ## Validation
 
