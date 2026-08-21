@@ -1,5 +1,6 @@
 import { WORLD } from "./data/balance.js";
 import { installBloodSensePresentationPolicy } from "./policies/BloodSensePresentationPolicy.js";
+import { installCityPracticalLightPresentationPolicy } from "./policies/CityPracticalLightPresentationPolicy.js";
 import { installCitySurfacePresentationPolicy } from "./policies/CitySurfacePresentationPolicy.js";
 import { installDistrictGunfireHeatPolicy } from "./policies/DistrictGunfireHeatPolicy.js";
 import { installFootPolicePedestrianPolicy } from "./policies/FootPolicePedestrianPolicy.js";
@@ -126,6 +127,7 @@ function patchReadableCanvasText() {
 
 patchReadableCanvasText();
 installCitySurfacePresentationPolicy(GameScene);
+installCityPracticalLightPresentationPolicy(GameScene);
 installSidewalkCoveragePresentationPolicy(GameScene);
 installVampireVeilPolicy();
 installPlaytestSurfacePolicy();
