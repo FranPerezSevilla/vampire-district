@@ -54,6 +54,19 @@ function directHandoffIsValidated(topology, transitionId) {
   return (topology?.junctionConnectors?.directHandoffTransitionIds || []).includes(transitionId);
 }
 
+function connectorGateAllows(result) {
+  if (result === undefined || result === null || result === true) return { allowed: true, reason: null };
+  if (result === false) return { allowed: false, reason: "junction-yield" };
+  if (typeof result === "object") {
+    const denied = result.allowed === false || result.granted === false;
+    return {
+      allowed: !denied,
+      reason: denied ? String(result.reason || "junction-yield") : null
+    };
+  }
+  return { allowed: Boolean(result), reason: result ? null : "junction-yield" };
+}
+
 export function chooseTrafficRouteTransition(topology, laneId, tokenId, routeHop = 0) {
   const choices = preferredTransitions(topology, laneId);
   if (!choices.length) return null;
@@ -118,7 +131,7 @@ function cloneAgent(agent) {
   };
 }
 
-function leaveLane(topology, agent) {
+function leaveLane(topology, agent, { beforeConnectorEntry = null } = {}) {
   const transition = chooseTrafficRouteTransition(
     topology,
     agent.currentLaneId,
@@ -147,6 +160,27 @@ function leaveLane(topology, agent) {
 
   const connector = safeConnectorForTransition(topology, transition.id);
   if (!connector) return { ok: false, reason: "missing-safe-connector" };
+
+  if (typeof beforeConnectorEntry === "function") {
+    const gate = connectorGateAllows(beforeConnectorEntry({
+      tokenId: agent.tokenId,
+      routeHop: agent.routeHop,
+      incomingLaneId: agent.currentLaneId,
+      outgoingLaneId: transition.outgoingLaneId,
+      transition,
+      connector
+    }));
+    if (!gate.allowed) {
+      return {
+        ok: false,
+        reason: gate.reason || "junction-yield",
+        yielded: true,
+        transitionId: transition.id,
+        connectorId: connector.id
+      };
+    }
+  }
+
   agent.previousLaneId = previousLaneId;
   agent.stage = "connector";
   agent.connectorId = connector.id;
@@ -156,21 +190,33 @@ function leaveLane(topology, agent) {
   return { ok: true, junctionDecision: true, transitionId: transition.id };
 }
 
-function leaveConnector(topology, agent) {
+function leaveConnector(topology, agent, { afterConnectorExit = null } = {}) {
   if (!agent.nextLaneId || !topology?.lanes?.[agent.nextLaneId]) {
     return { ok: false, reason: "missing-outgoing-lane" };
   }
-  agent.currentLaneId = agent.nextLaneId;
+  const completedConnectorId = agent.connectorId;
+  const outgoingLaneId = agent.nextLaneId;
+  agent.currentLaneId = outgoingLaneId;
   agent.stage = "lane";
   agent.connectorId = null;
   agent.nextLaneId = null;
   agent.stageProgress = 0;
+  if (typeof afterConnectorExit === "function") {
+    afterConnectorExit({
+      tokenId: agent.tokenId,
+      connectorId: completedConnectorId,
+      outgoingLaneId,
+      routeHop: agent.routeHop
+    });
+  }
   return { ok: true, junctionDecision: false };
 }
 
 export function advanceTrafficRouteAgent(agent, seconds, topology, {
   speed = 120,
-  maxStageTransitions = 32
+  maxStageTransitions = 32,
+  beforeConnectorEntry = null,
+  afterConnectorExit = null
 } = {}) {
   if (!agent?.tokenId) throw new TypeError("Traffic route advance requires a route agent.");
   if (!topology?.lanes || !topology?.transitions) {
@@ -206,8 +252,8 @@ export function advanceTrafficRouteAgent(agent, seconds, topology, {
     remainingSeconds = Math.max(0, remainingSeconds - secondsToEnd);
     next.stageProgress = 1;
     const handoff = next.stage === "connector"
-      ? leaveConnector(topology, next)
-      : leaveLane(topology, next);
+      ? leaveConnector(topology, next, { afterConnectorExit })
+      : leaveLane(topology, next, { beforeConnectorEntry });
     if (!handoff.ok) {
       blockedReason = handoff.reason;
       break;
