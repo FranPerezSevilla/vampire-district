@@ -59,6 +59,7 @@ test("wanted levels bring nearby foot police, multiple cruisers and final distri
     const totalTargetAtTwo = scene.policeSystem.desiredCount(2);
     const desiredFootAtTwo = scene.policeSystem.footDesiredCount(2);
     const levelTwoAfterTravel = window.NBD_MOTORIZED_POLICE.step(12);
+    const aggressionAfterLevelTwo = scene.motorizedPoliceAggressionPolicy?.snapshot?.() || null;
     const pursuit = levelTwoAfterTravel.units[0];
     const pursuitSeparation = Math.hypot(pursuit.x - focus.x, pursuit.y - focus.y);
     const levelTwoOfficerCounts = levelTwoAfterTravel.units.map(unit => ({
@@ -74,6 +75,7 @@ test("wanted levels bring nearby foot police, multiple cruisers and final distri
     const desiredFootAtThree = scene.policeSystem.footDesiredCount(3);
     scene.policeSystem.spawnForExposure(3);
     const levelThreeAfterTravel = window.NBD_MOTORIZED_POLICE.step(14);
+    const aggressionAfterLevelThree = scene.motorizedPoliceAggressionPolicy?.snapshot?.() || null;
     const roadblock = levelThreeAfterTravel.units.find(unit => unit.role === "roadblock");
     const roadblockOfficers = scene.policeSystem.allPolice()
       .filter(cop => cop.motorizedUnitId === roadblock.id)
@@ -107,6 +109,7 @@ test("wanted levels bring nearby foot police, multiple cruisers and final distri
       totalTargetAtTwo,
       desiredFootAtTwo,
       levelTwoAfterTravel,
+      aggressionAfterLevelTwo,
       pursuit,
       pursuitSeparation,
       levelTwoOfficerCounts,
@@ -114,6 +117,7 @@ test("wanted levels bring nearby foot police, multiple cruisers and final distri
       totalTargetAtThree,
       desiredFootAtThree,
       levelThreeAfterTravel,
+      aggressionAfterLevelThree,
       roadblock,
       roadblockOfficers,
       blocksAtRoadblock,
@@ -144,6 +148,11 @@ test("wanted levels bring nearby foot police, multiple cruisers and final distri
   expect(result.levelTwoOfficerCounts).toHaveLength(2);
   expect(result.levelTwoOfficerCounts.every(unit => unit.role === "pursuit")).toBe(true);
   expect(result.levelTwoOfficerCounts.every(unit => unit.officers === 2)).toBe(true);
+  expect(result.aggressionAfterLevelTwo).not.toBeNull();
+  expect(result.aggressionAfterLevelTwo.boostedMoves).toBeGreaterThan(0);
+  expect(result.aggressionAfterLevelTwo.lastMove.appliedSpeed).toBeGreaterThan(
+    result.aggressionAfterLevelTwo.lastMove.requestedSpeed
+  );
 
   expect(result.levelThreeInitial.desiredUnits).toBe(3);
   expect(result.levelThreeInitial.units.filter(unit => unit.role === "pursuit")).toHaveLength(2);
@@ -157,6 +166,9 @@ test("wanted levels bring nearby foot police, multiple cruisers and final distri
   expect(result.roadblockOfficers.every(officer => officer.role === "roadblock")).toBe(true);
   expect(Math.abs(Math.cos(result.roadblock.angle))).toBeLessThan(0.12);
   expect(result.blocksAtRoadblock).toBe(true);
+  expect(result.aggressionAfterLevelThree.boostedMoves).toBeGreaterThanOrEqual(
+    result.aggressionAfterLevelTwo.boostedMoves
+  );
 
   expect(result.disabled.disabled).toBe(true);
   expect(result.disabled.status).toBe("disabled");
