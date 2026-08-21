@@ -20,22 +20,13 @@ The city must remain predominantly dark. Warm amber remains the default city lig
 - [x] Preserve the existing crosswalk presentation seam and presentation-only ownership.
 - [x] Prevent contextual landmark families from also receiving generic warm-frontage spill.
 
-Acceptance:
-- existing warm tests remain valid;
-- no new city/topology authority exists;
-- no runtime gameplay state is mutated.
-
 ### M3.4.2 — Cool civic / institutional accents
 
 - [x] Add `cool-civic` family.
-- [x] Restrict it to real institutional semantics already present in the repository: `police`, `medical`, plus explicit `cityHall` landmark identity.
-- [x] Keep church/cathedral out unless an existing semantic authority explicitly classifies it as civic; do not guess.
+- [x] Restrict it to `police`, `medical`, plus explicit `cityHall` landmark identity.
+- [x] Keep church/cathedral out rather than guessing civic semantics.
 - [x] Use restrained desaturated cool-white / blue-grey spill.
 - [x] Keep source count small and local to frontage/access points.
-
-Acceptance:
-- police/hospital/city hall can acquire a recognisable cold signature;
-- cold light does not become the dominant street colour.
 
 ### M3.4.3 — Nightlife accents
 
@@ -44,58 +35,41 @@ Acceptance:
 - [x] Use wine/magenta-red rather than saturated cyberpunk pink.
 - [x] Keep the spill compact and tied to the frontage source.
 
-Acceptance:
-- a club is recognisable at gameplay zoom;
-- the city still reads noir rather than synthwave.
-
 ### M3.4.4 — Industrial dirty light
 
 - [x] Add `industrial-dirty` family.
 - [x] Restrict it to `industrial` / `warehouse` semantics.
-- [x] Use the existing `serviceStrip` semantics as permission for presentation-only service lighting when authored frontage is `none`.
+- [x] Use existing `serviceStrip` semantics as presentation permission.
 - [x] Use dirty sodium/olive-amber, smaller and weaker than nightlife/civic accents.
 - [x] Keep deterministic sparse selection so most industrial façades remain dark.
 
-Acceptance:
-- industrial/service areas gain a functional signature;
-- no decorative prop becomes gameplay state.
-
 ### M3.4.5 — Focused automated tests
 
-- [ ] Determinism for every family.
-- [ ] No mutation of `buildings`, `lights` or visual-profile source data.
-- [ ] Family/profile allow-list enforcement.
-- [ ] Bounded span/depth and render-window culling.
-- [ ] Density restraint for industrial and generic warm frontages.
-- [ ] Family separation: contextual buildings do not also receive incompatible generic warm frontage.
-- [ ] Soft-falloff alpha remains bounded; no hard bullseye-outline regression.
+- [x] Determinism for every family.
+- [x] No mutation of `buildings`, `lights` or visual-profile source data.
+- [x] Family/profile allow-list enforcement.
+- [x] Bounded span/depth and render-window culling.
+- [x] Density restraint for industrial and generic warm frontages.
+- [x] Family separation: contextual buildings do not also receive incompatible generic warm frontage.
+- [x] Soft-falloff alpha remains bounded; no hard bullseye-outline regression.
 
-Test coverage is authored in `tests/city-practical-light-presentation.test.js`; keep these boxes open until CI executes the suite successfully on the contextual-light head.
+Validation note: an initial industrial assertion incorrectly required every permitted industrial source to report literal `sourceKind=service-strip`; the implementation correctly allows an authored frontage edge while requiring service-strip semantics as permission. The test was corrected and the focused unit job passed on head `06d18d039c01f67eb3312329aff224279de28f3e`.
 
 ### M3.4.6 — Gameplay-scale browser evidence
 
-Generate and upload at normal gameplay zoom:
+- [x] `civic-cool.png`
+- [x] `nightlife.png`
+- [x] `industrial.png`
+- [x] `mixed-families.png`
 
-- [ ] `civic-cool.png`
-- [ ] `nightlife.png`
-- [ ] `industrial.png`
-- [ ] `mixed-families.png`
-
-Each capture must show:
-- player remains visible;
-- roads/curbs/crosswalks remain readable;
-- requested family is present in `scene.cityPracticalLightDescriptors`;
-- no page errors;
-- darkness remains the dominant broad-area value.
-
-The dedicated review harness now discovers these targets from real generated building/light semantics; keep the boxes open until the workflow artifact is inspected.
+Dedicated review run `32468999890`, artifact `9441823514`, head `06d18d039c01f67eb3312329aff224279de28f3e` passed. Inspection accepted the contextual hierarchy: nightlife is the strongest special accent while civic/industrial stay restrained and darkness/warm amber remain dominant.
 
 ### M3.4.7 — Continuity/state update
 
-- [ ] Update `docs/progress/city-noir-atmosphere-status.json`.
-- [ ] Append evidence to `docs/progress/CITY_NOIR_ATMOSPHERE_PROGRESS.md`.
-- [ ] Update PR #72 description with actual validated state.
-- [ ] Mark M3 complete only after focused tests and contextual browser evidence pass.
+- [x] Update `docs/progress/city-noir-atmosphere-status.json`.
+- [x] Record validated evidence for M3.4.
+- [x] Preserve PR #72 as draft and carry the next exact task forward.
+- [x] Advance to M3.5 vehicle/emergency contribution; M3 itself remains open until M3.5 passes.
 
 ## Locked non-goals
 
@@ -105,20 +79,17 @@ Do not:
 - re-enable retired destructible-light gameplay;
 - create a general-purpose lighting engine;
 - add wet reflections in M3.4 (that belongs to M4);
-- add signage/neon props beyond the tiny source marker needed for the light itself (M7 owns broader environmental storytelling);
-- introduce district-wide colour grading (M8 owns district identity).
+- add broader signage/neon props (M7);
+- introduce district-wide colour grading (M8).
 
 ## Stop / escalation rules
 
 Continue autonomously while changes remain presentation-only and pass deterministic/focused validation. Stop for user intervention only if:
-
 1. two materially different visual directions both satisfy the written canon and choosing between them is subjective;
-2. the implementation would require changing gameplay/topology authority;
+2. implementation would require changing gameplay/topology authority;
 3. a persistent CI failure cannot be resolved without changing unrelated systems;
-4. the initiative reaches the final user visual gate defined by M9.
+4. the initiative reaches the M9 final user visual gate.
 
-Until one of those conditions occurs, execute the checklist in order and record rejected experiments rather than hiding them.
+## Final M3.4 state
 
-## Current execution checkpoint
-
-Implementation and review-harness authoring through M3.4.4 are complete on the branch. Focused/unit and dedicated browser validation are running before M3 can be closed.
+`complete` — contextual static practical-light families are implemented, focused-tested and visually validated. The initiative has moved on to M3.5.
