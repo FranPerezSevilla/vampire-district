@@ -69,6 +69,24 @@ A single agent iteration should normally do one of:
 
 Do not combine several roadmap milestones in one opaque commit.
 
+## User checkpoint cadence
+
+The default execution cadence for this initiative is **task → validate → document → report → wait for user direction**.
+
+After each bounded roadmap task is genuinely complete, the agent must:
+
+1. finish the relevant implementation and validation for that task;
+2. update the task document/checklist with what actually shipped and the exact evidence;
+3. update `docs/progress/city-noir-atmosphere-status.json` so completed work and the next planned task are explicit;
+4. append the relevant progress evidence to `docs/progress/CITY_NOIR_ATMOSPHERE_PROGRESS.md`;
+5. update PR #72 when its current-state summary would otherwise become stale;
+6. report the completed task, validation state, visual result and next proposed task to the user;
+7. **stop before starting the next bounded roadmap task and wait for the user’s indication.**
+
+The only exception is when the user explicitly gives a batch instruction such as “hazlo todo de golpe”, “continúa hasta que necesites mi intervención”, or otherwise clearly asks for autonomous multi-task execution. That instruction temporarily overrides the checkpoint wait for the requested scope only. Even in batch mode, every completed task must still be documented before the agent moves to the next one; batch mode removes only the wait-for-user step, never the documentation step.
+
+A generic “continúa” after a checkpoint authorizes the next bounded task, not the whole remaining roadmap, unless the wording explicitly grants broader autonomy.
+
 ## Implementation rules
 
 ### Reuse authorities
@@ -182,7 +200,7 @@ A review capture must:
 - include the same or comparable viewpoint before/after when evaluating a visual change;
 - be stored/referenced in progress documentation when it gates a milestone.
 
-Intermediate milestones do not require user approval unless the roadmap explicitly says so. The initiative has one final subjective user gate.
+Intermediate milestones do not require subjective approval to be technically accepted, but the default user-checkpoint cadence still applies between bounded tasks unless the user explicitly enables batch execution.
 
 ## Status transitions
 
@@ -211,6 +229,7 @@ Append progress evidence; do not rewrite history to make the path look cleaner.
 
 Stop implementation and set/report an appropriate state when:
 
+- a bounded task has been completed/documented and the default checkpoint cadence requires the user’s next indication;
 - the next task depends on unmerged #69 and no non-overlapping task remains;
 - a requested visual change would require moving gameplay authority;
 - tests expose an architecture conflict that cannot be resolved within the bounded task;
