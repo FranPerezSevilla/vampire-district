@@ -10,7 +10,7 @@ export const CITY_GRIME_FAMILIES = Object.freeze({
 
 export const SERVICE_FRONTAGE_GRIME_PRESENTATION = Object.freeze({
   family: CITY_GRIME_FAMILIES.SERVICE_FRONTAGE,
-  color: 0x101116,
+  color: 0x05070a,
   cullMargin: 56,
   maximumDescriptors: 12,
   maximumFragmentsPerDescriptor: 3,
@@ -204,9 +204,9 @@ function buildFragments(anchor, building, seed, sourceRoads, sourceCrosswalks, m
       y: anchor.y + anchor.tangentY * tangentOffset + anchor.normalY * outwardOffset
     };
     if (!legalReceivingPoint(center, building, sourceRoads, sourceCrosswalks)) continue;
-    const length = 6.5 + (localSeed % 8);
-    const width = 2.8 + ((localSeed >>> 16) % 5) * 0.75;
-    const alpha = 0.075 + ((localSeed >>> 22) % 7) / 100;
+    const length = 12 + (localSeed % 15);
+    const width = 4.8 + ((localSeed >>> 16) % 5) * 1.1;
+    const alpha = 0.18 + ((localSeed >>> 22) % 8) / 100;
     fragments.push(irregularFragment(
       center.x,
       center.y,
