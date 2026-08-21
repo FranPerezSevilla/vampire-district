@@ -86,20 +86,25 @@ export function advanceTrafficAgent(agent, seconds, graph, speedMultiplier = 1.1
 }
 
 export function installMacroTrafficRouteContinuityPolicy(macro) {
-  if (!macro?.advanceTraffic || !macro?.trafficFlows) {
-    throw new TypeError("Macro traffic route continuity requires MacroTrafficPoliceSystem.");
+  if (!macro || typeof macro.advanceTraffic !== "function" || !(macro.trafficFlows instanceof Map)) {
+    return Object.freeze({
+      active: false,
+      snapshot: () => ({ active: false, agents: [], totalJunctionTransitions: 0 }),
+      destroy() {}
+    });
   }
   if (macro.__nbdTrafficRouteContinuityPolicy) return macro.__nbdTrafficRouteContinuityPolicy;
 
   const originalAdvanceTraffic = macro.advanceTraffic;
-  const originalSnapshot = macro.snapshot;
+  const originalSnapshot = typeof macro.snapshot === "function" ? macro.snapshot : () => ({});
   let agents = null;
   let totalJunctionTransitions = 0;
 
   function ensureAgents() {
     if (agents) return agents;
+    if (!macro.graph?.edgeIds?.length || !(macro.trafficFlows instanceof Map)) return [];
     agents = [];
-    for (const edgeId of macro.graph?.edgeIds || []) {
+    for (const edgeId of macro.graph.edgeIds) {
       const edge = macro.graph.edges?.[edgeId];
       const flow = macro.trafficFlows.get(edgeId);
       if (!edge || !flow) continue;
@@ -143,6 +148,7 @@ export function installMacroTrafficRouteContinuityPolicy(macro) {
   function routedAdvanceTraffic(seconds) {
     if (!macro.graph) return originalAdvanceTraffic.call(this, seconds);
     const list = ensureAgents();
+    if (!list.length) return originalAdvanceTraffic.call(this, seconds);
     let completed = 0;
     for (let index = 0; index < list.length; index++) {
       const result = advanceTrafficAgent(list[index], seconds, macro.graph, macro.trafficSpeedMultiplier);
@@ -150,7 +156,7 @@ export function installMacroTrafficRouteContinuityPolicy(macro) {
       completed += result.transitions;
     }
     totalJunctionTransitions += completed;
-    macro.completedTrafficTrips += completed;
+    macro.completedTrafficTrips = finite(macro.completedTrafficTrips) + completed;
     syncFlows();
     return completed;
   }
@@ -174,8 +180,10 @@ export function installMacroTrafficRouteContinuityPolicy(macro) {
   macro.snapshot = routedSnapshot;
 
   const policy = {
+    active: true,
     snapshot() {
       return {
+        active: true,
         agents: ensureAgents().map(agent => ({ ...agent })),
         totalJunctionTransitions
       };
