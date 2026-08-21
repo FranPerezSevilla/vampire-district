@@ -16,7 +16,6 @@ import { DistrictPackSystem } from "../streaming/DistrictPackSystem.js";
 import { DistantSimulationSystem } from "../streaming/DistantSimulationSystem.js";
 import { EntityStreamSystem } from "../streaming/EntityStreamSystem.js";
 import { MacroTrafficPoliceSystem } from "../streaming/MacroTrafficPoliceSystem.js";
-import { installTrafficIntentDrivingPolicy } from "../streaming/TrafficIntentDrivingPolicy.js";
 import { installTrafficLocalAssignmentPolicy } from "../streaming/TrafficLocalAssignmentPolicy.js";
 import { TrafficImpactConsequencesSystem } from "../streaming/TrafficImpactConsequencesSystem.js";
 import { TrafficLocalBehaviorSystem } from "../streaming/TrafficLocalBehaviorSystem.js";
@@ -106,7 +105,9 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.trafficLocalAssignmentPolicy = installTrafficLocalAssignmentPolicy(scene);
     scene.trafficLocalBehaviorSystem = new TrafficLocalBehaviorSystem(scene);
     scene.trafficSteeringPresentationSystem = new TrafficSteeringPresentationSystem(scene);
-    scene.trafficIntentDrivingPolicy = installTrafficIntentDrivingPolicy(scene.trafficSteeringPresentationSystem);
+    // Keep civilian movement on authored lane geometry. The experimental intent
+    // driver is intentionally not installed until junctions have lane-level
+    // connectivity and collision-safe turn paths.
     scene.trafficPhysicalConsequencesSystem = new TrafficPhysicalConsequencesSystem(scene);
     scene.trafficMassCollisionPolicy = installTrafficMassCollisionPolicy(scene.trafficPhysicalConsequencesSystem);
     scene.trafficImpactConsequencesSystem = new TrafficImpactConsequencesSystem(scene);
@@ -227,8 +228,6 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.scene.trafficMassCollisionPolicy = null;
     this.scene.trafficPhysicalConsequencesSystem?.destroy?.();
     this.scene.trafficPhysicalConsequencesSystem = null;
-    this.scene.trafficIntentDrivingPolicy?.destroy?.();
-    this.scene.trafficIntentDrivingPolicy = null;
     this.scene.trafficSteeringPresentationSystem?.destroy?.();
     this.scene.trafficSteeringPresentationSystem = null;
     this.scene.trafficLocalBehaviorSystem?.destroy?.();
