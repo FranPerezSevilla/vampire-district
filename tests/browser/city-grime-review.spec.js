@@ -19,12 +19,14 @@ async function discoverTargets(page) {
   return page.evaluate(async () => {
     const district = await import("/phaser/src/data/district.js");
     const grime = await import("/phaser/src/policies/CityGrimePresentationPolicy.js");
+    const corners = await import("/phaser/src/policies/CityServiceCornerDressingPolicy.js");
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const camera = scene.cameras.main;
     const normalZoom = Number(camera.zoom) || 1;
     const visibleWidth = Math.max(640, Number(camera.worldView?.width) || 960);
     const visibleHeight = Math.max(420, Number(camera.worldView?.height) || 640);
     const descriptors = grime.buildServiceFrontageGrimeDescriptors(district.buildings, null);
+    const cornerDescriptors = corners.buildServiceCornerDressingDescriptors(district.buildings, descriptors, null);
 
     const edgeSafe = item => (
       item.x > visibleWidth * 0.5
@@ -38,6 +40,11 @@ async function discoverTargets(page) {
       .sort((left, right) => Number(edgeSafe(right)) - Number(edgeSafe(left))
         || String(left.sourceId).localeCompare(String(right.sourceId)))[0]
       || descriptors[0]
+      || null;
+
+    const corner = cornerDescriptors
+      .sort((left, right) => Number(edgeSafe(right)) - Number(edgeSafe(left))
+        || String(left.sourceId).localeCompare(String(right.sourceId)))[0]
       || null;
 
     let mixed = null;
@@ -60,6 +67,7 @@ async function discoverTargets(page) {
       }
     }
 
+    const atmospheric = [...descriptors, ...cornerDescriptors];
     const candidates = district.buildings.map(building => ({
       x: Number(building.x) + Number(building.w) / 2,
       y: Number(building.y) + Number(building.h) / 2,
@@ -67,8 +75,8 @@ async function discoverTargets(page) {
     }));
     const darkControl = candidates
       .map(candidate => {
-        const nearest = descriptors.length
-          ? Math.min(...descriptors.map(item => Math.hypot(item.x - candidate.x, item.y - candidate.y)))
+        const nearest = atmospheric.length
+          ? Math.min(...atmospheric.map(item => Math.hypot(item.x - candidate.x, item.y - candidate.y)))
           : Number.MAX_SAFE_INTEGER;
         return { ...candidate, nearest };
       })
@@ -78,6 +86,7 @@ async function discoverTargets(page) {
     return {
       normalZoom,
       descriptorCount: descriptors.length,
+      cornerDescriptorCount: cornerDescriptors.length,
       targets: {
         service: service ? {
           x: service.x,
@@ -85,6 +94,14 @@ async function discoverTargets(page) {
           sourceId: service.sourceId,
           profileId: service.profileId,
           buildingId: service.buildingId
+        } : null,
+        corner: corner ? {
+          x: corner.x,
+          y: corner.y,
+          sourceId: corner.sourceId,
+          profileId: corner.profileId,
+          buildingId: corner.buildingId,
+          corner: corner.corner
         } : null,
         mixed,
         darkControl
@@ -98,8 +115,6 @@ async function prepare(page, target, zoom, label) {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const center = { x: Number(target.x), y: Number(target.y) };
     await window.NBD_CITY_STREAM.forceFocus(center.x, center.y);
-    // Keep the review subject centred and move the player far enough away that
-    // the small grime fragments are not visually covered at browser screenshot scale.
     const offsets = [
       [0, 180], [0, -180], [180, 0], [-180, 0],
       [0, 140], [140, 0], [-140, 0], [0, 90], [90, 0], [-90, 0], [0, 0]
@@ -125,6 +140,17 @@ async function prepare(page, target, zoom, label) {
       y: item.y,
       fragments: item.fragments.length
     }));
+    const cornerDescriptors = (scene.cityServiceCornerDressingDescriptors || []).map(item => ({
+      sourceId: item.sourceId,
+      buildingId: item.buildingId,
+      family: item.family,
+      profileId: item.profileId,
+      sourceKind: item.sourceKind,
+      corner: item.corner,
+      x: item.x,
+      y: item.y,
+      fragments: item.fragments.length
+    }));
     const camera = scene.cameras.main;
     const player = { x: Number(scene.player?.x) || 0, y: Number(scene.player?.y) || 0 };
     const halfWorldWidth = Math.max(1, Number(camera.width) || 0) / (Number(camera.zoom) || 1) / 2;
@@ -139,7 +165,9 @@ async function prepare(page, target, zoom, label) {
       player,
       playerVisible,
       descriptors,
+      cornerDescriptors,
       profileIds: [...new Set(descriptors.map(item => item.profileId))],
+      cornerProfileIds: [...new Set(cornerDescriptors.map(item => item.profileId))],
       layer: scene.currentLayer,
       zoom: Number(camera.zoom) || 1
     };
@@ -161,7 +189,7 @@ async function capture(page, target, zoom, name) {
 
 test.describe.configure({ timeout: 120_000 });
 
-test("captures sparse service-frontage grime with a clean control area", async ({ page }) => {
+test("captures sparse service grime and service-corner dressing with a clean control area", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await mkdir(OUTPUT_DIR, { recursive: true });
@@ -171,7 +199,9 @@ test("captures sparse service-frontage grime with a clean control area", async (
 
   const discovery = await discoverTargets(page);
   expect(discovery.descriptorCount).toBeGreaterThan(0);
+  expect(discovery.cornerDescriptorCount).toBeGreaterThan(0);
   expect(discovery.targets.service, "missing service-frontage grime target").toBeTruthy();
+  expect(discovery.targets.corner, "missing service-corner dressing target").toBeTruthy();
   expect(discovery.targets.mixed, "missing mixed grime context").toBeTruthy();
   expect(discovery.targets.darkControl, "missing grime-dark control target").toBeTruthy();
 
@@ -183,25 +213,35 @@ test("captures sparse service-frontage grime with a clean control area", async (
   expect(service.descriptors.length).toBeLessThanOrEqual(12);
   expect(Math.hypot(service.player.x - service.center.x, service.player.y - service.center.y)).toBeGreaterThanOrEqual(85);
 
+  const corner = await capture(page, discovery.targets.corner, discovery.normalZoom, "service-corner-dressing");
+  expect(corner.layer).toBe(0);
+  expect(corner.playerVisible).toBe(true);
+  expect(corner.cornerDescriptors.some(item => item.sourceId === discovery.targets.corner.sourceId)).toBe(true);
+  expect(corner.cornerDescriptors.length).toBeLessThanOrEqual(6);
+  expect(corner.cornerProfileIds.every(profile => ["industrial", "warehouse"].includes(profile))).toBe(true);
+
   const mixed = await capture(page, discovery.targets.mixed, discovery.normalZoom, "mixed-grime-context");
   expect(mixed.layer).toBe(0);
   expect(mixed.playerVisible).toBe(true);
   expect(mixed.descriptors.length).toBeGreaterThan(0);
   expect(mixed.descriptors.length).toBeLessThanOrEqual(12);
+  expect(mixed.cornerDescriptors.length).toBeLessThanOrEqual(6);
 
   const darkControl = await capture(page, discovery.targets.darkControl, discovery.normalZoom, "grime-dark-control");
   expect(darkControl.layer).toBe(0);
   expect(darkControl.playerVisible).toBe(true);
   expect(darkControl.descriptors.length).toBeLessThanOrEqual(12);
+  expect(darkControl.cornerDescriptors.length).toBeLessThanOrEqual(6);
 
   await writeFile(path.join(OUTPUT_DIR, "grime-manifest.json"), `${JSON.stringify({
-    schemaVersion: 3,
+    schemaVersion: 4,
     initiative: "city-noir-atmosphere",
-    milestone: "M5.2",
-    purpose: "gameplay-scale evidence for deterministic low-frequency service-frontage grime and a sparse control area",
+    milestone: "M5.3",
+    purpose: "gameplay-scale evidence for deterministic low-frequency service-frontage grime, contextual service-corner dressing and a sparse control area",
     discovery,
     captures: {
       service: { filename: "service-frontage-grime.png", state: service },
+      corner: { filename: "service-corner-dressing.png", state: corner },
       mixed: { filename: "mixed-grime-context.png", state: mixed },
       darkControl: { filename: "grime-dark-control.png", state: darkControl }
     }
