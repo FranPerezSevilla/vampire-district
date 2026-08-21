@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { installTrafficControlledRouteActivationPolicy } from "../phaser/src/streaming/TrafficControlledRouteActivationPolicy.js";
+import { createTrafficJunctionReservationRegistry } from "../phaser/src/streaming/TrafficJunctionReservationRegistry.js";
 import { installTrafficRouteMaterializationMetadataPolicy } from "../phaser/src/streaming/TrafficRouteMaterializationPolicy.js";
 
 function topologyFixture() {
@@ -27,6 +28,7 @@ function topologyFixture() {
     transitions: {
       "a-to-b": {
         id: "a-to-b",
+        nodeId: "junction-a",
         incomingLaneId: "lane-a",
         outgoingLaneId: "lane-b",
         preferred: true,
@@ -35,6 +37,7 @@ function topologyFixture() {
       },
       "b-to-a": {
         id: "b-to-a",
+        nodeId: "junction-b",
         incomingLaneId: "lane-b",
         outgoingLaneId: "lane-a",
         preferred: true,
@@ -48,6 +51,7 @@ function topologyFixture() {
         "connector-a-to-b": {
           id: "connector-a-to-b",
           transitionId: "a-to-b",
+          nodeId: "junction-a",
           incomingLaneId: "lane-a",
           outgoingLaneId: "lane-b",
           activationSafe: true,
@@ -153,6 +157,7 @@ test("controlled route activation is installed disabled and preserves normal tra
   assert.equal(before.enabled, false);
   assert.equal(before.defaultEnabled, false);
   assert.equal(before.defaultTrafficAuthority, "authored-local-lanes");
+  assert.equal(before.routeReservationCount, 0);
   assert.deepEqual(materializer.trafficTokens().map(token => token.tokenId), ["legacy#0"]);
 
   policy.destroy();
@@ -196,11 +201,59 @@ test("one fixed pool slot follows compiler route while legacy behavior and steer
   assert.equal(sawConnector, true);
   assert.ok(snapshot.routeHop >= 1);
   assert.equal(snapshot.fixedPoolPreserved, true);
+  assert.ok(snapshot.routeReservationGrants >= 1);
 
   const stopped = policy.stop();
   assert.equal(stopped.enabled, false);
   assert.equal(stopped.fixedPoolPreserved, true);
   assert.equal(materializer.pool, poolRef);
+  assert.equal(policy.reservationRegistry.snapshot().activeReservationCount, 0);
+
+  policy.destroy();
+  metadata.destroy();
+});
+
+test("controlled route waits at incoming endpoint when junction is reserved, then enters after release", () => {
+  const { materializer, slot } = fakeMaterializer();
+  const metadata = installTrafficRouteMaterializationMetadataPolicy(materializer);
+  const registry = createTrafficJunctionReservationRegistry({ staleAfterSeconds: 5 });
+  registry.request({
+    junctionId: "junction-a",
+    tokenId: "other-car",
+    connectorId: "other-connector",
+    nowSeconds: 0
+  });
+  const policy = installTrafficControlledRouteActivationPolicy(materializer, {
+    reservationRegistry: registry
+  });
+  let snapshot = policy.start({ turnType: "right", startProgress: 0.99, routeSpeed: 80 });
+  const controlledTokenId = snapshot.tokenId;
+  const slotIndex = snapshot.slotIndex;
+
+  snapshot = policy.step(0.05);
+  assert.equal(snapshot.stage, "lane");
+  assert.equal(snapshot.stageProgress, 1);
+  assert.equal(snapshot.lastBlockedReason, "junction-yield");
+  assert.ok(snapshot.junctionYieldCount >= 1);
+  assert.equal(snapshot.lastYieldJunctionId, "junction-a");
+  assert.equal(snapshot.lastYieldOwnerTokenId, "other-car");
+  assert.equal(snapshot.routeReservationCount, 1);
+  assert.equal(registry.reservationFor("junction-a")?.tokenId, "other-car");
+  assert.equal(snapshot.assignmentStable, true);
+  assert.equal(snapshot.slotIndex, slotIndex);
+  assert.equal(slot.tokenId, controlledTokenId);
+  assert.equal(slot.behaviorReason, "junction-yield");
+
+  registry.release({ junctionId: "junction-a", tokenId: "other-car", reason: "test-release" });
+  snapshot = policy.step(0.05);
+  assert.equal(snapshot.stage, "connector");
+  assert.equal(snapshot.connectorId, "connector-a-to-b");
+  assert.equal(snapshot.lastBlockedReason, null);
+  assert.equal(registry.reservationFor("junction-a")?.tokenId, controlledTokenId);
+  assert.equal(snapshot.assignmentStable, true);
+
+  policy.stop();
+  assert.equal(registry.reservationFor("junction-a"), null, "controlled stop releases owned connector reservation");
 
   policy.destroy();
   metadata.destroy();
