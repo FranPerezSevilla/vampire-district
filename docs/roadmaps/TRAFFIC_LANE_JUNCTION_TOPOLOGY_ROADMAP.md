@@ -2,578 +2,243 @@
 
 Canonical implementation roadmap for PR #73 (`codex/traffic-junction-topology`).
 
+> **Live execution state:** always read `docs/progress/traffic-lane-junction-topology-status.json` first. This roadmap defines phase contracts; the status JSON owns the exact completed task list and `nextTask`.
+
 ## Mission
 
-Make civilian traffic cross intersections continuously and legally while preserving the lane/road geometry that keeps cars on the correct side of the road.
+Make civilian traffic cross intersections continuously and legally while preserving compiler-owned road geometry and right-hand lane discipline.
 
 The target behaviour is:
 
-`authored lane -> explicit junction connector -> authored lane`
+`compiler-owned directed lane -> activation-safe junction connector -> compiler-owned directed lane`
 
 with one stable vehicle identity, one stable materialized pool slot, no coordinate snap and no free-form shortcut across sidewalks/buildings.
 
-This initiative exists because the previous experiment made the macro district graph a local movement authority. That graph knows connectivity but not lane geometry, so cars could cut across blocks, use sidewalks, cross buildings and enter the wrong side of a road. That architecture must not return.
+This initiative exists because a previous experiment made the macro district graph a local movement authority. That graph knows aggregate connectivity but not physical lane geometry, so cars could cut across blocks, use sidewalks, cross buildings and enter the wrong side of a road. That architecture must not return.
 
 ## Canonical authority stack
 
-Authority is deliberately one-way. Lower layers may consume higher-layer intent, but must not invent geometry owned elsewhere.
-
-1. **Compiler-owned road/junction geometry**
-   - `tools/city-compiler/generate-road-topology.js`
-   - generated road/junction topology
-2. **Authored traffic lane manifest**
-   - `phaser/assets/city/packs/traffic-lanes.json`
-   - exact forward/reverse lane polylines and authored junction envelopes
-3. **Derived lane/junction topology**
-   - `phaser/src/streaming/TrafficLaneJunctionTopology.js`
-   - directed lanes, lane endpoint ownership, legal lane-to-lane choices and connector micro-lanes
-4. **Route identity / route cursor**
-   - planned in this roadmap
-   - decides which directed lane/connector comes next for a stable traffic token
-   - never supplies arbitrary world coordinates
-5. **Local lane follower / local traffic behaviour**
-   - existing local traffic behaviour remains the physical movement authority
-   - samples the current authored lane or validated connector micro-lane
-6. **Lifecycle/materialization**
-   - `TrafficLifecyclePolicy` + materialization/local assignment
+1. **Compiler-owned road/network geometry**
+   - `tools/city-compiler/district-streaming.js`
+   - authoritative physical network nodes/segments derived from the city road graph
+2. **Compiler-owned local lane topology**
+   - `tools/city-compiler/traffic-lane-topology.js`
+   - two directed right-hand lanes per physical network segment; explicit compiler-node ownership
+3. **Compiler-owned junction connectors**
+   - `tools/city-compiler/traffic-junction-connectors.js`
+   - tangent-preserving, road-surface-validated connector micro-lanes
+4. **Generated traffic pack**
+   - `tools/city-compiler/traffic-lane-topology-integration.js`
+   - additive pack v6 `localTopology`; legacy `edges`/`junctions` remain compatibility data during migration
+5. **Pure route identity / route cursor**
+   - `phaser/src/streaming/TrafficRouteCursor.js`
+   - decides/advances only legal compiler lane/connector stages; never supplies arbitrary world coordinates
+6. **Local lane follower / visible movement**
+   - existing authored-local-lane behaviour remains authoritative until controlled activation milestones
+7. **Lifecycle/materialization**
    - owns spawn/despawn/pool retention, not route geometry
-7. **Macro traffic simulation**
-   - owns cheap city-scale population/load progression
-   - may consume route identity after migration, but never becomes local geometry authority
+8. **Macro traffic simulation**
+   - aggregate population/load compatibility only; macro centres/phases never become local geometry authority
 
 ## Non-negotiable invariants
 
-Every milestone must preserve all of these.
-
-- Cars drive on the authored right-side lane for their direction.
-- A vehicle can change streets only through a connector derived from exact lane endpoints at the same authored junction.
-- Macro graph node centres, district centres and straight-line target points are never valid local driving geometry.
-- No runtime system may lerp/steer directly from one road to another across arbitrary world space.
-- Connector first point equals the incoming lane endpoint exactly.
-- Connector last point equals the outgoing lane start exactly.
-- Active connectors stay within their validated junction envelope.
-- A materialized vehicle keeps the same `tokenId` and pool slot through a junction.
-- No normal despawn or pool eviction while a vehicle is approaching/crossing a junction.
-- Forced lifecycle exits remain legal: layer switch, hijack/ownership transfer, destruction and explicit teardown.
-- A route segment transition never teleports x/y.
-- New vehicles are born offscreen and ordinary vehicles die offscreen unless diegetically justified.
-- U-turns are avoided when another legal continuation exists.
-- Dead-end handling must use an explicit legal connector/reversal or terminate the route offscreen; never reverse/teleport visibly at the lane endpoint.
-- Do not hand-edit generated city topology as a shortcut.
-- Do not re-enable `MacroTrafficRouteContinuityPolicy` or `TrafficIntentDrivingPolicy` wholesale. Their earlier architecture is explicitly superseded.
-
-## Definition of “continuous”
-
-A junction traversal is continuous only when all of the following remain stable across `lane -> connector -> lane`:
-
-- traffic identity;
-- materialization slot;
-- world position (no snap larger than normal per-frame movement);
-- heading progression;
-- route history/hop count;
-- lifecycle state;
-- archetype/vehicle presentation;
-- occupancy/collision participation.
-
-A car disappearing at the lane end and a visually identical car appearing on another street does **not** count as continuity.
+- Cars use the right-hand directed lane for travel direction.
+- A physical route transition uses compiler-owned directed lanes and an activation-safe connector/direct handoff at the exact shared compiler node.
+- Macro graph node centres, district centres and straight-line targets are never valid local driving geometry.
+- No runtime system may steer directly from one street to another across arbitrary world space.
+- Connector first/last points equal exact lane endpoints.
+- Production preferred connectors remain inside compiler-owned road surfaces and pass tangent continuity.
+- Stable `tokenId` survives every route stage and later every visible junction crossing.
+- A route transition never teleports x/y.
+- Missing route geometry produces an explicit blocked state; it never triggers a free-form fallback.
+- Once visible crossing is activated, normal despawn/pool eviction is forbidden during crossing.
+- U-turns are avoided whenever another preferred legal continuation exists; dead-end reversal is explicit.
+- Do not hand-edit generated city topology.
+- Do not re-enable `MacroTrafficRouteContinuityPolicy` or `TrafficIntentDrivingPolicy` wholesale.
 
 ---
 
 # Milestones
 
-## M0 — Read-only lane/junction topology foundation
+## M0 — Read-only topology foundation
 
-**State:** complete on the implementation head that produced Tests #2046.
+**State:** complete.
 
-### Goal
+Purpose: create the initial directed-lane/connector diagnostic model without changing visible movement. Its production audit later proved that legacy district-pair lanes were the wrong physical topology source.
 
-Build a lane-level topology without changing current traffic movement.
-
-### Scope
-
-- Treat `edgeId + direction` as a directed lane.
-- Attach lane starts/ends to authored junctions geometrically.
-- Derive legal outgoing directed lanes at the same junction.
-- Classify straight/left/right/U-turn choices.
-- Generate sampled connector micro-lanes between exact endpoints.
-- Measure connector confinement to the junction envelope.
-- Inject only validated connector micro-lanes into the loaded lane manifest.
-- Expose topology through diagnostics.
-- Keep `TrafficLocalBehaviorSystem`/existing local lane behaviour authoritative.
-
-### Required evidence
-
-- focused unit coverage;
-- unit suite green;
-- browser boot green;
-- browser campaign green;
-- browser systems shards 1/3, 2/3 and 3/3 green;
-- no current traffic behaviour activation.
-
-### Exit criteria
-
-- [x] Directed lanes exist.
-- [x] Lane endpoint junction ownership exists.
-- [x] Legal continuations exist.
-- [x] Deterministic U-turn avoidance exists.
-- [x] Exact endpoint connector geometry exists.
-- [x] Connector envelope validation exists.
-- [x] Runtime topology is read-only with respect to driving.
-- [x] Tests #2046 green on implementation head `f481add4c79d6705de017e67e08810de35a24347`.
+Key evidence: GitHub Tests #2046 / run `32472690729` — full success.
 
 ---
 
-## M1 — Production topology audit and hard safety contract
+## M1 — Production topology audit and compiler-owned hard safety contract
 
-**State:** next.
+**State:** complete.
 
-### Goal
+### M1.1 — Production audit
 
-Prove that the production lane manifest is safe enough to become a future route authority before any vehicle consumes it.
+Proved legacy `traffic-lanes.json.edges` are district-anchor/portal compatibility paths, not physical lane segments. The large orphan/ambiguous/tangent-failure counts explicitly blocked activation of the M0 endpoint-inference model.
 
-### Tasks
+### M1.2 — Compiler-owned directed lane graph
 
-#### M1.1 — Production manifest audit
+Generate two directed right-hand lanes per `district-streaming network.segment`, with explicit `fromNodeId/toNodeId` ownership and deterministic legal transitions.
 
-Add focused production-data tests/diagnostics that report:
+Key evidence: Tests #2065 — full success.
 
-- directed lane count;
-- junction count;
-- connected lane count;
-- orphan lane count;
-- connector count by turn type;
-- unsafe connector count;
-- lane endpoints that attach to zero junctions;
-- endpoints that ambiguously match multiple junction envelopes;
-- connectors whose endpoint/tangent continuity exceeds tolerance.
+### M1.3 — Additive pack integration
 
-No silent filtering: every rejected/unsafe production connector must be explainable in diagnostics.
+Add local compiler topology to generated traffic pack schema v6 while preserving legacy compatibility edges/junctions.
 
-#### M1.2 — Geometric safety checks
+Key evidence: Tests #2068 — full success.
 
-Strengthen validation so an active connector must satisfy:
+### M1.4 — Tangent-safe production connectors
 
-- exact first/last endpoint equality;
-- same-junction ownership for incoming end/outgoing start;
-- every sampled point inside the allowed junction envelope;
-- no pathological zero-length connector;
-- tangent/heading change is finite;
-- no outgoing lane starts in the wrong junction;
-- no duplicate connector IDs or duplicate lane-pair routes.
+Generate cubic connectors from trimmed lane approaches; validate exact endpoints, compiler-node ownership, road-surface confinement and tangent continuity. Unsafe connectors are hard rejected.
 
-Where practical, validate against compiler-owned road/junction geometry rather than only radial distance.
+Key evidence: Tests #2071 and #2073 — full success, including zero rejected/outside-road/tangent-failing preferred production connectors.
 
-#### M1.3 — Production diagnostics contract
+### M1.5 — Retire provisional runtime endpoint inference
 
-Expose compact snapshot fields suitable for browser assertions and future agents. Do not add player-facing debug UI unless needed; browser/API diagnostics are enough.
+Runtime no longer installs the legacy nearest-junction topology. Compiler `localTopology` is diagnostic/read-only and visible movement remains unchanged.
+
+Key evidence: Tests #2083 — full success.
 
 ### Exit criteria
 
-- production unsafe connector count is zero **for exposed/activatable connectors**;
-- every unexplained orphan/ambiguity is either fixed or explicitly classified as non-routable;
-- full CI green;
-- movement still unchanged.
-
-### Do not proceed to M2 if
-
-- any activatable connector can leave road/junction authority;
-- lane endpoint ownership is ambiguous in production;
-- connector generation needs arbitrary building-aware shortcuts.
+- [x] Physical lanes are compiler-node-owned.
+- [x] Right-hand lane topology is deterministic.
+- [x] Production preferred connectors are activation-safe.
+- [x] Generated pack integration preserves legacy compatibility data.
+- [x] Provisional legacy endpoint inference is removed from the future runtime path.
+- [x] Visible traffic behaviour remains unchanged.
+- [x] Full CI green.
 
 ---
 
-## M2 — Stable route-agent state model (pure data, no runtime driving)
+## M2 — Stable route-agent state model (pure data)
 
-### Goal
+**State:** in progress. M2.1 and M2.2 complete; `status.json` owns the exact next task.
 
-Replace “edge-local phase wraps from 1 back to 0” conceptually with a stable route identity, without feeding that state into local movement yet.
+### M2.1 — Pure route cursor — complete
 
-### Planned representation
+Implement immutable route-agent state that retains stable `tokenId`, route hop, current lane/stage, connector/next lane while crossing, previous lane and bounded stage progress.
 
-A route agent should minimally retain:
+`advanceTrafficRouteAgent(...)` consumes elapsed seconds by physical stage length and may cross multiple stage boundaries in one call while preserving identity.
 
-- stable `tokenId` independent of current edge;
-- `routeHop` / deterministic choice seed;
-- current directed lane key;
-- current route stage: `lane | connector`;
-- current connector ID when crossing;
-- next outgoing lane key when crossing;
-- normalized or distance progress on the current stage;
-- previous lane key for diagnostics/U-turn rules;
-- archetype/traffic metadata required by materialization compatibility.
+### M2.2 — Deterministic legal continuation — complete
 
-### Tasks
+Only compiler `preferred` transitions may be selected. Selection is deterministic from stable token + route hop. Required geometry must be an activation-safe compiler connector or explicit validated direct handoff. Missing geometry blocks safely.
 
-#### M2.1 — Pure route cursor
+Key evidence for M2.1/M2.2: Tests #2087 / run `32486691651` — unit, boot, campaign and all system shards successful.
 
-Implement a pure module that can advance:
+### M2.3 — Compatibility projection — next
 
-`lane -> connector -> outgoing lane`
+Build a pure output-only adapter from local route agents to legacy macro traffic diagnostics/load.
 
-while consuming leftover simulation time and retaining the same token identity.
+Requirements:
 
-No scene, Phaser object, materializer or rendering dependency.
+- district counts use compiler lane `districtId`;
+- explicit compatibility provenance may identify a legacy macro edge;
+- absent provenance, `sourceRoadEdgeId` may identify a macro edge only if membership is unique;
+- zero matches are unmatched, multiple matches are ambiguous;
+- never guess an ambiguous macro edge;
+- conserve total population across projected/ambiguous/unmatched buckets;
+- do not invent legacy phase from world distance/macro centres;
+- do not install into live macro traffic until M3.
 
-#### M2.2 — Deterministic continuation
+### M2 exit criteria
 
-Route choices must come from `TrafficLaneJunctionTopology.chooseContinuation(...)`, not from district-centre geometry.
-
-Rules:
-
-- non-U-turn continuation preferred;
-- explicit U-turn permitted only when it is the only legal continuation;
-- no connector means route cannot invent a path;
-- deterministic token/hop input produces deterministic choice.
-
-#### M2.3 — Compatibility projection
-
-Define a projection from route agents back to existing per-edge traffic-load/flow diagnostics so macro population metrics can remain stable during migration.
-
-Do **not** modify the live macro system in this task unless a pure adapter is proven first.
-
-### Exit criteria
-
-Unit tests prove:
-
-- identity survives multiple junctions;
-- remaining time is consumed across stage boundaries;
-- no same-edge phase wrap masquerades as a trip;
-- route choices use legal connector topology only;
-- traffic count is conserved;
-- compatibility projection preserves expected edge/district load semantics within documented tolerance.
+- stable identity survives arbitrary pure lane/connector/lane progression;
+- deterministic route selection uses local compiler topology only;
+- compatibility projection is deterministic, conservative and output-only;
+- no macro coordinates influence route choice;
+- unit/focused validation is green;
+- visible runtime remains unchanged.
 
 ---
 
 ## M3 — Shadow macro continuity bridge
 
-### Goal
+**State:** planned.
 
-Run route-aware stable agents beside the existing macro traffic flow **without allowing them to control materialized cars**.
+Run stable route agents beside the existing macro flow without allowing them to control materialized cars.
 
-### Tasks
-
-#### M3.1 — Initialize stable agents from current macro flows
-
-Create deterministic stable identities from the current aggregate flow population once, then let route agents move across lane/connector/lane stages.
-
-#### M3.2 — Shadow advance
-
-Advance shadow agents on the same macro tick. Keep the existing live `trafficFlows` behaviour feeding current materialization until parity is proven.
-
-#### M3.3 — Compare and instrument
-
-Snapshot:
-
-- stable agent count;
-- route transitions;
-- per-edge projected load;
-- district projected load;
-- dead-end events;
-- U-turn fallback events;
-- illegal/no-connector attempts (must remain zero for activatable paths).
-
-### Exit criteria
-
-- shadow mode does not change visible traffic;
-- no identity loss;
-- no unbounded agent creation/destruction;
-- macro traffic count conserved over long simulated runs;
-- projected density remains compatible enough that materialization budget/feel will not collapse when activated;
-- full CI green.
+- initialize deterministic route agents with explicit compatibility provenance where possible;
+- shadow-advance local routes;
+- project counts/load back for comparison;
+- measure divergence and unmapped/ambiguous provenance;
+- no visible movement authority.
 
 ---
 
 ## M4 — Local continuous traversal harness
 
-### Goal
+**State:** planned.
 
-Prove a materialized test vehicle can physically follow `lane -> connector -> lane` using the existing lane-following authority, before connecting it to global macro identity.
-
-### Tasks
-
-#### M4.1 — Route-segment lane lookup
-
-Allow the local behaviour layer to resolve both authored lane IDs and validated `traffic-connector:*` micro-lanes through one sampling interface.
-
-Do not add a second steering implementation.
-
-#### M4.2 — Exact handoff
-
-At authored-lane completion:
-
-1. retain current world x/y and heading;
-2. switch route segment to connector whose first point equals current lane endpoint;
-3. advance along connector;
-4. at connector completion switch to outgoing authored lane whose first point equals connector endpoint;
-5. continue without resetting position to a remote phase sample.
-
-#### M4.3 — Turn-speed profile
-
-Use bounded turn-speed intent by turn type if needed (straight > gentle turn > sharp/U-turn), but movement remains lane-following. No free-form “drive toward target lane” steering.
-
-### Required tests
-
-- straight connector traversal;
-- right turn;
-- left turn;
-- legal U-turn fallback;
-- exact position continuity at both handoffs;
-- bounded heading change;
-- connector path remains inside junction authority;
-- no building/sidewalk shortcut.
-
-### Exit criteria
-
-Pure/integration harness can repeatedly cross representative intersections with no snap and no route escape.
+Physically traverse representative `lane -> connector -> lane` paths in an isolated harness using existing lane-following movement. Prove position/heading continuity and same identity without enabling normal traffic.
 
 ---
 
-## M5 — Lifecycle, materialization and pool-retention integration
+## M5 — Lifecycle/materialization/pool-retention integration
 
-### Goal
+**State:** planned.
 
-Make junction crossing safe from spawn/despawn churn while preserving forced-release semantics.
-
-### Tasks
-
-#### M5.1 — Route-aware lifecycle transition
-
-Use actual route stage rather than only edge phase heuristics where possible:
-
-- authored lane near end -> `APPROACH_JUNCTION`;
-- connector active -> `CROSSING_JUNCTION`;
-- outgoing lane established -> `CRUISING`/situational state.
-
-#### M5.2 — Crossing retention
-
-While `CROSSING_JUNCTION`:
-
-- same `tokenId`;
-- same pool slot;
-- no normal release;
-- no normal pool eviction;
-- no archetype reset;
-- no visual rematerialization.
-
-#### M5.3 — Forced exits remain authoritative
-
-Still permit explicit teardown for:
-
-- leaving street layer;
-- hijack/ownership transfer;
-- destroyed/disabled entity flow where applicable;
-- scene shutdown;
-- explicit force release.
-
-#### M5.4 — Orphan route handling
-
-If route identity disappears or ends while the car is visible, never pop the car. Finish a safe visible stage or retain until offscreen according to the documented lifecycle contract.
-
-### Exit criteria
-
-Regression tests cover camera movement, pool pressure, layer switch and token disappearance while approaching/crossing.
+Preserve the same route token/materialization slot through visible junction crossing. Protect crossing from normal despawn/eviction while retaining forced exits for hijack, destruction, layer switch and teardown.
 
 ---
 
-## M6 — Opt-in browser activation at controlled junctions
+## M6 — Opt-in browser activation
 
-### Goal
+**State:** planned.
 
-Activate the real route traversal only in a deterministic browser/test scenario before default free-roam traffic sees it.
-
-### Activation rule
-
-Use an explicit feature/test flag or scenario gate. Default gameplay traffic remains on the proven current path until this milestone passes.
-
-### Required browser scenarios
-
-At minimum:
-
-- one straight crossing;
-- one right turn;
-- one left turn;
-- repeated traversal through several connected intersections;
-- camera follows the same `tokenId` across multiple route hops;
-- camera pans away/back during approach/crossing;
-- a route is followed near buildings/curbs that previously exposed shortcut bugs.
-
-### Automated invariants
-
-Capture/assert per-frame or sampled telemetry:
-
-- stable token ID;
-- stable slot ID/index;
-- maximum position delta below teleport threshold;
-- current lane/connector belongs to expected route;
-- connector points remain in junction authority;
-- outgoing side/direction is correct;
-- no building/sidewalk overlap caused by route handoff.
-
-### Exit criteria
-
-Controlled browser activation is green and visually sane before any default traffic rollout.
+Activate compiler route traversal only in controlled browser scenarios/intersections. Add telemetry for illegal transition, teleport, route block and lifecycle violations.
 
 ---
 
 ## M7 — Junction occupancy, yielding and conflict handling
 
-### Goal
+**State:** planned.
 
-Prevent otherwise-correct connector paths from producing intersection pile-ups/deadlocks.
+Add a lightweight deterministic connector reservation/yield model:
 
-### MVP traffic rule
+- reserve before entry;
+- wait on incoming lane on conflict;
+- normally clear once inside;
+- release on exit/forced teardown;
+- recover stale reservations;
+- bound waiting/retry to avoid deadlocks.
 
-Prefer a simple deterministic reservation/yield model over a simulated traffic-light system unless existing city data already owns signals.
-
-- vehicle reserves its intended connector/conflict zone before entering;
-- if reservation is unavailable, it waits on the incoming lane before the connector;
-- once inside a connector, it should normally clear the junction rather than voluntarily stop in the middle;
-- physically blocked vehicles may still enter `BLOCKED` and remain lifecycle-protected;
-- reservations have expiry/recovery so a vanished/destroyed car cannot deadlock the junction.
-
-### Tasks
-
-- define connector conflict/occupancy grouping;
-- deterministic reservation ordering;
-- following/yield behaviour at approach;
-- release reservation on connector exit/forced teardown;
-- deadlock timeout/recovery;
-- multi-car tests from perpendicular approaches.
-
-### Exit criteria
-
-- no two cars are intentionally assigned conflicting connector occupancy at once;
-- no indefinite mid-junction yield deadlock;
-- FOLLOWING/AVOIDING/BLOCKED semantics remain compatible;
-- browser contention tests green.
+Do not overbuild a full traffic-light simulator unless city data explicitly owns one.
 
 ---
 
-## M8 — Default runtime route activation and macro migration
+## M8 — Default runtime activation and macro migration
 
-### Goal
+**State:** planned.
 
-Make stable route agents + connector traversal the default civilian traffic path.
+Only after earlier gates pass, make compiler route identity the normal civilian continuity path, migrate macro population/load accounting to the compatibility projection and retire obsolete edge-phase identity behaviour.
 
-### Tasks
-
-#### M8.1 — Feed materialization from stable route identity
-
-Materializer consumes stable route tokens rather than edge-local ephemeral identity.
-
-#### M8.2 — Retire edge-local wrap as route semantics
-
-The macro system may retain aggregate flow views for diagnostics/load, but visible route identity must no longer wrap `phase 1 -> phase 0` on the same edge as its continuity mechanism.
-
-#### M8.3 — Production browser soak
-
-Add bounded soak coverage across normal free-roam traffic:
-
-- multiple vehicles;
-- many route hops;
-- camera movement;
-- player driving around/through traffic;
-- police escalation present as regression coverage;
-- rooftop/street layer switch;
-- traffic pool remains bounded.
-
-Track at least:
-
-- illegal route transitions = 0;
-- unsafe connector uses = 0;
-- teleport events = 0;
-- duplicate stable token IDs = 0;
-- mid-crossing normal despawns = 0;
-- pool budget violations = 0.
-
-#### M8.4 — Performance
-
-Ensure route identity/connector lookups do not materially regress browser performance. Pre-index topology; do not scan all junctions/lanes every frame.
-
-### Exit criteria
-
-Default runtime uses lane/junction topology and full CI is green.
+Required soak/browser evidence includes zero illegal road exits, zero visible teleports, bounded population/pool and no regression to police/vehicle dynamics.
 
 ---
 
 ## M9 — Legacy cleanup, documentation and user validation gate
 
-### Goal
+**State:** planned.
 
-Remove obsolete architecture and stop for final gameplay validation.
+Remove superseded experiments/compatibility code only after production migration is proven. Synchronize docs and diagnostics.
 
-### Tasks
-
-- remove or clearly retire unused `MacroTrafficRouteContinuityPolicy` experiment;
-- remove or clearly retire unused `TrafficIntentDrivingPolicy` experiment;
-- remove compatibility code that no longer has a runtime consumer;
-- ensure there is exactly one route-geometry authority;
-- update traffic architecture docs/report;
-- update status to `final-validation-pending`;
-- provide a short manual playtest checklist and preview/deployment link if available.
-
-### Final manual playtest checklist
-
-The user should be able to observe:
-
-1. Follow the same civilian car through 5+ intersections; it remains the same vehicle.
-2. Straight/right/left turns stay on road and enter the correct side.
-3. No car cuts across sidewalks/buildings between junctions.
-4. No visible disappear/reappear at intersection boundaries.
-5. Cars queue/yield before an occupied junction rather than freezing in its centre.
-6. Camera movement does not recycle a crossing vehicle.
-7. Rooftop/street switching still clears/rematerializes civilian traffic correctly.
-8. Player traffic collisions/obstacle avoidance still work.
-9. Wanted 2/3 police behaviour from #71 has not regressed.
-
-### Final gate
-
-- explicit user gameplay approval required;
-- autonomous work stops at `final-validation-pending`;
-- **no automatic merge** of #73 without that approval.
+Autonomous work stops at `final-validation-pending`. Provide the user a gameplay validation checklist/preview. **No automatic merge; explicit user approval is required.**
 
 ---
 
-# Validation ladder
+## Milestone execution rule
 
-Every agent iteration should run/observe the smallest relevant level first, then escalate.
+At every milestone boundary:
 
-1. Focused unit test(s) for the changed module.
-2. `npm run test:unit` / repository unit CI.
-3. Affected browser/system test(s).
-4. Full GitHub Tests workflow when the milestone changes runtime integration.
-5. Browser soak/manual evidence only after prior layers are green.
-
-Do not weaken unrelated tests merely to obtain green CI. If `main` introduces a changed invariant, first determine whether the branch is stale and synchronize it before modifying expectations.
-
-# Main-branch synchronization rule
-
-At the start of every new milestone and before final merge:
-
-1. fetch live PR/head/main state;
-2. compare the PR base/head with current `main`;
-3. inspect changes touching:
-   - `tools/city-compiler/generate-road-topology.js`;
-   - `traffic-lanes.json` or its generator;
-   - `phaser/src/streaming/` traffic/materialization/lifecycle;
-   - road/junction collision authority;
-4. integrate `main` first if those authorities changed;
-5. rerun the relevant topology/traffic tests.
-
-Presentation-only street/atmosphere changes should not become traffic geometry authority.
-
-# Agent execution discipline
-
-Work one bounded `nextTask` from `docs/progress/traffic-lane-junction-topology-status.json` at a time.
-
-For every completed task:
-
-- implement the smallest coherent change;
-- add/update focused tests;
-- update the machine-readable status JSON;
-- append evidence to the progress log;
-- update the roadmap only if the contract genuinely changes;
-- update the PR summary if milestone state materially changes;
-- do not silently start the next risky activation milestone while CI for the current one is red.
-
-If a task reveals a deeper architectural issue, preserve the authority stack above and revise the roadmap/status explicitly rather than inserting a local shortcut.
+1. fetch live PR #73 and live `main`;
+2. integrate/revalidate if relevant compiler/traffic files changed on `main`;
+3. execute only the machine-readable `nextTask`;
+4. add focused tests before activation;
+5. keep unsafe/new authority behind the milestone gate;
+6. update status + progress with exact commit/CI evidence;
+7. do not advance on unexplained red CI.
