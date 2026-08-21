@@ -4,6 +4,16 @@ export const PRACTICAL_LIGHT_FAMILIES = Object.freeze({
   WARM_STREET: "warm-street"
 });
 
+function buildSoftFalloffLayers(stepCount = 18) {
+  return Object.freeze(Array.from({ length: stepCount }, (_, index) => {
+    const t = index / Math.max(1, stepCount - 1);
+    return Object.freeze({
+      radiusScale: 1 - t * 0.86,
+      alpha: 0.006 + t * 0.008
+    });
+  }));
+}
+
 export const WARM_STREET_LIGHT_PRESENTATION = Object.freeze({
   family: PRACTICAL_LIGHT_FAMILIES.WARM_STREET,
   color: 0xf2b35e,
@@ -13,12 +23,7 @@ export const WARM_STREET_LIGHT_PRESENTATION = Object.freeze({
   maximumRadius: 58,
   verticalScale: 0.82,
   cullMargin: 72,
-  layers: Object.freeze([
-    Object.freeze({ radiusScale: 1, alpha: 0.034 }),
-    Object.freeze({ radiusScale: 0.68, alpha: 0.052 }),
-    Object.freeze({ radiusScale: 0.40, alpha: 0.074 }),
-    Object.freeze({ radiusScale: 0.18, alpha: 0.10 })
-  ])
+  layers: buildSoftFalloffLayers()
 });
 
 function finite(value, fallback = 0) {
@@ -103,6 +108,9 @@ function drawSoftWarmPool(graphics, descriptor) {
   const centreX = descriptor.x + descriptor.offsetX;
   const centreY = descriptor.y + descriptor.offsetY;
 
+  // Many very-low-alpha fills approximate a radial falloff without a shader.
+  // This intentionally avoids the visible bullseye bands produced by a few
+  // large concentric spotlight discs at normal gameplay zoom.
   for (const layer of style.layers) {
     graphics.fillStyle(style.color, layer.alpha * descriptor.intensity);
     graphics.fillEllipse(
@@ -114,8 +122,8 @@ function drawSoftWarmPool(graphics, descriptor) {
   }
 
   // Pure-overhead source marker: tiny fixture cap, not a perspective lamp sprite.
-  graphics.fillStyle(style.fixtureColor, 0.96).fillCircle(descriptor.x, descriptor.y, 3.2);
-  graphics.fillStyle(style.coreColor, 0.92).fillCircle(descriptor.x, descriptor.y, 1.65);
+  graphics.fillStyle(style.fixtureColor, 0.96).fillCircle(descriptor.x, descriptor.y, 3.0);
+  graphics.fillStyle(style.coreColor, 0.88).fillCircle(descriptor.x, descriptor.y, 1.45);
 }
 
 export function installCityPracticalLightPresentationPolicy(GameSceneClass) {
@@ -141,10 +149,10 @@ export function installCityPracticalLightPresentationPolicy(GameSceneClass) {
     return descriptors;
   };
 
-  // CitySurfacePresentationPolicy composes roads/sidewalks/crosswalks before
-  // buildings. Inject the practical-light pass immediately after crosswalks so
-  // building mass naturally occludes ground light instead of receiving a fake
-  // fullscreen glow. The semantic `lights` collection remains unchanged.
+  // Crosswalk rendering is a stable presentation-only composition seam shared
+  // by the street policies. Injecting here keeps light generation out of city
+  // topology/gameplay state and guarantees the pool is applied only on street
+  // redraws; later M3/M4 passes may refine receiving-surface clipping.
   prototype.drawCrosswalkNetwork = function viceBloodDrawCrosswalkNetworkWithPracticalLights(...args) {
     const result = drawCrosswalkNetwork.apply(this, args);
     this.drawWarmStreetPracticalLights(this.urbanRenderBounds);
