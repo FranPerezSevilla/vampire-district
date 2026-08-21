@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CITY_WORLD, lights } from "../phaser/src/data/district.js";
+import { buildings, CITY_WORLD, lights } from "../phaser/src/data/district.js";
 import {
   PRACTICAL_LIGHT_FAMILIES,
+  WARM_FRONTAGE_LIGHT_PRESENTATION,
   WARM_STREET_LIGHT_PRESENTATION,
+  buildWarmFrontageLightDescriptors,
   buildWarmStreetLightDescriptors
 } from "../phaser/src/policies/CityPracticalLightPresentationPolicy.js";
 
@@ -73,11 +75,50 @@ test("broken-light compatibility input can suppress a source without mutating th
   assert.deepEqual(snapshot(source), before);
 });
 
-test("warm light layers are soft fills rather than hard spotlight outlines", () => {
+test("warm street falloff uses many low-alpha fills instead of visible spotlight bands", () => {
   const layers = WARM_STREET_LIGHT_PRESENTATION.layers;
-  assert.ok(layers.length >= 3);
+  assert.ok(layers.length >= 12);
   assert.equal(layers[0].radiusScale, 1);
-  assert.ok(layers.every(layer => layer.alpha > 0 && layer.alpha <= 0.12));
+  assert.ok(layers.every(layer => layer.alpha > 0 && layer.alpha <= 0.02));
   assert.ok(layers.every((layer, index) => index === 0 || layer.radiusScale < layers[index - 1].radiusScale));
-  assert.ok(layers.every((layer, index) => index === 0 || layer.alpha > layers[index - 1].alpha));
+  assert.ok(layers.every((layer, index) => index === 0 || layer.alpha >= layers[index - 1].alpha));
+});
+
+test("warm frontage spill is deterministic, sparse and restricted to ordinary building families", () => {
+  assert.ok(buildings.length > 0);
+  const sourceBefore = snapshot(buildings.slice(0, 12));
+  const bounds = { x: 0, y: 0, w: CITY_WORLD.width, h: CITY_WORLD.height };
+
+  const first = buildWarmFrontageLightDescriptors(buildings, bounds);
+  const second = buildWarmFrontageLightDescriptors(buildings, bounds);
+
+  assert.deepEqual(first, second);
+  assert.deepEqual(snapshot(buildings.slice(0, 12)), sourceBefore);
+  assert.ok(first.length > 0, "city should contain at least one selected warm frontage");
+  assert.ok(first.length < buildings.length, "frontage lighting must remain sparse rather than light every building");
+  assert.ok(first.every(descriptor => descriptor.family === PRACTICAL_LIGHT_FAMILIES.WARM_FRONTAGE));
+  assert.ok(first.every(descriptor => ["default", "residential", "commercial"].includes(descriptor.profileId)));
+  assert.ok(first.every(descriptor => descriptor.frontage !== "none"));
+  assert.ok(first.every(descriptor => Object.isFrozen(descriptor)));
+});
+
+test("frontage spill stays compact and projects outside the selected authored frontage edge", () => {
+  const descriptors = buildWarmFrontageLightDescriptors(buildings, {
+    x: 0,
+    y: 0,
+    w: CITY_WORLD.width,
+    h: CITY_WORLD.height
+  });
+  const buildingById = new Map(buildings.map(building => [String(building.id), building]));
+
+  for (const descriptor of descriptors) {
+    const building = buildingById.get(descriptor.buildingId);
+    assert.ok(building, descriptor.buildingId);
+    assert.ok(Math.max(descriptor.width, descriptor.height) <= WARM_FRONTAGE_LIGHT_PRESENTATION.maximumSpan + WARM_FRONTAGE_LIGHT_PRESENTATION.outwardDepth);
+    assert.ok(Math.min(descriptor.width, descriptor.height) > 0);
+    if (descriptor.edge === "south") assert.ok(descriptor.y > building.y + building.h);
+    if (descriptor.edge === "north") assert.ok(descriptor.y < building.y);
+    if (descriptor.edge === "east") assert.ok(descriptor.x > building.x + building.w);
+    if (descriptor.edge === "west") assert.ok(descriptor.x < building.x);
+  }
 });
