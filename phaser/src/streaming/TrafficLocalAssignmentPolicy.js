@@ -80,10 +80,12 @@ export function installTrafficLocalAssignmentPolicy(scene) {
 
   function localBehaviorHijack(tokenId) {
     releaseBypassDepth++;
+    materializer.__nbdForceTrafficLifecycleRelease = true;
     try {
       return originalHijack.call(this, tokenId);
     } finally {
       releaseBypassDepth = Math.max(0, releaseBypassDepth - 1);
+      delete materializer.__nbdForceTrafficLifecycleRelease;
     }
   }
 
@@ -126,6 +128,7 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       if (materializer.hijack === localBehaviorHijack) materializer.hijack = originalHijack;
       if (materializer.snapshot === localBehaviorSnapshot) materializer.snapshot = originalSnapshot;
       routeContinuityPolicy?.destroy?.();
+      delete materializer.__nbdForceTrafficLifecycleRelease;
       if (materializer.__nbdLocalAssignmentPolicy === policy) delete materializer.__nbdLocalAssignmentPolicy;
     }
   };
