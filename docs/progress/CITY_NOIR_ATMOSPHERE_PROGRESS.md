@@ -141,3 +141,51 @@ Non-goals preserved:
 
 Exact next task:
 - M2.3 — inspect affected CI and obtain gameplay-scale browser evidence showing a deliberately dark block, a readable road edge and clear player/NPC/threat silhouettes. If the M2 rubric passes, mark M2 complete and begin M3.1 with one static presentation-only practical-light family.
+
+## 2026-08-21 — M2 closed / M3 warm practical-light slice started
+
+State: `autonomous-in-progress`
+
+### M2.3 gameplay-scale evidence
+
+A dedicated browser capture harness now lives in `tests/browser/city-atmosphere-review.spec.js`, with the PR-only workflow `.github/workflows/city-atmosphere-review.yml`. The harness discovers representative locations from authored/generated city data rather than relying on hard-coded art-test coordinates.
+
+Successful M2 evidence run:
+- workflow: `City atmosphere review` run `32464436723`;
+- head: `bde644822ebb532c39bd0202d3db36b073b0ba41`;
+- conclusion: `success`;
+- artifact: `city-atmosphere-review` / artifact id `9440164701`;
+- gameplay zoom captured: approximately `1.978`;
+- evidence frames: `intersection.png`, `mixed-street.png`, `dark-block.png` plus `manifest.json`.
+
+Visual review result:
+- the intersection frame is no longer a flat blue-grey field; road, sidewalk, curb and zebra values remain immediately separable;
+- the player and nearby vehicles/police remain readable against the dark city base;
+- the mixed-street frame preserves different building-family material values while leaving meaningful headroom for local illumination;
+- the deliberately dark `blackwaterTerminal` block reads as a large low-value mass without erasing road navigation around it;
+- the base therefore satisfies the M2 objective: darkness dominates area while navigation/entity readability remains intact.
+
+The first version of the capture harness briefly failed because it queried stale `camera.worldView` coordinates after programmatic centering; the captured image itself already showed the player. The harness was corrected to calculate visible world extents from camera dimensions and zoom. The failed experiment remains represented in CI history rather than being hidden.
+
+M2 is now considered complete. It did not alter gameplay visibility, AI, stealth, collision, navigation, generated topology or #69 street-surface geometry.
+
+### M3.1 / M3.2 first bounded implementation
+
+The first practical-light family is now implemented in `phaser/src/policies/CityPracticalLightPresentationPolicy.js` and installed after the city-surface presentation policy.
+
+Authority and behavior:
+- source anchors are the existing deterministic generated `lights` collection; no second light-placement authority is created;
+- descriptors preserve stable source IDs and expose only presentation fields such as family, world position, bounded visual radius and soft-pool dimensions;
+- the only enabled family is `warm-street`;
+- visual radius is deliberately capped below the authored source radius and nearby sources remain spatially sparse because the topology compiler already spaces lamp anchors;
+- the pool is built from several low-alpha nested filled ellipses with no hard spotlight outline;
+- a tiny pure-overhead fixture marker identifies the source without introducing perspective/isometric lamp art;
+- rendering is culled to the current urban render bounds plus a small margin and occurs only during static map redraw, not as an expensive whole-world per-frame effect;
+- legacy `brokenLights` state may suppress a source for compatibility but the policy never mutates gameplay or authored light state.
+
+Focused coverage in `tests/city-practical-light-presentation.test.js` guards determinism, non-mutation, source identity, bounded radius, render-window culling and soft-layer policy.
+
+The gameplay-scale browser harness has also been extended with a deterministic `warm-light` review target. The next gate is visual/CI validation of that frame before adding building/window spill or any additional colour family.
+
+Exact next task:
+- complete M3.2 validation on the latest PR head: inspect the `warm-light.png` artifact at gameplay scale and verify sparse local amber islands are visible without blanket illumination or navigation loss. If accepted, mark M3.1/M3.2 complete and move to M3.3 selected building/window/door spill rather than adding more street-light density.
