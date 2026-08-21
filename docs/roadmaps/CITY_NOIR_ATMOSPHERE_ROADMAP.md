@@ -21,9 +21,9 @@ Machine state: [`../progress/city-noir-atmosphere-status.json`](../progress/city
 - This is a **presentation-only atmosphere program**.
 - Existing gameplay/city authorities remain unique.
 - PR #69 owns the current street-surface upgrade and is a dependency, not work to duplicate.
-- Intermediate subjective user approval is not required.
-- Each implementation step must be bounded and tested before moving on.
-- The single subjective user validation happens only after the final review package.
+- Default execution cadence is **one bounded task → validate → document → report → wait for user direction**.
+- A generic user “continue” authorizes the next bounded task only.
+- Explicit batch instructions may remove the wait step for the granted scope, but documentation remains mandatory between tasks.
 - Do not merge automatically.
 
 ---
@@ -290,7 +290,7 @@ Validated implementation head: `62e2eb4fd4aade64e1f4e6393996e09d4e7db4f9`; Tests
 
 ## M5 — Low-frequency grime and urban surface dressing
 
-**Status: autonomous-in-progress**
+**Status: autonomous-in-progress — checkpoint after M5.2**
 
 Purpose: remove sterile large surfaces without undoing #69.
 
@@ -306,36 +306,45 @@ Dedicated task contract: [`../agent-tasks/2026-08-21-city-noir-m5-grime-dressing
 
 Audit result: generic world/road grime fields would overlap existing authorities. M5 is therefore constrained to **contextual service/frontage dressing**.
 
-### M5.2 — Grime decal families
+### M5.2 — `service-frontage-grime`
 
-First and only initial runtime family: `service-frontage-grime`.
+- [x] derive from existing building/frontage semantics rather than a world grid;
+- [x] prefer service/industrial/warehouse/commercial contexts;
+- [x] deterministic stable placement;
+- [x] hard descriptor/fragment caps and compact geometry;
+- [x] low-contrast neutral dirt language;
+- [x] reject road and crosswalk receiving points;
+- [x] visible-window culling;
+- [x] remain non-interactive and non-collidable;
+- [x] focused deterministic/no-mutation/culling/receiver tests;
+- [x] gameplay-scale service/mixed/dark evidence.
 
-It must:
+Validated implementation head: `485ad7074f1ddfcbb1ab8e8f70d33125cd4a0aa4`; Tests `32488128735` success; atmosphere review `32488128814` success; artifact `9448812773`.
 
-- derive from existing building/frontage semantics rather than a world grid;
-- prefer service/industrial/warehouse/commercial contexts;
-- use stable deterministic placement;
-- have a hard density/per-building fragment cap and minimum spacing;
-- remain low contrast;
-- reject road and crosswalk receiving points;
-- stay close to the source frontage/service edge;
-- use visible-window culling;
-- remain non-interactive and non-collidable.
-
-Do **not** add a second M5 family until this slice passes focused tests and gameplay-scale visual review.
+The first visual version was too subtle and was corrected inside the same bounded family. The accepted version is visible at gameplay scale while remaining contextual and subordinate.
 
 ### M5.3 — Service-corner composition
 
-After M5.2 is accepted, use existing building/service semantics and, where useful, existing gameplay dumpster positions read-only to make selected corners feel used. Candidate follow-up is a tiny capped litter cluster; do not create new gameplay street furniture.
+**Status: planned / awaiting user direction.**
+
+Under the default checkpoint cadence, do not start M5.3 until the user indicates to continue.
+
+When authorized, use exactly one bounded read-only contextual family first, based on existing service semantics and/or existing gameplay dumpster positions:
+
+- tiny litter group; or
+- compact service-corner grime accumulation; or
+- small mechanical residue.
+
+Do not add readable posters/graffiti/signage here; that belongs to M7.
 
 ### M5 exit
 
 - [ ] large surfaces no longer feel sterile;
-- [ ] procedural grid is not visible;
-- [ ] no detail family duplicates #69 or M4;
-- [ ] clutter remains low-frequency;
-- [ ] decorative items remain non-interactive/non-collidable;
-- [ ] affected checks green.
+- [x] no delivered detail family duplicates #69 or M4;
+- [x] delivered clutter remains low-frequency;
+- [x] delivered decorative items remain non-interactive/non-collidable;
+- [x] M5.2 affected checks green;
+- [ ] M5.3 decision/implementation completed or explicitly skipped before milestone closure.
 
 ---
 
@@ -535,4 +544,4 @@ When automated and rubric criteria pass:
 
 ## Exact next action
 
-M5.2 — before runtime edits, re-check `agent/city-noir-atmosphere` against current `main` (`805ea5d107dcddcef4cd564294569455093af4b0` was observed after PR #71 merged) and integrate that unrelated main change if still required. Then implement **only** the deterministic capped `service-frontage-grime` family from the M5 task contract, add focused determinism/non-mutation/road-crosswalk-rejection/culling tests, and capture service/mixed/dark gameplay evidence before considering any second M5 family.
+Checkpoint after completed M5.2. Report the documented result and wait for user direction. If the user says to continue, execute **only M5.3 service-corner composition** as the next bounded task unless the user explicitly grants batch execution for a broader scope.
