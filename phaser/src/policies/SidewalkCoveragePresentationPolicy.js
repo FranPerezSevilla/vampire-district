@@ -1,5 +1,13 @@
 import { COLORS, WORLD } from "../data/balance.js";
-import { buildings, LAYERS, roadSegments, roads, sidewalks } from "../data/district.js";
+import {
+  buildings,
+  LAYERS,
+  roadJunctions,
+  roadSegments,
+  roadTransitions,
+  roads,
+  sidewalks
+} from "../data/district.js";
 import { buildCompletedSidewalkSurfaces } from "../rendering/SidewalkSurfaceCompletion.js";
 
 function finite(value, fallback = 0) {
@@ -56,16 +64,21 @@ function completedSidewalksFor(scene) {
   if (scene.citySurfaceCompletedSidewalks) return scene.citySurfaceCompletedSidewalks;
   const completed = buildCompletedSidewalkSurfaces({
     roadSegments,
+    roadJunctions,
+    roadTransitions,
     sidewalks,
     world: WORLD,
     sidewalkWidth: 22
   });
   const authoredCount = sidewalks.length;
-  const authoritativeCount = completed.filter(surface => surface.authoritativeRoadEdge === true).length;
+  const roadEdgeCount = completed.filter(surface => surface.authoritativeRoadEdge === true).length;
+  const junctionCount = completed.filter(surface => surface.authoritativeJunctionSidewalk === true).length;
   scene.citySurfaceCompletedSidewalks = Object.freeze(completed.map(surface => Object.freeze({ ...surface })));
   scene.citySurfaceSidewalkCoverage = Object.freeze({
     authoredCount,
-    authoritativeCount,
+    roadEdgeCount,
+    junctionCount,
+    authoritativeCount: roadEdgeCount + junctionCount,
     totalCount: completed.length
   });
   return scene.citySurfaceCompletedSidewalks;
@@ -98,14 +111,20 @@ function withPresentationSidewalks(scene, completed, callback) {
 }
 
 /**
- * Guarantees the road-owned 22 px band survives building presentation. This draw
- * is deliberately narrow: it never guesses that yards, forecourts or setbacks are
- * sidewalk. Buildings may overlap the band in legacy topology; the road edge wins.
+ * Guarantees both segment-owned bands and junction-owned caps survive building
+ * presentation. These surfaces are derived only from road authority and never
+ * extend into arbitrary yards, setbacks or forecourts.
  */
-function drawAuthoritativeRoadEdgePavement(scene, completed, bounds) {
-  const visible = completed.filter(surface => surface.authoritativeRoadEdge === true && intersects(surface, bounds, 2));
+function drawAuthoritativePavement(scene, completed, bounds) {
+  const visible = completed.filter(surface => (
+    surface.authoritativeRoadEdge === true || surface.authoritativeJunctionSidewalk === true
+  ) && intersects(surface, bounds, 2));
   scene.map.fillStyle(COLORS.sidewalk, 1);
   for (const surface of visible) {
+    if (surface.geometry === "polygon" && Array.isArray(surface.points)) {
+      scene.map.fillPoints(surface.points, true);
+      continue;
+    }
     const fragment = clippedRect(surface, bounds);
     if (fragment) scene.map.fillRect(fragment.x, fragment.y, fragment.w, fragment.h);
   }
@@ -132,7 +151,7 @@ export function installSidewalkCoveragePresentationPolicy(GameSceneClass) {
     const visibleBuildings = this.chunkItems("buildings", bounds, buildings, { margin: 80 });
     for (const building of visibleBuildings) this.drawBuilding(building);
 
-    this.citySurfaceAuthoritativePavementDrawCount = drawAuthoritativeRoadEdgePavement(this, completed, bounds);
+    this.citySurfaceAuthoritativePavementDrawCount = drawAuthoritativePavement(this, completed, bounds);
     withPresentationSidewalks(this, completed, () => this.drawSidewalkNetwork());
 
     this.drawCrosswalkNetwork();
