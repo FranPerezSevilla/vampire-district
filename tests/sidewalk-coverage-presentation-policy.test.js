@@ -5,11 +5,10 @@ import { WORLD } from "../phaser/src/data/balance.js";
 import { LAYERS, sidewalks } from "../phaser/src/data/district.js";
 import { installSidewalkCoveragePresentationPolicy } from "../phaser/src/policies/SidewalkCoveragePresentationPolicy.js";
 
-function mapStub(onFillRect = () => {}, onFillPoints = () => {}) {
+function mapStub(onFillRect = () => {}) {
   return {
     fillStyle() { return this; },
     fillRect(x, y, w, h) { onFillRect(x, y, w, h); return this; },
-    fillPoints(points, close) { onFillPoints(points, close); return this; },
     lineStyle() { return this; },
     lineBetween() { return this; }
   };
@@ -21,9 +20,9 @@ class PresentationScene {
 
 installSidewalkCoveragePresentationPolicy(PresentationScene);
 
-test("authoritative road and junction pavement are painted after buildings and still participate in sidewalk geometry", () => {
+test("authoritative road and junction pavement is painted after buildings and participates in sidewalk geometry", () => {
   const bounds = { x: 0, y: 0, w: WORLD.width, h: WORLD.height };
-  const roadBand = {
+  const roadPavement = {
     id: "presentation-road-edge-test",
     x: 40,
     y: 78,
@@ -33,9 +32,9 @@ test("authoritative road and junction pavement are painted after buildings and s
     presentationOnly: true,
     authoritativeRoadEdge: true
   };
-  const junctionCap = {
-    id: "presentation-junction-cap-test",
-    x: 160,
+  const junctionPavement = {
+    id: "presentation-junction-test",
+    x: 200,
     y: 78,
     w: 22,
     h: 22,
@@ -43,7 +42,7 @@ test("authoritative road and junction pavement are painted after buildings and s
     presentationOnly: true,
     authoritativeJunctionSidewalk: true
   };
-  const completed = [...sidewalks, roadBand, junctionCap];
+  const completed = [...sidewalks, roadPavement, junctionPavement];
   const observed = {};
   const renderOrder = [];
   const scene = new PresentationScene();
@@ -59,11 +58,11 @@ test("authoritative road and junction pavement are painted after buildings and s
   scene.urbanRenderBounds = bounds;
   scene.currentLayer = LAYERS.STREET;
   scene.map = mapStub((x, y, w, h) => {
-    if (x === roadBand.x && y === roadBand.y && w === roadBand.w && h === roadBand.h) {
-      renderOrder.push("authoritative-road");
+    if (x === roadPavement.x && y === roadPavement.y && w === roadPavement.w && h === roadPavement.h) {
+      renderOrder.push("road-pavement");
     }
-    if (x === junctionCap.x && y === junctionCap.y && w === junctionCap.w && h === junctionCap.h) {
-      renderOrder.push("authoritative-junction");
+    if (x === junctionPavement.x && y === junctionPavement.y && w === junctionPavement.w && h === junctionPavement.h) {
+      renderOrder.push("junction-pavement");
     }
   });
 
@@ -90,7 +89,7 @@ test("authoritative road and junction pavement are painted after buildings and s
   assert.equal(observed.geometryCount, completed.length);
   assert.equal(observed.sidewalkDrawCount, completed.length);
   assert.equal(observed.crosswalkPhaseCount, sidewalks.length);
-  assert.deepEqual(renderOrder, ["building", "authoritative-road", "authoritative-junction", "sidewalk-network"]);
+  assert.deepEqual(renderOrder, ["building", "road-pavement", "junction-pavement", "sidewalk-network"]);
   assert.equal(scene.citySurfaceAuthoritativePavementDrawCount, 2);
   assert.strictEqual(scene.chunkItems, authoredChunkItems);
 });
