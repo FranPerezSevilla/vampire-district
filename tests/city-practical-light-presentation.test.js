@@ -167,7 +167,7 @@ test("nightlife family is restricted to club semantics and stays compact", () =>
   assert.ok(Math.max(descriptors[0].width, descriptors[0].height) <= NIGHTLIFE_LIGHT_PRESENTATION.maximumSpan + NIGHTLIFE_LIGHT_PRESENTATION.outwardDepth + 4);
 });
 
-test("industrial dirty family uses service-strip semantics, remains deterministic and does not light every candidate", () => {
+test("industrial dirty family requires service-strip semantics, remains deterministic and does not light every candidate", () => {
   const candidates = Array.from({ length: 24 }, (_, index) => buildingFixture(
     `service-${String(index).padStart(2, "0")}`,
     index % 2 === 0 ? "industrial" : "warehouse",
@@ -182,8 +182,8 @@ test("industrial dirty family uses service-strip semantics, remains deterministi
   assert.ok(first.length > 0);
   assert.ok(first.length < candidates.length, "industrial service lighting must remain sparse");
   assert.ok(first.every(item => ["industrial", "warehouse"].includes(item.profileId)));
-  assert.ok(first.every(item => item.sourceKind === "service-strip"));
-  assert.ok(first.every(item => Boolean(item.serviceStrip)));
+  assert.ok(first.every(item => ["frontage", "service-strip"].includes(item.sourceKind)));
+  assert.ok(first.every(item => Boolean(item.serviceStrip)), "service-strip permission is required even when an authored frontage is the source edge");
   assert.ok(first.every(item => item.family === PRACTICAL_LIGHT_FAMILIES.INDUSTRIAL_DIRTY));
 });
 
