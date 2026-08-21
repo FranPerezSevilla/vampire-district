@@ -1,5 +1,4 @@
 import { LAYERS } from "../data/district.js";
-import { installTrafficLaneJunctionTopologyPolicy } from "./TrafficLaneJunctionTopology.js";
 import { cameraWorldBounds } from "./TrafficMaterializationSystem.js";
 import { installTrafficLifecyclePolicy } from "./TrafficLifecyclePolicy.js";
 
@@ -29,6 +28,29 @@ function slotIntersectsCamera(slot, bounds, margin = 0) {
     && y - radius <= bounds.bottom + padding;
 }
 
+export function compilerLocalTopologySnapshot(lanes) {
+  const topology = lanes?.localTopology;
+  const connectors = topology?.junctionConnectors;
+  const ready = Boolean(
+    topology?.ownershipMode === "compiler-node-id"
+    && topology?.lanes
+    && topology?.transitions
+    && connectors?.connectors
+  );
+  return {
+    ready,
+    movementActive: false,
+    ownershipMode: topology?.ownershipMode || null,
+    source: topology?.source || null,
+    directedLaneCount: finite(topology?.stats?.directedLaneCount),
+    transitionCount: finite(topology?.stats?.transitionCount),
+    junctionConnectorCount: finite(connectors?.stats?.connectorCount),
+    rejectedJunctionConnectorCount: finite(connectors?.stats?.rejectedConnectorCount),
+    outsideRoadJunctionConnectorCount: finite(connectors?.stats?.outsideRoadConnectorCount),
+    junctionConnectorTangentFailureCount: finite(connectors?.stats?.tangentFailureCount)
+  };
+}
+
 export function installTrafficLocalAssignmentPolicy(scene) {
   const materializer = scene?.trafficMaterializationSystem;
   if (!materializer?.eligible || !materializer?.release || !materializer?.assignments) {
@@ -36,9 +58,9 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   }
   if (materializer.__nbdLocalAssignmentPolicy) return materializer.__nbdLocalAssignmentPolicy;
 
-  // The lane-to-lane junction graph is now derived and validated here, but it is
-  // deliberately read-only in this slice. Existing authored local lanes remain the
-  // movement authority until route handoff consumes the validated connectors.
+  // M1 retired the provisional legacy-endpoint junction inference. The only future
+  // route authority is compiler-owned `localTopology` from the generated lane pack.
+  // It remains diagnostic/read-only here; authored legacy lanes still move cars.
   const originalEligible = materializer.eligible;
   const originalRelease = materializer.release;
   const originalHijack = materializer.hijack;
@@ -91,8 +113,6 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     }
   }
 
-  let laneJunctionTopologyPolicy = null;
-
   function localBehaviorSnapshot() {
     const snapshot = originalSnapshot.call(this);
     return {
@@ -103,8 +123,9 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       preventedVisibleDespawns,
       lastPreventedTokenId,
       macroRouteContinuityActive: false,
+      legacyEndpointJunctionInferenceActive: false,
       laneAuthority: "authored-local-lanes",
-      laneJunctionTopology: laneJunctionTopologyPolicy?.snapshot?.() || { ready: false }
+      compilerLocalTopology: compilerLocalTopologySnapshot(this.lanes)
     };
   }
 
@@ -113,10 +134,9 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   materializer.hijack = localBehaviorHijack;
   materializer.snapshot = localBehaviorSnapshot;
 
-  // Lifecycle retention prevents camera/chunk churn. Junction topology is loaded in
-  // parallel as a read-only route contract; neither changes the current lane owner.
+  // Lifecycle retention remains independent from routing. No junction topology policy
+  // mutates the loaded legacy edge collection during M1/M2.
   const lifecyclePolicy = installTrafficLifecyclePolicy(materializer);
-  laneJunctionTopologyPolicy = installTrafficLaneJunctionTopologyPolicy(materializer);
 
   const policy = {
     originalEligible,
@@ -129,9 +149,8 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     localBehaviorSnapshot,
     routeContinuityPolicy: null,
     lifecyclePolicy,
-    laneJunctionTopologyPolicy,
+    laneJunctionTopologyPolicy: null,
     destroy() {
-      laneJunctionTopologyPolicy?.destroy?.();
       lifecyclePolicy?.destroy?.();
       if (materializer.eligible === localBehaviorEligible) materializer.eligible = originalEligible;
       if (materializer.release === localBehaviorRelease) materializer.release = originalRelease;
