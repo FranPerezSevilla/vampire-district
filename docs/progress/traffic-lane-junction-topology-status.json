@@ -1,13 +1,13 @@
 {
   "initiative": "traffic-lane-junction-topology",
-  "version": 5,
+  "version": 6,
   "updatedAt": "2026-08-21",
   "pullRequest": 73,
   "branch": "codex/traffic-junction-topology",
   "state": "autonomous-in-progress",
-  "currentMilestone": "M4",
-  "currentTask": "M4.1-isolated-continuous-traversal-harness",
-  "lastValidatedImplementationHead": "85ea4cd7c0d0e2c1b8c62946e895a44e1ae43227",
+  "currentMilestone": "M5",
+  "currentTask": "M5.1-route-aware-lifecycle-retention-substrate",
+  "lastValidatedImplementationHead": "7574bcbfaa3bde321f0c31895702a579b3f1c9d8",
   "baseAtBootstrap": "805ea5d107dcddcef4cd564294569455093af4b0",
   "canonicalDocs": {
     "roadmap": "docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md",
@@ -24,8 +24,9 @@
     "pureRouteCursor": "phaser/src/streaming/TrafficRouteCursor.js",
     "compatibilityProjection": "phaser/src/streaming/TrafficRouteCompatibilityProjection.js",
     "shadowBridge": "phaser/src/streaming/TrafficShadowRoutePolicy.js; diagnostic-only, no movement or macro mutation authority",
-    "legacyLaneCompatibilitySource": "traffic-lanes.json edges remain district-anchor/portal compatibility routes only and are not physical junction routing authority",
-    "movementAuthority": "existing authored local lane-following behaviour until controlled activation milestones",
+    "isolatedTraversalHarness": "phaser/src/streaming/TrafficRouteTraversalHarness.js; uses TrafficMaterializationSystem.pointAlongPolyline exactly and is not runtime-installed",
+    "legacyLaneCompatibilitySource": "traffic-lanes.json edges remain compatibility routes only and are not physical junction routing authority",
+    "movementAuthority": "existing authored local lane-following behaviour until controlled M6 activation",
     "lifecycleAuthority": "TrafficLifecyclePolicy plus materialization/local assignment",
     "macroRole": "population/load and compatibility comparison only; never local world-space driving geometry"
   },
@@ -34,18 +35,17 @@
     "every physical network segment produces two directed right-hand lanes",
     "route transitions use directed compiler lanes and activation-safe compiler connector micro-lanes only",
     "macro graph centres/straight-line targets never become local driving geometry",
-    "same tokenId survives every pure route stage transition and later every visible junction traversal",
+    "same tokenId survives every route stage transition and later every visible junction traversal",
+    "same materialization pool slot must survive an active visible lane -> connector -> lane traversal",
     "elapsed simulation time is consumed continuously across lane/connector/lane stage boundaries",
-    "no coordinate teleport at lane/connector/lane boundaries",
-    "no normal despawn or pool eviction while crossing a junction once runtime activation begins",
-    "cars enter outgoing roads on the correct directed lane",
+    "no coordinate teleport at route-stage boundaries",
+    "normal despawn/pool eviction is forbidden while crossing a junction once route materialization is enabled",
+    "forced exits remain legal for hijack, destruction/teardown, layer switch and scene shutdown",
     "unsafe or tangent-discontinuous connectors are never exposed as route choices",
-    "missing route geometry produces an explicit blocked state instead of arbitrary steering",
-    "U-turns are avoided when legal alternatives exist",
+    "missing route geometry blocks explicitly instead of arbitrary steering",
     "compatibility projection never guesses an ambiguous macro edge",
     "shadow route agents never mutate live macro trafficFlows or visible vehicle movement",
-    "generated topology is not hand-edited as a workaround",
-    "legacy endpoint-to-nearest-junction inference is not installed in runtime",
+    "normal visible traffic remains authored-local-lanes until M6 controlled activation",
     "MacroTrafficRouteContinuityPolicy and TrafficIntentDrivingPolicy are not re-enabled wholesale"
   ],
   "completedTasks": [
@@ -67,62 +67,40 @@
     "M2.3-compatibility-projection",
     "M3.1-shadow-route-agent-seeding",
     "M3.2-shadow-route-advance-and-projection",
-    "M3.3-shadow-runtime-diagnostics"
+    "M3.3-shadow-runtime-diagnostics",
+    "M4.1-isolated-continuous-traversal-harness"
   ],
   "milestones": {
     "M0": { "title": "Read-only lane/junction topology foundation", "state": "complete" },
     "M1": { "title": "Production topology audit and compiler-owned hard safety contract", "state": "complete" },
     "M2": { "title": "Stable route-agent state model (pure data)", "state": "complete" },
     "M3": { "title": "Shadow macro continuity bridge", "state": "complete" },
-    "M4": { "title": "Local continuous traversal harness", "state": "autonomous-in-progress" },
-    "M5": { "title": "Lifecycle/materialization/pool-retention integration", "state": "planned" },
+    "M4": { "title": "Local continuous traversal harness", "state": "complete" },
+    "M5": { "title": "Lifecycle/materialization/pool-retention integration", "state": "autonomous-in-progress" },
     "M6": { "title": "Opt-in browser activation at controlled junctions", "state": "planned" },
     "M7": { "title": "Junction occupancy, yielding and conflict handling", "state": "planned" },
     "M8": { "title": "Default runtime activation and macro migration", "state": "planned" },
     "M9": { "title": "Legacy cleanup, documentation and user validation gate", "state": "planned" }
   },
-  "m1Audit": {
-    "legacyManifestConclusion": "not suitable as direct physical lane/junction route authority",
-    "reason": "legacy traffic-lanes edges are long district-anchor/portal routes that traverse multiple compiler road-network nodes",
-    "productionFindings": {
-      "directedLegacyLaneCount": 48,
-      "junctionMarkerCount": 71,
-      "candidateConnectorCount": 99,
-      "orphanLaneCount": 19,
-      "unmatchedEndpointCount": 24,
-      "ambiguousEndpointCount": 14,
-      "endpointContinuityFailureCount": 0,
-      "tangentContinuityFailureCount": 96,
-      "uTurnCandidateCount": 71,
-      "duplicateConnectorIdCount": 0,
-      "duplicateLanePairCount": 0
-    }
-  },
   "validation": {
     "m0": { "state": "passed", "workflow": "Tests", "runNumber": 2046, "runId": 32472690729, "head": "f481add4c79d6705de017e67e08810de35a24347" },
     "m1Final": { "state": "passed", "workflow": "Tests", "runNumber": 2083, "runId": 32485801858, "head": "d655c56ddebad76ecfa02418dd0b5ccb0336d3d8" },
-    "m2PureRouteCursor": {
-      "state": "passed",
-      "workflow": "Tests",
-      "runNumber": 2087,
-      "runId": 32486691651,
-      "head": "9a7d45566b17c2a508e269c3d23b9f2d3b67ea1a",
-      "contract": "stable immutable route identity consumes elapsed time across lane -> connector/direct handoff -> outgoing lane using compiler topology only"
-    },
-    "m2CompatibilityProjection": {
-      "state": "passed",
-      "workflow": "Tests",
-      "runNumber": 2101,
-      "runId": 32489771083,
-      "head": "8e45d1e19a2c5cfc43218059448d13d7ca193c6e",
-      "contract": "output-only projection conserves population, does not guess ambiguous macro edges and never synthesizes local coordinates or macro phase"
-    },
+    "m2PureRouteCursor": { "state": "passed", "workflow": "Tests", "runNumber": 2087, "runId": 32486691651, "head": "9a7d45566b17c2a508e269c3d23b9f2d3b67ea1a" },
+    "m2CompatibilityProjection": { "state": "passed", "workflow": "Tests", "runNumber": 2101, "runId": 32489771083, "head": "8e45d1e19a2c5cfc43218059448d13d7ca193c6e" },
     "m3ShadowBridge": {
       "state": "passed",
       "workflow": "Tests",
       "runNumber": 2109,
       "runId": 32490920999,
       "head": "85ea4cd7c0d0e2c1b8c62946e895a44e1ae43227",
+      "contract": "production population seeds 1:1 with zero unseeded; shadow tick A/B leaves live macro flows and visible movement unchanged"
+    },
+    "m4TraversalHarness": {
+      "state": "passed",
+      "workflow": "Tests",
+      "runNumber": 2113,
+      "runId": 32491786219,
+      "head": "7574bcbfaa3bde321f0c31895702a579b3f1c9d8",
       "jobs": {
         "unit-tests": "success",
         "browser-boot": "success",
@@ -131,46 +109,46 @@
         "browser-systems-2-of-3": "success",
         "browser-systems-3-of-3": "success"
       },
-      "contract": "production macro population seeds 1:1 with zero unseeded tokens; shadow route agents advance after real macro ticks while A/B tests prove live macro flow evolution and visible movement are unchanged"
+      "contract": "representative production straight/right/left/u-turn and direct handoff use the materializer sampler with stable identity, effectively zero position gaps and bounded connector heading gaps"
     }
   },
   "nextTask": {
-    "id": "M4.1-isolated-continuous-traversal-harness",
-    "milestone": "M4",
-    "goal": "Prove physical lane -> connector/direct handoff -> outgoing lane traversal with the same polyline sampler used by the materializer, without activating normal civilian traffic.",
+    "id": "M5.1-route-aware-lifecycle-retention-substrate",
+    "milestone": "M5",
+    "goal": "Make materialization/lifecycle route-aware enough to preserve one stable pool slot through lane -> connector -> lane and protect connector crossing from normal despawn, without activating route-controlled visible traffic yet.",
     "readFirst": [
-      "phaser/src/streaming/TrafficRouteCursor.js",
+      "phaser/src/streaming/TrafficLifecyclePolicy.js",
       "phaser/src/streaming/TrafficMaterializationSystem.js",
-      "tools/city-compiler/traffic-lane-topology.js",
-      "tools/city-compiler/traffic-junction-connectors.js",
-      "tests/traffic-route-cursor.test.js",
-      "tests/traffic-junction-connectors-compiler.test.js",
+      "phaser/src/streaming/TrafficRouteCursor.js",
+      "phaser/src/streaming/TrafficRouteTraversalHarness.js",
+      "tests/traffic-lifecycle-policy.test.js",
+      "tests/traffic-lifecycle-integration.test.js",
       "docs/progress/TRAFFIC_LANE_JUNCTION_TOPOLOGY_PROGRESS.md"
     ],
     "actions": [
-      "Create a pure/isolated traversal harness that samples each current route stage with the existing materializer pointAlongPolyline implementation; do not add a second steering or sampling model.",
-      "Select representative production preferred transitions for straight, right, left and explicit dead-end U-turn movement.",
-      "Prove exact positional continuity at incoming lane end -> connector start and connector end -> outgoing lane start; direct handoffs must also be exact.",
-      "Prove sampled heading continuity is bounded by the compiler connector tangent contract.",
-      "Advance one stable token through representative crossings with leftover elapsed time and prove tokenId never changes.",
-      "Test connector and direct-handoff paths without mutating scene, materializer, pool, macro traffic or local topology.",
-      "Keep normal visible traffic on authored local lanes throughout M4."
+      "Add a pure route-agent -> materialization-token adapter using compiler route geometry and the existing pointAlongPolyline sampler; do not install it as the normal traffic token source.",
+      "Extend materialization slot metadata so route stage/lane/connector/hop/progress can be copied and cleared without changing tokenId or slot identity.",
+      "Make lifecycle classification prefer explicit route stage: connector means CROSSING_JUNCTION; a lane near its end may be APPROACH_JUNCTION; retain legacy phase/edgeChanged fallback for current traffic.",
+      "Prove normal release is rejected while an active route token is crossing and the stable token still exists.",
+      "Prove forced release remains allowed for hijack/layer-switch/teardown semantics.",
+      "Prove sequential lane -> connector -> outgoing-lane tokens with the same tokenId retain the same assignment/pool slot in an integration harness.",
+      "Keep current authored-local-lanes traffic source and visible movement unchanged until M6."
     ],
     "acceptance": [
-      "representative straight/right/left/u-turn production transitions are covered",
-      "position gap at every route-stage boundary is effectively zero",
-      "heading/tangent gap at connector boundaries stays within the compiler tolerance",
-      "same stable tokenId survives physical sampling across the junction",
-      "leftover elapsed time continues into the outgoing lane without a snap",
-      "harness reuses existing materializer lane sampling rather than free steering",
+      "same tokenId maps to the same materialization slot across route stages",
+      "route connector stage maps to CROSSING_JUNCTION and is lifecycle-protected",
+      "normal despawn/pool release cannot evict a live crossing route token",
+      "forced lifecycle exits still release correctly",
+      "route metadata is cleared on release and cannot leak into a reused slot",
+      "legacy current traffic behavior remains unchanged when route metadata is absent",
       "focused/full CI is green",
-      "visible traffic behaviour is unchanged"
+      "normal visible traffic is still not route-controlled"
     ],
     "doNotAdvanceIf": [
-      "the harness requires free-form steering or a coordinate snap",
-      "any representative production transition has unexplained positional or heading discontinuity",
-      "a test can pass only by using macro district/node centres as physical coordinates",
-      "normal visible traffic begins consuming route cursor output before M5/M6 activation gates"
+      "retention requires increasing camera/despawn margins instead of stable identity",
+      "the same route token is rematerialized into a different slot during a crossing test",
+      "forced hijack/layer/teardown release becomes blocked",
+      "route-controlled movement is enabled globally before M6"
     ]
   },
   "finalGate": {
