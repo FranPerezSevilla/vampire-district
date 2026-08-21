@@ -1,0 +1,68 @@
+{
+  "initiative": "city-noir-atmosphere",
+  "version": 1,
+  "updatedAt": "2026-08-21",
+  "branch": "agent/city-noir-atmosphere",
+  "state": "planned",
+  "currentMilestone": "M1",
+  "currentTask": "M1.1-resolve-pr69-dependency",
+  "dependency": {
+    "pullRequest": 69,
+    "title": "City street visual pass",
+    "requiredFor": [
+      "road-surface-atmosphere",
+      "sidewalk-atmosphere",
+      "street-surface-detail"
+    ],
+    "stateAtBootstrap": "open-draft",
+    "rule": "Do not duplicate PR #69. Synchronize with post-merge main before modifying overlapping street-surface presentation."
+  },
+  "milestones": {
+    "M0": {
+      "title": "Canonical direction, references and agent continuity",
+      "state": "complete"
+    },
+    "M1": {
+      "title": "Integrate the street-surface foundation",
+      "state": "waiting-on-dependency"
+    },
+    "M2": {
+      "title": "Global value hierarchy and night exposure",
+      "state": "planned"
+    },
+    "M3": {
+      "title": "Practical-light islands",
+      "state": "planned"
+    },
+    "M4": {
+      "title": "Wet asphalt and local reflection language",
+      "state": "planned"
+    },
+    "M5": {
+      "title": "Low-frequency grime and urban surface dressing",
+      "state": "planned"
+    },
+    "M6": {
+      "title": "Grounding and shadow consistency",
+      "state": "planned"
+    },
+    "M7": {
+      "title": "Environmental storytelling and atmospheric set dressing",
+      "state": "planned"
+    },
+    "M8": {
+      "title": "District colour/material identity",
+      "state": "planned"
+    },
+    "M9": {
+      "title": "Final gameplay-scale review and bounded corrections",
+      "state": "planned"
+    }
+  },
+  "finalGate": {
+    "requiresUserVisualApproval": true,
+    "autonomousWorkStopsAt": "final-validation-pending",
+    "autoMergeAllowed": false
+  },
+  "nextAction": "Check PR #69. If still unmerged, do not implement overlapping street-surface work. Once merged, synchronize this branch with post-merge main, audit the new baseline and advance M1."
+}
