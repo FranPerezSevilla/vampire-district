@@ -144,20 +144,26 @@ async function prepareCapture(page, target, normalZoom, label) {
     scene.updateCharacterPresentation?.(performance.now());
 
     const camera = scene.cameras.main;
-    const view = camera.worldView;
+    const zoom = Number(camera.zoom) || 1;
     const player = { x: Number(scene.player?.x) || 0, y: Number(scene.player?.y) || 0 };
-    const playerVisible = player.x >= view.x
-      && player.x <= view.x + view.width
-      && player.y >= view.y
-      && player.y <= view.y + view.height;
+    const halfWorldWidth = Math.max(1, Number(camera.width) || 0) / zoom / 2;
+    const halfWorldHeight = Math.max(1, Number(camera.height) || 0) / zoom / 2;
+    const playerOffset = {
+      x: player.x - center.x,
+      y: player.y - center.y
+    };
+    const playerVisible = Math.abs(playerOffset.x) <= halfWorldWidth
+      && Math.abs(playerOffset.y) <= halfWorldHeight;
 
     scene.scene.pause();
     return {
       center,
       stand,
       player,
+      playerOffset,
       playerVisible,
-      zoom: Number(camera.zoom) || 1,
+      visibleHalfExtents: { x: halfWorldWidth, y: halfWorldHeight },
+      zoom,
       layer: scene.currentLayer,
       renderSectorKey: scene.urbanRenderSectorKey || null
     };
