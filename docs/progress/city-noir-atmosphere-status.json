@@ -1,11 +1,11 @@
 {
   "initiative": "city-noir-atmosphere",
-  "version": 3,
+  "version": 4,
   "updatedAt": "2026-08-21",
   "branch": "agent/city-noir-atmosphere",
   "state": "autonomous-in-progress",
   "currentMilestone": "M3",
-  "currentTask": "M3.2-warm-street-light-browser-validation",
+  "currentTask": "M3.4-contextual-accent-families",
   "dependency": {
     "pullRequest": 69,
     "title": "City street visual pass",
@@ -31,7 +31,10 @@
     "M2.3-focused-value-assertions",
     "M2.3-gameplay-scale-browser-evidence",
     "M3.1-warm-street-descriptor-model",
-    "M3.2-warm-street-runtime-slice"
+    "M3.2-warm-street-runtime-slice",
+    "M3.2-gameplay-scale-browser-evidence",
+    "M3.3-warm-frontage-spill",
+    "M3.3-gameplay-scale-browser-evidence"
   ],
   "milestones": {
     "M0": {
@@ -102,18 +105,36 @@
     }
   },
   "m3": {
-    "sourceAuthority": "phaser/src/data/district.js lights",
+    "sourceAuthorities": [
+      "phaser/src/data/district.js lights",
+      "existing building presentation definitions/profiles"
+    ],
     "presentationPolicy": "phaser/src/policies/CityPracticalLightPresentationPolicy.js",
     "enabledFamilies": [
-      "warm-street"
+      "warm-street",
+      "warm-frontage"
     ],
     "focusedTest": "tests/city-practical-light-presentation.test.js",
-    "browserEvidence": "pending-latest-warm-light-capture"
+    "browserEvidence": {
+      "state": "passed-through-M3.3",
+      "warmStreet": {
+        "workflowRun": 32465404259,
+        "artifactId": 9440519917,
+        "head": "c4dee832f3a3b623e55c3031ca2d55a8f989bb9d",
+        "capture": "warm-light.png"
+      },
+      "warmFrontage": {
+        "workflowRun": 32465707840,
+        "artifactId": 9440621156,
+        "head": "b31dd74b6f659e328b1d4bb3324411d80b8a1c6d",
+        "capture": "mixed-street.png"
+      }
+    }
   },
   "finalGate": {
     "requiresUserVisualApproval": true,
     "autonomousWorkStopsAt": "final-validation-pending",
     "autoMergeAllowed": false
   },
-  "nextAction": "Validate the latest PR head with focused/unit CI and the city-atmosphere browser workflow. Inspect warm-light.png at gameplay scale. If sparse amber light islands are readable without blanket illumination or navigation loss, record M3.1/M3.2 complete and begin M3.3 selected building/window/door spill."
+  "nextAction": "Execute M3.4 one semantic accent family at a time. Start with cool civic/institutional presentation derived from existing police/medical semantics, validate it at gameplay scale, then add restrained nightlife and industrial/service accents only if the colour hierarchy remains sparse."
 }
