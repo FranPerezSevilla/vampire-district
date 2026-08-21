@@ -1,13 +1,13 @@
 {
   "initiative": "traffic-lane-junction-topology",
-  "version": 7,
+  "version": 8,
   "updatedAt": "2026-08-21",
   "pullRequest": 73,
   "branch": "codex/traffic-junction-topology",
   "state": "autonomous-in-progress",
-  "currentMilestone": "M6",
-  "currentTask": "M6.1-controlled-browser-route-activation",
-  "lastValidatedImplementationHead": "bedac342b018766c64a647a038fbeeb6999c8bcd",
+  "currentMilestone": "M7",
+  "currentTask": "M7.1-deterministic-junction-reservation",
+  "lastValidatedImplementationHead": "b23dfc0eb1eb07ad3fd85fe89399c7fb5e40c5c0",
   "baseAtBootstrap": "805ea5d107dcddcef4cd564294569455093af4b0",
   "canonicalDocs": {
     "roadmap": "docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md",
@@ -24,6 +24,7 @@
     "shadowBridge": "phaser/src/streaming/TrafficShadowRoutePolicy.js; diagnostics only",
     "traversalHarness": "phaser/src/streaming/TrafficRouteTraversalHarness.js; isolated proof using materializer sampler",
     "routeMaterializationSubstrate": "phaser/src/streaming/TrafficRouteMaterializationPolicy.js plus route-aware TrafficLifecyclePolicy",
+    "controlledRouteActivation": "phaser/src/streaming/TrafficControlledRouteActivationPolicy.js; explicit opt-in only, default disabled",
     "defaultMovementAuthority": "authored local legacy lanes until M8",
     "macroRole": "population/load/compatibility only; never local geometry"
   },
@@ -33,10 +34,13 @@
     "stable tokenId and materialization slot survive visible route stage changes",
     "no coordinate teleport across lane/connector/lane",
     "normal crossing release is protected; forced hijack/layer/teardown exits remain legal",
-    "controlled M6 activation must be opt-in and bounded to explicitly selected route tokens",
-    "TrafficLocalBehaviorSystem must not project routeActive slots back onto legacy edge lanes",
-    "default visible traffic stays authored-local-lanes throughout M6",
-    "no free steering, remote snap, ambiguous macro-edge guess or hand-edited generated topology",
+    "controlled route activation stays opt-in and bounded; default civilian traffic stays authored-local-lanes",
+    "legacy local behavior and steering never overwrite routeActive x/y",
+    "junction conflict handling may delay connector entry but must not invent movement geometry",
+    "reservation ownership must be deterministic and released on exit/forced teardown",
+    "cars already inside a connector normally clear it instead of voluntarily stopping mid-junction",
+    "stale reservations must expire/recover so a vanished token cannot deadlock the junction forever",
+    "no traffic-light simulator is introduced unless authored city data explicitly owns signals",
     "MacroTrafficRouteContinuityPolicy and TrafficIntentDrivingPolicy are not re-enabled wholesale"
   ],
   "completedTasks": [
@@ -49,7 +53,8 @@
     "M3.2-shadow-route-advance-and-projection",
     "M3.3-shadow-runtime-diagnostics",
     "M4.1-isolated-continuous-traversal-harness",
-    "M5.1-route-aware-lifecycle-retention-substrate"
+    "M5.1-route-aware-lifecycle-retention-substrate",
+    "M6.1-controlled-browser-route-activation"
   ],
   "milestones": {
     "M0": { "title": "Read-only lane/junction topology foundation", "state": "complete" },
@@ -58,8 +63,8 @@
     "M3": { "title": "Shadow macro continuity bridge", "state": "complete" },
     "M4": { "title": "Local continuous traversal harness", "state": "complete" },
     "M5": { "title": "Lifecycle/materialization/pool-retention integration", "state": "complete" },
-    "M6": { "title": "Opt-in browser activation at controlled junctions", "state": "autonomous-in-progress" },
-    "M7": { "title": "Junction occupancy, yielding and conflict handling", "state": "planned" },
+    "M6": { "title": "Opt-in browser activation at controlled junctions", "state": "complete" },
+    "M7": { "title": "Junction occupancy, yielding and conflict handling", "state": "autonomous-in-progress" },
     "M8": { "title": "Default runtime activation and macro migration", "state": "planned" },
     "M9": { "title": "Legacy cleanup, documentation and user validation gate", "state": "planned" }
   },
@@ -67,53 +72,64 @@
     "m1Final": { "state": "passed", "runNumber": 2083, "runId": 32485801858 },
     "m2RouteCursor": { "state": "passed", "runNumber": 2087, "runId": 32486691651 },
     "m2Projection": { "state": "passed", "runNumber": 2101, "runId": 32489771083 },
-    "m3Shadow": { "state": "passed", "runNumber": 2109, "runId": 32490920999, "contract": "1:1 production seeding, zero unseeded, live macro A/B unchanged" },
-    "m4Traversal": { "state": "passed", "runNumber": 2113, "runId": 32491786219, "contract": "production straight/right/left/u-turn/direct handoff preserve identity, position and heading with materializer sampler" },
-    "m5Retention": {
+    "m3Shadow": { "state": "passed", "runNumber": 2109, "runId": 32490920999 },
+    "m4Traversal": { "state": "passed", "runNumber": 2113, "runId": 32491786219 },
+    "m5Retention": { "state": "passed", "runNumber": 2125, "runId": 32492853271 },
+    "m6ControlledActivation": {
       "state": "passed",
       "workflow": "Tests",
-      "runNumber": 2125,
-      "runId": 32492853271,
-      "head": "bedac342b018766c64a647a038fbeeb6999c8bcd",
-      "contract": "same pool slot survives route stage changes; live connector blocks normal release; forced exits work; route metadata clears; default route movement remains disabled"
+      "runNumber": 2135,
+      "runId": 32495071190,
+      "head": "b23dfc0eb1eb07ad3fd85fe89399c7fb5e40c5c0",
+      "jobs": {
+        "unit-tests": "success",
+        "browser-boot": "success",
+        "browser-campaign": "success",
+        "browser-systems-1-of-3": "success",
+        "browser-systems-2-of-3": "success",
+        "browser-systems-3-of-3": "success"
+      },
+      "contract": "controlled straight/right/left production crossings are default-off, preserve fixed pool and stable token/slot, report zero teleports, survive camera movement during connector crossing, and leave default laneAuthority authored-local-lanes"
     }
   },
   "nextTask": {
-    "id": "M6.1-controlled-browser-route-activation",
-    "milestone": "M6",
-    "goal": "Materialize and visibly advance only explicitly selected compiler route tokens in browser/test control while leaving all default civilian traffic on legacy authored lanes.",
+    "id": "M7.1-deterministic-junction-reservation",
+    "milestone": "M7",
+    "goal": "Add lightweight deterministic connector reservation/yielding so conflicting route tokens wait before a junction, while tokens already inside normally clear it; integrate first with controlled route activation only.",
     "readFirst": [
-      "phaser/src/streaming/TrafficMaterializationSystem.js",
-      "phaser/src/streaming/TrafficLocalBehaviorSystem.js",
       "phaser/src/streaming/TrafficRouteCursor.js",
-      "phaser/src/streaming/TrafficRouteMaterializationPolicy.js",
-      "phaser/src/streaming/TrafficShadowRoutePolicy.js",
-      "tests/browser/city-streaming-traffic.spec.js"
+      "phaser/src/streaming/TrafficControlledRouteActivationPolicy.js",
+      "tools/city-compiler/traffic-junction-connectors.js",
+      "tests/traffic-controlled-route-activation.test.js",
+      "tests/browser/city-streaming-traffic-route-controlled.spec.js",
+      "docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md"
     ],
     "actions": [
-      "Add an explicit controlled route activation policy/API that is disabled by default and can own only a bounded selected token/slot.",
-      "Reuse compiler route cursor plus route-agent materialization token; do not invent a second path or steering model.",
-      "Ensure TrafficLocalBehaviorSystem skips positional authority for routeActive slots so it cannot snap them back to legacy edge lanes.",
-      "Use the existing fixed pool; controlled activation may replace/release one selected legacy assignment but must not expand the pool.",
-      "Add browser tests for visible straight/right/left crossing, same slot/token across route stages, zero teleport, camera movement while crossing, and cleanup/deactivation.",
-      "Keep default activation off and prove existing traffic browser tests are unchanged."
+      "Implement a pure deterministic junction reservation registry keyed by compiler junction/conflict authority; do not use world-space steering or presentation geometry.",
+      "A token must reserve before entering a connector; if a conflicting reservation exists, keep it on the incoming lane and report a yield/wait state.",
+      "Once a token is inside its reserved connector, do not voluntarily stop it mid-connector; release the reservation on connector exit.",
+      "Release reservations on controlled stop/forced teardown and provide bounded stale-reservation expiry/recovery.",
+      "Start with a conservative same-junction conflict policy; do not overbuild lane conflict polygons unless production evidence requires them.",
+      "Add pure tests for deterministic ownership, same-token reentry, conflicts, release, stale expiry and no deadlock.",
+      "Integrate the registry only into M6 controlled route stepping and add a controlled multi-token/browser or deterministic integration scenario if the existing single-token API must be extended.",
+      "Keep default civilian traffic route activation disabled throughout M7."
     ],
     "acceptance": [
-      "controlled route movement is disabled by default",
-      "one explicit route token can visibly cross a production junction using the same slot and compiler geometry",
-      "routeActive slots are not reprojected by legacy TrafficLocalBehaviorSystem",
-      "position changes continuously and no stage-boundary teleport exceeds tolerance",
-      "camera movement cannot recycle a token while it is in connector stage",
-      "deactivation restores/reuses the fixed pool cleanly",
-      "all existing browser traffic regressions remain green",
-      "default civilian traffic authority remains authored-local-lanes"
+      "conflicting tokens cannot simultaneously enter the same reserved junction authority",
+      "waiting happens before connector entry, not mid-connector",
+      "same token retains reservation while crossing and releases it on exit",
+      "forced controlled stop releases reservation",
+      "stale reservations recover within a bounded deterministic timeout",
+      "no infinite reservation deadlock in tests",
+      "controlled visible crossing remains teleport-free and fixed-pool",
+      "default civilian traffic remains authored-local-lanes",
+      "focused/full CI is green"
     ],
     "doNotAdvanceIf": [
-      "controlled activation requires global trafficTokens replacement",
-      "legacy local behavior overwrites route x/y",
-      "the pool grows to make the test pass",
-      "normal civilian traffic starts consuming route agents",
-      "any visible crossing teleports or leaves compiler road authority"
+      "reservation requires free steering or macro coordinates",
+      "a car must stop voluntarily in the middle of a connector to avoid conflict",
+      "a vanished token can hold a junction indefinitely",
+      "default civilian traffic starts consuming route reservation state before M8"
     ]
   },
   "finalGate": {
