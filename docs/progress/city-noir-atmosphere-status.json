@@ -1,11 +1,11 @@
 {
   "initiative": "city-noir-atmosphere",
-  "version": 5,
+  "version": 6,
   "updatedAt": "2026-08-21",
   "branch": "agent/city-noir-atmosphere",
   "state": "autonomous-in-progress",
-  "currentMilestone": "M3",
-  "currentTask": "M3.5-vehicle-and-emergency-light-contribution",
+  "currentMilestone": "M4",
+  "currentTask": "M4.1-reflection-source-and-road-receiver-contract",
   "dependency": {
     "pullRequest": 69,
     "title": "City street visual pass",
@@ -40,93 +40,64 @@
     "M3.4-nightlife-accent",
     "M3.4-industrial-dirty",
     "M3.4-focused-tests",
-    "M3.4-gameplay-scale-browser-evidence"
+    "M3.4-gameplay-scale-browser-evidence",
+    "M3.5-dynamic-vehicle-light-model",
+    "M3.5-focused-tests",
+    "M3.5-gameplay-scale-browser-evidence"
   ],
   "milestones": {
-    "M0": {
-      "title": "Canonical direction, references and agent continuity",
-      "state": "complete"
-    },
-    "M1": {
-      "title": "Integrate the street-surface foundation",
-      "state": "complete"
-    },
-    "M2": {
-      "title": "Global value hierarchy and night exposure",
-      "state": "complete"
-    },
-    "M3": {
-      "title": "Practical-light islands",
-      "state": "autonomous-in-progress"
-    },
-    "M4": {
-      "title": "Wet asphalt and local reflection language",
-      "state": "planned"
-    },
-    "M5": {
-      "title": "Low-frequency grime and urban surface dressing",
-      "state": "planned"
-    },
-    "M6": {
-      "title": "Grounding and shadow consistency",
-      "state": "planned"
-    },
-    "M7": {
-      "title": "Environmental storytelling and atmospheric set dressing",
-      "state": "planned"
-    },
-    "M8": {
-      "title": "District colour/material identity",
-      "state": "planned"
-    },
-    "M9": {
-      "title": "Final gameplay-scale review and bounded corrections",
-      "state": "planned"
-    }
+    "M0": { "title": "Canonical direction, references and agent continuity", "state": "complete" },
+    "M1": { "title": "Integrate the street-surface foundation", "state": "complete" },
+    "M2": { "title": "Global value hierarchy and night exposure", "state": "complete" },
+    "M3": { "title": "Practical-light islands", "state": "complete" },
+    "M4": { "title": "Wet asphalt and local reflection language", "state": "autonomous-in-progress" },
+    "M5": { "title": "Low-frequency grime and urban surface dressing", "state": "planned" },
+    "M6": { "title": "Grounding and shadow consistency", "state": "planned" },
+    "M7": { "title": "Environmental storytelling and atmospheric set dressing", "state": "planned" },
+    "M8": { "title": "District colour/material identity", "state": "planned" },
+    "M9": { "title": "Final gameplay-scale review and bounded corrections", "state": "planned" }
   },
   "m2": {
     "implementation": "palette-refinement",
     "changedAuthority": "phaser/src/data/balance.js COLORS",
-    "broadSurfaceOrder": [
-      "void",
-      "streetBase",
-      "road",
-      "sidewalk"
-    ],
-    "preservedHighValueWorldMarks": [
-      "crosswalk",
-      "player"
-    ],
+    "broadSurfaceOrder": ["void", "streetBase", "road", "sidewalk"],
+    "preservedHighValueWorldMarks": ["crosswalk", "player"],
     "focusedTest": "tests/city-night-value-hierarchy.test.js",
     "browserEvidence": {
       "state": "passed",
       "workflowRun": 32464436723,
       "artifactId": 9440164701,
       "head": "bde644822ebb532c39bd0202d3db36b073b0ba41",
-      "captures": [
-        "intersection.png",
-        "mixed-street.png",
-        "dark-block.png"
-      ]
+      "captures": ["intersection.png", "mixed-street.png", "dark-block.png"]
     }
   },
   "m3": {
     "sourceAuthorities": [
       "phaser/src/data/district.js lights",
       "existing building presentation definitions/profiles",
-      "existing vehicle model/view light state for M3.5"
+      "existing vehicle model/view and runtime slot state"
     ],
-    "presentationPolicy": "phaser/src/policies/CityPracticalLightPresentationPolicy.js",
+    "presentationPolicies": [
+      "phaser/src/policies/CityPracticalLightPresentationPolicy.js",
+      "phaser/src/policies/CityVehicleLightPresentationPolicy.js"
+    ],
     "enabledFamilies": [
       "warm-street",
       "warm-frontage",
       "cool-civic",
       "nightlife-accent",
-      "industrial-dirty"
+      "industrial-dirty",
+      "vehicle-headlight",
+      "vehicle-tail",
+      "police-red",
+      "police-blue"
     ],
-    "focusedTest": "tests/city-practical-light-presentation.test.js",
+    "focusedTests": [
+      "tests/city-practical-light-presentation.test.js",
+      "tests/city-vehicle-light-presentation.test.js"
+    ],
     "browserEvidence": {
-      "state": "passed-through-M3.4",
+      "state": "passed",
       "warmStreet": {
         "workflowRun": 32465404259,
         "artifactId": 9440519917,
@@ -143,20 +114,27 @@
         "workflowRun": 32468999890,
         "artifactId": 9441823514,
         "head": "06d18d039c01f67eb3312329aff224279de28f3e",
-        "captures": [
-          "civic-cool.png",
-          "nightlife.png",
-          "industrial.png",
-          "mixed-families.png"
-        ],
+        "captures": ["civic-cool.png", "nightlife.png", "industrial.png", "mixed-families.png"],
         "visualAssessment": "accepted: contextual families remain localized and subordinate to the dark/warm base; nightlife is the strongest special accent, civic/industrial remain restrained"
+      },
+      "vehicleAndEmergency": {
+        "workflowRun": 32470828688,
+        "artifactId": 9442522378,
+        "head": "82cb34a884a00d470a7229ac10ccb1216d4aa9d7",
+        "captures": ["vehicle-lights.png", "police-lights-red.png", "police-lights-blue.png"],
+        "visualAssessment": "accepted as M3 source contribution: vehicle light is intentionally subtle and police pulses stay compact; M4 wet receivers are expected to make these sources read more strongly without enlarging the emitters"
       }
     }
+  },
+  "m4": {
+    "task": "docs/agent-tasks/2026-08-21-city-noir-m4-wet-street-reflections.md",
+    "state": "starting",
+    "authority": "presentation-only receiving response on existing road surfaces; no second reflection or road topology authority"
   },
   "finalGate": {
     "requiresUserVisualApproval": true,
     "autonomousWorkStopsAt": "final-validation-pending",
     "autoMergeAllowed": false
   },
-  "nextAction": "Execute M3.5 by deriving small presentation-only ground-light contributions from existing vehicle light state. Reuse the existing vehicle renderer/model authority, keep police red/blue highly localized, validate at gameplay scale, then close M3 and advance to M4 wet asphalt/reflection language."
+  "nextAction": "Execute M4.1/M4.2: map existing static and dynamic light descriptors onto deterministic bounded road receivers, generate broken asphalt-only reflection fragments, add focused no-mutation/receiver tests, then integrate static and dynamic rendering and capture gameplay-scale wet-street evidence."
 }
