@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import {
+  TrafficSteeringPresentationSystem,
   parkedAvoidanceDecision,
   stepTrafficSteeringPose,
   trafficAvoidanceSide
@@ -30,6 +31,31 @@ test("parked obstacle avoidance waits for lateral clearance before committing wh
   const established = parkedAvoidanceDecision(base, { offset: 24, targetOffset: 28 });
   assert.ok(established.desiredSpeedFactor > 0.4);
   assert.equal(established.blockerId, "parked-car");
+});
+
+test("static obstacle aliases are accepted only when the blocker is a real parked vehicle", () => {
+  const steering = Object.create(TrafficSteeringPresentationSystem.prototype);
+  const parked = { id: "parked-car", parked: true };
+  steering.vehicleSystem = {
+    currentVehicleId: "player-car",
+    currentVehicle: () => ({ id: "player-car", speed: 0 }),
+    vehicle: id => id === parked.id ? parked : null,
+    vehicles: [parked]
+  };
+  steering.playerAvoidanceMaxSpeed = 24;
+
+  assert.equal(steering.avoidanceReason({ reason: "static-obstacle", blockerId: parked.id }), "parked-vehicle");
+  assert.equal(steering.avoidanceReason({ reason: "assertive-static-obstacle", blockerId: parked.id }), "parked-vehicle");
+  assert.equal(steering.avoidanceReason({ reason: "static-obstacle", blockerId: "dumpster-1" }), null);
+
+  const normalized = parkedAvoidanceDecision({
+    desiredSpeedFactor: 0.2,
+    reason: "static-obstacle",
+    gap: 42,
+    blockerId: parked.id
+  }, { offset: 20, targetOffset: 28 });
+  assert.equal(normalized.reason, "steering-around-parked");
+  assert.ok(normalized.desiredSpeedFactor > 0.35);
 });
 
 test("the same readable steering can pass a stopped player vehicle without treating moving traffic as parked", () => {

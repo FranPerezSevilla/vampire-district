@@ -80,7 +80,7 @@ test("local traffic reacts to the driven vehicle, keeps its slot and resumes whe
     scene.player.setPosition(playerVehicle.x, playerVehicle.y);
     window.NBD_MACRO_CITY.forceTick(0.6);
     window.NBD_TRAFFIC.resync();
-    const recoveredSnapshot = window.NBD_TRAFIC_BEHAVIOR.step(0.9);
+    const recoveredSnapshot = window.NBD_TRAFFIC_BEHAVIOR.step(0.9);
     const recovered = recoveredSnapshot.vehicles.find(vehicle => vehicle.tokenId === selected.tokenId);
     const assignmentAfter = window.NBD_TRAFFIC.snapshot().materialized.find(item => item.tokenId === selected.tokenId);
     scene.vehicleSystem.currentVehicleId = originalVehicle.currentVehicleId;

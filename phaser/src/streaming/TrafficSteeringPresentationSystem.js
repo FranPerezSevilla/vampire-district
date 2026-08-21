@@ -45,6 +45,10 @@ function vehicleRadius(archetype) {
   return Math.max(finite(archetype?.width, 28), finite(archetype?.height, 14)) * 0.43;
 }
 
+function baseReason(reason) {
+  return String(reason || "").replace(/^assertive-/, "");
+}
+
 export function trafficAvoidanceSide(tokenId) {
   return stableHash(tokenId) % 2 === 0 ? -1 : 1;
 }
@@ -56,7 +60,8 @@ export function parkedAvoidanceDecision(baseDecision, {
   avoidanceMinGap = DEFAULTS.avoidanceMinGap
 } = {}) {
   const base = baseDecision || {};
-  if (!["parked-vehicle", "player-vehicle"].includes(base.reason)
+  const reason = baseReason(base.reason);
+  if (!["parked-vehicle", "static-obstacle", "player-vehicle"].includes(reason)
     || base.gap === null || base.gap === undefined) return base;
   const target = Math.max(1, Math.abs(finite(targetOffset, DEFAULTS.lateralDistance)));
   const readiness = clamp(Math.abs(finite(offset)) / target, 0, 1);
@@ -69,7 +74,7 @@ export function parkedAvoidanceDecision(baseDecision, {
   return {
     ...base,
     desiredSpeedFactor,
-    reason: base.reason === "player-vehicle"
+    reason: reason === "player-vehicle"
       ? "steering-around-stopped-player"
       : "steering-around-parked"
   };
@@ -178,6 +183,35 @@ export class TrafficSteeringPresentationSystem {
     return (this.materializer.pool || []).filter(slot => slot.tokenId && slot.container?.active !== false);
   }
 
+  vehicleFor(blockerId) {
+    if (!blockerId) return null;
+    return this.vehicleSystem.vehicle?.(blockerId)
+      || (this.vehicleSystem.vehicles || []).find(vehicle => vehicle?.id === blockerId)
+      || null;
+  }
+
+  avoidanceReason(base) {
+    const reason = baseReason(base?.reason);
+    if (reason === "parked-vehicle") return "parked-vehicle";
+    if (reason === "static-obstacle") {
+      const blocker = this.vehicleFor(base?.blockerId);
+      const currentVehicleId = this.vehicleSystem.currentVehicleId || this.vehicleSystem.currentVehicle?.()?.id || null;
+      if (blocker && blocker.id !== currentVehicleId && blocker.parked !== false) return "parked-vehicle";
+      return null;
+    }
+    if (reason !== "player-vehicle") return null;
+    const playerVehicle = this.vehicleSystem.currentVehicle?.();
+    return playerVehicle
+      && playerVehicle.id === base?.blockerId
+      && Math.abs(finite(playerVehicle.speed)) <= this.playerAvoidanceMaxSpeed
+      ? "player-vehicle"
+      : null;
+  }
+
+  avoidableBlocker(base) {
+    return Boolean(this.avoidanceReason(base));
+  }
+
   candidateSafe(slot, side) {
     const angle = finite(slot?.angle);
     const normalX = -Math.sin(angle);
@@ -224,20 +258,12 @@ export class TrafficSteeringPresentationSystem {
     return 0;
   }
 
-  avoidableBlocker(base) {
-    if (base?.reason === "parked-vehicle") return true;
-    if (base?.reason !== "player-vehicle") return false;
-    const playerVehicle = this.vehicleSystem.currentVehicle?.();
-    return Boolean(playerVehicle
-      && playerVehicle.id === base.blockerId
-      && Math.abs(finite(playerVehicle.speed)) <= this.playerAvoidanceMaxSpeed);
-  }
-
   decorateDecision(slot, base) {
     const state = this.stateFor(slot);
     if (!state) return base;
     const gap = base?.gap === null || base?.gap === undefined ? Infinity : finite(base.gap, Infinity);
-    const avoidableAhead = this.avoidableBlocker(base)
+    const avoidanceReason = this.avoidanceReason(base);
+    const avoidableAhead = Boolean(avoidanceReason)
       && gap >= this.avoidanceMinGap
       && gap <= this.avoidanceMaxGap;
 
@@ -253,14 +279,14 @@ export class TrafficSteeringPresentationSystem {
         }
       }
       if (state.active) {
-        return parkedAvoidanceDecision(base, {
+        return parkedAvoidanceDecision({ ...base, reason: avoidanceReason }, {
           offset: state.offset,
           targetOffset: this.lateralDistance,
           passSpeedFactor: this.passSpeedFactor,
           avoidanceMinGap: this.avoidanceMinGap
         });
       }
-    } else if (state.active && !this.avoidableBlocker(base)) {
+    } else if (state.active && !avoidanceReason) {
       state.active = false;
       state.blockerId = null;
       state.cooldown = this.cooldownSeconds;
