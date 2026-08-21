@@ -4,17 +4,16 @@ import { readFile } from "node:fs/promises";
 
 const ROOT = new URL("../", import.meta.url);
 
-test("local traffic assignment composes macro route continuity before lifecycle retention", async () => {
+test("local traffic assignment keeps lifecycle retention without installing macro routing", async () => {
   const source = await readFile(new URL("phaser/src/streaming/TrafficLocalAssignmentPolicy.js", ROOT), "utf8");
-  assert.equal(source.includes("installMacroTrafficRouteContinuityPolicy"), true);
   assert.equal(source.includes("installTrafficLifecyclePolicy"), true);
-  assert.ok(source.indexOf("installMacroTrafficRouteContinuityPolicy") < source.lastIndexOf("installTrafficLifecyclePolicy(materializer)"));
+  assert.equal(source.includes("installMacroTrafficRouteContinuityPolicy"), false);
+  assert.equal(source.includes('laneAuthority: "authored-local-lanes"'), true);
 });
 
-test("intent driving explicitly preserves physical state across edge handoff", async () => {
-  const source = await readFile(new URL("phaser/src/streaming/TrafficIntentDrivingPolicy.js", ROOT), "utf8");
-  assert.equal(source.includes("edgeChanged"), true);
-  assert.equal(source.includes("behaviorState.visualTravel = finite(slot.phase)"), true);
-  assert.equal(source.includes("junctionHandoffs"), true);
-  assert.equal(source.includes('"intent-junction-handoff"'), true);
+test("runtime does not install free-form intent driving until lane-level junctions exist", async () => {
+  const source = await readFile(new URL("phaser/src/runtime/GameplayRuntime.js", ROOT), "utf8");
+  assert.equal(source.includes("installTrafficIntentDrivingPolicy"), false);
+  assert.equal(source.includes("trafficIntentDrivingPolicy ="), false);
+  assert.equal(source.includes("authored lane geometry"), true);
 });
