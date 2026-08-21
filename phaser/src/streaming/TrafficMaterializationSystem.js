@@ -1,7 +1,7 @@
 import { AI_STATES } from "../data/ai.js";
 import { LAYERS } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
-import { VEHICLE_OWNERSHIP, vehicleArchetype } from "../data/vehicles.js";
+import { VEHICLE_OWNERSHIP, trafficVehicleArchetype } from "../data/vehicles.js";
 import { paintVehicle } from "../vehicles/VehicleView.js";
 
 const TRAFFIC_ENTER_RADIUS = 30;
@@ -219,14 +219,12 @@ export class TrafficMaterializationSystem {
   }
 
   createSlot(index) {
-    const archetypeIds = ["compact", "sedan", "van"];
-    const archetypeId = archetypeIds[index % archetypeIds.length];
-    const archetype = vehicleArchetype(archetypeId);
-    if (!archetype) throw new Error(`Unknown traffic archetype ${archetypeId}.`);
+    const archetype = trafficVehicleArchetype(`traffic-pool-${index}`);
+    if (!archetype) throw new Error("Civilian traffic archetype is unavailable.");
     const definition = {
       id: `traffic-pool-${index}`,
       name: "City traffic",
-      archetypeId,
+      archetypeId: archetype.id,
       angle: 0
     };
     const container = this.scene.add.container(0, 0).setDepth(45.5).setActive(false).setVisible(false);
@@ -245,11 +243,30 @@ export class TrafficMaterializationSystem {
       y: 0,
       angle: 0,
       archetype,
-      archetypeId,
+      archetypeId: archetype.id,
       radius: vehicleRadius(archetype),
       container,
       visual
     };
+  }
+
+  configureSlotArchetype(slot, token) {
+    const archetype = trafficVehicleArchetype(token?.tokenId);
+    if (!slot || !archetype || slot.archetypeId === archetype.id) return slot;
+    slot.container.removeAll?.(true);
+    const definition = {
+      id: `traffic:${String(token?.tokenId || slot.slotIndex)}`,
+      name: "City traffic",
+      archetypeId: archetype.id,
+      angle: finite(token?.angle)
+    };
+    const visual = paintVehicle(this.scene, slot.container, definition, archetype);
+    visual.label?.setVisible?.(false);
+    slot.archetype = archetype;
+    slot.archetypeId = archetype.id;
+    slot.radius = vehicleRadius(archetype);
+    slot.visual = visual;
+    return slot;
   }
 
   trafficTokens() {
@@ -342,6 +359,7 @@ export class TrafficMaterializationSystem {
   }
 
   assign(slot, token) {
+    this.configureSlotArchetype(slot, token);
     slot.tokenId = token.tokenId;
     this.assignments.set(token.tokenId, slot);
     slot.container.setActive(true).setVisible(true);
@@ -456,9 +474,9 @@ export class TrafficMaterializationSystem {
   }
 
   occupantCount(slot) {
-    if (slot.archetypeId === "van") return 2;
-    if (slot.archetypeId === "sedan") return 1 + (stableHash(slot.tokenId) % 2);
-    return 1;
+    const minimum = Math.max(1, Math.floor(finite(slot?.archetype?.occupantMin, 1)));
+    const maximum = Math.max(minimum, Math.floor(finite(slot?.archetype?.occupantMax, minimum)));
+    return minimum + (stableHash(slot?.tokenId) % (maximum - minimum + 1));
   }
 
   occupantPosition(slot, index, count) {

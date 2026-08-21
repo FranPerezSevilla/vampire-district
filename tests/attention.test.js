@@ -39,7 +39,7 @@ test("Heat thresholds produce the four police response states", () => {
   assert.equal(heatLevelFromValue(999), 3);
 });
 
-test("new Heat escalation remains stable during its short cooling grace", () => {
+test("new Heat escalation respects its grace and Wanted 2 stays sticky afterwards", () => {
   const targetScene = scene();
   const heat = new HeatSystem(targetScene, { state: createHeatState() });
   let now = 1_000;
@@ -55,9 +55,9 @@ test("new Heat escalation remains stable during its short cooling grace", () => 
   assert.equal(heat.level(), 2);
 
   now += 2_001;
-  assert.ok(heat.cool(0.1) > 0);
-  assert.ok(heat.maximum() < escalatedValue);
-  assert.equal(heat.level(), 1);
+  assert.equal(heat.cool(0.1), 0);
+  assert.equal(heat.maximum(), escalatedValue);
+  assert.equal(heat.level(), 2);
 });
 
 test("Heat can be deliberately downgraded without touching Exposure", () => {

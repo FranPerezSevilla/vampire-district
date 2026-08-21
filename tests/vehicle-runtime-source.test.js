@@ -2,6 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
+import {
+  VEHICLE_ARCHETYPES,
+  VEHICLE_OWNERSHIP,
+  vehicleDefinitions
+} from "../phaser/src/data/vehicles.js";
+
 const ROOT = new URL("../", import.meta.url);
 
 async function source(path) {
@@ -52,14 +58,14 @@ test("campaign vehicle ownership and checkpoint safety remain explicit services"
   assert.equal(view.includes("window.NBD_VEHICLES"), true);
 });
 
-test("vehicle definitions cover the Milestone 12 baseline archetypes", async () => {
-  const definitions = await source("phaser/src/data/vehicles.js");
-  for (const archetype of ["compact", "sedan", "van", "police"]) {
-    assert.equal(definitions.includes(`${archetype}: Object.freeze`), true, archetype);
+test("vehicle definitions preserve the Milestone 12 baseline contracts", () => {
+  for (const id of ["compact", "sedan", "van", "police"]) {
+    const archetype = VEHICLE_ARCHETYPES[id];
+    assert.ok(archetype, id);
+    assert.ok(archetype.trunkCapacity > 0, `${id} trunkCapacity`);
+    assert.ok(archetype.gearCount > 0, `${id} gearCount`);
+    assert.ok(archetype.cameraLookAhead > 0, `${id} cameraLookAhead`);
   }
-  assert.equal(definitions.includes("trunkCapacity"), true);
-  assert.equal(definitions.includes("gearCount"), true);
-  assert.equal(definitions.includes("cameraLookAhead"), true);
-  assert.equal(definitions.includes('"startOwned":true'), true);
-  assert.equal(definitions.includes('"ownership":"police"'), true);
+  assert.ok(vehicleDefinitions.some(definition => definition.startOwned === true));
+  assert.ok(vehicleDefinitions.some(definition => definition.ownership === VEHICLE_OWNERSHIP.POLICE));
 });

@@ -14,6 +14,13 @@ import {
 } from "../phaser/src/streaming/MacroTrafficPoliceSystem.js";
 import { advancePoliceRoute } from "../phaser/src/police/MotorizedPolicePolicy.js";
 
+const LEGACY_TOP_SPEEDS = Object.freeze({
+  compact: 340,
+  sedan: 360,
+  van: 300,
+  police: 400
+});
+
 function accelerationMetrics(id) {
   const archetype = VEHICLE_ARCHETYPES[id];
   let state = createVehicleState({
@@ -44,19 +51,32 @@ function accelerationMetrics(id) {
 
 test("driveable archetypes recover top speed without instant acceleration", () => {
   assert.deepEqual(
-    Object.fromEntries(Object.entries(VEHICLE_ARCHETYPES).map(([id, archetype]) => [id, archetype.maxSpeed])),
-    { compact: 340, sedan: 360, van: 300, police: 400 }
+    Object.fromEntries(Object.keys(LEGACY_TOP_SPEEDS).map(id => [id, VEHICLE_ARCHETYPES[id].maxSpeed])),
+    LEGACY_TOP_SPEEDS,
+    "the original four vehicle IDs keep their established top-speed tuning"
   );
 
-  for (const id of ["compact", "sedan", "van", "police"]) {
+  for (const id of Object.keys(VEHICLE_ARCHETYPES)) {
     const archetype = VEHICLE_ARCHETYPES[id];
     const metrics = accelerationMetrics(id);
-    assert.ok(metrics.halfSecondSpeed < archetype.maxSpeed * 0.75, `${id} must not snap to top speed`);
+    assert.ok(metrics.halfSecondSpeed < archetype.maxSpeed * 0.82, `${id} must not snap to top speed`);
+    assert.notEqual(metrics.timeToNinety, null, `${id} should reach 90% within the eight-second sample`);
+    assert.notEqual(metrics.timeToNinetyNine, null, `${id} should reach 99% within the eight-second sample`);
+    assert.ok(
+      metrics.shifts.length >= Math.max(1, archetype.gearCount - 2),
+      `${id} should progress through its gearbox before reaching the high-speed envelope`
+    );
+    assert.ok(metrics.speed <= archetype.maxSpeed, `${id} should respect maxSpeed`);
+  }
+
+  for (const id of Object.keys(LEGACY_TOP_SPEEDS)) {
+    const archetype = VEHICLE_ARCHETYPES[id];
+    const metrics = accelerationMetrics(id);
+    assert.ok(metrics.halfSecondSpeed < archetype.maxSpeed * 0.75, `${id} legacy acceleration must remain readable`);
     assert.ok(metrics.timeToNinety <= 1.6, `${id} should enter the fast envelope promptly`);
     assert.ok(metrics.timeToNinetyNine >= 2.2, `${id} should preserve a readable multi-gear build`);
     assert.ok(metrics.timeToNinetyNine <= 3.6, `${id} should not crawl through upper gears`);
-    assert.equal(metrics.shifts.length, archetype.gearCount - 1, `${id} should visit every forward gear`);
-    assert.ok(metrics.speed <= archetype.maxSpeed);
+    assert.equal(metrics.shifts.length, archetype.gearCount - 1, `${id} legacy gearbox progression must remain unchanged`);
   }
 });
 
@@ -74,7 +94,7 @@ test("civilian traffic gains one shared modest cruise-speed increase", () => {
   assert.ok(Math.abs((1500 / boostedTravelSeconds) - 168) < 0.001);
 });
 
-test("wanted route response remains faster than the quicker player cars", () => {
+test("wanted route response remains faster than the quicker baseline cars", () => {
   const route = {
     legs: [{ travelSeconds: 10 }],
     legIndex: 0,
