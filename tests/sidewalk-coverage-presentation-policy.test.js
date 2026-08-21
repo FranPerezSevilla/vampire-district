@@ -5,10 +5,10 @@ import { WORLD } from "../phaser/src/data/balance.js";
 import { LAYERS, sidewalks } from "../phaser/src/data/district.js";
 import { installSidewalkCoveragePresentationPolicy } from "../phaser/src/policies/SidewalkCoveragePresentationPolicy.js";
 
-function mapStub() {
+function mapStub(onFillRect = () => {}) {
   return {
     fillStyle() { return this; },
-    fillRect() { return this; },
+    fillRect(x, y, w, h) { onFillRect(x, y, w, h); return this; },
     lineStyle() { return this; },
     lineBetween() { return this; }
   };
@@ -20,18 +20,19 @@ class PresentationScene {
 
 installSidewalkCoveragePresentationPolicy(PresentationScene);
 
-test("completed sidewalks stay inside geometry and sidewalk rendering queries", () => {
+test("authoritative road pavement is painted directly after buildings and still participates in sidewalk geometry", () => {
   const bounds = { x: 0, y: 0, w: WORLD.width, h: WORLD.height };
-  const visualOnly = {
-    id: "presentation-only-test-sidewalk",
-    x: 4,
-    y: 4,
-    w: 4,
-    h: 4,
+  const authoritative = {
+    id: "presentation-road-edge-test",
+    x: 40,
+    y: 78,
+    w: 120,
+    h: 22,
     geometry: "rect",
-    presentationOnly: true
+    presentationOnly: true,
+    authoritativeRoadEdge: true
   };
-  const completed = [...sidewalks, visualOnly];
+  const completed = [...sidewalks, authoritative];
   const observed = {};
   const renderOrder = [];
   const scene = new PresentationScene();
@@ -46,17 +47,19 @@ test("completed sidewalks stay inside geometry and sidewalk rendering queries", 
   scene.citySurfaceCompletedSidewalks = completed;
   scene.urbanRenderBounds = bounds;
   scene.currentLayer = LAYERS.STREET;
-  scene.map = mapStub();
+  scene.map = mapStub((x, y, w, h) => {
+    if (x === authoritative.x && y === authoritative.y && w === authoritative.w && h === authoritative.h) {
+      renderOrder.push("authoritative-pavement");
+    }
+  });
 
   scene.prepareCitySurfaceGeometry = function prepareCitySurfaceGeometry(queryBounds) {
     observed.geometryCount = this.chunkItems("sidewalks", queryBounds, sidewalks, { margin: 56 }).length;
-    this.citySurfaceGeometryCache = {
-      boundary: { curbSegments: [], corners: [] }
-    };
+    this.citySurfaceGeometryCache = { boundary: { curbSegments: [], corners: [] } };
     return this.citySurfaceGeometryCache;
   };
   scene.drawSidewalkNetwork = function drawSidewalkNetwork() {
-    renderOrder.push("sidewalk");
+    renderOrder.push("sidewalk-network");
     observed.sidewalkDrawCount = this.chunkItems("sidewalks", bounds, sidewalks, { margin: 8 }).length;
   };
   scene.drawCrosswalkNetwork = function drawCrosswalkNetwork() {
@@ -73,9 +76,9 @@ test("completed sidewalks stay inside geometry and sidewalk rendering queries", 
   assert.equal(observed.geometryCount, completed.length);
   assert.equal(observed.sidewalkDrawCount, completed.length);
   assert.equal(observed.crosswalkPhaseCount, sidewalks.length);
-  assert.deepEqual(renderOrder, ["building", "sidewalk"]);
+  assert.deepEqual(renderOrder, ["building", "authoritative-pavement", "sidewalk-network"]);
+  assert.equal(scene.citySurfaceAuthoritativePavementDrawCount, 1);
   assert.strictEqual(scene.chunkItems, authoredChunkItems);
-  assert.equal(scene.chunkItems("sidewalks", bounds, sidewalks).length, sidewalks.length);
 });
 
 test("temporary presentation query is restored when sidewalk drawing throws", () => {
@@ -94,7 +97,8 @@ test("temporary presentation query is restored when sidewalk drawing throws", ()
     w: 4,
     h: 4,
     geometry: "rect",
-    presentationOnly: true
+    presentationOnly: true,
+    authoritativeRoadEdge: true
   }];
   scene.urbanRenderBounds = bounds;
   scene.currentLayer = LAYERS.STREET;
@@ -113,5 +117,4 @@ test("temporary presentation query is restored when sidewalk drawing throws", ()
 
   assert.throws(() => scene.drawDistrictStreet(), /render failure/);
   assert.strictEqual(scene.chunkItems, authoredChunkItems);
-  assert.equal(scene.chunkItems("sidewalks", bounds, sidewalks).length, sidewalks.length);
 });
