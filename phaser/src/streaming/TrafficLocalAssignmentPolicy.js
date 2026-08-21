@@ -1,4 +1,5 @@
 import { LAYERS } from "../data/district.js";
+import { installTrafficLaneJunctionTopologyPolicy } from "./TrafficLaneJunctionTopology.js";
 import { cameraWorldBounds } from "./TrafficMaterializationSystem.js";
 import { installTrafficLifecyclePolicy } from "./TrafficLifecyclePolicy.js";
 
@@ -35,11 +36,9 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   }
   if (materializer.__nbdLocalAssignmentPolicy) return materializer.__nbdLocalAssignmentPolicy;
 
-  // Do not install macro route continuity here. The macro graph describes district
-  // connectivity, not lane-level drivable geometry. Using it as local lane authority
-  // lets vehicles cut across sidewalks/buildings and enter the wrong side of roads.
-  // Local traffic must remain governed by the authored lane system until a real
-  // lane-to-lane junction graph exists.
+  // The lane-to-lane junction graph is now derived and validated here, but it is
+  // deliberately read-only in this slice. Existing authored local lanes remain the
+  // movement authority until route handoff consumes the validated connectors.
   const originalEligible = materializer.eligible;
   const originalRelease = materializer.release;
   const originalHijack = materializer.hijack;
@@ -92,6 +91,8 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     }
   }
 
+  let laneJunctionTopologyPolicy = null;
+
   function localBehaviorSnapshot() {
     const snapshot = originalSnapshot.call(this);
     return {
@@ -102,7 +103,8 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       preventedVisibleDespawns,
       lastPreventedTokenId,
       macroRouteContinuityActive: false,
-      laneAuthority: "authored-local-lanes"
+      laneAuthority: "authored-local-lanes",
+      laneJunctionTopology: laneJunctionTopologyPolicy?.snapshot?.() || { ready: false }
     };
   }
 
@@ -111,9 +113,10 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   materializer.hijack = localBehaviorHijack;
   materializer.snapshot = localBehaviorSnapshot;
 
-  // Lifecycle retention remains useful independently: it prevents visible churn
-  // without changing where a car is allowed to drive.
+  // Lifecycle retention prevents camera/chunk churn. Junction topology is loaded in
+  // parallel as a read-only route contract; neither changes the current lane owner.
   const lifecyclePolicy = installTrafficLifecyclePolicy(materializer);
+  laneJunctionTopologyPolicy = installTrafficLaneJunctionTopologyPolicy(materializer);
 
   const policy = {
     originalEligible,
@@ -126,7 +129,9 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     localBehaviorSnapshot,
     routeContinuityPolicy: null,
     lifecyclePolicy,
+    laneJunctionTopologyPolicy,
     destroy() {
+      laneJunctionTopologyPolicy?.destroy?.();
       lifecyclePolicy?.destroy?.();
       if (materializer.eligible === localBehaviorEligible) materializer.eligible = originalEligible;
       if (materializer.release === localBehaviorRelease) materializer.release = originalRelease;
