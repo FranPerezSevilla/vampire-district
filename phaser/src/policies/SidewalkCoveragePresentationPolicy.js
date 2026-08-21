@@ -58,15 +58,20 @@ function completedSidewalksFor(scene) {
     roadSegments,
     roads,
     sidewalks,
+    buildings,
     world: WORLD,
-    sidewalkWidth: 22
+    sidewalkWidth: 22,
+    frontageMaxDepth: 96,
+    frontageAxisPadding: 6
   });
   const authoredCount = sidewalks.length;
   const authoritativeCount = completed.filter(surface => surface.authoritativeRoadEdge === true).length;
+  const frontageCount = completed.filter(surface => surface.frontagePavement === true).length;
   scene.citySurfaceCompletedSidewalks = Object.freeze(completed.map(surface => Object.freeze({ ...surface })));
   scene.citySurfaceSidewalkCoverage = Object.freeze({
     authoredCount,
     authoritativeCount,
+    frontageCount,
     totalCount: completed.length
   });
   return scene.citySurfaceCompletedSidewalks;
@@ -98,14 +103,14 @@ function withPresentationSidewalks(scene, completed, callback) {
 }
 
 /**
- * Paints the road-owned pavement directly rather than routing it through the city
- * stream. This is intentionally redundant with drawSidewalkNetwork: it makes the
- * visual invariant independent of authored sidewalk holes and streaming/chunk
- * membership. Because it runs after buildings, a building footprint cannot erase
- * the pavement immediately beside a road.
+ * Paints every presentation-only pavement surface directly rather than relying on
+ * the city stream to discover it. This includes both the guaranteed 22 px kerb
+ * band and the visual frontage that runs from that band to nearby building faces.
+ * It runs after buildings so the street frontage wins over legacy dark parcel
+ * ground, while frontage rectangles stop exactly at the nearest facade.
  */
-function drawAuthoritativeRoadEdgePavement(scene, completed, bounds) {
-  const visible = completed.filter(surface => surface.authoritativeRoadEdge === true && intersects(surface, bounds, 2));
+function drawPresentationPavement(scene, completed, bounds) {
+  const visible = completed.filter(surface => surface.presentationOnly === true && intersects(surface, bounds, 2));
   scene.map.fillStyle(COLORS.sidewalk, 1);
   for (const surface of visible) {
     const fragment = clippedRect(surface, bounds);
@@ -134,7 +139,7 @@ export function installSidewalkCoveragePresentationPolicy(GameSceneClass) {
     const visibleBuildings = this.chunkItems("buildings", bounds, buildings, { margin: 80 });
     for (const building of visibleBuildings) this.drawBuilding(building);
 
-    this.citySurfaceAuthoritativePavementDrawCount = drawAuthoritativeRoadEdgePavement(this, completed, bounds);
+    this.citySurfacePresentationPavementDrawCount = drawPresentationPavement(this, completed, bounds);
     withPresentationSidewalks(this, completed, () => this.drawSidewalkNetwork());
 
     this.drawCrosswalkNetwork();
