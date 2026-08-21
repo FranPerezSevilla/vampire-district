@@ -105,7 +105,7 @@ test("descriptor and fragment caps keep the family low-frequency", () => {
 
   assert.equal(descriptors.length, 2);
   assert.ok(descriptors.every(item => item.fragments.length <= 2));
-  assert.ok(descriptors.every(item => item.fragments.every(fragment => fragment.alpha <= 0.135)));
+  assert.ok(descriptors.every(item => item.fragments.every(fragment => fragment.alpha <= 0.25)));
 });
 
 test("render-window culling skips buildings outside the active presentation window", () => {
@@ -134,8 +134,9 @@ test("production grime fragments stay outside roads and crosswalks and remain co
       assert.equal(crosswalks.some(surface => pointInsideSurface(fragment, surface)), false, descriptor.sourceId);
       const xs = fragment.points.map(point => point.x);
       const ys = fragment.points.map(point => point.y);
-      assert.ok(Math.max(...xs) - Math.min(...xs) <= 16);
-      assert.ok(Math.max(...ys) - Math.min(...ys) <= 16);
+      assert.ok(Math.max(...xs) - Math.min(...xs) <= 30);
+      assert.ok(Math.max(...ys) - Math.min(...ys) <= 30);
+      assert.ok(fragment.alpha >= 0.18 && fragment.alpha <= 0.25);
     }
   }
 });
