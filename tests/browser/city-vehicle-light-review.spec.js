@@ -38,35 +38,30 @@ test("captures bounded traffic and police ground-light contribution", async ({ p
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
   await waitForCity(page);
 
-  // Use the real preallocated traffic slot as an isolated presentation fixture.
-  // Picking an already-materialized traffic token and then moving stream focus can
-  // legitimately reconcile that token away before the capture, which made the
-  // visual review timing-dependent. This keeps the renderer/model authority real
-  // while avoiding any dependency on macro-traffic scheduling.
-  const trafficState = await page.evaluate(async () => {
+  // Use real preallocated runtime slots but keep them inside the already-current
+  // camera worldView. Phaser refreshes worldView during camera pre-render; moving
+  // the camera and sampling it synchronously made the earlier review fixture look
+  // offscreen to the culling policy even though the screenshot would later show it.
+  const trafficState = await page.evaluate(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
-    const district = await import("/phaser/src/data/district.js");
-    const crossing = district.crosswalks[Math.floor(district.crosswalks.length / 3)] || district.crosswalks[0];
-    const center = crossing
-      ? { x: Number(crossing.x) + Number(crossing.w) / 2, y: Number(crossing.y) + Number(crossing.h) / 2 }
-      : { x: 1800, y: 1192 };
-    await window.NBD_CITY_STREAM.forceFocus(center.x, center.y);
-    scene.switchLayer(0, { x: center.x, y: center.y + 42 }, "Vehicle-light atmosphere review");
-    scene.redrawLayer("Vehicle-light atmosphere review");
-    scene.cameras.main.centerOn(center.x, center.y);
-
+    const camera = scene.cameras.main;
+    const view = camera.worldView;
+    const center = {
+      x: Number(view.x) + Number(view.width) * 0.5,
+      y: Number(view.y) + Number(view.height) * 0.5
+    };
     const slot = scene.trafficMaterializationSystem.pool[0];
     if (!slot) return null;
     slot.tokenId = "atmosphere-review-traffic";
     slot.edgeId = "atmosphere-review";
     slot.tokenIndex = 0;
     slot.direction = "forward";
-    slot.x = center.x;
+    slot.x = center.x + 34;
     slot.y = center.y;
     slot.angle = 0;
     slot.speedFactor = 1;
     slot.desiredSpeedFactor = 1;
-    slot.container.setPosition(center.x, center.y).setRotation(0).setActive(true).setVisible(true);
+    slot.container.setPosition(slot.x, slot.y).setRotation(0).setActive(true).setVisible(true);
     scene.updateVehicleLightPresentation?.(360);
     const descriptors = (scene.cityVehicleLightDescriptors || []).map(item => ({
       sourceId: item.sourceId,
@@ -89,25 +84,27 @@ test("captures bounded traffic and police ground-light contribution", async ({ p
   expect(trafficState.families).toContain("vehicle-tail");
   await captureCanvas(page, "vehicle-lights");
 
-  const policeRed = await page.evaluate(async () => {
+  const policeRed = await page.evaluate(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     if (scene.scene.isPaused()) scene.scene.resume();
-    const district = await import("/phaser/src/data/district.js");
-    const crossing = district.crosswalks[Math.floor(district.crosswalks.length / 2)] || district.crosswalks[0];
-    const center = crossing
-      ? { x: Number(crossing.x) + Number(crossing.w) / 2, y: Number(crossing.y) + Number(crossing.h) / 2 }
-      : { x: 2340, y: 960 };
-    await window.NBD_CITY_STREAM.forceFocus(center.x, center.y);
-    scene.switchLayer(0, { x: center.x, y: center.y + 46 }, "Police-light atmosphere review");
-    scene.redrawLayer("Police-light atmosphere review");
-    scene.cameras.main.centerOn(center.x, center.y);
+    const view = scene.cameras.main.worldView;
+    const center = {
+      x: Number(view.x) + Number(view.width) * 0.5,
+      y: Number(view.y) + Number(view.height) * 0.5
+    };
+
+    const trafficSlot = scene.trafficMaterializationSystem.pool[0];
+    if (trafficSlot) {
+      trafficSlot.tokenId = null;
+      trafficSlot.container.setActive(false).setVisible(false);
+    }
 
     const slot = scene.motorizedPoliceSystem.slots[0];
     slot.unitId = "atmosphere-review-police";
-    slot.x = center.x;
+    slot.x = center.x + 34;
     slot.y = center.y;
     slot.angle = 0;
-    slot.container.setPosition(center.x, center.y).setRotation(0).setActive(true).setVisible(true);
+    slot.container.setPosition(slot.x, slot.y).setRotation(0).setActive(true).setVisible(true);
     scene.updateVehicleLightPresentation?.(0);
     const descriptors = (scene.cityVehicleLightDescriptors || []).map(item => ({
       sourceId: item.sourceId,
