@@ -1,11 +1,23 @@
 {
   "initiative": "city-noir-atmosphere",
-  "version": 8,
+  "version": 9,
   "updatedAt": "2026-08-21",
   "branch": "agent/city-noir-atmosphere",
   "state": "autonomous-in-progress",
   "currentMilestone": "M5",
-  "currentTask": "M5.2-service-frontage-grime",
+  "currentTask": "checkpoint-after-M5.2",
+  "executionCadence": {
+    "default": "task-validate-document-report-wait",
+    "waitForUserAfterEachBoundedTask": true,
+    "genericContinueAuthorizes": "next-bounded-task-only",
+    "batchOverrideRequiresExplicitUserInstruction": true,
+    "batchExamples": [
+      "hazlo todo de golpe",
+      "continua hasta que necesites mi intervencion"
+    ],
+    "documentationRequiredInBatchMode": true,
+    "rule": "Every bounded task must be validated and documented before the next task starts. By default, report the checkpoint and wait for the user's next indication. An explicit batch instruction removes only the wait step for the granted scope, never the documentation step."
+  },
   "dependency": {
     "pullRequest": 69,
     "title": "City street visual pass",
@@ -21,11 +33,12 @@
     "rule": "PR #69 remains the sole road/sidewalk/crosswalk surface authority. Atmosphere work layers above it and does not duplicate curb, gutter, drain, crack, repair or road-paint geometry."
   },
   "branchSync": {
-    "lastIntegratedMain": "f803c974817c92666b82a60fac808d54c2c4bc05",
+    "lastIntegratedMain": "805ea5d107dcddcef4cd564294569455093af4b0",
     "observedMain": "805ea5d107dcddcef4cd564294569455093af4b0",
     "observedMainChange": "merged PR #71 vehicle dynamics",
-    "state": "recheck-before-runtime-M5.2",
-    "rule": "Before M5.2 runtime edits, compare/synchronize with current main if still required. Do not let unrelated vehicle/traffic work expand M5 scope."
+    "state": "synced",
+    "evidence": "main...agent/city-noir-atmosphere behind_by=0 after M5.2 implementation",
+    "rule": "Unrelated vehicle/traffic work is integrated only for branch continuity and must not expand atmosphere scope."
   },
   "completedTasks": [
     "M0.1",
@@ -58,7 +71,11 @@
     "M4.5-focused-tests",
     "M4.6-gameplay-scale-browser-evidence",
     "M4.7-continuity",
-    "M5.1-responsibility-audit"
+    "M5.1-responsibility-audit",
+    "M5.2-service-frontage-grime",
+    "M5.2-focused-tests",
+    "M5.2-gameplay-scale-browser-evidence",
+    "M5.2-documentation-checkpoint"
   ],
   "milestones": {
     "M0": { "title": "Canonical direction, references and agent continuity", "state": "complete" },
@@ -172,7 +189,7 @@
   },
   "m5": {
     "task": "docs/agent-tasks/2026-08-21-city-noir-m5-grime-dressing.md",
-    "state": "autonomous-in-progress",
+    "state": "checkpoint-after-M5.2",
     "auditState": "complete",
     "ownedByStreetSurfaceAuthority": [
       "open-ground-grid",
@@ -213,12 +230,33 @@
       "graffiti-worldbuilding",
       "decorative-signage"
     ],
-    "firstImplementationSlice": "service-frontage-grime"
+    "m5_2": {
+      "state": "complete",
+      "family": "service-frontage-grime",
+      "authority": "phaser/src/policies/CityGrimePresentationPolicy.js",
+      "focusedTest": "tests/city-service-frontage-grime-presentation.test.js",
+      "browserTest": "tests/browser/city-grime-review.spec.js",
+      "validatedHead": "485ad7074f1ddfcbb1ab8e8f70d33125cd4a0aa4",
+      "validation": {
+        "testsWorkflowRun": 32488128735,
+        "atmosphereWorkflowRun": 32488128814,
+        "artifactId": 9448812773,
+        "conclusion": "success"
+      },
+      "captures": [
+        "service-frontage-grime.png",
+        "mixed-grime-context.png",
+        "grime-dark-control.png"
+      ],
+      "visualAssessment": "accepted: selected service/industrial frontage reads less sterile while the family remains contextual, compact and subordinate; mixed/dark controls preserve sparse city hierarchy"
+    },
+    "nextPlannedTask": "M5.3-service-corner-composition",
+    "nextTaskState": "awaiting-user-direction"
   },
   "finalGate": {
     "requiresUserVisualApproval": true,
     "autonomousWorkStopsAt": "final-validation-pending",
     "autoMergeAllowed": false
   },
-  "nextAction": "Before runtime M5.2 edits, re-check the branch against current main and integrate the unrelated merged PR #71 change if still required without expanding scope. Then implement only the deterministic capped service-frontage-grime family from the M5 task contract, add focused determinism/non-mutation/road-crosswalk-rejection/culling tests, and capture one service location plus mixed/dark controls before adding any second M5 family."
+  "nextAction": "Checkpoint complete after M5.2. Report the documented result and wait for user direction. If the user says to continue, authorize only the next bounded task M5.3 service-corner composition unless they explicitly request batch execution."
 }
