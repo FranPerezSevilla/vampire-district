@@ -27,7 +27,9 @@ function vehicleState(slot, previous = null) {
     gear: Math.max(1, Math.round(finite(base.gear, slot?.gear || 1))),
     gearShiftTimer: Math.max(0, finite(base.gearShiftTimer, slot?.gearShiftTimer)),
     parked: Math.abs(finite(base.speed, slot?.engineSpeed)) < 0.5,
-    disabled: false
+    disabled: false,
+    edgeId: slot?.edgeId || base.edgeId || null,
+    direction: slot?.direction || base.direction || null
   };
 }
 
@@ -67,6 +69,7 @@ export function installTrafficIntentDrivingPolicy(steering) {
   const originalApplyPresentation = steering.applyPresentation;
   const dynamics = new Map();
   let drivenFrames = 0;
+  let junctionHandoffs = 0;
 
   function intentDrivenPresentation(slot, steeringState, dt) {
     if (!slot?.tokenId) return originalApplyPresentation.call(this, slot, steeringState, dt);
@@ -74,7 +77,24 @@ export function installTrafficIntentDrivingPolicy(steering) {
     const lane = behaviorState ? steering.behavior.laneFor?.(behaviorState) : null;
     const seconds = Math.max(0, finite(dt));
     const archetype = slot.archetype || {};
-    let actual = vehicleState(slot, dynamics.get(slot.tokenId));
+    const previous = dynamics.get(slot.tokenId) || null;
+    const edgeChanged = Boolean(previous?.edgeId && slot.edgeId && previous.edgeId !== slot.edgeId);
+
+    // A routed token keeps its identity when it enters the next street. Reset the
+    // lane-authority phase, but deliberately keep the previous physical x/y,
+    // heading and momentum so the shared vehicle model actually drives through
+    // the junction instead of teleporting to the new lane sample.
+    if (edgeChanged && behaviorState) {
+      behaviorState.visualTravel = finite(slot.phase);
+      behaviorState.authorityTravel = finite(slot.phase);
+      behaviorState.lastAuthorityPhase = finite(slot.phase);
+      behaviorState.lag = 0;
+      junctionHandoffs++;
+    }
+
+    let actual = vehicleState(slot, previous);
+    actual.edgeId = slot.edgeId;
+    actual.direction = slot.direction;
 
     const lanePhase = finite(behaviorState?.visualTravel, finite(slot.phase));
     const laneLength = Math.max(1, finite(lane?.length, 240));
@@ -106,6 +126,8 @@ export function installTrafficIntentDrivingPolicy(steering) {
       next = stepVehicleKinematics(actual, brakeIntent, seconds, archetype);
     }
 
+    next.edgeId = slot.edgeId;
+    next.direction = slot.direction;
     dynamics.set(slot.tokenId, next);
     slot.x = next.x;
     slot.y = next.y;
@@ -116,7 +138,9 @@ export function installTrafficIntentDrivingPolicy(steering) {
     slot.gearShiftTimer = next.gearShiftTimer;
     slot.steeringOffset = Math.hypot(next.x - finite(sampled?.x), next.y - finite(sampled?.y));
     slot.steeringAngle = angleDelta(laneAngle, next.angle);
-    slot.steeringReason = steeringState?.active ? "intent-obstacle-avoidance" : "intent-lane-follow";
+    slot.steeringReason = edgeChanged
+      ? "intent-junction-handoff"
+      : steeringState?.active ? "intent-obstacle-avoidance" : "intent-lane-follow";
     slot.container?.setPosition?.(next.x, next.y)?.setRotation?.(next.angle);
     slot.visual?.label?.setRotation?.(-next.angle);
     steeringState.offset = offset;
@@ -132,6 +156,7 @@ export function installTrafficIntentDrivingPolicy(steering) {
       return {
         activeVehicles: dynamics.size,
         drivenFrames,
+        junctionHandoffs,
         model: "player-vehicle-kinematics"
       };
     },
