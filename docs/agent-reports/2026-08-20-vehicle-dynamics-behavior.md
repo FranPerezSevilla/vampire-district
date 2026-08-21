@@ -6,15 +6,47 @@ This clean integration is based directly on `main` after PR #70 (`Vehicle roster
 
 ## Current goal
 
-Make vehicles feel driven rather than translated, and make police pursuit read as deliberate containment rather than generic chasing.
+Make vehicles feel driven rather than translated, remove visible civilian traffic popping at junctions, and make police pursuit read as deliberate containment rather than generic chasing.
 
-## Ambient traffic
+## Ambient traffic driving
 
-Visible NPC traffic now uses the same `stepVehicleKinematics` model as the player vehicle. Lane following, obstacle avoidance and recovery remain high-level intentions; translation, heading, speed, grip and steering are produced by the shared vehicle model.
+Visible NPC traffic uses the same `stepVehicleKinematics` model as the player vehicle. Lane following, obstacle avoidance and recovery remain high-level intentions; translation, heading, speed, grip and steering are produced by the shared vehicle model.
+
+### Continuous macro routes
+
+Civilian macro traffic now keeps a stable vehicle identity across streets. Completing an edge no longer wraps the same token from phase `1` back to phase `0` on the same street.
+
+Each traffic agent instead:
+
+1. reaches the destination junction of its current edge;
+2. deterministically chooses a connected next street while avoiding an immediate U-turn when alternatives exist;
+3. keeps the same `tokenId`;
+4. enters the next edge with the correct forward/reverse lane direction;
+5. consumes any leftover simulation time on that new edge.
+
+The local intent-driving layer detects this `edgeId` handoff, resets lane-authority phase to the new street, but preserves the car's physical x/y, heading and momentum. The car therefore drives into the new lane rather than teleporting to a new lane sample.
+
+### Civilian lifecycle state machine
+
+Materialized civilian traffic now has an explicit lifecycle:
+
+1. `SPAWNING` — materialized off-camera and protected while local systems settle.
+2. `CRUISING` — ordinary visible local driving.
+3. `APPROACH_JUNCTION` — near the end of an edge; protected from despawn.
+4. `CROSSING_JUNCTION` — edge handoff is in progress; identity/slot are retained.
+5. `FOLLOWING` — reacting to traffic/junction yield; protected from churn.
+6. `AVOIDING` — performing an obstacle/stopped-vehicle maneuver; protected.
+7. `BLOCKED` — physical traffic constraint; protected.
+8. `RECENTLY_VISIBLE` — outside the viewport but remembered for 2.6 seconds so camera motion cannot make it pop.
+9. `LEAVING_VIEW` — genuinely offscreen and no longer protected; only here is normal despawn eligible.
+
+Existing spawn geometry still prevents new traffic from materializing inside the camera. The lifecycle adds temporal continuity on top: a visible, recently visible, manoeuvring or junction-crossing car cannot be recycled merely because chunk/focus conditions changed for a frame.
+
+Forced releases such as hijacking remain legal and bypass lifecycle retention.
 
 ## Police pursuit state machine
 
-Motorized pursuit is now governed by an explicit persistent state machine instead of independent per-frame tactical conditions.
+Motorized pursuit is governed by an explicit persistent state machine instead of independent per-frame tactical conditions.
 
 States:
 
@@ -47,19 +79,21 @@ The following remain owned by their existing systems:
 - Heat/Wanted thresholds;
 - collision and vehicle damage;
 - officer spawning and armed on-foot behavior;
-- traffic lane authority and city routing;
 - roadblock physical authority;
-- street-furniture collision authority.
+- street-furniture collision authority;
+- local vehicle collision/occupancy authority.
 
 ## Validation focus
 
-Automated coverage explicitly checks the state transitions and fleet invariants. Manual validation should focus on play feel:
+Automated coverage checks traffic route continuation, lifecycle despawn protection, intent-driven junction handoff, police state transitions and fleet invariants. Manual validation should focus on play feel:
 
-1. drive head-on past a cruiser and confirm it enters `REENGAGE` rather than continuing away;
-2. approach a cruiser already ahead and confirm it transitions to `BLOCK`;
-3. confirm the primary close follower uses `PRESSURE`, while secondary cars use `INTERCEPT`/`BLOCK` rather than stacking in one line;
-4. Wanted 2 must maintain three pursuit slots;
-5. Wanted 3 must maintain three pursuers plus a separate roadblock unit;
-6. drive slowly but continuously and confirm officers remain mounted;
-7. stop almost completely for the hold window and confirm transition `CONTAINED` -> `DEPLOYED`;
-8. verify NPC civilian cars still rotate/accelerate/brake naturally through lane recovery and obstacle avoidance.
+1. follow a civilian car through several junctions and confirm it keeps identity and drives onto the next street instead of disappearing/reappearing;
+2. rotate/move the camera around a busy junction and confirm recently visible traffic does not churn;
+3. confirm a car crossing, yielding, avoiding or physically blocked cannot despawn mid-action;
+4. confirm new civilian vehicles still enter from outside the viewport rather than popping into view;
+5. drive head-on past a cruiser and confirm it enters `REENGAGE` rather than continuing away;
+6. approach a cruiser already ahead and confirm it transitions to `BLOCK`;
+7. Wanted 2 must maintain three pursuit slots;
+8. Wanted 3 must maintain three pursuers plus a separate roadblock unit;
+9. drive slowly but continuously and confirm officers remain mounted;
+10. stop almost completely for the hold window and confirm transition `CONTAINED` -> `DEPLOYED`.
