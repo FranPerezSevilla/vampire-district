@@ -136,6 +136,12 @@ export function installTrafficLifecyclePolicy(materializer, {
     return lifecycleProtectsFromDespawn(state.lifecycle);
   }
 
+  function macroTokenExists(tokenId) {
+    if (!tokenId) return false;
+    const tokens = materializer.trafficTokens?.();
+    return Array.isArray(tokens) && tokens.some(token => token?.tokenId === tokenId);
+  }
+
   function lifecycleRelease(slot, options = {}) {
     const forced = Boolean(
       options?.force
@@ -143,7 +149,10 @@ export function installTrafficLifecyclePolicy(materializer, {
       || materializer.__nbdForceTrafficLifecycleRelease
       || materializer.scene?.currentLayer !== LAYERS.STREET
     );
-    if (!forced && protectedSlot(slot)) {
+    // Lifecycle states protect a live macro vehicle from local churn. If its macro
+    // token vanished, defer to the local viewport guard instead: it may survive
+    // while actually visible, but must be releasable as soon as it is offscreen.
+    if (!forced && protectedSlot(slot) && macroTokenExists(slot?.tokenId)) {
       preventedLifecycleDespawns++;
       slot.lifecycleRetentionReason = states.get(slot.tokenId)?.lifecycle || "protected";
       return false;
