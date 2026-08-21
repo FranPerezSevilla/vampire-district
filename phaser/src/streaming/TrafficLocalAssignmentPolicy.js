@@ -1,4 +1,5 @@
 import { LAYERS } from "../data/district.js";
+import { installTrafficControlledRouteActivationPolicy } from "./TrafficControlledRouteActivationPolicy.js";
 import { cameraWorldBounds } from "./TrafficMaterializationSystem.js";
 import { installTrafficLifecyclePolicy } from "./TrafficLifecyclePolicy.js";
 import { installTrafficRouteMaterializationMetadataPolicy } from "./TrafficRouteMaterializationPolicy.js";
@@ -60,9 +61,8 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   }
   if (materializer.__nbdLocalAssignmentPolicy) return materializer.__nbdLocalAssignmentPolicy;
 
-  // Compiler-owned localTopology is the only future physical route authority. M5
-  // installs only route metadata/lifecycle retention substrate; authored legacy lanes
-  // still own every visible civilian vehicle until controlled M6 activation.
+  // Compiler localTopology is the only future physical route authority. Controlled
+  // M6 movement stays opt-in; all normal civilian traffic remains on legacy lanes.
   const originalEligible = materializer.eligible;
   const originalRelease = materializer.release;
   const originalHijack = materializer.hijack;
@@ -72,6 +72,7 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   let lastPreventedTokenId = null;
   let shadowRoutePolicy = null;
   let routeMaterializationMetadataPolicy = null;
+  let controlledRoutePolicy = null;
 
   function visibleRetention(slot) {
     if (scene.currentLayer !== LAYERS.STREET || !slot?.tokenId) return false;
@@ -119,6 +120,12 @@ export function installTrafficLocalAssignmentPolicy(scene) {
 
   function localBehaviorSnapshot() {
     const snapshot = originalSnapshot.call(this);
+    const controlled = controlledRoutePolicy?.snapshot?.() || {
+      ready: false,
+      enabled: false,
+      defaultEnabled: false,
+      defaultTrafficAuthority: "authored-local-lanes"
+    };
     return {
       ...snapshot,
       cameraRetentionMargin: CAMERA_RETENTION_MARGIN,
@@ -130,7 +137,8 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       legacyEndpointJunctionInferenceActive: false,
       laneAuthority: "authored-local-lanes",
       routeMaterializationMetadataActive: Boolean(routeMaterializationMetadataPolicy?.active),
-      routeMovementActive: false,
+      routeMovementActive: Boolean(controlled.enabled),
+      controlledRouteActivation: controlled,
       compilerLocalTopology: compilerLocalTopologySnapshot(this.lanes),
       shadowRouteContinuity: shadowRoutePolicy?.snapshot?.() || {
         ready: false,
@@ -146,11 +154,12 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   materializer.hijack = localBehaviorHijack;
   materializer.snapshot = localBehaviorSnapshot;
 
-  // Metadata is dormant for legacy tokens but establishes stable route-stage fields.
-  // Lifecycle consumes those fields if present; shadow remains diagnostics-only.
   routeMaterializationMetadataPolicy = installTrafficRouteMaterializationMetadataPolicy(materializer);
   const lifecyclePolicy = installTrafficLifecyclePolicy(materializer);
   shadowRoutePolicy = installTrafficShadowRoutePolicy(materializer);
+  // Installed last so its token overlay remains outside the legacy/lifecycle token
+  // adapters, but it starts disabled and changes nothing until explicitly started.
+  controlledRoutePolicy = installTrafficControlledRouteActivationPolicy(materializer);
 
   const policy = {
     originalEligible,
@@ -165,8 +174,10 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     routeMaterializationMetadataPolicy,
     lifecyclePolicy,
     shadowRoutePolicy,
+    controlledRoutePolicy,
     laneJunctionTopologyPolicy: null,
     destroy() {
+      controlledRoutePolicy?.destroy?.();
       shadowRoutePolicy?.destroy?.();
       lifecyclePolicy?.destroy?.();
       routeMaterializationMetadataPolicy?.destroy?.();
