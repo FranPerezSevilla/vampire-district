@@ -192,7 +192,7 @@ test("a lethal vehicle impact leaves persistent visible blood evidence", async (
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const npc = scene.npcSystem.npcs.find(candidate => candidate.id === "civ_cross_1");
     const vehicle = scene.vehicleSystem.vehicle("refuge_compact");
-    scene.switchLayer(LAYERS.STREET, { x: npc.x, y: npc.y }, "Urban test: impact.");
+    scene.switchLayer(0, { x: npc.x, y: npc.y }, "Urban test: impact.");
     scene.vehicleSystem.enterVehicle(vehicle.id, { force: true });
     vehicle.x = npc.x;
     vehicle.y = npc.y;
