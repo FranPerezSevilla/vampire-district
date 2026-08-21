@@ -1,5 +1,7 @@
 import { LAYERS } from "../data/district.js";
+import { installMacroTrafficRouteContinuityPolicy } from "./MacroTrafficRouteContinuityPolicy.js";
 import { cameraWorldBounds } from "./TrafficMaterializationSystem.js";
+import { installTrafficLifecyclePolicy } from "./TrafficLifecyclePolicy.js";
 
 const CAMERA_RETENTION_MARGIN = 360;
 const VIEWPORT_GUARD_MARGIN = 120;
@@ -34,6 +36,7 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   }
   if (materializer.__nbdLocalAssignmentPolicy) return materializer.__nbdLocalAssignmentPolicy;
 
+  const routeContinuityPolicy = installMacroTrafficRouteContinuityPolicy(scene.macroTrafficPoliceSystem);
   const originalEligible = materializer.eligible;
   const originalRelease = materializer.release;
   const originalHijack = materializer.hijack;
@@ -72,7 +75,7 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       return false;
     }
     if (slot) slot.visibilityRetentionReason = null;
-    return originalRelease.call(this, slot);
+    return originalRelease.call(this, slot, options);
   }
 
   function localBehaviorHijack(tokenId) {
@@ -101,6 +104,10 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   materializer.hijack = localBehaviorHijack;
   materializer.snapshot = localBehaviorSnapshot;
 
+  // Lifecycle installs last so it can strengthen the existing viewport retention
+  // with explicit crossing/recently-visible states while preserving forced hijacks.
+  const lifecyclePolicy = installTrafficLifecyclePolicy(materializer);
+
   const policy = {
     originalEligible,
     originalRelease,
@@ -110,11 +117,15 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     localBehaviorRelease,
     localBehaviorHijack,
     localBehaviorSnapshot,
+    routeContinuityPolicy,
+    lifecyclePolicy,
     destroy() {
+      lifecyclePolicy?.destroy?.();
       if (materializer.eligible === localBehaviorEligible) materializer.eligible = originalEligible;
       if (materializer.release === localBehaviorRelease) materializer.release = originalRelease;
       if (materializer.hijack === localBehaviorHijack) materializer.hijack = originalHijack;
       if (materializer.snapshot === localBehaviorSnapshot) materializer.snapshot = originalSnapshot;
+      routeContinuityPolicy?.destroy?.();
       if (materializer.__nbdLocalAssignmentPolicy === policy) delete materializer.__nbdLocalAssignmentPolicy;
     }
   };
