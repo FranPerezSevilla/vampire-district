@@ -4,106 +4,68 @@
 
 This clean integration is based directly on `main` after PR #70 (`Vehicle roster foundation: 15 civilian types + police escalation`) landed as commit `7a5ffde6f8834231bc829d8b43a971abd7a8414f`.
 
-The implementation was extracted from the earlier stacked branch `codex/vehicle-dynamics-behavior`. The clean branch contains only the dynamics slice and does not replay the foundation history.
+## Current goal
 
-## Goal
+Make vehicles feel driven rather than translated, and make police pursuit read as deliberate containment rather than generic chasing.
 
-Turn the expanded vehicle roster into more visibly differentiated and believable street behavior without replacing existing traffic, collision, road, Heat or police authority.
+## Ambient traffic
 
-## Implemented
+Visible NPC traffic now uses the same `stepVehicleKinematics` model as the player vehicle. Lane following, obstacle avoidance and recovery remain high-level intentions; translation, heading, speed, grip and steering are produced by the shared vehicle model.
 
-### Visible obstacle steering
+This specifically removes the old presentation-only lateral correction that could make NPC cars appear to slide sideways while nominally steering.
 
-`TrafficSteeringPresentationSystem` wraps local traffic decisions rather than replacing lane authority.
+## Police pursuit doctrine
 
-- Parked vehicles can trigger a deterministic left/right passing maneuver.
-- A player vehicle can be passed only while nearly stopped; moving traffic remains a follow/brake target.
-- Lateral movement ramps over time instead of snapping sideways.
-- Vehicles visibly rotate into the maneuver, settle while passing and counter-steer back to the lane.
-- Candidate paths reuse existing vehicle occupancy authority for world and building clearance.
-- Active ambient traffic and intact dumpsters are checked before committing to a side.
-- `TrafficPhysicalConsequencesSystem` remains the hard physical-stop and contact authority.
+Motorized police now follow a containment-first doctrine:
 
-### Mass-aware traffic contact
+1. acquire and close;
+2. keep multiple pursuit cars committed to the suspect;
+3. pressure from behind or PIT where appropriate;
+4. when a cruiser meets/crosses the suspect, immediately choose a cutoff or rapid turnaround/re-engagement instead of continuing past;
+5. secondary pursuit cars predict an ahead-of-suspect intercept and attempt to occupy/cross that space;
+6. keep officers inside while the suspect vehicle is materially moving;
+7. once the vehicle remains nearly stopped for the containment hold window, dismount and transition to the existing armed on-foot police behavior.
 
-`TrafficMassCollisionPolicy` consumes the `mass` and `collisionPush` metadata introduced by PR #70.
+### Fleet sizing
 
-- Heavy vehicles such as pickups and SUVs push light ambient cars farther.
-- Heavy vehicles retain more momentum after a successful push.
-- Light vehicles lose more momentum against heavy traffic.
-- Responses are bounded so catalogue extremes cannot bypass existing physical-contact limits.
-- Archetypes without the new metadata resolve to neutral `1.0` values for compatibility.
+The pursuit count is deliberately separate from roadblock/support count:
 
-The policy wraps existing traffic-contact behavior; it does not duplicate collision detection, damage or Heat consequences.
+- Wanted 2: **3 pursuit cruisers**.
+- Wanted 3: **3 pursuit cruisers + 1 roadblock unit** (4 motorized units total).
 
-### More aggressive motorized police
+A roadblock therefore no longer consumes one of the active pursuit slots.
 
-`MotorizedPoliceAggressionPolicy` layers pressure on the existing pursuit tactics.
+### Encounter/re-engagement behavior
 
-- Local tactical engagement begins farther away.
-- Rear-quarter pressure and intercept movement close faster and turn more decisively.
-- PIT commit speed increases while preserving its lower committed turn rate.
-- PIT and ram telegraphs remain readable but are shorter.
-- PIT and ram cooldowns are reduced so Wanted 2 produces sustained pressure instead of isolated attempts.
-- Damage, roadblocks, officer deployment and Heat remain owned by their existing systems.
+`MotorizedPoliceContainmentPolicy` detects nearby pursuit encounters relative to the suspect's travel vector.
 
-PR #70 already guarantees two motorized units at Wanted 2 and adds the SUV roadblock unit at Wanted 3.
+- A cruiser ahead of or crossing the suspect is assigned a predictive cutoff point rather than blindly following its prior route.
+- A cruiser that has just passed the suspect or is facing substantially away from its new intercept target enters `turning-to-reengage` and receives stronger turn authority to reverse course quickly.
+- Pursuit units that are already behind the suspect continue to use rear-quarter/PIT pressure or planned ahead-of-suspect cutoff behavior.
+- Distant units remain under normal routing authority; the local encounter override is intentionally bounded.
 
-## Runtime ownership order
+## Dismount rule
 
-Traffic composition:
+Motorized officers should not abandon a functioning cruiser simply because they are close to a moving player vehicle. Dismount is suppressed while the suspect is above the near-stop threshold, except when a police vehicle is disabled. The stop state must persist briefly before deployment.
 
-1. `TrafficLocalBehaviorSystem`
-2. `TrafficSteeringPresentationSystem`
-3. `TrafficPhysicalConsequencesSystem`
-4. `TrafficMassCollisionPolicy` wraps physical push and momentum behavior
-5. `TrafficImpactConsequencesSystem`
+## Existing ownership preserved
 
-Police composition:
+The following remain owned by their existing systems:
 
-1. `MotorizedPoliceSystem`
-2. `MotorizedPoliceLocalPolicy`
-3. `MotorizedPoliceAggressionPolicy`
+- Heat/Wanted thresholds;
+- collision and vehicle damage;
+- officer spawning and armed on-foot behavior;
+- traffic lane authority and city routing;
+- roadblock physical authority;
+- street-furniture collision authority.
 
-Destroy order reverses policy ownership so wrapped methods are restored before their underlying systems are destroyed.
+## Validation focus
 
-## Coverage
+Automated coverage now includes fleet sizing and local encounter re-engagement. Manual validation should focus on play feel:
 
-- `tests/traffic-steering-presentation.test.js`
-  - stable distributed avoidance side;
-  - no lateral teleport;
-  - visible steer and counter-steer recovery;
-  - close-obstacle gating until lateral clearance exists;
-  - stopped-player behavior while moving traffic remains follow-only;
-  - source contract for world, traffic and street-furniture clearance;
-  - runtime update and destroy ordering.
-- `tests/traffic-mass-collision-policy.test.js`
-  - neutral compatibility defaults;
-  - pickup/compact heavy-versus-light response;
-  - sports-versus-SUV distinction;
-  - bounded extremes;
-  - runtime policy ownership order.
-- `tests/motorized-police-aggression-policy.test.js`
-  - faster rear-quarter and PIT pressure;
-  - readable but shorter telegraphs;
-  - shorter cooldowns;
-  - install and destroy restoration;
-  - runtime policy ownership order.
-- Browser coverage extends traffic behavior, traffic physics and motorized police scenarios.
-
-## Validation
-
-Repository CI is triggered by the dedicated pull request for the clean branch. Manual review should verify:
-
-1. traffic steering around a parked vehicle and returning to lane without clipping buildings or dumpsters;
-2. ambient traffic passing a stopped player vehicle while refusing unsafe overtakes of a moving one;
-3. visibly different compact/sports versus SUV/pickup contact responses;
-4. Wanted 2 pressure from two motorized units with recurring but readable PIT attempts;
-5. Wanted 3 SUV roadblock readability under the aggression policy.
-
-## Non-goals
-
-- No lane-changing traffic simulation or overtaking of moving civilian traffic.
-- No destruction of street furniture as part of avoidance.
-- No increased police collision damage.
-- No changes to Heat thresholds or Wanted escalation.
+1. drive head-on past a responding cruiser and confirm it immediately tries to cut across the escape path or turns back to pursue;
+2. at Wanted 2, keep moving long enough to confirm three pursuit units can remain active rather than treating three as the entire motorized budget;
+3. at Wanted 3, confirm three pursuers remain active while the fourth unit performs the roadblock role;
+4. drive slowly but continuously and confirm officers remain mounted;
+5. stop almost completely for the hold window and confirm officers deploy and engage on foot;
+6. verify NPC civilian cars still rotate/accelerate/brake naturally through lane recovery and obstacle avoidance.
