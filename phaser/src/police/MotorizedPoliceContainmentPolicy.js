@@ -50,7 +50,9 @@ function pursuitGeometry(unit, vehicle) {
   const distance = Math.hypot(dx, dy);
   const along = dx * forwardX + dy * forwardY;
   const lateral = dx * sideX + dy * sideY;
-  const unitFacingDelta = normalizeAngle(Math.atan2(finite(vehicle?.y) - finite(unit?.y), finite(vehicle?.x) - finite(unit?.x)) - finite(unit?.angle));
+  const unitFacingDelta = normalizeAngle(
+    Math.atan2(finite(vehicle?.y) - finite(unit?.y), finite(vehicle?.x) - finite(unit?.x)) - finite(unit?.angle)
+  );
   return { travelAngle, forwardX, forwardY, sideX, sideY, distance, along, lateral, unitFacingDelta };
 }
 
@@ -75,8 +77,12 @@ export function nextPolicePursuitState(unit, vehicle, {
   const geometry = pursuitGeometry(unit, vehicle);
   if (geometry.distance > acquireDistance) return POLICE_PURSUIT_STATES.ACQUIRE;
 
-  const crossedOrFacingAway = geometry.along < -25 || Math.abs(geometry.unitFacingDelta) > Math.PI * 0.62;
-  if (crossedOrFacingAway) return POLICE_PURSUIT_STATES.REENGAGE;
+  // REENGAGE means the cruiser is physically close but its nose is pointing away
+  // from the suspect. Position alone cannot distinguish a useful rear-quarter
+  // pursuer from a cruiser that just crossed the suspect.
+  if (Math.abs(geometry.unitFacingDelta) > Math.PI * 0.62) {
+    return POLICE_PURSUIT_STATES.REENGAGE;
+  }
 
   if (geometry.along >= blockAheadMin
     && geometry.along <= blockAheadMax
@@ -183,9 +189,11 @@ export function installMotorizedPoliceContainmentPolicy(system, {
   }
 
   function stateMachineUpdateLocalTactic(unit, dt, level, focus) {
-    if (!unit.visible || this.scene.currentLayer !== 0 || unit.role !== MOTORIZED_POLICE_ROLES.PURSUIT) return false;
+    if (!unit.visible || unit.role !== MOTORIZED_POLICE_ROLES.PURSUIT) return false;
     const vehicle = this.vehicleSystem.currentVehicle?.();
-    if (!vehicle || !this.vehicleSystem.isDriving?.()) return originalUpdateLocalTactic.call(this, unit, dt, level, focus);
+    if (!vehicle || !this.vehicleSystem.isDriving?.()) {
+      return originalUpdateLocalTactic.call(this, unit, dt, level, focus);
+    }
 
     const nextState = nextPolicePursuitState(unit, vehicle, { stopSpeed, stopHoldSeconds });
     if (unit.pursuitState !== nextState) {
@@ -219,7 +227,10 @@ export function installMotorizedPoliceContainmentPolicy(system, {
       ? MOTORIZED_POLICE_TACTICS.REAR_QUARTER
       : MOTORIZED_POLICE_TACTICS.INTERCEPT;
     unit.status = `pursuit-${nextState}`;
-    this.moveTacticalUnit(unit, target, dt, movement.speed, { turnRate: movement.turnRate, committedAngle: null });
+    this.moveTacticalUnit(unit, target, dt, movement.speed, {
+      turnRate: movement.turnRate,
+      committedAngle: null
+    });
     return true;
   }
 
