@@ -108,6 +108,37 @@ async function discoverReviewTargets(page) {
         }
       : null;
 
+    const lightRows = district.lights.map((light, index) => ({
+      id: light.id || `light-${index}`,
+      x: Number(light.x) || 0,
+      y: Number(light.y) || 0,
+      radius: Number(light.radius) || 0
+    }));
+    let warmLight = null;
+    for (const anchor of lightRows) {
+      const nearby = lightRows.filter(item => (
+        Math.abs(item.x - anchor.x) <= visibleWidth * 0.46
+        && Math.abs(item.y - anchor.y) <= visibleHeight * 0.46
+      ));
+      // Prefer a readable rhythm of a few sources over either isolation or blanket coverage.
+      const densityPenalty = Math.abs(nearby.length - 3);
+      const edgeSafe = anchor.x > visibleWidth * 0.5
+        && anchor.x < Number(district.CITY_WORLD.width) - visibleWidth * 0.5
+        && anchor.y > visibleHeight * 0.5
+        && anchor.y < Number(district.CITY_WORLD.height) - visibleHeight * 0.5;
+      const score = (edgeSafe ? 100 : 0) - densityPenalty * 10 + Math.min(nearby.length, 6);
+      if (!warmLight || score > warmLight.score) {
+        warmLight = {
+          x: anchor.x,
+          y: anchor.y,
+          score,
+          sourceId: anchor.id,
+          radius: anchor.radius,
+          visibleLightIds: nearby.map(item => item.id).slice(0, 12)
+        };
+      }
+    }
+
     return {
       normalZoom,
       viewport: {
@@ -117,7 +148,7 @@ async function discoverReviewTargets(page) {
         worldViewHeight: visibleHeight
       },
       palette: balance.COLORS,
-      targets: { intersection, mixedStreet, darkBlock }
+      targets: { intersection, mixedStreet, darkBlock, warmLight }
     };
   });
 }
@@ -154,6 +185,15 @@ async function prepareCapture(page, target, normalZoom, label) {
     };
     const playerVisible = Math.abs(playerOffset.x) <= halfWorldWidth
       && Math.abs(playerOffset.y) <= halfWorldHeight;
+    const practicalLights = Array.isArray(scene.cityPracticalLightDescriptors)
+      ? scene.cityPracticalLightDescriptors.map(descriptor => ({
+          sourceId: descriptor.sourceId,
+          family: descriptor.family,
+          x: descriptor.x,
+          y: descriptor.y,
+          radius: descriptor.radius
+        }))
+      : [];
 
     scene.scene.pause();
     return {
@@ -163,6 +203,7 @@ async function prepareCapture(page, target, normalZoom, label) {
       playerOffset,
       playerVisible,
       visibleHalfExtents: { x: halfWorldWidth, y: halfWorldHeight },
+      practicalLights,
       zoom,
       layer: scene.currentLayer,
       renderSectorKey: scene.urbanRenderSectorKey || null
@@ -189,7 +230,7 @@ async function captureCanvas(page, target, normalZoom, name) {
 
 test.describe.configure({ timeout: 120_000 });
 
-test("captures M2 gameplay-scale night hierarchy evidence", async ({ page }) => {
+test("captures gameplay-scale night hierarchy and first practical-light evidence", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await mkdir(OUTPUT_DIR, { recursive: true });
@@ -201,27 +242,33 @@ test("captures M2 gameplay-scale night hierarchy evidence", async ({ page }) => 
   expect(discovery.targets.intersection, "missing representative intersection").toBeTruthy();
   expect(discovery.targets.mixedStreet, "missing mixed street").toBeTruthy();
   expect(discovery.targets.darkBlock, "missing neutral dark block").toBeTruthy();
+  expect(discovery.targets.warmLight, "missing practical-light review target").toBeTruthy();
   expect(discovery.targets.intersection.score).toBeGreaterThanOrEqual(2);
   expect(discovery.targets.mixedStreet.families.length).toBeGreaterThanOrEqual(3);
 
+  const targetsByName = {
+    intersection: discovery.targets.intersection,
+    "mixed-street": discovery.targets.mixedStreet,
+    "dark-block": discovery.targets.darkBlock,
+    "warm-light": discovery.targets.warmLight
+  };
   const captures = {};
-  for (const name of ["intersection", "mixed-street", "dark-block"]) {
-    const target = name === "mixed-street"
-      ? discovery.targets.mixedStreet
-      : name === "dark-block"
-        ? discovery.targets.darkBlock
-        : discovery.targets.intersection;
+  for (const [name, target] of Object.entries(targetsByName)) {
     captures[name] = await captureCanvas(page, target, discovery.normalZoom, name);
     expect(captures[name].zoom).toBe(discovery.normalZoom);
     expect(captures[name].layer).toBe(0);
     expect(captures[name].playerVisible).toBe(true);
   }
+  expect(captures["warm-light"].practicalLights.length).toBeGreaterThanOrEqual(1);
+  expect(captures["warm-light"].practicalLights.some(light => (
+    light.sourceId === discovery.targets.warmLight.sourceId
+  ))).toBe(true);
 
   const manifest = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     initiative: "city-noir-atmosphere",
-    milestone: "M2.3",
-    purpose: "gameplay-scale evidence for global night value hierarchy and readability",
+    milestone: "M2.3+M3.2",
+    purpose: "gameplay-scale evidence for night value hierarchy, readability and the first sparse warm practical-light family",
     gameplayZoom: discovery.normalZoom,
     viewport: discovery.viewport,
     palette: discovery.palette,
@@ -229,7 +276,8 @@ test("captures M2 gameplay-scale night hierarchy evidence", async ({ page }) => 
     captures: {
       intersection: { filename: "intersection.png", state: captures.intersection },
       mixedStreet: { filename: "mixed-street.png", state: captures["mixed-street"] },
-      darkBlock: { filename: "dark-block.png", state: captures["dark-block"] }
+      darkBlock: { filename: "dark-block.png", state: captures["dark-block"] },
+      warmLight: { filename: "warm-light.png", state: captures["warm-light"] }
     }
   };
   await writeFile(
