@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CITY_WORLD, roadSegments as productionRoadSegments, roads as productionRoads, sidewalks as productionSidewalks } from "../phaser/src/data/generated/city-topology-v2.js";
+import {
+  CITY_WORLD,
+  roadSegments as productionRoadSegments,
+  sidewalks as productionSidewalks
+} from "../phaser/src/data/generated/city-topology-v2.js";
 import {
   auditRoadEdgeSidewalkCoverage,
-  buildBuildingFrontagePavement,
   buildCompletedSidewalkSurfaces,
   buildRoadEdgeSidewalkInfill
 } from "../phaser/src/rendering/SidewalkSurfaceCompletion.js";
@@ -45,12 +48,11 @@ function northWalk(id, x, w) {
   };
 }
 
-test("road-edge pavement is a full authoritative band even when authored sidewalks already exist", () => {
+test("road-edge pavement is a full authoritative band even when authored sidewalks contain a gap", () => {
   const segment = horizontalRoad();
   const authored = [northWalk("north-left", 0, 60), northWalk("north-right", 140, 60)];
   const generated = buildRoadEdgeSidewalkInfill({
     roadSegments: [segment],
-    roads: [segment],
     sidewalks: authored,
     world: { width: 400, height: 300 }
   });
@@ -59,12 +61,11 @@ test("road-edge pavement is a full authoritative band even when authored sidewal
   assert.equal(north[0].authoritativeRoadEdge, true);
 });
 
-test("building footprints cannot erase or split the authoritative pavement band", () => {
+test("building footprints cannot erase or split the road-owned pavement band", () => {
   const segment = horizontalRoad();
-  const building = { id: "frontage-building", x: 40, y: 70, w: 120, h: 40 };
+  const building = { id: "overlapping-building", x: 40, y: 70, w: 120, h: 40 };
   const generated = buildRoadEdgeSidewalkInfill({
     roadSegments: [segment],
-    roads: [segment],
     buildings: [building],
     world: { width: 400, height: 300 }
   });
@@ -96,71 +97,33 @@ test("aggregate road geometry cannot erase a compiler-trimmed segment pavement b
   );
 });
 
-test("frontage pavement closes the dark parcel gap all the way to a nearby facade", () => {
-  const segment = horizontalRoad();
-  const building = { id: "north-building", x: 40, y: 50, w: 120, h: 20 };
-  const generated = buildBuildingFrontagePavement({
-    roadSegments: [segment],
-    buildings: [building],
-    world: { width: 400, height: 300 },
-    sidewalkWidth: 22,
-    frontageMaxDepth: 96,
-    frontageAxisPadding: 0
-  });
-  const north = generated.filter(surface => surface.side === "north");
-  assert.deepEqual(north.map(surface => [surface.x, surface.y, surface.w, surface.h]), [[40, 70, 120, 30]]);
-  assert.equal(north[0].frontagePavement, true);
-});
-
-test("frontage pavement stops at the nearest facade instead of painting through a nearer building", () => {
-  const segment = horizontalRoad();
-  const nearBuilding = { id: "near", x: 40, y: 50, w: 120, h: 20 };
-  const farBuilding = { id: "far", x: 40, y: 15, w: 120, h: 25 };
-  const generated = buildBuildingFrontagePavement({
-    roadSegments: [segment],
-    buildings: [farBuilding, nearBuilding],
-    world: { width: 400, height: 300 },
-    sidewalkWidth: 22,
-    frontageMaxDepth: 96,
-    frontageAxisPadding: 0
-  });
-  const north = generated.filter(surface => surface.side === "north");
-  assert.deepEqual(north.map(surface => [surface.x, surface.y, surface.w, surface.h]), [[40, 70, 120, 30]]);
-  assert.equal(north[0].sourceBuildingId, "near");
-});
-
-test("frontage completion does not turn distant open lots into giant sidewalks", () => {
-  const segment = horizontalRoad();
-  const distantBuilding = { id: "distant", x: 40, y: -40, w: 120, h: 20 };
-  const generated = buildBuildingFrontagePavement({
-    roadSegments: [segment],
-    buildings: [distantBuilding],
-    world: { width: 400, height: 300 },
-    sidewalkWidth: 22,
-    frontageMaxDepth: 96,
-    frontageAxisPadding: 0
-  });
-  assert.deepEqual(generated, []);
-});
-
-test("alley pavement remains opt-in", () => {
+test("alleys and service roads receive the same road-edge sidewalk contract", () => {
   const alley = horizontalRoad({
     id: "road-segment:alley",
     graphEdgeId: "road-edge:alley",
     roadClass: "alley",
     kind: "alley"
   });
-  assert.deepEqual(buildRoadEdgeSidewalkInfill({
+  const generated = buildRoadEdgeSidewalkInfill({
     roadSegments: [alley],
-    roads: [alley],
     world: { width: 400, height: 300 }
-  }), []);
-  assert.equal(buildRoadEdgeSidewalkInfill({
-    roadSegments: [alley],
-    roads: [alley],
+  });
+  assert.equal(generated.length, 2);
+  assert.deepEqual(generated.map(surface => surface.side).sort(), ["north", "south"]);
+});
+
+test("completion never invents pavement between the 22 px band and a distant facade", () => {
+  const segment = horizontalRoad();
+  const building = { id: "setback-building", x: 20, y: 10, w: 160, h: 30 };
+  const completed = buildCompletedSidewalkSurfaces({
+    roadSegments: [segment],
+    sidewalks: [],
+    buildings: [building],
     world: { width: 400, height: 300 },
-    includeAlleys: true
-  }).length, 2);
+    sidewalkWidth: 22
+  });
+  const north = completed.filter(surface => surface.side === "north");
+  assert.deepEqual(north.map(surface => [surface.y, surface.h]), [[78, 22]]);
 });
 
 test("completed collection keeps authored surfaces and adds two road-owned bands per segment", () => {
@@ -168,7 +131,6 @@ test("completed collection keeps authored surfaces and adds two road-owned bands
   const authored = [northWalk("north-authored", 0, 200)];
   const completed = buildCompletedSidewalkSurfaces({
     roadSegments: [segment],
-    roads: [segment],
     sidewalks: authored,
     world: { width: 400, height: 300 }
   });
@@ -176,10 +138,9 @@ test("completed collection keeps authored surfaces and adds two road-owned bands
   assert.equal(completed.filter(surface => surface.authoritativeRoadEdge).length, 2);
 });
 
-test("production city generates exactly two authoritative pavement bands per standard road segment", () => {
+test("production city generates exactly two authoritative pavement bands per road segment", () => {
   const completed = buildCompletedSidewalkSurfaces({
     roadSegments: productionRoadSegments,
-    roads: productionRoads,
     sidewalks: productionSidewalks,
     world: CITY_WORLD,
     sidewalkWidth: 22
@@ -187,7 +148,6 @@ test("production city generates exactly two authoritative pavement bands per sta
   assert.ok(completed.some(surface => surface.authoritativeRoadEdge));
   const audit = auditRoadEdgeSidewalkCoverage({
     roadSegments: productionRoadSegments,
-    roads: productionRoads,
     sidewalks: completed,
     world: CITY_WORLD,
     sidewalkWidth: 22
