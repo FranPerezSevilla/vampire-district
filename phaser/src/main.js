@@ -1,9 +1,11 @@
 import { WORLD } from "./data/balance.js";
 import { installBloodSensePresentationPolicy } from "./policies/BloodSensePresentationPolicy.js";
+import { installCitySurfacePresentationPolicy } from "./policies/CitySurfacePresentationPolicy.js";
 import { installDistrictGunfireHeatPolicy } from "./policies/DistrictGunfireHeatPolicy.js";
 import { installFootPolicePedestrianPolicy } from "./policies/FootPolicePedestrianPolicy.js";
 import { installPlaytestSurfacePolicy } from "./policies/PlaytestSurfacePolicy.js";
 import { installPoliceScreenPursuitPolicy } from "./policies/PoliceScreenPursuitPolicy.js";
+import { installSidewalkCoveragePresentationPolicy } from "./policies/SidewalkCoveragePresentationPolicy.js";
 import { installTrafficContextualHornPolicy } from "./policies/TrafficContextualHornPolicy.js";
 import { installTrafficFeedbackPolicy } from "./policies/TrafficFeedbackPolicy.js";
 import { installTrafficPlaytestPolicy } from "./policies/TrafficPlaytestPolicy.js";
@@ -123,6 +125,8 @@ function patchReadableCanvasText() {
 }
 
 patchReadableCanvasText();
+installCitySurfacePresentationPolicy(GameScene);
+installSidewalkCoveragePresentationPolicy(GameScene);
 installVampireVeilPolicy();
 installPlaytestSurfacePolicy();
 installBloodSensePresentationPolicy();

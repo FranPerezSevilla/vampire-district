@@ -4,6 +4,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 import * as current from "../../phaser/src/data/generated/city-topology-v2.js";
+import { buildRoadEdgeSidewalkInfill } from "../../phaser/src/rendering/SidewalkSurfaceCompletion.js";
 import { cityRoadGraph, CITY_ROAD_GRAPH_VERSION } from "./city-road-graph-v1.js";
 import {
   buildPedestrianRoutesFromSidewalks,
@@ -26,11 +27,51 @@ const compiled = compileAxisAlignedRoadGraph(cityRoadGraph, {
   lightMinimumSpacing: 150
 });
 compiled.world = current.CITY_WORLD;
+
+// Validate the legacy compiler result before applying the new road-edge invariant.
+// roadGraphIntegrity still contains the old assumption that a building may cut an
+// edge band, so that check intentionally runs before the migration below.
 const integrity = roadGraphIntegrity(cityRoadGraph, compiled);
 if (!integrity.valid) {
   for (const error of integrity.errors) console.error(`[${error.code}] ${JSON.stringify(error)}`);
   process.exitCode = 1;
   throw new Error(`Road graph compilation failed with ${integrity.errors.length} integrity errors.`);
+}
+
+/**
+ * The road segment is the authority for its two sidewalk bands. The compiler has
+ * already trimmed each segment to its junction pieces, so buildings must not split
+ * or delete these strips. Keep canonical sidewalk IDs because pedestrian route
+ * anchors and generated navigation data refer to them.
+ */
+function canonicalRoadEdgeBands(roadSegments, world) {
+  return buildRoadEdgeSidewalkInfill({
+    roadSegments,
+    world,
+    sidewalkWidth: 22
+  }).map(surface => {
+    const { presentationOnly, authoritativeRoadEdge, ...band } = surface;
+    return {
+      ...band,
+      id: `sidewalk:${surface.graphEdgeId}:${surface.side}`,
+      bandKind: "road-edge",
+      generated: true
+    };
+  });
+}
+
+const authoritativeRoadEdgeBands = canonicalRoadEdgeBands(compiled.roadSegments, current.CITY_WORLD);
+compiled.roadEdgeBands = authoritativeRoadEdgeBands;
+compiled.sidewalks = [...authoritativeRoadEdgeBands, ...compiled.junctionSidewalks];
+compiled.stats.roadEdgeBandCount = authoritativeRoadEdgeBands.length;
+compiled.stats.roadEdgeBandSourceCount = authoritativeRoadEdgeBands.length;
+compiled.stats.sidewalkCount = compiled.sidewalks.length;
+
+const expectedRoadEdgeBandCount = compiled.roadSegments.length * 2;
+if (authoritativeRoadEdgeBands.length !== expectedRoadEdgeBandCount) {
+  throw new Error(
+    `Road-edge sidewalk invariant failed: expected ${expectedRoadEdgeBandCount} bands, got ${authoritativeRoadEdgeBands.length}.`
+  );
 }
 
 const dumpsters = placePostLayoutDumpsters(current.dumpsters, {
