@@ -141,6 +141,7 @@ export function installTrafficLifecyclePolicy(materializer, {
       options?.force
       || options?.hijack
       || materializer.__nbdForceTrafficLifecycleRelease
+      || materializer.scene?.currentLayer !== LAYERS.STREET
     );
     if (!forced && protectedSlot(slot)) {
       preventedLifecycleDespawns++;
