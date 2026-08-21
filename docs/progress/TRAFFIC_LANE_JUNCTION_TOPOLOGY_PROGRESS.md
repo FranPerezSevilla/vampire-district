@@ -147,6 +147,98 @@ The original task boundary remains:
 - `MacroTrafficRouteContinuityPolicy` and `TrafficIntentDrivingPolicy` are not re-enabled wholesale;
 - final merge requires explicit user gameplay approval.
 
-### Exact next step
+---
 
-Execute `M1.1-production-manifest-audit` from the machine-readable status JSON. Do not activate connector movement yet.
+## 2026-08-21 — M1.1 production manifest audit complete
+
+### Implementation
+
+Head `6e098646c93aebfe1db58585a11e2b85dfba173e` added deterministic production diagnostics in `TrafficLaneJunctionTopology` and `tests/traffic-lane-junction-production-audit.test.js`.
+
+The audit reports unmatched/ambiguous endpoints, orphan lanes, rejected connectors, duplicate identities, endpoint continuity, tangent continuity and turn-type distribution without changing visible traffic.
+
+### CI evidence
+
+GitHub Tests #2053 / run `32475274379` — full workflow success:
+
+- unit-tests — success;
+- browser-boot — success;
+- browser-campaign — success;
+- browser-systems 1/3 — success;
+- browser-systems 2/3 — success;
+- browser-systems 3/3 — success.
+
+### Production findings
+
+Legacy `traffic-lanes.json.edges` audit:
+
+- 48 directed legacy lanes;
+- 71 junction markers;
+- 99 candidate connectors;
+- 19 orphan directed lanes;
+- 24 unmatched endpoints;
+- 14 ambiguous endpoint/junction matches;
+- 0 endpoint-position continuity failures;
+- 96 tangent continuity failures;
+- 71/99 candidate connectors classified as U-turns;
+- 0 duplicate connector IDs;
+- 0 duplicate lane-pair IDs.
+
+### Architectural diagnosis
+
+Inspection of `tools/city-compiler/district-streaming.js` showed that legacy traffic `edges` are built by `buildMacroAndLanes(...)` as long district-anchor/portal paths. A single edge can traverse multiple real road-network nodes. Therefore its start/end are not a physical lane segment's two junction endpoints.
+
+The runtime M0 inference "legacy edge endpoint -> nearby junction envelope" is consequently not a valid production activation model. The large ambiguity/orphan/tangent counts are symptoms of the data-contract mismatch, not tuning values to hide with larger radii.
+
+### Decision
+
+Do not repair M0 activation by increasing endpoint tolerances or merely smoothing its quadratic curves.
+
+The real local topology must be derived one-to-one from compiler `network.segments`, where `from` and `to` node IDs are explicit.
+
+M2 is blocked until this M1 correction is complete.
+
+---
+
+## 2026-08-21 — M1.2 compiler-owned directed lane graph started
+
+### Implemented
+
+Added `tools/city-compiler/traffic-lane-topology.js`.
+
+The pure compiler topology:
+
+- emits exactly two directed lanes for each district-streaming `network.segment`;
+- uses compiler `fromNodeId` / `toNodeId` ownership rather than nearest-junction geometry;
+- offsets both directions to the right-hand side of travel;
+- preserves source segment, road edge, district, width/class/kind metadata;
+- builds legal outgoing lane IDs at the exact shared compiler node;
+- marks same-source-segment reversal as U-turn;
+- excludes immediate U-turns from preferred choices whenever another road segment exists;
+- identifies explicit dead-end nodes where reversal may be the only preferred continuation;
+- emits deterministic, serializable transition records;
+- includes validation for node ownership, right-side lane offset and preferred-U-turn legality.
+
+Added `tests/traffic-lane-topology-compiler.test.js` against the real production city compiler output.
+
+### Focused evidence so far
+
+Implementation head `6033d7983b1eb7ecebab53df783897940a139d01`:
+
+- unit-tests in GitHub Tests #2062 / run `32477998686` — success;
+- full browser jobs were still running when this checkpoint was written.
+
+### Safety boundary
+
+This compiler topology is not yet written into the production `traffic-lanes.json` pack and is not loaded by runtime vehicle movement.
+
+Legacy `traffic-lanes.json.edges` remain untouched for compatibility. The next safe step after full CI is additive generated-pack integration, not replacement.
+
+### Next sequence inside M1
+
+1. M1.2 — finish full CI validation of compiler-owned directed lanes.
+2. M1.3 — add the compiler topology to generated streaming output/validation without deleting legacy edges.
+3. M1.4 — generate tangent-preserving connector geometry from compiler lanes; tangent discontinuity becomes a hard rejection reason.
+4. M1.5 — retire legacy nearest-junction endpoint inference from the future activation path while retaining compatibility data until M8.
+
+Canonical details: `docs/agent-tasks/2026-08-21-traffic-lane-junction-m1-compiler-contract.md`.
