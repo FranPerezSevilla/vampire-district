@@ -48,6 +48,7 @@ test("controlled compiler routes visibly cross straight/right/left without chang
 
       let sawConnector = snapshot.stage === "connector";
       let sawOutgoingLane = false;
+      let sawRouteReservation = snapshot.routeReservationCount > 0;
       let sameSlotThroughout = true;
       let poseMismatch = false;
       let cameraRetention = null;
@@ -68,6 +69,7 @@ test("controlled compiler routes visibly cross straight/right/left without chang
         const observedStep = Math.hypot(snapshot.x - previous.x, snapshot.y - previous.y);
         maxObservedStep = Math.max(maxObservedStep, observedStep);
         previous = { x: snapshot.x, y: snapshot.y };
+        sawRouteReservation = sawRouteReservation || snapshot.routeReservationCount > 0;
 
         if (snapshot.stage === "connector") {
           sawConnector = true;
@@ -84,7 +86,8 @@ test("controlled compiler routes visibly cross straight/right/left without chang
               sameToken: retainedSlot?.tokenId === tokenId,
               sameSlot: scene.trafficMaterializationSystem.assignments.get(tokenId) === retainedSlot,
               lifecycle: retainedSlot?.lifecycleState || null,
-              routeStage: retainedSlot?.routeStage || null
+              routeStage: retainedSlot?.routeStage || null,
+              reservationCount: awaySnapshot.routeReservationCount
             };
             await focusAt(snapshot.x, snapshot.y, "Return camera to controlled connector crossing.");
           }
@@ -96,7 +99,7 @@ test("controlled compiler routes visibly cross straight/right/left without chang
           sawOutgoingLane = true;
           break;
         }
-        if (snapshot.lastBlockedReason || snapshot.slotLost) break;
+        if ((snapshot.lastBlockedReason && snapshot.lastBlockedReason !== "junction-yield") || snapshot.slotLost) break;
       }
 
       const duringTraffic = window.NBD_TRAFFIC.snapshot();
@@ -109,6 +112,7 @@ test("controlled compiler routes visibly cross straight/right/left without chang
         slotIndex,
         sawConnector,
         sawOutgoingLane,
+        sawRouteReservation,
         sameSlotThroughout,
         poseMismatch,
         cameraRetention,
@@ -124,6 +128,7 @@ test("controlled compiler routes visibly cross straight/right/left without chang
         finalSlotTokenId: finalSlot?.tokenId || null,
         stopped,
         enabledAfterStop: afterStop.enabled,
+        routeReservationCountAfterStop: afterStop.routeReservationCount,
         poolSizeAfterStop: scene.trafficMaterializationSystem.pool.length
       };
     }
@@ -145,6 +150,7 @@ test("controlled compiler routes visibly cross straight/right/left without chang
 
   expect(result.beforeControl.defaultEnabled).toBe(false);
   expect(result.beforeControl.enabled).toBe(false);
+  expect(result.beforeControl.routeReservationCount).toBe(0);
   expect(result.beforeTraffic.routeMovementActive).toBe(false);
   expect(result.beforeTraffic.laneAuthority).toBe("authored-local-lanes");
   expect(result.initialPoolSize).toBe(result.finalPoolSize);
@@ -152,6 +158,7 @@ test("controlled compiler routes visibly cross straight/right/left without chang
   for (const turn of result.turnResults) {
     expect(turn.sawConnector).toBe(true);
     expect(turn.sawOutgoingLane).toBe(true);
+    expect(turn.sawRouteReservation).toBe(true);
     expect(turn.sameSlotThroughout).toBe(true);
     expect(turn.poseMismatch).toBe(false);
     expect(turn.routeHop).toBeGreaterThanOrEqual(1);
@@ -165,6 +172,7 @@ test("controlled compiler routes visibly cross straight/right/left without chang
     expect(turn.laneAuthorityDuring).toBe("authored-local-lanes");
     expect(turn.stopped.fixedPoolPreserved).toBe(true);
     expect(turn.enabledAfterStop).toBe(false);
+    expect(turn.routeReservationCountAfterStop).toBe(0);
     expect(turn.poolSizeAfterStop).toBe(result.initialPoolSize);
   }
 
@@ -175,6 +183,7 @@ test("controlled compiler routes visibly cross straight/right/left without chang
   expect(right.cameraRetention.sameSlot).toBe(true);
   expect(right.cameraRetention.lifecycle).toBe("crossing-junction");
   expect(right.cameraRetention.routeStage).toBe("connector");
+  expect(right.cameraRetention.reservationCount).toBeGreaterThanOrEqual(1);
 
   expect(result.afterTraffic.routeMovementActive).toBe(false);
   expect(result.afterTraffic.laneAuthority).toBe("authored-local-lanes");
