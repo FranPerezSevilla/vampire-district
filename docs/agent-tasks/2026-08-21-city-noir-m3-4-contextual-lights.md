@@ -14,11 +14,11 @@ The city must remain predominantly dark. Warm amber remains the default city lig
 
 ### M3.4.1 — Generalize the descriptor/render model
 
-- [ ] Expand `PRACTICAL_LIGHT_FAMILIES` without changing existing `warm-street` / `warm-frontage` output semantics.
-- [ ] Make frontage geometry/style selection reusable rather than duplicating a second renderer per family.
-- [ ] Preserve deterministic hashing and render-window culling.
-- [ ] Preserve the existing crosswalk presentation seam and presentation-only ownership.
-- [ ] Prevent contextual landmark families from also receiving generic warm-frontage spill.
+- [x] Expand `PRACTICAL_LIGHT_FAMILIES` without changing existing `warm-street` / `warm-frontage` output semantics.
+- [x] Make frontage geometry/style selection reusable rather than duplicating a second renderer per family.
+- [x] Preserve deterministic hashing and render-window culling.
+- [x] Preserve the existing crosswalk presentation seam and presentation-only ownership.
+- [x] Prevent contextual landmark families from also receiving generic warm-frontage spill.
 
 Acceptance:
 - existing warm tests remain valid;
@@ -27,11 +27,11 @@ Acceptance:
 
 ### M3.4.2 — Cool civic / institutional accents
 
-- [ ] Add `cool-civic` family.
-- [ ] Restrict it to real institutional semantics already present in the repository: `police`, `medical`, plus explicit `cityHall` landmark identity.
-- [ ] Keep church/cathedral out unless an existing semantic authority explicitly classifies it as civic; do not guess.
-- [ ] Use restrained desaturated cool-white / blue-grey spill.
-- [ ] Keep source count small and local to frontage/access points.
+- [x] Add `cool-civic` family.
+- [x] Restrict it to real institutional semantics already present in the repository: `police`, `medical`, plus explicit `cityHall` landmark identity.
+- [x] Keep church/cathedral out unless an existing semantic authority explicitly classifies it as civic; do not guess.
+- [x] Use restrained desaturated cool-white / blue-grey spill.
+- [x] Keep source count small and local to frontage/access points.
 
 Acceptance:
 - police/hospital/city hall can acquire a recognisable cold signature;
@@ -39,10 +39,10 @@ Acceptance:
 
 ### M3.4.3 — Nightlife accents
 
-- [ ] Add `nightlife-accent` family.
-- [ ] Restrict it to the existing `club` profile.
-- [ ] Use wine/magenta-red rather than saturated cyberpunk pink.
-- [ ] Keep the spill compact and tied to the frontage source.
+- [x] Add `nightlife-accent` family.
+- [x] Restrict it to the existing `club` profile.
+- [x] Use wine/magenta-red rather than saturated cyberpunk pink.
+- [x] Keep the spill compact and tied to the frontage source.
 
 Acceptance:
 - a club is recognisable at gameplay zoom;
@@ -50,11 +50,11 @@ Acceptance:
 
 ### M3.4.4 — Industrial dirty light
 
-- [ ] Add `industrial-dirty` family.
-- [ ] Restrict it to `industrial` / `warehouse` semantics.
-- [ ] Use the existing `serviceStrip` semantics as permission for presentation-only service lighting when authored frontage is `none`.
-- [ ] Use dirty sodium/olive-amber, smaller and weaker than nightlife/civic accents.
-- [ ] Keep deterministic sparse selection so most industrial façades remain dark.
+- [x] Add `industrial-dirty` family.
+- [x] Restrict it to `industrial` / `warehouse` semantics.
+- [x] Use the existing `serviceStrip` semantics as permission for presentation-only service lighting when authored frontage is `none`.
+- [x] Use dirty sodium/olive-amber, smaller and weaker than nightlife/civic accents.
+- [x] Keep deterministic sparse selection so most industrial façades remain dark.
 
 Acceptance:
 - industrial/service areas gain a functional signature;
@@ -69,6 +69,8 @@ Acceptance:
 - [ ] Density restraint for industrial and generic warm frontages.
 - [ ] Family separation: contextual buildings do not also receive incompatible generic warm frontage.
 - [ ] Soft-falloff alpha remains bounded; no hard bullseye-outline regression.
+
+Test coverage is authored in `tests/city-practical-light-presentation.test.js`; keep these boxes open until CI executes the suite successfully on the contextual-light head.
 
 ### M3.4.6 — Gameplay-scale browser evidence
 
@@ -85,6 +87,8 @@ Each capture must show:
 - requested family is present in `scene.cityPracticalLightDescriptors`;
 - no page errors;
 - darkness remains the dominant broad-area value.
+
+The dedicated review harness now discovers these targets from real generated building/light semantics; keep the boxes open until the workflow artifact is inspected.
 
 ### M3.4.7 — Continuity/state update
 
@@ -114,3 +118,7 @@ Continue autonomously while changes remain presentation-only and pass determinis
 4. the initiative reaches the final user visual gate defined by M9.
 
 Until one of those conditions occurs, execute the checklist in order and record rejected experiments rather than hiding them.
+
+## Current execution checkpoint
+
+Implementation and review-harness authoring through M3.4.4 are complete on the branch. Focused/unit and dedicated browser validation are running before M3 can be closed.
