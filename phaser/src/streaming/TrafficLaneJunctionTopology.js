@@ -17,6 +17,10 @@ function stableHash(value) {
   return hash >>> 0;
 }
 
+function safeId(value) {
+  return String(value || "connector").replace(/[^a-z0-9:_-]+/gi, "-");
+}
+
 function distance(a, b) {
   return Math.hypot(finite(a?.x) - finite(b?.x), finite(a?.y) - finite(b?.y));
 }
@@ -78,8 +82,10 @@ export function buildTrafficJunctionConnector(incoming, outgoing, junction, {
   const maximumRadius = points.reduce((maximum, point) => Math.max(maximum, distance(point, junction)), 0);
   const envelopeRadius = Math.max(12, finite(junction.radius, 30)) + Math.max(0, finite(endpointTolerance, 22));
   const turn = classifyTrafficTurn(incoming.endTangent, outgoing.startTangent, incoming.edgeId === outgoing.edgeId);
+  const id = `${incoming.key}->${outgoing.key}@${junction.id}`;
   return {
-    id: `${incoming.key}->${outgoing.key}@${junction.id}`,
+    id,
+    connectorEdgeId: `traffic-connector:${safeId(id)}`,
     junctionId: junction.id,
     incomingLaneKey: incoming.key,
     outgoingLaneKey: outgoing.key,
@@ -120,6 +126,7 @@ function directedLanes(manifest, endpointTolerance) {
   }));
   const lanes = [];
   for (const [edgeId, edge] of Object.entries(manifest?.edges || {})) {
+    if (edge?.junctionConnector) continue;
     for (const direction of ["forward", "reverse"]) {
       const points = edge?.[direction];
       if (!Array.isArray(points) || points.length < 2) continue;
@@ -170,6 +177,7 @@ export function buildTrafficLaneJunctionTopology(manifest, {
   }
 
   const connections = [];
+  const connectionByEdgeId = new Map();
   const outgoingByLane = new Map();
   for (const [junctionId, incoming] of incomingByJunction.entries()) {
     const junction = junctionById.get(junctionId);
@@ -183,6 +191,7 @@ export function buildTrafficLaneJunctionTopology(manifest, {
         });
         if (!connector) continue;
         connections.push(connector);
+        connectionByEdgeId.set(connector.connectorEdgeId, connector);
         const options = outgoingByLane.get(from.key) || [];
         options.push(connector);
         outgoingByLane.set(from.key, options);
@@ -224,6 +233,7 @@ export function buildTrafficLaneJunctionTopology(manifest, {
     connections,
     laneByKey,
     junctionById,
+    connectionByEdgeId,
     outgoingByLane,
     continuations,
     chooseContinuation,
@@ -240,6 +250,7 @@ export function installTrafficLaneJunctionTopologyPolicy(materializer, options =
   let topology = null;
   let ready = false;
   let destroyed = false;
+  const injectedConnectorEdgeIds = new Set();
   const policy = {
     get ready() {
       return ready;
@@ -250,12 +261,16 @@ export function installTrafficLaneJunctionTopologyPolicy(materializer, options =
     initialization: null,
     snapshot() {
       return topology
-        ? { ready: true, ...topology.snapshot() }
-        : { ready: false, directedLaneCount: 0, junctionCount: 0, connectionCount: 0, connectedLaneCount: 0, orphanLaneCount: 0, unsafeConnectorCount: 0 };
+        ? { ready: true, ...topology.snapshot(), injectedConnectorLaneCount: injectedConnectorEdgeIds.size }
+        : { ready: false, directedLaneCount: 0, junctionCount: 0, connectionCount: 0, connectedLaneCount: 0, orphanLaneCount: 0, unsafeConnectorCount: 0, injectedConnectorLaneCount: 0 };
     },
     destroy() {
       destroyed = true;
       ready = false;
+      for (const edgeId of injectedConnectorEdgeIds) {
+        if (materializer.lanes?.edges?.[edgeId]?.junctionConnector) delete materializer.lanes.edges[edgeId];
+      }
+      injectedConnectorEdgeIds.clear();
       topology = null;
       if (materializer.laneJunctionTopology) delete materializer.laneJunctionTopology;
       if (materializer.__nbdLaneJunctionTopologyPolicy === policy) delete materializer.__nbdLaneJunctionTopologyPolicy;
@@ -265,6 +280,21 @@ export function installTrafficLaneJunctionTopologyPolicy(materializer, options =
   policy.initialization = Promise.resolve(materializer.initialization).then(() => {
     if (destroyed) return policy;
     topology = buildTrafficLaneJunctionTopology(materializer.lanes, options);
+    for (const connection of topology.connections) {
+      if (!connection.withinJunctionEnvelope) continue;
+      materializer.lanes.edges[connection.connectorEdgeId] = {
+        forward: connection.points.map(point => ({ ...point })),
+        reverse: [...connection.points].reverse().map(point => ({ ...point })),
+        centerline: connection.points.map(point => ({ ...point })),
+        laneOffset: 0,
+        junctionConnector: true,
+        junctionId: connection.junctionId,
+        turnType: connection.turnType,
+        incomingEdgeId: connection.incomingEdgeId,
+        outgoingEdgeId: connection.outgoingEdgeId
+      };
+      injectedConnectorEdgeIds.add(connection.connectorEdgeId);
+    }
     materializer.laneJunctionTopology = topology;
     ready = true;
     return policy;
