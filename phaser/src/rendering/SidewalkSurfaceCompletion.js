@@ -64,10 +64,6 @@ function orientationFor(segment) {
   return finite(segment?.w) >= finite(segment?.h) ? "horizontal" : "vertical";
 }
 
-function opposite(direction) {
-  return ({ north: "south", south: "north", east: "west", west: "east" })[direction] || null;
-}
-
 function baseStripsForRoad(segment, sidewalkWidth, world) {
   const orientation = orientationFor(segment);
   const horizontal = orientation === "horizontal";
@@ -151,110 +147,142 @@ function junctionCommon(piece, extra = {}) {
   };
 }
 
-function junctionSidewalkRect(piece, width, role, side, world) {
-  const values = side === "north"
-    ? { x: piece.x, y: finite(piece.y) - width, w: piece.w, h: width }
-    : side === "south"
-      ? { x: piece.x, y: bottom(piece), w: piece.w, h: width }
-      : side === "west"
-        ? { x: finite(piece.x) - width, y: piece.y, w: width, h: piece.h }
-        : { x: right(piece), y: piece.y, w: width, h: piece.h };
-  return clippedRect({
-    id: `presentation-sidewalk-junction:${piece.id}:${role}:${side}`,
-    ...values,
-    geometry: "rect",
-    side,
-    role,
-    trimEdges: side === "north" || side === "south" ? ["north", "south"] : ["west", "east"],
-    anchorKind: role === "closure" ? "junction-closure" : "junction-side",
-    ...junctionCommon(piece)
-  }, world);
+function connectedToJunction(piece, segment) {
+  const nodeIds = new Set((piece.graphNodeIds || [piece.graphNodeId]).filter(Boolean));
+  return nodeIds.has(segment?.fromNodeId) || nodeIds.has(segment?.toNodeId);
 }
 
-function junctionCornerPad(piece, width, quadrant, world) {
-  const x = quadrant.x < 0 ? finite(piece.x) - width : right(piece);
-  const y = quadrant.y < 0 ? finite(piece.y) - width : bottom(piece);
-  const trimEdges = quadrant.id === "nw"
-    ? ["north", "west"]
-    : quadrant.id === "ne"
-      ? ["north", "east"]
-      : quadrant.id === "se"
-        ? ["south", "east"]
-        : ["south", "west"];
-  return clippedRect({
-    id: `presentation-sidewalk-junction:${piece.id}:corner:${quadrant.id}`,
-    x,
-    y,
+/**
+ * Classifies an external approach by the physical side where its compiler-trimmed
+ * segment meets the junction authority. The boundary test is important for
+ * compound junction clusters: comparing only against the cluster centre can put a
+ * locally-correct approach on the wrong side of a large aggregate rectangle.
+ */
+function approachSide(piece, segment) {
+  if (!connectedToJunction(piece, segment)) return null;
+  if (orientationFor(segment) === "horizontal") {
+    if (right(segment) <= finite(piece.x) + EPSILON) return "west";
+    if (finite(segment.x) >= right(piece) - EPSILON) return "east";
+    const segmentCenter = finite(segment.x) + finite(segment.w) / 2;
+    const pieceCenter = finite(piece.x) + finite(piece.w) / 2;
+    return segmentCenter < pieceCenter ? "west" : "east";
+  }
+  if (bottom(segment) <= finite(piece.y) + EPSILON) return "north";
+  if (finite(segment.y) >= bottom(piece) - EPSILON) return "south";
+  const segmentCenter = finite(segment.y) + finite(segment.h) / 2;
+  const pieceCenter = finite(piece.y) + finite(piece.h) / 2;
+  return segmentCenter < pieceCenter ? "north" : "south";
+}
+
+function approachAxisInterval(segment, side) {
+  return side === "north" || side === "south"
+    ? { start: finite(segment.x), end: right(segment) }
+    : { start: finite(segment.y), end: bottom(segment) };
+}
+
+function subtractInterval(intervals, cutStart, cutEnd) {
+  const result = [];
+  for (const interval of intervals) {
+    const start = Math.max(interval.start, finite(cutStart));
+    const end = Math.min(interval.end, finite(cutEnd));
+    if (end - start <= EPSILON) {
+      result.push(interval);
+      continue;
+    }
+    if (start - interval.start > EPSILON) result.push({ start: interval.start, end: start });
+    if (interval.end - end > EPSILON) result.push({ start: end, end: interval.end });
+  }
+  return result;
+}
+
+function ringSideBounds(piece, side, width) {
+  if (side === "north") {
+    return {
+      x: finite(piece.x) - width,
+      y: finite(piece.y) - width,
+      w: finite(piece.w) + width * 2,
+      h: width,
+      orientation: "horizontal"
+    };
+  }
+  if (side === "south") {
+    return {
+      x: finite(piece.x) - width,
+      y: bottom(piece),
+      w: finite(piece.w) + width * 2,
+      h: width,
+      orientation: "horizontal"
+    };
+  }
+  if (side === "west") {
+    return {
+      x: finite(piece.x) - width,
+      y: finite(piece.y),
+      w: width,
+      h: finite(piece.h),
+      orientation: "vertical"
+    };
+  }
+  return {
+    x: right(piece),
+    y: finite(piece.y),
     w: width,
-    h: width,
-    geometry: "rect",
-    corner: quadrant.id,
-    role: "corner",
-    trimEdges,
-    anchorKind: "junction-corner",
-    ...junctionCommon(piece)
-  }, world);
+    h: finite(piece.h),
+    orientation: "vertical"
+  };
 }
 
-function segmentDirectionFromPiece(piece, segment) {
-  const nodeIds = new Set(piece.graphNodeIds || [piece.graphNodeId]);
-  if (!nodeIds.has(segment?.fromNodeId) && !nodeIds.has(segment?.toNodeId)) return null;
-  const pieceCenterX = finite(piece.x) + finite(piece.w) / 2;
-  const pieceCenterY = finite(piece.y) + finite(piece.h) / 2;
-  const segmentCenterX = finite(segment.x) + finite(segment.w) / 2;
-  const segmentCenterY = finite(segment.y) + finite(segment.h) / 2;
-  if (orientationFor(segment) === "horizontal") return segmentCenterX < pieceCenterX ? "west" : "east";
-  return segmentCenterY < pieceCenterY ? "north" : "south";
-}
-
-function junctionDirections(piece, roadSegments) {
-  return new Set((roadSegments || []).map(segment => segmentDirectionFromPiece(piece, segment)).filter(Boolean));
-}
-
+/**
+ * Creates a fixed-width pavement ring immediately outside a rectangular junction
+ * authority and subtracts the carriageway opening of every connected approach.
+ *
+ * This is deliberately geometry-driven rather than junction-kind-driven. It
+ * therefore handles simple crossroads, T/corner/end nodes and compound junction
+ * clusters with multiple graph nodes using the same rule: pavement exists around
+ * the authority everywhere except where a road actually enters or leaves it.
+ */
 function rectJunctionSidewalks(piece, roadSegments, width, world) {
-  const directions = junctionDirections(piece, roadSegments);
-  if (!directions.size) return [];
-  const quadrants = [
-    { id: "nw", x: -1, y: -1 },
-    { id: "ne", x: 1, y: -1 },
-    { id: "se", x: 1, y: 1 },
-    { id: "sw", x: -1, y: 1 }
-  ];
+  const connected = (roadSegments || [])
+    .map(segment => ({ segment, side: approachSide(piece, segment) }))
+    .filter(item => item.side);
+  if (!connected.length) return [];
+
   const surfaces = [];
-  const kind = String(piece.junctionKind || "");
-  const hasHorizontal = directions.has("east") || directions.has("west");
-  const hasVertical = directions.has("north") || directions.has("south");
-  const straight = kind === "straight";
+  for (const side of ["north", "south", "west", "east"]) {
+    const bounds = ringSideBounds(piece, side, width);
+    const horizontal = bounds.orientation === "horizontal";
+    let intervals = [{
+      start: horizontal ? bounds.x : bounds.y,
+      end: horizontal ? bounds.x + bounds.w : bounds.y + bounds.h
+    }];
 
-  // This mirrors the compiler's junction grammar, but buildings are intentionally
-  // absent from the decision. Junction-owned pavement is part of the street edge.
-  if (!straight) {
-    for (const quadrant of quadrants) {
-      const pad = junctionCornerPad(piece, width, quadrant, world);
-      if (pad) surfaces.push(pad);
+    const approaches = connected.filter(item => item.side === side);
+    for (const { segment } of approaches) {
+      const cut = approachAxisInterval(segment, side);
+      intervals = subtractInterval(intervals, cut.start, cut.end);
+      if (!intervals.length) break;
     }
+
+    intervals.forEach((interval, index) => {
+      const values = horizontal
+        ? { x: interval.start, y: bounds.y, w: interval.end - interval.start, h: bounds.h }
+        : { x: bounds.x, y: interval.start, w: bounds.w, h: interval.end - interval.start };
+      const fragment = clippedRect({
+        id: `presentation-sidewalk-junction:${piece.id}:ring:${side}:${String(index + 1).padStart(2, "0")}`,
+        ...values,
+        geometry: "rect",
+        orientation: bounds.orientation,
+        side,
+        role: "junction-ring",
+        sourceApproachCount: approaches.length,
+        trimEdges: horizontal ? ["north", "south"] : ["west", "east"],
+        anchorKind: "junction-ring",
+        ...junctionCommon(piece)
+      }, world);
+      if (fragment) surfaces.push(fragment);
+    });
   }
 
-  const closureSides = new Set();
-  if (straight) {
-    if (hasHorizontal) closureSides.add("north").add("south");
-    if (hasVertical) closureSides.add("west").add("east");
-  } else {
-    if (hasHorizontal) {
-      if (!directions.has("north")) closureSides.add("north");
-      if (!directions.has("south")) closureSides.add("south");
-    }
-    if (hasVertical) {
-      if (!directions.has("west")) closureSides.add("west");
-      if (!directions.has("east")) closureSides.add("east");
-    }
-    if (kind === "end" && directions.size === 1) closureSides.add(opposite([...directions][0]));
-  }
-
-  for (const side of closureSides) {
-    const closure = junctionSidewalkRect(piece, width, "closure", side, world);
-    if (closure) surfaces.push(closure);
-  }
   return surfaces;
 }
 
@@ -332,9 +360,9 @@ export function buildRoadEdgeSidewalkInfill({
 }
 
 /**
- * Completes the compiler-owned sidewalk grammar inside junction authority.
- * Corner pads, closed sides and width transitions are derived only from road
- * geometry. A building footprint is never allowed to delete these visual caps.
+ * Completes pavement around junction authority. Rectangular junctions use a
+ * perimeter ring with exact road-approach openings; width transitions retain the
+ * compiler's polygon offset grammar. Buildings never participate in the decision.
  */
 export function buildJunctionSidewalkInfill({
   roadSegments = [],
