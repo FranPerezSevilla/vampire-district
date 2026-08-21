@@ -33,10 +33,12 @@ test("completed sidewalks stay inside geometry and sidewalk rendering queries", 
   };
   const completed = [...sidewalks, visualOnly];
   const observed = {};
+  const renderOrder = [];
   const scene = new PresentationScene();
 
   const authoredChunkItems = function authoredChunkItems(category, queryBounds, fallback) {
     if (category === "sidewalks") return fallback;
+    if (category === "buildings") return [{ id: "overlapping-building" }];
     return [];
   };
 
@@ -54,6 +56,7 @@ test("completed sidewalks stay inside geometry and sidewalk rendering queries", 
     return this.citySurfaceGeometryCache;
   };
   scene.drawSidewalkNetwork = function drawSidewalkNetwork() {
+    renderOrder.push("sidewalk");
     observed.sidewalkDrawCount = this.chunkItems("sidewalks", bounds, sidewalks, { margin: 8 }).length;
   };
   scene.drawCrosswalkNetwork = function drawCrosswalkNetwork() {
@@ -63,13 +66,14 @@ test("completed sidewalks stay inside geometry and sidewalk rendering queries", 
   scene.drawCurbsideStreetDetails = () => {};
   scene.drawSewerManholes = () => {};
   scene.drawRoadWindow = () => {};
-  scene.drawBuilding = () => {};
+  scene.drawBuilding = () => renderOrder.push("building");
 
   scene.drawDistrictStreet();
 
   assert.equal(observed.geometryCount, completed.length);
   assert.equal(observed.sidewalkDrawCount, completed.length);
   assert.equal(observed.crosswalkPhaseCount, sidewalks.length);
+  assert.deepEqual(renderOrder, ["building", "sidewalk"]);
   assert.strictEqual(scene.chunkItems, authoredChunkItems);
   assert.equal(scene.chunkItems("sidewalks", bounds, sidewalks).length, sidewalks.length);
 });
@@ -102,6 +106,7 @@ test("temporary presentation query is restored when sidewalk drawing throws", ()
   scene.drawOpenGroundWindow = () => {};
   scene.drawCurbsideStreetDetails = () => {};
   scene.drawRoadWindow = () => {};
+  scene.drawBuilding = () => {};
   scene.drawSidewalkNetwork = () => {
     throw new Error("render failure");
   };
