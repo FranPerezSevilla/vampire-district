@@ -12,41 +12,33 @@ Make vehicles feel driven rather than translated, and make police pursuit read a
 
 Visible NPC traffic now uses the same `stepVehicleKinematics` model as the player vehicle. Lane following, obstacle avoidance and recovery remain high-level intentions; translation, heading, speed, grip and steering are produced by the shared vehicle model.
 
-This specifically removes the old presentation-only lateral correction that could make NPC cars appear to slide sideways while nominally steering.
+## Police pursuit state machine
 
-## Police pursuit doctrine
+Motorized pursuit is now governed by an explicit persistent state machine instead of independent per-frame tactical conditions.
 
-Motorized police now follow a containment-first doctrine:
+States:
 
-1. acquire and close;
-2. keep multiple pursuit cars committed to the suspect;
-3. pressure from behind or PIT where appropriate;
-4. when a cruiser meets/crosses the suspect, immediately choose a cutoff or rapid turnaround/re-engagement instead of continuing past;
-5. secondary pursuit cars predict an ahead-of-suspect intercept and attempt to occupy/cross that space;
-6. keep officers inside while the suspect vehicle is materially moving;
-7. once the vehicle remains nearly stopped for the containment hold window, dismount and transition to the existing armed on-foot police behavior.
+1. `ACQUIRE` — route toward and reacquire the suspect when outside local tactical range.
+2. `INTERCEPT` — predict the suspect's future position and close on an offset intercept point.
+3. `PRESSURE` — primary pursuit unit stays on the rear quarter and maintains close pressure.
+4. `BLOCK` — a cruiser already ahead/in the escape corridor aims for a predictive blocking point instead of passing through.
+5. `REENGAGE` — a nearby cruiser whose nose is facing away from the suspect performs a high-authority turn and targets a point ahead of the suspect.
+6. `CONTAINED` — suspect vehicle has remained below the near-stop threshold for the hold window; motorized movement stops and dismount becomes legal.
+7. `DEPLOYED` — officers have exited and the existing armed on-foot police system owns the encounter.
+8. `ROADBLOCK` — dedicated Wanted 3 roadblock unit remains outside the pursuit-state competition.
+
+The important distinction is geometric: being behind the suspect is not itself a reason to turn around. `REENGAGE` is entered when the cruiser is close but substantially facing away from the suspect; this covers the head-on crossing/pass-by failure without confusing a legitimate rear-quarter pursuer.
 
 ### Fleet sizing
 
-The pursuit count is deliberately separate from roadblock/support count:
+Pursuit count is independent from roadblock/support count:
 
 - Wanted 2: **3 pursuit cruisers**.
 - Wanted 3: **3 pursuit cruisers + 1 roadblock unit** (4 motorized units total).
 
-A roadblock therefore no longer consumes one of the active pursuit slots.
+### Dismount rule
 
-### Encounter/re-engagement behavior
-
-`MotorizedPoliceContainmentPolicy` detects nearby pursuit encounters relative to the suspect's travel vector.
-
-- A cruiser ahead of or crossing the suspect is assigned a predictive cutoff point rather than blindly following its prior route.
-- A cruiser that has just passed the suspect or is facing substantially away from its new intercept target enters `turning-to-reengage` and receives stronger turn authority to reverse course quickly.
-- Pursuit units that are already behind the suspect continue to use rear-quarter/PIT pressure or planned ahead-of-suspect cutoff behavior.
-- Distant units remain under normal routing authority; the local encounter override is intentionally bounded.
-
-## Dismount rule
-
-Motorized officers should not abandon a functioning cruiser simply because they are close to a moving player vehicle. Dismount is suppressed while the suspect is above the near-stop threshold, except when a police vehicle is disabled. The stop state must persist briefly before deployment.
+Motorized officers remain inside a functioning cruiser while the suspect vehicle is materially moving. Dismount is permitted only from `CONTAINED` (or when the cruiser itself is disabled), then control passes to the existing armed on-foot behavior.
 
 ## Existing ownership preserved
 
@@ -61,11 +53,13 @@ The following remain owned by their existing systems:
 
 ## Validation focus
 
-Automated coverage now includes fleet sizing and local encounter re-engagement. Manual validation should focus on play feel:
+Automated coverage explicitly checks the state transitions and fleet invariants. Manual validation should focus on play feel:
 
-1. drive head-on past a responding cruiser and confirm it immediately tries to cut across the escape path or turns back to pursue;
-2. at Wanted 2, keep moving long enough to confirm three pursuit units can remain active rather than treating three as the entire motorized budget;
-3. at Wanted 3, confirm three pursuers remain active while the fourth unit performs the roadblock role;
-4. drive slowly but continuously and confirm officers remain mounted;
-5. stop almost completely for the hold window and confirm officers deploy and engage on foot;
-6. verify NPC civilian cars still rotate/accelerate/brake naturally through lane recovery and obstacle avoidance.
+1. drive head-on past a cruiser and confirm it enters `REENGAGE` rather than continuing away;
+2. approach a cruiser already ahead and confirm it transitions to `BLOCK`;
+3. confirm the primary close follower uses `PRESSURE`, while secondary cars use `INTERCEPT`/`BLOCK` rather than stacking in one line;
+4. Wanted 2 must maintain three pursuit slots;
+5. Wanted 3 must maintain three pursuers plus a separate roadblock unit;
+6. drive slowly but continuously and confirm officers remain mounted;
+7. stop almost completely for the hold window and confirm transition `CONTAINED` -> `DEPLOYED`;
+8. verify NPC civilian cars still rotate/accelerate/brake naturally through lane recovery and obstacle avoidance.
