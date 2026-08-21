@@ -65,18 +65,18 @@ Purpose: make the task self-contained in the repository.
 
 ## M1 — Integrate the street-surface foundation
 
-**Status: waiting-on-dependency**
+**Status: complete**
 
-Dependency: PR #69 `City street visual pass`.
+Dependency: PR #69 `City street visual pass` — merged as `f803c974817c92666b82a60fac808d54c2c4bc05` and integrated into this branch by `a408a1342989868ad62a09e0df12d0742830ee4a`.
 
 Purpose: establish a single surface authority before atmosphere work begins to modify roads/sidewalks.
 
 ### M1.1 — Resolve dependency state
 
-- [ ] confirm whether #69 is merged;
-- [ ] if not merged, do not copy or duplicate its implementation;
-- [ ] when merged, synchronize `agent/city-noir-atmosphere` with post-#69 `main`;
-- [ ] record resulting authority paths and focused tests in the progress log.
+- [x] confirm whether #69 is merged;
+- [x] if not merged, do not copy or duplicate its implementation;
+- [x] when merged, synchronize `agent/city-noir-atmosphere` with post-#69 `main`;
+- [x] record resulting authority paths and focused tests in the progress log.
 
 ### M1.2 — Baseline audit after #69
 
@@ -95,17 +95,17 @@ Do **not** reopen curb/sidewalk topology, asphalt patches, drains, cracks, repai
 
 ### M1 exit
 
-- [ ] #69 has one integrated authority;
-- [ ] atmosphere branch is synchronized;
-- [ ] post-#69 baseline captures/evidence exist;
-- [ ] no duplicated street renderer exists;
-- [ ] exact next M2 task is recorded.
+- [x] #69 has one integrated authority;
+- [x] atmosphere branch is synchronized to the post-#69 foundation;
+- [x] post-#69 baseline captures/evidence exist;
+- [x] no duplicated street renderer exists;
+- [x] exact next M2 task is recorded.
 
 ---
 
 ## M2 — Global value hierarchy and night exposure
 
-**Status: planned**
+**Status: complete**
 
 Purpose: stop the city reading as one evenly exposed blue-grey layer.
 
@@ -147,17 +147,17 @@ Add focused assertions/helpers where feasible for deterministic palette/opacity 
 
 ### M2 exit
 
-- [ ] thumbnail/blurred frame no longer reads as a flat blue field;
-- [ ] darkness dominates area without hiding navigation;
-- [ ] saturated accents are not globally boosted;
-- [ ] no gameplay visibility rule changed;
-- [ ] affected checks green.
+- [x] thumbnail/blurred frame no longer reads as a flat blue field;
+- [x] darkness dominates area without hiding navigation;
+- [x] saturated accents are not globally boosted;
+- [x] no gameplay visibility rule changed;
+- [x] affected checks green.
 
 ---
 
 ## M3 — Practical-light islands
 
-**Status: planned**
+**Status: complete**
 
 Purpose: create the core visual rhythm `darkness → local light → darkness`.
 
@@ -221,20 +221,24 @@ Do not rewrite vehicle simulation to support lighting.
 
 ### M3 exit
 
-- [ ] at least three distinct practical-light contexts exist;
-- [ ] a representative street has real dark gaps between lights;
-- [ ] red/blue/magenta remain rare accents;
-- [ ] dynamic lights are culled to visible/nearby sources;
-- [ ] no gameplay lighting authority was introduced;
-- [ ] affected checks green.
+- [x] at least three distinct practical-light contexts exist;
+- [x] a representative street has real dark gaps between lights;
+- [x] red/blue/magenta remain rare accents;
+- [x] dynamic lights are culled to visible/nearby sources;
+- [x] no gameplay lighting authority was introduced;
+- [x] affected checks green.
+
+Evidence is recorded in the progress/machine state, including contextual-family artifact `9441823514` and vehicle/emergency artifact `9442522378`.
 
 ---
 
 ## M4 — Wet asphalt and local reflection language
 
-**Status: planned**
+**Status: complete**
 
 Purpose: make the city feel recently wet without a general-purpose reflection renderer.
+
+Execution was refined into the dedicated task [`../agent-tasks/2026-08-21-city-noir-m4-wet-street-reflections.md`](../agent-tasks/2026-08-21-city-noir-m4-wet-street-reflections.md). That task is authoritative for the delivered M4 substep numbering and validation evidence.
 
 ### M4.1 — Reflection geometry primitive
 
@@ -270,57 +274,65 @@ Police red/blue should read strongly on nearby wet road but should not tint half
 
 ### M4.4 — Puddle/specular accents
 
-Add a sparse deterministic puddle/specular accent family only after the reflection base works. Density must be low enough that puddles are discovered as details, not seen as a repeated texture.
+The delivered broken reflection fragments provide the sparse specular/puddle-like breakup required by the visual target. A second generic puddle field was intentionally **not** added because it would create repeated texture and overlap the accepted M4 receiver language.
 
 ### M4 exit
 
-- [ ] wetness is visible in lit areas and subdued in dark areas;
-- [ ] reflections are irregular and material-aware;
-- [ ] no mirror/shader overengineering was introduced;
-- [ ] deterministic geometry tests exist;
-- [ ] performance remains inside budget.
+- [x] wetness is visible in lit areas and subdued in dark areas;
+- [x] reflections are irregular and material-aware;
+- [x] no mirror/shader overengineering was introduced;
+- [x] deterministic geometry tests exist;
+- [x] performance remains inside budget.
+
+Validated implementation head: `62e2eb4fd4aade64e1f4e6393996e09d4e7db4f9`; Tests `32475694164` success; atmosphere review `32475694166` success; artifact `9444326985`.
 
 ---
 
 ## M5 — Low-frequency grime and urban surface dressing
 
-**Status: planned**
+**Status: autonomous-in-progress**
 
 Purpose: remove sterile large surfaces without undoing #69.
 
+Dedicated task contract: [`../agent-tasks/2026-08-21-city-noir-m5-grime-dressing.md`](../agent-tasks/2026-08-21-city-noir-m5-grime-dressing.md).
+
 ### M5.1 — Responsibility audit
 
-Before adding anything, list which surface details are already produced by #69. Explicitly exclude them from this milestone unless a bug exists.
+- [x] audit the merged #69 street-surface implementation before adding any M5 runtime geometry;
+- [x] explicitly exclude #69-owned open-ground scuffs/panels, repairs, cracks, gutters/stains, drains/manholes, worn paint, sidewalks/curbs/junction pavement and crosswalk/tactile geometry;
+- [x] exclude M4 light-coupled wet response from generic grime;
+- [x] confirm gameplay dumpsters remain owned by `StreetFurnitureSystem` and may only be read later as contextual presentation input;
+- [x] defer readable posters/graffiti/signage to M7 environmental storytelling.
+
+Audit result: generic world/road grime fields would overlap existing authorities. M5 is therefore constrained to **contextual service/frontage dressing**.
 
 ### M5.2 — Grime decal families
 
-Introduce a small deterministic set, for example:
+First and only initial runtime family: `service-frontage-grime`.
 
-- oil/dirt stain;
-- damp/dark stain;
-- tyre/scuff mark;
-- frontage/service grime;
-- small litter cluster;
-- optional poster/graffiti presentation zone where the current top-down building/frontage language supports it.
+It must:
 
-Each family needs:
+- derive from existing building/frontage semantics rather than a world grid;
+- prefer service/industrial/warehouse/commercial contexts;
+- use stable deterministic placement;
+- have a hard density/per-building fragment cap and minimum spacing;
+- remain low contrast;
+- reject road and crosswalk receiving points;
+- stay close to the source frontage/service edge;
+- use visible-window culling;
+- remain non-interactive and non-collidable.
 
-- stable deterministic placement;
-- density cap;
-- minimum spacing;
-- low contrast;
-- surface compatibility rules;
-- visible-window culling.
+Do **not** add a second M5 family until this slice passes focused tests and gameplay-scale visual review.
 
 ### M5.3 — Service-corner composition
 
-Use existing building/service semantics to make selected corners look used: grime near dumpsters/service doors/mechanical areas, not random grime everywhere.
+After M5.2 is accepted, use existing building/service semantics and, where useful, existing gameplay dumpster positions read-only to make selected corners feel used. Candidate follow-up is a tiny capped litter cluster; do not create new gameplay street furniture.
 
 ### M5 exit
 
 - [ ] large surfaces no longer feel sterile;
 - [ ] procedural grid is not visible;
-- [ ] no detail family duplicates #69;
+- [ ] no detail family duplicates #69 or M4;
 - [ ] clutter remains low-frequency;
 - [ ] decorative items remain non-interactive/non-collidable;
 - [ ] affected checks green.
@@ -523,4 +535,4 @@ When automated and rubric criteria pass:
 
 ## Exact next action
 
-Resolve M1.1: check PR #69. If it is still unmerged, do not touch its street-surface scope; either wait or choose a clearly non-overlapping preparatory task only if doing so does not create a competing rendering authority.
+M5.2 — before runtime edits, re-check `agent/city-noir-atmosphere` against current `main` (`805ea5d107dcddcef4cd564294569455093af4b0` was observed after PR #71 merged) and integrate that unrelated main change if still required. Then implement **only** the deterministic capped `service-frontage-grime` family from the M5 task contract, add focused determinism/non-mutation/road-crosswalk-rejection/culling tests, and capture service/mixed/dark gameplay evidence before considering any second M5 family.
