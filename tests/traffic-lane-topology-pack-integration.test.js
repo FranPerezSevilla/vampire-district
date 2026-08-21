@@ -50,6 +50,32 @@ test("generated local topology is compiler-node-owned and complete for productio
   assert.equal(Object.keys(topology.transitions).length, topology.transitionIds.length);
 });
 
+test("generated local topology contains only activation-safe compiler junction connectors", () => {
+  const base = buildBase();
+  const { fileSet: enriched, validation } = attachCompilerTrafficLaneTopology(base);
+  const topology = enriched.trafficLanes.localTopology;
+  const bundle = topology.junctionConnectors;
+
+  assert.equal(validation.valid, true, validation.errors.join("\n"));
+  assert.ok(bundle);
+  assert.equal(bundle.sourceTopologyId, topology.id);
+  assert.equal(bundle.stats.rejectedConnectorCount, 0);
+  assert.equal(bundle.stats.outsideRoadConnectorCount, 0);
+  assert.equal(bundle.stats.tangentFailureCount, 0);
+  assert.equal(bundle.stats.safeConnectorCount, bundle.stats.connectorCount);
+  assert.equal(topology.stats.junctionConnectorCount, bundle.stats.connectorCount);
+  assert.equal(topology.stats.safeJunctionConnectorCount, bundle.stats.safeConnectorCount);
+  assert.equal(topology.stats.directJunctionHandoffCount, bundle.stats.directHandoffCount);
+  assert.equal(validation.metrics.rejectedJunctionConnectors, 0);
+  assert.equal(validation.metrics.outsideRoadJunctionConnectors, 0);
+  assert.equal(validation.metrics.junctionConnectorTangentFailures, 0);
+
+  for (const connector of Object.values(bundle.connectors)) {
+    assert.equal(connector.activationSafe, true, `${connector.id}: ${connector.rejectionReasons.join(",")}`);
+    assert.equal(connector.rejectionReasons.length, 0, connector.id);
+  }
+});
+
 test("legacy district-streaming validation remains green after additive topology integration", () => {
   const base = buildBase();
   const { fileSet: enriched } = attachCompilerTrafficLaneTopology(base);
