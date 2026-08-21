@@ -28,10 +28,18 @@ function screenRightNormal(tangent) {
   return { x: -finite(tangent?.y), y: finite(tangent?.x) };
 }
 
-function lanePoint(node, normal, offset) {
+function lanePoint(node, tangent, normal, longitudinal, lateral) {
   return {
-    x: rounded(finite(node?.x) + finite(normal?.x) * offset),
-    y: rounded(finite(node?.y) + finite(normal?.y) * offset)
+    x: rounded(
+      finite(node?.x)
+      + finite(tangent?.x) * finite(longitudinal)
+      + finite(normal?.x) * finite(lateral)
+    ),
+    y: rounded(
+      finite(node?.y)
+      + finite(tangent?.y) * finite(longitudinal)
+      + finite(normal?.y) * finite(lateral)
+    )
   };
 }
 
@@ -64,11 +72,63 @@ function laneOffset(segment, {
   ));
 }
 
+function nodeTopologyMetadata(node, segmentById, nodeById, options) {
+  const incident = [...new Set(node?.segments || [])]
+    .map(id => segmentById.get(id))
+    .filter(Boolean);
+  const degree = incident.length;
+  const axes = new Set();
+  const offsets = [];
+  let maximumWidth = 0;
+
+  for (const segment of incident) {
+    const otherId = segment.from === node.id ? segment.to : segment.from;
+    const other = nodeById.get(otherId);
+    if (!other) continue;
+    const tangent = unitVector(other.x - node.x, other.y - node.y);
+    axes.add(Math.abs(tangent.x) >= Math.abs(tangent.y) ? "horizontal" : "vertical");
+    offsets.push(laneOffset(segment, options));
+    maximumWidth = Math.max(maximumWidth, finite(segment.width, 52));
+  }
+
+  const offsetSpread = offsets.length
+    ? Math.max(...offsets) - Math.min(...offsets)
+    : 0;
+  const corner = degree === 2 && axes.size > 1;
+  const widthTransition = degree === 2 && axes.size === 1 && offsetSpread > EPSILON;
+  const requiresJunctionGeometry = degree <= 1 || degree >= 3 || corner || widthTransition;
+  const minimumTrim = Math.max(0, finite(options?.minimumJunctionTrim, 18));
+  const maximumTrim = Math.max(minimumTrim, finite(options?.maximumJunctionTrim, 64));
+  const trimWidthFactor = Math.max(0, finite(options?.junctionTrimWidthFactor, 0.5));
+  const trimDistance = requiresJunctionGeometry
+    ? rounded(clamp(maximumWidth * trimWidthFactor, minimumTrim, maximumTrim))
+    : 0;
+
+  let kind = "through";
+  if (degree <= 1) kind = "dead-end";
+  else if (degree >= 3) kind = "junction";
+  else if (corner) kind = "corner";
+  else if (widthTransition) kind = "width-transition";
+
+  return {
+    id: node.id,
+    x: rounded(node.x),
+    y: rounded(node.y),
+    degree,
+    kind,
+    axes: [...axes].sort(),
+    segmentIds: incident.map(segment => segment.id).sort(),
+    maximumRoadWidth: rounded(maximumWidth),
+    trimDistance,
+    requiresJunctionGeometry
+  };
+}
+
 export function compilerTrafficLaneId(segmentId, direction = "forward") {
   return `traffic-lane-segment:${String(segmentId)}:${direction === "reverse" ? "reverse" : "forward"}`;
 }
 
-function buildDirectedLane(segment, direction, nodeById, options) {
+function buildDirectedLane(segment, direction, nodeById, nodeMetadataById, options) {
   const reverse = direction === "reverse";
   const fromNodeId = reverse ? segment.to : segment.from;
   const toNodeId = reverse ? segment.from : segment.to;
@@ -80,8 +140,12 @@ function buildDirectedLane(segment, direction, nodeById, options) {
   const tangent = unitVector(toNode.x - fromNode.x, toNode.y - fromNode.y);
   const normal = screenRightNormal(tangent);
   const offset = laneOffset(segment, options);
-  const start = lanePoint(fromNode, normal, offset);
-  const end = lanePoint(toNode, normal, offset);
+  const length = Math.max(EPSILON, finite(segment.length, distance(fromNode, toNode)));
+  const trimCap = length * Math.max(0, Math.min(0.45, finite(options?.maximumTrimFractionPerEnd, 0.35)));
+  const startTrim = Math.min(finite(nodeMetadataById.get(fromNodeId)?.trimDistance), trimCap);
+  const endTrim = Math.min(finite(nodeMetadataById.get(toNodeId)?.trimDistance), trimCap);
+  const start = lanePoint(fromNode, tangent, normal, startTrim, offset);
+  const end = lanePoint(toNode, tangent, normal, -endTrim, offset);
   return {
     id: compilerTrafficLaneId(segment.id, direction),
     sourceSegmentId: segment.id,
@@ -95,6 +159,8 @@ function buildDirectedLane(segment, direction, nodeById, options) {
     roadWidth: rounded(segment.width),
     laneOffset: offset,
     centerlineLength: rounded(segment.length),
+    startNodeTrim: rounded(startTrim),
+    endNodeTrim: rounded(endTrim),
     tangent: { x: rounded(tangent.x), y: rounded(tangent.y) },
     start,
     end,
@@ -117,14 +183,17 @@ export function buildCompilerTrafficLaneTopology(network, options = {}) {
   const networkNodes = [...network.nodes].sort((left, right) => String(left.id).localeCompare(String(right.id)));
   const segments = [...network.segments].sort((left, right) => String(left.id).localeCompare(String(right.id)));
   const nodeById = new Map(networkNodes.map(node => [node.id, node]));
+  const segmentById = new Map(segments.map(segment => [segment.id, segment]));
+  const nodeMetadata = networkNodes.map(node => nodeTopologyMetadata(node, segmentById, nodeById, options));
+  const nodeMetadataById = new Map(nodeMetadata.map(node => [node.id, node]));
+
   const lanes = [];
   for (const segment of segments) {
-    lanes.push(buildDirectedLane(segment, "forward", nodeById, options));
-    lanes.push(buildDirectedLane(segment, "reverse", nodeById, options));
+    lanes.push(buildDirectedLane(segment, "forward", nodeById, nodeMetadataById, options));
+    lanes.push(buildDirectedLane(segment, "reverse", nodeById, nodeMetadataById, options));
   }
   lanes.sort((left, right) => left.id.localeCompare(right.id));
 
-  const laneById = new Map(lanes.map(lane => [lane.id, lane]));
   const incomingByNode = new Map(networkNodes.map(node => [node.id, []]));
   const outgoingByNode = new Map(networkNodes.map(node => [node.id, []]));
   for (const lane of lanes) {
@@ -167,30 +236,23 @@ export function buildCompilerTrafficLaneTopology(network, options = {}) {
   transitions.sort((left, right) => left.id.localeCompare(right.id));
 
   const nodes = {};
-  for (const node of networkNodes) {
-    const segmentIds = [...new Set(node.segments || [])].sort();
-    const degree = segmentIds.length;
-    nodes[node.id] = {
-      id: node.id,
-      x: rounded(node.x),
-      y: rounded(node.y),
-      degree,
-      kind: degree <= 1 ? "dead-end" : degree === 2 ? "through" : "junction",
-      segmentIds,
-      incomingLaneIds: (incomingByNode.get(node.id) || []).map(lane => lane.id),
-      outgoingLaneIds: (outgoingByNode.get(node.id) || []).map(lane => lane.id)
+  for (const metadata of nodeMetadata) {
+    nodes[metadata.id] = {
+      ...metadata,
+      incomingLaneIds: (incomingByNode.get(metadata.id) || []).map(lane => lane.id),
+      outgoingLaneIds: (outgoingByNode.get(metadata.id) || []).map(lane => lane.id)
     };
   }
 
   const laneRecords = Object.fromEntries(lanes.map(lane => [lane.id, lane]));
   const transitionRecords = Object.fromEntries(transitions.map(transition => [transition.id, transition]));
   const preferredTransitions = transitions.filter(transition => transition.preferred);
-  const junctionNodeIds = networkNodes.filter(node => (node.segments || []).length >= 3).map(node => node.id).sort();
-  const deadEndNodeIds = networkNodes.filter(node => (node.segments || []).length <= 1).map(node => node.id).sort();
+  const junctionNodeIds = nodeMetadata.filter(node => node.requiresJunctionGeometry).map(node => node.id).sort();
+  const deadEndNodeIds = nodeMetadata.filter(node => node.kind === "dead-end").map(node => node.id).sort();
 
   return {
-    schemaVersion: 1,
-    version: 1,
+    schemaVersion: 2,
+    version: 2,
     id: "viceblood-compiler-directed-traffic-lanes",
     ownershipMode: "compiler-node-id",
     drivingSide: "right",
@@ -213,7 +275,8 @@ export function buildCompilerTrafficLaneTopology(network, options = {}) {
       preferredTransitionCount: preferredTransitions.length,
       uTurnTransitionCount: transitions.filter(transition => transition.uTurn).length,
       preferredUTurnTransitionCount: preferredTransitions.filter(transition => transition.uTurn).length,
-      connectorRequiredTransitionCount: transitions.filter(transition => transition.requiresConnector).length
+      connectorRequiredTransitionCount: transitions.filter(transition => transition.requiresConnector).length,
+      preferredConnectorRequiredTransitionCount: preferredTransitions.filter(transition => transition.requiresConnector).length
     }
   };
 }
@@ -234,6 +297,7 @@ export function validateCompilerTrafficLaneTopology(topology) {
       errors.push(`Lane ${laneId} references a missing compiler node.`);
     }
     if (!Array.isArray(lane.points) || lane.points.length < 2) errors.push(`Lane ${laneId} has no usable geometry.`);
+    if (distance(lane.start, lane.end) <= EPSILON) errors.push(`Lane ${laneId} collapsed after junction trimming.`);
     const fromNode = topology.nodes[lane.fromNodeId];
     if (fromNode) {
       const offset = { x: lane.start.x - fromNode.x, y: lane.start.y - fromNode.y };
@@ -274,7 +338,9 @@ export function validateCompilerTrafficLaneTopology(topology) {
       junctionNodes: topology.stats?.junctionNodeCount || 0,
       transitions: topology.stats?.transitionCount || 0,
       preferredTransitions: topology.stats?.preferredTransitionCount || 0,
-      preferredUTurnTransitions: topology.stats?.preferredUTurnTransitionCount || 0
+      preferredUTurnTransitions: topology.stats?.preferredUTurnTransitionCount || 0,
+      connectorRequiredTransitions: topology.stats?.connectorRequiredTransitionCount || 0,
+      preferredConnectorRequiredTransitions: topology.stats?.preferredConnectorRequiredTransitionCount || 0
     }
   };
 }
