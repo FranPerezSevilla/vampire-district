@@ -232,3 +232,76 @@ Validated combined evidence:
 - unit-tests job for the same head completed successfully, including the new practical-light tests.
 
 M3.1, M3.2 and M3.3 are complete. The next bounded task is M3.4: add semantic accent families one at a time—cool civic/institutional, restrained nightlife magenta/red, then industrial/service dirty warm—without increasing ordinary street-light density.
+
+## 2026-08-21 — M3 completed, M4 validated, M5 responsibility boundary locked
+
+State: `autonomous-in-progress`
+
+### M3.4 contextual accent families
+
+The practical-light authority was extended with sparse semantic families while preserving the dark/warm base hierarchy:
+
+- `cool-civic` for restrained institutional/civic frontage light;
+- `nightlife-accent` for localized magenta/red nightlife emphasis;
+- `industrial-dirty` for subdued dirty industrial/service light.
+
+Validated contextual evidence:
+- workflow: `City atmosphere review` run `32468999890`;
+- head: `06d18d039c01f67eb3312329aff224279de28f3e`;
+- artifact id `9441823514`;
+- captures: `civic-cool.png`, `nightlife.png`, `industrial.png`, `mixed-families.png`;
+- assessment: contextual families remain local and subordinate; nightlife is deliberately the strongest special building accent while civic and industrial light stay restrained.
+
+### M3.5 vehicle/emergency contribution
+
+`CityVehicleLightPresentationPolicy` reuses existing vehicle/police runtime state for bounded presentation-only headlights, tail response and police red/blue pulses. It does not rewrite vehicle simulation or police behaviour.
+
+Validated dynamic-source evidence:
+- workflow: `City atmosphere review` run `32470828688`;
+- head: `82cb34a884a00d470a7229ac10ccb1216d4aa9d7`;
+- artifact id `9442522378`;
+- captures: `vehicle-lights.png`, `police-lights-red.png`, `police-lights-blue.png`.
+
+M3 is complete: warm street/frontage, contextual civic/nightlife/industrial accents and bounded vehicle/emergency sources coexist with real dark gaps and no gameplay-lighting authority.
+
+### M4 wet asphalt and local reflection language
+
+`phaser/src/policies/CityWetStreetPresentationPolicy.js` consumes the existing M3 source descriptors and generated `roads` authority. It attaches low-alpha broken fragments only to eligible road receivers, uses deterministic source/road hashes, bounds per-family reach, and keeps dynamic vehicle/police response inside the camera/render window.
+
+The first M4 browser review failed specifically because the authored nightclub practical source was farther from asphalt than the production nightlife maximum receiver distance. That was treated as a validation-fixture problem, not permission to weaken production bounds. Commit `62e2eb4fd4aade64e1f4e6393996e09d4e7db4f9` creates a test-only nightlife source on the nearest real generated asphalt receiver and runs it through the unchanged production descriptor builder/renderer. Production nightlife reach remains `90px`.
+
+Validated M4 evidence on that implementation head:
+- `Tests` run `32475694164`: **success**, including unit tests, browser boot/campaign and all browser-system shards;
+- `City atmosphere review` run `32475694166`: **success**;
+- artifact id `9444326985`;
+- static captures: `wet-warm-street.png`, `wet-nightlife.png`, `wet-dark-control.png`;
+- dynamic captures: `wet-vehicle.png`, `wet-police-red.png`, `wet-police-blue.png`;
+- assessment: reflections remain irregular, asphalt-bound and local; dark road dominates between highlights; special colours do not flood the district; gameplay readability is preserved.
+
+M4 is complete.
+
+### M5.1 responsibility audit
+
+Before adding any new grime geometry, the merged PR #69 street presentation and current street-furniture authorities were re-audited.
+
+PR #69 already owns and therefore excludes from M5:
+- open-ground grid, panels and generic scuffs;
+- asphalt material/edge treatment;
+- road repairs, patch seams and cracks;
+- gutter bands and gutter stains;
+- drains/manholes;
+- worn road/centre paint;
+- sidewalks, joints, curbs and authoritative pavement completion;
+- junction pavement/caps;
+- zebra/crosswalk geometry, stop lines and tactile paving.
+
+M4 separately owns light-coupled wet-road response. `StreetFurnitureSystem` owns gameplay dumpsters, including their collision/hidden-body behaviour, so M5 may never duplicate or mutate them.
+
+The remaining non-overlapping M5 space is deliberately contextual rather than world-grid based. A new task contract, `docs/agent-tasks/2026-08-21-city-noir-m5-grime-dressing.md`, locks the first runtime slice to one presentation family: **`service-frontage-grime`**. It must derive from existing building/frontage semantics, stay close to selected service/industrial/commercial edges, reject road/crosswalk receiving points, remain deterministic/capped/culled and create no interaction or collision.
+
+Readable posters, graffiti and signage are deferred to M7 environmental storytelling. Generic tyre/scuff/damp fields are rejected because they would duplicate #69 or M4.
+
+Current `main` advanced after the atmosphere branch was originally synchronized: `805ea5d107dcddcef4cd564294569455093af4b0` contains merged vehicle-dynamics PR #71. This does not change the M5.1 authority result; PR #72 remains mergeable. Runtime M5 work should re-check branch/main synchronization before touching shared runtime seams.
+
+Exact next task:
+- M5.2 — implement only `service-frontage-grime` under the new task contract, with focused determinism/non-mutation/surface-compatibility/culling tests and gameplay-scale evidence before adding any second M5 family.
