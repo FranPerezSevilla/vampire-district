@@ -1,18 +1,20 @@
 {
   "initiative": "traffic-lane-junction-topology",
-  "version": 1,
+  "version": 2,
   "updatedAt": "2026-08-21",
   "pullRequest": 73,
   "branch": "codex/traffic-junction-topology",
   "state": "autonomous-in-progress",
   "currentMilestone": "M1",
-  "currentTask": "M1.1-production-manifest-audit",
-  "lastValidatedImplementationHead": "f481add4c79d6705de017e67e08810de35a24347",
+  "currentTask": "M1.2-compiler-owned-directed-lane-graph",
+  "lastValidatedImplementationHead": "6e098646c93aebfe1db58585a11e2b85dfba173e",
+  "implementationHeadPendingFullValidation": "6033d7983b1eb7ecebab53df783897940a139d01",
   "baseAtBootstrap": "805ea5d107dcddcef4cd564294569455093af4b0",
   "canonicalDocs": {
     "roadmap": "docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md",
     "agentContract": "docs/agents/TRAFFIC_LANE_JUNCTION_TOPOLOGY_AGENT.md",
     "taskBoundary": "docs/agent-tasks/2026-08-21-traffic-lane-junction-topology.md",
+    "m1CompilerContract": "docs/agent-tasks/2026-08-21-traffic-lane-junction-m1-compiler-contract.md",
     "progressLog": "docs/progress/TRAFFIC_LANE_JUNCTION_TOPOLOGY_PROGRESS.md"
   },
   "dependencies": {
@@ -26,25 +28,28 @@
       "pullRequest": 69,
       "state": "merged",
       "mainCommit": "f803c974817c92666b82a60fac808d54c2c4bc05",
-      "contract": "Compiler-owned road/junction geometry and authored traffic lanes remain gameplay authority. Presentation-only pavement completion must not become traffic navigation geometry."
+      "contract": "Compiler-owned road/junction geometry remains gameplay authority. Presentation-only pavement completion must not become traffic navigation geometry."
     }
   },
   "authority": {
-    "roadAndJunctionSource": "tools/city-compiler/generate-road-topology.js and generated topology",
-    "laneGeometrySource": "phaser/assets/city/packs/traffic-lanes.json",
-    "derivedTopology": "phaser/src/streaming/TrafficLaneJunctionTopology.js",
+    "roadAndNetworkSource": "tools/city-compiler/district-streaming.js buildDistrictRoadNetwork output derived from the authoritative city road graph",
+    "localTopologyCompiler": "tools/city-compiler/traffic-lane-topology.js",
+    "legacyLaneCompatibilitySource": "phaser/assets/city/packs/traffic-lanes.json edges; district-anchor/portal routes only, not physical junction-edge topology",
+    "provisionalRuntimeTopology": "phaser/src/streaming/TrafficLaneJunctionTopology.js M0 path; read-only and not activation authority",
     "movementAuthority": "existing local lane-following behaviour",
     "lifecycleAuthority": "TrafficLifecyclePolicy plus materialization/local assignment",
     "macroRole": "population/load and later stable route identity only; never local world-space driving geometry"
   },
   "hardInvariants": [
-    "route transitions use directed authored lanes and validated connector micro-lanes only",
+    "local lane ownership comes from explicit compiler node IDs rather than nearest-junction geometry",
+    "every physical network segment produces two directed right-hand lanes",
+    "route transitions use directed compiler lanes and validated connector micro-lanes only",
     "macro graph centres/straight-line targets never become local driving geometry",
     "same tokenId and materialization slot survive a visible junction traversal",
     "no coordinate teleport at lane/connector/lane boundaries",
     "no normal despawn or pool eviction while crossing a junction",
     "cars enter outgoing roads on the correct directed lane",
-    "unsafe connectors are never exposed as activatable runtime lanes",
+    "unsafe or tangent-discontinuous connectors are never exposed as activatable runtime lanes",
     "U-turns are avoided when legal alternatives exist",
     "generated topology is not hand-edited as a workaround",
     "MacroTrafficRouteContinuityPolicy and TrafficIntentDrivingPolicy are not re-enabled wholesale"
@@ -57,7 +62,8 @@
     "M0.5-connector-envelope-validation",
     "M0.6-read-only-runtime-installation",
     "M0.7-focused-unit-coverage",
-    "M0.8-full-ci-validation"
+    "M0.8-full-ci-validation",
+    "M1.1-production-manifest-audit"
   ],
   "milestones": {
     "M0": {
@@ -65,12 +71,12 @@
       "state": "complete"
     },
     "M1": {
-      "title": "Production topology audit and hard safety contract",
-      "state": "ready"
+      "title": "Production topology audit and compiler-owned hard safety contract",
+      "state": "autonomous-in-progress"
     },
     "M2": {
       "title": "Stable route-agent state model (pure data)",
-      "state": "planned"
+      "state": "blocked-by-M1"
     },
     "M3": {
       "title": "Shadow macro continuity bridge",
@@ -101,13 +107,37 @@
       "state": "planned"
     }
   },
+  "m1Audit": {
+    "legacyManifestConclusion": "not suitable as direct physical lane/junction route authority",
+    "reason": "legacy traffic-lanes edges are long district-anchor/portal routes that traverse multiple compiler road-network nodes, so their endpoints are not equivalent to physical junction endpoints",
+    "productionFindings": {
+      "directedLegacyLaneCount": 48,
+      "junctionMarkerCount": 71,
+      "candidateConnectorCount": 99,
+      "orphanLaneCount": 19,
+      "unmatchedEndpointCount": 24,
+      "ambiguousEndpointCount": 14,
+      "endpointContinuityFailureCount": 0,
+      "tangentContinuityFailureCount": 96,
+      "uTurnCandidateCount": 71,
+      "duplicateConnectorIdCount": 0,
+      "duplicateLanePairCount": 0
+    }
+  },
   "validation": {
     "m0": {
       "state": "passed",
       "workflow": "Tests",
       "runNumber": 2046,
       "runId": 32472690729,
-      "head": "f481add4c79d6705de017e67e08810de35a24347",
+      "head": "f481add4c79d6705de017e67e08810de35a24347"
+    },
+    "m1Audit": {
+      "state": "passed-with-blocking-findings",
+      "workflow": "Tests",
+      "runNumber": 2053,
+      "runId": 32475274379,
+      "head": "6e098646c93aebfe1db58585a11e2b85dfba173e",
       "jobs": {
         "unit-tests": "success",
         "browser-boot": "success",
@@ -116,49 +146,51 @@
         "browser-systems-2-of-3": "success",
         "browser-systems-3-of-3": "success"
       },
-      "note": "M0 topology is installed read-only; current authored local lane movement remains authoritative."
+      "note": "CI is green because M1.1 is diagnostic/read-only. Its findings explicitly block activation and M2."
+    },
+    "m1CompilerTopology": {
+      "state": "full-ci-running",
+      "workflow": "Tests",
+      "runNumber": 2062,
+      "runId": 32477998686,
+      "head": "6033d7983b1eb7ecebab53df783897940a139d01",
+      "unitTests": "success"
     }
   },
   "nextTask": {
-    "id": "M1.1-production-manifest-audit",
+    "id": "M1.2-compiler-owned-directed-lane-graph",
     "milestone": "M1",
-    "goal": "Audit the real production traffic-lanes manifest and turn connector safety/coverage into deterministic diagnostics before any route identity consumes the topology.",
+    "goal": "Finish and validate the compiler-owned local lane graph derived one-to-one from district-streaming network segments, then only after green CI prepare additive pack integration.",
     "readFirst": [
-      "docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md",
-      "docs/agents/TRAFFIC_LANE_JUNCTION_TOPOLOGY_AGENT.md",
-      "phaser/src/streaming/TrafficLaneJunctionTopology.js",
-      "tests/traffic-lane-junction-topology.test.js",
-      "phaser/assets/city/packs/traffic-lanes.json",
-      "tools/city-compiler/generate-road-topology.js"
-    ],
-    "actions": [
-      "Add a production-manifest topology audit using the real traffic lane pack rather than only the synthetic four-way fixture.",
-      "Report directed lanes, junctions, connected/orphan lanes, connectors by turn type, unsafe connectors, unmatched endpoints, ambiguous endpoint-to-junction matches, duplicate lane-pair connectors and endpoint/tangent continuity failures.",
-      "Make unsafe/rejected connector reasons observable instead of silently dropping them.",
-      "Keep topology read-only: do not feed connectors into route identity or visible vehicle movement in M1.1.",
-      "Add focused assertions for the production invariants that are safe to enforce immediately; document any intentional non-routable orphan instead of hiding it.",
-      "Run focused/unit validation and full CI if runtime topology code changes.",
-      "Update this status JSON and append the exact result/evidence to the progress log."
-    ],
-    "expectedAreas": [
-      "phaser/src/streaming/TrafficLaneJunctionTopology.js",
-      "tests/traffic-lane-junction-topology.test.js",
-      "a focused production topology test if separation improves clarity",
-      "docs/progress/traffic-lane-junction-topology-status.json",
+      "docs/agent-tasks/2026-08-21-traffic-lane-junction-m1-compiler-contract.md",
+      "tools/city-compiler/traffic-lane-topology.js",
+      "tests/traffic-lane-topology-compiler.test.js",
+      "tools/city-compiler/district-streaming.js",
       "docs/progress/TRAFFIC_LANE_JUNCTION_TOPOLOGY_PROGRESS.md"
     ],
+    "actions": [
+      "Confirm Tests #2062 is fully green for implementation head 6033d7983b1eb7ecebab53df783897940a139d01.",
+      "If CI is green, mark M1.2 complete and advance to M1.3 additive generated-pack integration; if red, fix only compiler-topology regressions before advancing.",
+      "M1.3 must add compiler-owned local topology to generated streaming output without deleting or repurposing legacy district-pair traffic lane edges.",
+      "Keep runtime vehicle movement unchanged throughout M1.",
+      "Do not generate activation connectors from legacy district-pair lane endpoints.",
+      "When connector work begins, tangent continuity must be a hard activation gate rather than an audit warning."
+    ],
     "acceptance": [
-      "No activatable connector is unsafe or outside its junction authority.",
-      "Ambiguous/unmatched endpoints are counted and explainable.",
-      "No duplicate connector identity/lane-pair ambiguity exists.",
-      "Production topology audit is deterministic.",
-      "Visible traffic behaviour is unchanged.",
-      "Relevant CI is green."
+      "directed lane count equals network segment count times two",
+      "all lane ownership is explicit compiler-node-ID ownership",
+      "all directed lanes are right-hand offsets for their direction",
+      "all transitions join incoming.toNodeId to outgoing.fromNodeId at the same node",
+      "preferred U-turns occur only at explicit compiler dead ends",
+      "compiler topology is deterministic and serializable",
+      "full CI is green",
+      "visible traffic behaviour is unchanged"
     ],
     "doNotAdvanceIf": [
-      "production has an unexplained activatable unsafe connector",
-      "lane endpoint ownership is ambiguous for a route that would be activated",
-      "a proposed fix requires arbitrary world-space steering or building-derived road geometry"
+      "M1.2 full CI is not green",
+      "a fix falls back to nearest-junction endpoint guessing",
+      "a proposed change uses macro district geometry for local routing",
+      "visible traffic begins consuming the new topology before M1 connector safety is complete"
     ]
   },
   "finalGate": {
