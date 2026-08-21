@@ -242,3 +242,99 @@ Legacy `traffic-lanes.json.edges` remain untouched for compatibility. The next s
 4. M1.5 — retire legacy nearest-junction endpoint inference from the future activation path while retaining compatibility data until M8.
 
 Canonical details: `docs/agent-tasks/2026-08-21-traffic-lane-junction-m1-compiler-contract.md`.
+
+---
+
+## 2026-08-21 — M1.2–M1.5 compiler-owned topology completed
+
+### M1.2 — directed local lane graph
+
+The compiler-owned graph was completed and validated in GitHub Tests #2065 / run `32478211117`.
+
+Physical route ownership is now based on `district-streaming network.segments`, with explicit compiler node IDs. The legacy district-pair traffic edges are no longer candidates for physical junction routing.
+
+### M1.3 — additive generated-pack integration
+
+`tools/city-compiler/traffic-lane-topology-integration.js` adds `localTopology` to traffic-lane pack schema v6 while preserving legacy `edges` and `junctions` for compatibility.
+
+GitHub Tests #2068 / run `32478720212` passed the full workflow.
+
+### M1.4 — production-safe junction connectors
+
+`tools/city-compiler/traffic-junction-connectors.js` generates tangent-preserving cubic connectors from trimmed right-hand lanes and validates every sampled point against compiler-owned road surfaces.
+
+Production hard gates require:
+
+- exact incoming/outgoing endpoints;
+- exact compiler-node ownership;
+- zero sampled points outside road authority;
+- zero tangent-continuity failures;
+- zero rejected preferred connectors.
+
+GitHub Tests #2071 / run `32479384583` passed all jobs with those production invariants enforced.
+
+The connector bundle was then attached additively inside `localTopology`; GitHub Tests #2073 / run `32485167656` passed the full workflow.
+
+### M1.5 — provisional runtime inference retired
+
+`TrafficLocalAssignmentPolicy` no longer installs `TrafficLaneJunctionTopology` or injects connectors derived from legacy endpoint proximity.
+
+Runtime diagnostics may observe compiler-owned `localTopology`, but `movementActive` remains false and current visible movement remains `authored-local-lanes`.
+
+GitHub Tests #2083 / run `32485801858` passed unit, boot, campaign and all three browser-system shards.
+
+### Result
+
+M1 is complete. There is now one future physical route authority: compiler-owned directed lanes plus compiler-owned activation-safe junction connectors.
+
+---
+
+## 2026-08-21 — M2.1/M2.2 pure stable route cursor completed
+
+### Implemented
+
+Added `phaser/src/streaming/TrafficRouteCursor.js` and `tests/traffic-route-cursor.test.js`.
+
+The route cursor is deliberately pure and has no Phaser, scene, materializer, camera, police or macro-district dependency.
+
+A route agent retains:
+
+- stable `tokenId`;
+- `routeHop`;
+- stage (`lane` or `connector`);
+- current compiler lane ID;
+- current connector and next lane while crossing;
+- previous lane;
+- bounded stage progress;
+- archetype/traffic metadata carried without mutation.
+
+### Continuity contract
+
+`advanceTrafficRouteAgent(...)` consumes real elapsed seconds using stage geometry length and can cross multiple stage boundaries in one call.
+
+A focused test proves that at speed 100, 1.5 seconds can consume a 100-unit lane, a 20-unit connector and continue 30% into the next 100-unit lane while preserving the exact same token identity.
+
+Continuation is deterministic from stable token + route hop and consumes only compiler `preferred` transitions. A transition that requires geometry must have an activation-safe connector; a direct handoff must be explicitly validated by the compiler connector bundle.
+
+Missing continuation/connector does not trigger fallback steering or a coordinate guess. The route cursor stops at stage end with an explicit blocked reason and preserves unconsumed time.
+
+Input route agents and topology are never mutated.
+
+### CI evidence
+
+Implementation/test head: `9a7d45566b17c2a508e269c3d23b9f2d3b67ea1a`.
+
+GitHub Tests #2087 / run `32486691651` — full workflow success:
+
+- unit-tests — success;
+- browser-boot — success;
+- browser-campaign — success;
+- browser-systems 1/3 — success;
+- browser-systems 2/3 — success;
+- browser-systems 3/3 — success.
+
+### Safety boundary
+
+The route cursor is not installed into `MacroTrafficPoliceSystem`, `TrafficMaterializationSystem`, `TrafficLocalAssignmentPolicy` or visible vehicle movement.
+
+M2.3 is next: build a pure compatibility projection from these local route agents back into legacy macro load/count diagnostics. That projection is output-only; macro geometry/phases must not influence route selection.
