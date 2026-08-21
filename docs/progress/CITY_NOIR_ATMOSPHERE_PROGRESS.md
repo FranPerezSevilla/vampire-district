@@ -189,3 +189,46 @@ The gameplay-scale browser harness has also been extended with a deterministic `
 
 Exact next task:
 - complete M3.2 validation on the latest PR head: inspect the `warm-light.png` artifact at gameplay scale and verify sparse local amber islands are visible without blanket illumination or navigation loss. If accepted, mark M3.1/M3.2 complete and move to M3.3 selected building/window/door spill rather than adding more street-light density.
+
+## 2026-08-21 — M3.1–M3.3 validated
+
+State: `autonomous-in-progress`
+
+### Warm street-light visual iteration
+
+The first browser rendering of the warm street-light family was intentionally rejected during autonomous review: four relatively strong concentric ellipses produced obvious bullseye bands around each lamp. The implementation was not accepted merely because tests were green.
+
+The falloff was refined to many very-low-alpha nested fills. This keeps the implementation shader-free and deterministic while reading much closer to a soft radial practical light at normal gameplay zoom.
+
+Validated warm-light evidence:
+- workflow: `City atmosphere review` run `32465404259`;
+- head: `c4dee832f3a3b623e55c3031ca2d55a8f989bb9d`;
+- conclusion: `success`;
+- artifact: `city-atmosphere-review` / artifact id `9440519917`;
+- `warm-light.png` shows sparse amber pools with no blanket illumination and no navigation/readability loss.
+
+The resulting pools are deliberately subtle. M4 wet response is expected to make selected lights read more strongly on asphalt without globally increasing light intensity.
+
+### M3.3 selected frontage spill
+
+A second bounded family, `warm-frontage`, now derives from the existing building presentation semantics rather than inventing storefront positions independently.
+
+Rules:
+- only ordinary `default`, `residential` and `commercial` visual profiles are eligible;
+- deterministic profile-specific selection rates keep most buildings dark;
+- `frontage: none` buildings are excluded;
+- the existing presentation definition supplies the frontage edge;
+- a small source mark stays on that edge while a compact soft spill projects just outside the building footprint;
+- police/civic, club/nightlife and industrial families remain reserved for M3.4 rather than being colored as generic warm storefronts.
+
+Focused tests now also guard deterministic sparse selection, profile restrictions, source non-mutation and outward projection from the authored frontage edge.
+
+Validated combined evidence:
+- workflow: `City atmosphere review` run `32465707840`;
+- head: `b31dd74b6f659e328b1d4bb3324411d80b8a1c6d`;
+- conclusion: `success`;
+- artifact: `city-atmosphere-review` / artifact id `9440621156`;
+- the representative mixed street contains both the warm street-light rhythm and one selected warm frontage spill while the majority of buildings remain dark;
+- unit-tests job for the same head completed successfully, including the new practical-light tests.
+
+M3.1, M3.2 and M3.3 are complete. The next bounded task is M3.4: add semantic accent families one at a time—cool civic/institutional, restrained nightlife magenta/red, then industrial/service dirty warm—without increasing ordinary street-light density.
