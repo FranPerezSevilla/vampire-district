@@ -1,11 +1,11 @@
 {
   "initiative": "city-noir-atmosphere",
-  "version": 7,
+  "version": 8,
   "updatedAt": "2026-08-21",
   "branch": "agent/city-noir-atmosphere",
   "state": "autonomous-in-progress",
   "currentMilestone": "M5",
-  "currentTask": "M5.1-responsibility-audit",
+  "currentTask": "M5.2-service-frontage-grime",
   "dependency": {
     "pullRequest": 69,
     "title": "City street visual pass",
@@ -19,6 +19,13 @@
     "mergedMainCommit": "f803c974817c92666b82a60fac808d54c2c4bc05",
     "integrationCommit": "a408a1342989868ad62a09e0df12d0742830ee4a",
     "rule": "PR #69 remains the sole road/sidewalk/crosswalk surface authority. Atmosphere work layers above it and does not duplicate curb, gutter, drain, crack, repair or road-paint geometry."
+  },
+  "branchSync": {
+    "lastIntegratedMain": "f803c974817c92666b82a60fac808d54c2c4bc05",
+    "observedMain": "805ea5d107dcddcef4cd564294569455093af4b0",
+    "observedMainChange": "merged PR #71 vehicle dynamics",
+    "state": "recheck-before-runtime-M5.2",
+    "rule": "Before M5.2 runtime edits, compare/synchronize with current main if still required. Do not let unrelated vehicle/traffic work expand M5 scope."
   },
   "completedTasks": [
     "M0.1",
@@ -50,7 +57,8 @@
     "M4.4-dynamic-vehicle-emergency-response",
     "M4.5-focused-tests",
     "M4.6-gameplay-scale-browser-evidence",
-    "M4.7-continuity"
+    "M4.7-continuity",
+    "M5.1-responsibility-audit"
   ],
   "milestones": {
     "M0": { "title": "Canonical direction, references and agent continuity", "state": "complete" },
@@ -162,10 +170,55 @@
       "note": "unit tests and all browser-system shards passed on the validated implementation head"
     }
   },
+  "m5": {
+    "task": "docs/agent-tasks/2026-08-21-city-noir-m5-grime-dressing.md",
+    "state": "autonomous-in-progress",
+    "auditState": "complete",
+    "ownedByStreetSurfaceAuthority": [
+      "open-ground-grid",
+      "open-ground-panels",
+      "generic-open-ground-scuffs",
+      "asphalt-base-and-road-edge-treatment",
+      "road-repairs-and-patch-seams",
+      "road-cracks",
+      "gutter-bands",
+      "gutter-stains",
+      "drains-and-manholes",
+      "worn-road-and-centre-paint",
+      "sidewalk-joints-curbs-and-completion",
+      "junction-pavement-caps",
+      "crosswalk-stop-line-and-tactile-geometry"
+    ],
+    "ownedByOtherAtmosphereMilestones": [
+      "M4-light-coupled-wet-road-response"
+    ],
+    "gameplayAuthoritiesNotToDuplicate": [
+      "StreetFurnitureSystem gameplay dumpsters and body-containment state"
+    ],
+    "rejectedGenericFamilies": [
+      "world-wide-tyre-scuff-field",
+      "generic-damp-or-gutter-stains",
+      "road-wide-oil-stains",
+      "road-repair-or-crack-variants",
+      "uniform-grid-litter",
+      "reflection-like-puddles",
+      "new-gameplay-street-furniture"
+    ],
+    "permittedContextualFamilies": [
+      "service-frontage-grime",
+      "later-service-corner-litter-read-only"
+    ],
+    "deferredToM7": [
+      "readable-posters",
+      "graffiti-worldbuilding",
+      "decorative-signage"
+    ],
+    "firstImplementationSlice": "service-frontage-grime"
+  },
   "finalGate": {
     "requiresUserVisualApproval": true,
     "autonomousWorkStopsAt": "final-validation-pending",
     "autoMergeAllowed": false
   },
-  "nextAction": "Execute M5.1 responsibility audit before adding new geometry: enumerate #69-owned gutters, drains, repairs, cracks, worn paint, curb and sidewalk details; identify only non-overlapping low-frequency grime/dressing families; then implement the smallest deterministic capped decal family in M5.2 if the audit leaves a clear authority boundary."
+  "nextAction": "Before runtime M5.2 edits, re-check the branch against current main and integrate the unrelated merged PR #71 change if still required without expanding scope. Then implement only the deterministic capped service-frontage-grime family from the M5 task contract, add focused determinism/non-mutation/road-crosswalk-rejection/culling tests, and capture one service location plus mixed/dark controls before adding any second M5 family."
 }
