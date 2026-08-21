@@ -56,30 +56,25 @@ function completedSidewalksFor(scene) {
   if (scene.citySurfaceCompletedSidewalks) return scene.citySurfaceCompletedSidewalks;
   const completed = buildCompletedSidewalkSurfaces({
     roadSegments,
-    roads,
     sidewalks,
-    buildings,
     world: WORLD,
-    sidewalkWidth: 22,
-    frontageMaxDepth: 96,
-    frontageAxisPadding: 6
+    sidewalkWidth: 22
   });
   const authoredCount = sidewalks.length;
   const authoritativeCount = completed.filter(surface => surface.authoritativeRoadEdge === true).length;
-  const frontageCount = completed.filter(surface => surface.frontagePavement === true).length;
   scene.citySurfaceCompletedSidewalks = Object.freeze(completed.map(surface => Object.freeze({ ...surface })));
   scene.citySurfaceSidewalkCoverage = Object.freeze({
     authoredCount,
     authoritativeCount,
-    frontageCount,
     totalCount: completed.length
   });
   return scene.citySurfaceCompletedSidewalks;
 }
 
 /**
- * Temporarily supplies completed pedestrian surfaces only to geometry/network
- * rendering. Gameplay-facing chunk queries are restored immediately afterwards.
+ * Supplies completed sidewalks only while street presentation geometry is being
+ * prepared or drawn. Navigation, collision, population and AI keep consuming the
+ * authored topology.
  */
 function withPresentationSidewalks(scene, completed, callback) {
   const originalChunkItems = scene.chunkItems;
@@ -103,14 +98,12 @@ function withPresentationSidewalks(scene, completed, callback) {
 }
 
 /**
- * Paints every presentation-only pavement surface directly rather than relying on
- * the city stream to discover it. This includes both the guaranteed 22 px kerb
- * band and the visual frontage that runs from that band to nearby building faces.
- * It runs after buildings so the street frontage wins over legacy dark parcel
- * ground, while frontage rectangles stop exactly at the nearest facade.
+ * Guarantees the road-owned 22 px band survives building presentation. This draw
+ * is deliberately narrow: it never guesses that yards, forecourts or setbacks are
+ * sidewalk. Buildings may overlap the band in legacy topology; the road edge wins.
  */
-function drawPresentationPavement(scene, completed, bounds) {
-  const visible = completed.filter(surface => surface.presentationOnly === true && intersects(surface, bounds, 2));
+function drawAuthoritativeRoadEdgePavement(scene, completed, bounds) {
+  const visible = completed.filter(surface => surface.authoritativeRoadEdge === true && intersects(surface, bounds, 2));
   scene.map.fillStyle(COLORS.sidewalk, 1);
   for (const surface of visible) {
     const fragment = clippedRect(surface, bounds);
@@ -139,7 +132,7 @@ export function installSidewalkCoveragePresentationPolicy(GameSceneClass) {
     const visibleBuildings = this.chunkItems("buildings", bounds, buildings, { margin: 80 });
     for (const building of visibleBuildings) this.drawBuilding(building);
 
-    this.citySurfacePresentationPavementDrawCount = drawPresentationPavement(this, completed, bounds);
+    this.citySurfaceAuthoritativePavementDrawCount = drawAuthoritativeRoadEdgePavement(this, completed, bounds);
     withPresentationSidewalks(this, completed, () => this.drawSidewalkNetwork());
 
     this.drawCrosswalkNetwork();
