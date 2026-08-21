@@ -43,6 +43,15 @@ function intersects(area, bounds, margin = 0) {
     && bottom(candidate) >= finite(bounds.y) - margin;
 }
 
+function clippedRect(area, bounds) {
+  if (!area || !bounds) return null;
+  const x = Math.max(finite(area.x), finite(bounds.x));
+  const y = Math.max(finite(area.y), finite(bounds.y));
+  const maxX = Math.min(right(area), right(bounds));
+  const maxY = Math.min(bottom(area), bottom(bounds));
+  return maxX > x && maxY > y ? { x, y, w: maxX - x, h: maxY - y } : null;
+}
+
 function completedSidewalksFor(scene) {
   if (scene.citySurfaceCompletedSidewalks) return scene.citySurfaceCompletedSidewalks;
   const completed = buildCompletedSidewalkSurfaces({
@@ -53,16 +62,19 @@ function completedSidewalksFor(scene) {
     sidewalkWidth: 22
   });
   const authoredCount = sidewalks.length;
-  const infillCount = completed.length - authoredCount;
+  const authoritativeCount = completed.filter(surface => surface.authoritativeRoadEdge === true).length;
   scene.citySurfaceCompletedSidewalks = Object.freeze(completed.map(surface => Object.freeze({ ...surface })));
-  scene.citySurfaceSidewalkCoverage = Object.freeze({ authoredCount, infillCount, totalCount: completed.length });
+  scene.citySurfaceSidewalkCoverage = Object.freeze({
+    authoredCount,
+    authoritativeCount,
+    totalCount: completed.length
+  });
   return scene.citySurfaceCompletedSidewalks;
 }
 
 /**
- * Temporarily supplies completed pedestrian surfaces only to the rendering
- * operations that need them. The gameplay-facing chunk query is restored before
- * crosswalks, population, AI or any other system can observe presentation infill.
+ * Temporarily supplies completed pedestrian surfaces only to geometry/network
+ * rendering. Gameplay-facing chunk queries are restored immediately afterwards.
  */
 function withPresentationSidewalks(scene, completed, callback) {
   const originalChunkItems = scene.chunkItems;
@@ -86,15 +98,22 @@ function withPresentationSidewalks(scene, completed, callback) {
 }
 
 /**
- * Keeps completed sidewalk geometry strictly inside the street presentation path.
- * Collisions, pedestrian spawning, navigation and normal chunk queries continue to
- * consume the authored topology.
- *
- * Buildings are intentionally painted before the completed sidewalk network. A
- * building footprint may overlap the road-side pedestrian band in authored city
- * data, but presentation treats that band as authoritative: the pavement and curb
- * remain visible instead of being erased by the later building pass.
+ * Paints the road-owned pavement directly rather than routing it through the city
+ * stream. This is intentionally redundant with drawSidewalkNetwork: it makes the
+ * visual invariant independent of authored sidewalk holes and streaming/chunk
+ * membership. Because it runs after buildings, a building footprint cannot erase
+ * the pavement immediately beside a road.
  */
+function drawAuthoritativeRoadEdgePavement(scene, completed, bounds) {
+  const visible = completed.filter(surface => surface.authoritativeRoadEdge === true && intersects(surface, bounds, 2));
+  scene.map.fillStyle(COLORS.sidewalk, 1);
+  for (const surface of visible) {
+    const fragment = clippedRect(surface, bounds);
+    if (fragment) scene.map.fillRect(fragment.x, fragment.y, fragment.w, fragment.h);
+  }
+  return visible.length;
+}
+
 export function installSidewalkCoveragePresentationPolicy(GameSceneClass) {
   const prototype = GameSceneClass?.prototype;
   if (!prototype || prototype.__viceSidewalkCoveragePresentationPolicy) return;
@@ -115,6 +134,7 @@ export function installSidewalkCoveragePresentationPolicy(GameSceneClass) {
     const visibleBuildings = this.chunkItems("buildings", bounds, buildings, { margin: 80 });
     for (const building of visibleBuildings) this.drawBuilding(building);
 
+    this.citySurfaceAuthoritativePavementDrawCount = drawAuthoritativeRoadEdgePavement(this, completed, bounds);
     withPresentationSidewalks(this, completed, () => this.drawSidewalkNetwork());
 
     this.drawCrosswalkNetwork();
