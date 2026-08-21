@@ -1,5 +1,6 @@
 import { WORLD } from "./data/balance.js";
 import { installBloodSensePresentationPolicy } from "./policies/BloodSensePresentationPolicy.js";
+import { installCityGrimePresentationPolicy } from "./policies/CityGrimePresentationPolicy.js";
 import { installCityPracticalLightPresentationPolicy } from "./policies/CityPracticalLightPresentationPolicy.js";
 import { installCitySurfacePresentationPolicy } from "./policies/CitySurfacePresentationPolicy.js";
 import { installCityVehicleLightPresentationPolicy } from "./policies/CityVehicleLightPresentationPolicy.js";
@@ -129,6 +130,7 @@ installCitySurfacePresentationPolicy(GameScene);
 installCityPracticalLightPresentationPolicy(GameScene);
 installCityVehicleLightPresentationPolicy(GameScene);
 installCityWetStreetPresentationPolicy(GameScene);
+installCityGrimePresentationPolicy(GameScene);
 installSidewalkCoveragePresentationPolicy(GameScene);
 installVampireVeilPolicy();
 installPlaytestSurfacePolicy();
