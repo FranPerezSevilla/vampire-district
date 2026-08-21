@@ -42,7 +42,7 @@ async function discoverTargets(page) {
       || descriptors[0]
       || null;
 
-    const corner = cornerDescriptors
+    const corner = [...cornerDescriptors]
       .sort((left, right) => Number(edgeSafe(right)) - Number(edgeSafe(left))
         || String(left.sourceId).localeCompare(String(right.sourceId)))[0]
       || null;
