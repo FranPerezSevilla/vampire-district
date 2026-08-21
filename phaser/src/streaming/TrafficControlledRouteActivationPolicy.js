@@ -30,7 +30,6 @@ function preferredTransitions(topology, turnType = null) {
     .filter(transition => transition?.preferred)
     .filter(transition => !turnType || transition.turnType === turnType)
     .sort((left, right) => left.id.localeCompare(right.id));
-  // A controlled browser crossing should exercise connector geometry when possible.
   return [
     ...list.filter(transition => transition.requiresConnector),
     ...list.filter(transition => !transition.requiresConnector)
@@ -72,6 +71,12 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
   let lastBlockedReason = null;
   let selectedTransitionId = null;
   let selectedTurnType = null;
+  let behavior = null;
+  let originalBehaviorApplyDecision = null;
+  let routeGuardedApplyDecision = null;
+  let steering = null;
+  let originalSteeringApplyPresentation = null;
+  let routeGuardedApplyPresentation = null;
 
   function topology() {
     return materializer.lanes?.localTopology || null;
@@ -84,6 +89,53 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
       ...normal.filter(candidate => candidate?.tokenId !== token.tokenId),
       { ...token }
     ];
+  }
+
+  function ensurePresentationGuards() {
+    const scene = materializer.scene;
+    if (!behavior && scene?.trafficLocalBehaviorSystem?.applyDecision) {
+      behavior = scene.trafficLocalBehaviorSystem;
+      originalBehaviorApplyDecision = behavior.applyDecision;
+      routeGuardedApplyDecision = function controlledRouteBehaviorGuard(targetSlot, ...args) {
+        if (targetSlot?.routeActive) {
+          targetSlot.behaviorReason = "route-controlled";
+          targetSlot.behaviorGap = null;
+          targetSlot.behaviorLag = 0;
+          return targetSlot;
+        }
+        return originalBehaviorApplyDecision.call(this, targetSlot, ...args);
+      };
+      behavior.applyDecision = routeGuardedApplyDecision;
+    }
+    if (!steering && scene?.trafficSteeringPresentationSystem?.applyPresentation) {
+      steering = scene.trafficSteeringPresentationSystem;
+      originalSteeringApplyPresentation = steering.applyPresentation;
+      routeGuardedApplyPresentation = function controlledRouteSteeringGuard(targetSlot, ...args) {
+        if (targetSlot?.routeActive) {
+          targetSlot.steeringOffset = 0;
+          targetSlot.steeringAngle = 0;
+          targetSlot.steeringReason = "route-controlled";
+          return targetSlot;
+        }
+        return originalSteeringApplyPresentation.call(this, targetSlot, ...args);
+      };
+      steering.applyPresentation = routeGuardedApplyPresentation;
+    }
+  }
+
+  function restorePresentationGuards() {
+    if (behavior && behavior.applyDecision === routeGuardedApplyDecision) {
+      behavior.applyDecision = originalBehaviorApplyDecision;
+    }
+    if (steering && steering.applyPresentation === routeGuardedApplyPresentation) {
+      steering.applyPresentation = originalSteeringApplyPresentation;
+    }
+    behavior = null;
+    originalBehaviorApplyDecision = null;
+    routeGuardedApplyDecision = null;
+    steering = null;
+    originalSteeringApplyPresentation = null;
+    routeGuardedApplyPresentation = null;
   }
 
   function chooseSlot(requestedSlotIndex = null) {
@@ -118,6 +170,7 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
     slotIndex = null
   } = {}) {
     if (enabled) stop();
+    ensurePresentationGuards();
     const localTopology = topology();
     const transition = controlledRouteTransition(localTopology, { transitionId, turnType });
     if (!transition) throw new Error(`No preferred controlled route transition for ${transitionId || turnType || "request"}.`);
@@ -135,9 +188,7 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
       tokenId,
       laneId: transition.incomingLaneId,
       stageProgress: Math.max(0, Math.min(0.995, finite(startProgress, 0.86))),
-      trafficMetadata: {
-        controlledActivation: true
-      }
+      trafficMetadata: { controlledActivation: true }
     });
     slot = selectedSlot;
     enabled = true;
@@ -159,6 +210,7 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
 
   function step(seconds = 0.05) {
     if (!enabled || !agent || !slot) return snapshot();
+    ensurePresentationGuards();
     const duration = Math.max(0, finite(seconds, 0.05));
     if (duration <= EPSILON) return snapshot();
     const before = token || trafficRouteAgentMaterializationToken(topology(), agent);
@@ -204,8 +256,7 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
   }
 
   function transitions() {
-    const localTopology = topology();
-    return preferredTransitions(localTopology).map(transition => ({
+    return preferredTransitions(topology()).map(transition => ({
       id: transition.id,
       turnType: transition.turnType,
       incomingLaneId: transition.incomingLaneId,
@@ -245,6 +296,8 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
       maximumStepDistance,
       slotLost,
       lastBlockedReason,
+      behaviorGuardInstalled: Boolean(behavior && behavior.applyDecision === routeGuardedApplyDecision),
+      steeringGuardInstalled: Boolean(steering && steering.applyPresentation === routeGuardedApplyPresentation),
       assignmentStable: Boolean(enabled && token && slot && materializer.assignments?.get?.(token.tokenId) === slot)
     };
   }
@@ -260,6 +313,7 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
     transitions,
     destroy() {
       if (enabled) stop();
+      restorePresentationGuards();
       if (materializer.trafficTokens === controlledTrafficTokens) materializer.trafficTokens = originalTrafficTokens;
       if (typeof window !== "undefined" && window.NBD_TRAFFIC_ROUTE_CONTROL?.__policy === policy) {
         delete window.NBD_TRAFFIC_ROUTE_CONTROL;
