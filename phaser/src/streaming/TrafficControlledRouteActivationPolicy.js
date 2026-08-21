@@ -4,6 +4,9 @@ import {
   createTrafficRouteAgent
 } from "./TrafficRouteCursor.js";
 import {
+  createTrafficJunctionReservationRegistry
+} from "./TrafficJunctionReservationRegistry.js";
+import {
   trafficRouteAgentMaterializationToken
 } from "./TrafficRouteMaterializationPolicy.js";
 
@@ -65,7 +68,10 @@ export function controlledRouteTransition(topology, {
   return preferredTransitions(topology, turnType)[0] || null;
 }
 
-export function installTrafficControlledRouteActivationPolicy(materializer) {
+export function installTrafficControlledRouteActivationPolicy(materializer, {
+  reservationRegistry = null,
+  reservationStaleAfterSeconds = 3
+} = {}) {
   if (!materializer?.trafficTokens || !materializer?.assign || !materializer?.release || !materializer?.updateSlot) {
     throw new TypeError("Controlled route activation requires TrafficMaterializationSystem.");
   }
@@ -75,6 +81,14 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
 
   const originalTrafficTokens = materializer.trafficTokens;
   const initialPoolSize = materializer.pool?.length || 0;
+  const junctionReservations = reservationRegistry || createTrafficJunctionReservationRegistry({
+    staleAfterSeconds: reservationStaleAfterSeconds
+  });
+  const ownsReservationRegistry = !reservationRegistry;
+  let reservationClock = 0;
+  let junctionYieldCount = 0;
+  let lastYieldJunctionId = null;
+  let lastYieldOwnerTokenId = null;
   let enabled = false;
   let agent = null;
   let token = null;
@@ -116,7 +130,9 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
       originalBehaviorApplyDecision = behavior.applyDecision;
       routeGuardedApplyDecision = function controlledRouteBehaviorGuard(targetSlot, ...args) {
         if (targetSlot?.routeActive) {
-          targetSlot.behaviorReason = "route-controlled";
+          targetSlot.behaviorReason = targetSlot.behaviorReason === "junction-yield"
+            ? "junction-yield"
+            : "route-controlled";
           targetSlot.behaviorGap = null;
           targetSlot.behaviorLag = 0;
           return targetSlot;
@@ -132,7 +148,9 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
         if (targetSlot?.routeActive) {
           targetSlot.steeringOffset = 0;
           targetSlot.steeringAngle = 0;
-          targetSlot.steeringReason = "route-controlled";
+          targetSlot.steeringReason = targetSlot.behaviorReason === "junction-yield"
+            ? "junction-yield"
+            : "route-controlled";
           return targetSlot;
         }
         return originalSteeringApplyPresentation.call(this, targetSlot, ...args);
@@ -168,7 +186,7 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
       || pool[0];
   }
 
-  function applyCurrentToken() {
+  function applyCurrentToken(behaviorReason = "route-controlled") {
     if (!enabled || !agent || !slot) return false;
     token = trafficRouteAgentMaterializationToken(topology(), agent);
     if (slot.tokenId !== token.tokenId || materializer.assignments?.get?.(token.tokenId) !== slot) {
@@ -176,8 +194,48 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
       return false;
     }
     materializer.updateSlot(slot, token);
-    slot.behaviorReason = "route-controlled";
+    slot.behaviorReason = behaviorReason;
     return true;
+  }
+
+  function reservationHooks() {
+    return {
+      beforeConnectorEntry({ tokenId, transition, connector }) {
+        const junctionId = transition.nodeId || connector.nodeId;
+        if (!junctionId) {
+          return { allowed: false, reason: "missing-junction-reservation-authority" };
+        }
+        const request = junctionReservations.request({
+          junctionId,
+          tokenId,
+          connectorId: connector.id,
+          nowSeconds: reservationClock
+        });
+        if (!request.granted) {
+          junctionYieldCount++;
+          lastYieldJunctionId = junctionId;
+          lastYieldOwnerTokenId = request.ownerTokenId || request.reservation?.tokenId || null;
+          return { allowed: false, reason: "junction-yield" };
+        }
+        lastYieldJunctionId = null;
+        lastYieldOwnerTokenId = null;
+        return { allowed: true };
+      },
+      afterConnectorExit({ tokenId }) {
+        junctionReservations.releaseByToken(tokenId, "connector-exit");
+      }
+    };
+  }
+
+  function refreshOwnedReservation() {
+    if (!agent?.tokenId || agent.stage !== "connector") return;
+    for (const reservation of junctionReservations.ownedBy(agent.tokenId)) {
+      junctionReservations.touch({
+        junctionId: reservation.junctionId,
+        tokenId: agent.tokenId,
+        nowSeconds: reservationClock
+      });
+    }
   }
 
   function start({
@@ -217,6 +275,8 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
     maximumStepDistance = 0;
     slotLost = false;
     lastBlockedReason = null;
+    lastYieldJunctionId = null;
+    lastYieldOwnerTokenId = null;
     token = trafficRouteAgentMaterializationToken(localTopology, agent);
     materializer.assign(slot, token);
     slot.behaviorReason = "route-controlled";
@@ -229,10 +289,15 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
     ensurePresentationGuards();
     const duration = Math.max(0, finite(seconds, 0.05));
     if (duration <= EPSILON) return snapshot();
+    reservationClock += duration;
+    junctionReservations.cleanup(reservationClock);
+    refreshOwnedReservation();
+
     const before = token || trafficRouteAgentMaterializationToken(topology(), agent);
     const result = advanceTrafficRouteAgent(agent, duration, topology(), {
       speed,
-      maxStageTransitions: 16
+      maxStageTransitions: 16,
+      ...reservationHooks()
     });
     agent = result.agent;
     totalStageTransitions += result.stageTransitions;
@@ -245,7 +310,7 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
     const allowed = speed * duration + 0.01;
     if (stepDistance > allowed) teleportCount++;
     token = after;
-    applyCurrentToken();
+    applyCurrentToken(result.blockedReason === "junction-yield" ? "junction-yield" : "route-controlled");
     materializer.update?.(0);
     return snapshot();
   }
@@ -254,6 +319,7 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
     const previousTokenId = token?.tokenId || agent?.tokenId || null;
     const previousSlotIndex = slot?.slotIndex ?? null;
     enabled = false;
+    if (previousTokenId) junctionReservations.releaseByToken(previousTokenId, "controlled-stop");
     if (slot?.tokenId === previousTokenId) materializer.release(slot, { force: true });
     agent = null;
     token = null;
@@ -261,6 +327,8 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
     selectedTransitionId = null;
     selectedTurnType = null;
     lastBlockedReason = null;
+    lastYieldJunctionId = null;
+    lastYieldOwnerTokenId = null;
     materializer.reconcile?.(true);
     return {
       enabled: false,
@@ -277,11 +345,13 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
       turnType: transition.turnType,
       incomingLaneId: transition.incomingLaneId,
       outgoingLaneId: transition.outgoingLaneId,
-      requiresConnector: transition.requiresConnector
+      requiresConnector: transition.requiresConnector,
+      junctionId: transition.nodeId || null
     }));
   }
 
   function snapshot() {
+    const reservations = junctionReservations.snapshot();
     return {
       ready: Boolean(topology()?.lanes),
       enabled,
@@ -312,6 +382,14 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
       maximumStepDistance,
       slotLost,
       lastBlockedReason,
+      junctionYieldCount,
+      lastYieldJunctionId,
+      lastYieldOwnerTokenId,
+      routeReservationCount: reservations.activeReservationCount,
+      routeReservationGrants: reservations.grants,
+      routeReservationDenials: reservations.denials,
+      routeReservationStaleReleases: reservations.staleReleases,
+      routeReservations: reservations.reservations,
       behaviorGuardInstalled: Boolean(behavior && behavior.applyDecision === routeGuardedApplyDecision),
       steeringGuardInstalled: Boolean(steering && steering.applyPresentation === routeGuardedApplyPresentation),
       assignmentStable: Boolean(enabled && token && slot && materializer.assignments?.get?.(token.tokenId) === slot)
@@ -327,9 +405,11 @@ export function installTrafficControlledRouteActivationPolicy(materializer) {
     stop,
     snapshot,
     transitions,
+    reservationRegistry: junctionReservations,
     destroy() {
       if (enabled) stop();
       restorePresentationGuards();
+      if (ownsReservationRegistry) junctionReservations.clear("policy-destroy");
       if (materializer.trafficTokens === controlledTrafficTokens) materializer.trafficTokens = originalTrafficTokens;
       if (typeof window !== "undefined" && window.NBD_TRAFFIC_ROUTE_CONTROL?.__policy === policy) {
         delete window.NBD_TRAFFIC_ROUTE_CONTROL;
