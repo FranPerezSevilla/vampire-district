@@ -1,11 +1,11 @@
 {
   "initiative": "city-noir-atmosphere",
-  "version": 4,
+  "version": 5,
   "updatedAt": "2026-08-21",
   "branch": "agent/city-noir-atmosphere",
   "state": "autonomous-in-progress",
   "currentMilestone": "M3",
-  "currentTask": "M3.4-contextual-accent-families",
+  "currentTask": "M3.5-vehicle-and-emergency-light-contribution",
   "dependency": {
     "pullRequest": 69,
     "title": "City street visual pass",
@@ -34,7 +34,13 @@
     "M3.2-warm-street-runtime-slice",
     "M3.2-gameplay-scale-browser-evidence",
     "M3.3-warm-frontage-spill",
-    "M3.3-gameplay-scale-browser-evidence"
+    "M3.3-gameplay-scale-browser-evidence",
+    "M3.4-contextual-family-model",
+    "M3.4-cool-civic",
+    "M3.4-nightlife-accent",
+    "M3.4-industrial-dirty",
+    "M3.4-focused-tests",
+    "M3.4-gameplay-scale-browser-evidence"
   ],
   "milestones": {
     "M0": {
@@ -107,16 +113,20 @@
   "m3": {
     "sourceAuthorities": [
       "phaser/src/data/district.js lights",
-      "existing building presentation definitions/profiles"
+      "existing building presentation definitions/profiles",
+      "existing vehicle model/view light state for M3.5"
     ],
     "presentationPolicy": "phaser/src/policies/CityPracticalLightPresentationPolicy.js",
     "enabledFamilies": [
       "warm-street",
-      "warm-frontage"
+      "warm-frontage",
+      "cool-civic",
+      "nightlife-accent",
+      "industrial-dirty"
     ],
     "focusedTest": "tests/city-practical-light-presentation.test.js",
     "browserEvidence": {
-      "state": "passed-through-M3.3",
+      "state": "passed-through-M3.4",
       "warmStreet": {
         "workflowRun": 32465404259,
         "artifactId": 9440519917,
@@ -128,6 +138,18 @@
         "artifactId": 9440621156,
         "head": "b31dd74b6f659e328b1d4bb3324411d80b8a1c6d",
         "capture": "mixed-street.png"
+      },
+      "contextualFamilies": {
+        "workflowRun": 32468999890,
+        "artifactId": 9441823514,
+        "head": "06d18d039c01f67eb3312329aff224279de28f3e",
+        "captures": [
+          "civic-cool.png",
+          "nightlife.png",
+          "industrial.png",
+          "mixed-families.png"
+        ],
+        "visualAssessment": "accepted: contextual families remain localized and subordinate to the dark/warm base; nightlife is the strongest special accent, civic/industrial remain restrained"
       }
     }
   },
@@ -136,5 +158,5 @@
     "autonomousWorkStopsAt": "final-validation-pending",
     "autoMergeAllowed": false
   },
-  "nextAction": "Execute M3.4 one semantic accent family at a time. Start with cool civic/institutional presentation derived from existing police/medical semantics, validate it at gameplay scale, then add restrained nightlife and industrial/service accents only if the colour hierarchy remains sparse."
+  "nextAction": "Execute M3.5 by deriving small presentation-only ground-light contributions from existing vehicle light state. Reuse the existing vehicle renderer/model authority, keep police red/blue highly localized, validate at gameplay scale, then close M3 and advance to M4 wet asphalt/reflection language."
 }
