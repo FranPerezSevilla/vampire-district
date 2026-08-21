@@ -1,11 +1,11 @@
 {
   "initiative": "city-noir-atmosphere",
-  "version": 6,
+  "version": 7,
   "updatedAt": "2026-08-21",
   "branch": "agent/city-noir-atmosphere",
   "state": "autonomous-in-progress",
-  "currentMilestone": "M4",
-  "currentTask": "M4.1-reflection-source-and-road-receiver-contract",
+  "currentMilestone": "M5",
+  "currentTask": "M5.1-responsibility-audit",
   "dependency": {
     "pullRequest": 69,
     "title": "City street visual pass",
@@ -43,15 +43,22 @@
     "M3.4-gameplay-scale-browser-evidence",
     "M3.5-dynamic-vehicle-light-model",
     "M3.5-focused-tests",
-    "M3.5-gameplay-scale-browser-evidence"
+    "M3.5-gameplay-scale-browser-evidence",
+    "M4.1-source-and-road-receiver-contract",
+    "M4.2-asphalt-only-receiver-descriptors",
+    "M4.3-static-wet-response",
+    "M4.4-dynamic-vehicle-emergency-response",
+    "M4.5-focused-tests",
+    "M4.6-gameplay-scale-browser-evidence",
+    "M4.7-continuity"
   ],
   "milestones": {
     "M0": { "title": "Canonical direction, references and agent continuity", "state": "complete" },
     "M1": { "title": "Integrate the street-surface foundation", "state": "complete" },
     "M2": { "title": "Global value hierarchy and night exposure", "state": "complete" },
     "M3": { "title": "Practical-light islands", "state": "complete" },
-    "M4": { "title": "Wet asphalt and local reflection language", "state": "autonomous-in-progress" },
-    "M5": { "title": "Low-frequency grime and urban surface dressing", "state": "planned" },
+    "M4": { "title": "Wet asphalt and local reflection language", "state": "complete" },
+    "M5": { "title": "Low-frequency grime and urban surface dressing", "state": "autonomous-in-progress" },
     "M6": { "title": "Grounding and shadow consistency", "state": "planned" },
     "M7": { "title": "Environmental storytelling and atmospheric set dressing", "state": "planned" },
     "M8": { "title": "District colour/material identity", "state": "planned" },
@@ -128,13 +135,37 @@
   },
   "m4": {
     "task": "docs/agent-tasks/2026-08-21-city-noir-m4-wet-street-reflections.md",
-    "state": "starting",
-    "authority": "presentation-only receiving response on existing road surfaces; no second reflection or road topology authority"
+    "state": "complete",
+    "authority": "phaser/src/policies/CityWetStreetPresentationPolicy.js",
+    "receiverAuthority": "existing generated phaser/src/data/district.js roads only",
+    "maximumNightlifeReceiverDistance": 90,
+    "focusedTest": "tests/city-wet-street-presentation.test.js",
+    "browserEvidence": {
+      "state": "passed",
+      "workflowRun": 32475694166,
+      "artifactId": 9444326985,
+      "head": "62e2eb4fd4aade64e1f4e6393996e09d4e7db4f9",
+      "captures": [
+        "wet-warm-street.png",
+        "wet-nightlife.png",
+        "wet-dark-control.png",
+        "wet-vehicle.png",
+        "wet-police-red.png",
+        "wet-police-blue.png"
+      ],
+      "visualAssessment": "accepted: broken low-alpha response remains road-bound and local; dark asphalt dominates between reflections; nightlife and police colour stay sparse; gameplay readability is preserved",
+      "fixtureNote": "The authored club source lies beyond the bounded nightlife receiver reach in the review location. Browser evidence uses a test-only nightlife source placed on the nearest real generated road and runs that fixture through the unchanged production descriptor builder and renderer. Production max reach remains 90px."
+    },
+    "validation": {
+      "testsWorkflowRun": 32475694164,
+      "conclusion": "success",
+      "note": "unit tests and all browser-system shards passed on the validated implementation head"
+    }
   },
   "finalGate": {
     "requiresUserVisualApproval": true,
     "autonomousWorkStopsAt": "final-validation-pending",
     "autoMergeAllowed": false
   },
-  "nextAction": "Execute M4.1/M4.2: map existing static and dynamic light descriptors onto deterministic bounded road receivers, generate broken asphalt-only reflection fragments, add focused no-mutation/receiver tests, then integrate static and dynamic rendering and capture gameplay-scale wet-street evidence."
+  "nextAction": "Execute M5.1 responsibility audit before adding new geometry: enumerate #69-owned gutters, drains, repairs, cracks, worn paint, curb and sidewalk details; identify only non-overlapping low-frequency grime/dressing families; then implement the smallest deterministic capped decal family in M5.2 if the audit leaves a clear authority boundary."
 }
