@@ -305,3 +305,51 @@ Current `main` advanced after the atmosphere branch was originally synchronized:
 
 Exact next task:
 - M5.2 — implement only `service-frontage-grime` under the new task contract, with focused determinism/non-mutation/surface-compatibility/culling tests and gameplay-scale evidence before adding any second M5 family.
+
+## 2026-08-21 — M5.2 service-frontage grime complete / user checkpoint cadence locked
+
+State: `autonomous-in-progress` with `checkpoint-after-M5.2`.
+
+Authority:
+- `phaser/src/policies/CityGrimePresentationPolicy.js` owns the new presentation-only `service-frontage-grime` family;
+- building/frontage semantics remain the source authority;
+- #69 street-surface geometry and `StreetFurnitureSystem` gameplay dumpsters remain untouched.
+
+Changed:
+- implemented deterministic, hard-capped service/frontage grime near selected industrial/service/commercial contexts;
+- rejected road/crosswalk receiving points and kept the family outside collision/interactions;
+- added `tests/city-service-frontage-grime-presentation.test.js`;
+- added browser review `tests/browser/city-grime-review.spec.js`;
+- first gameplay-scale version was too subtle, so fragment size/alpha was increased only inside the bounded family and explicit upper/lower visual guards were added;
+- branch was synchronized with current `main` (`805ea5d107dcddcef4cd564294569455093af4b0` / merged PR #71) without expanding atmosphere scope.
+
+Validated:
+- implementation head `485ad7074f1ddfcbb1ab8e8f70d33125cd4a0aa4`;
+- `Tests` run `32488128735`: **success**;
+- `City atmosphere review` run `32488128814`: **success**;
+- artifact `9448812773`;
+- captures `service-frontage-grime.png`, `mixed-grime-context.png`, `grime-dark-control.png`;
+- `main...agent/city-noir-atmosphere` reports `behind_by: 0` after the integration.
+
+Visual result:
+- selected service/industrial frontage reads less sterile;
+- fragments are visible at gameplay scale but remain compact/subordinate;
+- mixed and dark controls preserve the dark sparse city hierarchy;
+- no repeated world-grid grime field appears;
+- no false pickup/collision/interactive cue appears.
+
+Non-goals preserved:
+- no road-wide oil/scuff/damp system;
+- no duplicate cracks/repairs/gutters/drains/paint wear;
+- no new gameplay street furniture;
+- no posters/graffiti/signage (deferred to M7).
+
+Workflow policy recorded from user instruction:
+- default cadence is now **task → validate → document → report → wait for user direction**;
+- every bounded task must update its task/checklist, machine state and progress evidence before the next task starts;
+- PR #72 is updated whenever its current-state summary would otherwise be stale;
+- a generic “continúa” authorizes the next bounded task only;
+- an explicit batch instruction such as “hazlo todo de golpe” may temporarily remove the wait step for the granted scope, but documentation remains mandatory between tasks.
+
+Exact next task:
+- planned M5.3 `service-corner-composition`, but **do not start it until the user indicates to continue** under the new default checkpoint cadence.
