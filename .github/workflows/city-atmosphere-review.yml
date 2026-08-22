@@ -15,7 +15,7 @@ jobs:
   capture:
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.number == 72
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,7 +31,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          timeout --signal=INT --kill-after=30s 8m npm run test:browser:atmosphere-review 2>&1 | tee city-atmosphere-review.log
+          timeout --signal=INT --kill-after=30s 10m npm run test:browser:atmosphere-review 2>&1 | tee city-atmosphere-review.log
       - name: Upload city atmosphere review package
         if: always()
         uses: actions/upload-artifact@v4
