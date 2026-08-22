@@ -80,7 +80,7 @@ export function installTrafficControlledRouteActivationPolicy(materializer, {
   }
 
   const originalTrafficTokens = materializer.trafficTokens;
-  const initialPoolSize = materializer.pool?.length || 0;
+  let activationPoolSize = null;
   const junctionReservations = reservationRegistry || createTrafficJunctionReservationRegistry({
     staleAfterSeconds: reservationStaleAfterSeconds
   });
@@ -112,6 +112,18 @@ export function installTrafficControlledRouteActivationPolicy(materializer, {
 
   function topology() {
     return materializer.lanes?.localTopology || null;
+  }
+
+  function currentPoolSize() {
+    return materializer.pool?.length || 0;
+  }
+
+  function poolBaselineSize() {
+    return activationPoolSize ?? currentPoolSize();
+  }
+
+  function fixedPoolPreserved() {
+    return activationPoolSize === null || currentPoolSize() === activationPoolSize;
   }
 
   function controlledTrafficTokens() {
@@ -255,6 +267,7 @@ export function installTrafficControlledRouteActivationPolicy(materializer, {
 
     const selectedSlot = chooseSlot(slotIndex);
     if (!selectedSlot) throw new Error("Controlled route activation requires an existing materialization pool slot.");
+    activationPoolSize = currentPoolSize();
     if (selectedSlot.tokenId) materializer.release(selectedSlot, { force: true });
 
     speed = Math.max(1, finite(routeSpeed, 90));
@@ -334,8 +347,8 @@ export function installTrafficControlledRouteActivationPolicy(materializer, {
       enabled: false,
       previousTokenId,
       previousSlotIndex,
-      poolSize: materializer.pool?.length || 0,
-      fixedPoolPreserved: (materializer.pool?.length || 0) === initialPoolSize
+      poolSize: currentPoolSize(),
+      fixedPoolPreserved: fixedPoolPreserved()
     };
   }
 
@@ -360,9 +373,9 @@ export function installTrafficControlledRouteActivationPolicy(materializer, {
       defaultTrafficAuthority: "authored-local-lanes",
       tokenId: token?.tokenId || null,
       slotIndex: slot?.slotIndex ?? null,
-      poolSize: materializer.pool?.length || 0,
-      initialPoolSize,
-      fixedPoolPreserved: (materializer.pool?.length || 0) === initialPoolSize,
+      poolSize: currentPoolSize(),
+      initialPoolSize: poolBaselineSize(),
+      fixedPoolPreserved: fixedPoolPreserved(),
       transitionId: selectedTransitionId,
       turnType: selectedTurnType,
       stage: agent?.stage || null,
