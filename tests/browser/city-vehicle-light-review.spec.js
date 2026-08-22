@@ -299,34 +299,28 @@ test("captures M6 vehicle contact grounding across traffic, large, police-wet an
     if (scene.scene.isPaused()) scene.scene.resume();
     const district = await import("/phaser/src/data/district.js");
     const wetPolicy = await import("/phaser/src/policies/CityWetStreetPresentationPolicy.js");
-    const practical = await import("/phaser/src/policies/CityPracticalLightPresentationPolicy.js");
-    const warm = practical.buildWarmStreetLightDescriptors(district.lights, null)[0];
-    const receiver = warm
-      ? wetPolicy.findNearestRoadReceiver(warm, district.roads, { maximumDistance: 200 })
-      : null;
+    const view = scene.cameras.main.worldView;
+    const focus = {
+      x: Number(view.x) + Number(view.width) * 0.5,
+      y: Number(view.y) + Number(view.height) * 0.5
+    };
+    const receiver = wetPolicy.findNearestRoadReceiver(focus, district.roads, {
+      maximumDistance: Number.MAX_SAFE_INTEGER,
+      renderBounds: { x: Number(view.x), y: Number(view.y), width: Number(view.width), height: Number(view.height) }
+    });
     if (!receiver) return null;
     const center = receiver.receivingPoint;
-    await window.NBD_CITY_STREAM.forceFocus(center.x, center.y);
-    const stand = [
-      { x: center.x, y: center.y + 70 },
-      { x: center.x, y: center.y - 70 },
-      { x: center.x + 70, y: center.y },
-      { x: center.x - 70, y: center.y }
-    ].find(point => scene.canStandAt(point.x, point.y)) || center;
-    scene.switchLayer(0, stand, "M6 police grounding review");
-    await window.NBD_CITY_STREAM.forceFocus(center.x, center.y);
-    scene.redrawLayer("M6 police grounding review");
     const slot = scene.motorizedPoliceSystem.slots[0];
     slot.unitId = "m6-grounding-police";
     slot.x = center.x;
     slot.y = center.y;
     slot.angle = 0;
     slot.container.setPosition(center.x, center.y).setRotation(0).setActive(true).setVisible(true);
-    scene.cameras.main.centerOn(center.x, center.y);
     scene.updateVehicleLightPresentation?.(0);
     const wet = (scene.cityWetDynamicReflectionDescriptors || []).filter(item => (
       item.sourceFamily === "police-red" || item.sourceFamily === "police-blue"
     ));
+    scene.cameras.main.centerOn(center.x, center.y);
     scene.scene.pause();
     const shadow = slot.visual?.shadow;
     return {
@@ -374,6 +368,11 @@ test("captures M6 vehicle contact grounding across traffic, large, police-wet an
     scene.switchLayer(0, stand, "M6 dark grounding control");
     await window.NBD_CITY_STREAM.forceFocus(center.x, center.y);
     scene.redrawLayer("M6 dark grounding control");
+    const policeSlot = scene.motorizedPoliceSystem.slots[0];
+    if (policeSlot) {
+      policeSlot.unitId = null;
+      policeSlot.container.setActive(false).setVisible(false);
+    }
     const slot = scene.trafficMaterializationSystem.pool[0];
     slot.tokenId = null;
     slot.x = center.x;
