@@ -105,18 +105,23 @@ export function buildServiceSteamSourceDescriptors(sourceGrimeDescriptors, bound
         rank: hashString(`${seed}:rank`)
       };
     })
-    .filter(candidate => pointInsideBounds(candidate.point, bounds, cullMargin))
     .sort((left, rightValue) => left.rank - rightValue.rank
       || String(left.item.sourceId || "").localeCompare(String(rightValue.item.sourceId || "")));
 
-  const selected = [];
-  const descriptors = [];
+  // Select one stable global source set first. Local camera bounds are only a visibility
+  // filter; moving the camera must never reseed which authored service anchors own steam.
+  const selectedCandidates = [];
   for (const candidate of candidates) {
-    if (descriptors.length >= maximumSources) break;
-    if (selected.some(point => Math.hypot(point.x - candidate.point.x, point.y - candidate.point.y) < minimumSpacing)) {
+    if (selectedCandidates.length >= maximumSources) break;
+    if (selectedCandidates.some(selected => (
+      Math.hypot(selected.point.x - candidate.point.x, selected.point.y - candidate.point.y) < minimumSpacing
+    ))) {
       continue;
     }
+    selectedCandidates.push(candidate);
+  }
 
+  const descriptors = selectedCandidates.map(candidate => {
     const variant = sourceVariant(candidate.item.profileId, candidate.seed);
     const maxAlpha = variant === "smoke"
       ? finite(presentation.smokeAlpha, 0.10)
@@ -125,7 +130,7 @@ export function buildServiceSteamSourceDescriptors(sourceGrimeDescriptors, bound
       ? presentation.smokeColor
       : presentation.steamColor;
 
-    descriptors.push(Object.freeze({
+    return Object.freeze({
       sourceId: `building:${candidate.item.buildingId}:service-steam-smoke`,
       buildingId: String(candidate.item.buildingId || ""),
       sourceGrimeId: String(candidate.item.sourceId || ""),
@@ -141,11 +146,10 @@ export function buildServiceSteamSourceDescriptors(sourceGrimeDescriptors, bound
       phaseMs: candidate.seed % Math.max(1, Math.floor(finite(presentation.lifetimeMs, 2800))),
       color,
       maxAlpha: clamp(maxAlpha, 0, 0.18)
-    }));
-    selected.push({ x: candidate.point.x, y: candidate.point.y });
-  }
+    });
+  });
 
-  return Object.freeze(descriptors);
+  return Object.freeze(descriptors.filter(descriptor => pointInsideBounds(descriptor, bounds, cullMargin)));
 }
 
 export function buildServiceSteamPuffFrame(sourceDescriptors, timeMs = 0, {
