@@ -20,6 +20,7 @@ async function discoverTargets(page) {
     const district = await import("/phaser/src/data/district.js");
     const grime = await import("/phaser/src/policies/CityGrimePresentationPolicy.js");
     const corners = await import("/phaser/src/policies/CityServiceCornerDressingPolicy.js");
+    const steam = await import("/phaser/src/policies/CityServiceSteamPresentationPolicy.js");
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const camera = scene.cameras.main;
     const normalZoom = Number(camera.zoom) || 1;
@@ -27,6 +28,7 @@ async function discoverTargets(page) {
     const visibleHeight = Math.max(420, Number(camera.worldView?.height) || 640);
     const descriptors = grime.buildServiceFrontageGrimeDescriptors(district.buildings, null);
     const cornerDescriptors = corners.buildServiceCornerDressingDescriptors(district.buildings, descriptors, null);
+    const steamDescriptors = steam.buildServiceSteamSourceDescriptors(descriptors, null);
 
     const edgeSafe = item => (
       item.x > visibleWidth * 0.5
@@ -43,6 +45,11 @@ async function discoverTargets(page) {
       || null;
 
     const corner = [...cornerDescriptors]
+      .sort((left, right) => Number(edgeSafe(right)) - Number(edgeSafe(left))
+        || String(left.sourceId).localeCompare(String(right.sourceId)))[0]
+      || null;
+
+    const steamTarget = [...steamDescriptors]
       .sort((left, right) => Number(edgeSafe(right)) - Number(edgeSafe(left))
         || String(left.sourceId).localeCompare(String(right.sourceId)))[0]
       || null;
@@ -67,7 +74,7 @@ async function discoverTargets(page) {
       }
     }
 
-    const atmospheric = [...descriptors, ...cornerDescriptors];
+    const atmospheric = [...descriptors, ...cornerDescriptors, ...steamDescriptors];
     const candidates = district.buildings.map(building => ({
       x: Number(building.x) + Number(building.w) / 2,
       y: Number(building.y) + Number(building.h) / 2,
@@ -87,6 +94,7 @@ async function discoverTargets(page) {
       normalZoom,
       descriptorCount: descriptors.length,
       cornerDescriptorCount: cornerDescriptors.length,
+      steamDescriptorCount: steamDescriptors.length,
       targets: {
         service: service ? {
           x: service.x,
@@ -102,6 +110,14 @@ async function discoverTargets(page) {
           profileId: corner.profileId,
           buildingId: corner.buildingId,
           corner: corner.corner
+        } : null,
+        steam: steamTarget ? {
+          x: steamTarget.x,
+          y: steamTarget.y,
+          sourceId: steamTarget.sourceId,
+          profileId: steamTarget.profileId,
+          buildingId: steamTarget.buildingId,
+          variant: steamTarget.variant
         } : null,
         mixed,
         darkControl
@@ -187,9 +203,81 @@ async function capture(page, target, zoom, name) {
   return state;
 }
 
-test.describe.configure({ timeout: 120_000 });
+async function prepareSteamFrame(page, target, zoom, timeMs, label) {
+  return page.evaluate(async ({ target, zoom, timeMs, label }) => {
+    const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
+    if (scene.scene.isPaused()) scene.scene.resume();
+    const center = { x: Number(target.x), y: Number(target.y) };
+    await window.NBD_CITY_STREAM.forceFocus(center.x, center.y);
+    const offsets = [
+      [0, 180], [0, -180], [180, 0], [-180, 0],
+      [0, 120], [120, 0], [-120, 0], [0, 80], [80, 0], [-80, 0]
+    ];
+    const stand = offsets
+      .map(([dx, dy]) => ({ x: center.x + dx, y: center.y + dy }))
+      .find(point => scene.canStandAt(point.x, point.y)) || center;
 
-test("captures sparse service grime and service-corner dressing with a clean control area", async ({ page }) => {
+    scene.switchLayer(0, stand, `M7.2 steam review: ${label}`);
+    await window.NBD_CITY_STREAM.forceFocus(center.x, center.y);
+    scene.redrawLayer(`M7.2 steam review: ${label}`);
+    const camera = scene.cameras.main;
+    camera.stopFollow();
+    camera.setZoom(zoom);
+    camera.centerOn(center.x, center.y);
+    scene.scene.pause();
+    scene.updateCityServiceSteamPresentation?.(timeMs);
+
+    const view = camera.worldView;
+    const insideView = item => (
+      Number(item.x) >= Number(view.x)
+        && Number(item.x) <= Number(view.x) + Number(view.width)
+        && Number(item.y) >= Number(view.y)
+        && Number(item.y) <= Number(view.y) + Number(view.height)
+    );
+    const sources = (scene.cityServiceSteamSourceDescriptors || []).map(item => ({
+      sourceId: item.sourceId,
+      buildingId: item.buildingId,
+      family: item.family,
+      profileId: item.profileId,
+      variant: item.variant,
+      x: item.x,
+      y: item.y,
+      maxAlpha: item.maxAlpha
+    }));
+    const puffs = (scene.cityServiceSteamPuffFrame || []).map(item => ({
+      sourceId: item.sourceId,
+      variant: item.variant,
+      x: item.x,
+      y: item.y,
+      radius: item.radius,
+      alpha: item.alpha,
+      phase: item.phase
+    }));
+    return {
+      center,
+      stand,
+      layer: scene.currentLayer,
+      zoom: Number(camera.zoom) || 1,
+      sources,
+      puffs,
+      visibleSourceIds: sources.filter(insideView).map(item => item.sourceId),
+      visiblePuffCount: puffs.filter(insideView).length
+    };
+  }, { target, zoom, timeMs, label });
+}
+
+async function captureSteamFrame(page, target, zoom, timeMs, name) {
+  const state = await prepareSteamFrame(page, target, zoom, timeMs, name);
+  const canvas = page.locator("#game-root canvas");
+  await expect(canvas).toBeVisible();
+  await page.waitForTimeout(120);
+  await canvas.screenshot({ path: path.join(OUTPUT_DIR, `${name}.png`) });
+  return state;
+}
+
+test.describe.configure({ timeout: 150_000 });
+
+test("captures sparse service grime, service-corner dressing, and bounded M7.2 steam/smoke", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await mkdir(OUTPUT_DIR, { recursive: true });
@@ -200,8 +288,10 @@ test("captures sparse service grime and service-corner dressing with a clean con
   const discovery = await discoverTargets(page);
   expect(discovery.descriptorCount).toBeGreaterThan(0);
   expect(discovery.cornerDescriptorCount).toBeGreaterThan(0);
+  expect(discovery.steamDescriptorCount).toBeGreaterThan(0);
   expect(discovery.targets.service, "missing service-frontage grime target").toBeTruthy();
   expect(discovery.targets.corner, "missing service-corner dressing target").toBeTruthy();
+  expect(discovery.targets.steam, "missing M7.2 service steam target").toBeTruthy();
   expect(discovery.targets.mixed, "missing mixed grime context").toBeTruthy();
   expect(discovery.targets.darkControl, "missing grime-dark control target").toBeTruthy();
 
@@ -233,6 +323,25 @@ test("captures sparse service grime and service-corner dressing with a clean con
   expect(darkControl.descriptors.length).toBeLessThanOrEqual(12);
   expect(darkControl.cornerDescriptors.length).toBeLessThanOrEqual(6);
 
+  const steamA = await captureSteamFrame(page, discovery.targets.steam, discovery.normalZoom, 900, "m7-service-steam-a");
+  const steamB = await captureSteamFrame(page, discovery.targets.steam, discovery.normalZoom, 1600, "m7-service-steam-b");
+  expect(steamA.layer).toBe(0);
+  expect(steamA.sources.length).toBeGreaterThan(0);
+  expect(steamA.sources.length).toBeLessThanOrEqual(3);
+  expect(steamA.puffs.length).toBeGreaterThan(0);
+  expect(steamA.puffs.length).toBeLessThanOrEqual(9);
+  expect(steamA.puffs.every(item => item.alpha <= 0.18)).toBe(true);
+  expect(steamA.sources.some(item => item.sourceId === discovery.targets.steam.sourceId)).toBe(true);
+  expect(steamA.visiblePuffCount).toBeGreaterThan(0);
+  expect(steamB.puffs.map(item => [item.sourceId, item.x, item.y, item.radius, item.alpha]))
+    .not.toEqual(steamA.puffs.map(item => [item.sourceId, item.x, item.y, item.radius, item.alpha]));
+
+  const steamControl = await captureSteamFrame(page, discovery.targets.darkControl, discovery.normalZoom, 1200, "m7-steam-dark-control");
+  expect(steamControl.layer).toBe(0);
+  expect(steamControl.sources.length).toBeLessThanOrEqual(3);
+  expect(steamControl.puffs.length).toBeLessThanOrEqual(9);
+  expect(steamControl.visiblePuffCount).toBe(0);
+
   await writeFile(path.join(OUTPUT_DIR, "grime-manifest.json"), `${JSON.stringify({
     schemaVersion: 4,
     initiative: "city-noir-atmosphere",
@@ -246,6 +355,27 @@ test("captures sparse service grime and service-corner dressing with a clean con
       darkControl: { filename: "grime-dark-control.png", state: darkControl }
     }
   }, null, 2)}\n`, "utf8");
+
+  await writeFile(path.join(OUTPUT_DIR, "m7-steam-smoke-manifest.json"), `${JSON.stringify({
+    schemaVersion: 1,
+    initiative: "city-noir-atmosphere",
+    milestone: "M7.2",
+    purpose: "gameplay-scale evidence for a capped, locally culled service steam/smoke presentation derived from existing M5 service-strip anchors",
+    maximumSources: 3,
+    maximumPuffsPerSource: 3,
+    maximumAlpha: 0.18,
+    target: discovery.targets.steam,
+    captures: {
+      frameA: { filename: "m7-service-steam-a.png", state: steamA },
+      frameB: { filename: "m7-service-steam-b.png", state: steamB },
+      darkControl: { filename: "m7-steam-dark-control.png", state: steamControl }
+    }
+  }, null, 2)}\n`, "utf8");
+
+  await page.evaluate(() => {
+    const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
+    if (scene.scene.isPaused()) scene.scene.resume();
+  });
 
   expect(pageErrors).toEqual([]);
 });
