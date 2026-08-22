@@ -297,6 +297,7 @@ test("captures M6 vehicle contact grounding across traffic, large, police-wet an
   const policeWet = await page.evaluate(async () => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     if (scene.scene.isPaused()) scene.scene.resume();
+    for (const vehicle of scene.vehicleSystem.vehicles || []) vehicle.container?.setVisible(false);
     const district = await import("/phaser/src/data/district.js");
     const wetPolicy = await import("/phaser/src/policies/CityWetStreetPresentationPolicy.js");
     const view = scene.cameras.main.worldView;
@@ -368,6 +369,7 @@ test("captures M6 vehicle contact grounding across traffic, large, police-wet an
     scene.switchLayer(0, stand, "M6 dark grounding control");
     await window.NBD_CITY_STREAM.forceFocus(center.x, center.y);
     scene.redrawLayer("M6 dark grounding control");
+    for (const vehicle of scene.vehicleSystem.vehicles || []) vehicle.container?.setVisible(false);
     for (const policeSlot of scene.motorizedPoliceSystem.slots || []) {
       policeSlot.unitId = null;
       policeSlot.container?.setActive(false).setVisible(false);
