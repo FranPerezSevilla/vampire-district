@@ -10,11 +10,13 @@ The core production pattern is:
 
 The point is not to make a classical-music station. The listener should hear a convincing 1990s station first and only then recognise a familiar public-domain melody inside it.
 
+Credit/provenance requirements are mandatory and live in `docs/audio/RADIO_MUSIC_ATTRIBUTION.md`. No candidate is complete merely because the composition is public domain; the score/source layer, arrangement layer and any later third-party audio material must also be traceable.
+
 ## Output model
 
 This initiative produces **MIDI production sketches**, not final mastered audio.
 
-- The agent owns source verification, transcription where required, arrangement, MIDI structure, naming and provenance metadata.
+- The agent owns source verification, transcription where required, arrangement, MIDI structure, naming, provenance metadata and attribution metadata.
 - The user owns final instrument selection, sample replacement, mix, mastering and subjective polish in a DAW.
 - General MIDI programs and drum notes are placeholders only.
 - Runtime radio playback/integration is a separate concern and must not be smuggled into this PR.
@@ -58,9 +60,12 @@ For every source work:
 
 1. locate a score or authoritative catalogue entry whose public-domain status is documented for the source being used;
 2. record composer, work title, composition/publication information when known, edition/source, stable source URL or catalogue identifier and the status statement relied upon;
-3. transcribe from that score/source, not from a modern commercial recording;
-4. never import a third-party recording or famous break/sample merely because the underlying composition is old;
-5. if status is unclear, stop using that candidate and choose another one rather than guessing.
+3. record the source/reproduction licence or reuse terms and the resulting credit requirement (`required-player-credit`, `courtesy-player-credit` or `internal-only`);
+4. transcribe from that score/source, not from a modern commercial recording;
+5. never import a third-party recording or famous break/sample merely because the underlying composition is old;
+6. if status or attribution obligation is unclear, stop using that candidate and choose another one rather than guessing.
+
+Prefer clean public-domain/CC0 sources. CC BY may be used only with exact attribution/version recorded. NC, ND and ShareAlike dependencies are non-canonical unless explicitly approved by the user.
 
 The arrangement itself must be original ViceBlood work. Genre conventions are allowed; copying the distinctive arrangement, bass line, beat, hook or sound design of a modern copyrighted recording is not.
 
@@ -120,6 +125,8 @@ Each MIDI gets a sidecar manifest with at least:
 - source work/composer;
 - source edition/catalogue and URL;
 - provenance status;
+- source licence/reuse terms and date checked;
+- mandatory `attribution` object per `RADIO_MUSIC_ATTRIBUTION.md`, including ready-to-use player credit and any required/courtesy/internal source attribution;
 - 1990s genre lane;
 - BPM and approximate duration;
 - MIDI track list;
@@ -127,6 +134,8 @@ Each MIDI gets a sidecar manifest with at least:
 - generation/validation status;
 - user review state;
 - file SHA-256 when practical.
+
+A candidate cannot be promoted to `daw-candidate` while required provenance or attribution fields are unresolved.
 
 ## Repository locations
 
@@ -150,6 +159,6 @@ Final rendered `.ogg`/`.mp3` assets are **not** part of this composition PR. Whe
 
 ## User review philosophy
 
-Objective validation can prove that a MIDI is parseable, properly structured and provenance-complete. It cannot prove that a groove feels right.
+Objective validation can prove that a MIDI is parseable, properly structured, provenance-complete and attribution-complete. It cannot prove that a groove feels right.
 
 The agent should therefore work autonomously through bounded production batches, then stop at the roadmap's explicit listening gates with direct links to the generated MIDI files and a compact audition checklist. The user can then edit accepted MIDI files in a DAW or request a revised arrangement before the catalogue expands.
