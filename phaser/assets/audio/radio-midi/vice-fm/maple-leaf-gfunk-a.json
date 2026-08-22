@@ -21,7 +21,6 @@
   "bpm": 96,
   "durationSeconds": 60,
   "midiTracks": [
-    "00 Conductor",
     "01 Source Motif - Joplin",
     "02 G-Funk Drums",
     "03 Funk Bass",

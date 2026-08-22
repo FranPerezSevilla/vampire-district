@@ -21,7 +21,6 @@
   "bpm": 88,
   "durationSeconds": 60,
   "midiTracks": [
-    "00 Conductor",
     "01 Source Melody - Chopin",
     "02 Source Harmony - Chopin",
     "03 Boom Bap Drums",
