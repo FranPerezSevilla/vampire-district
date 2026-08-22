@@ -189,3 +189,17 @@ Exact next task remains:
 `M1.1-ci-validation-and-closeout`
 
 Only after that gate is green should state advance to `M1.2-provenance-seed-set`; M1.2 will select and document exactly one clean source work per core station before any proof arrangement is generated.
+
+## 2026-08-22 — M1.1 closed after CI success
+
+GitHub workflow **Tests #2223** / run `32578300486` completed successfully against head `cc475ebe47097fff8f05f5021495f2613f92f06c`.
+
+M1.1 is therefore complete. The reusable workbench, focused tests, smoke fixture, manifest/provenance/attribution validation and development-only package scripts are accepted as the production substrate for the next composition stages.
+
+No runtime dependency or car-radio gameplay code was introduced.
+
+Exact next task is now:
+
+`M1.2-provenance-seed-set`
+
+M1.2 must select exactly one clean source work for each of the four core stations and record source/edition/reuse/credit evidence before any M1.3 proof-of-style MIDI is generated.
