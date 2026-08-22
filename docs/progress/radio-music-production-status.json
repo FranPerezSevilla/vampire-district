@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "initiative": "90s-radio-music-production",
+  "branch": "codex/90s-radio-music-production",
+  "pullRequestNumber": null,
+  "state": "active",
+  "currentMilestone": "M0-production-contract-complete",
+  "nextTask": "M1.1-midi-workbench-and-manifest-contract",
+  "mission": "Produce editable ViceBlood car-radio MIDI arrangements from provenance-cleared public-domain compositions using distinct 1990s station grammars; user performs final DAW production.",
+  "authority": {
+    "owns": [
+      "radio music source provenance",
+      "radio MIDI arrangement workbench",
+      "generated radio MIDI candidates and sidecar manifests",
+      "station composition grammar and production progress"
+    ],
+    "doesNotOwn": [
+      "runtime radio playback",
+      "vehicle controls or UI",
+      "final DAW mix/master",
+      "voice announcers",
+      "general SFX catalogue runtime",
+      "automatic merge"
+    ]
+  },
+  "coreStations": [
+    {
+      "id": "blood-city-beats",
+      "workingName": "Blood City Beats",
+      "lane": "boom-bap-trip-hop",
+      "bpmRange": [82, 100]
+    },
+    {
+      "id": "vice-fm",
+      "workingName": "Vice FM",
+      "lane": "g-funk-west-coast-hip-hop-instrumental",
+      "bpmRange": [88, 108]
+    },
+    {
+      "id": "night-shift",
+      "workingName": "Night Shift",
+      "lane": "big-beat-breakbeat-industrial-dance",
+      "bpmRange": [125, 150]
+    },
+    {
+      "id": "pulse-94-6",
+      "workingName": "Pulse 94.6",
+      "lane": "house-acid-house-techno",
+      "bpmRange": [120, 140]
+    }
+  ],
+  "stretchStations": ["static"],
+  "output": {
+    "kind": "multitrack-midi-production-sketch",
+    "canonicalCandidatePath": "phaser/assets/audio/radio-midi/<station-id>/<track-id>.mid",
+    "sidecarManifest": true,
+    "finalRenderedAudioInScope": false,
+    "runtimeIntegrationInScope": false
+  },
+  "milestones": {
+    "M0": "complete",
+    "M1.1": "next",
+    "M1.2": "planned",
+    "M1.3": "planned-user-gate",
+    "M2": "planned-after-user-feedback",
+    "M3": "planned",
+    "M4": "planned",
+    "M5": "planned",
+    "M6": "planned",
+    "M7": "planned-final-user-gate"
+  },
+  "userGates": [
+    {
+      "afterTask": "M1.3-four-proof-of-style-midis",
+      "requiredState": "user-validation-pending",
+      "reason": "User must audition and approve/revise the four station directions before catalogue scaling."
+    },
+    {
+      "afterTask": "M7-daw-handoff",
+      "requiredState": "final-validation-pending",
+      "reason": "User chooses final DAW candidates and explicitly approves merge readiness."
+    }
+  ],
+  "autonomousStopConditions": [
+    "explicit user listening gate reached",
+    "source provenance cannot be established and no equivalent candidate can be substituted",
+    "task would require runtime/gameplay scope",
+    "task requires final DAW subjective judgment rather than MIDI production"
+  ],
+  "neighborPullRequests": {
+    "44": "general audio catalogue and attribution ledger; do not replace its runtime contract",
+    "58": "public-domain Gnossienne source/provenance pattern; do not depend on its branch state"
+  },
+  "canonicalReadOrder": [
+    "docs/progress/radio-music-production-status.json",
+    "docs/roadmaps/RADIO_MUSIC_PRODUCTION_ROADMAP.md",
+    "docs/audio/RADIO_MUSIC_BIBLE.md",
+    "docs/agents/RADIO_COMPOSER_AGENT.md",
+    "docs/agent-tasks/2026-08-22-radio-music-production.md",
+    "docs/progress/RADIO_MUSIC_PRODUCTION_PROGRESS.md"
+  ],
+  "mergePolicy": "draft-until-explicit-user-approval"
+}
