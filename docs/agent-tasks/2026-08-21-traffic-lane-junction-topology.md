@@ -4,21 +4,17 @@ Canonical task boundary for PR #73 (`codex/traffic-junction-topology`).
 
 ## Continuation protocol
 
-This initiative is explicitly designed to survive new conversations/agents without chat history.
+This initiative must be continuable without chat history.
 
 Before changing code, read in this order:
 
-1. `docs/progress/traffic-lane-junction-topology-status.json` — machine-readable current milestone and exact `nextTask`.
+1. `docs/progress/traffic-lane-junction-topology-status.json` — authoritative current milestone and exact `nextTask`.
 2. `docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md` — M0–M9 sequence and activation gates.
 3. `docs/agents/TRAFFIC_LANE_JUNCTION_TOPOLOGY_AGENT.md` — authority boundaries and forbidden shortcuts.
 4. This task boundary.
 5. `docs/progress/TRAFFIC_LANE_JUNCTION_TOPOLOGY_PROGRESS.md` — append-only history/evidence.
 
-A sufficient fresh-session prompt is:
-
-> Continue ViceBlood PR #73 from the canonical `nextTask`; keep status/progress updated and do not bypass milestone activation gates.
-
-Always fetch live PR #73, live `main`, current head and CI before writing.
+Always fetch live PR #73, live `main`, current head and CI before writing. Execute only the current machine-readable `nextTask` unless the user explicitly grants a wider batch.
 
 ## Mission
 
@@ -32,116 +28,92 @@ The same stable route identity must survive the transition. No teleport, free-fo
 
 ## Root cause already proven
 
-The old `traffic-lanes.json.edges` records are long compatibility routes between district anchors/portals. They can traverse multiple physical road-network nodes and are **not** physical lane-segment topology.
+The old `traffic-lanes.json.edges` records are long compatibility routes between district anchors/portals. They can traverse multiple physical road-network nodes and are not physical lane-segment topology.
 
-M1.1 proved that trying to infer physical junction ownership from those route endpoints creates large orphan/ambiguous/tangent-failure counts. Therefore legacy district-pair lanes remain compatibility data only.
+M1.1 proved that endpoint-to-nearest-junction inference over those routes creates large orphan/ambiguous/tangent-failure counts. Legacy district-pair lanes therefore remain compatibility data only during migration.
 
 ## Current physical authority
 
-Local topology is generated from the compiler road network:
+- `tools/city-compiler/district-streaming.js` — authoritative physical road network.
+- `tools/city-compiler/traffic-lane-topology.js` — two directed right-hand lanes per physical segment plus compiler-node-owned legal transitions.
+- `tools/city-compiler/traffic-junction-connectors.js` — tangent-preserving connector geometry validated against compiler road surfaces.
+- `tools/city-compiler/traffic-lane-topology-integration.js` — additive traffic pack v6 `localTopology` integration.
+- `phaser/src/streaming/TrafficRouteCursor.js` — pure stable route identity/time advancement.
+- `phaser/src/streaming/TrafficJunctionReservationRegistry.js` — deterministic conservative junction ownership/yielding.
+- `phaser/src/streaming/TrafficRouteMaterializationPolicy.js` + route-aware lifecycle policy — materialization metadata and crossing retention.
+- `phaser/src/streaming/TrafficControlledRouteActivationPolicy.js` — proven controlled visible route traversal; still default-off.
 
-- `tools/city-compiler/district-streaming.js` — physical network nodes/segments derived from the authoritative road graph;
-- `tools/city-compiler/traffic-lane-topology.js` — two directed right-hand lanes per physical segment plus compiler-node-owned legal transitions;
-- `tools/city-compiler/traffic-junction-connectors.js` — tangent-preserving connector geometry validated against compiler road surfaces;
-- `tools/city-compiler/traffic-lane-topology-integration.js` — additive traffic pack v6 integration;
-- `phaser/src/streaming/TrafficRouteCursor.js` — pure stable route-agent state and time advancement.
+Macro traffic remains population/load/compatibility authority only. Macro graph centres and legacy phase never become local driving coordinates.
 
-Legacy `edges`/`junctions` are retained only so current systems continue to work during migration.
+## Validated milestone boundary
 
-## Completed milestones
+M0 through M7 are complete.
 
-### M0 — diagnostic/read-only foundation
+Key final evidence:
 
-Complete. It was useful to expose the mismatch between legacy macro-compatible lane routes and real physical junction topology.
+- M1 compiler topology/safety — Tests #2083 / run `32485801858`.
+- M2 route cursor/projection — Tests #2087 and #2101.
+- M3 shadow bridge — Tests #2109.
+- M4 traversal harness — Tests #2113.
+- M5 lifecycle/materialization retention — Tests #2125.
+- M6 controlled browser route activation — Tests #2135 / run `32495071190`.
+- M7 deterministic junction reservation — implementation head `dcb08288ea797e7016bcdb3858299a85549a7259`, Tests #2153 / run `32549761928`, all required jobs green.
 
-### M1 — compiler-owned hard safety contract
+M7 guarantees that conflicting controlled route tokens reserve before connector entry, wait on the incoming lane, normally clear once inside, release on exit/forced teardown and recover stale ownership without deadlocking. Default civilian movement remains `authored-local-lanes`.
 
-Complete.
-
-Guarantees:
-
-- explicit compiler node ownership instead of nearest-junction inference;
-- two directed right-hand lanes per physical network segment;
-- deterministic preferred legal transitions;
-- U-turn avoidance except explicit dead ends;
-- cubic connector curves with exact lane endpoints;
-- every preferred connector validated against compiler-owned road surfaces;
-- zero rejected production preferred connectors;
-- zero outside-road production connectors;
-- zero production tangent-continuity failures;
-- additive pack v6 `localTopology` while legacy compatibility data remains intact;
-- provisional legacy endpoint-inference topology is no longer installed by runtime.
-
-Final M1 runtime boundary: GitHub Tests #2083 / run `32485801858` — full success.
-
-### M2.1/M2.2 — pure route cursor + deterministic continuation
-
-Complete on head `9a7d45566b17c2a508e269c3d23b9f2d3b67ea1a`.
-
-`TrafficRouteCursor` is pure: no Phaser, scene, materializer, camera, police or macro-district dependency.
-
-A route agent retains stable `tokenId`, route hop, current stage (`lane|connector`), compiler lane, connector/next lane while crossing, previous lane, bounded stage progress and carried metadata.
-
-`advanceTrafficRouteAgent(...)`:
-
-- consumes elapsed seconds using real stage geometry length;
-- may cross lane -> connector/direct handoff -> outgoing lane in one call using leftover time;
-- preserves `tokenId` exactly;
-- selects only compiler `preferred` transitions deterministically from token + route hop;
-- consumes only activation-safe connectors or explicitly validated direct handoffs;
-- blocks explicitly at stage end when continuation geometry is absent;
-- never invents world-space coordinates;
-- never mutates the input agent or topology.
-
-GitHub Tests #2087 / run `32486691651` — full success: unit, boot, campaign and all three browser-system shards.
-
-## Exact next task
+## Current task
 
 The status JSON is authoritative. Current task:
 
-`M2.3-compatibility-projection`
+`M8.1-multi-agent-route-runtime-substrate`
 
-Build a pure **output-only** projection from stable local route agents into legacy macro traffic diagnostics/load.
+Purpose: generalize the already-proven pure route, reservation, lifecycle and materialization contracts to a deterministic multi-agent civilian route runtime substrate **without flipping production default movement yet**.
 
-Rules:
+### Required shape
 
-- district counts come from compiler lane `districtId` ownership;
-- macro edge attribution may use explicit compatibility provenance if present;
-- without provenance, local `sourceRoadEdgeId` may identify a macro edge only when membership is unique;
-- zero matches => `unmatched`;
-- multiple matches => `ambiguous`;
-- never pick an arbitrary macro edge for an ambiguous road;
-- projected + ambiguous + unmatched must conserve population;
-- do not synthesize local route geometry or choices from macro centres/phases;
-- do not invent a legacy phase from arbitrary world distance;
-- do not install the projection into live `MacroTrafficPoliceSystem` until M3 shadow mode.
+- Reuse/extract deterministic macro-population-to-local-route seeding from the shadow bridge where appropriate.
+- Macro provenance may seed stable route identity, but ongoing local x/y and continuation must use compiler lane/connector geometry only.
+- Advance multiple stable route agents through one shared M7 junction reservation registry.
+- Expose route materialization tokens without growing the fixed visual pool or changing token identity.
+- Keep waiting before connector entry; cars already inside normally clear the connector.
+- Prevent legacy behavior/steering from overwriting `routeActive` x/y.
+- Do not mutate live macro traffic phases/load as the new physical movement authority in M8.1; compatibility projection remains diagnostic/output-only in this slice.
+- Keep normal production civilian traffic on `authored-local-lanes` throughout M8.1.
+
+### Acceptance
+
+- seeded + explicitly unseeded records conserve macro population;
+- stable identity survives multi-agent lane/connector/lane progression;
+- conflicting agents cannot simultaneously enter the same conservative junction authority;
+- waiting agents remain at the incoming lane endpoint;
+- teardown releases reservations and route state;
+- materialization pool remains bounded/fixed;
+- route-active x/y comes only from compiler lane/connector geometry;
+- legacy behavior/steering cannot overwrite route-active movement;
+- default civilian movement remains unchanged;
+- focused tests and full CI pass.
 
 ## Non-negotiable architecture
 
 - Macro graph node/district centres are never local driving coordinates.
-- Macro `edgeId + phase` is compatibility/load state, not physical route identity.
+- Macro `edgeId + phase` is aggregate compatibility state, not physical route identity.
 - No free-form drive-toward-next-lane steering.
 - No snap/teleport between route stages.
 - Only compiler-node-owned lanes and activation-safe compiler connectors may become local route stages.
 - Missing geometry blocks safely instead of falling back to arbitrary movement.
-- Same stable `tokenId` must survive pure route stages and later visible materialization.
+- Stable `tokenId` and later materialized slot identity survive route stage changes.
 - Lifecycle owns spawn/despawn/pool retention, not route geometry.
+- Junction conflict handling may delay connector entry but does not invent geometry.
+- A car already inside a connector normally clears it rather than voluntarily stopping mid-junction.
+- Stale reservation recovery is mandatory.
 - `MacroTrafficRouteContinuityPolicy` and `TrafficIntentDrivingPolicy` must not be re-enabled wholesale.
 - Generated topology is fixed in its owning compiler; never hand-edit generated output as a workaround.
 
-## Runtime activation ladder
+## Remaining activation ladder
 
-Do not skip stages:
-
-1. M1 compiler topology/safety — complete.
-2. M2 pure route identity/projection — in progress.
-3. M3 shadow route agents beside existing macro traffic — no visible authority.
-4. M4 isolated local traversal harness.
-5. M5 lifecycle/materialization retention integration.
-6. M6 controlled browser activation.
-7. M7 connector occupancy/yield/conflict handling.
-8. M8 default civilian traffic migration.
-9. M9 cleanup + explicit user gameplay validation.
+1. M8.1 — multi-agent route runtime substrate, still non-default.
+2. Later M8 bounded task(s) — controlled default activation + macro accounting migration only after soak evidence.
+3. M9 — superseded legacy cleanup + documentation + explicit user gameplay validation.
 
 ## Final gate
 
