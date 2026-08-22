@@ -18,81 +18,88 @@ Before changing code:
 
 Do not ask the user to reconstruct old chat context when the canonical files answer the question. Execute only the machine-readable `nextTask` unless the user explicitly grants a wider batch.
 
-## Root cause already established
+## Root architecture
 
-A previous continuity experiment treated macro district/street connectivity as local driving geometry. The macro graph does not encode physical right-hand lanes or legal turn curves, so cars could cross sidewalks/buildings, shortcut intersections and enter the wrong side of roads.
-
-M1.1 then proved the old `traffic-lanes.json.edges` are long district-anchor/portal compatibility paths, not physical lane segments. Endpoint-to-nearest-junction inference on those paths is not a valid routing model.
+A previous continuity experiment treated macro district/street connectivity as local driving geometry. That abstraction cannot encode legal right-hand lanes or turn curves and caused cross-block/sidewalk/building shortcuts.
 
 The replacement architecture is:
 
 `compiler-owned directed lane -> activation-safe compiler connector -> compiler-owned directed lane`
 
-Stable route identity decides which legal stage comes next. Physical coordinates always come from compiler/local lane geometry.
+Stable route identity decides which legal stage comes next. Physical coordinates always come from compiler/local route geometry.
 
-## Current authority stack
+## Authority stack
 
-### Physical network authority
+### Physical topology
 
-`tools/city-compiler/district-streaming.js` builds the physical local network from the authoritative city road graph.
+- `tools/city-compiler/district-streaming.js` owns the physical road network.
+- `tools/city-compiler/traffic-lane-topology.js` emits directed right-hand lanes, compiler-node ownership and preferred legal transitions.
+- `tools/city-compiler/traffic-junction-connectors.js` emits tangent-preserving connector geometry validated against compiler road surfaces.
+- `tools/city-compiler/traffic-lane-topology-integration.js` attaches `localTopology` to generated traffic pack v6.
 
-### Directed lane/transition authority
+Legacy `traffic-lanes.json.edges` / `junctions` remain compatibility data during migration; they are not physical junction-routing authority.
 
-`tools/city-compiler/traffic-lane-topology.js` emits two directed right-hand lanes per physical network segment, explicit compiler node ownership and deterministic preferred legal transitions with U-turn avoidance except dead ends.
+### Route/population authority
 
-### Junction connector authority
+- `phaser/src/streaming/TrafficRouteCursor.js` owns pure stable route-agent state/progression and never invents coordinates.
+- `phaser/src/streaming/TrafficRoutePopulationSeed.js` deterministically bootstraps macro population provenance onto compiler lanes. Macro phase/source-road information may select initial lane/progress only.
+- `phaser/src/streaming/TrafficRouteCompatibilityProjection.js` is conservative output/accounting projection only.
+- `phaser/src/streaming/TrafficMultiAgentRouteRuntimePolicy.js` advances production-shaped stable route agents through compiler geometry and one shared junction registry.
 
-`tools/city-compiler/traffic-junction-connectors.js` emits tangent-preserving connector geometry from trimmed lane approaches and validates it against compiler-owned road surfaces.
+### Junction/materialization authority
 
-Only `activationSafe` connectors with no rejection reasons may become route stages.
-
-### Generated pack authority
-
-`tools/city-compiler/traffic-lane-topology-integration.js` attaches compiler `localTopology` to traffic pack schema v6.
-
-Legacy `traffic-lanes.json.edges` / `junctions` remain compatibility data during migration. They are not physical junction-routing authority.
-
-### Pure route authority
-
-`phaser/src/streaming/TrafficRouteCursor.js` owns pure stable route-agent state and elapsed-time progression. It may choose only compiler `preferred` transitions and activation-safe connectors/direct handoffs. It never invents coordinates.
-
-### Population bootstrap authority
-
-`phaser/src/streaming/TrafficRoutePopulationSeed.js` deterministically seeds stable local route agents from macro population provenance. Macro phase/source-road information may choose the initial compiler lane/progress only; after creation, route progression is compiler geometry owned.
-
-### Junction conflict authority
-
-`phaser/src/streaming/TrafficJunctionReservationRegistry.js` owns deterministic conservative reservation state keyed by compiler junction authority.
-
-A route token reserves before connector entry. A conflict leaves the waiter on the incoming lane endpoint. Once inside, a route normally clears the connector. Ownership releases on exit/forced teardown and stale ownership expires within a bounded timeout.
-
-### Materialization/lifecycle authority
-
-`phaser/src/streaming/TrafficRouteMaterializationPolicy.js` converts current compiler route geometry into visible token pose/metadata. Route-aware lifecycle policy preserves the same slot during protected crossing states. Lifecycle owns retention/spawn/despawn, never route geometry.
-
-### Controlled visible proof
-
-`phaser/src/streaming/TrafficControlledRouteActivationPolicy.js` has validated visible straight/right/left compiler-route traversal, reservation/yielding, stable token/slot, fixed pool and zero-teleport telemetry. It remains explicitly default-off.
-
-### Multi-agent route substrate
-
-`phaser/src/streaming/TrafficMultiAgentRouteRuntimePolicy.js` advances the production-shaped civilian population as stable compiler-route agents through one shared reservation registry, emits route materialization tokens, guards route-active pose from legacy behavior/steering and exposes explicit `start/step/stop`. It is installed but default-off.
+- `TrafficJunctionReservationRegistry.js` reserves deterministic compiler-junction authority before connector entry; conflicts wait at the incoming lane endpoint; stale ownership expires; teardown releases ownership.
+- `TrafficRouteMaterializationPolicy.js` derives visible pose only from current compiler route geometry.
+- route-aware `TrafficLifecyclePolicy.js` owns retention/spawn/despawn semantics, not route geometry.
+- `TrafficControlledRouteActivationPolicy.js` remains a default-off regression harness for isolated crossings.
 
 ### Macro authority
 
-`MacroTrafficPoliceSystem` remains aggregate traffic population/load compatibility authority during M8 migration. Macro edge IDs/phases and district centres must never become ongoing local x/y or route-choice authority.
+`MacroTrafficPoliceSystem` currently owns aggregate civilian population/load compatibility and independent macro police travel. Macro centres and legacy civilian phases must never become ongoing local route coordinates or route-choice authority.
+
+M8.3 may migrate aggregate civilian accounting, but it must not couple civilian local route movement to police macro travel or turn compatibility state back into geometry.
 
 ## Current validated boundary
 
-M0 through M7 plus M8.1 are complete.
+M0 through M7 plus M8.1 and M8.2 are complete.
 
-Latest implementation boundary: `9173732803b2b92b28cf26a784e2382169eacc63` passed GitHub Tests #2166 / run `32551128095` with unit, browser boot, browser campaign and all three browser-system shards successful.
+Latest validated implementation/evidence boundary: `e9593957fff711e5b606253049321475376cccf8`, GitHub Tests #2173 / run `32552262883`.
 
-M8.1 proves deterministic multi-agent population conservation, stable identity, shared reservation/yielding, compiler-only route pose, fixed pool semantics, route-active presentation guards, teardown cleanup and zero macro-flow mutation in focused tests while leaving normal traffic unchanged.
+All required jobs were successful:
 
-Default civilian movement is still `authored-local-lanes`.
+- unit-tests;
+- browser-boot;
+- browser-campaign;
+- browser-systems 1/3;
+- browser-systems 2/3;
+- browser-systems 3/3.
 
-The current machine-readable task is M8.2: run an explicit opt-in production-browser soak of the M8.1 substrate. M8.2 is evidence only and must not flip normal production traffic to compiler routes by default.
+M8.2 production browser evidence proves explicit multi-agent activation conserves production population, stays on compiler lanes/connectors, keeps per-tick movement bounded, preserves token/slot and fixed-pool identity through camera/stream movement, prevents legacy pose overwrite, uses valid reservation ownership, releases reservations on stop and does not mutate isolated live macro flows.
+
+**Normal production startup is still `authored-local-lanes` at this boundary.** M8.2 did not authorize a default flip.
+
+The current machine-readable task is:
+
+`M8.3-default-compiler-route-activation-and-macro-accounting-migration`
+
+## M8.3 discipline
+
+Before changing the default:
+
+- audit all live consumers of civilian macro phases/load;
+- keep macro police travel independent;
+- prove production route bootstrap has zero unseeded civilian tokens;
+- treat any unseeded production token as a blocker, never silently drop it;
+- integrate route advancement with normal frame delta rather than the manual debug step API;
+- make compiler routes the sole physical civilian continuity identity if/when the gate flips;
+- stop legacy civilian edge phase from acting as a competing movement identity/local coordinate source;
+- drive aggregate civilian district/load diagnostics from conservative route compatibility projection;
+- conserve total population and expose ambiguous/unmatched projection rather than guessing;
+- truthfully update `laneAuthority`/diagnostics after the default flip;
+- preserve fixed pool, token/slot continuity, lifecycle retention, hijack/forced release, reservations and behavior/steering guards;
+- add normal-startup browser evidence plus macro/police/vehicle regression coverage and require full CI green.
+
+Do not declare M8 complete merely because M8.2 passed. Default activation is a separate authority migration gate.
 
 ## Forbidden shortcuts
 
@@ -105,38 +112,36 @@ Never solve a task by:
 - using macro/district centres as drivable points;
 - assigning a legacy route endpoint to the nearest junction as physical ownership;
 - increasing geometric tolerances to hide ambiguous ownership;
-- activating a connector that failed endpoint, road-surface or tangent validation;
+- activating a connector that failed compiler safety validation;
 - hand-editing generated topology instead of fixing the compiler;
-- increasing camera/despawn margins as a substitute for stable identity;
-- choosing one macro edge arbitrarily when compatibility mapping is ambiguous;
-- synthesizing local geometry from legacy phase/world distance;
 - growing the visible materialization pool as a continuity workaround;
-- letting a waiting car enter a connector before reservation is granted;
+- letting a waiting car enter before reservation is granted;
 - voluntarily stopping a car mid-connector to resolve a conflict;
 - allowing a vanished token to hold a junction indefinitely;
-- mutating live macro phases/load merely to make the M8 browser soak pass;
-- enabling M8 by default outside the explicit M8.2 scenario;
-- treating a successful opt-in soak as permission to skip the later default-activation gate.
+- silently dropping production tokens that cannot be seeded;
+- keeping legacy phase movement active as a competing physical identity after the default flip;
+- guessing one macro owner when route projection is ambiguous;
+- mutating macro compatibility state merely to make browser evidence pass;
+- coupling civilian compiler-route progression to macro police travel;
+- treating M8.2 success as permission to bypass M8.3 acceptance gates.
 
 ## Stable route identity contract
 
-A route agent identity is independent of its current lane/stage.
-
-It retains stable `tokenId`, route hop, stage, current compiler lane, connector/next lane while crossing, previous lane, bounded stage progress and optional compatibility metadata that cannot control local geometry.
+A route agent identity is independent of its current lane/stage. It retains stable `tokenId`, route hop, stage, current compiler lane, connector/next lane while crossing, previous lane, bounded stage progress and optional compatibility metadata that cannot control local geometry.
 
 `advanceTrafficRouteAgent(...)` must consume real elapsed time using stage geometry length, preserve `tokenId`, be deterministic for the same token/hop/topology, never mutate input state and return an explicit blocked reason when continuation is unavailable or connector entry is denied.
 
-## Compatibility projection rule
+## Compatibility/accounting rule
 
 Compatibility is output/accounting data, not local route geometry.
 
 Allowed:
 
 - derive district counts from compiler lane `districtId`;
-- preserve/use explicit legacy macro-edge provenance as metadata;
+- preserve/use explicit macro-edge provenance as metadata;
 - use local `sourceRoadEdgeId` to infer a macro edge only when membership is unique;
 - report unmatched and ambiguous agents explicitly;
-- compare/project aggregate counts during migration.
+- project aggregate counts/load during migration.
 
 Forbidden:
 
@@ -147,32 +152,25 @@ Forbidden:
 
 Population must be conserved across projected + ambiguous + unmatched/unseeded buckets.
 
-## M8.2 browser-soak discipline
+## Do not advance M8.3 if
 
-The production-browser soak must:
-
-- prove M8 is disabled on normal startup;
-- explicitly start M8 only inside the scenario;
-- snapshot macro flows and pool identity/size before activation;
-- advance through the public route policy API for a bounded duration;
-- move/follow the camera while tracking stable route token/slot identity;
-- reject visible teleports and compiler-geometry authority violations;
-- expose reservation/yield telemetry without inventing synthetic world-space steering;
-- verify route-active x/y is not overwritten by legacy behavior/steering;
-- prove macro traffic state remains unchanged;
-- stop/teardown and require zero leftover reservations plus clean restoration of authored-local traffic.
-
-If production timing does not naturally produce a reservation conflict, record that honestly; do not fake a traffic-light system or corrupt production state merely to manufacture one.
+- any production civilian token cannot be seeded onto compiler routes;
+- normal activation needs macro centres/phases as local coordinates or route choice;
+- legacy phase progression competes with compiler route identity;
+- compatibility projection loses population or guesses ambiguous ownership;
+- normal frame-loop integration introduces illegal exits, teleport, assignment churn or pool growth;
+- junction ownership leaks/deadlocks;
+- police macro travel or police gameplay regress;
+- vehicle dynamics, lifecycle/hijack forced exits or existing browser behavior regress;
+- full CI is red or unexplained.
 
 ## Remaining activation ladder
 
 - M0–M7 — complete.
-- M8.1 — multi-agent route runtime substrate — complete, default-off.
-- M8.2 — current: production browser soak, explicit opt-in only.
-- Later M8 task(s) — default civilian activation and macro accounting migration only after focused/browser soak evidence.
-- M9 — cleanup, documentation and explicit user gameplay approval.
-
-Do not collapse M8.2 into default activation just because the substrate passes the browser soak.
+- M8.1 — multi-agent route runtime substrate — complete.
+- M8.2 — production browser soak — complete, explicit opt-in evidence.
+- M8.3 — **current**: default civilian compiler-route activation + macro accounting migration.
+- M9 — legacy cleanup, documentation and explicit user gameplay approval.
 
 ## Validation discipline
 
@@ -189,13 +187,7 @@ At milestone boundaries compare with live `main`. Integrate/revalidate first if 
 
 ## Documentation discipline
 
-Every bounded task updates:
-
-- machine-readable status JSON;
-- append-only progress log;
-- focused tests/evidence.
-
-Update roadmap/task/agent docs whenever the architecture or phase contract changes materially. Keep the PR body synchronized enough that a human reviewer can see the current checkpoint, but status JSON remains authoritative.
+Every bounded task updates machine-readable status JSON, append-only progress and focused validation evidence. Update roadmap/task/agent docs whenever architecture or phase contracts change materially. Keep the PR body synchronized enough that a reviewer can see the current checkpoint; status JSON remains authoritative.
 
 A sufficient fresh-session instruction is:
 
