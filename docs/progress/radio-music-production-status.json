@@ -4,8 +4,8 @@
   "branch": "codex/90s-radio-music-production",
   "pullRequestNumber": 76,
   "state": "active",
-  "currentMilestone": "M0-production-contract-complete",
-  "nextTask": "M1.1-midi-workbench-and-manifest-contract",
+  "currentMilestone": "M1.1-implementation-complete-validation-pending",
+  "nextTask": "M1.1-ci-validation-and-closeout",
   "mission": "Produce editable ViceBlood car-radio MIDI arrangements from provenance-cleared public-domain compositions using distinct 1990s station grammars; user performs final DAW production.",
   "authority": {
     "owns": [
@@ -70,9 +70,23 @@
     "dawCandidateRequiresCompleteAttribution": true,
     "finalCreditRollupRequiredAtM7": true
   },
+  "midiWorkbench": {
+    "implementationCommit": "85e22cc49ccfe15092d9a8127f85e4b4e47751d2",
+    "path": "tools/radio-composer/",
+    "runtimeDependencyAdded": false,
+    "localFocusedTests": "4/4 passed",
+    "smokeSha256": "7eaace8e27615f8e9f9a59035371aa98e0f8044830cd330f949fd716e854d46e",
+    "githubWorkflow": {
+      "name": "Tests",
+      "runNumber": 2221,
+      "runId": 32578217186,
+      "lastObservedStatus": "in_progress",
+      "conclusion": null
+    }
+  },
   "milestones": {
     "M0": "complete",
-    "M1.1": "next",
+    "M1.1": "validation-pending",
     "M1.2": "planned",
     "M1.3": "planned-user-gate",
     "M2": "planned-after-user-feedback",
