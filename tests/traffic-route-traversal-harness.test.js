@@ -1,147 +1,129 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 
-import { buildDistrictStreamingArtifacts } from "../tools/city-compiler/district-streaming.js";
-import { buildTrafficLaneTopology } from "../tools/city-compiler/traffic-lane-topology.js";
-import { buildTrafficJunctionConnectors } from "../tools/city-compiler/traffic-junction-connectors.js";
-import { DEFAULT_CITY_SOURCE_PATH } from "../tools/city-compiler/source.js";
-import { createTrafficRouteAgent } from "../phaser/src/streaming/TrafficRouteCursor.js";
-import {
-  createTrafficRouteTraversalHarness,
-  sampleTrafficRouteAgentPose,
-  runTrafficRouteTraversal
-} from "../phaser/src/streaming/TrafficRouteTraversalHarness.js";
+import { cityRoadGraph } from "../tools/city-compiler/city-road-graph-v1.js";
+import { currentCityBlueprint } from "../tools/city-compiler/current-city.js";
+import { buildDistrictStreamingFileSet } from "../tools/city-compiler/district-streaming.js";
+import { attachCompilerTrafficLaneTopology } from "../tools/city-compiler/traffic-lane-topology-integration.js";
 import { pointAlongPolyline } from "../phaser/src/streaming/TrafficMaterializationSystem.js";
+import {
+  runTrafficRouteTraversalHarness,
+  sampleTrafficRouteAgentPose,
+  trafficRouteTransitionBoundaryEvidence
+} from "../phaser/src/streaming/TrafficRouteTraversalHarness.js";
+import { createTrafficRouteAgent } from "../phaser/src/streaming/TrafficRouteCursor.js";
 
 const ROOT = new URL("../", import.meta.url);
-
-function fixture() {
-  return {
-    laneIds: ["lane-a", "lane-b"],
-    lanes: {
-      "lane-a": {
-        id: "lane-a",
-        direction: "forward",
-        length: 100,
-        points: [{ x: 0, y: 0 }, { x: 100, y: 0 }]
-      },
-      "lane-b": {
-        id: "lane-b",
-        direction: "forward",
-        length: 100,
-        points: [{ x: 120, y: 20 }, { x: 220, y: 20 }]
-      }
-    },
-    transitionIds: ["a-to-b"],
-    transitions: {
-      "a-to-b": {
-        id: "a-to-b",
-        nodeId: "junction-1",
-        incomingLaneId: "lane-a",
-        outgoingLaneId: "lane-b",
-        preferred: true,
-        requiresConnector: true
-      }
-    },
-    junctionConnectors: {
-      connectorIds: ["connector-a-b"],
-      connectors: {
-        "connector-a-b": {
-          id: "connector-a-b",
-          transitionId: "a-to-b",
-          nodeId: "junction-1",
-          activationSafe: true,
-          rejectionReasons: [],
-          length: 20,
-          points: [{ x: 100, y: 0 }, { x: 110, y: 4 }, { x: 120, y: 20 }]
-        }
-      },
-      directHandoffTransitionIds: []
-    }
-  };
-}
+const POSITION_EPSILON = 0.000001;
+const DIRECT_HANDOFF_EPSILON = 0.0011;
 
 function productionTopology() {
-  const source = fileURLToPath(DEFAULT_CITY_SOURCE_PATH);
-  const artifacts = buildDistrictStreamingArtifacts(source);
-  const topology = buildTrafficLaneTopology(artifacts);
-  return {
-    ...topology,
-    junctionConnectors: buildTrafficJunctionConnectors(topology, artifacts)
-  };
+  const base = buildDistrictStreamingFileSet({
+    blueprint: currentCityBlueprint,
+    roadGraph: cityRoadGraph
+  });
+  return attachCompilerTrafficLaneTopology(base).fileSet.trafficLanes.localTopology;
 }
 
-test("M4 traversal harness crosses lane connector lane continuously with one identity", () => {
-  const topology = fixture();
-  const harness = createTrafficRouteTraversalHarness({
-    topology,
-    tokenId: "traffic-harness-1",
-    laneId: "lane-a",
-    speed: 100
-  });
-  const initial = harness.snapshot();
-  assert.equal(initial.tokenId, "traffic-harness-1");
-  assert.equal(initial.stage, "lane");
-  assert.equal(initial.x, 0);
-  assert.equal(initial.y, 0);
-
-  const snapshots = [initial];
-  for (let index = 0; index < 30; index++) {
-    snapshots.push(harness.step(0.05));
-    if (snapshots.at(-1).routeHop >= 1 && snapshots.at(-1).stage === "lane") break;
-  }
-
-  assert.equal(snapshots.every(item => item.tokenId === "traffic-harness-1"), true);
-  assert.equal(snapshots.some(item => item.stage === "connector"), true);
-  assert.equal(snapshots.at(-1).stage, "lane");
-  assert.equal(snapshots.at(-1).routeHop, 1);
-  assert.equal(snapshots.at(-1).currentLaneId, "lane-b");
-  assert.equal(snapshots.at(-1).blockedReason, null);
-  assert.equal(snapshots.at(-1).teleportCount, 0);
-  assert.ok(snapshots.at(-1).maximumStepDistance <= 5.0001);
-});
-
-test("M4 traversal run helper reports zero teleports over a bounded representative crossing", () => {
-  const result = runTrafficRouteTraversal({
-    topology: fixture(),
-    tokenId: "traffic-harness-run",
-    laneId: "lane-a",
-    speed: 80,
-    stepSeconds: 0.05,
-    steps: 50
-  });
-  assert.equal(result.crossedConnector, true);
-  assert.equal(result.crossedOutgoingLane, true);
-  assert.equal(result.teleportCount, 0);
-  assert.equal(result.stableTokenId, true);
-  assert.equal(result.blockedReason, null);
-});
-
-test("production traversal harness uses activation-safe compiler geometry with zero snap", () => {
-  const topology = productionTopology();
-  const transition = topology.transitionIds
+function preferredTransitions(topology) {
+  return (topology.transitionIds || [])
     .map(id => topology.transitions[id])
-    .find(item => item.preferred && item.requiresConnector
-      && topology.junctionConnectors?.connectors?.[
-        topology.junctionConnectors.transitionToConnectorId?.[item.id]
-      ]?.activationSafe);
-  assert.ok(transition, "production topology must expose at least one safe preferred connector transition");
+    .filter(transition => transition?.preferred)
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
 
-  const result = runTrafficRouteTraversal({
-    topology,
-    tokenId: "production-harness",
-    laneId: transition.incomingLaneId,
-    speed: 168,
-    stepSeconds: 0.02,
-    steps: 800
+function representative(topology, turnType) {
+  const candidates = preferredTransitions(topology)
+    .filter(transition => transition.turnType === turnType);
+  return candidates.find(transition => transition.requiresConnector) || candidates[0] || null;
+}
+
+function assertBoundarySafe(evidence) {
+  assert.equal(evidence.activationSafe, true, evidence.transitionId);
+  if (evidence.requiresConnector) {
+    assert.ok(
+      evidence.incomingConnectorPositionGap <= POSITION_EPSILON,
+      `${evidence.transitionId}: incoming position gap ${evidence.incomingConnectorPositionGap}`
+    );
+    assert.ok(
+      evidence.connectorOutgoingPositionGap <= POSITION_EPSILON,
+      `${evidence.transitionId}: outgoing position gap ${evidence.connectorOutgoingPositionGap}`
+    );
+    assert.ok(
+      evidence.incomingConnectorHeadingGap <= evidence.headingTolerance + POSITION_EPSILON,
+      `${evidence.transitionId}: incoming heading gap ${evidence.incomingConnectorHeadingGap}`
+    );
+    assert.ok(
+      evidence.connectorOutgoingHeadingGap <= evidence.headingTolerance + POSITION_EPSILON,
+      `${evidence.transitionId}: outgoing heading gap ${evidence.connectorOutgoingHeadingGap}`
+    );
+  } else {
+    assert.equal(evidence.directValidated, true, evidence.transitionId);
+    assert.ok(
+      evidence.maximumPositionGap <= DIRECT_HANDOFF_EPSILON,
+      `${evidence.transitionId}: direct position gap ${evidence.maximumPositionGap}`
+    );
+    assert.ok(
+      evidence.maximumHeadingGap <= DIRECT_HANDOFF_EPSILON,
+      `${evidence.transitionId}: direct heading gap ${evidence.maximumHeadingGap}`
+    );
+  }
+}
+
+for (const turnType of ["straight", "right", "left", "u-turn"]) {
+  test(`production ${turnType} traversal preserves position, heading and stable identity`, () => {
+    const topology = productionTopology();
+    const transition = representative(topology, turnType);
+    assert.ok(transition, `production topology needs a preferred ${turnType} transition`);
+
+    const evidence = trafficRouteTransitionBoundaryEvidence(topology, transition.id);
+    assertBoundarySafe(evidence);
+
+    const topologyBefore = structuredClone(topology);
+    const result = runTrafficRouteTraversalHarness(topology, transition.id, {
+      speed: 100,
+      startProgress: 0.92,
+      outgoingProgress: 0.2
+    });
+
+    assert.equal(result.turnType, turnType);
+    assert.equal(result.blockedReason, null, `${transition.id}: ${result.blockedReason}`);
+    assert.equal(result.sameStableIdentity, true);
+    assert.equal(result.reachedOutgoingLane, true);
+    assert.equal(result.finalAgent.tokenId, result.initialAgent.tokenId);
+    assert.equal(result.finalAgent.currentLaneId, transition.outgoingLaneId);
+    assert.equal(result.finalAgent.stage, "lane");
+    assert.ok(
+      Math.abs(result.finalAgent.stageProgress - 0.2) <= 0.00001,
+      `${transition.id}: outgoing progress ${result.finalAgent.stageProgress}`
+    );
+    assert.equal(result.junctionDecisions, 1);
+    assert.equal(result.stageTransitions, transition.requiresConnector ? 2 : 1);
+    assert.ok(result.remainingSeconds <= 0.000001, transition.id);
+    assert.deepEqual(topology, topologyBefore, "isolated traversal must not mutate compiler topology");
   });
-  assert.equal(result.crossedConnector, true);
-  assert.equal(result.crossedOutgoingLane, true);
-  assert.equal(result.teleportCount, 0);
-  assert.equal(result.stableTokenId, true);
+}
+
+test("production direct handoff uses the same sampler without a coordinate snap", () => {
+  const topology = productionTopology();
+  const transition = preferredTransitions(topology)
+    .find(candidate => !candidate.requiresConnector);
+  assert.ok(transition, "production topology needs at least one validated direct handoff");
+
+  const evidence = trafficRouteTransitionBoundaryEvidence(topology, transition.id);
+  assert.equal(evidence.requiresConnector, false);
+  assertBoundarySafe(evidence);
+
+  const result = runTrafficRouteTraversalHarness(topology, transition.id, {
+    speed: 120,
+    startProgress: 0.97,
+    outgoingProgress: 0.15
+  });
   assert.equal(result.blockedReason, null);
+  assert.equal(result.sameStableIdentity, true);
+  assert.equal(result.reachedOutgoingLane, true);
+  assert.ok(Math.abs(result.finalAgent.stageProgress - 0.15) <= 0.00001);
 });
 
 test("harness pose sampling is exactly TrafficMaterializationSystem pointAlongPolyline", () => {
