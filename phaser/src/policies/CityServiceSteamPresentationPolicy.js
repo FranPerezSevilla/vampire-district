@@ -1,4 +1,5 @@
-import { LAYERS } from "../data/district.js";
+import { buildings, LAYERS } from "../data/district.js";
+import { buildServiceFrontageGrimeDescriptors } from "./CityGrimePresentationPolicy.js";
 
 export const CITY_SERVICE_STEAM_FAMILIES = Object.freeze({
   SERVICE_STEAM: "service-steam-smoke"
@@ -221,6 +222,7 @@ export function installCityServiceSteamPresentationPolicy(GameSceneClass) {
     this.cityServiceSteamGraphics?.destroy?.();
     this.cityServiceSteamGraphics = this.add?.graphics?.() || null;
     this.cityServiceSteamGraphics?.setDepth?.(18);
+    this.cityServiceSteamGlobalGrimeDescriptors ||= buildServiceFrontageGrimeDescriptors(buildings, null);
     this.cityServiceSteamSourceDescriptors ||= Object.freeze([]);
     this.cityServiceSteamPuffFrame = Object.freeze([]);
     return result;
@@ -233,8 +235,9 @@ export function installCityServiceSteamPresentationPolicy(GameSceneClass) {
       return grime;
     }
     const bounds = renderBounds || this.urbanRenderBounds || this.calculateUrbanRenderBounds?.();
+    this.cityServiceSteamGlobalGrimeDescriptors ||= buildServiceFrontageGrimeDescriptors(buildings, null);
     this.cityServiceSteamSourceDescriptors = buildServiceSteamSourceDescriptors(
-      this.cityServiceFrontageGrimeDescriptors || grime,
+      this.cityServiceSteamGlobalGrimeDescriptors,
       bounds
     );
     return grime;
