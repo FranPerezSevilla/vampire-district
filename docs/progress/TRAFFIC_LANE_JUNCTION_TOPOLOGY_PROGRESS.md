@@ -422,3 +422,66 @@ The next bounded task is `M8.1-multi-agent-route-runtime-substrate` as recorded 
 M8.1 must generalize the proven route/materialization/lifecycle/reservation contracts to multiple civilian route agents while remaining explicitly non-default. It may reuse deterministic macro-population provenance to seed stable local route agents, but ongoing x/y and route continuation remain compiler-lane/connector owned.
 
 Production default movement must not flip until a later M8 activation task has dedicated population, pool, browser-soak, illegal-road-exit, teleport and police/vehicle-regression evidence.
+
+---
+
+## 2026-08-22 — M8.1 multi-agent route runtime substrate completed
+
+### Implemented
+
+Added `TrafficRoutePopulationSeed.js` as the canonical deterministic bootstrap from aggregate macro population provenance into stable local route agents. Macro edge/phase information is consumed only to choose the initial compiler lane/progress; after seeding, local movement authority is entirely compiler lane/connector geometry. Shadow mode now reuses the same seeding rule instead of maintaining a divergent copy.
+
+Added `TrafficMultiAgentRouteRuntimePolicy.js` with:
+
+- stable production-compatible token IDs (`edgeId#tokenIndex`);
+- deterministic token-ordered advancement through `TrafficRouteCursor`;
+- one shared M7 junction reservation registry for all route agents;
+- explicit wait-at-lane-end behaviour on reservation conflict;
+- route materialization tokens sampled only from compiler geometry;
+- output-only macro compatibility projection diagnostics;
+- no mutation authority over live macro traffic flows;
+- teardown that releases route reservations/state;
+- explicit `start/step/stop` activation API and browser debug hook;
+- default-off installation in `TrafficLocalAssignmentPolicy`.
+
+While explicitly enabled, legacy local behavior and steering presentation are guarded from overwriting `routeActive` x/y. The policy records the activation pool baseline and does not grow the materialization pool to preserve continuity.
+
+### Focused coverage
+
+Added `tests/traffic-multi-agent-route-runtime.test.js` proving:
+
+- seeded plus explicit unseeded records conserve macro population;
+- macro district centres are never used as local driving coordinates;
+- two conflicting agents cannot enter the same conservative junction simultaneously;
+- the waiter remains exactly at the incoming lane endpoint while the owner clears the connector;
+- ownership transfers deterministically after connector exit;
+- repeated runs with the same population/topology produce identical route state;
+- live macro flow state is unchanged;
+- destroy releases all reservations;
+- installed M8 policy is default-off;
+- fixed pool identity/size survives opt-in route stepping;
+- route-active pose cannot be overwritten by legacy behavior/steering;
+- stopping M8 restores legacy token metadata cleanly.
+
+The first M8.1 CI attempt exposed only a historical source-contract assertion in the M5/M6 dormancy test. The implementation still preserved the dormant semantics; the snapshot expression was adjusted to keep the historical `Boolean(controlled.enabled)` contract while OR-ing the new opt-in M8 state.
+
+### CI evidence
+
+Implementation head: `9173732803b2b92b28cf26a784e2382169eacc63`.
+
+GitHub Tests #2166 / run `32551128095` — full workflow success:
+
+- unit-tests — success (786 tests);
+- browser-boot — success;
+- browser-campaign — success;
+- browser-systems 1/3 — success;
+- browser-systems 2/3 — success;
+- browser-systems 3/3 — success.
+
+### Result
+
+M8.1 is complete. The branch now has a deterministic multi-agent compiler-route runtime substrate with stable identity, bounded pool semantics, shared junction reservations and legacy-pose guards, but it remains explicitly opt-in.
+
+Production civilian traffic still starts and runs on `authored-local-lanes`; live macro traffic remains population/load/compatibility state only.
+
+The next bounded task is `M8.2-opt-in-multi-agent-browser-soak`: exercise this substrate against production browser data, camera movement and lifecycle conditions before any later M8 task is allowed to make compiler-route traffic the default.
