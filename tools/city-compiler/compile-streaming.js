@@ -9,6 +9,7 @@ import {
   validateDistrictStreamingFileSet,
   writeDistrictStreamingFileSet
 } from "./district-streaming.js";
+import { attachCompilerTrafficLaneTopology } from "./traffic-lane-topology-integration.js";
 
 function argumentValue(prefix) {
   const argument = process.argv.slice(2).find(item => item.startsWith(prefix));
@@ -22,14 +23,19 @@ const fileSet = buildCityChunkFileSet({
   world: currentCityBlueprint.world,
   runtime: currentCityBlueprint.runtime
 });
-const districtStreaming = buildDistrictStreamingFileSet({
+const baseDistrictStreaming = buildDistrictStreamingFileSet({
   blueprint: currentCityBlueprint,
   roadGraph: cityRoadGraph,
   chunkSize: fileSet.manifest.chunkSize
 });
+const {
+  fileSet: districtStreaming,
+  validation: localTrafficTopologyValidation
+} = attachCompilerTrafficLaneTopology(baseDistrictStreaming);
 const districtValidation = validateDistrictStreamingFileSet(districtStreaming);
-if (!districtValidation.valid) {
+if (!districtValidation.valid || !localTrafficTopologyValidation.valid) {
   for (const error of districtValidation.errors) console.error(`[DISTRICT_STREAMING] ${error}`);
+  for (const error of localTrafficTopologyValidation.errors) console.error(`[LOCAL_TRAFFIC_TOPOLOGY] ${error}`);
   process.exitCode = 1;
 } else {
   await Promise.all([
@@ -41,5 +47,6 @@ if (!districtValidation.valid) {
 console.log(`City Streaming compiler · ${fileSet.manifest.id}`);
 console.log(`Grid ${fileSet.manifest.columns}×${fileSet.manifest.rows} · ${fileSet.manifest.chunkIds.length} chunk files`);
 console.log(`District packs ${districtValidation.metrics.districtPacks} · macro edges ${districtValidation.metrics.macroEdges} · traffic lanes ${districtValidation.metrics.trafficLaneEdges}`);
+console.log(`Local traffic topology · directed lanes ${localTrafficTopologyValidation.metrics.directedLanes} · nodes ${localTrafficTopologyValidation.metrics.nodes} · transitions ${localTrafficTopologyValidation.metrics.transitions}`);
 console.log(`Output ${outputDir}`);
 console.log(`Packs ${packsDir}`);

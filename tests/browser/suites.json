@@ -24,6 +24,8 @@
       "tests/browser/vehicle-core.spec.js",
       "tests/browser/vehicle-maintenance.spec.js",
       "tests/browser/city-streaming-traffic.spec.js",
+      "tests/browser/city-streaming-traffic-route-controlled.spec.js",
+      "tests/browser/city-streaming-traffic-route-multi-agent.spec.js",
       "tests/browser/city-streaming-traffic-behavior.spec.js",
       "tests/browser/city-streaming-traffic-physics.spec.js",
       "tests/browser/city-streaming-traffic-impact.spec.js",

@@ -1,0 +1,166 @@
+{
+  "initiative": "traffic-lane-junction-topology",
+  "version": 13,
+  "updatedAt": "2026-08-22",
+  "pullRequest": 73,
+  "branch": "codex/traffic-junction-topology",
+  "state": "final-validation-pending",
+  "currentMilestone": "M9",
+  "currentTask": "M9.2-explicit-user-gameplay-validation",
+  "lastValidatedImplementationHead": "763d6a12824d3d83d3fea92f549c56d1b1a04202",
+  "baseAtBootstrap": "805ea5d107dcddcef4cd564294569455093af4b0",
+  "canonicalDocs": {
+    "roadmap": "docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md",
+    "agentContract": "docs/agents/TRAFFIC_LANE_JUNCTION_TOPOLOGY_AGENT.md",
+    "taskBoundary": "docs/agent-tasks/2026-08-21-traffic-lane-junction-topology.md",
+    "m1CompilerContract": "docs/agent-tasks/2026-08-21-traffic-lane-junction-m1-compiler-contract.md",
+    "progressLog": "docs/progress/TRAFFIC_LANE_JUNCTION_TOPOLOGY_PROGRESS.md"
+  },
+  "authority": {
+    "localTopologyCompiler": "tools/city-compiler/traffic-lane-topology.js",
+    "connectorCompiler": "tools/city-compiler/traffic-junction-connectors.js",
+    "pureRouteCursor": "phaser/src/streaming/TrafficRouteCursor.js",
+    "populationSeed": "phaser/src/streaming/TrafficRoutePopulationSeed.js; macro provenance is bootstrap compatibility only",
+    "compatibilityProjection": "phaser/src/streaming/TrafficRouteCompatibilityProjection.js; live civilian aggregate accounting source",
+    "routeBehavior": "phaser/src/streaming/TrafficRouteBehaviorPolicy.js; scalar speed modulation only on compiler routes",
+    "routeMaterializationSubstrate": "phaser/src/streaming/TrafficRouteMaterializationPolicy.js plus route-aware TrafficLifecyclePolicy",
+    "controlledRouteActivation": "phaser/src/streaming/TrafficControlledRouteActivationPolicy.js; default-off regression harness only",
+    "multiAgentRouteRuntime": "phaser/src/streaming/TrafficMultiAgentRouteRuntimePolicy.js; normal civilian continuity authority",
+    "junctionReservation": "phaser/src/streaming/TrafficJunctionReservationRegistry.js; deterministic compiler-junction reservation authority",
+    "defaultMovementAuthority": "compiler-route-lanes",
+    "macroRole": "bootstrap population plus conservative route-projection accounting and independent police travel; never civilian local geometry",
+    "legacyCivilianPhaseRole": "bootstrap/fallback compatibility only; phase advancement is disabled while normal compiler-route authority is active"
+  },
+  "cleanupAudit": {
+    "productionRequiredCompatibility": [
+      "legacy macro trafficFlows as population bootstrap/accounting compatibility only",
+      "TrafficRoutePopulationSeed",
+      "TrafficRouteCompatibilityProjection",
+      "MacroTrafficPoliceSystem macro graph travel for police",
+      "route-aware lifecycle/materialization forced release and hijack semantics"
+    ],
+    "regressionHarnessesRetained": [
+      "TrafficControlledRouteActivationPolicy for controlled straight/right/left crossing proof",
+      "TrafficRouteTraversalHarness for isolated continuity regression proof",
+      "TrafficShadowRoutePolicy source/test as isolated historical M3 evidence only",
+      "MacroTrafficRouteContinuityPolicy and TrafficIntentDrivingPolicy as isolated legacy evidence only; neither has live production references"
+    ],
+    "supersededProductionPathRemoved": [
+      "TrafficLocalAssignmentPolicy no longer installs TrafficShadowRoutePolicy or wraps macro.simulateTick with a duplicate shadow civilian population"
+    ],
+    "productionGuards": [
+      "tests/traffic-lifecycle-integration.test.js recursively rejects live production references to TrafficShadowRoutePolicy, MacroTrafficRouteContinuityPolicy and TrafficIntentDrivingPolicy",
+      "legacy nearest-junction inference remains disabled",
+      "compiler-route lanes/connectors remain the sole civilian local pose authority"
+    ]
+  },
+  "hardInvariants": [
+    "route geometry is compiler-node-owned directed lanes plus activation-safe connectors only",
+    "macro graph centres never become civilian local driving coordinates",
+    "stable tokenId and materialization slot survive visible route stage changes",
+    "no coordinate teleport across lane/connector/lane",
+    "normal crossing release is protected; forced hijack/layer/teardown exits remain legal",
+    "legacy local behavior and steering never overwrite routeActive x/y",
+    "route-aware behavior may modulate scalar speed but has no lateral/world-space pose authority",
+    "junction conflicts delay connector entry while cars already inside normally clear",
+    "reservation ownership releases on exit/forced teardown and stale owners recover",
+    "compatibility projection never drops population or guesses ambiguous macro ownership",
+    "MacroTrafficRouteContinuityPolicy and TrafficIntentDrivingPolicy have no live production activation path",
+    "generated topology is fixed in compiler sources, never hand-edited as a runtime workaround"
+  ],
+  "completedTasks": [
+    "M0-foundation",
+    "M1-compiler-owned-topology-and-safety",
+    "M2.1-pure-route-cursor",
+    "M2.2-deterministic-preferred-continuation",
+    "M2.3-compatibility-projection",
+    "M3.1-shadow-route-agent-seeding",
+    "M3.2-shadow-route-advance-and-projection",
+    "M3.3-shadow-runtime-diagnostics",
+    "M4.1-isolated-continuous-traversal-harness",
+    "M5.1-route-aware-lifecycle-retention-substrate",
+    "M6.1-controlled-browser-route-activation",
+    "M7.1-deterministic-junction-reservation",
+    "M8.1-multi-agent-route-runtime-substrate",
+    "M8.2-opt-in-multi-agent-browser-soak",
+    "M8.3-default-compiler-route-activation-and-macro-accounting-migration",
+    "M9.1-legacy-cleanup-audit-and-final-validation-prep"
+  ],
+  "milestones": {
+    "M0": { "title": "Read-only lane/junction topology foundation", "state": "complete" },
+    "M1": { "title": "Production topology audit and compiler-owned hard safety contract", "state": "complete" },
+    "M2": { "title": "Stable route-agent state model (pure data)", "state": "complete" },
+    "M3": { "title": "Shadow macro continuity bridge", "state": "complete" },
+    "M4": { "title": "Local continuous traversal harness", "state": "complete" },
+    "M5": { "title": "Lifecycle/materialization/pool-retention integration", "state": "complete" },
+    "M6": { "title": "Opt-in browser activation at controlled junctions", "state": "complete" },
+    "M7": { "title": "Junction occupancy, yielding and conflict handling", "state": "complete" },
+    "M8": { "title": "Default runtime activation and macro migration", "state": "complete" },
+    "M9": { "title": "Legacy cleanup, documentation and user validation gate", "state": "final-validation-pending" }
+  },
+  "validation": {
+    "m1Final": { "state": "passed", "runNumber": 2083, "runId": 32485801858 },
+    "m2RouteCursor": { "state": "passed", "runNumber": 2087, "runId": 32486691651 },
+    "m2Projection": { "state": "passed", "runNumber": 2101, "runId": 32489771083 },
+    "m3Shadow": { "state": "passed", "runNumber": 2109, "runId": 32490920999 },
+    "m4Traversal": { "state": "passed", "runNumber": 2113, "runId": 32491786219 },
+    "m5Retention": { "state": "passed", "runNumber": 2125, "runId": 32492853271 },
+    "m6ControlledActivation": { "state": "passed", "runNumber": 2135, "runId": 32495071190 },
+    "m7JunctionReservation": { "state": "passed", "runNumber": 2153, "runId": 32549761928 },
+    "m8MultiAgentRuntime": { "state": "passed", "runNumber": 2166, "runId": 32551128095 },
+    "m8BrowserSoak": { "state": "passed", "runNumber": 2173, "runId": 32552262883 },
+    "m8DefaultActivationAndAccountingMigration": {
+      "state": "passed",
+      "workflow": "Tests",
+      "runNumber": 2199,
+      "runId": 32554733530,
+      "head": "0c25c8c7d324b027bd4fd0363483884e8da2f937"
+    },
+    "m9CleanupAndSemanticCi": {
+      "state": "passed",
+      "workflow": "Tests",
+      "runNumber": 2220,
+      "runId": 32577687431,
+      "head": "763d6a12824d3d83d3fea92f549c56d1b1a04202",
+      "jobs": {
+        "unit-tests": "success",
+        "browser-boot": "success",
+        "browser-campaign": "success",
+        "browser-world": "success",
+        "browser-traffic": "success",
+        "browser-police": "success",
+        "browser-gameplay": "success",
+        "browser-performance": "success",
+        "browser-building-review": "skipped-by-design"
+      },
+      "notes": "After the semantic CI split from main, browser-world now regenerates city:streaming before Playwright. This restores the M8 compiler-route prerequisite without regenerating road/sidewalk geometry under the world-geometry tests."
+    }
+  },
+  "nextTask": {
+    "id": "M9.2-explicit-user-gameplay-validation",
+    "milestone": "M9",
+    "goal": "Stop autonomous implementation and obtain explicit user gameplay approval of the final compiler-route traffic behavior before any ready/merge decision.",
+    "actions": [
+      "User drives or observes civilian traffic through several junctions and verifies cars stay on lanes without visible teleport/snap.",
+      "User observes straight/right/left crossings where practical and verifies no obvious junction deadlock.",
+      "User blocks or parks near traffic and verifies cars brake, wait and recover without leaving compiler geometry.",
+      "User hijacks a traffic vehicle and verifies no duplicate/ghost vehicle and normal slot/lifecycle behavior.",
+      "User triggers police and crosses districts to verify macro police/pursuit remains functional.",
+      "User moves through streaming/camera transitions and verifies no visible traffic pop, jump or continuity regression."
+    ],
+    "acceptance": [
+      "user explicitly approves gameplay validation",
+      "no visible lane departure, teleport, duplicate vehicle, stuck-junction pattern or police/streaming regression is reported"
+    ],
+    "doNotAdvanceIf": [
+      "user has not explicitly approved the gameplay checklist",
+      "any reported gameplay regression remains unexplained or unresolved",
+      "the task would merge PR #73 automatically"
+    ]
+  },
+  "finalGate": {
+    "requiresUserGameplayApproval": true,
+    "autonomousWorkStopsAt": "final-validation-pending",
+    "autoMergeAllowed": false
+  }
+}

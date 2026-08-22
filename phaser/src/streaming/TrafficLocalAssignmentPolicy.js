@@ -1,6 +1,9 @@
 import { LAYERS } from "../data/district.js";
+import { installTrafficControlledRouteActivationPolicy } from "./TrafficControlledRouteActivationPolicy.js";
 import { cameraWorldBounds } from "./TrafficMaterializationSystem.js";
 import { installTrafficLifecyclePolicy } from "./TrafficLifecyclePolicy.js";
+import { installTrafficMultiAgentRouteRuntimePolicy } from "./TrafficMultiAgentRouteRuntimePolicy.js";
+import { installTrafficRouteMaterializationMetadataPolicy } from "./TrafficRouteMaterializationPolicy.js";
 
 const CAMERA_RETENTION_MARGIN = 360;
 const VIEWPORT_GUARD_MARGIN = 120;
@@ -28,6 +31,29 @@ function slotIntersectsCamera(slot, bounds, margin = 0) {
     && y - radius <= bounds.bottom + padding;
 }
 
+export function compilerLocalTopologySnapshot(lanes) {
+  const topology = lanes?.localTopology;
+  const connectors = topology?.junctionConnectors;
+  const ready = Boolean(
+    topology?.ownershipMode === "compiler-node-id"
+    && topology?.lanes
+    && topology?.transitions
+    && connectors?.connectors
+  );
+  return {
+    ready,
+    movementActive: false,
+    ownershipMode: topology?.ownershipMode || null,
+    source: topology?.source || null,
+    directedLaneCount: finite(topology?.stats?.directedLaneCount),
+    transitionCount: finite(topology?.stats?.transitionCount),
+    junctionConnectorCount: finite(connectors?.stats?.connectorCount),
+    rejectedJunctionConnectorCount: finite(connectors?.stats?.rejectedConnectorCount),
+    outsideRoadJunctionConnectorCount: finite(connectors?.stats?.outsideRoadConnectorCount),
+    junctionConnectorTangentFailureCount: finite(connectors?.stats?.tangentFailureCount)
+  };
+}
+
 export function installTrafficLocalAssignmentPolicy(scene) {
   const materializer = scene?.trafficMaterializationSystem;
   if (!materializer?.eligible || !materializer?.release || !materializer?.assignments) {
@@ -35,11 +61,9 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   }
   if (materializer.__nbdLocalAssignmentPolicy) return materializer.__nbdLocalAssignmentPolicy;
 
-  // Do not install macro route continuity here. The macro graph describes district
-  // connectivity, not lane-level drivable geometry. Using it as local lane authority
-  // lets vehicles cut across sidewalks/buildings and enter the wrong side of roads.
-  // Local traffic must remain governed by the authored lane system until a real
-  // lane-to-lane junction graph exists.
+  // M8.3 promotes compiler localTopology to normal civilian continuity authority.
+  // The legacy authored lane feed remains only as a fail-closed/manual regression
+  // fallback; macro district geometry never becomes local movement authority.
   const originalEligible = materializer.eligible;
   const originalRelease = materializer.release;
   const originalHijack = materializer.hijack;
@@ -47,6 +71,9 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   let releaseBypassDepth = 0;
   let preventedVisibleDespawns = 0;
   let lastPreventedTokenId = null;
+  let routeMaterializationMetadataPolicy = null;
+  let controlledRoutePolicy = null;
+  let multiAgentRoutePolicy = null;
 
   function visibleRetention(slot) {
     if (scene.currentLayer !== LAYERS.STREET || !slot?.tokenId) return false;
@@ -94,6 +121,21 @@ export function installTrafficLocalAssignmentPolicy(scene) {
 
   function localBehaviorSnapshot() {
     const snapshot = originalSnapshot.call(this);
+    const controlled = controlledRoutePolicy?.snapshot?.() || {
+      ready: false,
+      enabled: false,
+      defaultEnabled: false,
+      defaultTrafficAuthority: "authored-local-lanes"
+    };
+    const multiAgent = multiAgentRoutePolicy?.snapshot?.() || {
+      ready: false,
+      enabled: false,
+      defaultEnabled: true,
+      defaultTrafficAuthority: "multi-agent-compiler-route",
+      macroMutationAuthority: false,
+      macroCoordinateAuthority: false
+    };
+    const compilerTopology = compilerLocalTopologySnapshot(this.lanes);
     return {
       ...snapshot,
       cameraRetentionMargin: CAMERA_RETENTION_MARGIN,
@@ -102,7 +144,16 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       preventedVisibleDespawns,
       lastPreventedTokenId,
       macroRouteContinuityActive: false,
-      laneAuthority: "authored-local-lanes"
+      legacyEndpointJunctionInferenceActive: false,
+      laneAuthority: multiAgent.enabled ? "compiler-route-lanes" : "authored-local-lanes",
+      routeMaterializationMetadataActive: Boolean(routeMaterializationMetadataPolicy?.active),
+      routeMovementActive: Boolean(controlled.enabled) || Boolean(multiAgent.enabled),
+      controlledRouteActivation: controlled,
+      multiAgentRouteRuntime: multiAgent,
+      compilerLocalTopology: {
+        ...compilerTopology,
+        movementActive: Boolean(multiAgent.enabled)
+      }
     };
   }
 
@@ -111,9 +162,14 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   materializer.hijack = localBehaviorHijack;
   materializer.snapshot = localBehaviorSnapshot;
 
-  // Lifecycle retention remains useful independently: it prevents visible churn
-  // without changing where a car is allowed to drive.
+  routeMaterializationMetadataPolicy = installTrafficRouteMaterializationMetadataPolicy(materializer);
   const lifecyclePolicy = installTrafficLifecyclePolicy(materializer);
+  // Controlled single-route activation remains available for M6/M7 regression proof.
+  controlledRoutePolicy = installTrafficControlledRouteActivationPolicy(materializer);
+  // M8.3 installs the production-shaped route runtime as the default civilian
+  // continuity authority. The policy itself refuses activation unless the full
+  // production population and accounting projection are conservative and complete.
+  multiAgentRoutePolicy = installTrafficMultiAgentRouteRuntimePolicy(materializer);
 
   const policy = {
     originalEligible,
@@ -125,9 +181,16 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     localBehaviorHijack,
     localBehaviorSnapshot,
     routeContinuityPolicy: null,
+    routeMaterializationMetadataPolicy,
     lifecyclePolicy,
+    controlledRoutePolicy,
+    multiAgentRoutePolicy,
+    laneJunctionTopologyPolicy: null,
     destroy() {
+      multiAgentRoutePolicy?.destroy?.();
+      controlledRoutePolicy?.destroy?.();
       lifecyclePolicy?.destroy?.();
+      routeMaterializationMetadataPolicy?.destroy?.();
       if (materializer.eligible === localBehaviorEligible) materializer.eligible = originalEligible;
       if (materializer.release === localBehaviorRelease) materializer.release = originalRelease;
       if (materializer.hijack === localBehaviorHijack) materializer.hijack = originalHijack;
