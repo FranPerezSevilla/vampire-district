@@ -104,6 +104,7 @@ async function focusBuilding(page, target, status) {
     scene.switchLayer(0, stand, status);
     await window.NBD_CITY_STREAM.forceFocus(reviewCenter.x, reviewCenter.y);
     scene.redrawLayer(status);
+    scene.cameras.main.stopFollow();
     scene.cameras.main.centerOn(reviewCenter.x, reviewCenter.y);
     scene.scene.pause();
 
