@@ -253,3 +253,9 @@ M1.2 implementation is complete. CI on the new seed/test head is still the close
 Exact next task:
 
 `M1.2-ci-validation-and-closeout`
+
+## 2026-08-22 — M1.2 CI supersession note
+
+The first M1.2 CI runs were automatically cancelled as newer documentation/state commits superseded them. This is not a test failure and must not be counted as validation evidence.
+
+The branch is intentionally frozen after the M1.2 documentation closeout so the next non-superseded `Tests` run can validate the four seed manifests plus their new automated gate. M1.3 composition remains blocked until that run completes successfully.
