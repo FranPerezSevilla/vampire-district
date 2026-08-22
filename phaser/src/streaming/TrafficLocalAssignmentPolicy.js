@@ -2,6 +2,7 @@ import { LAYERS } from "../data/district.js";
 import { installTrafficControlledRouteActivationPolicy } from "./TrafficControlledRouteActivationPolicy.js";
 import { cameraWorldBounds } from "./TrafficMaterializationSystem.js";
 import { installTrafficLifecyclePolicy } from "./TrafficLifecyclePolicy.js";
+import { installTrafficMultiAgentRouteRuntimePolicy } from "./TrafficMultiAgentRouteRuntimePolicy.js";
 import { installTrafficRouteMaterializationMetadataPolicy } from "./TrafficRouteMaterializationPolicy.js";
 import { installTrafficShadowRoutePolicy } from "./TrafficShadowRoutePolicy.js";
 
@@ -61,8 +62,9 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   }
   if (materializer.__nbdLocalAssignmentPolicy) return materializer.__nbdLocalAssignmentPolicy;
 
-  // Compiler localTopology is the only future physical route authority. Controlled
-  // M6 movement stays opt-in; all normal civilian traffic remains on legacy lanes.
+  // Compiler localTopology is the only future physical route authority. M8.1 adds
+  // a multi-agent substrate, but both route activation policies remain opt-in and
+  // all normal civilian traffic stays on authored local lanes until a later gate.
   const originalEligible = materializer.eligible;
   const originalRelease = materializer.release;
   const originalHijack = materializer.hijack;
@@ -73,6 +75,7 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   let shadowRoutePolicy = null;
   let routeMaterializationMetadataPolicy = null;
   let controlledRoutePolicy = null;
+  let multiAgentRoutePolicy = null;
 
   function visibleRetention(slot) {
     if (scene.currentLayer !== LAYERS.STREET || !slot?.tokenId) return false;
@@ -126,6 +129,14 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       defaultEnabled: false,
       defaultTrafficAuthority: "authored-local-lanes"
     };
+    const multiAgent = multiAgentRoutePolicy?.snapshot?.() || {
+      ready: false,
+      enabled: false,
+      defaultEnabled: false,
+      defaultTrafficAuthority: "authored-local-lanes",
+      macroMutationAuthority: false,
+      macroCoordinateAuthority: false
+    };
     return {
       ...snapshot,
       cameraRetentionMargin: CAMERA_RETENTION_MARGIN,
@@ -137,8 +148,9 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       legacyEndpointJunctionInferenceActive: false,
       laneAuthority: "authored-local-lanes",
       routeMaterializationMetadataActive: Boolean(routeMaterializationMetadataPolicy?.active),
-      routeMovementActive: Boolean(controlled.enabled),
+      routeMovementActive: Boolean(controlled.enabled || multiAgent.enabled),
       controlledRouteActivation: controlled,
+      multiAgentRouteRuntime: multiAgent,
       compilerLocalTopology: compilerLocalTopologySnapshot(this.lanes),
       shadowRouteContinuity: shadowRoutePolicy?.snapshot?.() || {
         ready: false,
@@ -157,9 +169,11 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   routeMaterializationMetadataPolicy = installTrafficRouteMaterializationMetadataPolicy(materializer);
   const lifecyclePolicy = installTrafficLifecyclePolicy(materializer);
   shadowRoutePolicy = installTrafficShadowRoutePolicy(materializer);
-  // Installed last so its token overlay remains outside the legacy/lifecycle token
-  // adapters, but it starts disabled and changes nothing until explicitly started.
+  // Controlled single-route activation stays available for M6/M7 regression proof.
   controlledRoutePolicy = installTrafficControlledRouteActivationPolicy(materializer);
+  // M8.1 is installed after all legacy/lifecycle token adapters so it can expose a
+  // complete route-token population when explicitly started. It is default-off.
+  multiAgentRoutePolicy = installTrafficMultiAgentRouteRuntimePolicy(materializer);
 
   const policy = {
     originalEligible,
@@ -175,8 +189,10 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     lifecyclePolicy,
     shadowRoutePolicy,
     controlledRoutePolicy,
+    multiAgentRoutePolicy,
     laneJunctionTopologyPolicy: null,
     destroy() {
+      multiAgentRoutePolicy?.destroy?.();
       controlledRoutePolicy?.destroy?.();
       shadowRoutePolicy?.destroy?.();
       lifecyclePolicy?.destroy?.();
