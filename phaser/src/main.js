@@ -4,6 +4,7 @@ import { installBuildingDecorativeSignPresentationPolicy } from "./policies/Buil
 import { installCityGrimePresentationPolicy } from "./policies/CityGrimePresentationPolicy.js";
 import { installCityPracticalLightPresentationPolicy } from "./policies/CityPracticalLightPresentationPolicy.js";
 import { installCityServiceCornerDressingPolicy } from "./policies/CityServiceCornerDressingPolicy.js";
+import { installCityServiceSteamPresentationPolicy } from "./policies/CityServiceSteamPresentationPolicy.js";
 import { installCitySurfacePresentationPolicy } from "./policies/CitySurfacePresentationPolicy.js";
 import { installCityVehicleLightPresentationPolicy } from "./policies/CityVehicleLightPresentationPolicy.js";
 import { installCityWetStreetPresentationPolicy } from "./policies/CityWetStreetPresentationPolicy.js";
@@ -135,6 +136,7 @@ installCityVehicleLightPresentationPolicy(GameScene);
 installCityWetStreetPresentationPolicy(GameScene);
 installCityGrimePresentationPolicy(GameScene);
 installCityServiceCornerDressingPolicy(GameScene);
+installCityServiceSteamPresentationPolicy(GameScene);
 installSidewalkCoveragePresentationPolicy(GameScene);
 installVampireVeilPolicy();
 installPlaytestSurfacePolicy();
