@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "maple-leaf-gfunk-a",
+  "stationId": "vice-fm",
+  "workingTitle": "Maple Leaf / G-Funk Proof A",
+  "sourceWork": "Maple Leaf Rag",
+  "sourceComposer": "Scott Joplin",
+  "sourceEditionOrCatalogue": "First edition, John Stark & Son, Sedalia, 1899; IMSLP #270188",
+  "sourceUrl": "https://imslp.org/wiki/Maple_Leaf_Rag_(Joplin,_Scott)",
+  "sourceStatus": "Public Domain — IMSLP lists the 1899 John Stark & Son first-edition scan as Public Domain.",
+  "sourceReuseTerms": "Public-domain first-edition score used as transcription/motif authority; no third-party recording, piano roll, sample or copyrighted modern arrangement is used.",
+  "sourceCheckedAt": "2026-08-22",
+  "sourceItemId": "IMSLP #270188",
+  "sourceEvidence": "IMSLP identifies the first edition, Sedalia: John Stark & Son, 1899, as Public Domain.",
+  "sourceSeed": true,
+  "proofBatch": "M1.3-batch-1",
+  "transcriptionCrossChecks": [
+    "Public-domain first-edition score image / public-domain typesetting used only to cross-check the opening motif pitches and rhythm."
+  ],
+  "arrangementLane": "g-funk-west-coast-hip-hop-instrumental",
+  "bpm": 96,
+  "durationSeconds": 60,
+  "midiTracks": [
+    "01 Source Motif - Joplin",
+    "02 G-Funk Drums",
+    "03 Funk Bass",
+    "04 Electric Piano / Clav",
+    "05 Mono Lead - Glide Guide",
+    "06 Low Strings / Cruise Pad"
+  ],
+  "status": "proof",
+  "userReview": "not-requested",
+  "attribution": {
+    "creditMode": "required-player-credit",
+    "playerCredit": "“Maple Leaf Rag” — Scott Joplin (1899). Arranged for ViceBlood (2026).",
+    "internalSourceCredit": "IMSLP #270188 — first edition, John Stark & Son, Sedalia, 1899; listed Public Domain.",
+    "licenseOrStatus": "Public Domain source score; composer/work attribution retained under the ViceBlood radio attribution policy.",
+    "thirdPartyAssets": []
+  },
+  "sha256": "e1ed276f39d3223149193725b69ea6e5fff2b893eaa14241ed552de778d8b58b",
+  "notes": "M1.3 proof. The opening Maple Leaf Rag motif is isolated on a source-derived track; the ragtime accompaniment is deliberately not copied. ViceBlood adds a relaxed 96 BPM G-funk pocket, funk bass, electric-piano/clav comping, an original mono-lead call/response guide and low cruise pad. General MIDI sounds are placeholders; no third-party audio is embedded or required."
+}
