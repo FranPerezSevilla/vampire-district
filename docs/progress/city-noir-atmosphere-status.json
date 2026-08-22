@@ -1,20 +1,20 @@
 {
   "initiative": "city-noir-atmosphere",
-  "version": 12,
+  "version": 13,
   "updatedAt": "2026-08-22",
   "branch": "agent/city-noir-atmosphere",
   "state": "autonomous-in-progress",
   "currentMilestone": "M7",
-  "currentTask": "checkpoint-after-M6",
+  "currentTask": "checkpoint-after-M7.1",
   "executionCadence": {
     "default": "task-validate-document-report-wait",
     "waitForUserAfterEachBoundedTask": true,
     "genericContinueAuthorizes": "next-bounded-task-only",
     "batchOverrideRequiresExplicitUserInstruction": true,
     "documentationRequiredInBatchMode": true,
-    "lastBatchScope": "generic continuation: M6.2 vehicle contact shadow only",
+    "lastBatchScope": "explicit continuation: M7.1 decorative sign/neon grammar only",
     "lastBatchState": "complete",
-    "rule": "Every bounded task must be validated and documented before the next task starts. M6 is closed; M7.1 requires new user direction."
+    "rule": "Every bounded task must be validated and documented before the next task starts. M7.1 is closed; M7.2 requires new user direction."
   },
   "dependency": {
     "pullRequest": 69,
@@ -25,10 +25,10 @@
     "rule": "PR #69 remains the sole road/sidewalk/crosswalk surface authority. Atmosphere work layers above it and does not duplicate curb, gutter, drain, crack, repair or road-paint geometry."
   },
   "branchSync": {
-    "lastIntegratedMain": "805ea5d107dcddcef4cd564294569455093af4b0",
-    "observedMain": "805ea5d107dcddcef4cd564294569455093af4b0",
+    "lastIntegratedMain": "26b2b456172d3261a9685c1c9a70f87dc591ba8c",
+    "observedMain": "26b2b456172d3261a9685c1c9a70f87dc591ba8c",
     "state": "synced",
-    "evidence": "PR #72 base is main@805ea5d107dcddcef4cd564294569455093af4b0 and current implementation head validated after the main synchronization.",
+    "evidence": "PR #72 integrates main@26b2b456172d3261a9685c1c9a70f87dc591ba8c, including the canonical split browser-suite CI architecture.",
     "rule": "Unrelated vehicle/traffic work is integrated only for branch continuity and must not expand atmosphere scope."
   },
   "completedTasks": [
@@ -77,58 +77,29 @@
     "M6.2-focused-tests",
     "M6.2-gameplay-scale-browser-evidence",
     "M6.2-documentation-checkpoint",
-    "M6.3-skipped-not-required"
+    "M6.3-skipped-not-required",
+    "M7.1-decorative-sign-neon-grammar",
+    "M7.1-focused-tests",
+    "M7.1-gameplay-scale-browser-evidence",
+    "M7.1-documentation-checkpoint"
   ],
   "milestones": {
-    "M0": {
-      "title": "Canonical direction, references and agent continuity",
-      "state": "complete"
-    },
-    "M1": {
-      "title": "Integrate the street-surface foundation",
-      "state": "complete"
-    },
-    "M2": {
-      "title": "Global value hierarchy and night exposure",
-      "state": "complete"
-    },
-    "M3": {
-      "title": "Practical-light islands",
-      "state": "complete"
-    },
-    "M4": {
-      "title": "Wet asphalt and local reflection language",
-      "state": "complete"
-    },
-    "M5": {
-      "title": "Low-frequency grime and urban surface dressing",
-      "state": "complete"
-    },
-    "M6": {
-      "title": "Grounding and shadow consistency",
-      "state": "complete"
-    },
-    "M7": {
-      "title": "Environmental storytelling and atmospheric set dressing",
-      "state": "planned"
-    },
-    "M8": {
-      "title": "District colour/material identity",
-      "state": "planned"
-    },
-    "M9": {
-      "title": "Final gameplay-scale review and bounded corrections",
-      "state": "planned"
-    }
+    "M0": { "title": "Canonical direction, references and agent continuity", "state": "complete" },
+    "M1": { "title": "Integrate the street-surface foundation", "state": "complete" },
+    "M2": { "title": "Global value hierarchy and night exposure", "state": "complete" },
+    "M3": { "title": "Practical-light islands", "state": "complete" },
+    "M4": { "title": "Wet asphalt and local reflection language", "state": "complete" },
+    "M5": { "title": "Low-frequency grime and urban surface dressing", "state": "complete" },
+    "M6": { "title": "Grounding and shadow consistency", "state": "complete" },
+    "M7": { "title": "Environmental storytelling and atmospheric set dressing", "state": "in-progress" },
+    "M8": { "title": "District colour/material identity", "state": "planned" },
+    "M9": { "title": "Final gameplay-scale review and bounded corrections", "state": "planned" }
   },
   "m2": {
     "state": "complete",
     "implementation": "palette-refinement",
     "focusedTest": "tests/city-night-value-hierarchy.test.js",
-    "browserEvidence": {
-      "workflowRun": 32464436723,
-      "artifactId": 9440164701
-    }
+    "browserEvidence": { "workflowRun": 32464436723, "artifactId": 9440164701 }
   },
   "m3": {
     "state": "complete",
@@ -137,14 +108,8 @@
       "phaser/src/policies/CityVehicleLightPresentationPolicy.js"
     ],
     "browserEvidence": {
-      "contextualFamilies": {
-        "workflowRun": 32468999890,
-        "artifactId": 9441823514
-      },
-      "vehicleAndEmergency": {
-        "workflowRun": 32470828688,
-        "artifactId": 9442522378
-      }
+      "contextualFamilies": { "workflowRun": 32468999890, "artifactId": 9441823514 },
+      "vehicleAndEmergency": { "workflowRun": 32470828688, "artifactId": 9442522378 }
     }
   },
   "m4": {
@@ -244,8 +209,43 @@
     "m6_3": {
       "state": "skipped-not-required",
       "reason": "M6.2 gameplay-scale evidence did not prove a meaningful residual floating-prop deficit. Street props remain with their existing presentation/gameplay authority."
+    }
+  },
+  "m7": {
+    "state": "in-progress",
+    "checkpointEvidence": "docs/progress/CITY_NOIR_ATMOSPHERE_M7_1_CHECKPOINT.md",
+    "m7_1": {
+      "state": "complete",
+      "authority": "phaser/src/policies/BuildingDecorativeSignPresentationPolicy.js",
+      "sourceAuthority": "existing authored building semantics plus direct reuse of M3 practical-light presentation palettes",
+      "families": {
+        "nightlife-band": "nightlife-accent",
+        "motel-marquee": "warm-frontage",
+        "medical-panel": "cool-civic",
+        "service-panel": "industrial-dirty"
+      },
+      "focusedTest": "tests/building-decorative-sign-presentation-policy.test.js",
+      "browserTest": "tests/browser/city-sign-neon-review.spec.js",
+      "validatedHead": "fbdebe0d0f1f1a19bd509dddae721ed77b99ea12",
+      "validation": {
+        "testsWorkflowRun": 32585402509,
+        "atmosphereWorkflowRun": 32585402507,
+        "artifactId": 9478965549,
+        "conclusion": "success"
+      },
+      "captures": [
+        "m7-sign-01-medical-panel.png",
+        "m7-sign-02-nightlife-band.png",
+        "m7-sign-03-motel-marquee.png",
+        "m7-sign-04-service-panel.png",
+        "m7-sign-control-dark.png"
+      ],
+      "candidateCount": 29,
+      "visualAssessment": "accepted: sparse semantic plaques add local urban identity; nightlife is the strongest saturated accent, hotel is warm, service remains subdued, and unsigned/dark controls do not inherit generic neon",
+      "implementationCorrection": "Gameplay evidence exposed that addMapLabel expects a numeric color; passing a CSS string produced invalid ##rrggbb and black text. M7.1 now passes the numeric M3 coreColor and the focused test locks the contract.",
+      "ciCorrection": "The atmosphere package grew to six serial tests and exceeded its old inner 8m timeout after five passes. The capture allowance is now 10m inside a 15m job; no runtime behavior changed."
     },
-    "nextPlannedTask": "M7.1-decorative-sign-neon-grammar",
+    "nextPlannedTask": "M7.2-steam-smoke-service-effects",
     "nextTaskState": "awaiting-user-direction"
   },
   "finalGate": {
@@ -253,5 +253,5 @@
     "autonomousWorkStopsAt": "final-validation-pending",
     "autoMergeAllowed": false
   },
-  "nextAction": "M6 is complete and documented. Report the M6.2 validation and wait for user direction. If authorized, execute only M7.1 decorative sign/neon grammar; do not combine M7.2 steam/smoke or M7.3 micro-scenes into that slice."
+  "nextAction": "M7.1 is complete and documented. Report validation and wait for user direction. If authorized, execute only M7.2 steam/smoke service effects; do not combine M7.3 contextual micro-scenes into that slice."
 }

@@ -85,6 +85,12 @@ async function focusBuilding(page, target, status) {
       x: target.x + target.w / 2,
       y: target.y + target.h / 2
     };
+    const reviewCenter = {
+      x: center.x,
+      y: target.panel
+        ? target.y + Math.min(target.h * 0.34, 96)
+        : center.y
+    };
     const margin = 56;
     const candidates = [
       { x: center.x, y: target.y + target.h + margin },
@@ -96,14 +102,15 @@ async function focusBuilding(page, target, status) {
     if (!stand) return { focused: false, labels: [] };
 
     scene.switchLayer(0, stand, status);
-    await window.NBD_CITY_STREAM.forceFocus(center.x, center.y);
+    await window.NBD_CITY_STREAM.forceFocus(reviewCenter.x, reviewCenter.y);
     scene.redrawLayer(status);
-    scene.cameras.main.centerOn(center.x, center.y);
+    scene.cameras.main.centerOn(reviewCenter.x, reviewCenter.y);
     scene.scene.pause();
 
     return {
       focused: true,
       center,
+      reviewCenter,
       stand,
       labels: (scene.mapLabels || [])
         .filter(label => label?.visible !== false)
