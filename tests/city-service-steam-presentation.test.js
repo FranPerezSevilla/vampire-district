@@ -63,22 +63,32 @@ const SERVICE_DESCRIPTORS = Object.freeze([
   grime("frontage-only", "store", "commercial", "north", 260, 520, { sourceKind: "frontage" })
 ]);
 
-test("M7.2 selects deterministic service-only steam sources with a hard cap and local culling", () => {
+test("M7.2 chooses one stable global source set and applies camera bounds only as local culling", () => {
   const before = structuredClone(SERVICE_DESCRIPTORS);
-  const bounds = { x: 0, y: 0, w: 900, h: 650 };
-  const first = buildServiceSteamSourceDescriptors(SERVICE_DESCRIPTORS, bounds);
-  const second = buildServiceSteamSourceDescriptors(SERVICE_DESCRIPTORS, bounds);
+  const global = buildServiceSteamSourceDescriptors(SERVICE_DESCRIPTORS, null);
+  assert.ok(global.length > 0);
+  assert.ok(global.length <= SERVICE_STEAM_PRESENTATION.maximumSources);
+
+  const focus = global[0];
+  const localBounds = { x: focus.x - 40, y: focus.y - 40, w: 80, h: 80 };
+  const local = buildServiceSteamSourceDescriptors(SERVICE_DESCRIPTORS, localBounds);
+  const localRepeat = buildServiceSteamSourceDescriptors(SERVICE_DESCRIPTORS, localBounds);
+  const globalIds = new Set(global.map(item => item.sourceId));
 
   assert.deepEqual(SERVICE_DESCRIPTORS, before);
-  assert.deepEqual(first, second);
-  assert.ok(Object.isFrozen(first));
-  assert.ok(first.length > 0);
-  assert.ok(first.length <= SERVICE_STEAM_PRESENTATION.maximumSources);
-  assert.ok(first.every(item => ["industrial", "warehouse"].includes(item.profileId)));
-  assert.ok(first.every(item => item.family === "service-steam-smoke"));
-  assert.ok(first.every(item => item.maxAlpha <= 0.18));
-  assert.equal(first.some(item => item.buildingId === "store"), false);
-  assert.equal(first.some(item => item.buildingId === "factory"), false);
+  assert.deepEqual(local, localRepeat);
+  assert.ok(Object.isFrozen(global));
+  assert.ok(Object.isFrozen(local));
+  assert.ok(local.length > 0);
+  assert.ok(local.length <= global.length);
+  assert.ok(local.every(item => globalIds.has(item.sourceId)));
+  assert.ok(global.every(item => ["industrial", "warehouse"].includes(item.profileId)));
+  assert.ok(global.every(item => item.family === "service-steam-smoke"));
+  assert.ok(global.every(item => item.maxAlpha <= 0.18));
+  assert.equal(global.some(item => item.buildingId === "store"), false);
+
+  const remoteBounds = { x: 2000, y: 2000, w: 100, h: 100 };
+  assert.deepEqual(buildServiceSteamSourceDescriptors(SERVICE_DESCRIPTORS, remoteBounds), []);
 });
 
 test("M7.2 puff frames stay below the source×puff cap, remain translucent, and animate deterministically", () => {
