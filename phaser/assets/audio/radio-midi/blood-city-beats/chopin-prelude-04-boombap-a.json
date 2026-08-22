@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "chopin-prelude-04-boombap-a",
+  "stationId": "blood-city-beats",
+  "workingTitle": "Prelude 04 / Boom Bap Proof A",
+  "sourceWork": "Prelude in E minor, Op. 28 No. 4",
+  "sourceComposer": "Frédéric Chopin",
+  "sourceEditionOrCatalogue": "Wessel & Co., London, ca.1839, 24 Preludes Op.28 Book I (Nos.1–14), plate W. & Co. No. 3098; IMSLP #66277",
+  "sourceUrl": "https://imslp.org/wiki/Preludes,_Op.28_(Chopin,_Fr%C3%A9d%C3%A9ric)",
+  "sourceStatus": "Public Domain — IMSLP lists the ca.1839 Wessel & Co. score as Public Domain.",
+  "sourceReuseTerms": "Public-domain score used only as transcription/motif reference; no modern recording, performance or copyrighted arrangement is used.",
+  "sourceCheckedAt": "2026-08-22",
+  "sourceItemId": "IMSLP #66277",
+  "sourceEvidence": "IMSLP identifies Book I (Nos.1–14), Wessel & Co., ca.1839, plate W. & Co. No. 3098, as Public Domain.",
+  "sourceSeed": true,
+  "arrangementLane": "boom-bap-trip-hop",
+  "bpm": 88,
+  "durationSeconds": 60,
+  "midiTracks": [
+    "00 Conductor",
+    "01 Source Motif - Chopin",
+    "02 Boom Bap Drums",
+    "03 Bass",
+    "04 Rhodes / Keys",
+    "05 Texture"
+  ],
+  "status": "prototype",
+  "userReview": "not-requested",
+  "attribution": {
+    "creditMode": "required-player-credit",
+    "playerCredit": "“Prelude in E minor, Op. 28 No. 4” — Frédéric Chopin (1838–39). Arranged for ViceBlood (2026).",
+    "internalSourceCredit": "IMSLP #66277 — Wessel & Co., London, ca.1839, Book I Nos.1–14, plate W. & Co. No. 3098; listed Public Domain.",
+    "licenseOrStatus": "Public Domain source score; composer/work attribution retained under the ViceBlood radio attribution policy.",
+    "thirdPartyAssets": []
+  },
+  "notes": "M1.2 provenance seed only. M1.3 should use the descending harmonic/melodic identity as a dark 1990s boom-bap/trip-hop hook without reproducing a modern performance. Planned values may be revised when the proof MIDI is generated."
+}
