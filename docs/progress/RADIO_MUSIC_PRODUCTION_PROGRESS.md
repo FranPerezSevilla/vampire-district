@@ -130,3 +130,62 @@ Current Pixabay Content License attribution is not mandatory, but credit is appr
 The next workbench/manifest task must implement an `attribution` object and validation. A candidate may not become `daw-candidate` while required credit/provenance information is unknown.
 
 M7 must produce a final credit roll-up that can be copied into the game's credits without relying on conversation history.
+
+## 2026-08-22 — M1.1 MIDI workbench implementation checkpoint
+
+### Implementation
+
+Commit `85e22cc49ccfe15092d9a8127f85e4b4e47751d2` adds a dependency-free development-only workbench under `tools/radio-composer/`:
+
+- `midi-workbench.js` — SMF Type-1 writer, narrow parser/validator, SHA-256 helper and sidecar manifest validator;
+- `manifest.schema.json` — explicit manifest contract;
+- `smoke.js` — synthetic end-to-end fixture generator;
+- `validate-candidate.js` — CLI pair validator;
+- `README.md` — fresh-agent usage and production workflow;
+- `tests/radio-composer-workbench.test.js` — focused `node:test` coverage;
+- package scripts `test:radio`, `radio:smoke` and `radio:validate`.
+
+No Phaser/runtime dependency was added and the synthetic smoke fixture is explicitly excluded from catalogue counts.
+
+### MIDI validation contract now proven locally
+
+A temporary isolated execution of the exact workbench code passed 4/4 focused tests:
+
+1. writes a named Type-1 MIDI with conductor/tempo metadata;
+2. rejects malformed MIDI headers;
+3. rejects manifests missing provenance/attribution requirements;
+4. writes and re-validates a paired synthetic MIDI + sidecar manifest.
+
+The smoke fixture produced:
+
+- conductor track;
+- `01 Synthetic Motif`;
+- `02 Placeholder Drums`;
+- 96 BPM;
+- SHA-256 `7eaace8e27615f8e9f9a59035371aa98e0f8044830cd330f949fd716e854d46e`.
+
+The pair validator confirmed track-name/order agreement and matching hash.
+
+### Attribution gate implemented
+
+The manifest validator now requires source/reuse fields plus an `attribution` object containing:
+
+- credit classification;
+- ready-to-use player credit;
+- internal source credit;
+- licence/status statement;
+- third-party asset list.
+
+This is the tooling enforcement requested after the attribution-policy discussion; a later `daw-candidate` cannot silently omit required source/credit metadata.
+
+### Repository validation state
+
+GitHub workflow **Tests #2221** / run `32578217186` was still `in_progress` at the final bounded observation for implementation commit `85e22cc49ccfe15092d9a8127f85e4b4e47751d2`.
+
+Per repository bounded-wait rules, autonomous work does not poll indefinitely. M1.1 is therefore recorded as `implementation-complete-validation-pending`, not falsely marked green.
+
+Exact next task remains:
+
+`M1.1-ci-validation-and-closeout`
+
+Only after that gate is green should state advance to `M1.2-provenance-seed-set`; M1.2 will select and document exactly one clean source work per core station before any proof arrangement is generated.
