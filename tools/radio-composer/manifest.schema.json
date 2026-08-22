@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://viceblood.invalid/schemas/radio-midi-manifest.schema.json",
+  "title": "ViceBlood radio MIDI candidate manifest",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "id",
+    "stationId",
+    "workingTitle",
+    "sourceWork",
+    "sourceComposer",
+    "sourceEditionOrCatalogue",
+    "sourceUrl",
+    "sourceStatus",
+    "sourceReuseTerms",
+    "sourceCheckedAt",
+    "arrangementLane",
+    "bpm",
+    "durationSeconds",
+    "midiTracks",
+    "status",
+    "userReview",
+    "attribution"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "stationId": { "type": "string", "minLength": 1 },
+    "workingTitle": { "type": "string", "minLength": 1 },
+    "sourceWork": { "type": "string", "minLength": 1 },
+    "sourceComposer": { "type": "string", "minLength": 1 },
+    "sourceEditionOrCatalogue": { "type": "string", "minLength": 1 },
+    "sourceUrl": { "type": "string", "minLength": 1 },
+    "sourceStatus": { "type": "string", "minLength": 1 },
+    "sourceReuseTerms": { "type": "string", "minLength": 1 },
+    "sourceCheckedAt": { "type": "string", "minLength": 1 },
+    "arrangementLane": { "type": "string", "minLength": 1 },
+    "bpm": { "type": "number", "exclusiveMinimum": 0 },
+    "durationSeconds": { "type": "number", "exclusiveMinimum": 0 },
+    "midiTracks": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "status": { "enum": ["prototype", "proof", "daw-candidate", "rejected", "fixture"] },
+    "userReview": { "enum": ["not-requested", "pending", "approved", "revise"] },
+    "attribution": {
+      "type": "object",
+      "required": ["creditMode", "playerCredit", "internalSourceCredit", "licenseOrStatus", "thirdPartyAssets"],
+      "properties": {
+        "creditMode": { "enum": ["required-player-credit", "courtesy-player-credit", "internal-only"] },
+        "playerCredit": { "type": "string", "minLength": 1 },
+        "internalSourceCredit": { "type": "string", "minLength": 1 },
+        "licenseOrStatus": { "type": "string", "minLength": 1 },
+        "thirdPartyAssets": { "type": "array" }
+      }
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}
