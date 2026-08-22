@@ -10,6 +10,7 @@
   "authority": {
     "owns": [
       "radio music source provenance",
+      "radio music attribution/credit contract",
       "radio MIDI arrangement workbench",
       "generated radio MIDI candidates and sidecar manifests",
       "station composition grammar and production progress"
@@ -54,8 +55,20 @@
     "kind": "multitrack-midi-production-sketch",
     "canonicalCandidatePath": "phaser/assets/audio/radio-midi/<station-id>/<track-id>.mid",
     "sidecarManifest": true,
+    "attributionSidecarRequired": true,
     "finalRenderedAudioInScope": false,
     "runtimeIntegrationInScope": false
+  },
+  "attributionPolicy": {
+    "contract": "docs/audio/RADIO_MUSIC_ATTRIBUTION.md",
+    "composerAndWorkPlayerCreditRequired": true,
+    "preferredSourceClasses": ["public-domain-clean-reuse", "CC0"],
+    "conditionalSourceClass": "CC-BY-with-complete-attribution",
+    "blockedWithoutExplicitUserApproval": ["NC", "ND", "SA", "unclear-commercial-reuse"],
+    "thirdPartyRecordingSamplesDefault": "forbidden-without-explicit-compatible-licence",
+    "creditClassifications": ["required-player-credit", "courtesy-player-credit", "internal-only"],
+    "dawCandidateRequiresCompleteAttribution": true,
+    "finalCreditRollupRequiredAtM7": true
   },
   "milestones": {
     "M0": "complete",
@@ -83,7 +96,7 @@
   ],
   "autonomousStopConditions": [
     "explicit user listening gate reached",
-    "source provenance cannot be established and no equivalent candidate can be substituted",
+    "source provenance/attribution cannot be established and no equivalent candidate can be substituted",
     "task would require runtime/gameplay scope",
     "task requires final DAW subjective judgment rather than MIDI production"
   ],
@@ -95,6 +108,7 @@
     "docs/progress/radio-music-production-status.json",
     "docs/roadmaps/RADIO_MUSIC_PRODUCTION_ROADMAP.md",
     "docs/audio/RADIO_MUSIC_BIBLE.md",
+    "docs/audio/RADIO_MUSIC_ATTRIBUTION.md",
     "docs/agents/RADIO_COMPOSER_AGENT.md",
     "docs/agent-tasks/2026-08-22-radio-music-production.md",
     "docs/progress/RADIO_MUSIC_PRODUCTION_PROGRESS.md"
