@@ -4,8 +4,8 @@
   "branch": "codex/90s-radio-music-production",
   "pullRequestNumber": 76,
   "state": "active",
-  "currentMilestone": "M1.1-complete",
-  "nextTask": "M1.2-provenance-seed-set",
+  "currentMilestone": "M1.2-implementation-complete-validation-pending",
+  "nextTask": "M1.2-ci-validation-and-closeout",
   "mission": "Produce editable ViceBlood car-radio MIDI arrangements from provenance-cleared public-domain compositions using distinct 1990s station grammars; user performs final DAW production.",
   "authority": {
     "owns": [
@@ -85,10 +85,49 @@
       "conclusion": "success"
     }
   },
+  "sourceSeedSet": {
+    "checkedAt": "2026-08-22",
+    "policy": "public-domain score/manuscript references only; no third-party recording/sample dependencies",
+    "documentation": "docs/audio/RADIO_MUSIC_SOURCE_SEEDS.md",
+    "candidates": [
+      {
+        "stationId": "blood-city-beats",
+        "id": "chopin-prelude-04-boombap-a",
+        "work": "Prelude in E minor, Op. 28 No. 4",
+        "composer": "Frédéric Chopin",
+        "sourceItem": "IMSLP #66277",
+        "sourceStatus": "Public Domain"
+      },
+      {
+        "stationId": "vice-fm",
+        "id": "maple-leaf-gfunk-a",
+        "work": "Maple Leaf Rag",
+        "composer": "Scott Joplin",
+        "sourceItem": "IMSLP #270188",
+        "sourceStatus": "Public Domain"
+      },
+      {
+        "stationId": "night-shift",
+        "id": "mountain-king-bigbeat-a",
+        "work": "In the Hall of the Mountain King",
+        "composer": "Edvard Grieg",
+        "sourceItem": "IMSLP #810457",
+        "sourceStatus": "Public Domain"
+      },
+      {
+        "stationId": "pulse-94-6",
+        "id": "bach-prelude-846-acid-a",
+        "work": "Prelude in C major, BWV 846",
+        "composer": "Johann Sebastian Bach",
+        "sourceItem": "IMSLP #457551",
+        "sourceStatus": "Public Domain"
+      }
+    ]
+  },
   "milestones": {
     "M0": "complete",
     "M1.1": "complete",
-    "M1.2": "next",
+    "M1.2": "validation-pending",
     "M1.3": "planned-user-gate",
     "M2": "planned-after-user-feedback",
     "M3": "planned",
@@ -124,6 +163,7 @@
     "docs/roadmaps/RADIO_MUSIC_PRODUCTION_ROADMAP.md",
     "docs/audio/RADIO_MUSIC_BIBLE.md",
     "docs/audio/RADIO_MUSIC_ATTRIBUTION.md",
+    "docs/audio/RADIO_MUSIC_SOURCE_SEEDS.md",
     "docs/agents/RADIO_COMPOSER_AGENT.md",
     "docs/agent-tasks/2026-08-22-radio-music-production.md",
     "docs/progress/RADIO_MUSIC_PRODUCTION_PROGRESS.md"
