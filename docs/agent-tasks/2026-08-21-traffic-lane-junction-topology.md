@@ -39,15 +39,17 @@ M1.1 proved that endpoint-to-nearest-junction inference over those routes create
 - `tools/city-compiler/traffic-junction-connectors.js` — tangent-preserving connector geometry validated against compiler road surfaces.
 - `tools/city-compiler/traffic-lane-topology-integration.js` — additive traffic pack v6 `localTopology` integration.
 - `phaser/src/streaming/TrafficRouteCursor.js` — pure stable route identity/time advancement.
+- `phaser/src/streaming/TrafficRoutePopulationSeed.js` — deterministic macro-provenance bootstrap into compiler lanes; bootstrap only.
 - `phaser/src/streaming/TrafficJunctionReservationRegistry.js` — deterministic conservative junction ownership/yielding.
 - `phaser/src/streaming/TrafficRouteMaterializationPolicy.js` + route-aware lifecycle policy — materialization metadata and crossing retention.
-- `phaser/src/streaming/TrafficControlledRouteActivationPolicy.js` — proven controlled visible route traversal; still default-off.
+- `phaser/src/streaming/TrafficControlledRouteActivationPolicy.js` — proven controlled visible route traversal; default-off.
+- `phaser/src/streaming/TrafficMultiAgentRouteRuntimePolicy.js` — proven deterministic multi-agent route substrate; default-off.
 
 Macro traffic remains population/load/compatibility authority only. Macro graph centres and legacy phase never become local driving coordinates.
 
 ## Validated milestone boundary
 
-M0 through M7 are complete.
+M0 through M7 plus M8.1 are complete.
 
 Key final evidence:
 
@@ -57,41 +59,46 @@ Key final evidence:
 - M4 traversal harness — Tests #2113.
 - M5 lifecycle/materialization retention — Tests #2125.
 - M6 controlled browser route activation — Tests #2135 / run `32495071190`.
-- M7 deterministic junction reservation — implementation head `dcb08288ea797e7016bcdb3858299a85549a7259`, Tests #2153 / run `32549761928`, all required jobs green.
+- M7 deterministic junction reservation — Tests #2153 / run `32549761928`.
+- M8.1 deterministic multi-agent route runtime substrate — implementation head `9173732803b2b92b28cf26a784e2382169eacc63`, Tests #2166 / run `32551128095`, unit + boot + campaign + all three browser-system shards green.
 
-M7 guarantees that conflicting controlled route tokens reserve before connector entry, wait on the incoming lane, normally clear once inside, release on exit/forced teardown and recover stale ownership without deadlocking. Default civilian movement remains `authored-local-lanes`.
+M8.1 conserves macro population through seeded + explicit unseeded records, preserves stable production-compatible token identity, drives only from compiler lane/connector geometry, shares one M7 reservation registry, protects `routeActive` pose from legacy behavior/steering, keeps the materialization pool bounded and does not mutate live macro traffic state.
+
+Default civilian movement remains `authored-local-lanes`.
 
 ## Current task
 
 The status JSON is authoritative. Current task:
 
-`M8.1-multi-agent-route-runtime-substrate`
+`M8.2-opt-in-multi-agent-browser-soak`
 
-Purpose: generalize the already-proven pure route, reservation, lifecycle and materialization contracts to a deterministic multi-agent civilian route runtime substrate **without flipping production default movement yet**.
+Purpose: exercise the complete M8.1 substrate against production browser data before any later M8 task is allowed to make compiler-route traffic the normal civilian authority.
 
 ### Required shape
 
-- Reuse/extract deterministic macro-population-to-local-route seeding from the shadow bridge where appropriate.
-- Macro provenance may seed stable route identity, but ongoing local x/y and continuation must use compiler lane/connector geometry only.
-- Advance multiple stable route agents through one shared M7 junction reservation registry.
-- Expose route materialization tokens without growing the fixed visual pool or changing token identity.
-- Keep waiting before connector entry; cars already inside normally clear the connector.
-- Prevent legacy behavior/steering from overwriting `routeActive` x/y.
-- Do not mutate live macro traffic phases/load as the new physical movement authority in M8.1; compatibility projection remains diagnostic/output-only in this slice.
-- Keep normal production civilian traffic on `authored-local-lanes` throughout M8.1.
+- Add a dedicated production-browser scenario that proves M8 is disabled on normal startup.
+- Explicitly start M8 only inside the scenario through the public policy/debug API.
+- Capture baseline macro traffic state, materialization pool identity/size and stable token IDs before the soak.
+- Advance the route runtime for a bounded production soak while moving/following the camera.
+- Track route-active world pose and reject visible teleports or non-compiler route-stage geometry.
+- Keep reservation/yield state bounded and require complete cleanup on stop/teardown.
+- Verify legacy behavior/steering cannot overwrite route-active pose while M8 is enabled.
+- Verify live `MacroTrafficPoliceSystem` traffic flows/phases/counts are unchanged throughout the soak.
+- Stop M8 and prove authored-local traffic is restored cleanly.
+- Keep M8 default-off outside the explicit test scenario.
 
 ### Acceptance
 
-- seeded + explicitly unseeded records conserve macro population;
-- stable identity survives multi-agent lane/connector/lane progression;
-- conflicting agents cannot simultaneously enter the same conservative junction authority;
-- waiting agents remain at the incoming lane endpoint;
-- teardown releases reservations and route state;
-- materialization pool remains bounded/fixed;
-- route-active x/y comes only from compiler lane/connector geometry;
-- legacy behavior/steering cannot overwrite route-active movement;
-- default civilian movement remains unchanged;
-- focused tests and full CI pass.
+- normal browser startup reports M8 disabled and `laneAuthority: authored-local-lanes`;
+- explicit M8 activation conserves production population, including explicit unseeded records;
+- stable token and materialization slot identity survive the bounded soak;
+- pool identity/size does not grow;
+- no visible route teleport or compiler-geometry authority violation is observed;
+- reservation state remains bounded and is empty after stop/teardown;
+- legacy behavior/steering cannot overwrite route-active x/y;
+- live macro traffic state is unchanged;
+- stop restores legacy authored-local traffic cleanly;
+- focused browser evidence and full CI pass.
 
 ## Non-negotiable architecture
 
@@ -101,19 +108,21 @@ Purpose: generalize the already-proven pure route, reservation, lifecycle and ma
 - No snap/teleport between route stages.
 - Only compiler-node-owned lanes and activation-safe compiler connectors may become local route stages.
 - Missing geometry blocks safely instead of falling back to arbitrary movement.
-- Stable `tokenId` and later materialized slot identity survive route stage changes.
+- Stable `tokenId` and materialized slot identity survive route stage changes.
 - Lifecycle owns spawn/despawn/pool retention, not route geometry.
 - Junction conflict handling may delay connector entry but does not invent geometry.
 - A car already inside a connector normally clears it rather than voluntarily stopping mid-junction.
 - Stale reservation recovery is mandatory.
 - `MacroTrafficRouteContinuityPolicy` and `TrafficIntentDrivingPolicy` must not be re-enabled wholesale.
 - Generated topology is fixed in its owning compiler; never hand-edit generated output as a workaround.
+- M8.2 is evidence only: it must not silently become default activation.
 
 ## Remaining activation ladder
 
-1. M8.1 — multi-agent route runtime substrate, still non-default.
-2. Later M8 bounded task(s) — controlled default activation + macro accounting migration only after soak evidence.
-3. M9 — superseded legacy cleanup + documentation + explicit user gameplay validation.
+1. M8.1 — multi-agent route runtime substrate — complete, default-off.
+2. M8.2 — production browser soak — current, explicit opt-in only.
+3. Later M8 bounded task(s) — default activation + macro accounting migration only after M8.2 evidence is green.
+4. M9 — superseded legacy cleanup + documentation + explicit user gameplay validation.
 
 ## Final gate
 
