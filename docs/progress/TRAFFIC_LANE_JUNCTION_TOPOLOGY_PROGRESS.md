@@ -485,3 +485,56 @@ M8.1 is complete. The branch now has a deterministic multi-agent compiler-route 
 Production civilian traffic still starts and runs on `authored-local-lanes`; live macro traffic remains population/load/compatibility state only.
 
 The next bounded task is `M8.2-opt-in-multi-agent-browser-soak`: exercise this substrate against production browser data, camera movement and lifecycle conditions before any later M8 task is allowed to make compiler-route traffic the default.
+
+---
+
+## 2026-08-22 — M8.2 production multi-agent browser soak completed
+
+### Browser evidence
+
+Added `tests/browser/city-streaming-traffic-route-multi-agent.spec.js` and registered it in the official `test:browser:systems` suite.
+
+The production `urban-explore` scenario now proves, under explicit M8 activation only:
+
+- normal startup remains default-off with `laneAuthority: authored-local-lanes`;
+- seeded plus explicit unseeded records conserve the production macro population;
+- stable route token IDs survive a bounded 180 × 0.05s soak;
+- one real materialized route token retains the same pool slot while camera/city streaming follows it;
+- every active route pose lies on its exact compiler-owned lane or activation-safe connector geometry;
+- connector samples remain activation-safe and no non-compiler stage is accepted;
+- per-tick route displacement stays within the configured physical movement budget, rejecting visible teleports;
+- route progression reaches connector and outgoing-lane hops on production data;
+- junction reservation telemetry remains bound to real compiler junction/connector authority and releases completely on stop;
+- route-active behavior/steering guards prevent legacy x/y overwrite;
+- materialization pool object identity, slot identity and size remain fixed;
+- live macro flow map/object/phase values remain unchanged by M8 during the isolated soak;
+- stopping M8 clears route metadata/reservations/guards and restores authored-local traffic.
+
+The macro system normally advances phases from the Phaser frame loop, so the browser harness pauses only `MacroTrafficPoliceSystem.update` while capturing the M8 mutation proof. This isolates whether the route runtime mutates live macro state without changing production code or inventing a fake traffic controller.
+
+### Validation correction
+
+The first test commit (`a2d91344bdd32aa6405dd45fa5fb8cd005d90c00`) triggered Tests #2172, but `test:browser:systems` enumerates specs explicitly. The new soak therefore was not yet part of that run and #2172 was not accepted as evidence.
+
+`package.json` was updated so the soak is part of the official browser-system command. Concurrency cancelled #2172 and the first valid M8.2 run is the following one.
+
+### CI evidence
+
+Validated implementation/evidence head: `e9593957fff711e5b606253049321475376cccf8`.
+
+GitHub Tests #2173 / run `32552262883` — full workflow success:
+
+- unit-tests — success;
+- browser-boot — success;
+- browser-campaign — success;
+- browser-systems 1/3 — success;
+- browser-systems 2/3 — success;
+- browser-systems 3/3 — success.
+
+### Result
+
+M8.2 is complete. The production-shaped multi-agent compiler-route runtime survives a real browser soak with fixed pool/token/slot continuity, compiler geometry authority, bounded movement, reservation cleanup, presentation guards and zero M8 mutation of isolated macro flow state.
+
+Production startup is still intentionally `authored-local-lanes`. No default activation changed in M8.2.
+
+The next bounded gate is `M8.3-default-compiler-route-activation-and-macro-accounting-migration`. It must not flip normal traffic unless production seeding coverage is complete and macro accounting can migrate conservatively without reintroducing macro coordinates/phases as local movement authority.
