@@ -62,9 +62,9 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   }
   if (materializer.__nbdLocalAssignmentPolicy) return materializer.__nbdLocalAssignmentPolicy;
 
-  // Compiler localTopology is the only future physical route authority. M8.1 adds
-  // a multi-agent substrate, but both route activation policies remain opt-in and
-  // all normal civilian traffic stays on authored local lanes until a later gate.
+  // M8.3 promotes compiler localTopology to normal civilian continuity authority.
+  // The legacy authored lane feed remains only as a fail-closed/manual regression
+  // fallback; macro district geometry never becomes local movement authority.
   const originalEligible = materializer.eligible;
   const originalRelease = materializer.release;
   const originalHijack = materializer.hijack;
@@ -132,11 +132,12 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     const multiAgent = multiAgentRoutePolicy?.snapshot?.() || {
       ready: false,
       enabled: false,
-      defaultEnabled: false,
-      defaultTrafficAuthority: "authored-local-lanes",
+      defaultEnabled: true,
+      defaultTrafficAuthority: "multi-agent-compiler-route",
       macroMutationAuthority: false,
       macroCoordinateAuthority: false
     };
+    const compilerTopology = compilerLocalTopologySnapshot(this.lanes);
     return {
       ...snapshot,
       cameraRetentionMargin: CAMERA_RETENTION_MARGIN,
@@ -146,12 +147,15 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       lastPreventedTokenId,
       macroRouteContinuityActive: false,
       legacyEndpointJunctionInferenceActive: false,
-      laneAuthority: "authored-local-lanes",
+      laneAuthority: multiAgent.enabled ? "compiler-route-lanes" : "authored-local-lanes",
       routeMaterializationMetadataActive: Boolean(routeMaterializationMetadataPolicy?.active),
       routeMovementActive: Boolean(controlled.enabled) || Boolean(multiAgent.enabled),
       controlledRouteActivation: controlled,
       multiAgentRouteRuntime: multiAgent,
-      compilerLocalTopology: compilerLocalTopologySnapshot(this.lanes),
+      compilerLocalTopology: {
+        ...compilerTopology,
+        movementActive: Boolean(multiAgent.enabled)
+      },
       shadowRouteContinuity: shadowRoutePolicy?.snapshot?.() || {
         ready: false,
         mode: "shadow",
@@ -169,10 +173,11 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   routeMaterializationMetadataPolicy = installTrafficRouteMaterializationMetadataPolicy(materializer);
   const lifecyclePolicy = installTrafficLifecyclePolicy(materializer);
   shadowRoutePolicy = installTrafficShadowRoutePolicy(materializer);
-  // Controlled single-route activation stays available for M6/M7 regression proof.
+  // Controlled single-route activation remains available for M6/M7 regression proof.
   controlledRoutePolicy = installTrafficControlledRouteActivationPolicy(materializer);
-  // M8.1 is installed after all legacy/lifecycle token adapters so it can expose a
-  // complete route-token population when explicitly started. It is default-off.
+  // M8.3 installs the production-shaped route runtime as the default civilian
+  // continuity authority. The policy itself refuses activation unless the full
+  // production population and accounting projection are conservative and complete.
   multiAgentRoutePolicy = installTrafficMultiAgentRouteRuntimePolicy(materializer);
 
   const policy = {
