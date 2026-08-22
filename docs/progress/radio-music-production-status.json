@@ -25,30 +25,10 @@
     ]
   },
   "coreStations": [
-    {
-      "id": "blood-city-beats",
-      "workingName": "Blood City Beats",
-      "lane": "boom-bap-trip-hop",
-      "bpmRange": [82, 100]
-    },
-    {
-      "id": "vice-fm",
-      "workingName": "Vice FM",
-      "lane": "g-funk-west-coast-hip-hop-instrumental",
-      "bpmRange": [88, 108]
-    },
-    {
-      "id": "night-shift",
-      "workingName": "Night Shift",
-      "lane": "big-beat-breakbeat-industrial-dance",
-      "bpmRange": [125, 150]
-    },
-    {
-      "id": "pulse-94-6",
-      "workingName": "Pulse 94.6",
-      "lane": "house-acid-house-techno",
-      "bpmRange": [120, 140]
-    }
+    { "id": "blood-city-beats", "workingName": "Blood City Beats", "lane": "boom-bap-trip-hop", "bpmRange": [82, 100] },
+    { "id": "vice-fm", "workingName": "Vice FM", "lane": "g-funk-west-coast-hip-hop-instrumental", "bpmRange": [88, 108] },
+    { "id": "night-shift", "workingName": "Night Shift", "lane": "big-beat-breakbeat-industrial-dance", "bpmRange": [125, 150] },
+    { "id": "pulse-94-6", "workingName": "Pulse 94.6", "lane": "house-acid-house-techno", "bpmRange": [120, 140] }
   ],
   "stretchStations": ["static"],
   "output": {
@@ -77,51 +57,19 @@
     "runtimeDependencyAdded": false,
     "localFocusedTests": "4/4 passed",
     "smokeSha256": "7eaace8e27615f8e9f9a59035371aa98e0f8044830cd330f949fd716e854d46e",
-    "githubWorkflow": {
-      "name": "Tests",
-      "runNumber": 2223,
-      "runId": 32578300486,
-      "lastObservedStatus": "completed",
-      "conclusion": "success"
-    }
+    "githubWorkflow": { "name": "Tests", "runNumber": 2223, "runId": 32578300486, "lastObservedStatus": "completed", "conclusion": "success" }
   },
   "sourceSeedSet": {
     "checkedAt": "2026-08-22",
     "policy": "public-domain score/manuscript references only; no third-party recording/sample dependencies",
     "documentation": "docs/audio/RADIO_MUSIC_SOURCE_SEEDS.md",
+    "seedValidationTest": "tests/radio-composer-workbench.test.js",
+    "lastObservedWorkflowNote": "Earlier M1.2 runs were superseded/cancelled by subsequent documentation commits; wait for the newest non-superseded Tests run covering the same seed/test content before closeout.",
     "candidates": [
-      {
-        "stationId": "blood-city-beats",
-        "id": "chopin-prelude-04-boombap-a",
-        "work": "Prelude in E minor, Op. 28 No. 4",
-        "composer": "Frédéric Chopin",
-        "sourceItem": "IMSLP #66277",
-        "sourceStatus": "Public Domain"
-      },
-      {
-        "stationId": "vice-fm",
-        "id": "maple-leaf-gfunk-a",
-        "work": "Maple Leaf Rag",
-        "composer": "Scott Joplin",
-        "sourceItem": "IMSLP #270188",
-        "sourceStatus": "Public Domain"
-      },
-      {
-        "stationId": "night-shift",
-        "id": "mountain-king-bigbeat-a",
-        "work": "In the Hall of the Mountain King",
-        "composer": "Edvard Grieg",
-        "sourceItem": "IMSLP #810457",
-        "sourceStatus": "Public Domain"
-      },
-      {
-        "stationId": "pulse-94-6",
-        "id": "bach-prelude-846-acid-a",
-        "work": "Prelude in C major, BWV 846",
-        "composer": "Johann Sebastian Bach",
-        "sourceItem": "IMSLP #457551",
-        "sourceStatus": "Public Domain"
-      }
+      { "stationId": "blood-city-beats", "id": "chopin-prelude-04-boombap-a", "work": "Prelude in E minor, Op. 28 No. 4", "composer": "Frédéric Chopin", "sourceItem": "IMSLP #66277", "sourceStatus": "Public Domain" },
+      { "stationId": "vice-fm", "id": "maple-leaf-gfunk-a", "work": "Maple Leaf Rag", "composer": "Scott Joplin", "sourceItem": "IMSLP #270188", "sourceStatus": "Public Domain" },
+      { "stationId": "night-shift", "id": "mountain-king-bigbeat-a", "work": "In the Hall of the Mountain King", "composer": "Edvard Grieg", "sourceItem": "IMSLP #810457", "sourceStatus": "Public Domain" },
+      { "stationId": "pulse-94-6", "id": "bach-prelude-846-acid-a", "work": "Prelude in C major, BWV 846", "composer": "Johann Sebastian Bach", "sourceItem": "IMSLP #457551", "sourceStatus": "Public Domain" }
     ]
   },
   "milestones": {
@@ -137,16 +85,8 @@
     "M7": "planned-final-user-gate"
   },
   "userGates": [
-    {
-      "afterTask": "M1.3-four-proof-of-style-midis",
-      "requiredState": "user-validation-pending",
-      "reason": "User must audition and approve/revise the four station directions before catalogue scaling."
-    },
-    {
-      "afterTask": "M7-daw-handoff",
-      "requiredState": "final-validation-pending",
-      "reason": "User chooses final DAW candidates and explicitly approves merge readiness."
-    }
+    { "afterTask": "M1.3-four-proof-of-style-midis", "requiredState": "user-validation-pending", "reason": "User must audition and approve/revise the four station directions before catalogue scaling." },
+    { "afterTask": "M7-daw-handoff", "requiredState": "final-validation-pending", "reason": "User chooses final DAW candidates and explicitly approves merge readiness." }
   ],
   "autonomousStopConditions": [
     "explicit user listening gate reached",
