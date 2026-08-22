@@ -370,7 +370,7 @@ The M7 contract now provides:
 - no voluntary stop or re-request while already inside a connector;
 - release on connector exit;
 - release on controlled stop/forced teardown;
-- bounded stale-reservation expiry so a vanished token cannot deadlock a junction forever;
+- bounded stale-reservation expiry so a vanished token cannot deadlock the junction forever;
 - reservation/yield diagnostics without introducing world-space steering or a traffic-light simulator.
 
 `TrafficRouteCursor` now accepts pure connector-entry/exit hooks. A denied entry reports a blocked/yield reason while preserving the route agent at lane progress `1`; once the owner exits and releases, the waiting agent may enter on its next deterministic advance.
@@ -538,3 +538,71 @@ M8.2 is complete. The production-shaped multi-agent compiler-route runtime survi
 Production startup is still intentionally `authored-local-lanes`. No default activation changed in M8.2.
 
 The next bounded gate is `M8.3-default-compiler-route-activation-and-macro-accounting-migration`. It must not flip normal traffic unless production seeding coverage is complete and macro accounting can migrate conservatively without reintroducing macro coordinates/phases as local movement authority.
+
+---
+
+## 2026-08-22 — M8.3 default compiler-route activation and macro accounting migration completed
+
+### Production authority migration
+
+M8.3 promotes the validated multi-agent compiler-route runtime to normal civilian traffic authority.
+
+`TrafficMultiAgentRouteRuntimePolicy` now:
+
+- defaults to compiler-route activation;
+- fail-closes rather than partially activating if production seeding is incomplete;
+- requires zero unseeded production tokens, population conservation and valid district projection before the default flip;
+- advances route agents from normal Phaser frame delta through `GameplayRuntime`;
+- exposes `laneAuthority: compiler-route-lanes` during normal traffic;
+- preserves stable token IDs, materialization slot identity, fixed pool semantics and route reservation cleanup;
+- retains explicit stop/manual controlled modes only as regression/debug harnesses, not production authority.
+
+`MacroTrafficPoliceSystem` now separates civilian and police roles:
+
+- legacy civilian `trafficFlows` remain bootstrap/compatibility population records;
+- while compiler routes are active, legacy civilian phase advancement is disabled;
+- aggregate civilian district/load accounting comes from `TrafficRouteCompatibilityProjection`;
+- invalid/lossy projection does not silently fall back or guess ownership;
+- macro police travel continues independently on its existing macro graph.
+
+### Route-safe behavior correction
+
+The first browser migration attempt exposed a real regression: the M8 route-active x/y guards correctly prevented legacy steering from owning pose, but also bypassed legacy braking behavior. Restoring legacy steering would have violated the core compiler-geometry contract.
+
+Added `TrafficRouteBehaviorPolicy.js` instead. It:
+
+- detects same-lane traffic, parked vehicles, player vehicle and player-on-foot against the current compiler lane polyline;
+- modulates only a scalar route speed factor;
+- never writes x/y/angle or lateral offset;
+- keeps connector occupants moving so cars already inside normally clear the junction;
+- allows speed recovery after blockers clear.
+
+The legacy steering presentation guard remains active for route cars and forces zero lateral steering. Focused unit/browser tests prove braking works without leaving compiler geometry.
+
+### Validation history
+
+M8.3 CI was intentionally treated as an architecture audit rather than patched blindly:
+
+- Tests #2189 exposed three obsolete historical source assertions that still required normal traffic to remain authored-local. They were updated while retaining the real prohibitions against macro/free-form/nearest-junction authority.
+- Tests #2192 exposed an accidental test-file reconstruction/import error during that update. The full original M4 traversal coverage was restored and only its final authority expectation changed.
+- Tests #2193 passed unit, boot, campaign and shards 2/3 + 3/3, but shard 1 found the real braking regression described above.
+- Tests #2198 proved the new route behavior braking and recovery, but one parked-car assertion measured a mutable slot reference after later recovery movement. Trace evidence showed `steeringOffset=0`, `steeringAngle=0` and route-safe braking were correct. The test was fixed to snapshot immutable pose immediately around the steering call.
+
+### Final CI evidence
+
+Validated implementation head: `0c25c8c7d324b027bd4fd0363483884e8da2f937`.
+
+GitHub Tests #2199 / run `32554733530` — full workflow success:
+
+- unit-tests — success;
+- browser-boot — success;
+- browser-campaign — success;
+- browser-systems 1/3 — success;
+- browser-systems 2/3 — success;
+- browser-systems 3/3 — success.
+
+### Result
+
+M8 is complete. Normal civilian traffic now uses compiler-owned route geometry by default with zero unseeded production population, stable fixed-pool identity, deterministic junction reservations, route-safe braking and conservative projection-based accounting. Legacy civilian phase advancement no longer competes for physical continuity, and macro police travel remains independent.
+
+The next bounded task is `M9.1-legacy-cleanup-audit-and-final-validation-prep`. M9 may remove only code proven superseded after classifying remaining compatibility/regression responsibilities. After final green cleanup validation, autonomous work must stop at `final-validation-pending` for explicit user gameplay approval; PR #73 must not auto-merge.
