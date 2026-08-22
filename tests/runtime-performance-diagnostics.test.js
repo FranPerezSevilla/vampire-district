@@ -183,7 +183,9 @@ test("browser performance capture persists machine-readable CI evidence", () => 
   assert.match(captureSpec, /CORE_SYSTEM_PREFIX\s*=\s*"Core\."/);
   assert.match(captureSpec, /coreSystems/);
   assert.match(captureSpec, /core:\s*summarizeRanking/);
+  assert.match(workflow, /\n  browser-performance:\n/);
+  assert.match(workflow, /npm run test:browser:performance/);
   assert.match(workflow, /Upload performance capture evidence/);
-  assert.match(workflow, /runtime-performance-capture-shard-\$\{\{ matrix\.shard \}\}/);
+  assert.match(workflow, /name:\s*runtime-performance-capture/);
   assert.match(workflow, /if-no-files-found:\s*ignore/);
 });
