@@ -87,3 +87,46 @@ After M1.1, M1.2 provenance-clears one work per station. M1.3 generates four pro
 ### Validation
 
 M0 changes documentation/contracts only. No runtime behavior or generated audio/MIDI asset is changed at this checkpoint.
+
+## 2026-08-22 — attribution contract added
+
+### User requirement
+
+The user explicitly requested that radio music have the same disciplined attribution handling as the project's sound effects: credits must be recorded as the assets are produced rather than reconstructed at release time.
+
+### Contract added
+
+Created `docs/audio/RADIO_MUSIC_ATTRIBUTION.md` and added it to the canonical continuation order.
+
+The contract separates:
+
+1. underlying public-domain composition;
+2. score/edition/digital reproduction used as the transcription reference;
+3. original ViceBlood arrangement;
+4. any third-party material later introduced during DAW production.
+
+### Player-facing credit rule
+
+Every canonical public-domain-derived radio track must carry a ready-to-use composer/work credit, defaulting to:
+
+`“<Work>” — <Composer> (<year when known>). Arranged for ViceBlood (2026).`
+
+Additional source/sample attribution is included in player credits whenever its licence actually requires it.
+
+### Licence policy
+
+Preferred dependencies are clean public-domain sources and CC0.
+
+CC BY is allowed only with exact attribution/version recorded. `NC`, `ND`, `SA`/ShareAlike and unclear-commercial-reuse dependencies are non-canonical unless the user explicitly approves them.
+
+Modern commercial recordings, performances and famous sample/break recordings remain disallowed by default even when the underlying composition is public domain.
+
+### Pixabay relationship
+
+Current Pixabay Content License attribution is not mandatory, but credit is appreciated. Existing project practice may continue crediting Pixabay contributors as a courtesy; the radio/SFX ledgers should distinguish `courtesy` from legally/licence-required attribution.
+
+### M1.1 impact
+
+The next workbench/manifest task must implement an `attribution` object and validation. A candidate may not become `daw-candidate` while required credit/provenance information is unknown.
+
+M7 must produce a final credit roll-up that can be copied into the game's credits without relying on conversation history.
