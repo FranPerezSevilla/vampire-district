@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "canonicalSuites": {
+    "test:browser:boot": [
+      "tests/browser/runtime-smoke.spec.js",
+      "tests/browser/render-quality.spec.js",
+      "tests/browser/ui-accessibility.spec.js",
+      "tests/browser/playtest-entry.spec.js",
+      "tests/browser/playtest-slice.spec.js"
+    ],
+    "test:browser:world": [
+      "tests/browser/road-graph-geometry.spec.js",
+      "tests/browser/city-topology-v2.spec.js",
+      "tests/browser/expanded-district.spec.js",
+      "tests/browser/foundry-runtime.spec.js",
+      "tests/browser/building-sidewalk-clearance.spec.js",
+      "tests/browser/territory-runtime.spec.js",
+      "tests/browser/city-streaming.spec.js",
+      "tests/browser/city-streaming-resources.spec.js",
+      "tests/browser/city-streaming-macro.spec.js",
+      "tests/browser/entity-streaming.spec.js"
+    ],
+    "test:browser:traffic": [
+      "tests/browser/vehicle-core.spec.js",
+      "tests/browser/vehicle-maintenance.spec.js",
+      "tests/browser/city-streaming-traffic.spec.js",
+      "tests/browser/city-streaming-traffic-behavior.spec.js",
+      "tests/browser/city-streaming-traffic-physics.spec.js",
+      "tests/browser/city-streaming-traffic-impact.spec.js",
+      "tests/browser/traffic-hijack.spec.js",
+      "tests/browser/traffic-visibility-retention.spec.js",
+      "tests/browser/vehicle-collision-softening.spec.js"
+    ],
+    "test:browser:police": [
+      "tests/browser/motorized-police.spec.js",
+      "tests/browser/perception-recovery.spec.js",
+      "tests/browser/police-stress.spec.js",
+      "tests/browser/heat-exposure-evidence.spec.js"
+    ],
+    "test:browser:gameplay": [
+      "tests/browser/input-locks.spec.js",
+      "tests/browser/hunting-law-runtime.spec.js",
+      "tests/browser/night-ledger.spec.js",
+      "tests/browser/feeding-depths.spec.js",
+      "tests/browser/predator-powers.spec.js",
+      "tests/browser/weapon-cycle-feedback.spec.js"
+    ],
+    "test:browser:performance": [
+      "tests/browser/runtime-performance-capture.spec.js"
+    ],
+    "test:browser:campaign": [
+      "tests/browser/free-roam-baseline.spec.js"
+    ],
+    "test:browser:building-review": [
+      "tests/browser/building-visual-review.spec.js"
+    ]
+  }
+}
