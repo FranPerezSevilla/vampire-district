@@ -124,8 +124,6 @@ export function createTrafficMultiAgentRouteRuntime({
     if (duration <= EPSILON) return snapshot();
     clockSeconds += duration;
 
-    // Live connector occupants refresh/reclaim their own conservative authority
-    // before any new lane token gets a chance to request entry this tick.
     const connectorAgents = agents
       .filter(agent => agent.stage === "connector")
       .sort((left, right) => left.tokenId.localeCompare(right.tokenId));
@@ -178,6 +176,8 @@ export function createTrafficMultiAgentRouteRuntime({
       else if (agent.stage === "connector") stageCounts.connector++;
       else stageCounts.other++;
     }
+    const districtPopulationCount = Object.values(projection.districtCounts || {})
+      .reduce((sum, value) => sum + Math.max(0, Math.floor(finite(value))), 0);
     return {
       ready: !destroyed,
       mode: "multi-agent-route-runtime",
@@ -212,6 +212,8 @@ export function createTrafficMultiAgentRouteRuntime({
       projectedAgentCount: projection.projectedAgentCount,
       ambiguousAgentCount: projection.ambiguousAgentCount,
       unmatchedAgentCount: projection.unmatchedAgentCount,
+      districtPopulationCount,
+      districtPopulationConserved: districtPopulationCount === agents.length,
       districtCounts: { ...projection.districtCounts },
       edgeCounts: { ...projection.edgeCounts }
     };
@@ -240,7 +242,8 @@ export function createTrafficMultiAgentRouteRuntime({
 
 export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
   speed = 168,
-  reservationStaleAfterSeconds = 3
+  reservationStaleAfterSeconds = 3,
+  defaultEnabled = true
 } = {}) {
   if (!materializer?.trafficTokens || !materializer?.reconcile || !materializer?.pool || !materializer?.assignments) {
     throw new TypeError("Traffic multi-agent route runtime policy requires TrafficMaterializationSystem.");
@@ -253,6 +256,10 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
   let enabled = false;
   let runtime = null;
   let activationPoolSize = null;
+  let activationAttempts = 0;
+  let activationBlockedReason = null;
+  let manualPause = false;
+  let macroAccountingProvider = null;
   let behavior = null;
   let originalBehaviorApplyDecision = null;
   let routeGuardedApplyDecision = null;
@@ -270,6 +277,18 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
       && materializer.macro?.graph?.edges
       && materializer.macro?.trafficFlows instanceof Map
     );
+  }
+
+  function presentationReady() {
+    const scene = materializer.scene;
+    return Boolean(
+      scene?.trafficLocalBehaviorSystem?.applyDecision
+      && scene?.trafficSteeringPresentationSystem?.applyPresentation
+    );
+  }
+
+  function defaultActivationReady() {
+    return ready() && presentationReady();
   }
 
   function ensurePresentationGuards() {
@@ -334,28 +353,103 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
     });
   }
 
+  function candidateFailure(candidate) {
+    if (!candidate) return "runtime-not-ready";
+    const state = candidate.snapshot();
+    if (!state.populationConserved) return "population-not-conserved";
+    if (state.unseededAgentCount !== 0) return `unseeded-production-tokens:${state.unseededAgentCount}`;
+    if (!state.projectionValid) return `invalid-compatibility-projection:${state.projectionErrors.join("|")}`;
+    if (!state.districtPopulationConserved) {
+      return `district-population-not-conserved:${state.districtPopulationCount}/${state.seededAgentCount}`;
+    }
+    return null;
+  }
+
+  function attachMacroAccounting() {
+    if (macroAccountingProvider) return true;
+    if (typeof materializer.macro?.setCivilianRouteAccountingProvider !== "function") return false;
+    macroAccountingProvider = () => runtime?.snapshot?.() || null;
+    materializer.macro.setCivilianRouteAccountingProvider(macroAccountingProvider);
+    return true;
+  }
+
+  function detachMacroAccounting() {
+    if (!macroAccountingProvider) return;
+    materializer.macro?.clearCivilianRouteAccountingProvider?.(macroAccountingProvider);
+    macroAccountingProvider = null;
+  }
+
+  function activate({ automatic = false, reconcile = false, throwOnFailure = false } = {}) {
+    if (enabled) return true;
+    if (materializer.__nbdTrafficControlledRouteActivationPolicy?.snapshot?.().enabled) {
+      const reason = "controlled-route-activation-active";
+      activationBlockedReason = reason;
+      if (throwOnFailure) throw new Error(`Cannot start multi-agent route runtime: ${reason}.`);
+      return false;
+    }
+    if (automatic && !defaultActivationReady()) return false;
+
+    activationAttempts++;
+    const candidate = buildRuntime();
+    const failure = candidateFailure(candidate);
+    if (failure) {
+      candidate?.destroy?.("activation-rejected");
+      activationBlockedReason = failure;
+      if (throwOnFailure) throw new Error(`Cannot start multi-agent route runtime: ${failure}.`);
+      return false;
+    }
+
+    runtime?.destroy?.("runtime-restart");
+    runtime = candidate;
+    activationPoolSize = materializer.pool.length;
+    enabled = true;
+    manualPause = false;
+    activationBlockedReason = null;
+    ensurePresentationGuards();
+
+    if (defaultEnabled && !attachMacroAccounting()) {
+      enabled = false;
+      runtime.destroy("missing-macro-accounting-provider");
+      runtime = null;
+      restorePresentationGuards();
+      activationBlockedReason = "macro-route-accounting-provider-unavailable";
+      if (throwOnFailure) {
+        throw new Error("Cannot start multi-agent route runtime: macro-route-accounting-provider-unavailable.");
+      }
+      return false;
+    }
+
+    if (reconcile) materializer.reconcile(true);
+    return true;
+  }
+
   function routedTrafficTokens() {
+    if (!enabled && defaultEnabled && !manualPause && defaultActivationReady()) {
+      activate({ automatic: true, reconcile: false });
+    }
     if (!enabled || !runtime) return originalTrafficTokens.call(materializer);
     return runtime.materializationTokens();
   }
 
   function start() {
-    if (enabled) return snapshot();
-    if (materializer.__nbdTrafficControlledRouteActivationPolicy?.snapshot?.().enabled) {
-      throw new Error("Cannot start multi-agent route runtime while controlled route activation is enabled.");
+    manualPause = false;
+    activate({ reconcile: true, throwOnFailure: true });
+    return snapshot();
+  }
+
+  function update(seconds = 0.05) {
+    if (!enabled && defaultEnabled && !manualPause) {
+      activate({ automatic: true, reconcile: false });
     }
-    runtime?.destroy?.("runtime-restart");
-    runtime = buildRuntime();
-    if (!runtime) throw new Error("Traffic multi-agent route runtime is not ready.");
-    activationPoolSize = materializer.pool.length;
-    enabled = true;
+    if (!enabled || !runtime) return snapshot();
     ensurePresentationGuards();
-    materializer.reconcile(true);
+    runtime.step(seconds);
     return snapshot();
   }
 
   function step(seconds = 0.05) {
-    if (!enabled || !runtime) return snapshot();
+    if (!enabled) start();
+    if (!runtime) return snapshot();
     ensurePresentationGuards();
     runtime.step(seconds);
     materializer.reconcile(true);
@@ -364,7 +458,9 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
 
   function stop() {
     const wasEnabled = enabled;
+    manualPause = true;
     enabled = false;
+    detachMacroAccounting();
     runtime?.destroy?.("runtime-stop");
     runtime = null;
     restorePresentationGuards();
@@ -372,6 +468,7 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
     return {
       enabled: false,
       wasEnabled,
+      manualPause,
       poolSize: materializer.pool.length,
       fixedPoolPreserved: activationPoolSize === null || materializer.pool.length === activationPoolSize
     };
@@ -382,11 +479,16 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
     return {
       ready: ready(),
       enabled,
-      defaultEnabled: false,
+      defaultEnabled: Boolean(defaultEnabled),
+      defaultActivationReady: defaultActivationReady(),
       movementAuthority: enabled ? "multi-agent-compiler-route" : "authored-local-lanes",
-      defaultTrafficAuthority: "authored-local-lanes",
+      defaultTrafficAuthority: defaultEnabled ? "multi-agent-compiler-route" : "authored-local-lanes",
       macroMutationAuthority: false,
       macroCoordinateAuthority: false,
+      macroAccountingInstalled: Boolean(macroAccountingProvider),
+      manualPause,
+      activationAttempts,
+      activationBlockedReason,
       poolSize: materializer.pool.length,
       initialPoolSize: activationPoolSize ?? materializer.pool.length,
       fixedPoolPreserved: activationPoolSize === null || materializer.pool.length === activationPoolSize,
@@ -397,6 +499,15 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
         unseededAgentCount: 0,
         totalMacroTokens: 0,
         populationConserved: true,
+        projectionValid: true,
+        projectionErrors: [],
+        projectedAgentCount: 0,
+        ambiguousAgentCount: 0,
+        unmatchedAgentCount: 0,
+        districtPopulationCount: 0,
+        districtPopulationConserved: true,
+        districtCounts: {},
+        edgeCounts: {},
         routeReservationCount: 0,
         materializationTokenCount: 0,
         blockedAgentCount: 0,
@@ -410,6 +521,7 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
   const policy = {
     active: true,
     start,
+    update,
     step,
     stop,
     snapshot,
@@ -417,10 +529,13 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
       return runtime;
     },
     destroy() {
-      if (enabled) stop();
-      else runtime?.destroy?.("policy-destroy");
+      const wasEnabled = enabled;
+      enabled = false;
+      detachMacroAccounting();
+      runtime?.destroy?.("policy-destroy");
       runtime = null;
       restorePresentationGuards();
+      if (wasEnabled) materializer.reconcile(true);
       if (materializer.trafficTokens === routedTrafficTokens) materializer.trafficTokens = originalTrafficTokens;
       if (typeof window !== "undefined" && window.NBD_TRAFFIC_ROUTE_MULTI_AGENT?.__policy === policy) {
         delete window.NBD_TRAFFIC_ROUTE_MULTI_AGENT;
