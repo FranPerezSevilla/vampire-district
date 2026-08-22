@@ -4,131 +4,117 @@ Canonical task boundary for PR #73 (`codex/traffic-junction-topology`).
 
 ## Continuation protocol
 
-This initiative must be continuable without chat history. Before changing code, read in this order:
+Before changing code, read in order:
 
-1. `docs/progress/traffic-lane-junction-topology-status.json` — authoritative current milestone and exact `nextTask`.
-2. `docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md` — M0–M9 sequence and activation gates.
-3. `docs/agents/TRAFFIC_LANE_JUNCTION_TOPOLOGY_AGENT.md` — authority boundaries and forbidden shortcuts.
+1. `docs/progress/traffic-lane-junction-topology-status.json` — authoritative milestone and exact `nextTask`.
+2. `docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md`.
+3. `docs/agents/TRAFFIC_LANE_JUNCTION_TOPOLOGY_AGENT.md`.
 4. This task boundary.
-5. `docs/progress/TRAFFIC_LANE_JUNCTION_TOPOLOGY_PROGRESS.md` — append-only history/evidence.
+5. `docs/progress/TRAFFIC_LANE_JUNCTION_TOPOLOGY_PROGRESS.md`.
 
-Always fetch live PR #73, live `main`, current head and CI before writing. Execute only the current machine-readable `nextTask` unless the user explicitly grants a wider batch.
+Execute only the machine-readable `nextTask` unless the user explicitly broadens scope. Fetch live PR #73, live `main` and current CI before writing.
 
 ## Mission
 
-Make civilian traffic cross intersections continuously and legally without allowing macro district connectivity to become local driving geometry.
+Civilian traffic must use:
 
-Target physical path:
+`compiler-owned directed lane -> activation-safe compiler connector -> compiler-owned directed lane`
 
-`compiler-owned directed lane -> activation-safe junction connector -> compiler-owned directed lane`
+with stable vehicle identity, stable materialization slot, deterministic junction yielding and no teleport/free-form shortcut.
 
-The same stable route identity must survive the transition. No teleport, free-form cross-block steering or nearest-junction guessing is a valid substitute.
+## Current production authority after M8
 
-## Current physical authority
+M0 through M8 are complete.
 
-- `tools/city-compiler/district-streaming.js` — authoritative physical road network.
-- `tools/city-compiler/traffic-lane-topology.js` — two directed right-hand lanes per physical segment plus compiler-node-owned legal transitions.
-- `tools/city-compiler/traffic-junction-connectors.js` — tangent-preserving connector geometry validated against compiler road surfaces.
-- `tools/city-compiler/traffic-lane-topology-integration.js` — additive traffic pack v6 `localTopology` integration.
-- `phaser/src/streaming/TrafficRouteCursor.js` — pure stable route identity/time advancement.
-- `phaser/src/streaming/TrafficRoutePopulationSeed.js` — deterministic macro-provenance bootstrap into compiler lanes; bootstrap only.
-- `phaser/src/streaming/TrafficRouteCompatibilityProjection.js` — conservative aggregate compatibility projection; never local geometry.
-- `phaser/src/streaming/TrafficJunctionReservationRegistry.js` — deterministic conservative junction ownership/yielding.
-- `phaser/src/streaming/TrafficRouteMaterializationPolicy.js` + route-aware lifecycle policy — materialization metadata and crossing retention.
-- `phaser/src/streaming/TrafficControlledRouteActivationPolicy.js` — proven controlled visible route traversal; default-off regression harness.
-- `phaser/src/streaming/TrafficMultiAgentRouteRuntimePolicy.js` — production-shaped multi-agent compiler-route runtime, validated under explicit M8.2 browser soak.
+Normal civilian traffic now uses:
 
-Macro traffic remains population/load/compatibility authority only at the current boundary. Macro graph centres and legacy phase never become local driving coordinates.
+- `TrafficMultiAgentRouteRuntimePolicy.js` — default route runtime;
+- `TrafficRouteCursor.js` — deterministic compiler-route progression;
+- `TrafficRouteBehaviorPolicy.js` — braking/following via scalar speed only; it never owns x/y or lateral steering;
+- `TrafficJunctionReservationRegistry.js` — conservative junction reservation/yielding;
+- `TrafficRouteMaterializationPolicy.js` + lifecycle — visible pose/retention;
+- `TrafficRouteCompatibilityProjection.js` — conservative aggregate civilian accounting.
 
-## Validated milestone boundary
+`laneAuthority` is `compiler-route-lanes` during normal production traffic.
 
-M0 through M7 plus M8.1 and M8.2 are complete.
+Macro traffic has three remaining legitimate roles:
 
-Key final evidence:
+1. deterministic bootstrap population provenance;
+2. aggregate civilian accounting from the route projection;
+3. independent macro police travel.
 
-- M1 compiler topology/safety — Tests #2083 / run `32485801858`.
-- M2 route cursor/projection — Tests #2087 and #2101.
-- M3 shadow bridge — Tests #2109.
-- M4 traversal harness — Tests #2113.
-- M5 lifecycle/materialization retention — Tests #2125.
-- M6 controlled browser route activation — Tests #2135 / run `32495071190`.
-- M7 deterministic junction reservation — Tests #2153 / run `32549761928`.
-- M8.1 multi-agent route runtime substrate — implementation head `9173732803b2b92b28cf26a784e2382169eacc63`, Tests #2166 / run `32551128095`.
-- M8.2 production browser soak — validated head `e9593957fff711e5b606253049321475376cccf8`, Tests #2173 / run `32552262883`; unit, boot, campaign and all three browser-system shards green.
+Legacy civilian phases are no longer the normal physical continuity identity and do not advance while compiler-route civilian authority is active. Macro/district centres are never civilian local driving coordinates.
 
-M8.2 proves explicit production-data activation preserves compiler geometry authority, bounded per-tick movement, stable token/slot identity, fixed materialization pool, camera/stream continuity, reservation cleanup, route-active pose guards and isolated macro-flow immutability. Stopping the test-only runtime restores authored-local traffic cleanly.
+## M8.3 validated boundary
 
-**Current production default civilian movement is still `authored-local-lanes`. M8.2 did not flip it.**
+Implementation head: `0c25c8c7d324b027bd4fd0363483884e8da2f937`.
+
+GitHub Tests #2199 / run `32554733530` passed:
+
+- unit-tests — success;
+- browser-boot — success;
+- browser-campaign — success;
+- browser-systems 1/3 — success;
+- browser-systems 2/3 — success;
+- browser-systems 3/3 — success.
+
+M8.3 proves:
+
+- zero unseeded production civilian tokens before default activation;
+- fail-closed default activation from normal frame delta, not the debug step API;
+- exact compiler lane/connector pose and stable token/slot/fixed pool;
+- no legacy civilian phase competition for movement;
+- conservative route-projection accounting with population conservation;
+- independent macro police travel;
+- route reservation cleanup and lifecycle/forced-exit preservation;
+- route-safe braking for traffic, parked vehicles and the player without restoring legacy lateral/world-space steering.
+
+During M8.3 validation, CI intentionally exposed and resolved a real behavior regression: the initial route-pose guards also suppressed legacy braking. The fix was not to restore legacy pose authority; `TrafficRouteBehaviorPolicy.js` now modulates only scalar route speed while compiler geometry remains sole pose authority.
 
 ## Current task
 
-The status JSON is authoritative. Current task:
+`M9.1-legacy-cleanup-audit-and-final-validation-prep`
 
-`M8.3-default-compiler-route-activation-and-macro-accounting-migration`
-
-Purpose: make the validated compiler-route runtime the normal civilian continuity path and migrate live aggregate civilian traffic accounting away from advancing legacy edge phases, while keeping macro compatibility data non-geometric.
+M9 is cleanup and validation preparation, not another authority redesign.
 
 ### Required shape
 
-- Audit every live consumer of `MacroTrafficPoliceSystem` civilian phases/load before changing ownership. Police macro travel remains independent and must not regress.
-- Prove production bootstrap has **zero unseeded civilian tokens** before the default flip. Unseeded production population is a blocker, not something to drop silently.
-- Integrate multi-agent route advancement with the normal production frame delta rather than the manual debug `step()` API.
-- Once compiler routes own normal civilian movement, legacy macro edge phase must stop acting as physical continuity identity or local x/y authority.
-- Feed live aggregate civilian load/count diagnostics from `TrafficRouteCompatibilityProjection`, conserving population and exposing ambiguous/unmatched projection explicitly instead of guessing.
-- Update runtime diagnostics so normal startup truthfully reports compiler-route lane authority.
-- Preserve fixed pool, stable token/slot, lifecycle retention, hijack/forced exits, junction reservation cleanup and route-active behavior/steering guards.
-- Add default-startup browser coverage plus macro/police/vehicle regression coverage and require full CI green.
+- inventory remaining traffic experiments, adapters and compatibility data;
+- classify each item before deletion as production-required bootstrap/accounting, regression harness, or genuinely superseded dead code;
+- remove only proven superseded paths;
+- keep compiler-route default behavior unchanged;
+- keep population bootstrap/projection and macro police independence intact while still required;
+- keep controlled route proof where it remains useful as regression coverage;
+- prove no live code can re-enable macro-centre movement, legacy nearest-junction inference or free-form civilian intent steering;
+- synchronize diagnostics/docs;
+- run full CI after cleanup;
+- then transition to `final-validation-pending` and stop autonomous work for user gameplay approval.
 
-### Acceptance
+### Do not advance if
 
-- production bootstrap has zero unseeded civilian tokens before default activation;
-- normal browser startup enables compiler-route civilian movement without manually calling the M8 debug start API;
-- route agents advance from normal frame delta and stay on compiler lanes/connectors with zero visible teleport;
-- `laneAuthority` reports compiler-route ownership;
-- legacy civilian edge phases no longer compete with route identity for visible movement or local coordinates;
-- aggregate macro civilian population/load is derived conservatively from route projection with population conservation and explicit ambiguity/unmatched diagnostics;
-- macro police travel and police gameplay remain functional and independent;
-- stable token/slot, fixed pool, lifecycle/hijack forced exits and reservation cleanup remain valid under normal activation;
-- legacy behavior/steering cannot overwrite `routeActive` pose;
-- unit, boot, campaign and all three browser-system shards pass.
+- ownership of a cleanup candidate is uncertain;
+- cleanup changes gameplay rather than removing redundant code;
+- default compiler routes, route-safe braking, accounting, reservations, lifecycle/hijack, physics or police regress;
+- full CI is red or unexplained;
+- the work would merge the PR or bypass explicit user gameplay approval.
 
 ## Non-negotiable architecture
 
-- Macro graph node/district centres are never local driving coordinates.
-- Macro `edgeId + phase` is compatibility/accounting state, not physical route identity.
+- Macro/district centres are never civilian local driving coordinates.
+- Macro `edgeId + phase` is compatibility/bootstrap state, not physical route identity.
 - No free-form drive-toward-next-lane steering.
 - No snap/teleport between route stages.
-- Only compiler-node-owned lanes and activation-safe compiler connectors may become local route stages.
-- Missing geometry blocks safely instead of falling back to arbitrary movement.
-- Stable `tokenId` and materialized slot identity survive route stage changes.
-- Lifecycle owns spawn/despawn/pool retention, not route geometry.
-- Junction conflict handling may delay connector entry but does not invent geometry.
-- A car already inside a connector normally clears it instead of voluntarily stopping mid-junction.
-- Stale reservation recovery is mandatory.
-- `MacroTrafficRouteContinuityPolicy` and `TrafficIntentDrivingPolicy` must not be re-enabled wholesale.
-- Generated topology is fixed in its owning compiler; never hand-edit generated output as a workaround.
-- M8.3 must not flip normal traffic with incomplete production seeding or a lossy/ambiguous accounting migration.
-
-## Do not advance M8.3 if
-
-- any production civilian token cannot be seeded onto compiler route authority;
-- default activation needs macro centres/phases as ongoing local coordinates or route-choice authority;
-- legacy phase progression continues to compete with compiler route identity;
-- compatibility projection drops population or guesses ambiguous ownership;
-- normal frame-loop integration introduces teleports, illegal exits, unstable token/slot assignment or pool growth;
-- reservations leak/deadlock;
-- police macro travel, vehicle dynamics, hijack/lifecycle forced exits or existing browser behavior regress;
-- full CI is red or unexplained.
-
-## Remaining activation ladder
-
-1. M8.1 — multi-agent route runtime substrate — complete.
-2. M8.2 — production browser soak — complete, explicit opt-in evidence only.
-3. M8.3 — **current**: default compiler-route activation + macro accounting migration.
-4. M9 — superseded legacy cleanup + documentation + explicit user gameplay validation.
+- Only compiler-owned lanes and activation-safe connectors/direct handoffs are physical route stages.
+- Missing geometry blocks safely.
+- Stable `tokenId` and slot identity survive route transitions.
+- Route-aware behavior may alter speed, never arbitrary x/y/lateral pose.
+- Junction conflicts wait before entry; cars already inside normally clear.
+- Stale reservations recover.
+- Do not re-enable `MacroTrafficRouteContinuityPolicy` or `TrafficIntentDrivingPolicy` wholesale.
+- Never hand-edit generated topology as a workaround.
 
 ## Final gate
 
-PR #73 remains draft during autonomous implementation and must not auto-merge.
+PR #73 remains draft and must not auto-merge.
 
-At `final-validation-pending` autonomous work stops. The user receives a gameplay validation checklist/preview and merge requires explicit user approval.
+At `final-validation-pending`, autonomous implementation stops. Provide the user a gameplay validation checklist/preview. Merge requires explicit user approval.
