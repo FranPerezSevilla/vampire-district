@@ -606,3 +606,61 @@ GitHub Tests #2199 / run `32554733530` — full workflow success:
 M8 is complete. Normal civilian traffic now uses compiler-owned route geometry by default with zero unseeded production population, stable fixed-pool identity, deterministic junction reservations, route-safe braking and conservative projection-based accounting. Legacy civilian phase advancement no longer competes for physical continuity, and macro police travel remains independent.
 
 The next bounded task is `M9.1-legacy-cleanup-audit-and-final-validation-prep`. M9 may remove only code proven superseded after classifying remaining compatibility/regression responsibilities. After final green cleanup validation, autonomous work must stop at `final-validation-pending` for explicit user gameplay approval; PR #73 must not auto-merge.
+
+---
+
+## 2026-08-22 — M9.1 legacy cleanup audit and final validation preparation completed
+
+### Ownership classification
+
+The remaining traffic continuity code was audited before deletion.
+
+Production-required compatibility retained:
+
+- legacy macro `trafficFlows` as population bootstrap/accounting compatibility only;
+- `TrafficRoutePopulationSeed` and `TrafficRouteCompatibilityProjection`;
+- independent macro police graph travel;
+- route-aware lifecycle/materialization and forced hijack/layer/teardown release semantics.
+
+Regression/historical evidence retained:
+
+- `TrafficControlledRouteActivationPolicy` for controlled straight/right/left compiler-route proof;
+- `TrafficRouteTraversalHarness` for isolated `lane -> connector -> lane` continuity proof;
+- `TrafficShadowRoutePolicy` source/test as isolated M3 historical evidence;
+- isolated legacy `MacroTrafficRouteContinuityPolicy` and `TrafficIntentDrivingPolicy` evidence.
+
+The proven superseded **live production** path was the Shadow installation in `TrafficLocalAssignmentPolicy`. It wrapped `macro.simulateTick` and maintained a second route-agent population after the real M8 runtime had already become authority. That installation and its live diagnostics/destroy path were removed; the historical Shadow harness itself remains isolated for regression evidence.
+
+`tests/traffic-lifecycle-integration.test.js` now recursively scans `phaser/src/**/*.js` and rejects any production reference that could re-activate Shadow, `MacroTrafficRouteContinuityPolicy` or `TrafficIntentDrivingPolicy` outside their isolated legacy modules. Legacy nearest-junction inference remains disabled and compiler lanes/connectors remain final civilian pose authority.
+
+### Semantic CI integration correction
+
+PR #75 reorganized browser CI into semantic families while PR #73 was in flight. After merging current `main`, the first M9 validation exposed that `browser-world` no longer prepared the generated streaming topology that M8 default activation needs.
+
+Running full `city:topology` fixed that prerequisite but also regenerated road/sidewalk geometry, which invalidated the world geometry baseline being tested. The correct prerequisite is therefore the same narrow compile the old CI effectively depended on: `npm run city:streaming` before `browser-world` Playwright.
+
+This refreshes generated `localTopology`/streaming packs without rewriting the road/sidewalk geometry under world validation. `browser-traffic` continues to run full `city:topology`.
+
+`docs/BROWSER_TEST_FAMILIES.md` now records both compiler-route browser specs under Traffic and documents the distinct world/traffic prerequisites.
+
+### Final automated evidence
+
+Validated implementation head: `763d6a12824d3d83d3fea92f549c56d1b1a04202`.
+
+GitHub Tests #2220 / run `32577687431` — full semantic workflow success:
+
+- unit-tests — success;
+- browser-boot — success;
+- browser-campaign — success;
+- browser-world — success;
+- browser-traffic — success;
+- browser-police — success;
+- browser-gameplay — success;
+- browser-performance — success;
+- browser-building-review — skipped by design.
+
+### Result
+
+M9.1 is complete. There is no remaining known live production path that competes with compiler-route civilian geometry. Required bootstrap/accounting/police compatibility remains, controlled/historical regression evidence remains isolated, and the semantic CI matrix validates the final authority stack.
+
+Canonical state is now `final-validation-pending`. Autonomous implementation stops at `M9.2-explicit-user-gameplay-validation`. PR #73 remains draft and must not be merged or marked ready without explicit user gameplay approval.
