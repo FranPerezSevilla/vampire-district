@@ -338,3 +338,87 @@ GitHub Tests #2087 / run `32486691651` — full workflow success:
 The route cursor is not installed into `MacroTrafficPoliceSystem`, `TrafficMaterializationSystem`, `TrafficLocalAssignmentPolicy` or visible vehicle movement.
 
 M2.3 is next: build a pure compatibility projection from these local route agents back into legacy macro load/count diagnostics. That projection is output-only; macro geometry/phases must not influence route selection.
+
+---
+
+## 2026-08-22 — M2.3 through M6 canonical reconciliation
+
+The machine-readable status had advanced correctly while this append-only narrative log lagged behind M2.2. No history above was rewritten; this entry records the already-validated milestone boundaries now present on PR #73.
+
+- M2.3 compatibility projection — complete; GitHub Tests #2101 / run `32489771083` passed.
+- M3 shadow macro continuity bridge — complete; GitHub Tests #2109 / run `32490920999` passed.
+- M4 isolated continuous traversal harness — complete; GitHub Tests #2113 / run `32491786219` passed.
+- M5 route-aware lifecycle/materialization retention substrate — complete; GitHub Tests #2125 / run `32492853271` passed.
+- M6 controlled browser route activation — complete on implementation head `b23dfc0eb1eb07ad3fd85fe89399c7fb5e40c5c0`; GitHub Tests #2135 / run `32495071190` passed unit, browser boot, browser campaign and all three browser-system shards.
+
+M6 preserved the fixed materialization pool and stable token/slot through controlled straight/right/left compiler routes, reported zero visible teleports, survived camera movement during connector crossing and kept default civilian `laneAuthority` on `authored-local-lanes`.
+
+---
+
+## 2026-08-22 — M7.1 deterministic junction reservation completed
+
+### Implemented
+
+Added `phaser/src/streaming/TrafficJunctionReservationRegistry.js` and integrated it only with controlled compiler-route activation.
+
+The M7 contract now provides:
+
+- deterministic conservative ownership keyed by compiler junction authority;
+- reservation before connector entry;
+- conflict denial that leaves the waiting route agent on the incoming lane endpoint;
+- same-token refresh while ownership is retained;
+- no voluntary stop or re-request while already inside a connector;
+- release on connector exit;
+- release on controlled stop/forced teardown;
+- bounded stale-reservation expiry so a vanished token cannot deadlock a junction forever;
+- reservation/yield diagnostics without introducing world-space steering or a traffic-light simulator.
+
+`TrafficRouteCursor` now accepts pure connector-entry/exit hooks. A denied entry reports a blocked/yield reason while preserving the route agent at lane progress `1`; once the owner exits and releases, the waiting agent may enter on its next deterministic advance.
+
+`TrafficControlledRouteActivationPolicy` shares the registry, refreshes an owned reservation during connector traversal, releases ownership on stop and keeps legacy behavior/steering from overwriting a route-active slot.
+
+### Focused coverage
+
+`tests/traffic-route-junction-reservation.test.js` covers:
+
+- grant, same-token refresh and deterministic conflict denial;
+- stale expiry/recovery;
+- two conflicting route agents where the second waits before entry;
+- release on connector exit followed by successful waiter entry;
+- uninterrupted movement for a token already inside its connector;
+- forced cleanup of all reservations owned by a route token.
+
+`tests/traffic-controlled-route-activation.test.js` verifies controlled visible waiting/entry while preserving assignment and slot identity.
+
+`tests/traffic-controlled-route-pool-baseline.test.js` additionally guards fixed-pool baseline capture after asynchronous materializer configuration and detects accidental pool growth.
+
+The browser controlled-route scenario continues to prove straight/right/left crossings, reservation visibility, stable token/slot, camera retention, zero teleports and default authored-local-lane authority.
+
+### CI evidence
+
+Implementation head: `dcb08288ea797e7016bcdb3858299a85549a7259`.
+
+GitHub Tests #2153 / run `32549761928` — full workflow success:
+
+- unit-tests — success;
+- browser-boot — success;
+- browser-campaign — success;
+- browser-systems 1/3 — success;
+- browser-systems 2/3 — success;
+- browser-systems 3/3 — success.
+
+### Result
+
+M7 is complete. Conflicting controlled compiler-route tokens cannot enter the same conservative junction authority simultaneously; yielding occurs before connector entry, inside tokens normally clear the junction and stale/forced ownership is recoverable.
+
+Default civilian traffic is still intentionally `authored-local-lanes`. M7 does not flip normal production movement.
+
+---
+
+## 2026-08-22 — M8.1 boundary opened
+
+The next bounded task is `M8.1-multi-agent-route-runtime-substrate` as recorded in `traffic-lane-junction-topology-status.json` version 9.
+
+M8.1 must generalize the proven route/materialization/lifecycle/reservation contracts to multiple civilian route agents while remaining explicitly non-default. It may reuse deterministic macro-population provenance to seed stable local route agents, but ongoing x/y and route continuation remain compiler-lane/connector owned.
+
+Production default movement must not flip until a later M8 activation task has dedicated population, pool, browser-soak, illegal-road-exit, teleport and police/vehicle-regression evidence.
