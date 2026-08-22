@@ -368,12 +368,16 @@ test("captures M6 vehicle contact grounding across traffic, large, police-wet an
     scene.switchLayer(0, stand, "M6 dark grounding control");
     await window.NBD_CITY_STREAM.forceFocus(center.x, center.y);
     scene.redrawLayer("M6 dark grounding control");
-    const policeSlot = scene.motorizedPoliceSystem.slots[0];
-    if (policeSlot) {
+    for (const policeSlot of scene.motorizedPoliceSystem.slots || []) {
       policeSlot.unitId = null;
-      policeSlot.container.setActive(false).setVisible(false);
+      policeSlot.container?.setActive(false).setVisible(false);
+    }
+    for (const trafficSlot of scene.trafficMaterializationSystem.pool || []) {
+      trafficSlot.tokenId = null;
+      trafficSlot.container?.setActive(false).setVisible(false);
     }
     const slot = scene.trafficMaterializationSystem.pool[0];
+    if (!slot) return null;
     slot.tokenId = null;
     slot.x = center.x;
     slot.y = center.y;
