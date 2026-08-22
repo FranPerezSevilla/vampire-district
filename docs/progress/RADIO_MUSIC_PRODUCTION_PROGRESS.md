@@ -203,3 +203,53 @@ Exact next task is now:
 `M1.2-provenance-seed-set`
 
 M1.2 must select exactly one clean source work for each of the four core stations and record source/edition/reuse/credit evidence before any M1.3 proof-of-style MIDI is generated.
+
+## 2026-08-22 — M1.2 provenance seed set implementation checkpoint
+
+### Selected public-domain works
+
+The first proof cycle now has exactly one source work per core station:
+
+1. **Blood City Beats** — `chopin-prelude-04-boombap-a`: Frédéric Chopin, *Prelude in E minor, Op. 28 No. 4*; Wessel & Co. ca.1839 Book I score, IMSLP #66277, listed Public Domain.
+2. **Vice FM** — `maple-leaf-gfunk-a`: Scott Joplin, *Maple Leaf Rag*; John Stark & Son first edition, 1899, IMSLP #270188, listed Public Domain.
+3. **Night Shift** — `mountain-king-bigbeat-a`: Edvard Grieg, *In the Hall of the Mountain King*; composer's holograph piano manuscript dated 21 January 1888, Bergen Public Library, IMSLP #810457, listed Public Domain.
+4. **Pulse 94.6** — `bach-prelude-846-acid-a`: Johann Sebastian Bach, *Prelude in C major, BWV 846*; holograph 1722–23, Staatsbibliothek zu Berlin Mus. ms. Bach P 415, IMSLP #457551, listed Public Domain.
+
+The source rationale and human-readable evidence are recorded in `docs/audio/RADIO_MUSIC_SOURCE_SEEDS.md`. Each future MIDI path already has a machine-readable prototype manifest with source edition/catalogue, URL, PD evidence, reuse terms, date checked and ready-to-use player credit.
+
+### Creative rationale
+
+The seed set deliberately does **not** reuse Satie's *Gnossienne No.1* for Blood City Beats. The main theme can retain that identity while the first radio proof tests a separate Chopin-derived boom-bap language.
+
+The planned proof treatments are:
+
+- Chopin → ~88 BPM dark boom bap / trip-hop;
+- Joplin → ~96 BPM G-funk / West Coast instrumental;
+- Grieg → ~138 BPM big beat / breakbeat / industrial dance;
+- Bach → ~128 BPM acid house / techno.
+
+### Rights/attribution boundary
+
+All four seeds use score/manuscript references marked Public Domain. No modern recording, performance, stem, commercial sample or famous break recording is part of M1.2.
+
+Every seed uses `required-player-credit` and already contains the final-form composer/work credit expected by the project attribution contract. Source details remain available internally so later credits do not need to be reconstructed from chat history.
+
+### Automated seed validation
+
+`tests/radio-composer-workbench.test.js` now includes an M1.2 gate that loads all four seed manifests and requires:
+
+- zero `validateManifest(...)` errors;
+- one unique core station per seed;
+- `sourceSeed: true`;
+- prototype/not-requested status;
+- required player credit;
+- empty third-party asset lists;
+- explicit Public Domain source status.
+
+### Validation state
+
+M1.2 implementation is complete. CI on the new seed/test head is still the closeout gate before M1.3 composition begins.
+
+Exact next task:
+
+`M1.2-ci-validation-and-closeout`
