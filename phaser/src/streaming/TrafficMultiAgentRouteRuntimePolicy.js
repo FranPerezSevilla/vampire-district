@@ -4,6 +4,7 @@ import {
   projectTrafficRouteAgentsToMacroCompatibility,
   validateTrafficRouteMacroProjection
 } from "./TrafficRouteCompatibilityProjection.js";
+import { createTrafficRouteBehaviorController } from "./TrafficRouteBehaviorPolicy.js";
 import { trafficRouteAgentMaterializationToken } from "./TrafficRouteMaterializationPolicy.js";
 import { seedTrafficRouteAgentsFromMacroPopulation } from "./TrafficRoutePopulationSeed.js";
 
@@ -13,6 +14,10 @@ function finite(value, fallback = 0) {
   if (value === null || value === undefined || value === "") return fallback;
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, finite(value, min)));
 }
 
 function cloneAgent(agent) {
@@ -118,7 +123,7 @@ export function createTrafficMultiAgentRouteRuntime({
     };
   }
 
-  function step(seconds = 0.05) {
+  function step(seconds = 0.05, { speedFactorFor = null } = {}) {
     if (destroyed) throw new Error("Traffic multi-agent route runtime is destroyed.");
     const duration = Math.max(0, finite(seconds, 0.05));
     if (duration <= EPSILON) return snapshot();
@@ -135,11 +140,25 @@ export function createTrafficMultiAgentRouteRuntime({
     const hooks = reservationHooks();
     for (const current of [...agents].sort((left, right) => left.tokenId.localeCompare(right.tokenId))) {
       const stableTokenId = current.tokenId;
-      const result = advanceTrafficRouteAgent(current, duration, topology, {
-        speed: unitsPerSecond,
-        maxStageTransitions: 16,
-        ...hooks
-      });
+      const requestedFactor = current.stage === "connector"
+        ? 1
+        : typeof speedFactorFor === "function"
+          ? speedFactorFor(current)
+          : 1;
+      const speedFactor = clamp(requestedFactor, 0, 1.5);
+      const result = speedFactor <= EPSILON
+        ? {
+            agent: cloneAgent(current),
+            stageTransitions: 0,
+            junctionDecisions: 0,
+            remainingSeconds: duration,
+            blockedReason: null
+          }
+        : advanceTrafficRouteAgent(current, duration, topology, {
+            speed: unitsPerSecond * speedFactor,
+            maxStageTransitions: 16,
+            ...hooks
+          });
       if (result.agent.tokenId !== stableTokenId) {
         throw new Error(`Multi-agent route runtime changed stable identity ${stableTokenId}.`);
       }
@@ -255,6 +274,7 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
   const originalTrafficTokens = materializer.trafficTokens;
   let enabled = false;
   let runtime = null;
+  let routeBehavior = null;
   let activationPoolSize = null;
   let activationAttempts = 0;
   let activationBlockedReason = null;
@@ -288,7 +308,7 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
   }
 
   function defaultActivationReady() {
-    return ready() && presentationReady();
+    return ready();
   }
 
   function ensurePresentationGuards() {
@@ -298,10 +318,7 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
       originalBehaviorApplyDecision = behavior.applyDecision;
       routeGuardedApplyDecision = function multiAgentRouteBehaviorGuard(targetSlot, ...args) {
         if (targetSlot?.routeActive) {
-          targetSlot.behaviorReason = targetSlot.behaviorReason === "junction-yield"
-            ? "junction-yield"
-            : "route-multi-agent";
-          targetSlot.behaviorGap = null;
+          targetSlot.behaviorReason = targetSlot.behaviorReason || "route-cruise";
           targetSlot.behaviorLag = 0;
           return targetSlot;
         }
@@ -318,7 +335,9 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
           targetSlot.steeringAngle = 0;
           targetSlot.steeringReason = targetSlot.behaviorReason === "junction-yield"
             ? "junction-yield"
-            : "route-multi-agent";
+            : targetSlot.behaviorBlockerId
+              ? "route-braking-no-lateral"
+              : "route-multi-agent";
           return targetSlot;
         }
         return originalSteeringApplyPresentation.call(this, targetSlot, ...args);
@@ -400,7 +419,12 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
     }
 
     runtime?.destroy?.("runtime-restart");
+    routeBehavior?.clear?.();
     runtime = candidate;
+    routeBehavior = createTrafficRouteBehaviorController(materializer, {
+      topology: topology(),
+      baseSpeed: speed
+    });
     activationPoolSize = materializer.pool.length;
     enabled = true;
     manualPause = false;
@@ -409,6 +433,8 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
 
     if (defaultEnabled && !attachMacroAccounting()) {
       enabled = false;
+      routeBehavior.clear();
+      routeBehavior = null;
       runtime.destroy("missing-macro-accounting-provider");
       runtime = null;
       restorePresentationGuards();
@@ -431,6 +457,15 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
     return runtime.materializationTokens();
   }
 
+  function advanceRoute(seconds) {
+    ensurePresentationGuards();
+    routeBehavior?.update?.(runtime, seconds);
+    runtime.step(seconds, {
+      speedFactorFor: agent => routeBehavior?.speedFactor?.(agent.tokenId, agent.stage) ?? 1
+    });
+    return snapshot();
+  }
+
   function start() {
     manualPause = false;
     activate({ reconcile: true, throwOnFailure: true });
@@ -442,16 +477,13 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
       activate({ automatic: true, reconcile: false });
     }
     if (!enabled || !runtime) return snapshot();
-    ensurePresentationGuards();
-    runtime.step(seconds);
-    return snapshot();
+    return advanceRoute(seconds);
   }
 
   function step(seconds = 0.05) {
     if (!enabled) start();
     if (!runtime) return snapshot();
-    ensurePresentationGuards();
-    runtime.step(seconds);
+    advanceRoute(seconds);
     materializer.reconcile(true);
     return snapshot();
   }
@@ -461,6 +493,8 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
     manualPause = true;
     enabled = false;
     detachMacroAccounting();
+    routeBehavior?.clear?.();
+    routeBehavior = null;
     runtime?.destroy?.("runtime-stop");
     runtime = null;
     restorePresentationGuards();
@@ -481,6 +515,7 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
       enabled,
       defaultEnabled: Boolean(defaultEnabled),
       defaultActivationReady: defaultActivationReady(),
+      presentationReady: presentationReady(),
       movementAuthority: enabled ? "multi-agent-compiler-route" : "authored-local-lanes",
       defaultTrafficAuthority: defaultEnabled ? "multi-agent-compiler-route" : "authored-local-lanes",
       macroMutationAuthority: false,
@@ -494,6 +529,18 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
       fixedPoolPreserved: activationPoolSize === null || materializer.pool.length === activationPoolSize,
       behaviorGuardInstalled: Boolean(behavior && behavior.applyDecision === routeGuardedApplyDecision),
       steeringGuardInstalled: Boolean(steering && steering.applyPresentation === routeGuardedApplyPresentation),
+      routeBehavior: routeBehavior?.snapshot?.() || {
+        active: false,
+        movementAuthority: false,
+        geometryAuthority: "compiler-local-topology",
+        lateralSteeringAuthority: false,
+        activeVehicles: 0,
+        brakingVehicles: 0,
+        stoppedVehicles: 0,
+        playerReactiveVehicles: 0,
+        followingVehicles: 0,
+        vehicles: []
+      },
       ...(route || {
         seededAgentCount: 0,
         unseededAgentCount: 0,
@@ -528,10 +575,15 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
     runtime() {
       return runtime;
     },
+    routeBehavior() {
+      return routeBehavior;
+    },
     destroy() {
       const wasEnabled = enabled;
       enabled = false;
       detachMacroAccounting();
+      routeBehavior?.clear?.();
+      routeBehavior = null;
       runtime?.destroy?.("policy-destroy");
       runtime = null;
       restorePresentationGuards();
