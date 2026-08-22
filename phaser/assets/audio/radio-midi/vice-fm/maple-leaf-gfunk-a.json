@@ -8,11 +8,15 @@
   "sourceEditionOrCatalogue": "First edition, John Stark & Son, Sedalia, 1899; IMSLP #270188",
   "sourceUrl": "https://imslp.org/wiki/Maple_Leaf_Rag_(Joplin,_Scott)",
   "sourceStatus": "Public Domain — IMSLP lists the 1899 John Stark & Son first-edition scan as Public Domain.",
-  "sourceReuseTerms": "Public-domain first-edition score used only as transcription/motif reference; no third-party recording, piano roll or copyrighted modern arrangement is used.",
+  "sourceReuseTerms": "Public-domain first-edition score used as transcription/motif authority; no third-party recording, piano roll, sample or copyrighted modern arrangement is used.",
   "sourceCheckedAt": "2026-08-22",
   "sourceItemId": "IMSLP #270188",
   "sourceEvidence": "IMSLP identifies the first edition, Sedalia: John Stark & Son, 1899, as Public Domain.",
   "sourceSeed": true,
+  "proofBatch": "M1.3-batch-1",
+  "transcriptionCrossChecks": [
+    "Public-domain first-edition score image / public-domain typesetting used only to cross-check the opening motif pitches and rhythm."
+  ],
   "arrangementLane": "g-funk-west-coast-hip-hop-instrumental",
   "bpm": 96,
   "durationSeconds": 60,
@@ -22,9 +26,10 @@
     "02 G-Funk Drums",
     "03 Funk Bass",
     "04 Electric Piano / Clav",
-    "05 Mono Glide Lead"
+    "05 Mono Lead - Glide Guide",
+    "06 Low Strings / Cruise Pad"
   ],
-  "status": "prototype",
+  "status": "proof",
   "userReview": "not-requested",
   "attribution": {
     "creditMode": "required-player-credit",
@@ -33,5 +38,6 @@
     "licenseOrStatus": "Public Domain source score; composer/work attribution retained under the ViceBlood radio attribution policy.",
     "thirdPartyAssets": []
   },
-  "notes": "M1.2 provenance seed only. M1.3 should fragment the famous rag motif into a relaxed 1990s G-funk pocket rather than preserve the original ragtime accompaniment. Planned values may be revised when the proof MIDI is generated."
+  "sha256": "e1ed276f39d3223149193725b69ea6e5fff2b893eaa14241ed552de778d8b58b",
+  "notes": "M1.3 proof. The opening Maple Leaf Rag motif is isolated on a source-derived track; the ragtime accompaniment is deliberately not copied. ViceBlood adds a relaxed 96 BPM G-funk pocket, funk bass, electric-piano/clav comping, an original mono-lead call/response guide and low cruise pad. General MIDI sounds are placeholders; no third-party audio is embedded or required."
 }
