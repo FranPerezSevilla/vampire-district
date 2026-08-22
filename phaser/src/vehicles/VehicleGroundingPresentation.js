@@ -33,7 +33,13 @@ export function vehicleContactShadowSpec(archetype = {}) {
 export function createVehicleContactShadow(scene, archetype = {}) {
   if (!scene?.add?.ellipse) throw new TypeError("Vehicle contact shadow requires a Phaser scene ellipse factory.");
   const spec = vehicleContactShadowSpec(archetype);
-  const shadow = scene.add.ellipse(spec.x, spec.y, spec.width, spec.height, spec.color, spec.alpha);
+
+  // Phaser Shape keeps fill alpha and object alpha as separate values. Use object alpha for this
+  // presentation primitive so runtime/browser evidence observes the same restrained 0.17 opacity
+  // that was already rendered through fill alpha, without changing the effective visual result.
+  const shadow = scene.add.ellipse(spec.x, spec.y, spec.width, spec.height, spec.color, 1);
+  if (typeof shadow.setAlpha === "function") shadow.setAlpha(spec.alpha);
+  else shadow.alpha = spec.alpha;
   shadow.setName?.(spec.family);
   return shadow;
 }
