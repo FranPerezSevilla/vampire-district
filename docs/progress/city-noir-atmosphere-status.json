@@ -1,20 +1,20 @@
 {
   "initiative": "city-noir-atmosphere",
-  "version": 11,
-  "updatedAt": "2026-08-21",
+  "version": 12,
+  "updatedAt": "2026-08-22",
   "branch": "agent/city-noir-atmosphere",
   "state": "autonomous-in-progress",
-  "currentMilestone": "M6",
-  "currentTask": "checkpoint-after-M6.1",
+  "currentMilestone": "M7",
+  "currentTask": "checkpoint-after-M6",
   "executionCadence": {
     "default": "task-validate-document-report-wait",
     "waitForUserAfterEachBoundedTask": true,
     "genericContinueAuthorizes": "next-bounded-task-only",
     "batchOverrideRequiresExplicitUserInstruction": true,
     "documentationRequiredInBatchMode": true,
-    "lastBatchScope": "M5.3 then, only if green, M6.1",
+    "lastBatchScope": "generic continuation: M6.2 vehicle contact shadow only",
     "lastBatchState": "complete",
-    "rule": "Every bounded task must be validated and documented before the next task starts. The last explicit batch ended after M6.1; M6.2 requires new user direction."
+    "rule": "Every bounded task must be validated and documented before the next task starts. M6 is closed; M7.1 requires new user direction."
   },
   "dependency": {
     "pullRequest": 69,
@@ -28,7 +28,7 @@
     "lastIntegratedMain": "805ea5d107dcddcef4cd564294569455093af4b0",
     "observedMain": "805ea5d107dcddcef4cd564294569455093af4b0",
     "state": "synced",
-    "evidence": "main...agent/city-noir-atmosphere behind_by=0 before M5.3",
+    "evidence": "PR #72 base is main@805ea5d107dcddcef4cd564294569455093af4b0 and current implementation head validated after the main synchronization.",
     "rule": "Unrelated vehicle/traffic work is integrated only for branch continuity and must not expand atmosphere scope."
   },
   "completedTasks": [
@@ -72,25 +72,63 @@
     "M5.3-gameplay-scale-browser-evidence",
     "M5.3-documentation-checkpoint",
     "M6.1-shadow-language-audit",
-    "M6.1-documentation-checkpoint"
+    "M6.1-documentation-checkpoint",
+    "M6.2-vehicle-contact-shadow",
+    "M6.2-focused-tests",
+    "M6.2-gameplay-scale-browser-evidence",
+    "M6.2-documentation-checkpoint",
+    "M6.3-skipped-not-required"
   ],
   "milestones": {
-    "M0": { "title": "Canonical direction, references and agent continuity", "state": "complete" },
-    "M1": { "title": "Integrate the street-surface foundation", "state": "complete" },
-    "M2": { "title": "Global value hierarchy and night exposure", "state": "complete" },
-    "M3": { "title": "Practical-light islands", "state": "complete" },
-    "M4": { "title": "Wet asphalt and local reflection language", "state": "complete" },
-    "M5": { "title": "Low-frequency grime and urban surface dressing", "state": "complete" },
-    "M6": { "title": "Grounding and shadow consistency", "state": "checkpoint-after-M6.1" },
-    "M7": { "title": "Environmental storytelling and atmospheric set dressing", "state": "planned" },
-    "M8": { "title": "District colour/material identity", "state": "planned" },
-    "M9": { "title": "Final gameplay-scale review and bounded corrections", "state": "planned" }
+    "M0": {
+      "title": "Canonical direction, references and agent continuity",
+      "state": "complete"
+    },
+    "M1": {
+      "title": "Integrate the street-surface foundation",
+      "state": "complete"
+    },
+    "M2": {
+      "title": "Global value hierarchy and night exposure",
+      "state": "complete"
+    },
+    "M3": {
+      "title": "Practical-light islands",
+      "state": "complete"
+    },
+    "M4": {
+      "title": "Wet asphalt and local reflection language",
+      "state": "complete"
+    },
+    "M5": {
+      "title": "Low-frequency grime and urban surface dressing",
+      "state": "complete"
+    },
+    "M6": {
+      "title": "Grounding and shadow consistency",
+      "state": "complete"
+    },
+    "M7": {
+      "title": "Environmental storytelling and atmospheric set dressing",
+      "state": "planned"
+    },
+    "M8": {
+      "title": "District colour/material identity",
+      "state": "planned"
+    },
+    "M9": {
+      "title": "Final gameplay-scale review and bounded corrections",
+      "state": "planned"
+    }
   },
   "m2": {
     "state": "complete",
     "implementation": "palette-refinement",
     "focusedTest": "tests/city-night-value-hierarchy.test.js",
-    "browserEvidence": { "workflowRun": 32464436723, "artifactId": 9440164701 }
+    "browserEvidence": {
+      "workflowRun": 32464436723,
+      "artifactId": 9440164701
+    }
   },
   "m3": {
     "state": "complete",
@@ -99,8 +137,14 @@
       "phaser/src/policies/CityVehicleLightPresentationPolicy.js"
     ],
     "browserEvidence": {
-      "contextualFamilies": { "workflowRun": 32468999890, "artifactId": 9441823514 },
-      "vehicleAndEmergency": { "workflowRun": 32470828688, "artifactId": 9442522378 }
+      "contextualFamilies": {
+        "workflowRun": 32468999890,
+        "artifactId": 9441823514
+      },
+      "vehicleAndEmergency": {
+        "workflowRun": 32470828688,
+        "artifactId": 9442522378
+      }
     }
   },
   "m4": {
@@ -154,19 +198,54 @@
     }
   },
   "m6": {
-    "state": "checkpoint-after-M6.1",
+    "state": "complete",
     "task": "docs/agent-tasks/2026-08-21-city-noir-m6-grounding-shadows.md",
-    "checkpointEvidence": "docs/progress/CITY_NOIR_ATMOSPHERE_M5_3_M6_1_CHECKPOINT.md",
+    "checkpointEvidence": "docs/progress/CITY_NOIR_ATMOSPHERE_M6_2_CHECKPOINT.md",
     "m6_1": {
       "state": "complete",
       "type": "read-only-authority-audit",
       "building": "existing PR #63 layered building shadow/depth grammar is sufficient and locked",
       "characters": "ModularCharacterView already has a shallow contact ellipse; no second atmosphere character shadow",
-      "vehicles": "VehicleView only has a nearly coincident dark body underlay; this is the clearest remaining grounding deficit",
-      "streetProps": "dumpsters have no separate contact shadow but are secondary; defer unless M6.2 review proves a meaningful residual issue",
+      "vehicles": "VehicleView's former nearly coincident body underlay was the clearest remaining grounding deficit",
+      "streetProps": "dumpsters have no separate contact shadow but are secondary; no additional prop shadow was justified by M6.2 evidence",
       "decision": "M6.2 is vehicle contact shadow only"
     },
-    "nextPlannedTask": "M6.2-vehicle-contact-shadow",
+    "m6_2": {
+      "state": "complete",
+      "family": "vehicle-contact-shadow",
+      "authority": "VehicleView remains sole vehicle presentation authority; VehicleGroundingPresentation provides the pure presentation primitive",
+      "presentationPolicy": {
+        "color": "0x000000",
+        "alpha": 0.17,
+        "widthScale": 0.92,
+        "heightScale": 0.7,
+        "offsetX": 0.7,
+        "offsetY": 1.3,
+        "minimumWidth": 8,
+        "minimumHeight": 4
+      },
+      "focusedTest": "tests/vehicle-contact-shadow-presentation.test.js",
+      "browserTest": "tests/browser/city-vehicle-light-review.spec.js",
+      "validatedHead": "5468cca1a0b75316aecc9f7d5fc3ac2c03671955",
+      "validation": {
+        "testsWorkflowRun": 32554016255,
+        "atmosphereWorkflowRun": 32554016253,
+        "artifactId": 9470977413,
+        "conclusion": "success"
+      },
+      "captures": [
+        "grounding-traffic.png",
+        "grounding-large-vehicle.png",
+        "grounding-police-wet.png",
+        "grounding-dark-control.png"
+      ],
+      "visualAssessment": "accepted: the shallow footprint seats ordinary and large vehicles on the road, remains compatible with wet police lighting, and does not swallow the vehicle silhouette in the dark control"
+    },
+    "m6_3": {
+      "state": "skipped-not-required",
+      "reason": "M6.2 gameplay-scale evidence did not prove a meaningful residual floating-prop deficit. Street props remain with their existing presentation/gameplay authority."
+    },
+    "nextPlannedTask": "M7.1-decorative-sign-neon-grammar",
     "nextTaskState": "awaiting-user-direction"
   },
   "finalGate": {
@@ -174,5 +253,5 @@
     "autonomousWorkStopsAt": "final-validation-pending",
     "autoMergeAllowed": false
   },
-  "nextAction": "Checkpoint complete after M6.1. Report the documented audit and wait for user direction. If authorized, the next bounded task is M6.2 vehicle contact shadow only; do not combine character/building/prop shadow changes into that slice."
+  "nextAction": "M6 is complete and documented. Report the M6.2 validation and wait for user direction. If authorized, execute only M7.1 decorative sign/neon grammar; do not combine M7.2 steam/smoke or M7.3 micro-scenes into that slice."
 }

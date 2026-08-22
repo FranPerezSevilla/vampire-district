@@ -16,111 +16,100 @@ The audit was performed against the current branch after M5 closed. No runtime s
 
 ### Building authority — already strong; locked
 
-`phaser/src/rendering/buildings/BuildingPresentationPolishRenderer.js` already owns the approved PR #63 building depth/shadow grammar:
+`phaser/src/rendering/buildings/BuildingPresentationPolishRenderer.js` already owns the approved PR #63 building depth/shadow grammar.
 
-- layered rectangular shadows with several small directional offsets;
-- equivalent layered polygon/circle shadows;
-- roof/parapet directional shade;
-- raised roof volumes with explicit shadow/depth faces;
-- building-family depth integrated into the existing building presentation plan.
-
-**Decision:** do not add a city-atmosphere building shadow overlay and do not rewrite PR #63 shadow primitives. Buildings are not the M6 grounding deficit.
+**Decision:** do not add a city-atmosphere building shadow overlay and do not rewrite PR #63 shadow primitives.
 
 ### Character authority — contact grounding already exists
 
-`phaser/src/rendering/ModularCharacterView.js` creates one presentation-only contact ellipse inside each modular character root:
+`phaser/src/rendering/ModularCharacterView.js` already creates one shallow black contact ellipse inside each modular character root.
 
-- black ellipse;
-- alpha approximately `0.27`;
-- width tied to shoulder width;
-- shallow footprint under the feet/body core;
-- part of the character view, not gameplay state.
+**Decision:** keep the existing character shadow language. Do not stack another atmosphere shadow under characters.
 
-This already provides a consistent contact cue for player, civilians and police while preserving pure overhead readability.
+### Vehicle authority — selected M6.2 target
 
-**Decision:** keep the existing character shadow language. Do not stack another atmosphere shadow under characters in M6.2.
+Before M6.2, `phaser/src/vehicles/VehicleView.js` used a subtle nearly-coincident dark body underlay. It separated the procedural body from asphalt but read more like body depth than ground contact.
 
-### Vehicle authority — real remaining deficit
+**Decision:** M6.2 targets vehicles only and keeps `VehicleView` as sole vehicle visual authority.
 
-`phaser/src/vehicles/VehicleView.js` currently starts each vehicle with a subtle dark underlay rectangle (`0x070a11`, alpha `0.20`) at nearly the same body footprint.
+### Street props — secondary
 
-That underlay helps separate the procedural body from asphalt, but because it is almost coincident with the body it reads more like body depth/outline than a soft ground contact shadow. Vehicles are visually larger than characters and move across wet/dark surfaces, so this is the clearest remaining grounding inconsistency.
+Gameplay dumpsters remain owned by `StreetFurnitureSystem`. M6 does not introduce duplicate prop entities or alter hit/collision/broken/body-containment state.
 
-**Decision:** M6.2 should target **vehicles only** with one cheap presentation-only contact-shadow primitive, keeping `VehicleView` as the vehicle presentation authority.
+## M6.2 — vehicle contact shadow — complete
 
-### Street props — secondary, not first target
+The authorized bounded slice is complete.
 
-`phaser/src/systems/StreetFurnitureSystemCore.js` paints gameplay dumpsters as body/lid/wheels/label inside the existing prop container and does not currently add a separate ground shadow.
+### Implementation
 
-Dumpsters are sparse and gameplay-authoritative objects. Any future grounding adjustment must be a visual child of the existing prop renderer and must never create a duplicate prop or alter hit/collision/broken/body-containment state.
+`phaser/src/vehicles/VehicleGroundingPresentation.js` provides a small pure presentation primitive consumed by `VehicleView`:
 
-**Decision:** record this as a possible M6.3 follow-up only if gameplay-scale review still shows a meaningful floating-prop problem after vehicle grounding. Do not combine it with M6.2.
+- family: `vehicle-contact-shadow`;
+- one ellipse per vehicle;
+- black, alpha `0.17`;
+- width scale `0.92`;
+- height scale `0.70`;
+- slight south/east bias (`x +0.7`, `y +1.3`);
+- minimum footprint `8 × 4`;
+- size derives only from the vehicle archetype;
+- the same rule is used for civilian and police vehicles;
+- the shadow is a child of the existing vehicle visual, so it moves and rotates with that visual;
+- no world scan, gameplay state, collision, AI, Heat, police, traffic or mission authority is introduced.
 
-## M6.2 — next bounded task: vehicle contact shadow
+The former nearly-coincident rectangular underlay is replaced by the shallow contact footprint. Vehicle body styling is otherwise left in its existing authority.
 
-Do not implement this task until the user authorizes the next bounded task.
+### Focused validation
 
-### Authority
+`tests/vehicle-contact-shadow-presentation.test.js` protects:
 
-- existing `VehicleView` remains sole vehicle visual authority;
-- no new vehicle entity/container/system;
-- no lighting/gameplay state;
-- no dependency on M3 practical-light intensity.
+- deterministic, immutable footprint geometry;
+- restrained alpha and bounded dimensions;
+- larger archetypes receiving proportionally larger shallow footprints;
+- the same grounding rule for civilian and police archetypes;
+- exactly one named ellipse from the grounding primitive;
+- no mutation of archetype data.
 
-### Intended visual primitive
+### Gameplay-scale evidence
 
-One small soft/low-contrast footprint beneath each vehicle, for example:
+`tests/browser/city-vehicle-light-review.spec.js` captures and asserts the required four contexts:
 
-- shallow ellipse or similarly cheap overhead shape;
-- slight consistent south/east bias compatible with the existing building shadow direction;
-- dimensions derived from current archetype width/height;
-- alpha kept below body/road-navigation contrast;
-- same primitive for civilian and police cars, with size derived from archetype only;
-- rotates/moves naturally with the existing vehicle container rather than creating a per-frame world scan.
+- `grounding-traffic.png` — ordinary civilian traffic;
+- `grounding-large-vehicle.png` — a larger van;
+- `grounding-police-wet.png` — police vehicle on a wet/lighted road;
+- `grounding-dark-control.png` — dark control with dynamic wet response absent.
 
-The existing same-footprint underlay may be reduced/retained only as needed to avoid double-darkening; do not broadly restyle vehicle bodies.
+Validated implementation/evidence head: `5468cca1a0b75316aecc9f7d5fc3ac2c03671955`.
 
-### M6.2 focused acceptance
+- `Tests` run `32554016255`: **success**.
+- `City atmosphere review` run `32554016253`: **success**.
+- review artifact: `9470977413`.
 
-Add focused tests protecting:
+Visual assessment: **accepted for M6**. The footprint remains deliberately subtle, scales with the vehicle, coexists with wet/emergency-light presentation and does not swallow the body/wheel silhouette in the dark control.
 
-- exactly one contact-shadow element per vehicle view;
-- dimensions remain bounded relative to archetype footprint;
-- alpha remains restrained;
-- presentation creation does not mutate vehicle/archetype data;
-- police/civilian styles use the same grounding rule;
-- no gameplay state or collision authority is introduced.
+## M6.3 — local prop grounding — skipped / not required
 
-Gameplay-scale evidence should include:
+M6.2 evidence did not prove a meaningful residual floating-prop problem that justifies another shadow family.
 
-- ordinary civilian traffic on dark asphalt;
-- at least one larger vehicle (SUV/van);
-- police vehicle on a wet/lighted road;
-- dark control showing the shadow does not swallow wheels/body silhouette.
+Therefore:
 
-## M6.3 — optional local prop grounding
+- do not add a generic prop-shadow system;
+- keep sparse street props with their existing authority;
+- revisit one specific prop family only if later gameplay-scale evidence identifies a concrete deficit.
 
-Only if M6.2 review shows the remaining inconsistency is meaningful, consider a tiny existing-renderer shadow for selected street props such as dumpsters.
+## M6 exit — complete
 
-Rules:
+- [x] moving vehicles feel seated on the ground plane;
+- [x] existing building shadow grammar remains intact;
+- [x] existing character grounding remains intact;
+- [x] pure top-down language is preserved;
+- [x] no fake isometric façade/depth system was introduced;
+- [x] no prop adjustment was added without evidence;
+- [x] focused and browser validation are green.
 
-- no duplicate prop entities;
-- presentation child only;
-- broken/intact state stays owned by `StreetFurnitureSystem`;
-- no collision/interaction changes;
-- one family at a time.
+Detailed closure checkpoint: `docs/progress/CITY_NOIR_ATMOSPHERE_M6_2_CHECKPOINT.md`.
 
-## M6 exit
+## Next bounded task
 
-M6 closes only when:
+M6 is closed.
 
-- moving vehicles feel seated on the ground plane;
-- existing building shadow grammar remains intact;
-- character readability remains intact;
-- pure top-down language is preserved;
-- any prop adjustment is proven necessary rather than added by default;
-- affected validation is green.
-
-## Current checkpoint
-
-M6.1 is complete as a read-only authority audit. The next task is M6.2 vehicle contact shadow, but the current user-approved batch ends here. Report/document this checkpoint and wait for a new user instruction before implementing M6.2.
+Per the initiative cadence, stop here and wait for user direction. If authorized, the next bounded task is **M7.1 decorative sign/neon grammar** only. Do not combine M7.2 steam/smoke or M7.3 contextual micro-scenes into that slice.
