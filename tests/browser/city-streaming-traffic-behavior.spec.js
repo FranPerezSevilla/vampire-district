@@ -209,9 +209,25 @@ test("default compiler-route traffic brakes for a parked car without leaving com
     const routePoseBeforeSteering = runtime.materializationTokens().find(token => token.tokenId === agent.tokenId);
     const slotBeforeSteering = materializer.assignments.get(agent.tokenId);
     const before = { x: slotBeforeSteering.x, y: slotBeforeSteering.y };
+    const compilerPoseDeltaBefore = Math.hypot(
+      before.x - routePoseBeforeSteering.x,
+      before.y - routePoseBeforeSteering.y
+    );
     window.NBD_TRAFFIC_STEERING.step(0.25);
     const slotAfterSteering = materializer.assignments.get(agent.tokenId);
     const routePoseAfterSteering = runtime.materializationTokens().find(token => token.tokenId === agent.tokenId);
+    const afterSteering = {
+      x: slotAfterSteering.x,
+      y: slotAfterSteering.y,
+      steeringOffset: slotAfterSteering.steeringOffset,
+      steeringAngle: slotAfterSteering.steeringAngle,
+      steeringReason: slotAfterSteering.steeringReason
+    };
+    const poseDeltaFromSteering = Math.hypot(afterSteering.x - before.x, afterSteering.y - before.y);
+    const compilerPoseDeltaAfter = Math.hypot(
+      afterSteering.x - routePoseAfterSteering.x,
+      afterSteering.y - routePoseAfterSteering.y
+    );
 
     blocker.x = original.x;
     blocker.y = original.y;
@@ -235,12 +251,12 @@ test("default compiler-route traffic brakes for a parked car without leaving com
       sameSlot: materializer.assignments.get(agent.tokenId) === slotRef,
       braking,
       recovered,
-      poseDeltaFromSteering: Math.hypot(slotAfterSteering.x - before.x, slotAfterSteering.y - before.y),
-      compilerPoseDeltaBefore: Math.hypot(slotBeforeSteering.x - routePoseBeforeSteering.x, slotBeforeSteering.y - routePoseBeforeSteering.y),
-      compilerPoseDeltaAfter: Math.hypot(slotAfterSteering.x - routePoseAfterSteering.x, slotAfterSteering.y - routePoseAfterSteering.y),
-      steeringOffset: slotAfterSteering.steeringOffset,
-      steeringAngle: slotAfterSteering.steeringAngle,
-      steeringReason: slotAfterSteering.steeringReason,
+      poseDeltaFromSteering,
+      compilerPoseDeltaBefore,
+      compilerPoseDeltaAfter,
+      steeringOffset: afterSteering.steeringOffset,
+      steeringAngle: afterSteering.steeringAngle,
+      steeringReason: afterSteering.steeringReason,
       routeBehavior: multi.snapshot().routeBehavior
     };
   });
