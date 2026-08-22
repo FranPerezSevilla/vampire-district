@@ -121,21 +121,46 @@ Final evidence: implementation `0c25c8c7d324b027bd4fd0363483884e8da2f937`, GitHu
 
 ## M9 — Legacy cleanup, documentation and user validation gate
 
-**Current milestone.**
+**Final validation pending.** Autonomous implementation is complete and stopped at the explicit user gate.
 
 ### M9.1 — Legacy cleanup audit + final validation preparation
 
-Inventory remaining traffic experiments/adapters/compatibility fields and classify them before deletion:
+**Complete.** Remaining traffic paths were classified before deletion.
 
-1. required production bootstrap/accounting compatibility;
-2. useful regression harness/evidence;
-3. genuinely superseded dead code.
+Production-required compatibility retained:
 
-Remove only category 3 by default. Keep the validated M8 authority stack unchanged, synchronize diagnostics/docs and run full regression CI.
+- legacy macro `trafficFlows` only for bootstrap/accounting compatibility;
+- `TrafficRoutePopulationSeed` and `TrafficRouteCompatibilityProjection`;
+- macro police graph travel;
+- route-aware lifecycle/materialization and hijack forced-release semantics.
 
-After green cleanup evidence, transition the canonical state to `final-validation-pending` and stop autonomous work. Provide the user a gameplay validation checklist/preview.
+Regression/historical evidence retained:
 
-**No automatic merge. Explicit user gameplay approval is required.**
+- `TrafficControlledRouteActivationPolicy` for controlled straight/right/left proof;
+- `TrafficRouteTraversalHarness`;
+- `TrafficShadowRoutePolicy` source/test as isolated M3 historical evidence;
+- isolated legacy `MacroTrafficRouteContinuityPolicy` / `TrafficIntentDrivingPolicy` evidence, with no live production activation path.
+
+The proven superseded live path was removed: normal `TrafficLocalAssignmentPolicy` no longer installs Shadow or wraps `macro.simulateTick` with a duplicate civilian route population. A recursive production-source test now rejects any live reference that could reactivate Shadow, macro-route continuity or free-form intent driving.
+
+After the semantic CI split merged from `main`, `browser-world` was corrected to regenerate only `city:streaming` before Playwright. This provides fresh compiler `localTopology` without rewriting the road/sidewalk geometry that world tests themselves validate.
+
+Final cleanup/semantic-CI evidence: implementation head `763d6a12824d3d83d3fea92f549c56d1b1a04202`, GitHub Tests #2220 / run `32577687431` — unit, boot, campaign, world, traffic, police, gameplay and performance all successful; building review skipped by design.
+
+### M9.2 — Explicit user gameplay validation
+
+**Current gate. No autonomous implementation may advance past this point.**
+
+The user validates normal gameplay for:
+
+- continuous lane-bound traffic through multiple junctions with no visible snap/teleport;
+- straight/right/left crossings and no obvious deadlock pattern;
+- braking/wait/recovery around parked or blocking actors while cars remain on compiler geometry;
+- traffic-vehicle hijack with no duplicate/ghost vehicle or slot/lifecycle corruption;
+- police response and cross-district pursuit remaining functional;
+- camera/stream transitions without traffic pop/jump continuity regressions.
+
+**No automatic merge. Explicit user gameplay approval is required before any ready/merge decision.**
 
 ---
 
