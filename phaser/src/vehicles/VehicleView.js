@@ -1,5 +1,6 @@
 import { WORLD } from "../data/balance.js";
 import { VEHICLE_CLASSES, VEHICLE_OWNERSHIP } from "../data/vehicles.js";
+import { createVehicleContactShadow } from "./VehicleGroundingPresentation.js";
 import { vehicleGearCount, vehicleHealthPercent, vehicleSpeedKph } from "./VehicleModel.js";
 
 function driftDegrees(vehicle) {
@@ -50,9 +51,10 @@ export function paintVehicle(scene, container, definition, archetype) {
     return part;
   };
 
-  // Subtle contact tone: keeps the vehicle visually seated in the street without introducing
-  // a separate lighting/shadow authority.
-  detail(-0.8, 0.8, width * 0.94, height * 0.92, 0x070a11, 0.20);
+  // One shallow contact footprint replaces the nearly coincident rectangular underlay. It remains
+  // a child of the existing vehicle visual, so movement/rotation stay free and no shadow system scans the world.
+  const shadow = createVehicleContactShadow(scene, archetype);
+  parts.push(shadow);
 
   // The body remains deliberately flat to match ViceBlood's city rendering.
   const body = detail(0, 0, width, height, color, 1).setStrokeStyle(1, 0x111621, 0.95);
@@ -218,7 +220,7 @@ export function paintVehicle(scene, container, definition, archetype) {
   label.setResolution?.(3);
   label.setStroke?.("#05060b", 2);
   container.add([...parts, ...wheels, nose, label]);
-  return { body, cabin, hood, wheels, nose, label, details: parts.slice(3) };
+  return { shadow, body, cabin, hood, wheels, nose, label, details: parts.slice(3) };
 }
 
 function plainVehicle(vehicle) {
