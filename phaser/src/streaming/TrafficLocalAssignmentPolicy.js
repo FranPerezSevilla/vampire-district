@@ -4,7 +4,6 @@ import { cameraWorldBounds } from "./TrafficMaterializationSystem.js";
 import { installTrafficLifecyclePolicy } from "./TrafficLifecyclePolicy.js";
 import { installTrafficMultiAgentRouteRuntimePolicy } from "./TrafficMultiAgentRouteRuntimePolicy.js";
 import { installTrafficRouteMaterializationMetadataPolicy } from "./TrafficRouteMaterializationPolicy.js";
-import { installTrafficShadowRoutePolicy } from "./TrafficShadowRoutePolicy.js";
 
 const CAMERA_RETENTION_MARGIN = 360;
 const VIEWPORT_GUARD_MARGIN = 120;
@@ -72,7 +71,6 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   let releaseBypassDepth = 0;
   let preventedVisibleDespawns = 0;
   let lastPreventedTokenId = null;
-  let shadowRoutePolicy = null;
   let routeMaterializationMetadataPolicy = null;
   let controlledRoutePolicy = null;
   let multiAgentRoutePolicy = null;
@@ -155,12 +153,6 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       compilerLocalTopology: {
         ...compilerTopology,
         movementActive: Boolean(multiAgent.enabled)
-      },
-      shadowRouteContinuity: shadowRoutePolicy?.snapshot?.() || {
-        ready: false,
-        mode: "shadow",
-        movementAuthority: false,
-        macroMutationAuthority: false
       }
     };
   }
@@ -172,7 +164,6 @@ export function installTrafficLocalAssignmentPolicy(scene) {
 
   routeMaterializationMetadataPolicy = installTrafficRouteMaterializationMetadataPolicy(materializer);
   const lifecyclePolicy = installTrafficLifecyclePolicy(materializer);
-  shadowRoutePolicy = installTrafficShadowRoutePolicy(materializer);
   // Controlled single-route activation remains available for M6/M7 regression proof.
   controlledRoutePolicy = installTrafficControlledRouteActivationPolicy(materializer);
   // M8.3 installs the production-shaped route runtime as the default civilian
@@ -192,14 +183,12 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     routeContinuityPolicy: null,
     routeMaterializationMetadataPolicy,
     lifecyclePolicy,
-    shadowRoutePolicy,
     controlledRoutePolicy,
     multiAgentRoutePolicy,
     laneJunctionTopologyPolicy: null,
     destroy() {
       multiAgentRoutePolicy?.destroy?.();
       controlledRoutePolicy?.destroy?.();
-      shadowRoutePolicy?.destroy?.();
       lifecyclePolicy?.destroy?.();
       routeMaterializationMetadataPolicy?.destroy?.();
       if (materializer.eligible === localBehaviorEligible) materializer.eligible = originalEligible;
