@@ -10,115 +10,94 @@ Before changing anything, read in order:
 2. `docs/roadmaps/RADIO_MUSIC_PRODUCTION_ROADMAP.md`.
 3. `docs/audio/RADIO_MUSIC_BIBLE.md`.
 4. `docs/audio/RADIO_MUSIC_ATTRIBUTION.md` — mandatory credit/provenance contract.
-5. `docs/agents/RADIO_COMPOSER_AGENT.md`.
-6. This task boundary.
-7. `docs/progress/RADIO_MUSIC_PRODUCTION_PROGRESS.md`.
-8. repository `AGENTS.md` and `docs/AGENT_DEVELOPMENT.md`.
+5. `docs/audio/RADIO_MUSIC_SOURCE_SEEDS.md` — M1.2 source evidence and proof pairings.
+6. `docs/agents/RADIO_COMPOSER_AGENT.md`.
+7. This task boundary.
+8. `docs/progress/RADIO_MUSIC_PRODUCTION_PROGRESS.md`.
+9. repository `AGENTS.md` and `docs/AGENT_DEVELOPMENT.md`.
 
 Execute only the machine-readable `nextTask` unless the user explicitly broadens scope.
 
 ## Goal
 
-Create an agent-friendly production pipeline that can incrementally generate editable ViceBlood car-radio MIDIs from verified public-domain compositions, arranged into distinct 1990s station identities.
+Create an agent-friendly production pipeline that incrementally generates editable ViceBlood car-radio MIDIs from verified public-domain compositions, arranged into distinct 1990s station identities.
 
-The user will finish accepted MIDI files in a DAW. This initiative therefore optimizes for **arrangement quality, editability, provenance, attribution and reproducibility**, not final synth/sample quality.
+The user finishes accepted MIDI files in a DAW. This initiative therefore optimizes for **arrangement quality, editability, provenance, attribution and reproducibility**, not final synth/sample quality.
 
-## In scope
+## Authority / non-goals
 
-- System/authority: radio-music composition workbench and source/provenance/attribution documentation.
-- Expected areas:
-  - `docs/audio/`;
-  - `docs/roadmaps/`;
-  - `docs/agents/`;
-  - `docs/agent-tasks/`;
-  - `docs/progress/`;
-  - `tools/radio-composer/` once M1 starts;
-  - `phaser/assets/audio/radio-midi/<station-id>/` for generated MIDI/manifest candidates.
-- Required behavior:
-  - four core 1990s station lanes remain distinguishable;
-  - public-domain source is verified before transcription/arrangement;
-  - generated MIDI is multitrack, portable and DAW-friendly;
-  - each candidate carries a sidecar provenance/production/attribution manifest;
-  - every accepted public-domain-derived track has a ready-to-use player credit for composer + work;
-  - any extra source/sample licence attribution is classified as required, courtesy or internal-only;
-  - progress can be resumed by a fresh agent from `nextTask` without conversation context.
+This PR owns radio composition workbench, provenance/attribution records, MIDI candidates, station composition grammar and production progress.
 
-## Explicit non-goals
+It does **not** own runtime radio playback, vehicle audio state, station UI, save/load radio persistence, final rendered audio, voice DJs, general SFX runtime or unrelated gameplay systems.
 
-Do not implement or modify:
+PR #44 and PR #58 remain neighboring contracts; do not merge them as part of this task.
 
-- runtime radio playback;
-- vehicle audio state;
-- station-selection controls/UI;
-- save/load radio persistence;
-- final `.ogg` / `.mp3` masters;
-- voice announcers/DJs;
-- general SFX catalogue behavior;
-- unrelated city, traffic, gameplay, Heat, police or mission systems.
+## Completed boundary — M1.1
 
-Do not merge PR #44 or PR #58 as part of this work. Treat them as neighboring contracts and rebase/resolve only if their landed changes later affect this branch.
+M1.1 is complete and validated by GitHub Tests #2223 / run `32578300486`.
 
-## Current exact task — M1.1
+The dependency-free `tools/radio-composer/` workbench provides Type-1 MIDI generation, inspection, manifest/provenance/attribution validation, SHA-256 pairing, smoke fixture and focused tests.
 
-`M1.1-midi-workbench-and-manifest-contract`
+## Current exact task — M1.2 closeout
 
-### Purpose
+`M1.2-ci-validation-and-closeout`
 
-Create the smallest reusable MIDI-generation/validation substrate before producing the four proof tracks.
+M1.2 implementation has selected exactly one clean Public Domain source for each core station and added machine-readable prototype manifests:
 
-### Required decisions
+- `blood-city-beats/chopin-prelude-04-boombap-a.json` — Chopin, *Prelude in E minor, Op.28 No.4*, Wessel & Co. ca.1839, IMSLP #66277;
+- `vice-fm/maple-leaf-gfunk-a.json` — Joplin, *Maple Leaf Rag*, first edition 1899, IMSLP #270188;
+- `night-shift/mountain-king-bigbeat-a.json` — Grieg, *In the Hall of the Mountain King*, composer holograph piano manuscript 1888, IMSLP #810457;
+- `pulse-94-6/bach-prelude-846-acid-a.json` — Bach, *Prelude in C major, BWV 846*, holograph 1722–23, IMSLP #457551.
 
-1. Inspect the repo's existing Node/Python toolchain and choose the smallest practical MIDI writer path.
-2. Do not introduce a runtime dependency for composition tooling.
-3. Prefer a reusable helper over four independent one-off scripts.
-4. Define a machine-readable manifest schema/validator matching the Radio Composer agent and `RADIO_MUSIC_ATTRIBUTION.md` contracts.
-5. Provide one tiny synthetic fixture or smoke-generated MIDI solely to prove the writer/validator works; this fixture is **not** counted as a radio song.
+`docs/audio/RADIO_MUSIC_SOURCE_SEEDS.md` records the human-readable evidence/rationale.
 
-### Expected files
+`tests/radio-composer-workbench.test.js` now loads all four source seeds and requires zero manifest validation errors, exactly one unique core station per seed, Public Domain status, required player credit and no third-party assets.
 
-Exact paths may adapt to existing repository conventions after inspection, but the intended boundary is:
+### M1.2 closeout gate
 
-- `tools/radio-composer/README.md`;
-- reusable writer/helper module(s);
-- validation command/script;
-- manifest schema/contract;
-- focused tooling test/fixture if useful.
+Do not begin M1.3 until the latest GitHub Tests workflow covering the seed manifests/test is green.
 
-Do not generate the four musical proof tracks until the workbench passes its own validation.
+When green:
 
-### M1.1 acceptance criteria
+1. append exact CI evidence to `RADIO_MUSIC_PRODUCTION_PROGRESS.md`;
+2. set M1.2 `complete` in status;
+3. set `nextTask` to `M1.3-proof-batch-1-chopin-joplin`;
+4. begin proof composition in bounded batches of at most two tracks before updating progress/status.
 
-- [ ] A fresh agent can generate a multitrack Type-1 MIDI without copying ad-hoc code from chat history.
-- [ ] Generated MIDI contains an explicit conductor/meta track and named musical tracks.
-- [ ] Validator detects at least malformed/unparseable output and missing required metadata/track names.
-- [ ] Manifest contract includes station, source/provenance, arrangement, BPM/duration, review status and hash fields.
-- [ ] Manifest contract includes the mandatory `attribution` object: ready-to-use player credit, composer-credit flag, source licence/reuse status, source-credit requirement, arrangement credit and third-party material list.
-- [ ] Validator rejects promotion to `daw-candidate` when required attribution/provenance fields are unknown.
-- [ ] Tooling remains development-only and does not affect game runtime.
-- [ ] Synthetic smoke fixture validates successfully.
-- [ ] Relevant repo checks/tests for tooling/documentation are green or their absence is explicitly recorded.
-- [ ] Status advances to M1.2 rather than jumping directly to catalogue expansion.
+## M1.3 composition plan after M1.2 closes
 
-## M1.2 next boundary preview
+M1.3 must generate exactly four 45–90 second Type-1 proof MIDIs and update the existing manifests with actual duration, track names and SHA-256:
 
-After M1.1 is green, choose one provenance-cleared work for each core station and create the seed provenance/attribution manifests before arranging them.
+### Batch 1
 
-Do not assume the candidate matrix in the music bible is legally cleared merely because it is listed there. Prefer public-domain/CC0 sources with clean commercial reuse. `NC`, `ND` and `SA` dependencies are non-canonical unless the user explicitly approves them.
+1. `chopin-prelude-04-boombap-a` — Blood City Beats, ~88 BPM dark boom bap / trip-hop.
+2. `maple-leaf-gfunk-a` — Vice FM, ~96 BPM G-funk / West Coast instrumental.
 
-## M1.3 user gate preview
+Update progress/state after this pair before starting Batch 2.
 
-After M1.2, generate exactly four proof-of-style MIDI sketches:
+### Batch 2
 
-- one Blood City Beats;
-- one Vice FM;
-- one Night Shift;
-- one Pulse 94.6.
+3. `mountain-king-bigbeat-a` — Night Shift, ~138 BPM big beat / breakbeat / industrial dance.
+4. `bach-prelude-846-acid-a` — Pulse 94.6, ~128 BPM acid house / techno.
 
-When all four validate, set `user-validation-pending` and stop. The user must hear the four station directions before the agent scales to a larger catalogue.
+After all four MIDI/manifest pairs pass technical validation, set `user-validation-pending` and stop. Provide direct MIDI links and a concise station audition checklist. Do not scale the catalogue until the user hears these four proofs.
+
+## Composition safety boundary
+
+For every proof:
+
+- transcribe only the needed motif/harmony from the recorded source score;
+- source-derived material remains on clearly named separate tracks;
+- all drums, bass support, synth/keys parts and FX guide material are original ViceBlood arrangement work;
+- no modern commercial performance/transcription is used as a source;
+- no third-party/famous break recording is embedded;
+- portable GM programs/drums are placeholders only;
+- preserve station BPM/era grammar and avoid modern trap/phonk/festival-EDM markers;
+- preserve attribution fields; a MIDI is not accepted without complete credit/provenance data.
 
 ## Validation
 
-Follow repository rules:
+Repository baseline:
 
 ```bash
 npm run check:fast
@@ -126,16 +105,17 @@ npm run check:affected:plan -- --base=origin/main
 npm run check:affected -- --base=origin/main
 ```
 
-Composition tooling may require an additional focused command; document it in `tools/radio-composer/README.md` and record exact results in progress.
+Composition-focused:
 
-Documentation-only M0 intentionally changes no runtime behavior.
+```bash
+npm run test:radio
+npm run radio:validate -- <candidate.mid> <candidate.json>
+```
 
 ## Delivery
 
-- Keep the dedicated PR in draft while autonomous production continues.
-- Update PR body when milestone/gate state materially changes.
+- Keep PR #76 draft during autonomous work.
 - Append progress; never replace prior evidence.
-- Keep `radio-music-production-status.json` authoritative for the exact continuation task.
-- Keep the radio attribution ledger/manifest data complete enough to generate final game credits without consulting chat history.
-- At listening gates, provide direct MIDI links and a short station-specific audition checklist.
+- Keep `radio-music-production-status.json` authoritative.
+- At the M1.3 listening gate, provide direct links to exactly four proof MIDIs.
 - No automatic merge; explicit user approval is required.
