@@ -148,7 +148,7 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       legacyEndpointJunctionInferenceActive: false,
       laneAuthority: "authored-local-lanes",
       routeMaterializationMetadataActive: Boolean(routeMaterializationMetadataPolicy?.active),
-      routeMovementActive: Boolean(controlled.enabled || multiAgent.enabled),
+      routeMovementActive: Boolean(controlled.enabled) || Boolean(multiAgent.enabled),
       controlledRouteActivation: controlled,
       multiAgentRouteRuntime: multiAgent,
       compilerLocalTopology: compilerLocalTopologySnapshot(this.lanes),
