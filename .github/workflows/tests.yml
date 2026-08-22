@@ -108,9 +108,6 @@ jobs:
         run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
       - name: Verify pinned local Phaser
         run: test -f node_modules/phaser/dist/phaser.min.js
-      - name: Compile traffic topology prerequisites
-        if: matrix.family == 'traffic'
-        run: npm run city:topology
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run ${{ matrix.family }} integration loops
