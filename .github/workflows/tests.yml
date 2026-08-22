@@ -106,6 +106,8 @@ jobs:
         run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
       - name: Verify pinned local Phaser
         run: test -f node_modules/phaser/dist/phaser.min.js
+      - name: Compile compiler-owned streaming traffic topology
+        run: npm run city:streaming
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run focused system loops
