@@ -122,7 +122,7 @@ test("M7.2 rendering uses only small translucent circles, not a particle emitter
   assert.equal(graphics.operations.some(([name]) => ["fillRect", "fillEllipse", "particleEmitter"].includes(name)), false);
 });
 
-test("M7.2 installer owns one graphics layer and composes after M5 grime without changing its return value", () => {
+test("M7.2 installer owns one graphics layer, caches global M5 semantics and composes after local M5 grime", () => {
   class FakeScene {
     create() {
       this.created = true;
@@ -134,8 +134,8 @@ test("M7.2 installer owns one graphics layer and composes after M5 grime without
     }
 
     drawCityServiceFrontageGrime() {
-      this.cityServiceFrontageGrimeDescriptors = SERVICE_DESCRIPTORS;
-      return SERVICE_DESCRIPTORS;
+      this.cityServiceFrontageGrimeDescriptors = SERVICE_DESCRIPTORS.slice(0, 2);
+      return this.cityServiceFrontageGrimeDescriptors;
     }
   }
 
@@ -146,10 +146,12 @@ test("M7.2 installer owns one graphics layer and composes after M5 grime without
   scene.currentLayer = 0;
   scene.urbanRenderBounds = { x: 0, y: 0, w: 900, h: 650 };
   scene.create();
+  scene.cityServiceSteamGlobalGrimeDescriptors = SERVICE_DESCRIPTORS;
   const grimeResult = scene.drawCityServiceFrontageGrime(scene.urbanRenderBounds);
   scene.update(1200, 16);
 
-  assert.equal(grimeResult, SERVICE_DESCRIPTORS);
+  assert.deepEqual(grimeResult, SERVICE_DESCRIPTORS.slice(0, 2));
+  assert.equal(scene.cityServiceSteamGlobalGrimeDescriptors, SERVICE_DESCRIPTORS);
   assert.equal(scene.cityServiceSteamGraphics.depth, 18);
   assert.ok(scene.cityServiceSteamSourceDescriptors.length <= SERVICE_STEAM_PRESENTATION.maximumSources);
   assert.ok(scene.cityServiceSteamPuffFrame.length <= SERVICE_STEAM_PRESENTATION.maximumSources * SERVICE_STEAM_PRESENTATION.maximumPuffsPerSource);
