@@ -9,12 +9,13 @@ async function waitForControlledTraffic(page) {
     && window.NBD_TRAFFIC_READY
     && window.NBD_TRAFFIC
     && window.NBD_TRAFFIC_ROUTE_CONTROL
+    && window.NBD_TRAFFIC_ROUTE_MULTI_AGENT?.snapshot?.().enabled
   ));
 }
 
 test.describe.configure({ timeout: 90_000 });
 
-test("controlled compiler routes visibly cross straight/right/left without changing default traffic authority", async ({ page }) => {
+test("controlled compiler routes still cross straight/right/left when default M8 traffic is explicitly paused", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
@@ -23,6 +24,9 @@ test("controlled compiler routes visibly cross straight/right/left without chang
   const result = await page.evaluate(async () => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const control = window.NBD_TRAFFIC_ROUTE_CONTROL;
+    const multi = window.NBD_TRAFFIC_ROUTE_MULTI_AGENT;
+    const defaultBefore = multi.snapshot();
+    const defaultStopped = multi.stop();
     const beforeTraffic = window.NBD_TRAFFIC.snapshot();
     const beforeControl = control.snapshot();
     const initialPoolSize = scene.trafficMaterializationSystem.pool.length;
@@ -139,6 +143,8 @@ test("controlled compiler routes visibly cross straight/right/left without chang
 
     const afterTraffic = window.NBD_TRAFFIC.snapshot();
     return {
+      defaultBefore,
+      defaultStopped,
       beforeTraffic,
       beforeControl,
       afterTraffic,
@@ -147,6 +153,13 @@ test("controlled compiler routes visibly cross straight/right/left without chang
       turnResults
     };
   });
+
+  expect(result.defaultBefore.defaultEnabled).toBe(true);
+  expect(result.defaultBefore.enabled).toBe(true);
+  expect(result.defaultBefore.defaultTrafficAuthority).toBe("multi-agent-compiler-route");
+  expect(result.defaultStopped.enabled).toBe(false);
+  expect(result.defaultStopped.fixedPoolPreserved).toBe(true);
+  expect(result.defaultStopped.manualPause).toBe(true);
 
   expect(result.beforeControl.defaultEnabled).toBe(false);
   expect(result.beforeControl.enabled).toBe(false);
