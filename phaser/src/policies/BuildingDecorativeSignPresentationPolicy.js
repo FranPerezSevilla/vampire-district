@@ -110,10 +110,6 @@ function ruleForBuilding(building) {
   )) || null;
 }
 
-function colorToCss(color) {
-  return `#${(Number(color) >>> 0).toString(16).padStart(6, "0").slice(-6)}`;
-}
-
 function safePanelBounds(building, text, rule) {
   const x = finite(building.x);
   const y = finite(building.y);
@@ -171,7 +167,6 @@ export function buildBuildingDecorativeSignDescriptor(building = {}) {
     panelColor: 0x07080d,
     accentColor: lightPresentation.sourceColor,
     coreColor: lightPresentation.coreColor,
-    labelColor: colorToCss(lightPresentation.coreColor),
     glowAlpha: rule.glowAlpha,
     borderAlpha: rule.borderAlpha,
     accentAlpha: rule.accentAlpha
@@ -251,7 +246,7 @@ export function installBuildingDecorativeSignPresentationPolicy(GameSceneClass) 
         descriptor.labelText,
         descriptor.label.x,
         descriptor.label.y,
-        descriptor.labelColor
+        descriptor.coreColor
       );
     }
     return result;

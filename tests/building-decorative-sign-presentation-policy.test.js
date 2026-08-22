@@ -151,6 +151,7 @@ test("M7.1 installer composes after normal building drawing and adds at most one
   assert.equal(scene.baseDraws, 1);
   assert.equal(scene.mapLabels.length, 1);
   assert.equal(scene.mapLabels[0].text, "REVIEW BAR");
+  assert.equal(scene.mapLabels[0].color, NIGHTLIFE_LIGHT_PRESENTATION.coreColor);
   assert.ok(scene.map.operations.some(([name]) => name === "strokeRect"));
 
   scene.drawBuilding(building("review-bar", "REVIEW BAR"));
