@@ -205,16 +205,6 @@ test("captures M6 vehicle contact grounding across traffic, large, police-wet an
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
   await waitForCity(page);
 
-  const shadowInfo = shadow => shadow ? {
-    name: shadow.name || null,
-    type: shadow.type || shadow.constructor?.name || null,
-    alpha: Number(shadow.alpha),
-    width: Number(shadow.width || shadow.displayWidth || 0),
-    height: Number(shadow.height || shadow.displayHeight || 0),
-    x: Number(shadow.x),
-    y: Number(shadow.y)
-  } : null;
-
   const traffic = await page.evaluate(() => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     const view = scene.cameras.main.worldView;
@@ -297,7 +287,6 @@ test("captures M6 vehicle contact grounding across traffic, large, police-wet an
   const policeWet = await page.evaluate(async () => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     if (scene.scene.isPaused()) scene.scene.resume();
-    for (const vehicle of scene.vehicleSystem.vehicles || []) vehicle.container?.setVisible(false);
     const district = await import("/phaser/src/data/district.js");
     const wetPolicy = await import("/phaser/src/policies/CityWetStreetPresentationPolicy.js");
     const view = scene.cameras.main.worldView;
@@ -322,6 +311,7 @@ test("captures M6 vehicle contact grounding across traffic, large, police-wet an
       item.sourceFamily === "police-red" || item.sourceFamily === "police-blue"
     ));
     scene.cameras.main.centerOn(center.x, center.y);
+    for (const vehicle of scene.vehicleSystem.vehicles || []) vehicle.container?.setVisible(false);
     scene.scene.pause();
     const shadow = slot.visual?.shadow;
     return {
