@@ -12,6 +12,8 @@ The point is not to make a classical-music station. The listener should hear a c
 
 Credit/provenance requirements are mandatory and live in `docs/audio/RADIO_MUSIC_ATTRIBUTION.md`. No candidate is complete merely because the composition is public domain; the score/source layer, arrangement layer and any later third-party audio material must also be traceable.
 
+The first verified proof-cycle source set is recorded in `docs/audio/RADIO_MUSIC_SOURCE_SEEDS.md`. Candidate ideas below remain creative backlog unless separately provenance-cleared.
+
 ## Output model
 
 This initiative produces **MIDI production sketches**, not final mastered audio.
@@ -69,9 +71,20 @@ Prefer clean public-domain/CC0 sources. CC BY may be used only with exact attrib
 
 The arrangement itself must be original ViceBlood work. Genre conventions are allowed; copying the distinctive arrangement, bass line, beat, hook or sound design of a modern copyrighted recording is not.
 
+## M1.2 verified proof-cycle seeds
+
+These four are cleared as the first proof inputs; exact edition/source evidence and credits are in `RADIO_MUSIC_SOURCE_SEEDS.md` and their candidate manifests.
+
+| Station | Candidate | Source work | Planned proof |
+| --- | --- | --- | --- |
+| Blood City Beats | `chopin-prelude-04-boombap-a` | Chopin — Prelude in E minor, Op.28 No.4 | ~88 BPM dark boom bap / trip-hop |
+| Vice FM | `maple-leaf-gfunk-a` | Joplin — Maple Leaf Rag | ~96 BPM G-funk / West Coast instrumental |
+| Night Shift | `mountain-king-bigbeat-a` | Grieg — In the Hall of the Mountain King | ~138 BPM big beat / industrial breakbeat |
+| Pulse 94.6 | `bach-prelude-846-acid-a` | Bach — Prelude in C major, BWV 846 | ~128 BPM acid house / techno |
+
 ## Candidate source matrix
 
-These are **creative candidates only**. Inclusion here is not provenance approval; each must be verified independently before generating a canonical MIDI.
+These are **creative candidates only** beyond the verified M1.2 seed set. Inclusion here is not provenance approval; each must be verified independently before generating a canonical MIDI.
 
 | Public-domain work candidate | Suggested station | 90s transformation idea |
 | --- | --- | --- |
