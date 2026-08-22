@@ -56,6 +56,10 @@ Legacy `traffic-lanes.json.edges` / `junctions` remain compatibility data during
 
 `phaser/src/streaming/TrafficRouteCursor.js` owns pure stable route-agent state and elapsed-time progression. It may choose only compiler `preferred` transitions and activation-safe connectors/direct handoffs. It never invents coordinates.
 
+### Population bootstrap authority
+
+`phaser/src/streaming/TrafficRoutePopulationSeed.js` deterministically seeds stable local route agents from macro population provenance. Macro phase/source-road information may choose the initial compiler lane/progress only; after creation, route progression is compiler geometry owned.
+
 ### Junction conflict authority
 
 `phaser/src/streaming/TrafficJunctionReservationRegistry.js` owns deterministic conservative reservation state keyed by compiler junction authority.
@@ -70,19 +74,25 @@ A route token reserves before connector entry. A conflict leaves the waiter on t
 
 `phaser/src/streaming/TrafficControlledRouteActivationPolicy.js` has validated visible straight/right/left compiler-route traversal, reservation/yielding, stable token/slot, fixed pool and zero-teleport telemetry. It remains explicitly default-off.
 
+### Multi-agent route substrate
+
+`phaser/src/streaming/TrafficMultiAgentRouteRuntimePolicy.js` advances the production-shaped civilian population as stable compiler-route agents through one shared reservation registry, emits route materialization tokens, guards route-active pose from legacy behavior/steering and exposes explicit `start/step/stop`. It is installed but default-off.
+
 ### Macro authority
 
 `MacroTrafficPoliceSystem` remains aggregate traffic population/load compatibility authority during M8 migration. Macro edge IDs/phases and district centres must never become ongoing local x/y or route-choice authority.
 
 ## Current validated boundary
 
-M0 through M7 are complete.
+M0 through M7 plus M8.1 are complete.
 
-Latest implementation boundary: `dcb08288ea797e7016bcdb3858299a85549a7259` passed GitHub Tests #2153 / run `32549761928` with unit, browser boot, browser campaign and all three browser-system shards successful.
+Latest implementation boundary: `9173732803b2b92b28cf26a784e2382169eacc63` passed GitHub Tests #2166 / run `32551128095` with unit, browser boot, browser campaign and all three browser-system shards successful.
+
+M8.1 proves deterministic multi-agent population conservation, stable identity, shared reservation/yielding, compiler-only route pose, fixed pool semantics, route-active presentation guards, teardown cleanup and zero macro-flow mutation in focused tests while leaving normal traffic unchanged.
 
 Default civilian movement is still `authored-local-lanes`.
 
-The current machine-readable task is M8.1: build a deterministic multi-agent route runtime substrate using the proven route/materialization/lifecycle/reservation contracts while keeping it non-default until a later M8 activation gate has dedicated soak evidence.
+The current machine-readable task is M8.2: run an explicit opt-in production-browser soak of the M8.1 substrate. M8.2 is evidence only and must not flip normal production traffic to compiler routes by default.
 
 ## Forbidden shortcuts
 
@@ -104,7 +114,9 @@ Never solve a task by:
 - letting a waiting car enter a connector before reservation is granted;
 - voluntarily stopping a car mid-connector to resolve a conflict;
 - allowing a vanished token to hold a junction indefinitely;
-- flipping default civilian movement during M8.1 before its substrate evidence is green.
+- mutating live macro phases/load merely to make the M8 browser soak pass;
+- enabling M8 by default outside the explicit M8.2 scenario;
+- treating a successful opt-in soak as permission to skip the later default-activation gate.
 
 ## Stable route identity contract
 
@@ -135,14 +147,32 @@ Forbidden:
 
 Population must be conserved across projected + ambiguous + unmatched/unseeded buckets.
 
+## M8.2 browser-soak discipline
+
+The production-browser soak must:
+
+- prove M8 is disabled on normal startup;
+- explicitly start M8 only inside the scenario;
+- snapshot macro flows and pool identity/size before activation;
+- advance through the public route policy API for a bounded duration;
+- move/follow the camera while tracking stable route token/slot identity;
+- reject visible teleports and compiler-geometry authority violations;
+- expose reservation/yield telemetry without inventing synthetic world-space steering;
+- verify route-active x/y is not overwritten by legacy behavior/steering;
+- prove macro traffic state remains unchanged;
+- stop/teardown and require zero leftover reservations plus clean restoration of authored-local traffic.
+
+If production timing does not naturally produce a reservation conflict, record that honestly; do not fake a traffic-light system or corrupt production state merely to manufacture one.
+
 ## Remaining activation ladder
 
 - M0–M7 — complete.
-- M8.1 — current: multi-agent route runtime substrate, non-default.
+- M8.1 — multi-agent route runtime substrate — complete, default-off.
+- M8.2 — current: production browser soak, explicit opt-in only.
 - Later M8 task(s) — default civilian activation and macro accounting migration only after focused/browser soak evidence.
 - M9 — cleanup, documentation and explicit user gameplay approval.
 
-Do not collapse M8.1 into default activation just because the substrate is convenient to enable.
+Do not collapse M8.2 into default activation just because the substrate passes the browser soak.
 
 ## Validation discipline
 
