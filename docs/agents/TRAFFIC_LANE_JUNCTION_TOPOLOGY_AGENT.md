@@ -10,7 +10,7 @@ A fresh agent/session must:
 2. read `docs/progress/traffic-lane-junction-topology-status.json` first;
 3. execute only its exact `nextTask` unless the user explicitly broadens scope;
 4. read the roadmap, task boundary and latest progress entries;
-5. inspect every file named by `nextTask.readFirst` before writing.
+5. inspect every file named by `nextTask.readFirst` before writing when such a list exists.
 
 Do not ask the user to reconstruct chat history when the repository contract answers the question.
 
@@ -48,45 +48,49 @@ Macro graph/district centres are never civilian local coordinates.
 
 ## Validated boundary
 
-M0 through M8 are complete.
+M0 through M9.1 are complete.
 
 Latest validated implementation head:
-`0c25c8c7d324b027bd4fd0363483884e8da2f937`
+`763d6a12824d3d83d3fea92f549c56d1b1a04202`
 
-GitHub Tests #2199 / run `32554733530` passed unit, boot, campaign and all three browser-system shards.
+GitHub Tests #2220 / run `32577687431` passed:
 
-M8.3 validation includes:
+- unit-tests;
+- browser-boot;
+- browser-campaign;
+- browser-world;
+- browser-traffic;
+- browser-police;
+- browser-gameplay;
+- browser-performance.
 
-- zero unseeded production civilian tokens;
-- default compiler-route startup from normal frame delta;
-- stable token/slot and fixed materialization pool;
-- compiler-only pose with bounded movement/no teleport;
-- conservative projection accounting/population conservation;
-- frozen legacy civilian phase advancement while route authority is active;
-- independent macro police travel;
-- junction reservation cleanup;
-- lifecycle/hijack forced exits;
-- route-safe braking without restoring legacy lateral/world-space steering.
+Building visual review was skipped by its normal workflow condition.
 
-A real M8.3 browser regression was found and resolved: guarding `routeActive` x/y initially also bypassed braking behavior. The accepted solution is the dedicated scalar-speed route behavior controller, not returning pose authority to the legacy steering system.
+The M9.1 audit established:
+
+- production-required compatibility remains limited to bootstrap/accounting, route lifecycle/materialization and independent macro police responsibilities;
+- `TrafficControlledRouteActivationPolicy` and `TrafficRouteTraversalHarness` remain useful regression proof;
+- `TrafficShadowRoutePolicy` may remain as isolated M3 historical source/test evidence but is no longer installed by production;
+- `MacroTrafficRouteContinuityPolicy`, `TrafficIntentDrivingPolicy` and Shadow have no live production references outside their isolated legacy modules;
+- the only proven redundant live production path was the Shadow wrapper/population installed from `TrafficLocalAssignmentPolicy`, and it has been removed;
+- `tests/traffic-lifecycle-integration.test.js` recursively guards against reactivation of those superseded production paths.
+
+The semantic CI split also requires `browser-world` to compile `city:streaming` before Playwright. It intentionally does not run full `city:topology`, because regenerating roads would mutate road/sidewalk geometry while world tests are validating it.
 
 ## Current machine-readable task
 
-`M9.1-legacy-cleanup-audit-and-final-validation-prep`
+`M9.2-explicit-user-gameplay-validation`
 
-M9 must remove only code proven superseded after the M8 migration, synchronize documentation/diagnostics, run final CI and then stop at `final-validation-pending` for user gameplay approval.
+**Autonomous implementation is stopped. Do not make further production or cleanup changes unless the user reports a concrete validation failure or explicitly broadens scope.**
 
-### Cleanup discipline
+The user validation covers:
 
-Before deleting anything, classify it as one of:
-
-1. still-required production bootstrap/accounting compatibility;
-2. useful regression harness/evidence;
-3. genuinely superseded/dead experiment.
-
-Only category 3 is eligible for removal by default.
-
-Do not delete a compatibility-looking field merely because normal movement no longer uses it. `trafficFlows`, macro edge provenance or controlled-route proof may still have legitimate bootstrap/accounting/regression roles.
+- continuous lane-bound civilian movement through multiple junctions without visible snap/teleport;
+- straight/right/left crossings with no obvious deadlock pattern;
+- braking/wait/recovery around parked or blocking actors while remaining on compiler geometry;
+- traffic-vehicle hijack without duplicate/ghost cars or slot/lifecycle corruption;
+- police response and cross-district pursuit remaining functional;
+- camera/stream transitions without visible traffic pop/jump continuity regressions.
 
 ## Forbidden shortcuts
 
@@ -104,18 +108,19 @@ Never:
 - stop a car voluntarily inside a connector to resolve a conflict;
 - let a stale reservation deadlock a junction;
 - restore lateral legacy steering to route-active cars as an obstacle-avoidance shortcut;
+- resume speculative cleanup after M9.1 merely because a module name looks legacy;
 - merge PR #73 or bypass the explicit user gameplay gate.
 
 ## Validation discipline
 
-For every bounded task:
+If the user reports a concrete playtest failure:
 
-- add/update focused tests for changed contracts;
-- inspect exact failures before changing code;
+- reproduce/inspect the exact failure before changing code;
+- preserve compiler geometry as physical authority;
+- add/update focused regression coverage for the reported issue;
 - treat unexplained red CI as a blocker;
-- run full CI after M9 cleanup;
-- verify normal startup still reports `compiler-route-lanes` and zero unseeded population;
-- verify macro police, vehicle dynamics, hijack/lifecycle, reservations and route-safe braking remain intact.
+- rerun the full semantic CI matrix after any fix;
+- return to `final-validation-pending` until the user explicitly approves gameplay.
 
 ## Documentation discipline
 
@@ -130,4 +135,4 @@ Keep synchronized:
 
 PR #73 remains draft.
 
-At M9 `final-validation-pending`, autonomous work stops. Provide the user a concise gameplay validation checklist/preview. **No automatic merge; explicit user approval is required.**
+At M9 `final-validation-pending`, autonomous work is stopped. **No automatic merge; explicit user approval is required.**
