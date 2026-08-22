@@ -91,11 +91,17 @@ export function createTrafficJunctionReservationRegistry({
     const token = normalizedId(tokenId);
     if (!junction || !token) return false;
     const now = Math.max(0, finite(nowSeconds));
-    cleanup(now);
     const existing = reservations.get(junction);
-    if (!existing || existing.tokenId !== token) return false;
-    existing.lastTouchedAt = now;
-    return true;
+    // A live connector occupant touching its own reservation is proof that the
+    // owner has not vanished. Refresh it before global stale cleanup so a long
+    // frame cannot manufacture a transient ownership gap mid-junction.
+    if (existing?.tokenId === token) {
+      existing.lastTouchedAt = now;
+      refreshes++;
+      return true;
+    }
+    cleanup(now);
+    return false;
   }
 
   function release({ junctionId, tokenId, reason = "exit" } = {}) {
