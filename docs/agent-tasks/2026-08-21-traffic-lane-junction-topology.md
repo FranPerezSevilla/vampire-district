@@ -22,11 +22,11 @@ Civilian traffic must use:
 
 with stable vehicle identity, stable materialization slot, deterministic junction yielding and no teleport/free-form shortcut.
 
-## Current production authority after M8
+## Final production authority
 
-M0 through M8 are complete.
+M0 through M9.1 are complete.
 
-Normal civilian traffic now uses:
+Normal civilian traffic uses:
 
 - `TrafficMultiAgentRouteRuntimePolicy.js` — default route runtime;
 - `TrafficRouteCursor.js` — deterministic compiler-route progression;
@@ -49,16 +49,7 @@ Legacy civilian phases are no longer the normal physical continuity identity and
 
 Implementation head: `0c25c8c7d324b027bd4fd0363483884e8da2f937`.
 
-GitHub Tests #2199 / run `32554733530` passed:
-
-- unit-tests — success;
-- browser-boot — success;
-- browser-campaign — success;
-- browser-systems 1/3 — success;
-- browser-systems 2/3 — success;
-- browser-systems 3/3 — success.
-
-M8.3 proves:
+GitHub Tests #2199 / run `32554733530` passed the pre-semantic-split workflow and proved:
 
 - zero unseeded production civilian tokens before default activation;
 - fail-closed default activation from normal frame delta, not the debug step API;
@@ -69,34 +60,67 @@ M8.3 proves:
 - route reservation cleanup and lifecycle/forced-exit preservation;
 - route-safe braking for traffic, parked vehicles and the player without restoring legacy lateral/world-space steering.
 
-During M8.3 validation, CI intentionally exposed and resolved a real behavior regression: the initial route-pose guards also suppressed legacy braking. The fix was not to restore legacy pose authority; `TrafficRouteBehaviorPolicy.js` now modulates only scalar route speed while compiler geometry remains sole pose authority.
+During M8.3 validation, CI intentionally exposed and resolved a real behavior regression: the initial route-pose guards also suppressed legacy braking. The fix was not to restore legacy pose authority; `TrafficRouteBehaviorPolicy.js` modulates only scalar route speed while compiler geometry remains sole pose authority.
+
+## M9.1 cleanup audit — complete
+
+The audit classified remaining traffic paths before deletion.
+
+### Production-required compatibility
+
+- legacy macro `trafficFlows` for bootstrap/accounting compatibility only;
+- `TrafficRoutePopulationSeed`;
+- `TrafficRouteCompatibilityProjection`;
+- independent macro police graph travel;
+- route-aware lifecycle/materialization plus forced hijack/layer/teardown release semantics.
+
+### Regression/historical evidence retained
+
+- `TrafficControlledRouteActivationPolicy` for controlled straight/right/left proof;
+- `TrafficRouteTraversalHarness`;
+- `TrafficShadowRoutePolicy` source/test as isolated M3 historical evidence;
+- isolated legacy `MacroTrafficRouteContinuityPolicy` and `TrafficIntentDrivingPolicy` evidence.
+
+### Superseded live production path removed
+
+`TrafficLocalAssignmentPolicy` no longer installs `TrafficShadowRoutePolicy`, so production no longer wraps `macro.simulateTick` or maintains a duplicate shadow civilian route population beside the real M8 runtime.
+
+`tests/traffic-lifecycle-integration.test.js` recursively scans production JS and fails if Shadow, `MacroTrafficRouteContinuityPolicy` or `TrafficIntentDrivingPolicy` gains a live reference outside its isolated legacy module. Legacy nearest-junction inference remains disabled.
+
+### Final semantic CI evidence
+
+Validated implementation head: `763d6a12824d3d83d3fea92f549c56d1b1a04202`.
+
+GitHub Tests #2220 / run `32577687431` passed:
+
+- unit-tests — success;
+- browser-boot — success;
+- browser-campaign — success;
+- browser-world — success;
+- browser-traffic — success;
+- browser-police — success;
+- browser-gameplay — success;
+- browser-performance — success;
+- browser-building-review — skipped by design.
+
+The semantic CI split requires `browser-world` to run `city:streaming` before Playwright so M8 local topology is regenerated without rewriting road/sidewalk geometry that world tests are validating. `browser-traffic` continues to run the full `city:topology` prerequisite.
 
 ## Current task
 
-`M9.1-legacy-cleanup-audit-and-final-validation-prep`
+`M9.2-explicit-user-gameplay-validation`
 
-M9 is cleanup and validation preparation, not another authority redesign.
+**This is a user gate, not an autonomous coding task. Autonomous implementation must stop here.**
 
-### Required shape
+The user should validate:
 
-- inventory remaining traffic experiments, adapters and compatibility data;
-- classify each item before deletion as production-required bootstrap/accounting, regression harness, or genuinely superseded dead code;
-- remove only proven superseded paths;
-- keep compiler-route default behavior unchanged;
-- keep population bootstrap/projection and macro police independence intact while still required;
-- keep controlled route proof where it remains useful as regression coverage;
-- prove no live code can re-enable macro-centre movement, legacy nearest-junction inference or free-form civilian intent steering;
-- synchronize diagnostics/docs;
-- run full CI after cleanup;
-- then transition to `final-validation-pending` and stop autonomous work for user gameplay approval.
+- civilian cars remain on lanes across multiple junctions with no visible snap/teleport;
+- straight/right/left crossings do not show an obvious deadlock pattern;
+- parked/blocking actors cause braking/wait/recovery without cars leaving compiler geometry;
+- hijacking a traffic vehicle produces no duplicate/ghost vehicle and preserves normal lifecycle behavior;
+- police response and cross-district pursuit still function;
+- camera/stream transitions show no visible traffic pop/jump continuity regression.
 
-### Do not advance if
-
-- ownership of a cleanup candidate is uncertain;
-- cleanup changes gameplay rather than removing redundant code;
-- default compiler routes, route-safe braking, accounting, reservations, lifecycle/hijack, physics or police regress;
-- full CI is red or unexplained;
-- the work would merge the PR or bypass explicit user gameplay approval.
+Only explicit user approval satisfies M9.2. Any reported regression returns the PR to implementation mode for a focused fix plus regression coverage and full semantic CI.
 
 ## Non-negotiable architecture
 
@@ -117,4 +141,4 @@ M9 is cleanup and validation preparation, not another authority redesign.
 
 PR #73 remains draft and must not auto-merge.
 
-At `final-validation-pending`, autonomous implementation stops. Provide the user a gameplay validation checklist/preview. Merge requires explicit user approval.
+At `final-validation-pending`, autonomous implementation is stopped. Merge or ready-for-review requires explicit user approval after gameplay validation.
