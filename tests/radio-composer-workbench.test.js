@@ -63,3 +63,32 @@ test("smoke fixture writes MIDI + manifest and validates them together", () => {
   assert.equal(verified.manifest.status, "fixture");
   assert.equal(verified.manifest.attribution.creditMode, "internal-only");
 });
+
+test("M1.2 source seeds satisfy provenance and attribution manifest rules", () => {
+  const seeds = [
+    "phaser/assets/audio/radio-midi/blood-city-beats/chopin-prelude-04-boombap-a.json",
+    "phaser/assets/audio/radio-midi/vice-fm/maple-leaf-gfunk-a.json",
+    "phaser/assets/audio/radio-midi/night-shift/mountain-king-bigbeat-a.json",
+    "phaser/assets/audio/radio-midi/pulse-94-6/bach-prelude-846-acid-a.json"
+  ];
+
+  const stationIds = new Set();
+  for (const relativePath of seeds) {
+    const manifest = JSON.parse(fs.readFileSync(relativePath, "utf8"));
+    assert.deepEqual(validateManifest(manifest), [], relativePath);
+    assert.equal(manifest.sourceSeed, true, relativePath);
+    assert.equal(manifest.status, "prototype", relativePath);
+    assert.equal(manifest.userReview, "not-requested", relativePath);
+    assert.equal(manifest.attribution.creditMode, "required-player-credit", relativePath);
+    assert.deepEqual(manifest.attribution.thirdPartyAssets, [], relativePath);
+    assert.match(manifest.sourceStatus, /Public Domain/i, relativePath);
+    stationIds.add(manifest.stationId);
+  }
+
+  assert.deepEqual([...stationIds].sort(), [
+    "blood-city-beats",
+    "night-shift",
+    "pulse-94-6",
+    "vice-fm"
+  ]);
+});
