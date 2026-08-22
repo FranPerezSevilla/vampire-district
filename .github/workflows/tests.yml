@@ -33,6 +33,8 @@ jobs:
         run: |
           set -o pipefail
           npm test 2>&1 | tee unit-test.log
+      - name: Verify browser suite ownership
+        run: npm run check:browser:suites
       - name: Compile city analysis artifacts
         run: npm run city:compile -- --output-dir=city-compiler-output
       - name: Upload current-city compiler report
@@ -88,15 +90,15 @@ jobs:
             test-results/
           retention-days: 7
 
-  browser-systems:
-    name: browser-systems (shard ${{ matrix.shard }}/3)
+  browser-integration:
+    name: browser-${{ matrix.family }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     needs: unit-tests
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        family: [world, traffic, police, gameplay]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -108,26 +110,57 @@ jobs:
         run: test -f node_modules/phaser/dist/phaser.min.js
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Run focused system loops
+      - name: Run ${{ matrix.family }} integration loops
         shell: bash
         run: |
           set -o pipefail
-          timeout --signal=INT --kill-after=30s 8m npm run test:browser:systems -- --shard=${{ matrix.shard }}/3 2>&1 | tee browser-systems.log
+          timeout --signal=INT --kill-after=30s 8m npm run test:browser:${{ matrix.family }} 2>&1 | tee browser-${{ matrix.family }}.log
+      - name: Upload ${{ matrix.family }} diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-${{ matrix.family }}-diagnostics
+          path: |
+            browser-${{ matrix.family }}.log
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  browser-performance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install exact browser dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+      - name: Verify pinned local Phaser
+        run: test -f node_modules/phaser/dist/phaser.min.js
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Capture runtime performance
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout --signal=INT --kill-after=30s 8m npm run test:browser:performance 2>&1 | tee browser-performance.log
       - name: Upload performance capture evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: runtime-performance-capture-shard-${{ matrix.shard }}
+          name: runtime-performance-capture
           path: .artifacts/performance/runtime-performance-capture.json
           if-no-files-found: ignore
           retention-days: 14
-      - name: Upload system diagnostics
+      - name: Upload performance diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: browser-systems-diagnostics-shard-${{ matrix.shard }}
+          name: browser-performance-diagnostics
           path: |
-            browser-systems.log
+            browser-performance.log
             playwright-report/
             test-results/
           retention-days: 7
