@@ -142,6 +142,8 @@ test("M8 multi-agent runtime conserves macro population but drives only on compi
   assert.equal(initial.totalMacroTokens, 2);
   assert.equal(initial.seededAgentCount, 2);
   assert.equal(initial.unseededAgentCount, 0);
+  assert.equal(initial.districtPopulationCount, 2);
+  assert.equal(initial.districtPopulationConserved, true);
   assert.equal(initial.macroMutationAuthority, false);
   assert.equal(initial.macroCoordinateAuthority, false);
   assert.deepEqual(runtime.agents().map(agent => agent.tokenId), ["macro-a#0", "macro-b#0"]);
@@ -181,7 +183,7 @@ test("M8 multi-agent runtime conserves macro population but drives only on compi
   assert.equal(agentById(runtime, "macro-b#0").connectorId, "connector-b");
   assert.equal(releasedAndTransferred.routeReservationCount, 1);
   assert.equal(releasedAndTransferred.routeReservations[0].tokenId, "macro-b#0");
-  assert.deepEqual(flowSnapshot(trafficFlows), beforeFlows, "M8.1 route runtime must not mutate macro phases/load state");
+  assert.deepEqual(flowSnapshot(trafficFlows), beforeFlows, "route runtime must not mutate bootstrap macro phases/load state");
 
   runtime.destroy();
   assert.equal(runtime.reservationRegistry.snapshot().activeReservationCount, 0);
@@ -234,6 +236,7 @@ function fakeMaterializer() {
   }));
   const behaviorCalls = { base: 0 };
   const steeringCalls = { base: 0 };
+  const accounting = { provider: null, installs: 0, clears: 0 };
   const behavior = {
     applyDecision(slot) {
       behaviorCalls.base++;
@@ -248,9 +251,23 @@ function fakeMaterializer() {
       return slot;
     }
   };
+  const macro = {
+    graph,
+    trafficFlows,
+    setCivilianRouteAccountingProvider(provider) {
+      accounting.provider = provider;
+      accounting.installs++;
+    },
+    clearCivilianRouteAccountingProvider(provider) {
+      if (accounting.provider !== provider) return false;
+      accounting.provider = null;
+      accounting.clears++;
+      return true;
+    }
+  };
   const materializer = {
     lanes: { localTopology: topology },
-    macro: { graph, trafficFlows },
+    macro,
     pool,
     assignments: new Map(),
     scene: {
@@ -300,13 +317,16 @@ function fakeMaterializer() {
       return true;
     }
   };
-  return { materializer, pool, behavior, steering, behaviorCalls, steeringCalls };
+  return { materializer, pool, behavior, steering, behaviorCalls, steeringCalls, accounting };
 }
 
-test("installed M8 substrate is default-off, keeps a fixed pool and guards route-active pose from legacy presentation", () => {
+test("M8 manual regression mode remains opt-in, keeps a fixed pool and guards route-active pose", () => {
   const { materializer, pool, behavior, steering, behaviorCalls, steeringCalls } = fakeMaterializer();
   const metadata = installTrafficRouteMaterializationMetadataPolicy(materializer);
-  const policy = installTrafficMultiAgentRouteRuntimePolicy(materializer, { speed: 100 });
+  const policy = installTrafficMultiAgentRouteRuntimePolicy(materializer, {
+    speed: 100,
+    defaultEnabled: false
+  });
   const poolRef = materializer.pool;
 
   const before = policy.snapshot();
@@ -322,6 +342,7 @@ test("installed M8 substrate is default-off, keeps a fixed pool and guards route
   assert.equal(snapshot.populationConserved, true);
   assert.equal(snapshot.seededAgentCount, 2);
   assert.equal(snapshot.fixedPoolPreserved, true);
+  assert.equal(snapshot.macroAccountingInstalled, false);
   assert.equal(materializer.pool, poolRef);
   assert.equal(materializer.pool.length, 2);
   assert.equal(materializer.assignments.size, 2);
@@ -351,6 +372,75 @@ test("installed M8 substrate is default-off, keeps a fixed pool and guards route
   assert.equal(materializer.pool, poolRef);
   assert.equal(materializer.pool.length, 2);
   assert.equal(pool.every(slot => slot.routeActive === false), true, "legacy tokens must clear route metadata after explicit stop");
+  assert.equal(materializer.trafficTokens()[0].routeActive, undefined);
+
+  policy.destroy();
+  metadata.destroy();
+});
+
+test("M8.3 default policy activates from frame update only after a complete conservative production-shaped seed", () => {
+  const { materializer, pool, accounting } = fakeMaterializer();
+  const metadata = installTrafficRouteMaterializationMetadataPolicy(materializer);
+  const policy = installTrafficMultiAgentRouteRuntimePolicy(materializer, { speed: 100 });
+  const poolRef = materializer.pool;
+  const flowsBefore = structuredClone(flowSnapshot(materializer.macro.trafficFlows));
+
+  const before = policy.snapshot();
+  assert.equal(before.enabled, false);
+  assert.equal(before.defaultEnabled, true);
+  assert.equal(before.defaultTrafficAuthority, "multi-agent-compiler-route");
+  assert.equal(before.defaultActivationReady, true);
+
+  let snapshot = policy.update(0.05);
+  materializer.reconcile(true);
+  snapshot = policy.snapshot();
+
+  assert.equal(snapshot.enabled, true);
+  assert.equal(snapshot.activationBlockedReason, null);
+  assert.equal(snapshot.activationAttempts, 1);
+  assert.equal(snapshot.populationConserved, true);
+  assert.equal(snapshot.unseededAgentCount, 0);
+  assert.equal(snapshot.projectionValid, true);
+  assert.equal(snapshot.districtPopulationConserved, true);
+  assert.equal(snapshot.macroAccountingInstalled, true);
+  assert.equal(snapshot.behaviorGuardInstalled, true);
+  assert.equal(snapshot.steeringGuardInstalled, true);
+  assert.equal(snapshot.fixedPoolPreserved, true);
+  assert.equal(accounting.installs, 1);
+  assert.equal(typeof accounting.provider, "function");
+  assert.equal(accounting.provider().populationConserved, true);
+  assert.equal(materializer.pool, poolRef);
+  assert.equal(materializer.pool.length, 2);
+  assert.equal(materializer.assignments.size, 2);
+  assert.equal(pool.every(slot => slot.routeActive === true), true);
+  assert.deepEqual(flowSnapshot(materializer.macro.trafficFlows), flowsBefore);
+
+  policy.update(0.05);
+  materializer.reconcile(true);
+  assert.equal(policy.snapshot().ticks, 2, "normal frame updates, not debug step(), own route advancement");
+
+  const stopped = policy.stop();
+  assert.equal(stopped.enabled, false);
+  assert.equal(accounting.provider, null);
+  assert.equal(accounting.clears, 1);
+  assert.equal(pool.every(slot => slot.routeActive === false), true);
+
+  policy.destroy();
+  metadata.destroy();
+});
+
+test("M8.3 default activation fails closed when any production token cannot seed onto compiler topology", () => {
+  const { materializer, accounting } = fakeMaterializer();
+  materializer.macro.graph.edges["macro-b"].sourceRoadEdgeIds = ["missing-road"];
+  const metadata = installTrafficRouteMaterializationMetadataPolicy(materializer);
+  const policy = installTrafficMultiAgentRouteRuntimePolicy(materializer, { speed: 100 });
+
+  const snapshot = policy.update(0.05);
+  assert.equal(snapshot.enabled, false);
+  assert.equal(snapshot.defaultEnabled, true);
+  assert.equal(snapshot.macroAccountingInstalled, false);
+  assert.match(snapshot.activationBlockedReason, /^unseeded-production-tokens:1$/);
+  assert.equal(accounting.provider, null);
   assert.equal(materializer.trafficTokens()[0].routeActive, undefined);
 
   policy.destroy();
