@@ -72,6 +72,8 @@ export class MacroTrafficPoliceSystem {
     this.graph = null;
     this.trafficFlows = new Map();
     this.policeTravel = new Map();
+    this.civilianRouteAccountingProvider = null;
+    this.civilianRouteAccountingError = null;
     this.accumulator = 0;
     this.tick = 0;
     this.policeCursor = 0;
@@ -125,6 +127,45 @@ export class MacroTrafficPoliceSystem {
       });
     }
     this.rebuildTrafficLoad();
+  }
+
+  setCivilianRouteAccountingProvider(provider) {
+    if (typeof provider !== "function") {
+      throw new TypeError("Civilian route accounting provider must be a function.");
+    }
+    this.civilianRouteAccountingProvider = provider;
+    this.civilianRouteAccountingError = null;
+    this.rebuildTrafficLoad();
+    this.publish();
+    return this.snapshot();
+  }
+
+  clearCivilianRouteAccountingProvider(provider = null) {
+    if (provider && this.civilianRouteAccountingProvider !== provider) return false;
+    const changed = Boolean(this.civilianRouteAccountingProvider);
+    this.civilianRouteAccountingProvider = null;
+    this.civilianRouteAccountingError = null;
+    if (this.graph) {
+      this.rebuildTrafficLoad();
+      this.publish();
+    }
+    return changed;
+  }
+
+  civilianRouteAccounting() {
+    if (!this.civilianRouteAccountingProvider) return null;
+    try {
+      const state = this.civilianRouteAccountingProvider();
+      if (!state || typeof state !== "object") {
+        this.civilianRouteAccountingError = "route-accounting-provider-returned-no-state";
+        return null;
+      }
+      this.civilianRouteAccountingError = null;
+      return state;
+    } catch (error) {
+      this.civilianRouteAccountingError = String(error?.message || error || "route-accounting-provider-failed");
+      return null;
+    }
   }
 
   districtAt(x, y) {
@@ -250,6 +291,11 @@ export class MacroTrafficPoliceSystem {
 
   advanceTraffic(seconds) {
     if (!this.graph) return 0;
+    if (this.civilianRouteAccountingProvider) {
+      this.rebuildTrafficLoad();
+      return 0;
+    }
+
     let completed = 0;
     for (const [edgeId, flow] of this.trafficFlows) {
       const edge = this.graph.edges[edgeId];
@@ -273,6 +319,28 @@ export class MacroTrafficPoliceSystem {
   rebuildTrafficLoad() {
     if (!this.graph) return {};
     const load = Object.fromEntries(this.graph.nodeIds.map(id => [id, 0]));
+
+    if (this.civilianRouteAccountingProvider) {
+      const accounting = this.civilianRouteAccounting();
+      const valid = Boolean(
+        accounting?.populationConserved
+        && accounting?.projectionValid
+        && accounting?.districtPopulationConserved
+      );
+      if (!valid) {
+        this.civilianRouteAccountingError = this.civilianRouteAccountingError
+          || "route-accounting-projection-invalid";
+        return this.districtTrafficLoad;
+      }
+      for (const districtId of this.graph.nodeIds) {
+        load[districtId] = Math.max(0, finite(accounting.districtCounts?.[districtId]));
+      }
+      this.districtTrafficLoad = Object.fromEntries(
+        Object.entries(load).map(([id, value]) => [id, round(value, 2)])
+      );
+      return this.districtTrafficLoad;
+    }
+
     for (const [edgeId, flow] of this.trafficFlows) {
       const edge = this.graph.edges[edgeId];
       for (const phase of flow.phases) {
@@ -321,6 +389,9 @@ export class MacroTrafficPoliceSystem {
 
   snapshot() {
     const eligible = this.graph ? this.eligiblePolice() : [];
+    const accounting = this.civilianRouteAccounting();
+    const abstractTrafficTokens = [...this.trafficFlows.values()]
+      .reduce((sum, flow) => sum + flow.tokenCount, 0);
     return {
       ready: Boolean(this.graph),
       graphId: this.graph?.id || null,
@@ -328,7 +399,27 @@ export class MacroTrafficPoliceSystem {
       intervalSeconds: this.intervalSeconds,
       policeBudget: this.policeBudget,
       accumulator: round(this.accumulator),
-      abstractTrafficTokens: [...this.trafficFlows.values()].reduce((sum, flow) => sum + flow.tokenCount, 0),
+      abstractTrafficTokens,
+      civilianAccountingMode: this.civilianRouteAccountingProvider
+        ? "compiler-route-projection"
+        : "legacy-edge-phase-bootstrap",
+      legacyCivilianPhaseAdvancementActive: !this.civilianRouteAccountingProvider,
+      civilianRouteAccountingError: this.civilianRouteAccountingError,
+      civilianRouteAccounting: accounting ? {
+        totalMacroTokens: accounting.totalMacroTokens,
+        seededAgentCount: accounting.seededAgentCount,
+        unseededAgentCount: accounting.unseededAgentCount,
+        populationConserved: Boolean(accounting.populationConserved),
+        projectionValid: Boolean(accounting.projectionValid),
+        projectionErrors: [...(accounting.projectionErrors || [])],
+        projectedAgentCount: accounting.projectedAgentCount,
+        ambiguousAgentCount: accounting.ambiguousAgentCount,
+        unmatchedAgentCount: accounting.unmatchedAgentCount,
+        districtPopulationCount: accounting.districtPopulationCount,
+        districtPopulationConserved: Boolean(accounting.districtPopulationConserved),
+        districtCounts: { ...(accounting.districtCounts || {}) },
+        edgeCounts: { ...(accounting.edgeCounts || {}) }
+      } : null,
       completedTrafficTrips: this.completedTrafficTrips,
       completedPoliceLegs: this.completedPoliceLegs,
       eligibleDormantPolice: eligible.length,
@@ -372,6 +463,8 @@ export class MacroTrafficPoliceSystem {
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.civilianRouteAccountingProvider = null;
+    this.civilianRouteAccountingError = null;
     this.trafficFlows.clear();
     this.policeTravel.clear();
     this.graph = null;
