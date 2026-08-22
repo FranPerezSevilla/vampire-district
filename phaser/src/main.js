@@ -1,6 +1,13 @@
 import { WORLD } from "./data/balance.js";
 import { installBloodSensePresentationPolicy } from "./policies/BloodSensePresentationPolicy.js";
+import { installBuildingDecorativeSignPresentationPolicy } from "./policies/BuildingDecorativeSignPresentationPolicy.js";
+import { installCityGrimePresentationPolicy } from "./policies/CityGrimePresentationPolicy.js";
+import { installCityPracticalLightPresentationPolicy } from "./policies/CityPracticalLightPresentationPolicy.js";
+import { installCityServiceCornerDressingPolicy } from "./policies/CityServiceCornerDressingPolicy.js";
+import { installCityServiceSteamPresentationPolicy } from "./policies/CityServiceSteamPresentationPolicy.js";
 import { installCitySurfacePresentationPolicy } from "./policies/CitySurfacePresentationPolicy.js";
+import { installCityVehicleLightPresentationPolicy } from "./policies/CityVehicleLightPresentationPolicy.js";
+import { installCityWetStreetPresentationPolicy } from "./policies/CityWetStreetPresentationPolicy.js";
 import { installDistrictGunfireHeatPolicy } from "./policies/DistrictGunfireHeatPolicy.js";
 import { installFootPolicePedestrianPolicy } from "./policies/FootPolicePedestrianPolicy.js";
 import { installPlaytestSurfacePolicy } from "./policies/PlaytestSurfacePolicy.js";
@@ -29,9 +36,6 @@ const MAIN_MENU_THEME_VOLUME = 0.28;
 const MAIN_MENU_THEME_FADE_MS = 430;
 
 function createMainMenuThemeController() {
-  // Reuse the parser-created media element so the browser can warm the theme
-  // while Phaser and the world preview are still booting. Creating a second
-  // Audio instance here would throw away that head start and risks duplicate playback.
   const audio = document.getElementById("viceblood-main-menu-theme") || new Audio(MAIN_MENU_THEME_URL);
   if (!audio.src) audio.src = MAIN_MENU_THEME_URL;
   audio.loop = true;
@@ -126,6 +130,13 @@ function patchReadableCanvasText() {
 
 patchReadableCanvasText();
 installCitySurfacePresentationPolicy(GameScene);
+installCityPracticalLightPresentationPolicy(GameScene);
+installBuildingDecorativeSignPresentationPolicy(GameScene);
+installCityVehicleLightPresentationPolicy(GameScene);
+installCityWetStreetPresentationPolicy(GameScene);
+installCityGrimePresentationPolicy(GameScene);
+installCityServiceCornerDressingPolicy(GameScene);
+installCityServiceSteamPresentationPolicy(GameScene);
 installSidewalkCoveragePresentationPolicy(GameScene);
 installVampireVeilPolicy();
 installPlaytestSurfacePolicy();

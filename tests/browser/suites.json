@@ -53,6 +53,13 @@
     ],
     "test:browser:building-review": [
       "tests/browser/building-visual-review.spec.js"
+    ],
+    "test:browser:atmosphere-review": [
+      "tests/browser/city-atmosphere-review.spec.js",
+      "tests/browser/city-vehicle-light-review.spec.js",
+      "tests/browser/city-wet-street-review.spec.js",
+      "tests/browser/city-grime-review.spec.js",
+      "tests/browser/city-sign-neon-review.spec.js"
     ]
   }
 }

@@ -13,6 +13,7 @@
     "test:browser:police": "playwright test tests/browser/motorized-police.spec.js tests/browser/perception-recovery.spec.js tests/browser/police-stress.spec.js tests/browser/heat-exposure-evidence.spec.js",
     "test:browser:gameplay": "playwright test tests/browser/input-locks.spec.js tests/browser/hunting-law-runtime.spec.js tests/browser/night-ledger.spec.js tests/browser/feeding-depths.spec.js tests/browser/predator-powers.spec.js tests/browser/weapon-cycle-feedback.spec.js",
     "test:browser:building-review": "playwright test tests/browser/building-visual-review.spec.js",
+    "test:browser:atmosphere-review": "playwright test tests/browser/city-atmosphere-review.spec.js tests/browser/city-vehicle-light-review.spec.js tests/browser/city-wet-street-review.spec.js tests/browser/city-grime-review.spec.js tests/browser/city-sign-neon-review.spec.js",
     "test:browser:performance": "playwright test tests/browser/runtime-performance-capture.spec.js",
     "test:browser:campaign": "playwright test tests/browser/free-roam-baseline.spec.js",
     "test:browser:golden": "playwright test tests/browser/free-roam-baseline.spec.js",
