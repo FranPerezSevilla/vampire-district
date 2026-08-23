@@ -120,3 +120,53 @@ test("M1.3 batch 1 proof MIDIs validate with their attribution manifests", () =>
     assert.match(verified.manifest.sourceStatus, /Public Domain/i, manifestPath);
   }
 });
+
+test("M1.3 batch 2 proof MIDIs validate with their attribution manifests", () => {
+  const pairs = [
+    [
+      "phaser/assets/audio/radio-midi/night-shift/mountain-king-bigbeat-a.mid",
+      "phaser/assets/audio/radio-midi/night-shift/mountain-king-bigbeat-a.json",
+      138
+    ],
+    [
+      "phaser/assets/audio/radio-midi/pulse-94-6/bach-prelude-846-acid-a.mid",
+      "phaser/assets/audio/radio-midi/pulse-94-6/bach-prelude-846-acid-a.json",
+      128
+    ]
+  ];
+
+  for (const [midiPath, manifestPath, bpm] of pairs) {
+    const verified = validateCandidateFiles(midiPath, manifestPath);
+    assert.equal(verified.midiInfo.format, 1, midiPath);
+    assert.equal(verified.midiInfo.ppq, 480, midiPath);
+    assert.equal(verified.midiInfo.trackCount, 7, midiPath);
+    assert.ok(Math.abs(verified.midiInfo.bpm - bpm) < 0.01, midiPath);
+    assert.equal(verified.manifest.status, "proof", manifestPath);
+    assert.equal(verified.manifest.userReview, "not-requested", manifestPath);
+    assert.equal(verified.manifest.proofBatch, "M1.3-batch-2", manifestPath);
+    assert.deepEqual(verified.manifest.attribution.thirdPartyAssets, [], manifestPath);
+    assert.match(verified.manifest.sourceStatus, /Public Domain/i, manifestPath);
+  }
+});
+
+test("M1.3 complete proof set covers the four core radio stations exactly once", () => {
+  const manifests = [
+    "phaser/assets/audio/radio-midi/blood-city-beats/chopin-prelude-04-boombap-a.json",
+    "phaser/assets/audio/radio-midi/vice-fm/maple-leaf-gfunk-a.json",
+    "phaser/assets/audio/radio-midi/night-shift/mountain-king-bigbeat-a.json",
+    "phaser/assets/audio/radio-midi/pulse-94-6/bach-prelude-846-acid-a.json"
+  ].map((relativePath) => JSON.parse(fs.readFileSync(relativePath, "utf8")));
+
+  assert.deepEqual(manifests.map((manifest) => manifest.stationId).sort(), [
+    "blood-city-beats",
+    "night-shift",
+    "pulse-94-6",
+    "vice-fm"
+  ]);
+  for (const manifest of manifests) {
+    assert.equal(manifest.status, "proof");
+    assert.equal(manifest.attribution.creditMode, "required-player-credit");
+    assert.deepEqual(manifest.attribution.thirdPartyAssets, []);
+    assert.match(manifest.sourceStatus, /Public Domain/i);
+  }
+});

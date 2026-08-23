@@ -4,8 +4,8 @@
   "branch": "codex/90s-radio-music-production",
   "pullRequestNumber": 76,
   "state": "active",
-  "currentMilestone": "M1.3-batch-1-implementation-complete-validation-pending",
-  "nextTask": "M1.3-batch-1-ci-validation-and-closeout",
+  "currentMilestone": "M1.3-batch-2-implementation-complete-validation-pending",
+  "nextTask": "M1.3-batch-2-ci-validation-and-user-gate",
   "mission": "Produce editable ViceBlood car-radio MIDI arrangements from provenance-cleared public-domain compositions using distinct 1990s station grammars; user performs final DAW production.",
   "authority": {
     "owns": [
@@ -56,7 +56,7 @@
     "path": "tools/radio-composer/",
     "runtimeDependencyAdded": false,
     "localFocusedTests": "4/4 passed",
-    "githubWorkflow": { "name": "Tests", "runNumber": 2223, "runId": 32578300486, "lastObservedStatus": "completed", "conclusion": "success" }
+    "githubWorkflow": { "name": "Tests", "runNumber": 2223, "runId": 32578300486, "status": "completed", "conclusion": "success" }
   },
   "sourceSeedSet": {
     "checkedAt": "2026-08-22",
@@ -74,24 +74,32 @@
   },
   "proofSet": {
     "targetCount": 4,
-    "completedImplementationCount": 2,
-    "validatedCount": 0,
-    "checkpoint": "docs/progress/RADIO_MUSIC_M1_3_BATCH1_CHECKPOINT.md",
+    "completedImplementationCount": 4,
+    "validatedCount": 2,
     "batch1": {
-      "state": "implementation-complete-validation-pending",
+      "state": "complete",
+      "validationHead": "6e4167cefc11dd0b8275ea51b62af20ada42c30a",
+      "githubWorkflow": { "name": "Tests", "runNumber": 2254, "runId": 32597308747, "status": "completed", "conclusion": "success" },
+      "checkpoint": "docs/progress/RADIO_MUSIC_M1_3_BATCH1_CHECKPOINT.md",
       "candidates": [
         { "stationId": "blood-city-beats", "id": "chopin-prelude-04-boombap-a", "bpm": 88, "durationSeconds": 60, "sha256": "da4adb4fae37695a787f048f421a6dfabe315da90e1a3be7021abd0266a002e5", "thirdPartyAssets": [] },
         { "stationId": "vice-fm", "id": "maple-leaf-gfunk-a", "bpm": 96, "durationSeconds": 60, "sha256": "e1ed276f39d3223149193725b69ea6e5fff2b893eaa14241ed552de778d8b58b", "thirdPartyAssets": [] }
-      ],
-      "nextAfterGreen": "M1.3-batch-2-grieg-bach-proofs"
+      ]
     },
-    "batch2": { "state": "planned-after-batch-1-green", "candidateIds": ["mountain-king-bigbeat-a", "bach-prelude-846-acid-a"] }
+    "batch2": {
+      "state": "implementation-complete-validation-pending",
+      "checkpoint": "docs/progress/RADIO_MUSIC_M1_3_BATCH2_CHECKPOINT.md",
+      "candidates": [
+        { "stationId": "night-shift", "id": "mountain-king-bigbeat-a", "bpm": 138, "durationSeconds": 45.174, "sha256": "54a9f18de1f4c717071414c9b079ea93cd06db2573ccc5c6b9f6a07056840d2f", "thirdPartyAssets": [] },
+        { "stationId": "pulse-94-6", "id": "bach-prelude-846-acid-a", "bpm": 128, "durationSeconds": 44.953, "sha256": "a88b33c10506cda73c83a4f96ac26809aefc0cbb849a7f08c9980565ccdb9ee0", "thirdPartyAssets": [] }
+      ]
+    }
   },
   "milestones": {
     "M0": "complete",
     "M1.1": "complete",
     "M1.2": "complete",
-    "M1.3": "active-batch-1-validation-pending",
+    "M1.3": "active-batch-2-validation-pending",
     "M2": "planned-after-user-feedback",
     "M3": "planned",
     "M4": "planned",
@@ -122,6 +130,7 @@
     "docs/agents/RADIO_COMPOSER_AGENT.md",
     "docs/agent-tasks/2026-08-22-radio-music-production.md",
     "docs/progress/RADIO_MUSIC_M1_3_BATCH1_CHECKPOINT.md",
+    "docs/progress/RADIO_MUSIC_M1_3_BATCH2_CHECKPOINT.md",
     "docs/progress/RADIO_MUSIC_PRODUCTION_PROGRESS.md"
   ],
   "mergePolicy": "draft-until-explicit-user-approval"

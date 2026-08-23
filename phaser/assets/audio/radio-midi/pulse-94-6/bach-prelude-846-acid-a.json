@@ -8,23 +8,27 @@
   "sourceEditionOrCatalogue": "Holograph manuscript, 1722–23, Staatsbibliothek zu Berlin, Mus. ms. Bach P 415; IMSLP #457551",
   "sourceUrl": "https://imslp.org/wiki/Well-Tempered_Clavier,_Book_1,_BWV_846-869_(Bach,_Johann_Sebastian)",
   "sourceStatus": "Public Domain — IMSLP lists the 1722–23 holograph manuscript held by the Staatsbibliothek zu Berlin as Public Domain.",
-  "sourceReuseTerms": "Public-domain holograph manuscript used only as transcription/motif reference; no modern edition, commercial recording or sample is used.",
+  "sourceReuseTerms": "Public-domain holograph manuscript used as transcription/motif authority; no modern edition, commercial recording or sample is used.",
   "sourceCheckedAt": "2026-08-22",
   "sourceItemId": "IMSLP #457551",
   "sourceEvidence": "IMSLP identifies the 1722–23 holograph manuscript, Staatsbibliothek zu Berlin Mus. ms. Bach P 415, as Public Domain.",
   "sourceSeed": true,
+  "proofBatch": "M1.3-batch-2",
+  "transcriptionCrossChecks": [
+    "Opening four-bar broken-chord identity cross-checked against public-domain score notation: C major → Dm7/C → G7/B → C major."
+  ],
   "arrangementLane": "house-acid-house-techno",
   "bpm": 128,
-  "durationSeconds": 60,
+  "durationSeconds": 44.953,
   "midiTracks": [
-    "00 Conductor",
     "01 Source Pattern - Bach",
     "02 909-Style Placeholder Drums",
-    "03 Acid Bass",
+    "03 Acid Bass - 303 Guide",
     "04 Piano / Organ Stabs",
-    "05 Club FX Guide"
+    "05 Club Pad",
+    "06 Club FX Guide"
   ],
-  "status": "prototype",
+  "status": "proof",
   "userReview": "not-requested",
   "attribution": {
     "creditMode": "required-player-credit",
@@ -33,5 +37,6 @@
     "licenseOrStatus": "Public Domain holograph manuscript; composer/work attribution retained under the ViceBlood radio attribution policy.",
     "thirdPartyAssets": []
   },
-  "notes": "M1.2 provenance seed only. M1.3 should reinterpret the arpeggiated harmonic engine as a repetitive 1990s acid/techno pattern with original 303-like bass programming and period club structure. Planned values may be revised when the proof MIDI is generated."
+  "sha256": "a88b33c10506cda73c83a4f96ac26809aefc0cbb849a7f08c9980565ccdb9ee0",
+  "notes": "M1.3 proof. Bach's opening broken-chord engine remains isolated on the source-derived track. ViceBlood adds a compact 128 BPM 1990s house/acid framework with four-on-the-floor drums, an original 303-style bass guide, organ/piano stabs, club pad and FX guide. No third-party audio is embedded or required."
 }

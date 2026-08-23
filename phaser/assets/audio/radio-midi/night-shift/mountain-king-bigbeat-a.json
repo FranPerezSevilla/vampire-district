@@ -8,23 +8,27 @@
   "sourceEditionOrCatalogue": "Composer's holograph piano manuscript, 21 January 1888; scanned by Bergen Public Library (N-Bo); IMSLP #810457",
   "sourceUrl": "https://imslp.org/wiki/Peer_Gynt_Suite_No.1,_Op.46_(Grieg,_Edvard)",
   "sourceStatus": "Public Domain — IMSLP lists Grieg's 1888 holograph piano manuscript as Public Domain.",
-  "sourceReuseTerms": "Public-domain composer manuscript used only as transcription/motif reference; no modern recording, sample or later copyrighted edition is used.",
+  "sourceReuseTerms": "Public-domain composer manuscript used as transcription/motif authority; no modern recording, commercial break, sample or later copyrighted edition is used.",
   "sourceCheckedAt": "2026-08-22",
   "sourceItemId": "IMSLP #810457",
   "sourceEvidence": "IMSLP identifies the holograph piano manuscript dated 21 January 1888, scanned by Bergen Public Library, as Public Domain.",
   "sourceSeed": true,
+  "proofBatch": "M1.3-batch-2",
+  "transcriptionCrossChecks": [
+    "Opening theme nucleus cross-checked against public-domain notation: F#–G#–A#–B–C#–A#–C# / D–A#–D–C#–A#–C#."
+  ],
   "arrangementLane": "big-beat-breakbeat-industrial-dance",
   "bpm": 138,
-  "durationSeconds": 65,
+  "durationSeconds": 45.174,
   "midiTracks": [
-    "00 Conductor",
     "01 Source Motif - Grieg",
     "02 Big Beat Break",
     "03 Distorted Bass",
     "04 Industrial Hits",
-    "05 Riser / FX Guide"
+    "05 Low Strings / Pulse",
+    "06 Riser / FX Guide"
   ],
-  "status": "prototype",
+  "status": "proof",
   "userReview": "not-requested",
   "attribution": {
     "creditMode": "required-player-credit",
@@ -33,5 +37,6 @@
     "licenseOrStatus": "Public Domain composer manuscript; composer/work attribution retained under the ViceBlood radio attribution policy.",
     "thirdPartyAssets": []
   },
-  "notes": "M1.2 provenance seed only. M1.3 should exploit the repeating rising motif as late-1990s big beat/breakbeat, with original programmed drums and no borrowed commercial break recording. Planned values may be revised when the proof MIDI is generated."
+  "sha256": "54a9f18de1f4c717071414c9b079ea93cd06db2573ccc5c6b9f6a07056840d2f",
+  "notes": "M1.3 proof. The recognisable Grieg theme remains isolated on its source-derived track. ViceBlood adds a compact 138 BPM late-1990s big-beat sketch with programmed drums, distorted bass, industrial hits, low-string pulse and riser guide. No commercial break recording or third-party audio is embedded or required."
 }
