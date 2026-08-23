@@ -3,9 +3,9 @@
   "initiative": "90s-radio-music-production",
   "branch": "codex/90s-radio-music-production",
   "pullRequestNumber": 76,
-  "state": "active",
-  "currentMilestone": "M1.3-batch-2-recipe-validation-pending",
-  "nextTask": "M1.3-batch-2-recipe-ci-validation-and-user-gate",
+  "state": "user-validation-pending",
+  "currentMilestone": "M1.3-complete-user-validation-pending",
+  "nextTask": "M1.3-user-listening-gate",
   "mission": "Produce editable ViceBlood car-radio MIDI arrangements from provenance-cleared public-domain compositions using distinct 1990s station grammars; user performs final DAW production.",
   "authority": {
     "owns": [
@@ -68,7 +68,8 @@
   "proofSet": {
     "targetCount": 4,
     "completedImplementationCount": 4,
-    "validatedCount": 2,
+    "validatedCount": 4,
+    "userGateDocument": "docs/progress/RADIO_MUSIC_M1_3_USER_GATE.md",
     "batch1": {
       "state": "complete",
       "artifactMode": "committed-midi",
@@ -77,10 +78,12 @@
       "candidates": ["chopin-prelude-04-boombap-a", "maple-leaf-gfunk-a"]
     },
     "batch2": {
-      "state": "recipe-implementation-complete-validation-pending",
+      "state": "complete",
       "artifactMode": "generated-from-recipe",
       "generatorPath": "tools/radio-composer/proofs/m1-3-batch2.js",
-      "failedBinaryTransportRun": { "name": "Tests", "runNumber": 2259, "runId": 32630789118, "conclusion": "failure", "reason": "connected binary payload was not byte-identical to locally validated MIDI" },
+      "validationHead": "d58337de1d7ca4df07e5c9561d6cf8462ea947dc",
+      "githubWorkflow": { "name": "Tests", "runNumber": 2260, "runId": 32631473877, "status": "completed", "conclusion": "success" },
+      "supersededBinaryTransportRun": { "name": "Tests", "runNumber": 2259, "runId": 32630789118, "conclusion": "failure", "reason": "connected binary payload was not byte-identical to locally validated MIDI; corrupted binary commit removed and replaced by deterministic recipe authority" },
       "candidates": ["mountain-king-bigbeat-a", "bach-prelude-846-acid-a"]
     }
   },
@@ -88,9 +91,9 @@
     "M0": "complete",
     "M1.1": "complete",
     "M1.2": "complete",
-    "M1.3": "active-batch-2-recipe-validation-pending",
-    "M2": "planned-after-user-feedback",
-    "M3": "planned",
+    "M1.3": "user-validation-pending",
+    "M2": "blocked-on-user-feedback",
+    "M3": "planned-after-M2",
     "M4": "planned",
     "M5": "planned",
     "M6": "planned",
@@ -116,6 +119,7 @@
     "docs/agent-tasks/2026-08-22-radio-music-production.md",
     "docs/progress/RADIO_MUSIC_M1_3_BATCH1_CHECKPOINT.md",
     "docs/progress/RADIO_MUSIC_M1_3_BATCH2_CHECKPOINT.md",
+    "docs/progress/RADIO_MUSIC_M1_3_USER_GATE.md",
     "docs/progress/RADIO_MUSIC_PRODUCTION_PROGRESS.md"
   ],
   "mergePolicy": "draft-until-explicit-user-approval"
