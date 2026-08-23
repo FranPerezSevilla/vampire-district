@@ -4,15 +4,15 @@
   "branch": "codex/90s-radio-music-production",
   "pullRequestNumber": 76,
   "state": "active",
-  "currentMilestone": "M1.3-batch-2-implementation-complete-validation-pending",
-  "nextTask": "M1.3-batch-2-ci-validation-and-user-gate",
+  "currentMilestone": "M1.3-batch-2-recipe-validation-pending",
+  "nextTask": "M1.3-batch-2-recipe-ci-validation-and-user-gate",
   "mission": "Produce editable ViceBlood car-radio MIDI arrangements from provenance-cleared public-domain compositions using distinct 1990s station grammars; user performs final DAW production.",
   "authority": {
     "owns": [
       "radio music source provenance",
       "radio music attribution/credit contract",
       "radio MIDI arrangement workbench",
-      "generated radio MIDI candidates and sidecar manifests",
+      "generated radio MIDI candidates and deterministic proof recipes",
       "station composition grammar and production progress"
     ],
     "doesNotOwn": [
@@ -33,8 +33,9 @@
   "stretchStations": ["static"],
   "output": {
     "kind": "multitrack-midi-production-sketch",
-    "canonicalCandidatePath": "phaser/assets/audio/radio-midi/<station-id>/<track-id>.mid",
+    "canonicalCandidatePath": "phaser/assets/audio/radio-midi/<station-id>/<track-id>.mid when binary transport is reliable",
     "sidecarManifest": true,
+    "deterministicRecipeAllowed": true,
     "attributionSidecarRequired": true,
     "finalRenderedAudioInScope": false,
     "runtimeIntegrationInScope": false
@@ -55,22 +56,14 @@
     "validationHead": "cc475ebe47097fff8f05f5021495f2613f92f06c",
     "path": "tools/radio-composer/",
     "runtimeDependencyAdded": false,
-    "localFocusedTests": "4/4 passed",
     "githubWorkflow": { "name": "Tests", "runNumber": 2223, "runId": 32578300486, "status": "completed", "conclusion": "success" }
   },
   "sourceSeedSet": {
     "checkedAt": "2026-08-22",
     "policy": "public-domain score/manuscript references only; no third-party recording/sample dependencies",
     "documentation": "docs/audio/RADIO_MUSIC_SOURCE_SEEDS.md",
-    "seedValidationTest": "tests/radio-composer-workbench.test.js",
     "validationHead": "564ad89c91d42f4ab8037eee0a6be1d1ab1e31c1",
-    "githubWorkflow": { "name": "Tests", "runNumber": 2237, "runId": 32584035996, "status": "completed", "conclusion": "success" },
-    "candidates": [
-      { "stationId": "blood-city-beats", "id": "chopin-prelude-04-boombap-a", "work": "Prelude in E minor, Op. 28 No. 4", "composer": "Frédéric Chopin", "sourceItem": "IMSLP #66277", "sourceStatus": "Public Domain" },
-      { "stationId": "vice-fm", "id": "maple-leaf-gfunk-a", "work": "Maple Leaf Rag", "composer": "Scott Joplin", "sourceItem": "IMSLP #270188", "sourceStatus": "Public Domain" },
-      { "stationId": "night-shift", "id": "mountain-king-bigbeat-a", "work": "In the Hall of the Mountain King", "composer": "Edvard Grieg", "sourceItem": "IMSLP #810457", "sourceStatus": "Public Domain" },
-      { "stationId": "pulse-94-6", "id": "bach-prelude-846-acid-a", "work": "Prelude in C major, BWV 846", "composer": "Johann Sebastian Bach", "sourceItem": "IMSLP #457551", "sourceStatus": "Public Domain" }
-    ]
+    "githubWorkflow": { "name": "Tests", "runNumber": 2237, "runId": 32584035996, "status": "completed", "conclusion": "success" }
   },
   "proofSet": {
     "targetCount": 4,
@@ -78,28 +71,24 @@
     "validatedCount": 2,
     "batch1": {
       "state": "complete",
+      "artifactMode": "committed-midi",
       "validationHead": "6e4167cefc11dd0b8275ea51b62af20ada42c30a",
       "githubWorkflow": { "name": "Tests", "runNumber": 2254, "runId": 32597308747, "status": "completed", "conclusion": "success" },
-      "checkpoint": "docs/progress/RADIO_MUSIC_M1_3_BATCH1_CHECKPOINT.md",
-      "candidates": [
-        { "stationId": "blood-city-beats", "id": "chopin-prelude-04-boombap-a", "bpm": 88, "durationSeconds": 60, "sha256": "da4adb4fae37695a787f048f421a6dfabe315da90e1a3be7021abd0266a002e5", "thirdPartyAssets": [] },
-        { "stationId": "vice-fm", "id": "maple-leaf-gfunk-a", "bpm": 96, "durationSeconds": 60, "sha256": "e1ed276f39d3223149193725b69ea6e5fff2b893eaa14241ed552de778d8b58b", "thirdPartyAssets": [] }
-      ]
+      "candidates": ["chopin-prelude-04-boombap-a", "maple-leaf-gfunk-a"]
     },
     "batch2": {
-      "state": "implementation-complete-validation-pending",
-      "checkpoint": "docs/progress/RADIO_MUSIC_M1_3_BATCH2_CHECKPOINT.md",
-      "candidates": [
-        { "stationId": "night-shift", "id": "mountain-king-bigbeat-a", "bpm": 138, "durationSeconds": 45.174, "sha256": "54a9f18de1f4c717071414c9b079ea93cd06db2573ccc5c6b9f6a07056840d2f", "thirdPartyAssets": [] },
-        { "stationId": "pulse-94-6", "id": "bach-prelude-846-acid-a", "bpm": 128, "durationSeconds": 44.953, "sha256": "a88b33c10506cda73c83a4f96ac26809aefc0cbb849a7f08c9980565ccdb9ee0", "thirdPartyAssets": [] }
-      ]
+      "state": "recipe-implementation-complete-validation-pending",
+      "artifactMode": "generated-from-recipe",
+      "generatorPath": "tools/radio-composer/proofs/m1-3-batch2.js",
+      "failedBinaryTransportRun": { "name": "Tests", "runNumber": 2259, "runId": 32630789118, "conclusion": "failure", "reason": "connected binary payload was not byte-identical to locally validated MIDI" },
+      "candidates": ["mountain-king-bigbeat-a", "bach-prelude-846-acid-a"]
     }
   },
   "milestones": {
     "M0": "complete",
     "M1.1": "complete",
     "M1.2": "complete",
-    "M1.3": "active-batch-2-validation-pending",
+    "M1.3": "active-batch-2-recipe-validation-pending",
     "M2": "planned-after-user-feedback",
     "M3": "planned",
     "M4": "planned",
@@ -117,10 +106,6 @@
     "task would require runtime/gameplay scope",
     "task requires final DAW subjective judgment rather than MIDI production"
   ],
-  "neighborPullRequests": {
-    "44": "general audio catalogue and attribution ledger; do not replace its runtime contract",
-    "58": "public-domain Gnossienne source/provenance pattern; do not depend on its branch state"
-  },
   "canonicalReadOrder": [
     "docs/progress/radio-music-production-status.json",
     "docs/roadmaps/RADIO_MUSIC_PRODUCTION_ROADMAP.md",

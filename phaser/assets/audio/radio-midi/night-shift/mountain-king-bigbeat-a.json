@@ -14,12 +14,14 @@
   "sourceEvidence": "IMSLP identifies the holograph piano manuscript dated 21 January 1888, scanned by Bergen Public Library, as Public Domain.",
   "sourceSeed": true,
   "proofBatch": "M1.3-batch-2",
+  "artifactMode": "generated-from-recipe",
+  "generatorPath": "tools/radio-composer/proofs/m1-3-batch2.js",
   "transcriptionCrossChecks": [
     "Opening theme nucleus cross-checked against public-domain notation: F#–G#–A#–B–C#–A#–C# / D–A#–D–C#–A#–C#."
   ],
   "arrangementLane": "big-beat-breakbeat-industrial-dance",
   "bpm": 138,
-  "durationSeconds": 45.174,
+  "durationSeconds": 46.96,
   "midiTracks": [
     "01 Source Motif - Grieg",
     "02 Big Beat Break",
@@ -37,6 +39,5 @@
     "licenseOrStatus": "Public Domain composer manuscript; composer/work attribution retained under the ViceBlood radio attribution policy.",
     "thirdPartyAssets": []
   },
-  "sha256": "54a9f18de1f4c717071414c9b079ea93cd06db2573ccc5c6b9f6a07056840d2f",
-  "notes": "M1.3 proof. The recognisable Grieg theme remains isolated on its source-derived track. ViceBlood adds a compact 138 BPM late-1990s big-beat sketch with programmed drums, distorted bass, industrial hits, low-string pulse and riser guide. No commercial break recording or third-party audio is embedded or required."
+  "notes": "M1.3 proof. The recognisable Grieg theme remains isolated on its source-derived track. ViceBlood adds a 138 BPM late-1990s big-beat sketch with programmed drums, distorted bass, industrial hits, low-string pulse and riser guide. The canonical repository source is a deterministic MIDI recipe; no commercial break recording or third-party audio is embedded or required."
 }

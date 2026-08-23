@@ -7,9 +7,14 @@ import {
   buildMidiFile,
   inspectMidiBuffer,
   validateManifest,
-  validateCandidateFiles
+  validateCandidateFiles,
+  sha256
 } from "../tools/radio-composer/midi-workbench.js";
 import { createSmokeCandidate } from "../tools/radio-composer/smoke.js";
+import {
+  buildGriegProofMidi,
+  buildBachProofMidi
+} from "../tools/radio-composer/proofs/m1-3-batch2.js";
 
 test("radio composer writes a named Type-1 MIDI with conductor metadata", () => {
   const midi = buildMidiFile({
@@ -121,31 +126,40 @@ test("M1.3 batch 1 proof MIDIs validate with their attribution manifests", () =>
   }
 });
 
-test("M1.3 batch 2 proof MIDIs validate with their attribution manifests", () => {
-  const pairs = [
-    [
-      "phaser/assets/audio/radio-midi/night-shift/mountain-king-bigbeat-a.mid",
-      "phaser/assets/audio/radio-midi/night-shift/mountain-king-bigbeat-a.json",
-      138
-    ],
-    [
-      "phaser/assets/audio/radio-midi/pulse-94-6/bach-prelude-846-acid-a.mid",
-      "phaser/assets/audio/radio-midi/pulse-94-6/bach-prelude-846-acid-a.json",
-      128
-    ]
+test("M1.3 batch 2 recipes generate valid proof MIDIs with their attribution manifests", () => {
+  const cases = [
+    {
+      id: "mountain-king-bigbeat-a",
+      builder: buildGriegProofMidi,
+      manifestPath: "phaser/assets/audio/radio-midi/night-shift/mountain-king-bigbeat-a.json",
+      bpm: 138
+    },
+    {
+      id: "bach-prelude-846-acid-a",
+      builder: buildBachProofMidi,
+      manifestPath: "phaser/assets/audio/radio-midi/pulse-94-6/bach-prelude-846-acid-a.json",
+      bpm: 128
+    }
   ];
 
-  for (const [midiPath, manifestPath, bpm] of pairs) {
-    const verified = validateCandidateFiles(midiPath, manifestPath);
-    assert.equal(verified.midiInfo.format, 1, midiPath);
-    assert.equal(verified.midiInfo.ppq, 480, midiPath);
-    assert.equal(verified.midiInfo.trackCount, 7, midiPath);
-    assert.ok(Math.abs(verified.midiInfo.bpm - bpm) < 0.01, midiPath);
-    assert.equal(verified.manifest.status, "proof", manifestPath);
-    assert.equal(verified.manifest.userReview, "not-requested", manifestPath);
-    assert.equal(verified.manifest.proofBatch, "M1.3-batch-2", manifestPath);
-    assert.deepEqual(verified.manifest.attribution.thirdPartyAssets, [], manifestPath);
-    assert.match(verified.manifest.sourceStatus, /Public Domain/i, manifestPath);
+  for (const proof of cases) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), `viceblood-${proof.id}-`));
+    const midiPath = path.join(dir, `${proof.id}.mid`);
+    const first = proof.builder();
+    const second = proof.builder();
+    assert.equal(sha256(first), sha256(second), `${proof.id} recipe must be deterministic`);
+    fs.writeFileSync(midiPath, first);
+
+    const verified = validateCandidateFiles(midiPath, proof.manifestPath);
+    assert.equal(verified.midiInfo.format, 1, proof.id);
+    assert.equal(verified.midiInfo.ppq, 480, proof.id);
+    assert.equal(verified.midiInfo.trackCount, 7, proof.id);
+    assert.ok(Math.abs(verified.midiInfo.bpm - proof.bpm) < 0.01, proof.id);
+    assert.equal(verified.manifest.status, "proof", proof.id);
+    assert.equal(verified.manifest.proofBatch, "M1.3-batch-2", proof.id);
+    assert.equal(verified.manifest.artifactMode, "generated-from-recipe", proof.id);
+    assert.deepEqual(verified.manifest.attribution.thirdPartyAssets, [], proof.id);
+    assert.match(verified.manifest.sourceStatus, /Public Domain/i, proof.id);
   }
 });
 

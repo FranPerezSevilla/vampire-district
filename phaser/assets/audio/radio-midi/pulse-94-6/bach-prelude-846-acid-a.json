@@ -14,12 +14,14 @@
   "sourceEvidence": "IMSLP identifies the 1722–23 holograph manuscript, Staatsbibliothek zu Berlin Mus. ms. Bach P 415, as Public Domain.",
   "sourceSeed": true,
   "proofBatch": "M1.3-batch-2",
+  "artifactMode": "generated-from-recipe",
+  "generatorPath": "tools/radio-composer/proofs/m1-3-batch2.js",
   "transcriptionCrossChecks": [
-    "Opening four-bar broken-chord identity cross-checked against public-domain score notation: C major → Dm7/C → G7/B → C major."
+    "Opening broken-chord identity cross-checked against public-domain score notation: C major → Dm7/C → G7/B."
   ],
   "arrangementLane": "house-acid-house-techno",
   "bpm": 128,
-  "durationSeconds": 44.953,
+  "durationSeconds": 44.55,
   "midiTracks": [
     "01 Source Pattern - Bach",
     "02 909-Style Placeholder Drums",
@@ -37,6 +39,5 @@
     "licenseOrStatus": "Public Domain holograph manuscript; composer/work attribution retained under the ViceBlood radio attribution policy.",
     "thirdPartyAssets": []
   },
-  "sha256": "a88b33c10506cda73c83a4f96ac26809aefc0cbb849a7f08c9980565ccdb9ee0",
-  "notes": "M1.3 proof. Bach's opening broken-chord engine remains isolated on the source-derived track. ViceBlood adds a compact 128 BPM 1990s house/acid framework with four-on-the-floor drums, an original 303-style bass guide, organ/piano stabs, club pad and FX guide. No third-party audio is embedded or required."
+  "notes": "M1.3 proof. Bach's broken-chord engine remains isolated on the source-derived track. ViceBlood adds a 128 BPM 1990s house/acid framework with four-on-the-floor drums, an original 303-style bass guide, organ/piano stabs, club pad and FX guide. The canonical repository source is a deterministic MIDI recipe; no third-party audio is embedded or required."
 }
