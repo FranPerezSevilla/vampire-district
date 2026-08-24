@@ -11,6 +11,7 @@ import {
 } from "../data/district.js";
 import { drawBuildingPresentation } from "../rendering/BuildingPresentation.js";
 import { ModularCharacterView } from "../rendering/ModularCharacterView.js";
+import { RadioSystem } from "../systems/RadioSystem.js";
 import { installVehicleExplosionPresentation } from "../vehicles/VehicleExplosionPresentation.js";
 import { GameScene as GameSceneCore } from "./GameSceneCore.js";
 
@@ -51,6 +52,7 @@ export class GameScene extends GameSceneCore {
     this.playerAimDirection = { x: 0, y: -1 };
     this.playerAimUntil = -1;
     this.removeVehicleExplosionPresentation = null;
+    this.radioSystem = null;
   }
 
   create() {
@@ -63,10 +65,13 @@ export class GameScene extends GameSceneCore {
     this.playerPresentationPosition = { x: this.player.x, y: this.player.y };
     this.removeVehicleExplosionPresentation?.();
     this.removeVehicleExplosionPresentation = installVehicleExplosionPresentation(this);
+    this.radioSystem?.destroy?.();
+    this.radioSystem = new RadioSystem(this, { vehicleSystem: this.vehicleSystem });
   }
 
   update(time, deltaMs) {
     super.update(time, deltaMs);
+    this.radioSystem?.update?.(Math.min(Math.max(0, Number(deltaMs) || 0) / 1000, 0.05), this.currentInputFrame);
     this.updateCharacterPresentation(time);
   }
 
@@ -217,7 +222,6 @@ export class GameScene extends GameSceneCore {
     if (!fragment) return;
     this.map.fillStyle(COLORS.road, 1).fillRect(fragment.x, fragment.y, fragment.w, fragment.h);
     if (road.pieceKind !== "segment") return;
-
     this.map.fillStyle(COLORS.roadTrim, 0.85);
     if (road.orientation === "horizontal" || road.w > road.h) {
       this.map.fillRect(fragment.x, road.y, fragment.w, 2);
