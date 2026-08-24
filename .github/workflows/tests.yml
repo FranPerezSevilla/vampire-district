@@ -35,6 +35,14 @@ jobs:
           npm test 2>&1 | tee unit-test.log
       - name: Verify browser suite ownership
         run: npm run check:browser:suites
+      - name: Materialize runtime streaming packs for static parity
+        run: npm run city:streaming
+      - name: Upload generated runtime traffic pack
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-runtime-traffic-pack
+          path: phaser/assets/city/packs/traffic-lanes.json
+          retention-days: 2
       - name: Compile city analysis artifacts
         run: npm run city:compile -- --output-dir=city-compiler-output
       - name: Upload current-city compiler report
