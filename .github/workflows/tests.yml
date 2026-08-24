@@ -16,7 +16,57 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  unit-tests:
+  pr-fast:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install exact test dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+      - name: Verify browser suite ownership
+        run: npm run check:browser:suites
+      - name: Plan affected validation
+        id: affected-plan
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run check:affected:plan -- --base=origin/${{ github.base_ref }} 2>&1 | tee affected-test-plan.log
+          if grep -Fq "npx --no-install playwright test" affected-test-plan.log; then
+            echo "browser=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "browser=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install Chromium for affected browser coverage
+        if: steps.affected-plan.outputs.browser == 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Run affected validation plan
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run check:affected -- --base=origin/${{ github.base_ref }} 2>&1 | tee affected-test.log
+      - name: Upload affected-test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: affected-test-diagnostics
+          path: |
+            affected-test-plan.log
+            affected-test.log
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  core-tests:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -35,6 +85,25 @@ jobs:
           npm test 2>&1 | tee unit-test.log
       - name: Verify browser suite ownership
         run: npm run check:browser:suites
+      - name: Upload unit test log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-log
+          path: unit-test.log
+          retention-days: 7
+
+  city-analysis:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install exact test dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
       - name: Compile city analysis artifacts
         run: npm run city:compile -- --output-dir=city-compiler-output
       - name: Upload current-city compiler report
@@ -44,25 +113,21 @@ jobs:
           path: city-compiler-output/
           retention-days: 14
       - name: Compile Foundry pilot candidates
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: npm run city:foundry -- --output-dir=city-compiler-foundry-output
       - name: Upload Foundry candidate comparison
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: city-compiler-foundry-pilot
           path: city-compiler-foundry-output/
           retention-days: 14
-      - name: Upload unit test log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-test-log
-          path: unit-test.log
-          retention-days: 7
 
   browser-boot:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 14
-    needs: unit-tests
+    needs: core-tests
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -91,10 +156,11 @@ jobs:
           retention-days: 7
 
   browser-integration:
+    if: github.event_name != 'pull_request'
     name: browser-${{ matrix.family }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
-    needs: unit-tests
+    needs: core-tests
     strategy:
       fail-fast: false
       matrix:
@@ -126,10 +192,43 @@ jobs:
             test-results/
           retention-days: 7
 
+  browser-campaign:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    needs: core-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install exact browser dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+      - name: Verify pinned local Phaser
+        run: test -f node_modules/phaser/dist/phaser.min.js
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run campaign state loops
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout --signal=INT --kill-after=30s 14m npm run test:browser:campaign 2>&1 | tee browser-campaign.log
+      - name: Upload campaign diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-campaign-diagnostics
+          path: |
+            browser-campaign.log
+            playwright-report/
+            test-results/
+          retention-days: 7
+
   browser-performance:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 12
-    needs: unit-tests
+    needs: core-tests
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -169,7 +268,7 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.number == 63
     runs-on: ubuntu-latest
     timeout-minutes: 12
-    needs: unit-tests
+    needs: pr-fast
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -201,37 +300,6 @@ jobs:
           name: browser-building-review-diagnostics
           path: |
             browser-building-review.log
-            playwright-report/
-            test-results/
-          retention-days: 7
-
-  browser-campaign:
-    runs-on: ubuntu-latest
-    timeout-minutes: 18
-    needs: unit-tests
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Install exact browser dependencies
-        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
-      - name: Verify pinned local Phaser
-        run: test -f node_modules/phaser/dist/phaser.min.js
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
-      - name: Run campaign state loops
-        shell: bash
-        run: |
-          set -o pipefail
-          timeout --signal=INT --kill-after=30s 14m npm run test:browser:campaign 2>&1 | tee browser-campaign.log
-      - name: Upload campaign diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: browser-campaign-diagnostics
-          path: |
-            browser-campaign.log
             playwright-report/
             test-results/
           retention-days: 7
