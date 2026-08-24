@@ -162,6 +162,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       brakingRate: Math.max(1, finite(behavior?.brakingRate, 5.8)),
       trafficRecoveryDelay: Math.max(0.8, finite(behavior?.gridlockBreakSeconds, 1.4)),
       staticRecoveryDelay: Math.max(1.2, finite(behavior?.staticRecoveryDelay, 2.0)),
+      recoveryActionInterval: Math.max(0.12, finite(behavior?.recoveryActionInterval, 0.2)),
       trafficRecoverySpeedFactor: clamp(finite(behavior?.gridlockPushSpeedFactor, 0.2), 0.1, 0.35),
       staticRecoverySpeedFactor: clamp(finite(behavior?.staticRecoverySpeedFactor, 0.14), 0.08, 0.25)
     };
@@ -183,7 +184,8 @@ export function createTrafficRouteBehaviorController(materializer, {
         blockerKind: null,
         stoppedSeconds: 0,
         recoveryAttempts: 0,
-        recoveryBlocked: false
+        recoveryBlocked: false,
+        recoveryCooldownSeconds: 0
       };
       states.set(agent.tokenId, state);
     }
@@ -253,19 +255,20 @@ export function createTrafficRouteBehaviorController(materializer, {
     return best;
   }
 
-  function transition(state, nextState, duration) {
-    if (nextState !== state.fsmState) {
+  function transition(state, nextState, duration, nextBlockerId) {
+    const changed = nextState !== state.fsmState || nextBlockerId !== state.blockerId;
+    if (changed) {
       state.previousState = state.fsmState;
       state.fsmState = nextState;
       state.stateSeconds = 0;
       state.recoveryBlocked = false;
+      state.recoveryCooldownSeconds = 0;
     } else {
       state.stateSeconds += duration;
     }
   }
 
   function trafficDecision(agent, state, blocker, settings) {
-    const blockerState = states.get(blocker.blockerId);
     const immediate = blocker.gap <= settings.hardStopDistance + 6;
     if (!immediate) {
       const factor = clamp(
@@ -282,6 +285,18 @@ export function createTrafficRouteBehaviorController(materializer, {
       };
     }
 
+    if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC
+      && state.blockerId === blocker.blockerId
+      && !state.recoveryBlocked) {
+      return {
+        fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC,
+        desiredSpeedFactor: settings.trafficRecoverySpeedFactor,
+        reason: "gridlock-push",
+        ...blocker
+      };
+    }
+
+    const blockerState = states.get(blocker.blockerId);
     const canRecover = state.stoppedSeconds >= settings.trafficRecoveryDelay
       && blockerState?.stoppedSeconds >= settings.trafficRecoveryDelay
       && trafficGridlockInitiativeWinner(agent.tokenId, blocker.blockerId) === agent.tokenId;
@@ -327,6 +342,17 @@ export function createTrafficRouteBehaviorController(materializer, {
           0,
           1
         ),
+        ...blocker
+      };
+    }
+
+    if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC
+      && state.blockerId === blocker.blockerId
+      && !state.recoveryBlocked) {
+      return {
+        fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC,
+        desiredSpeedFactor: settings.staticRecoverySpeedFactor,
+        reason: "parked-vehicle-recovery",
         ...blocker
       };
     }
@@ -490,20 +516,20 @@ export function createTrafficRouteBehaviorController(materializer, {
     return true;
   }
 
-  function executeRecovery(state) {
+  function executeRecovery(state, settings) {
+    if (state.recoveryCooldownSeconds > EPSILON) return null;
+    let success = null;
     if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC) {
       state.recoveryAttempts++;
-      const success = executeTrafficRecovery(state);
-      state.recoveryBlocked = !success;
-      return success;
-    }
-    if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC) {
+      success = executeTrafficRecovery(state);
+    } else if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC) {
       state.recoveryAttempts++;
-      const success = executeStaticRecovery(state);
-      state.recoveryBlocked = !success;
-      return success;
+      success = executeStaticRecovery(state);
     }
-    return false;
+    if (success === null) return null;
+    state.recoveryBlocked = !success;
+    state.recoveryCooldownSeconds = success ? settings.recoveryActionInterval : 0;
+    return success;
   }
 
   function update(runtime, seconds = 0.05) {
@@ -517,8 +543,9 @@ export function createTrafficRouteBehaviorController(materializer, {
     for (const agent of agents) {
       liveIds.add(agent.tokenId);
       const state = stateFor(agent);
+      state.recoveryCooldownSeconds = Math.max(0, finite(state.recoveryCooldownSeconds) - duration);
       const decision = decisionFor(agent, state, agentsById, blockedById, settings);
-      transition(state, decision.fsmState || routeState(decision.reason), duration);
+      transition(state, decision.fsmState || routeState(decision.reason), duration, decision.blockerId);
 
       const rate = decision.desiredSpeedFactor < state.speedFactor
         ? settings.brakingRate
@@ -536,7 +563,10 @@ export function createTrafficRouteBehaviorController(materializer, {
       state.blockerKind = decision.blockerKind || null;
       state.stoppedSeconds = state.speedFactor <= 0.03
         ? state.stoppedSeconds + duration
-        : 0;
+        : state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC
+          || state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC
+          ? state.stoppedSeconds
+          : 0;
 
       if (state.speedFactor < 0.95 && state.speedFactor > 0.03) brakingDecisions++;
       if (state.speedFactor <= 0.03) stoppedDecisions++;
@@ -547,7 +577,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC) staticRecoveryDecisions++;
 
       applySlotState(agent, state);
-      executeRecovery(state);
+      executeRecovery(state, settings);
     }
 
     for (const tokenId of states.keys()) {
@@ -571,6 +601,9 @@ export function createTrafficRouteBehaviorController(materializer, {
       movementAuthority: false,
       geometryAuthority: "compiler-local-topology",
       lateralSteeringAuthority: false,
+      speedAuthority: "route-behavior-fsm",
+      maximumSpeedFactor: 1,
+      baseSpeed: Math.max(0, finite(baseSpeed, 112)),
       updates,
       activeVehicles: vehicles.length,
       brakingVehicles: vehicles.filter(item => item.speedFactor < 0.95 && item.speedFactor > 0.03).length,
