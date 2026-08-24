@@ -1,12 +1,20 @@
-# 2026-08-24 — curated radio 12/12 approval gate
+# Curated radio soundtrack approval — 2026-08-24
 
 ## User verdict
 
-The user listened to the finished-track shortlist and approved **all twelve tracks** for inclusion in the ViceBlood car-radio soundtrack direction.
+The user approved **all twelve curated tracks** for ViceBlood: three per core station.
 
-Verdict: `approved-all-twelve`.
+This closes the musical shortlist gate and authorizes licence-safe acquisition.
 
-This closes the curation/pruning gate. No replacement search is required for the current 3-tracks-per-station seed catalogue.
+## Acquisition status after first ingest
+
+At `2026-08-24T12:56:00+02:00` the user supplied official-site downloads in `Archivo.zip`.
+
+- 9 valid MP3 masters were acquired, hashed and fully decoded successfully.
+- `Kulakovka — Trip Hop` arrived only as an incomplete `.duckload` and must be downloaded again.
+- `Architexture ft. Cobabeats` and `Kyoto` were not present and remain to be downloaded from Free Music Archive.
+
+Current acquisition status is therefore **9/12**.
 
 ## Approved station set
 
@@ -26,7 +34,7 @@ This closes the curation/pruning gate. No replacement search is required for the
 
 1. ejah_music — `Big Beat Rave _ Industrial Breakbeat 1`
 2. NaturesEye — `Dirty Industrial Rave`
-3. Delon_Boomkin — `Big Beat Rave _ Industrial Breakbeat 3`
+3. ejah_music — `Big Beat Rave _ Industrial Breakbeat 3`
 
 ### Pulse 94.6
 
@@ -34,7 +42,11 @@ This closes the curation/pruning gate. No replacement search is required for the
 2. Placidplace — `Franic (acid trance)`
 3. BerryDeep — `Back To 90s`
 
-Exact URLs, durations, licensing classes, credit strings and Content-ID warnings live in `docs/audio/radio-curated-track-catalog.json`.
+Exact URLs, durations, licensing classes, credit strings, acquisition hashes and Content-ID warnings live in the audio catalogue/ledger.
+
+## Attribution correction
+
+`Big Beat Rave _ Industrial Breakbeat 3` is by **ejah_music**, not `Delon_Boomkin`. Exact-master ingest and current Pixabay evidence confirm the correction.
 
 ## Content-ID warnings
 
@@ -48,25 +60,12 @@ Content ID does not invalidate the source licence; it is an operational warning 
 
 ## Acquisition boundary
 
-The approved tracks are now `acquisition-ready`.
-
 Do not interpret "approved for the soundtrack" as permission to publish raw third-party masters in the public Git repository.
 
-For Pixabay tracks, the Content License permits commercial use as part of a larger creative work but prohibits standalone distribution. ViceBlood therefore keeps substantially unchanged Pixabay masters outside public Git and records their exact download filename, source page, licence evidence and SHA-256. They may later be embedded in the distributed game as part of the larger ViceBlood work.
-
-CC BY 4.0 tracks permit commercial redistribution with attribution, but PR #76 uses the same acquisition-ledger workflow for operational consistency.
+For Pixabay tracks, ViceBlood keeps substantially unchanged masters outside public Git and records their exact download filename, source page, licence evidence and SHA-256. CC BY 4.0 tracks use the same private acquisition workflow for consistency.
 
 ## Exact next task
 
-`CURATED-3-acquire-approved-audio-and-hash`
+`CURATED-3-complete-three-missing-downloads`
 
-For each of the twelve tracks:
-
-1. acquire from the official source using an authorised download path;
-2. record exact original filename and SHA-256;
-3. preserve Content-ID certificate/evidence when applicable;
-4. preserve mandatory CC BY attribution;
-5. classify the master storage location;
-6. do not enter runtime playback/integration in this PR.
-
-After exact acquisition evidence exists for all approved tracks, set the state to `final-validation-pending` and prepare the handoff to a separate radio runtime PR.
+Download/re-download the remaining three official masters, hash them, close acquisition at 12/12, then set the state to `final-validation-pending` and prepare the handoff to a separate radio runtime PR.
