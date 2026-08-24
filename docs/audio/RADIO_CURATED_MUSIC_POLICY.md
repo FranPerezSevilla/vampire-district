@@ -8,7 +8,7 @@ The MIDI composition work in this PR remains useful R&D and provenance/tooling h
 
 Canonical flow:
 
-`finished track discovery -> per-track licence verification -> station fit review -> user approval -> acquisition record -> later runtime integration`
+`finished track discovery -> per-track licence verification -> station fit review -> user approval -> licence-safe acquisition record -> later runtime integration`
 
 ## Why this supersedes autonomous composition
 
@@ -17,7 +17,7 @@ The first four generated MIDI proofs were technically valid but musically weak. 
 Therefore:
 
 - CI can validate metadata and file integrity, but **cannot approve music**;
-- the Composer/Arranger agents must not autonomously scale toward 12/20 generated songs;
+- the Composer/Arranger agents must not autonomously scale toward generated songs;
 - generated MIDI may still be used for experiments, stingers or user-directed sketches, but only when explicitly requested;
 - the shipping catalogue should prefer finished tracks by real artists/producers under licences that permit use in a commercial game.
 
@@ -29,16 +29,21 @@ Allowed when the individual official Pixabay track page says the track is free f
 
 Operational rules:
 
-- download only from the official Pixabay page;
-- keep track title, contributor, source URL, date checked and a licence snapshot/reference;
+- acquire only from the official Pixabay track page;
+- keep track title, contributor, source URL, date checked and a licence reference/snapshot;
 - attribution is not required by the Pixabay licence, but ViceBlood keeps a courtesy/internal credit record;
-- do not redistribute the track as a standalone music download;
+- **do not commit the raw Pixabay MP3 to the public Git repository in substantially the same form as downloaded**;
+- the licensed track may be embedded in the distributed ViceBlood game/build as part of the larger creative work;
+- keep the local/runtime master outside public source control and record its exact filename + SHA-256 in the acquisition ledger;
 - Content ID status must be recorded separately because it can affect trailers/YouTube even when game use is licensed;
+- for Content-ID-registered tracks, preserve the official download certificate/evidence when available;
 - a Content ID claim is not automatically a rights failure, but tracks without Content ID are preferred when quality is otherwise comparable.
+
+Rationale: Pixabay permits commercial use, copying and adaptation, but prohibits distribution of the content on a **Standalone** basis. A public repository containing a substantially unchanged MP3 would make the track directly redistributable as a standalone file, so ViceBlood uses a conservative no-raw-Pixabay-audio-in-public-Git rule.
 
 ### Creative Commons Attribution 4.0 (CC BY 4.0)
 
-Allowed for commercial use and adaptation when the individual source explicitly applies CC BY 4.0.
+Allowed for commercial use, adaptation and redistribution when the individual source explicitly applies CC BY 4.0.
 
 Required record:
 
@@ -48,6 +53,8 @@ Required record:
 - CC BY 4.0 licence link/reference;
 - exact requested credit if supplied;
 - indication of modifications if ViceBlood later edits the track.
+
+CC BY permits redistribution, including commercially, when its terms are followed. For operational consistency, PR #76 still treats complete third-party audio as acquisition material rather than source-code content; the later runtime/audio PR decides how packaged masters are supplied to builds.
 
 ### CC0 / Public Domain recording
 
@@ -76,7 +83,7 @@ For each track record one of:
 - `not-applicable`;
 - `unknown`.
 
-For `registered` tracks, keep the original download/source evidence so future YouTube claims can be disputed with the licence record. Prefer non-registered alternatives for trailers and promotional uploads when possible.
+For `registered` tracks, keep the original source/download evidence so future YouTube claims can be disputed with the licence record. Prefer non-registered alternatives for trailers and promotional uploads when possible.
 
 ## Credits policy
 
@@ -90,16 +97,33 @@ Player-facing credits:
 
 ## Acquisition state
 
-Metadata approval is not the same as committing audio to the repository.
+Metadata approval is not the same as publishing raw audio in source control.
 
 Track states:
 
 1. `discovered` — candidate found;
 2. `licence-verified` — source/licence checked;
 3. `user-shortlist-approved` — user likes it enough to keep evaluating;
-4. `acquisition-ready` — licence/credit/Content-ID fields complete;
-5. `acquired` — exact downloaded audio file + checksum recorded;
-6. `runtime-candidate` — ready for later radio integration;
+4. `acquisition-ready` — licence/credit/Content-ID fields complete and user approved;
+5. `acquired` — exact authorized download + checksum/certificate evidence recorded; raw restricted master may remain outside public Git;
+6. `runtime-candidate` — ready for later radio integration/package ingestion;
 7. `rejected` — not counted.
 
-PR #76 owns stages 1–5 and soundtrack curation metadata. Runtime playback remains a separate implementation PR.
+## Acquisition ledger contract
+
+For each acquired track record:
+
+- catalogue track ID;
+- official source URL;
+- acquisition date;
+- original downloaded filename;
+- SHA-256 of the exact master;
+- media/container type;
+- licence class and licence URL;
+- attribution string;
+- Content ID status;
+- certificate/evidence filename or reference where applicable;
+- storage classification (`external-runtime-master`, `public-redistributable`, etc.);
+- any modifications later applied for the game and the derivative hash.
+
+PR #76 owns curation plus this acquisition provenance. Runtime playback, station UI, scheduling and shipping-format integration remain a separate implementation PR.
