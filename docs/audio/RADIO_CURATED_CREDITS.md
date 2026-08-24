@@ -18,7 +18,7 @@ These credits correspond to the twelve user-approved curated tracks in `docs/aud
 
 - **Big Beat Rave _ Industrial Breakbeat 1 — ejah_music** — via Pixabay. Courtesy credit; Pixabay Content License.
 - **Dirty Industrial Rave — NaturesEye** — via Pixabay. Courtesy credit; Pixabay Content License.
-- **Big Beat Rave _ Industrial Breakbeat 3 — Delon_Boomkin** — via Pixabay. Courtesy credit; Pixabay Content License.
+- **Big Beat Rave _ Industrial Breakbeat 3 — ejah_music** — via Pixabay. Courtesy credit; Pixabay Content License.
 
 ## Pulse 94.6
 
@@ -32,3 +32,7 @@ These credits correspond to the twelve user-approved curated tracks in `docs/aud
 - CC BY tracks: `https://creativecommons.org/licenses/by/4.0/`
 
 For shipping credits, retain the CC BY licence identification and creator attribution exactly. If a CC BY master is later edited, also indicate that ViceBlood modified the recording. Pixabay attribution is not required by the platform licence but is retained as a courtesy and provenance record.
+
+## Acquisition correction
+
+During exact-master ingest on 2026-08-24, `Big Beat Rave _ Industrial Breakbeat 3` was confirmed to be by **ejah_music**. Earlier ViceBlood curation metadata incorrectly attributed it to `Delon_Boomkin`; the catalogue, ledger and credits now use the corrected creator.
