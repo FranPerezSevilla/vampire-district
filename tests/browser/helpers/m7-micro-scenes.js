@@ -269,6 +269,7 @@ async function preparePoliceWetCivic(page) {
     const camera = scene.cameras.main;
     camera.stopFollow();
     camera.centerOn(reviewCenter.x, reviewCenter.y);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     const slot = scene.motorizedPoliceSystem.slots[0];
     if (!slot) return null;
