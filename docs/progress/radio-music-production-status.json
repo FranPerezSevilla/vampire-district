@@ -1,20 +1,22 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "initiative": "viceblood-radio-soundtrack",
   "branch": "codex/90s-radio-music-production",
   "pullRequestNumber": 76,
-  "state": "active",
-  "currentMilestone": "CURATED-3-partial-acquisition-9-of-12",
-  "nextTask": "CURATED-3-complete-three-missing-downloads",
-  "mission": "Curate finished modern tracks with verified commercial-game-use permission for ViceBlood's four 1990s-style car-radio stations; preserve exact source, licence, attribution, Content-ID and acquisition evidence before runtime integration.",
+  "state": "runtime-handoff-ready",
+  "currentMilestone": "CURATED-4-runtime-handoff",
+  "nextTask": "RUNTIME-0-open-stacked-radio-runtime-pr",
+  "mission": "Curate finished modern tracks with verified commercial-game-use permission for ViceBlood's 1990s-style car-radio stations and hand an exact acquired seed set to a separate runtime implementation PR.",
   "strategy": {
     "canonical": "finished-track-curation",
     "adoptedAt": "2026-08-24",
     "policy": "docs/audio/RADIO_CURATED_MUSIC_POLICY.md",
     "catalog": "docs/audio/radio-curated-track-catalog.json",
     "acquisitionLedger": "docs/audio/radio-acquisition-ledger.json",
+    "runtimeSeed": "docs/audio/radio-runtime-seed-set.json",
+    "runtimeCredits": "docs/audio/RADIO_RUNTIME_SEED_CREDITS.md",
     "curatorAgent": "docs/agents/RADIO_CURATOR_AGENT.md",
-    "pivotCheckpoint": "docs/progress/RADIO_MUSIC_CURATED_PIVOT_2026-08-24.md",
+    "seedLockCheckpoint": "docs/progress/RADIO_MUSIC_CURATED_SEED_LOCK_2026-08-24.md",
     "compositionStatus": "historical-experimental-only-unless-user-explicitly-resumes"
   },
   "coreStations": [
@@ -39,28 +41,30 @@
       "lane": "house / acid house / techno / acid-trance crossover"
     }
   ],
-  "curatedShortlist": {
-    "checkedAt": "2026-08-24",
-    "reviewedAt": "2026-08-24",
-    "total": 12,
-    "userApproved": 12,
-    "acquiredValidMasters": 9,
-    "pendingAcquisition": 3,
-    "incompleteDownloads": 1,
-    "stationCounts": {
-      "vice-fm": 3,
-      "blood-city-beats": 3,
-      "night-shift": 3,
-      "pulse-94-6": 3
-    },
-    "remainingTrackIds": [
+  "curatedHistory": {
+    "licenceVerifiedAndUserApproved": 12,
+    "exactValidMastersAcquired": 9,
+    "droppedAfterApproval": 3,
+    "droppedTrackIds": [
       "1000-handz-architexture-cobabeats",
       "kulakovka-trip-hop",
       "1000-handz-kyoto"
-    ],
+    ]
+  },
+  "runtimeSeed": {
+    "lockedAt": "2026-08-24",
+    "trackCount": 9,
+    "stationCounts": {
+      "vice-fm": 2,
+      "blood-city-beats": 1,
+      "night-shift": 3,
+      "pulse-94-6": 3
+    },
+    "allMastersHashed": true,
+    "allMastersDecodeCleanly": true,
+    "publicGitContainsRawMasters": false,
     "contentIdWarnings": [
       "catch22-coasting-west-coast-hip-hop",
-      "kulakovka-trip-hop",
       "berrydeep-back-to-90s"
     ]
   },
@@ -80,13 +84,6 @@
       "CC0",
       "Public-Domain-recording"
     ],
-    "rejectedByDefault": [
-      "NC",
-      "ND",
-      "unclear-commercial-game-use",
-      "paid-game-specific-licence-required",
-      "unverified-commercial-reupload"
-    ],
     "perTrackVerificationRequired": true,
     "contentIdRecordedSeparately": true,
     "keepInternalCreditEvenWhenOptional": true,
@@ -94,40 +91,37 @@
   },
   "curatedMilestones": {
     "CURATED-0-policy-and-agent": "complete",
-    "CURATED-1-12-track-balanced-shortlist": "complete",
-    "CURATED-2-user-pruning": "complete-all-twelve-approved",
-    "CURATED-3-acquisition": "partial-9-of-12",
-    "CURATED-4-runtime-handoff": "blocked-until-12-of-12-acquired"
+    "CURATED-1-balanced-shortlist": "complete",
+    "CURATED-2-user-pruning": "complete",
+    "CURATED-3-acquisition": "complete-nine-track-runtime-seed",
+    "CURATED-4-runtime-handoff": "ready"
   },
   "historicalMidiRAndD": {
     "workbench": "complete-and-technically-valid",
     "firstFourProofs": "musically-rejected",
     "mapleLeafB": "preferred-over-C-but-not-shipping-canonical",
     "mapleLeafC": "musically-rejected-by-user",
-    "lesson": "technical validity, density metrics and formal structure are guardrails only; they do not establish musical quality",
     "autonomousComposition": "paused"
   },
   "userGates": [
     {
-      "afterTask": "CURATED-3-acquisition",
-      "requiredState": "final-validation-pending",
-      "reason": "User confirms exact acquired files/credits before a separate runtime integration PR."
+      "afterTask": "PR76-curation-and-acquisition",
+      "requiredState": "explicit-merge-approval",
+      "reason": "PR #76 remains draft until the user explicitly approves merging it; runtime development may proceed in a stacked PR meanwhile."
     }
   ],
   "autonomousStopConditions": [
-    "licence ambiguity remains after reasonable verification and no equivalent substitute is available",
-    "acquisition would violate standalone-redistribution or repository-publication restrictions",
-    "task would enter runtime/gameplay integration",
+    "task would publish substantially unchanged third-party masters in public Git",
+    "runtime implementation requires changing the locked station/seed decision",
     "user explicitly asks to stop or change soundtrack direction"
   ],
   "canonicalReadOrder": [
     "docs/progress/radio-music-production-status.json",
+    "docs/audio/radio-runtime-seed-set.json",
+    "docs/audio/RADIO_RUNTIME_SEED_CREDITS.md",
     "docs/audio/RADIO_CURATED_MUSIC_POLICY.md",
-    "docs/audio/radio-curated-track-catalog.json",
     "docs/audio/radio-acquisition-ledger.json",
-    "docs/agents/RADIO_CURATOR_AGENT.md",
-    "docs/progress/RADIO_MUSIC_CURATED_ACQUISITION_2026-08-24.md",
-    "docs/audio/RADIO_MUSIC_ATTRIBUTION.md",
+    "docs/progress/RADIO_MUSIC_CURATED_SEED_LOCK_2026-08-24.md",
     "docs/audio/RADIO_MUSIC_BIBLE.md"
   ],
   "mergePolicy": "draft-until-explicit-user-approval"
