@@ -3,9 +3,9 @@
   "initiative": "viceblood-radio-soundtrack",
   "branch": "codex/90s-radio-music-production",
   "pullRequestNumber": 76,
-  "state": "active",
-  "currentMilestone": "CURATED-1-seed-set-complete-expansion-active",
-  "nextTask": "CURATED-1-expand-to-three-tracks-per-core-station",
+  "state": "user-validation-pending",
+  "currentMilestone": "CURATED-2-twelve-track-listening-gate",
+  "nextTask": "CURATED-2-user-prune-seven-new-tracks",
   "mission": "Curate finished modern tracks with verified commercial-game-use permission for ViceBlood's four 1990s-style car-radio stations; keep exact source, licence, attribution and Content-ID evidence before acquisition.",
   "strategy": {
     "canonical": "finished-track-curation",
@@ -14,25 +14,7 @@
     "catalog": "docs/audio/radio-curated-track-catalog.json",
     "curatorAgent": "docs/agents/RADIO_CURATOR_AGENT.md",
     "pivotCheckpoint": "docs/progress/RADIO_MUSIC_CURATED_PIVOT_2026-08-24.md",
-    "compositionStatus": "historical-experimental-only-unless-user-explicitly-resumes",
-    "reason": "Generated MIDI experiments improved structurally but did not reach the required musical quality; the user enthusiastically preferred the finished licensed-track shortlist."
-  },
-  "authority": {
-    "owns": [
-      "finished-track discovery and station classification",
-      "per-recording licence verification",
-      "attribution and courtesy-credit ledger",
-      "Content ID risk records",
-      "curated soundtrack shortlist and acquisition metadata",
-      "exact downloaded-file provenance/checksum after acquisition"
-    ],
-    "doesNotOwn": [
-      "runtime car-radio playback",
-      "station-selection UI",
-      "save/resume radio state",
-      "final in-game audio mixing",
-      "automatic merge"
-    ]
+    "compositionStatus": "historical-experimental-only-unless-user-explicitly-resumes"
   },
   "coreStations": [
     { "id": "blood-city-beats", "workingName": "Blood City Beats", "lane": "trip-hop / boom-bap / nocturnal downtempo hip-hop" },
@@ -40,27 +22,41 @@
     { "id": "night-shift", "workingName": "Night Shift", "lane": "big beat / breakbeat / industrial dance / period rave" },
     { "id": "pulse-94-6", "workingName": "Pulse 94.6", "lane": "house / acid house / techno" }
   ],
-  "curatedSeedSet": {
+  "curatedShortlist": {
     "checkedAt": "2026-08-24",
-    "userVerdict": "enthusiastic-shortlist-approval",
-    "total": 5,
-    "acquisitionReady": 5,
+    "total": 12,
     "stationCounts": {
-      "vice-fm": 2,
-      "blood-city-beats": 1,
-      "night-shift": 1,
-      "pulse-94-6": 1
+      "vice-fm": 3,
+      "blood-city-beats": 3,
+      "night-shift": 3,
+      "pulse-94-6": 3
     },
-    "ids": [
-      "daisuke-teiko-real-deal-90s-hip-hop",
-      "1000-handz-architexture-cobabeats",
+    "alreadyUserApproved": 5,
+    "pendingUserReview": 7,
+    "acquisitionReady": 5,
+    "licenceVerifiedPendingReview": 7,
+    "contentIdWarnings": [
+      "catch22-coasting-west-coast-hip-hop",
       "kulakovka-trip-hop",
-      "ejah-big-beat-industrial-breakbeat-1",
-      "maty1309-tema-acid-house"
-    ],
-    "contentIdWarnings": ["kulakovka-trip-hop"],
-    "licenceClasses": ["Pixabay-Content-License", "CC-BY-4.0"]
+      "berrydeep-back-to-90s"
+    ]
   },
+  "approvedSeedIds": [
+    "daisuke-teiko-real-deal-90s-hip-hop",
+    "1000-handz-architexture-cobabeats",
+    "kulakovka-trip-hop",
+    "ejah-big-beat-industrial-breakbeat-1",
+    "maty1309-tema-acid-house"
+  ],
+  "pendingReviewIds": [
+    "catch22-coasting-west-coast-hip-hop",
+    "abydos-trip-hop-lovers",
+    "1000-handz-kyoto",
+    "natureseye-dirty-industrial-rave",
+    "delon-big-beat-industrial-breakbeat-3",
+    "placidplace-franic-acid-trance",
+    "berrydeep-back-to-90s"
+  ],
   "licenceRules": {
     "accepted": ["Pixabay-Content-License", "CC-BY-4.0", "CC0", "Public-Domain-recording"],
     "rejectedByDefault": ["NC", "ND", "unclear-commercial-game-use", "paid-game-specific-licence-required", "unverified-commercial-reupload"],
@@ -70,10 +66,9 @@
   },
   "curatedMilestones": {
     "CURATED-0-policy-and-agent": "complete",
-    "CURATED-1-seed-set": "complete-5-tracks",
-    "CURATED-1-expansion": "active-target-12-tracks-3-per-station",
-    "CURATED-2-user-pruning": "planned-after-12-track-shortlist",
-    "CURATED-3-acquisition": "planned-after-user-pruning",
+    "CURATED-1-12-track-balanced-shortlist": "complete",
+    "CURATED-2-user-pruning": "user-validation-pending",
+    "CURATED-3-acquisition": "blocked-until-user-pruning",
     "CURATED-4-runtime-handoff": "separate-pr"
   },
   "historicalMidiRAndD": {
@@ -84,40 +79,20 @@
     "lesson": "technical validity, density metrics and formal structure are guardrails only; they do not establish musical quality",
     "autonomousComposition": "paused"
   },
-  "nextTaskContract": {
-    "task": "CURATED-1-expand-to-three-tracks-per-core-station",
-    "normalBatchSize": 4,
-    "priority": "least-covered-stations-first",
-    "target": {
-      "vice-fm": 3,
-      "blood-city-beats": 3,
-      "night-shift": 3,
-      "pulse-94-6": 3
-    },
-    "requiredBeforePromotion": [
-      "official track URL",
-      "individual licence verification",
-      "commercial-game-use assessment",
-      "ready credit",
-      "Content ID state",
-      "AI flag when supplied by source",
-      "user-facing station fit note"
-    ]
-  },
   "userGates": [
     {
-      "afterTask": "CURATED-1-12-track-shortlist",
+      "afterTask": "CURATED-1-12-track-balanced-shortlist",
       "requiredState": "user-validation-pending",
-      "reason": "User should listen/prune before actual third-party audio acquisition and before expanding toward a larger catalogue."
+      "reason": "User listens to the 7 new tracks and keeps/rejects them before any audio acquisition."
     },
     {
       "afterTask": "CURATED-3-acquisition",
       "requiredState": "final-validation-pending",
-      "reason": "User confirms the acquired soundtrack pack before a separate runtime radio integration PR."
+      "reason": "User confirms exact acquired files/credits before a separate runtime integration PR."
     }
   ],
   "autonomousStopConditions": [
-    "12-track curated listening gate reached",
+    "current 12-track listening gate reached",
     "licence ambiguity remains after reasonable verification and no equivalent substitute is available",
     "task would commit/download third-party audio before acquisition workflow approval",
     "task would enter runtime/gameplay integration",
