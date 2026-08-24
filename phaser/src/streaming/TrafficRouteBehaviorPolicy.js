@@ -1,3 +1,8 @@
+import {
+  executeStaticRecovery,
+  executeTrafficRecovery
+} from "./TrafficRecoveryActuator.js";
+
 const EPSILON = 0.000001;
 
 function finite(value, fallback = 0) {
@@ -112,23 +117,6 @@ function blockerDecision(gap, reason, blockerId, blockerKind = null) {
   return { gap, reason, blockerId: blockerId || null, blockerKind };
 }
 
-function routeState(reason) {
-  switch (reason) {
-    case "route-connector-clear": return TRAFFIC_ROUTE_BEHAVIOR_STATE.CONNECTOR;
-    case "junction-yield": return TRAFFIC_ROUTE_BEHAVIOR_STATE.YIELD_JUNCTION;
-    case "route-missing-lane": return TRAFFIC_ROUTE_BEHAVIOR_STATE.MISSING_ROUTE;
-    case "traffic": return TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW;
-    case "gridlock-push": return TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC;
-    case "gridlock-yield":
-    case "gridlock-blocked": return TRAFFIC_ROUTE_BEHAVIOR_STATE.STOPPED_TRAFFIC;
-    case "parked-vehicle": return TRAFFIC_ROUTE_BEHAVIOR_STATE.STOPPED_STATIC;
-    case "parked-vehicle-recovery": return TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC;
-    case "player-vehicle":
-    case "player-on-foot": return TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER;
-    default: return TRAFFIC_ROUTE_BEHAVIOR_STATE.CRUISE;
-  }
-}
-
 export function createTrafficRouteBehaviorController(materializer, {
   topology,
   baseSpeed = 112
@@ -147,9 +135,10 @@ export function createTrafficRouteBehaviorController(materializer, {
   let stoppedDecisions = 0;
   let playerReactiveDecisions = 0;
   let followingDecisions = 0;
-  let gridlockPushDecisions = 0;
-  let gridlockYieldDecisions = 0;
+  let trafficRecoveryDecisions = 0;
+  let trafficRecoveryActions = 0;
   let staticRecoveryDecisions = 0;
+  let staticRecoveryActions = 0;
 
   function tuning() {
     const behavior = scene.trafficLocalBehaviorSystem;
@@ -163,6 +152,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       trafficRecoveryDelay: Math.max(0.8, finite(behavior?.gridlockBreakSeconds, 1.4)),
       staticRecoveryDelay: Math.max(1.2, finite(behavior?.staticRecoveryDelay, 2.0)),
       recoveryActionInterval: Math.max(0.12, finite(behavior?.recoveryActionInterval, 0.2)),
+      failedRecoveryBackoff: Math.max(0.4, finite(behavior?.failedRecoveryBackoff, 1.0)),
       trafficRecoverySpeedFactor: clamp(finite(behavior?.gridlockPushSpeedFactor, 0.2), 0.1, 0.35),
       staticRecoverySpeedFactor: clamp(finite(behavior?.staticRecoverySpeedFactor, 0.14), 0.08, 0.25)
     };
@@ -184,8 +174,10 @@ export function createTrafficRouteBehaviorController(materializer, {
         blockerKind: null,
         stoppedSeconds: 0,
         recoveryAttempts: 0,
+        recoverySuccesses: 0,
         recoveryBlocked: false,
-        recoveryCooldownSeconds: 0
+        recoveryCooldownSeconds: 0,
+        lastRecoveryReason: null
       };
       states.set(agent.tokenId, state);
     }
@@ -255,35 +247,47 @@ export function createTrafficRouteBehaviorController(materializer, {
     return best;
   }
 
-  function transition(state, nextState, duration, nextBlockerId) {
-    const changed = nextState !== state.fsmState || nextBlockerId !== state.blockerId;
-    if (changed) {
+  function transition(state, decision, duration) {
+    const nextState = decision.fsmState;
+    const nextBlockerId = decision.blockerId || null;
+    const blockerChanged = nextBlockerId !== state.blockerId;
+    const stateChanged = nextState !== state.fsmState;
+    if (stateChanged || blockerChanged) {
       state.previousState = state.fsmState;
       state.fsmState = nextState;
       state.stateSeconds = 0;
-      state.recoveryBlocked = false;
-      state.recoveryCooldownSeconds = 0;
+      if (blockerChanged) {
+        state.recoveryBlocked = false;
+        state.recoveryCooldownSeconds = 0;
+        state.recoveryAttempts = 0;
+        state.recoverySuccesses = 0;
+        state.lastRecoveryReason = null;
+      }
     } else {
       state.stateSeconds += duration;
     }
   }
 
   function trafficDecision(agent, state, blocker, settings) {
-    const immediate = blocker.gap <= settings.hardStopDistance + 6;
-    if (!immediate) {
-      const factor = clamp(
-        (blocker.gap - settings.hardStopDistance)
-          / Math.max(1, settings.followDistance - settings.hardStopDistance),
-        0,
-        1
-      );
+    if (blocker.gap > settings.hardStopDistance + 6) {
       return {
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW,
-        desiredSpeedFactor: factor,
-        reason: "traffic",
+        desiredSpeedFactor: clamp(
+          (blocker.gap - settings.hardStopDistance)
+            / Math.max(1, settings.followDistance - settings.hardStopDistance),
+          0,
+          1
+        ),
         ...blocker
       };
     }
+
+    const blockerState = states.get(blocker.blockerId);
+    const canAttemptRecovery = !state.recoveryBlocked
+      && state.recoveryCooldownSeconds <= EPSILON
+      && state.stoppedSeconds >= settings.trafficRecoveryDelay
+      && blockerState?.stoppedSeconds >= settings.trafficRecoveryDelay
+      && trafficGridlockInitiativeWinner(agent.tokenId, blocker.blockerId) === agent.tokenId;
 
     if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC
       && state.blockerId === blocker.blockerId
@@ -296,11 +300,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       };
     }
 
-    const blockerState = states.get(blocker.blockerId);
-    const canRecover = state.stoppedSeconds >= settings.trafficRecoveryDelay
-      && blockerState?.stoppedSeconds >= settings.trafficRecoveryDelay
-      && trafficGridlockInitiativeWinner(agent.tokenId, blocker.blockerId) === agent.tokenId;
-    if (canRecover && !state.recoveryBlocked) {
+    if (canAttemptRecovery) {
       return {
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC,
         desiredSpeedFactor: settings.trafficRecoverySpeedFactor,
@@ -308,6 +308,7 @@ export function createTrafficRouteBehaviorController(materializer, {
         ...blocker
       };
     }
+
     return {
       fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.STOPPED_TRAFFIC,
       desiredSpeedFactor: 0,
@@ -318,17 +319,16 @@ export function createTrafficRouteBehaviorController(materializer, {
 
   function persistentDecision(state, blocker, settings) {
     if (["player-vehicle", "player-on-foot"].includes(blocker.reason)) {
-      const desired = blocker.gap <= settings.hardStopDistance
-        ? 0
-        : clamp(
-            (blocker.gap - settings.hardStopDistance)
-              / Math.max(1, settings.persistentLookAhead - settings.hardStopDistance),
-            0,
-            1
-          );
       return {
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER,
-        desiredSpeedFactor: desired,
+        desiredSpeedFactor: blocker.gap <= settings.hardStopDistance
+          ? 0
+          : clamp(
+              (blocker.gap - settings.hardStopDistance)
+                / Math.max(1, settings.persistentLookAhead - settings.hardStopDistance),
+              0,
+              1
+            ),
         ...blocker
       };
     }
@@ -346,6 +346,10 @@ export function createTrafficRouteBehaviorController(materializer, {
       };
     }
 
+    const canAttemptRecovery = !state.recoveryBlocked
+      && state.recoveryCooldownSeconds <= EPSILON
+      && state.stoppedSeconds >= settings.staticRecoveryDelay;
+
     if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC
       && state.blockerId === blocker.blockerId
       && !state.recoveryBlocked) {
@@ -357,7 +361,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       };
     }
 
-    if (state.stoppedSeconds >= settings.staticRecoveryDelay && !state.recoveryBlocked) {
+    if (canAttemptRecovery) {
       return {
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC,
         desiredSpeedFactor: settings.staticRecoverySpeedFactor,
@@ -414,6 +418,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       nearestPersistentBlocker(agent, lane, settings)
     ].filter(Boolean).sort((left, right) => left.gap - right.gap || left.reason.localeCompare(right.reason));
     const blocker = blockers[0] || null;
+
     if (!blocker) {
       return {
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.CRUISE,
@@ -425,8 +430,9 @@ export function createTrafficRouteBehaviorController(materializer, {
       };
     }
 
-    if (blocker.reason === "traffic") return trafficDecision(agent, state, blocker, settings);
-    return persistentDecision(state, blocker, settings);
+    return blocker.reason === "traffic"
+      ? trafficDecision(agent, state, blocker, settings)
+      : persistentDecision(state, blocker, settings);
   }
 
   function applySlotState(agent, state) {
@@ -443,93 +449,37 @@ export function createTrafficRouteBehaviorController(materializer, {
     slot.engineSpeed = Math.max(0, finite(baseSpeed, 112) * slot.speedFactor);
   }
 
-  function executeTrafficRecovery(state) {
-    const physical = scene.trafficPhysicalConsequencesSystem;
-    const pusher = materializer.assignments.get(state.tokenId);
-    const target = materializer.assignments.get(state.blockerId);
-    if (!physical?.stateFor || !physical?.applyStateOffset || !pusher || !target) return false;
-
-    const targetState = physical.stateFor(target);
-    if (!targetState) return false;
-    const dx = finite(target.x) - finite(pusher.x);
-    const dy = finite(target.y) - finite(pusher.y);
-    const length = Math.max(1, Math.hypot(dx, dy));
-    const impulse = clamp(2 + Math.max(0, finite(pusher.engineSpeed)) * 0.018, 2, 7);
-    const nextOffsetX = finite(targetState.offsetX) + (dx / length) * impulse;
-    const nextOffsetY = finite(targetState.offsetY) + (dy / length) * impulse;
-    if (Math.hypot(nextOffsetX, nextOffsetY) > Math.max(8, finite(physical.maxOffset, 44))) return false;
-    const nextX = finite(targetState.baseX, target.x) + nextOffsetX;
-    const nextY = finite(targetState.baseY, target.y) + nextOffsetY;
-    if (typeof physical.proxyWorldSafe === "function" && !physical.proxyWorldSafe(target, nextX, nextY)) return false;
-
-    targetState.offsetX = nextOffsetX;
-    targetState.offsetY = nextOffsetY;
-    targetState.holdSeconds = Math.max(finite(targetState.holdSeconds), 0.12);
-    targetState.lastVehicleId = `traffic:${pusher.tokenId}`;
-    targetState.lastReason = "traffic-recovery";
-    targetState.pushes = Math.max(0, Math.floor(finite(targetState.pushes))) + 1;
-    physical.totalContacts = Math.max(0, Math.floor(finite(physical.totalContacts))) + 1;
-    physical.totalPushes = Math.max(0, Math.floor(finite(physical.totalPushes))) + 1;
-    physical.applyStateOffset(target, targetState);
-    return true;
-  }
-
-  function persistentVehicleSafe(vehicle, x, y) {
-    const vehicleSystem = scene.vehicleSystem;
-    const radius = vehicleRadius(vehicle?.archetype);
-    if (typeof vehicleSystem?.canOccupy === "function" && !vehicleSystem.canOccupy(vehicle, x, y, finite(vehicle.angle))) {
-      return false;
-    }
-    for (const slot of materializer.pool || []) {
-      if (!slot?.tokenId || slot.tokenId === vehicle?.trafficTokenId) continue;
-      if (Math.hypot(finite(slot.x) - x, finite(slot.y) - y) < Math.max(1, finite(slot.radius, 14)) + radius + 1) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  function executeStaticRecovery(state) {
-    const vehicleSystem = scene.vehicleSystem;
-    const slot = materializer.assignments.get(state.tokenId);
-    const vehicle = vehicleSystem?.vehicle?.(state.blockerId)
-      || vehicleSystem?.vehicles?.find?.(candidate => candidate.id === state.blockerId);
-    if (!slot || !vehicle || vehicle.id === vehicleSystem?.currentVehicleId) return false;
-
-    const angle = finite(slot.angle);
-    const side = stableHash(`${slot.tokenId}|${vehicle.id}`) % 2 === 0 ? 1 : -1;
-    const step = 5;
-    const offsetX = Math.cos(angle + Math.PI / 2) * step * side;
-    const offsetY = Math.sin(angle + Math.PI / 2) * step * side;
-    const nextX = finite(vehicle.x) + offsetX;
-    const nextY = finite(vehicle.y) + offsetY;
-    if (!persistentVehicleSafe(vehicle, nextX, nextY)) return false;
-
-    vehicle.x = nextX;
-    vehicle.y = nextY;
-    vehicle.speed = 0;
-    vehicle.velocityX = 0;
-    vehicle.velocityY = 0;
-    vehicle.parked = true;
-    vehicle.container?.setPosition?.(nextX, nextY);
-    vehicleSystem?.persistVehicle?.(vehicle);
-    return true;
-  }
-
   function executeRecovery(state, settings) {
-    if (state.recoveryCooldownSeconds > EPSILON) return null;
-    let success = null;
+    if (state.recoveryCooldownSeconds > EPSILON || state.recoveryBlocked) return null;
+
+    let result = null;
     if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC) {
       state.recoveryAttempts++;
-      success = executeTrafficRecovery(state);
+      result = executeTrafficRecovery(scene, materializer, {
+        pusherTokenId: state.tokenId,
+        targetTokenId: state.blockerId
+      });
+      trafficRecoveryActions++;
     } else if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC) {
       state.recoveryAttempts++;
-      success = executeStaticRecovery(state);
+      result = executeStaticRecovery(scene, materializer, {
+        requesterTokenId: state.tokenId,
+        vehicleId: state.blockerId
+      });
+      staticRecoveryActions++;
     }
-    if (success === null) return null;
-    state.recoveryBlocked = !success;
-    state.recoveryCooldownSeconds = success ? settings.recoveryActionInterval : 0;
-    return success;
+
+    if (!result) return null;
+    state.lastRecoveryReason = result.reason;
+    if (result.success) {
+      state.recoverySuccesses++;
+      state.recoveryBlocked = false;
+      state.recoveryCooldownSeconds = settings.recoveryActionInterval;
+    } else {
+      state.recoveryBlocked = true;
+      state.recoveryCooldownSeconds = settings.failedRecoveryBackoff;
+    }
+    return result;
   }
 
   function update(runtime, seconds = 0.05) {
@@ -544,8 +494,10 @@ export function createTrafficRouteBehaviorController(materializer, {
       liveIds.add(agent.tokenId);
       const state = stateFor(agent);
       state.recoveryCooldownSeconds = Math.max(0, finite(state.recoveryCooldownSeconds) - duration);
+      if (state.recoveryBlocked && state.recoveryCooldownSeconds <= EPSILON) state.recoveryBlocked = false;
+
       const decision = decisionFor(agent, state, agentsById, blockedById, settings);
-      transition(state, decision.fsmState || routeState(decision.reason), duration, decision.blockerId);
+      transition(state, decision, duration);
 
       const rate = decision.desiredSpeedFactor < state.speedFactor
         ? settings.brakingRate
@@ -559,12 +511,12 @@ export function createTrafficRouteBehaviorController(materializer, {
       if (state.desiredSpeedFactor < 1) state.speedFactor = Math.min(state.speedFactor, 0.95);
       state.reason = decision.reason;
       state.gap = decision.gap;
-      state.blockerId = decision.blockerId;
+      state.blockerId = decision.blockerId || null;
       state.blockerKind = decision.blockerKind || null;
       state.stoppedSeconds = state.speedFactor <= 0.03
         ? state.stoppedSeconds + duration
-        : state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC
-          || state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC
+        : [TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC, TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC]
+            .includes(state.fsmState)
           ? state.stoppedSeconds
           : 0;
 
@@ -572,8 +524,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       if (state.speedFactor <= 0.03) stoppedDecisions++;
       if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER) playerReactiveDecisions++;
       if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW) followingDecisions++;
-      if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC) gridlockPushDecisions++;
-      if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.STOPPED_TRAFFIC) gridlockYieldDecisions++;
+      if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC) trafficRecoveryDecisions++;
       if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC) staticRecoveryDecisions++;
 
       applySlotState(agent, state);
@@ -595,6 +546,10 @@ export function createTrafficRouteBehaviorController(materializer, {
     const vehicles = [...states.values()]
       .map(state => ({ ...state }))
       .sort((left, right) => left.tokenId.localeCompare(right.tokenId));
+    const stateCounts = {};
+    for (const state of Object.values(TRAFFIC_ROUTE_BEHAVIOR_STATE)) stateCounts[state] = 0;
+    for (const vehicle of vehicles) stateCounts[vehicle.fsmState] = (stateCounts[vehicle.fsmState] || 0) + 1;
+
     return {
       active: true,
       architecture: "explicit-route-behavior-fsm",
@@ -602,24 +557,27 @@ export function createTrafficRouteBehaviorController(materializer, {
       geometryAuthority: "compiler-local-topology",
       lateralSteeringAuthority: false,
       speedAuthority: "route-behavior-fsm",
+      recoveryExecutionAuthority: "TrafficRecoveryActuator",
       maximumSpeedFactor: 1,
       baseSpeed: Math.max(0, finite(baseSpeed, 112)),
       updates,
       activeVehicles: vehicles.length,
+      stateCounts,
       brakingVehicles: vehicles.filter(item => item.speedFactor < 0.95 && item.speedFactor > 0.03).length,
       stoppedVehicles: vehicles.filter(item => item.speedFactor <= 0.03).length,
-      playerReactiveVehicles: vehicles.filter(item => item.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER).length,
-      followingVehicles: vehicles.filter(item => item.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW).length,
-      gridlockPushingVehicles: vehicles.filter(item => item.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC).length,
-      gridlockYieldingVehicles: vehicles.filter(item => item.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.STOPPED_TRAFFIC).length,
-      staticRecoveringVehicles: vehicles.filter(item => item.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC).length,
+      playerReactiveVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER] || 0,
+      followingVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW] || 0,
+      gridlockPushingVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC] || 0,
+      gridlockYieldingVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.STOPPED_TRAFFIC] || 0,
+      staticRecoveringVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC] || 0,
       brakingDecisions,
       stoppedDecisions,
       playerReactiveDecisions,
       followingDecisions,
-      gridlockPushDecisions,
-      gridlockYieldDecisions,
+      trafficRecoveryDecisions,
+      trafficRecoveryActions,
       staticRecoveryDecisions,
+      staticRecoveryActions,
       vehicles
     };
   }
@@ -628,10 +586,5 @@ export function createTrafficRouteBehaviorController(materializer, {
     states.clear();
   }
 
-  return Object.freeze({
-    update,
-    speedFactor,
-    snapshot,
-    clear
-  });
+  return Object.freeze({ update, speedFactor, snapshot, clear });
 }
