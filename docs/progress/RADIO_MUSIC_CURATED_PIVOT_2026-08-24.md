@@ -2,11 +2,11 @@
 
 ## User decision
 
-After the generated MIDI experiments, the user preferred the previous B pilot to the C refinement but concluded that autonomous composition was not producing music at the required quality level.
+After the generated MIDI experiments, the user preferred the B pilot to C but concluded that autonomous composition was not producing music at the required quality level.
 
-The subsequent finished-track search produced an enthusiastically received shortlist. This changes the canonical strategy.
+A subsequent search for finished modern licensed tracks produced an enthusiastically received first shortlist. That permanently changed the canonical strategy for the shipping radio catalogue.
 
-## New strategy
+## Canonical strategy
 
 Do **not** autonomously compose the shipping radio catalogue.
 
@@ -14,71 +14,65 @@ Use:
 
 `finished modern track -> individual recording licence check -> station fit -> user shortlist -> acquisition evidence -> later runtime integration`
 
-The MIDI workbench and generated candidates remain in the PR as historical R&D. They may still be useful for stingers, experiments or explicit user-directed MIDI work, but they do not count toward the curated shipping catalogue.
+The MIDI workbench and generated candidates remain historical R&D. They may still be useful for stingers, experiments or explicit user-directed MIDI work, but they do not count toward the curated shipping catalogue.
 
-## First curated seed set
+## Licence authority
+
+- Pixabay Content License: use permitted for free, without required attribution, and modification is allowed subject to prohibited uses including standalone redistribution. Keep creator/source records anyway.
+- CC BY 4.0: commercial sharing/adaptation permitted with appropriate attribution, licence reference and change indication when modified.
+- Each recording is verified from its individual official track page. Platform reputation alone is not sufficient.
+- Content ID is tracked separately from licence safety.
+
+## Balanced 12-track shortlist reached
+
+The catalog now contains exactly three licence-verified tracks per core station.
 
 ### Vice FM
 
-1. **Daisuke Teiko — The Real Deal 90s hip hop instrumental**
-   - Pixabay Content License;
-   - 3:20;
-   - old-school / 90s hip-hop;
-   - Content ID not indicated on the checked official page;
-   - acquisition-ready.
-
-2. **1000 Handz & Cobabeats — Architexture ft. Cobabeats**
-   - CC BY 4.0;
-   - 2:13;
-   - instrumental, explicitly not AI-generated on the source page;
-   - required credit: `1000 Handz & Cobabeats`;
-   - acquisition-ready.
+1. `daisuke-teiko-real-deal-90s-hip-hop` — user shortlist-approved / acquisition-ready.
+2. `1000-handz-architexture-cobabeats` — user shortlist-approved / acquisition-ready / CC BY 4.0.
+3. `catch22-coasting-west-coast-hip-hop` — licence-verified / pending user review / Content ID registered.
 
 ### Blood City Beats
 
-3. **Kulakovka — Trip Hop**
-   - Pixabay Content License;
-   - 2:12;
-   - trip-hop;
-   - Content ID registered;
-   - acquisition-ready with Content-ID warning.
+1. `kulakovka-trip-hop` — user shortlist-approved / acquisition-ready / Content ID registered.
+2. `abydos-trip-hop-lovers` — licence-verified / pending user review.
+3. `1000-handz-kyoto` — licence-verified / pending user review / CC BY 4.0 / source says not AI-generated.
 
 ### Night Shift
 
-4. **ejah_music — Big Beat Rave _ Industrial Breakbeat 1**
-   - Pixabay Content License;
-   - 2:18;
-   - breakbeat / rave / gaming tags on official source page;
-   - acquisition-ready.
+1. `ejah-big-beat-industrial-breakbeat-1` — user shortlist-approved / acquisition-ready.
+2. `natureseye-dirty-industrial-rave` — licence-verified / pending user review.
+3. `delon-big-beat-industrial-breakbeat-3` — licence-verified / pending user review.
 
 ### Pulse 94.6
 
-5. **maty1309 — Tema Acid House**
-   - Pixabay Content License;
-   - 3:58;
-   - acid house;
-   - acquisition-ready.
+1. `maty1309-tema-acid-house` — user shortlist-approved / acquisition-ready.
+2. `placidplace-franic-acid-trance` — licence-verified / pending user review.
+3. `berrydeep-back-to-90s` — licence-verified / pending user review / Content ID registered.
 
-Exact URLs and licence metadata live in `docs/audio/radio-curated-track-catalog.json`.
+Exact URLs, durations, licence classes and credits live in `docs/audio/radio-curated-track-catalog.json`.
 
-## Licensing authority
+## Current gate
 
-- Pixabay licence summary permits free use, no required attribution and modification, subject to prohibited uses including standalone redistribution. Keep internal/courtesy credit anyway.
-- CC BY 4.0 permits commercial sharing/adaptation with appropriate attribution, licence reference and change indication when modified.
-- Each individual track must be verified from its official track page; platform reputation alone is not enough.
+State: `user-validation-pending`.
 
-## New agent
+The user has already enthusiastically approved the first five seeds. The seven additional licence-verified tracks must now be listened to and kept/rejected before acquisition.
 
-`docs/agents/RADIO_CURATOR_AGENT.md` becomes the primary autonomous music agent.
+Do not download/commit third-party audio into the repository yet.
+
+## New primary agent
+
+`docs/agents/RADIO_CURATOR_AGENT.md`
 
 Composer/Arranger agents are historical/experimental after this pivot and must not autonomously scale the soundtrack.
 
 ## Exact next task
 
-`CURATED-1-expand-to-three-tracks-per-core-station`
+`CURATED-2-user-prune-seven-new-tracks`
 
-Target: at least 12 acquisition-ready finished tracks, 3 per core station, before the next user listening/pruning gate.
+After user pruning:
 
-Normal autonomous batch: up to 4 newly verified tracks, prioritizing the least-covered stations.
-
-No third-party audio files should be committed/downloaded into the repository until the acquisition workflow is explicitly handled; this phase owns verified metadata and source evidence.
+- promote kept tracks to `acquisition-ready`;
+- replace rejected tracks until each station has at least three approved tracks;
+- only then define exact audio acquisition/download/checksum workflow.
