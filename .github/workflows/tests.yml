@@ -206,7 +206,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: browser-building-review-diagnostics
+          name: building-visual-review-diagnostics
           path: |
             browser-building-review.log
             playwright-report/
@@ -243,3 +243,37 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  materialize-pr73-static-traffic-pack:
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 73 && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Check out PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Generate compiler-owned runtime traffic pack
+        run: npm run city:streaming
+      - name: Commit static traffic pack when stale
+        shell: bash
+        env:
+          HEAD_BRANCH: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          git add phaser/assets/city/packs/traffic-lanes.json
+          if git diff --cached --quiet; then
+            echo "Static traffic pack already matches compiler output."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "build: materialize compiler traffic pack"
+          git push origin "HEAD:${HEAD_BRANCH}"
