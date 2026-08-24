@@ -203,3 +203,140 @@ test("controlled compiler routes still cross straight/right/left when default M8
   expect(result.finalPoolSize).toBe(result.initialPoolSize);
   expect(pageErrors).toEqual([]);
 });
+
+test("the first junction east of spawn keeps one visible slot through west-to-east crossing", async ({ page }) => {
+  const pageErrors = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
+  await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
+  await waitForControlledTraffic(page);
+
+  const result = await page.evaluate(async () => {
+    const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
+    const materializer = scene.trafficMaterializationSystem;
+    const control = window.NBD_TRAFFIC_ROUTE_CONTROL;
+    const multi = window.NBD_TRAFFIC_ROUTE_MULTI_AGENT;
+    const topology = materializer.lanes?.localTopology;
+    const junctionId = "stream-node:1754:1574";
+    const incomingLaneId = "traffic-lane-segment:stream-edge:road-edge:h:1320:1574:1754:1574:0:forward";
+    const outgoingLaneId = "traffic-lane-segment:stream-edge:road-edge:h:1754:1574:2340:1574:0:forward";
+    const transition = Object.values(topology?.transitions || {}).find(candidate => (
+      candidate?.nodeId === junctionId
+      && candidate?.incomingLaneId === incomingLaneId
+      && candidate?.outgoingLaneId === outgoingLaneId
+      && candidate?.preferred
+      && candidate?.turnType === "straight"
+    ));
+    if (!transition) return { missingTransition: true };
+
+    const defaultBefore = multi.snapshot();
+    multi.stop();
+    scene.switchLayer(0, { x: 1754, y: 1574 }, "First-spawn-junction continuity regression.");
+    await window.NBD_CITY_STREAM.forceFocus(1754, 1574);
+    window.NBD_TRAFFIC.resync();
+
+    let snapshot = control.start({
+      transitionId: transition.id,
+      startProgress: 0.82,
+      routeSpeed: 72
+    });
+    const tokenId = snapshot.tokenId;
+    const slotIndex = snapshot.slotIndex;
+    let sameSlotThroughout = true;
+    let visibleThroughout = true;
+    let activeThroughout = true;
+    let sawConnector = snapshot.stage === "connector";
+    let sawOutgoingLane = false;
+    let sawCrossingLifecycle = false;
+    let maxObservedStep = 0;
+    let previous = { x: snapshot.x, y: snapshot.y };
+    const samples = [];
+
+    for (let index = 0; index < 220; index++) {
+      snapshot = control.step(0.05);
+      scene.trafficLocalBehaviorSystem?.update?.(0.05, { force: true });
+      scene.trafficSteeringPresentationSystem?.update?.(0.05, { force: true });
+
+      const slot = materializer.pool[slotIndex];
+      sameSlotThroughout = sameSlotThroughout
+        && Boolean(slot?.tokenId === tokenId)
+        && materializer.assignments.get(tokenId) === slot;
+      visibleThroughout = visibleThroughout && slot?.container?.visible !== false;
+      activeThroughout = activeThroughout && slot?.container?.active !== false;
+      sawConnector = sawConnector || snapshot.stage === "connector";
+      sawCrossingLifecycle = sawCrossingLifecycle || slot?.lifecycleState === "crossing-junction";
+      const observedStep = Math.hypot(snapshot.x - previous.x, snapshot.y - previous.y);
+      maxObservedStep = Math.max(maxObservedStep, observedStep);
+      previous = { x: snapshot.x, y: snapshot.y };
+
+      if (index % 8 === 0 || snapshot.stage === "connector") {
+        samples.push({
+          stage: snapshot.stage,
+          laneId: snapshot.currentLaneId,
+          connectorId: snapshot.connectorId || null,
+          x: snapshot.x,
+          y: snapshot.y,
+          slotTokenId: slot?.tokenId || null,
+          visible: slot?.container?.visible !== false,
+          active: slot?.container?.active !== false,
+          lifecycleState: slot?.lifecycleState || null
+        });
+      }
+
+      if (snapshot.routeHop >= 1 && snapshot.stage === "lane" && snapshot.currentLaneId === outgoingLaneId) {
+        sawOutgoingLane = true;
+        break;
+      }
+      if ((snapshot.lastBlockedReason && snapshot.lastBlockedReason !== "junction-yield") || snapshot.slotLost) break;
+    }
+
+    const finalSlot = materializer.pool[slotIndex];
+    const stopped = control.stop();
+    return {
+      missingTransition: false,
+      junctionId,
+      transitionId: transition.id,
+      defaultBefore,
+      tokenId,
+      slotIndex,
+      sameSlotThroughout,
+      visibleThroughout,
+      activeThroughout,
+      sawConnector,
+      sawOutgoingLane,
+      sawCrossingLifecycle,
+      routeHop: snapshot.routeHop,
+      currentLaneId: snapshot.currentLaneId,
+      lastBlockedReason: snapshot.lastBlockedReason,
+      slotLost: snapshot.slotLost,
+      teleportCount: snapshot.teleportCount,
+      maximumStepDistance: snapshot.maximumStepDistance,
+      maxObservedStep,
+      finalSlotTokenId: finalSlot?.tokenId || null,
+      fixedPoolPreserved: snapshot.fixedPoolPreserved,
+      stopped,
+      samples
+    };
+  });
+
+  expect(result.missingTransition).toBe(false);
+  expect(result.defaultBefore.enabled).toBe(true);
+  expect(result.defaultBefore.defaultTrafficAuthority).toBe("multi-agent-compiler-route");
+  expect(result.junctionId).toBe("stream-node:1754:1574");
+  expect(result.sameSlotThroughout).toBe(true);
+  expect(result.visibleThroughout).toBe(true);
+  expect(result.activeThroughout).toBe(true);
+  expect(result.sawConnector).toBe(true);
+  expect(result.sawOutgoingLane).toBe(true);
+  expect(result.sawCrossingLifecycle).toBe(true);
+  expect(result.routeHop).toBeGreaterThanOrEqual(1);
+  expect(result.currentLaneId).toBe("traffic-lane-segment:stream-edge:road-edge:h:1754:1574:2340:1574:0:forward");
+  expect(result.lastBlockedReason).toBe(null);
+  expect(result.slotLost).toBe(false);
+  expect(result.teleportCount).toBe(0);
+  expect(result.maximumStepDistance).toBeLessThanOrEqual(3.61);
+  expect(result.maxObservedStep).toBeLessThanOrEqual(3.61);
+  expect(result.finalSlotTokenId).toBe(result.tokenId);
+  expect(result.fixedPoolPreserved).toBe(true);
+  expect(result.stopped.fixedPoolPreserved).toBe(true);
+  expect(pageErrors).toEqual([]);
+});
