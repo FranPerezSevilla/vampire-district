@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createTrafficRouteBehaviorController } from "../phaser/src/streaming/TrafficRouteBehaviorPolicy.js";
+import {
+  createTrafficRouteBehaviorController,
+  trafficGridlockInitiativeWinner
+} from "../phaser/src/streaming/TrafficRouteBehaviorPolicy.js";
 
 function fixture() {
   const topology = {
@@ -125,4 +128,96 @@ test("route behavior recovers after blocker clears and forces connector clearing
   controller.update(runtime, 0.05);
   assert.equal(controller.speedFactor(slot.tokenId, "connector"), 1);
   assert.equal(controller.snapshot().vehicles[0].reason, "route-connector-clear");
+});
+
+test("prolonged traffic queue gives one deterministic car initiative to push through", () => {
+  const topology = {
+    lanes: {
+      "lane-a": {
+        id: "lane-a",
+        length: 240,
+        points: [{ x: 0, y: 0 }, { x: 240, y: 0 }]
+      }
+    }
+  };
+  const ids = ["traffic-a", "traffic-b"];
+  const winner = trafficGridlockInitiativeWinner(ids[0], ids[1]);
+  const loser = ids.find(id => id !== winner);
+  const rearSlot = {
+    tokenId: winner,
+    routeActive: true,
+    radius: 14,
+    x: 80,
+    y: 0,
+    angle: 0,
+    speedFactor: 1,
+    desiredSpeedFactor: 1
+  };
+  const leadSlot = {
+    tokenId: loser,
+    routeActive: true,
+    radius: 14,
+    x: 112,
+    y: 0,
+    angle: 0,
+    speedFactor: 1,
+    desiredSpeedFactor: 1
+  };
+  const parked = {
+    id: "parked",
+    x: 142,
+    y: 0,
+    archetype: { width: 28, height: 14 }
+  };
+  const materializer = {
+    assignments: new Map([
+      [rearSlot.tokenId, rearSlot],
+      [leadSlot.tokenId, leadSlot]
+    ]),
+    scene: {
+      trafficLocalBehaviorSystem: {
+        followDistance: 78,
+        hardStopDistance: 34,
+        playerLookAhead: 132,
+        laneTolerance: 38,
+        accelerationRate: 1.35,
+        brakingRate: 5.8,
+        gridlockBreakSeconds: 0.6,
+        gridlockPushSpeedFactor: 0.28
+      },
+      vehicleSystem: {
+        currentVehicleId: null,
+        vehicles: [parked],
+        isDriving() {
+          return false;
+        }
+      },
+      player: null
+    }
+  };
+  const agents = [
+    { tokenId: winner, stage: "lane", currentLaneId: "lane-a", stageProgress: 80 / 240 },
+    { tokenId: loser, stage: "lane", currentLaneId: "lane-a", stageProgress: 112 / 240 }
+  ];
+  const runtime = {
+    agents() {
+      return agents.map(agent => ({ ...agent }));
+    },
+    snapshot() {
+      return { blocked: [] };
+    }
+  };
+  const controller = createTrafficRouteBehaviorController(materializer, {
+    topology,
+    baseSpeed: 100
+  });
+
+  for (let index = 0; index < 28; index++) controller.update(runtime, 0.05);
+  const states = new Map(controller.snapshot().vehicles.map(item => [item.tokenId, item]));
+
+  assert.equal(states.get(winner).reason, "gridlock-push");
+  assert.ok(states.get(winner).desiredSpeedFactor > 0);
+  assert.equal(states.get(loser).reason, "parked-vehicle");
+  assert.equal(states.get(loser).desiredSpeedFactor, 0);
+  assert.equal(controller.snapshot().gridlockPushingVehicles, 1);
 });
