@@ -33,20 +33,12 @@
     "10 Funk Horn Stabs",
     "11 Scratch / FX Guide"
   ],
-  "status": "proof",
-  "userReview": "pending",
+  "status": "rejected",
+  "userReview": "revise",
   "songCompleteness": {
     "contract": "docs/audio/RADIO_SONG_COMPLETENESS_CONTRACT.md",
     "bars": 52,
-    "sections": [
-      "INTRO 4",
-      "VERSE A 12",
-      "HOOK A 8",
-      "VERSE B 8",
-      "FUNK BREAK 4",
-      "HOOK B / PEAK 12",
-      "OUTRO 4"
-    ],
+    "sections": ["INTRO 4", "VERSE A 12", "HOOK A 8", "VERSE B 8", "FUNK BREAK 4", "HOOK B / PEAK 12", "OUTRO 4"],
     "primaryHook": "Public-domain Maple Leaf Rag fragments used as a sample-like recurring hook",
     "secondaryHook": "Original ViceBlood G-funk mono-synth lead",
     "measuredCoreMinActiveRoles": 5,
@@ -56,25 +48,6 @@
     "continuousHipHopRhythmBassCompAfterIntro": true,
     "phraseBoundaryFills": true
   },
-  "styleRevision": {
-    "userDirection": "More hip-hop and more funk.",
-    "priorityOrder": [
-      "hip-hop drum groove",
-      "syncopated funk bass and riffs",
-      "Joplin / G-funk hook identity",
-      "harmonic color"
-    ],
-    "changesFromB": [
-      "stronger kick/snare backbeat with layered clap and more ghost-note detail",
-      "more syncopated bass with pickups and busier funk-break phrasing",
-      "clavinet and muted-guitar conversation throughout the core",
-      "more prominent G-funk lead during hook sections",
-      "Rhodes changed from a broad chord bed to shorter hip-hop stabs",
-      "cinematic low strings/pad removed",
-      "brass reduced to short funk horn punctuation",
-      "Joplin material shortened into recurring sample-like fragments rather than carrying the arrangement"
-    ]
-  },
   "attribution": {
     "creditMode": "required-player-credit",
     "playerCredit": "“Maple Leaf Rag” — Scott Joplin (1899). Arranged for ViceBlood (2026).",
@@ -82,5 +55,11 @@
     "licenseOrStatus": "Public Domain source score; composer/work attribution retained under the ViceBlood radio attribution policy.",
     "thirdPartyAssets": []
   },
-  "notes": "M1.4 style-refinement proof after the user said the complete-song B pilot was materially better but should lean further into hip-hop and funk. The song is now groove-led: hip-hop drums and syncopated funk bass are primary, clav/guitar are continuous comping voices, G-funk lead supplies the second hook, and cinematic pad weight has been removed. General MIDI remains a DAW placeholder."
+  "notes": "Historical MIDI experiment only. User rejected C on 2026-08-24 as materially worse than B. The experiment demonstrates that adding density, syncopation and stylistic markers does not guarantee better musical quality. Do not use C as the Vice FM style reference and do not autonomously iterate further from it after the curated-finished-track strategy pivot.",
+  "reviewFeedback": {
+    "reviewedAt": "2026-08-24",
+    "verdict": "rejected-prefer-B",
+    "userPreference": "Version B is preferred over C.",
+    "strategicOutcome": "Autonomous catalogue composition paused; finished licensed-track curation is canonical."
+  }
 }
