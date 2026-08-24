@@ -1,20 +1,20 @@
 {
   "initiative": "city-noir-atmosphere",
-  "version": 13,
-  "updatedAt": "2026-08-22",
+  "version": 14,
+  "updatedAt": "2026-08-24",
   "branch": "agent/city-noir-atmosphere",
   "state": "autonomous-in-progress",
   "currentMilestone": "M7",
-  "currentTask": "checkpoint-after-M7.1",
+  "currentTask": "checkpoint-after-M7.2",
   "executionCadence": {
     "default": "task-validate-document-report-wait",
     "waitForUserAfterEachBoundedTask": true,
     "genericContinueAuthorizes": "next-bounded-task-only",
     "batchOverrideRequiresExplicitUserInstruction": true,
     "documentationRequiredInBatchMode": true,
-    "lastBatchScope": "explicit continuation: M7.1 decorative sign/neon grammar only",
+    "lastBatchScope": "explicit continuation: M7.2 steam/smoke service effects only",
     "lastBatchState": "complete",
-    "rule": "Every bounded task must be validated and documented before the next task starts. M7.1 is closed; M7.2 requires new user direction."
+    "rule": "Every bounded task must be validated and documented before the next task starts. M7.2 is closed; M7.3 requires new user direction."
   },
   "dependency": {
     "pullRequest": 69,
@@ -81,7 +81,11 @@
     "M7.1-decorative-sign-neon-grammar",
     "M7.1-focused-tests",
     "M7.1-gameplay-scale-browser-evidence",
-    "M7.1-documentation-checkpoint"
+    "M7.1-documentation-checkpoint",
+    "M7.2-steam-smoke-service-effects",
+    "M7.2-focused-tests",
+    "M7.2-gameplay-scale-browser-evidence",
+    "M7.2-documentation-checkpoint"
   ],
   "milestones": {
     "M0": { "title": "Canonical direction, references and agent continuity", "state": "complete" },
@@ -213,7 +217,7 @@
   },
   "m7": {
     "state": "in-progress",
-    "checkpointEvidence": "docs/progress/CITY_NOIR_ATMOSPHERE_M7_1_CHECKPOINT.md",
+    "checkpointEvidence": "docs/progress/CITY_NOIR_ATMOSPHERE_M7_2_CHECKPOINT.md",
     "m7_1": {
       "state": "complete",
       "authority": "phaser/src/policies/BuildingDecorativeSignPresentationPolicy.js",
@@ -245,7 +249,37 @@
       "implementationCorrection": "Gameplay evidence exposed that addMapLabel expects a numeric color; passing a CSS string produced invalid ##rrggbb and black text. M7.1 now passes the numeric M3 coreColor and the focused test locks the contract.",
       "ciCorrection": "The atmosphere package grew to six serial tests and exceeded its old inner 8m timeout after five passes. The capture allowance is now 10m inside a 15m job; no runtime behavior changed."
     },
-    "nextPlannedTask": "M7.2-steam-smoke-service-effects",
+    "m7_2": {
+      "state": "complete",
+      "family": "service-steam-smoke",
+      "authority": "phaser/src/policies/CityServiceSteamPresentationPolicy.js",
+      "sourceAuthority": "existing M5 service-strip descriptors; camera bounds only cull the stable selected source set",
+      "presentationPolicy": {
+        "maximumSources": 3,
+        "maximumPuffsPerSource": 3,
+        "maximumAlpha": 0.18,
+        "lifetimeMs": 2800,
+        "plumeDistance": 34,
+        "driftDistance": 7
+      },
+      "focusedTest": "tests/city-service-steam-presentation.test.js",
+      "browserTest": "tests/browser/city-grime-review.spec.js",
+      "validatedHead": "f9c1c78a86c3e34c7b733ecff5a66ea0c3b8dde6",
+      "validation": {
+        "testsWorkflowRun": 32705536855,
+        "atmosphereWorkflowRun": 32705536822,
+        "artifactId": 9512382899,
+        "conclusion": "success"
+      },
+      "captures": [
+        "m7-service-steam-a.png",
+        "m7-service-steam-b.png",
+        "m7-steam-dark-control.png"
+      ],
+      "visualAssessment": "accepted: a single visible warehouse source produces three small local puffs at gameplay scale, animation changes across sampled frames, and the distant dark control has zero sources and zero puffs; the effect reads as sparse service exhaust rather than global fog",
+      "reviewHarnessCorrection": "The first M7.2 review failure was evidence-only: camera.worldView was sampled in the same tick as centerOn(), before Phaser preRender refreshed it. The screenshot already showed steam. The harness now computes the centered viewport from camera dimensions and zoom; production runtime was unchanged."
+    },
+    "nextPlannedTask": "M7.3-contextual-micro-scenes",
     "nextTaskState": "awaiting-user-direction"
   },
   "finalGate": {
@@ -253,5 +287,5 @@
     "autonomousWorkStopsAt": "final-validation-pending",
     "autoMergeAllowed": false
   },
-  "nextAction": "M7.1 is complete and documented. Report validation and wait for user direction. If authorized, execute only M7.2 steam/smoke service effects; do not combine M7.3 contextual micro-scenes into that slice."
+  "nextAction": "M7.2 is complete and documented. Report validation and wait for user direction. If authorized, execute only M7.3 contextual micro-scenes; do not expand into M8 district identity in the same slice."
 }
