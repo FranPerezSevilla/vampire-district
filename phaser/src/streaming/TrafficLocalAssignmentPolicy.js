@@ -1,6 +1,5 @@
 import { LAYERS } from "../data/district.js";
 import { installTrafficControlledRouteActivationPolicy } from "./TrafficControlledRouteActivationPolicy.js";
-import { installTrafficGridlockRecoveryPolicy } from "./TrafficGridlockRecoveryPolicy.js";
 import { cameraWorldBounds } from "./TrafficMaterializationSystem.js";
 import { installTrafficLifecyclePolicy } from "./TrafficLifecyclePolicy.js";
 import { installTrafficMultiAgentRouteRuntimePolicy } from "./TrafficMultiAgentRouteRuntimePolicy.js";
@@ -9,6 +8,7 @@ import { installTrafficRouteMaterializationMetadataPolicy } from "./TrafficRoute
 const CAMERA_RETENTION_MARGIN = 360;
 const VIEWPORT_GUARD_MARGIN = 120;
 const TARGET_ACTIVE_TRAFFIC = 16;
+const PRODUCTION_ROUTE_SPEED = 112;
 
 function finite(value, fallback = 0) {
   const number = Number(value);
@@ -63,9 +63,8 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   }
   if (materializer.__nbdLocalAssignmentPolicy) return materializer.__nbdLocalAssignmentPolicy;
 
-  // M8.3 promotes compiler localTopology to normal civilian continuity authority.
-  // The legacy authored lane feed remains only as a fail-closed/manual regression
-  // fallback; macro district geometry never becomes local movement authority.
+  // Compiler localTopology is the normal civilian continuity authority. Legacy
+  // authored-lane movement remains fail-closed/manual regression evidence only.
   const originalEligible = materializer.eligible;
   const originalRelease = materializer.release;
   const originalHijack = materializer.hijack;
@@ -77,7 +76,6 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   let routeMaterializationMetadataPolicy = null;
   let controlledRoutePolicy = null;
   let multiAgentRoutePolicy = null;
-  let gridlockRecoveryPolicy = null;
   let densityTuned = false;
 
   function visibleRetention(slot) {
@@ -97,9 +95,6 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     const retainedByCamera = slotIntersectsCamera(localPoint, camera, CAMERA_RETENTION_MARGIN);
     const retainedByFollow = distanceSquared(localPoint, focus) <= limit * limit;
     if (!retainedByCamera && !retainedByFollow) return false;
-    // Compiler-route tokens retain their materialized slot through connector/lane
-    // stage changes and chunk-boundary crossings. Streaming readiness may lag by a
-    // frame, but lifecycle ownership must not make a visible car disappear.
     if (slot?.routeActive) return true;
     if (slotIntersectsCamera(localPoint, camera, VIEWPORT_GUARD_MARGIN)) return true;
     return this.pointReady(localPoint, true);
@@ -142,19 +137,10 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     return synced;
   }
 
-  function ensureGridlockRecoveryPolicy() {
-    if (!gridlockRecoveryPolicy && scene.trafficPhysicalConsequencesSystem) {
-      gridlockRecoveryPolicy = installTrafficGridlockRecoveryPolicy(scene);
-    }
-    return gridlockRecoveryPolicy;
-  }
-
   function localBehaviorUpdate(...args) {
-    ensureGridlockRecoveryPolicy();
-    // The route runtime advances before materialization. Re-sample every assigned
-    // route token every frame so visible pose follows route state instead of
-    // freezing after speedFactor becomes finite. Physical offsets are layered back
-    // on later by TrafficPhysicalConsequencesSystem.
+    // Route state advances before materialization. Re-sample every assigned route
+    // token every frame so visible pose follows route state. Physical consequence
+    // offsets are layered back on later by TrafficPhysicalConsequencesSystem.
     syncRouteActivePoses();
     return originalUpdate.apply(this, args);
   }
@@ -189,8 +175,12 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       routeMaterializationMetadataActive: Boolean(routeMaterializationMetadataPolicy?.active),
       routeMovementActive: Boolean(controlled.enabled) || Boolean(multiAgent.enabled),
       targetActiveTraffic: TARGET_ACTIVE_TRAFFIC,
+      productionRouteSpeed: PRODUCTION_ROUTE_SPEED,
       densityTuned,
-      gridlockRecovery: gridlockRecoveryPolicy?.snapshot?.() || { active: false, totalTrafficPushes: 0 },
+      gridlockRecovery: {
+        active: false,
+        authority: "absorbed-by-route-behavior-fsm"
+      },
       controlledRouteActivation: controlled,
       multiAgentRouteRuntime: multiAgent,
       compilerLocalTopology: {
@@ -206,9 +196,6 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   materializer.update = localBehaviorUpdate;
   materializer.snapshot = localBehaviorSnapshot;
 
-  // Establish the production density baseline before any route policy can capture
-  // the fixed-pool size. On normal startup configure() will create the pool at this
-  // limit; if this policy is installed late, grow once before route activation.
   const configuredTrafficLimit = Math.max(
     TARGET_ACTIVE_TRAFFIC,
     Math.floor(finite(materializer.maxActiveVehicles, TARGET_ACTIVE_TRAFFIC))
@@ -226,12 +213,10 @@ export function installTrafficLocalAssignmentPolicy(scene) {
 
   routeMaterializationMetadataPolicy = installTrafficRouteMaterializationMetadataPolicy(materializer);
   const lifecyclePolicy = installTrafficLifecyclePolicy(materializer);
-  // Controlled single-route activation remains available for M6/M7 regression proof.
   controlledRoutePolicy = installTrafficControlledRouteActivationPolicy(materializer);
-  // M8.3 installs the production-shaped route runtime as the default civilian
-  // continuity authority. The policy itself refuses activation unless the full
-  // production population and accounting projection are conservative and complete.
-  multiAgentRoutePolicy = installTrafficMultiAgentRouteRuntimePolicy(materializer);
+  multiAgentRoutePolicy = installTrafficMultiAgentRouteRuntimePolicy(materializer, {
+    speed: PRODUCTION_ROUTE_SPEED
+  });
 
   const policy = {
     originalEligible,
@@ -249,13 +234,9 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     lifecyclePolicy,
     controlledRoutePolicy,
     multiAgentRoutePolicy,
-    get gridlockRecoveryPolicy() {
-      return gridlockRecoveryPolicy;
-    },
+    gridlockRecoveryPolicy: null,
     laneJunctionTopologyPolicy: null,
     destroy() {
-      gridlockRecoveryPolicy?.destroy?.();
-      gridlockRecoveryPolicy = null;
       multiAgentRoutePolicy?.destroy?.();
       controlledRoutePolicy?.destroy?.();
       lifecyclePolicy?.destroy?.();
