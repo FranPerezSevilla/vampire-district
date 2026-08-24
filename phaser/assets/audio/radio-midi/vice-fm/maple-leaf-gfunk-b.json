@@ -33,7 +33,7 @@
     "11 Transition FX Guide"
   ],
   "status": "proof",
-  "userReview": "not-requested",
+  "userReview": "revise",
   "songCompleteness": {
     "contract": "docs/audio/RADIO_SONG_COMPLETENESS_CONTRACT.md",
     "bars": 56,
@@ -62,5 +62,12 @@
     "licenseOrStatus": "Public Domain source score; composer/work attribution retained under the ViceBlood radio attribution policy.",
     "thirdPartyAssets": []
   },
-  "notes": "M1.4 full-song revision pilot created after the M1.3 A set was rejected as too sparse and sketch-like. The source motif is a recurring hook rather than continuous accompaniment. The ViceBlood arrangement adds continuous G-funk drums/percussion, melodic funk bass, Rhodes bed, clav chops, original mono lead, counter melody, pad, brass and transitions across a 56-bar A/B/breakdown/return structure. General MIDI remains a placeholder; the listening gate is about whether this now feels like a complete song."
+  "notes": "M1.4 full-song revision pilot created after the M1.3 A set was rejected as too sparse and sketch-like. The source motif is a recurring hook rather than continuous accompaniment. The ViceBlood arrangement adds continuous G-funk drums/percussion, melodic funk bass, Rhodes bed, clav chops, original mono lead, counter melody, pad, brass and transitions across a 56-bar A/B/breakdown/return structure. General MIDI remains a placeholder; the listening gate is about whether this now feels like a complete song. User review: materially better, but revise toward more hip-hop and more funk; B is not yet an accepted station reference.",
+  "reviewFeedback": {
+    "reviewedAt": "2026-08-24",
+    "verdict": "materially-better-but-revise",
+    "userDirection": "More hip-hop and more funk.",
+    "whatWorked": "The complete-song structure is materially better than the rejected M1.3 A sketches.",
+    "revisionNeed": "Reduce soundtrack/cinematic weight and make hip-hop drums plus funk bass/riffs the primary identity."
+  }
 }

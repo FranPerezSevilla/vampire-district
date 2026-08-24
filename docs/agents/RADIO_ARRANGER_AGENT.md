@@ -60,6 +60,27 @@ Core sections normally need at least four meaningful roles and peaks should norm
 - Keep source-derived material recognisable but do not let it occupy every bar.
 - Write an ending.
 
+## Vice FM user-approved emphasis
+
+User feedback on 2026-08-24 established the current Vice FM preference:
+
+> more hip-hop and more funk
+
+For Vice FM, prioritize musical authority in this order:
+
+1. **hip-hop groove** — kick/snare pocket, swing, ghost notes and phrase fills;
+2. **funk bass/riff language** — syncopated bass plus clavinet/muted-guitar conversation;
+3. **hook identity** — G-funk mono lead and public-domain source fragments;
+4. **harmonic color** — Rhodes/organ support after the groove is already convincing.
+
+Operational test:
+
+> Temporarily mute the source hook and lead. Drums + bass + funk comping should still feel like a convincing mid-1990s hip-hop/funk instrumental.
+
+Vice FM should not read primarily as cinematic soundtrack, generic funk-jazz, or orchestral game score. Broad pads/strings are support-only and should not be the main glue. Horns should behave as short funk punctuation rather than cinematic brass beds. Treat the public-domain motif like a sampled/replayed hook: recognizable, repeatable, but not responsible for carrying every bar.
+
+Until later user feedback supersedes this, `maple-leaf-gfunk-c` is the active style-refinement candidate and `maple-leaf-gfunk-b` remains `userReview: revise`.
+
 ## Negative-space rule
 
 Negative space is a contrast tool, not a default production state.
@@ -83,4 +104,4 @@ Deliver:
 
 ## Stop condition
 
-For revision pilots, stop after **one** complete-song candidate is technically validated and ready for user listening. Do not generate the other stations until the user confirms the new completeness bar is materially better.
+For revision pilots, stop after **one** complete-song candidate is technically validated and ready for user listening. Do not generate the other stations until the user confirms the new completeness/style bar is materially right.

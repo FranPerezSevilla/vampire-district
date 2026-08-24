@@ -4,8 +4,8 @@
   "branch": "codex/90s-radio-music-production",
   "pullRequestNumber": 76,
   "state": "active",
-  "currentMilestone": "M1.4-pilot-implementation-complete-validation-pending",
-  "nextTask": "M1.4-pilot-ci-validation-and-user-gate",
+  "currentMilestone": "M1.4-vice-fm-c-implementation-complete-validation-pending",
+  "nextTask": "M1.4-vice-fm-c-ci-validation-and-user-gate",
   "mission": "Produce complete editable ViceBlood car-radio songs from provenance-cleared public-domain compositions using convincing 1990s station grammars; user performs final DAW production.",
   "authority": {
     "owns": [
@@ -13,7 +13,8 @@
       "radio music attribution/credit contract",
       "full-song arrangement architecture",
       "radio MIDI generation/recipes",
-      "generated candidates and review status"
+      "generated candidates and review status",
+      "station-specific arrangement preferences learned at user gates"
     ],
     "doesNotOwn": [
       "runtime radio playback",
@@ -26,10 +27,32 @@
   },
   "coreStations": [
     { "id": "blood-city-beats", "workingName": "Blood City Beats", "lane": "boom-bap-trip-hop", "bpmRange": [82, 100] },
-    { "id": "vice-fm", "workingName": "Vice FM", "lane": "g-funk-west-coast-hip-hop-instrumental", "bpmRange": [88, 108] },
+    { "id": "vice-fm", "workingName": "Vice FM", "lane": "g-funk-west-coast-hip-hop-instrumental", "bpmRange": [88, 108], "currentEmphasis": "hip-hop-first-funk-forward" },
     { "id": "night-shift", "workingName": "Night Shift", "lane": "big-beat-breakbeat-industrial-dance", "bpmRange": [125, 150] },
     { "id": "pulse-94-6", "workingName": "Pulse 94.6", "lane": "house-acid-house-techno", "bpmRange": [120, 140] }
   ],
+  "viceFmGrammarOverride": {
+    "learnedAt": "2026-08-24",
+    "userDirection": "More hip-hop and more funk.",
+    "priorityOrder": [
+      "hip-hop drum groove",
+      "syncopated funk bass and riffs",
+      "G-funk / public-domain hook identity",
+      "harmonic color"
+    ],
+    "requiredCore": [
+      "strong kick/snare pocket with swing and fills",
+      "funk bass that remains interesting without the lead",
+      "clavinet or muted-guitar rhythmic conversation",
+      "source motif used as a hook rather than carrying the arrangement"
+    ],
+    "avoid": [
+      "cinematic pad/strings as primary glue",
+      "orchestral soundtrack feeling",
+      "generic funk-jazz without hip-hop pocket"
+    ],
+    "operationalTest": "Mute source hook and lead: drums + bass + funk comping must still read as a convincing mid-1990s hip-hop/funk instrumental."
+  },
   "attributionPolicy": {
     "contract": "docs/audio/RADIO_MUSIC_ATTRIBUTION.md",
     "composerAndWorkPlayerCreditRequired": true,
@@ -70,10 +93,9 @@
     "contract": "docs/audio/RADIO_SONG_COMPLETENESS_CONTRACT.md",
     "arrangerAgent": "docs/agents/RADIO_ARRANGER_AGENT.md",
     "roadmapOverride": "docs/roadmaps/RADIO_MUSIC_PRODUCTION_REVISION_2026-08-24.md",
-    "checkpoint": "docs/progress/RADIO_MUSIC_M1_4_REVISION_CHECKPOINT.md",
     "rule": "Complete song first; motif-plus-beat sketches do not pass musical gates."
   },
-  "m1_4Pilot": {
+  "m1_4PilotB": {
     "id": "maple-leaf-gfunk-b",
     "stationId": "vice-fm",
     "generatorPath": "tools/radio-composer/proofs/m1-4-maple-leaf-gfunk-b.js",
@@ -82,10 +104,25 @@
     "bars": 56,
     "targetDurationSeconds": 140,
     "musicalTrackCount": 11,
+    "validation": { "workflow": "Tests #2263", "runId": 32697161758, "conclusion": "success" },
+    "userVerdict": "materially-better-but-revise",
+    "userDirection": "More hip-hop and more funk.",
+    "state": "user-reviewed-revise"
+  },
+  "m1_4StyleRefinementC": {
+    "id": "maple-leaf-gfunk-c",
+    "stationId": "vice-fm",
+    "generatorPath": "tools/radio-composer/proofs/m1-4-maple-leaf-gfunk-c.js",
+    "manifestPath": "phaser/assets/audio/radio-midi/vice-fm/maple-leaf-gfunk-c.json",
+    "checkpoint": "docs/progress/RADIO_MUSIC_M1_4_VICE_FM_C_CHECKPOINT.md",
+    "bpm": 94,
+    "bars": 52,
+    "targetDurationSeconds": 132.8,
+    "musicalTrackCount": 11,
     "measuredCoreMinActiveRoles": 5,
-    "measuredCoreAverageActiveRoles": 6.8,
-    "measuredPeakActiveRoles": 10,
-    "coreBarsBelowThreeRoles": 0,
+    "measuredCoreAverageActiveRoles": 6.9,
+    "measuredPeakActiveRoles": 9,
+    "coreBarsBelowFourRoles": 0,
     "state": "implementation-complete-validation-pending"
   },
   "milestones": {
@@ -93,8 +130,8 @@
     "M1.1": "complete",
     "M1.2": "complete",
     "M1.3": "technically-complete-musically-rejected",
-    "M1.4": "validation-pending",
-    "M1.5": "planned-after-M1.4-user-approval",
+    "M1.4": "vice-fm-style-refinement-validation-pending",
+    "M1.5": "planned-after-M1.4-style-approval",
     "M2": "blocked-until-M1.5",
     "M3": "planned-after-M2",
     "M4": "planned",
@@ -103,24 +140,12 @@
     "M7": "planned-final-user-gate"
   },
   "userGates": [
-    {
-      "afterTask": "M1.4-maple-leaf-gfunk-b-full-song-pilot",
-      "requiredState": "user-validation-pending",
-      "reason": "User must confirm the new complete-song bar is materially better before the other three stations are rebuilt."
-    },
-    {
-      "afterTask": "M1.5-four-complete-song-proofs",
-      "requiredState": "user-validation-pending",
-      "reason": "User must approve/revise the rebuilt four-station direction before M2/M3 scaling."
-    },
-    {
-      "afterTask": "M7-daw-handoff",
-      "requiredState": "final-validation-pending",
-      "reason": "User explicitly approves merge readiness."
-    }
+    { "afterTask": "M1.4-maple-leaf-gfunk-c-style-refinement", "requiredState": "user-validation-pending", "reason": "User must confirm that Vice FM now has the requested stronger hip-hop/funk identity before other stations are rebuilt." },
+    { "afterTask": "M1.5-four-complete-song-proofs", "requiredState": "user-validation-pending", "reason": "User must approve/revise the rebuilt four-station direction before M2/M3 scaling." },
+    { "afterTask": "M7-daw-handoff", "requiredState": "final-validation-pending", "reason": "User explicitly approves merge readiness." }
   ],
   "autonomousStopConditions": [
-    "M1.4 pilot listening gate reached",
+    "M1.4 C pilot listening gate reached",
     "M1.5 four-station listening gate reached",
     "source provenance/attribution cannot be established and no equivalent candidate can be substituted",
     "task would require runtime/gameplay scope",
@@ -129,6 +154,7 @@
   "canonicalReadOrder": [
     "docs/progress/radio-music-production-status.json",
     "docs/roadmaps/RADIO_MUSIC_PRODUCTION_REVISION_2026-08-24.md",
+    "docs/progress/RADIO_MUSIC_M1_4_VICE_FM_C_CHECKPOINT.md",
     "docs/audio/RADIO_SONG_COMPLETENESS_CONTRACT.md",
     "docs/agents/RADIO_ARRANGER_AGENT.md",
     "docs/roadmaps/RADIO_MUSIC_PRODUCTION_ROADMAP.md",

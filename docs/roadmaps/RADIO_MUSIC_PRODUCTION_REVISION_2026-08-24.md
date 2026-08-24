@@ -31,13 +31,13 @@ They do not count toward accepted catalogue totals.
 
 Purpose: prove that the agent can arrange one genuinely complete radio instrumental before rebuilding four stations.
 
-Pilot:
+First pilot:
 
 `maple-leaf-gfunk-b`
 
 Why Vice FM first: a mid-90s G-funk instrumental has a clear continuous groove, harmonic bed, bass movement and second-hook vocabulary, so it is a strong diagnostic for the exact sparsity/completeness failure.
 
-Target:
+B target:
 
 - approximately 2:00–2:30;
 - short intro and outro;
@@ -48,16 +48,58 @@ Target:
 - editable multitrack MIDI with no third-party audio dependency;
 - full attribution/provenance preserved.
 
-**User gate:** after the pilot is technically green, stop. The user decides whether the new arrangement bar is materially better. Do not rebuild the other three stations first.
+GitHub Tests #2263 validated the B implementation technically.
+
+### B user verdict
+
+The user judged B **materially better** than the rejected A sketches, so the new complete-song bar is useful.
+
+However B is **not** the accepted Vice FM station reference. The user immediately refined the desired style:
+
+> more hip-hop and more funk
+
+Therefore B remains `userReview: revise`.
+
+### M1.4C — Vice FM style refinement
+
+Active candidate:
+
+`maple-leaf-gfunk-c`
+
+The C revision keeps the complete-song bar but changes the station priority:
+
+1. hip-hop drum groove;
+2. syncopated funk bass and riffs;
+3. G-funk / public-domain hook identity;
+4. harmonic color.
+
+C must reduce soundtrack-like pad weight and make the song survive musically on drums + bass + funk comping even when the lead/source hook is muted.
+
+Target C:
+
+- about 2:10–2:20;
+- stronger kick/snare backbeat and swing;
+- more ghost-note detail;
+- busier funk bass with pickups;
+- continuous clavinet + muted-guitar comping;
+- Rhodes as shorter hip-hop stabs rather than a broad bed;
+- G-funk mono lead as a clear secondary hook;
+- no cinematic string pad as the primary glue;
+- short funk horn punctuation rather than orchestral brass beds;
+- Joplin source material as recurring sample-like fragments;
+- no third-party audio dependency;
+- full attribution/provenance preserved.
+
+**User gate:** after C is technically green, stop. The user decides whether this is the correct Vice FM hip-hop/funk direction. Do not rebuild the other three stations before that decision.
 
 ## M1.5 — rebuild the proof set
 
-Only after M1.4 user approval:
+Only after M1.4C user approval:
 
-- rebuild Blood City Beats as `*-b` complete song;
-- keep the approved Vice FM B pilot;
-- rebuild Night Shift as `*-b` complete song;
-- rebuild Pulse 94.6 as `*-b` complete song;
+- rebuild Blood City Beats as a complete song;
+- retain the user-approved Vice FM reference (C or a later revision);
+- rebuild Night Shift as a complete song;
+- rebuild Pulse 94.6 as a complete song;
 - stop for a four-station listening pass.
 
 Exit gate: all four station directions are musically acceptable enough to canonize.

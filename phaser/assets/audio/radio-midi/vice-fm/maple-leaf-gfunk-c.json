@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "id": "maple-leaf-gfunk-c",
+  "stationId": "vice-fm",
+  "workingTitle": "Maple Leaf / Hip-Hop Funk C",
+  "sourceWork": "Maple Leaf Rag",
+  "sourceComposer": "Scott Joplin",
+  "sourceEditionOrCatalogue": "First edition, John Stark & Son, Sedalia, 1899; IMSLP #270188",
+  "sourceUrl": "https://imslp.org/wiki/Maple_Leaf_Rag_(Joplin,_Scott)",
+  "sourceStatus": "Public Domain — IMSLP lists the 1899 John Stark & Son first-edition scan as Public Domain.",
+  "sourceReuseTerms": "Public-domain first-edition score used as transcription/motif authority; no third-party recording, piano roll, sample or copyrighted modern arrangement is used.",
+  "sourceCheckedAt": "2026-08-22",
+  "sourceItemId": "IMSLP #270188",
+  "sourceEvidence": "IMSLP identifies the first edition, Sedalia: John Stark & Son, 1899, as Public Domain.",
+  "sourceSeed": true,
+  "proofBatch": "M1.4-vice-fm-style-refinement",
+  "artifactMode": "generated-from-recipe",
+  "generatorPath": "tools/radio-composer/proofs/m1-4-maple-leaf-gfunk-c.js",
+  "arrangementLane": "g-funk-west-coast-hip-hop-instrumental",
+  "stationEmphasis": "hip-hop-first-funk-forward",
+  "bpm": 94,
+  "durationSeconds": 132.8,
+  "midiTracks": [
+    "01 Source Hook - Joplin",
+    "02 Hip-Hop Drums",
+    "03 Funk Percussion",
+    "04 Funk Bass",
+    "05 Rhodes Stabs",
+    "06 Clavinet Chops",
+    "07 Muted Funk Guitar Guide",
+    "08 G-Funk Mono Lead",
+    "09 Hook Organ",
+    "10 Funk Horn Stabs",
+    "11 Scratch / FX Guide"
+  ],
+  "status": "proof",
+  "userReview": "pending",
+  "songCompleteness": {
+    "contract": "docs/audio/RADIO_SONG_COMPLETENESS_CONTRACT.md",
+    "bars": 52,
+    "sections": [
+      "INTRO 4",
+      "VERSE A 12",
+      "HOOK A 8",
+      "VERSE B 8",
+      "FUNK BREAK 4",
+      "HOOK B / PEAK 12",
+      "OUTRO 4"
+    ],
+    "primaryHook": "Public-domain Maple Leaf Rag fragments used as a sample-like recurring hook",
+    "secondaryHook": "Original ViceBlood G-funk mono-synth lead",
+    "measuredCoreMinActiveRoles": 5,
+    "measuredCoreAverageActiveRoles": 6.9,
+    "measuredPeakActiveRoles": 9,
+    "coreBarsBelowFourRoles": 0,
+    "continuousHipHopRhythmBassCompAfterIntro": true,
+    "phraseBoundaryFills": true
+  },
+  "styleRevision": {
+    "userDirection": "More hip-hop and more funk.",
+    "priorityOrder": [
+      "hip-hop drum groove",
+      "syncopated funk bass and riffs",
+      "Joplin / G-funk hook identity",
+      "harmonic color"
+    ],
+    "changesFromB": [
+      "stronger kick/snare backbeat with layered clap and more ghost-note detail",
+      "more syncopated bass with pickups and busier funk-break phrasing",
+      "clavinet and muted-guitar conversation throughout the core",
+      "more prominent G-funk lead during hook sections",
+      "Rhodes changed from a broad chord bed to shorter hip-hop stabs",
+      "cinematic low strings/pad removed",
+      "brass reduced to short funk horn punctuation",
+      "Joplin material shortened into recurring sample-like fragments rather than carrying the arrangement"
+    ]
+  },
+  "attribution": {
+    "creditMode": "required-player-credit",
+    "playerCredit": "“Maple Leaf Rag” — Scott Joplin (1899). Arranged for ViceBlood (2026).",
+    "internalSourceCredit": "IMSLP #270188 — first edition, John Stark & Son, Sedalia, 1899; listed Public Domain.",
+    "licenseOrStatus": "Public Domain source score; composer/work attribution retained under the ViceBlood radio attribution policy.",
+    "thirdPartyAssets": []
+  },
+  "notes": "M1.4 style-refinement proof after the user said the complete-song B pilot was materially better but should lean further into hip-hop and funk. The song is now groove-led: hip-hop drums and syncopated funk bass are primary, clav/guitar are continuous comping voices, G-funk lead supplies the second hook, and cinematic pad weight has been removed. General MIDI remains a DAW placeholder."
+}
