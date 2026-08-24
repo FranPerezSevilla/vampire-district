@@ -227,12 +227,11 @@ async function prepareSteamFrame(page, target, zoom, timeMs, label) {
     scene.scene.pause();
     scene.updateCityServiceSteamPresentation?.(timeMs);
 
-    const view = camera.worldView;
+    const halfWorldWidth = Math.max(1, Number(camera.width) || 0) / (Number(camera.zoom) || 1) / 2;
+    const halfWorldHeight = Math.max(1, Number(camera.height) || 0) / (Number(camera.zoom) || 1) / 2;
     const insideView = item => (
-      Number(item.x) >= Number(view.x)
-        && Number(item.x) <= Number(view.x) + Number(view.width)
-        && Number(item.y) >= Number(view.y)
-        && Number(item.y) <= Number(view.y) + Number(view.height)
+      Math.abs(Number(item.x) - center.x) <= halfWorldWidth
+        && Math.abs(Number(item.y) - center.y) <= halfWorldHeight
     );
     const sources = (scene.cityServiceSteamSourceDescriptors || []).map(item => ({
       sourceId: item.sourceId,
