@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "initiative": "viceblood-curated-radio-soundtrack",
+  "checkedAt": "2026-08-24",
+  "strategy": "finished-modern-tracks-with-commercial-use-permission",
+  "policy": "docs/audio/RADIO_CURATED_MUSIC_POLICY.md",
+  "userVerdict": "enthusiastic-shortlist-approval",
+  "tracks": [
+    {
+      "id": "daisuke-teiko-real-deal-90s-hip-hop",
+      "stationId": "vice-fm",
+      "title": "Daisuke Teiko - The Real Deal 90s hip hop instrumental",
+      "creator": "Daisuke Teiko",
+      "durationSeconds": 200,
+      "sourcePlatform": "Pixabay",
+      "sourceUrl": "https://pixabay.com/music/beats-daisuke-teiko-the-real-deal-90s-hip-hop-instrumental-111454/",
+      "sourcePageFacts": [
+        "Genre: Beats / Old School Hip Hop / Alternative Hip Hop",
+        "Published 2022-05-18",
+        "Official page says free for use under the Pixabay Content License"
+      ],
+      "licenseClass": "Pixabay-Content-License",
+      "licenseUrl": "https://pixabay.com/service/license-summary/",
+      "commercialGameUseAssessment": "allowed-as-part-of-larger-creative-work",
+      "attributionRequired": false,
+      "recommendedCredit": "Daisuke Teiko — The Real Deal 90s hip hop instrumental (via Pixabay)",
+      "contentId": "not-indicated-on-source-page-at-check-time",
+      "aiFlag": "not-indicated-on-source-page-at-check-time",
+      "state": "acquisition-ready",
+      "fit": "primary Vice FM seed; old-school 90s hip-hop instrumental"
+    },
+    {
+      "id": "1000-handz-architexture-cobabeats",
+      "stationId": "vice-fm",
+      "title": "Architexture ft. Cobabeats",
+      "creator": "1000 Handz & Cobabeats",
+      "durationSeconds": 133,
+      "sourcePlatform": "Free Music Archive",
+      "sourceUrl": "https://freemusicarchive.org/music/1000-handz/cc-by-free-to-use-melodic-rap-instrumentals/architexture-ft-cobabeats/",
+      "sourcePageFacts": [
+        "Instrumental: yes",
+        "AI generated: no",
+        "Official track page says completely free to use in any project with attribution",
+        "Requested credit: 1000 Handz & Cobabeats"
+      ],
+      "licenseClass": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "commercialGameUseAssessment": "allowed-with-attribution",
+      "attributionRequired": true,
+      "recommendedCredit": "Architexture ft. Cobabeats — 1000 Handz & Cobabeats — CC BY 4.0",
+      "contentId": "not-applicable",
+      "aiFlag": "no",
+      "state": "acquisition-ready",
+      "fit": "Vice FM / melodic alternative hip-hop seed; clean reusable licence"
+    },
+    {
+      "id": "kulakovka-trip-hop",
+      "stationId": "blood-city-beats",
+      "title": "Trip Hop",
+      "creator": "Kulakovka",
+      "durationSeconds": 132,
+      "sourcePlatform": "Pixabay",
+      "sourceUrl": "https://pixabay.com/es/music/late-trip-hop-278457/",
+      "sourcePageFacts": [
+        "Genre/tagging: Trip Hop",
+        "Official page says free for use under the Pixabay Content License",
+        "Content ID registered",
+        "Published 2024-12-21"
+      ],
+      "licenseClass": "Pixabay-Content-License",
+      "licenseUrl": "https://pixabay.com/service/license-summary/",
+      "commercialGameUseAssessment": "allowed-as-part-of-larger-creative-work",
+      "attributionRequired": false,
+      "recommendedCredit": "Kulakovka — Trip Hop (via Pixabay)",
+      "contentId": "registered",
+      "aiFlag": "not-indicated-on-source-page-at-check-time",
+      "state": "acquisition-ready",
+      "fit": "primary Blood City Beats seed; genuine trip-hop direction",
+      "operationalNote": "Keep download/licence evidence for possible YouTube Content ID disputes."
+    },
+    {
+      "id": "ejah-big-beat-industrial-breakbeat-1",
+      "stationId": "night-shift",
+      "title": "Big Beat Rave _ Industrial Breakbeat 1",
+      "creator": "ejah_music",
+      "durationSeconds": 138,
+      "sourcePlatform": "Pixabay",
+      "sourceUrl": "https://pixabay.com/music/electronic-big-beat-rave-industrial-breakbeat-1-472114/",
+      "sourcePageFacts": [
+        "Genre: Electronic",
+        "Tags include Breakbeat / Rave / Games / Gaming",
+        "Official page says free for use under the Pixabay Content License",
+        "Published 2026-01-26"
+      ],
+      "licenseClass": "Pixabay-Content-License",
+      "licenseUrl": "https://pixabay.com/service/license-summary/",
+      "commercialGameUseAssessment": "allowed-as-part-of-larger-creative-work",
+      "attributionRequired": false,
+      "recommendedCredit": "ejah_music — Big Beat Rave _ Industrial Breakbeat 1 (via Pixabay)",
+      "contentId": "not-indicated-on-source-page-at-check-time",
+      "aiFlag": "not-indicated-on-source-page-at-check-time",
+      "state": "acquisition-ready",
+      "fit": "primary Night Shift seed; big beat / industrial breakbeat"
+    },
+    {
+      "id": "maty1309-tema-acid-house",
+      "stationId": "pulse-94-6",
+      "title": "Tema Acid House",
+      "creator": "maty1309",
+      "durationSeconds": 238,
+      "sourcePlatform": "Pixabay",
+      "sourceUrl": "https://pixabay.com/es/music/optimista-tema-acid-house-329018/",
+      "sourcePageFacts": [
+        "Tags: Acid / Acid House / electronic music",
+        "Official page says free for use under the Pixabay Content License",
+        "Published 2025-04-21"
+      ],
+      "licenseClass": "Pixabay-Content-License",
+      "licenseUrl": "https://pixabay.com/service/license-summary/",
+      "commercialGameUseAssessment": "allowed-as-part-of-larger-creative-work",
+      "attributionRequired": false,
+      "recommendedCredit": "maty1309 — Tema Acid House (via Pixabay)",
+      "contentId": "not-indicated-on-source-page-at-check-time",
+      "aiFlag": "not-indicated-on-source-page-at-check-time",
+      "state": "acquisition-ready",
+      "fit": "primary Pulse 94.6 seed; long-form acid house"
+    }
+  ],
+  "stationCounts": {
+    "vice-fm": 2,
+    "blood-city-beats": 1,
+    "night-shift": 1,
+    "pulse-94-6": 1
+  },
+  "nextTarget": "expand to at least 3 acquisition-ready tracks per core station before audio acquisition/runtime integration"
+}
