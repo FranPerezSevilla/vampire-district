@@ -247,27 +247,34 @@ async function preparePoliceWetCivic(page) {
     });
     if (!receiver) return null;
 
-    const center = receiver.receivingPoint;
+    const policePoint = {
+      x: Number(receiver.receivingPoint.x),
+      y: Number(receiver.receivingPoint.y)
+    };
+    const reviewCenter = {
+      x: (Number(civic.x) + policePoint.x) / 2,
+      y: (Number(civic.y) + policePoint.y) / 2
+    };
     const offsets = [
       [0, 100], [0, -100], [100, 0], [-100, 0],
       [0, 140], [140, 0], [-140, 0], [0, 0]
     ];
     const stand = offsets
-      .map(([dx, dy]) => ({ x: center.x + dx, y: center.y + dy }))
-      .find(point => scene.canStandAt(point.x, point.y)) || center;
+      .map(([dx, dy]) => ({ x: reviewCenter.x + dx, y: reviewCenter.y + dy }))
+      .find(point => scene.canStandAt(point.x, point.y)) || reviewCenter;
 
     scene.switchLayer(district.LAYERS.STREET, stand, "M7.3 police wet-civic micro-scene");
-    await window.NBD_CITY_STREAM.forceFocus(center.x, center.y);
+    await window.NBD_CITY_STREAM.forceFocus(reviewCenter.x, reviewCenter.y);
     scene.redrawLayer("M7.3 police wet-civic micro-scene");
     const camera = scene.cameras.main;
     camera.stopFollow();
-    camera.centerOn(center.x, center.y);
+    camera.centerOn(reviewCenter.x, reviewCenter.y);
 
     const slot = scene.motorizedPoliceSystem.slots[0];
     if (!slot) return null;
     slot.unitId = "m7-micro-scene-police";
-    slot.x = Number(center.x);
-    slot.y = Number(center.y);
+    slot.x = policePoint.x;
+    slot.y = policePoint.y;
     slot.angle = 0;
     slot.container.setPosition(slot.x, slot.y).setRotation(0).setActive(true).setVisible(true);
     scene.updateVehicleLightPresentation?.(0);
@@ -283,14 +290,15 @@ async function preparePoliceWetCivic(page) {
       .filter(item => item.family === "cool-civic");
     const matchingCivic = runtimeCivic.find(item => item.buildingId === String(civic.buildingId || ""))
       || [...runtimeCivic].sort((left, right) => (
-        Math.hypot(Number(left.x) - Number(center.x), Number(left.y) - Number(center.y))
-        - Math.hypot(Number(right.x) - Number(center.x), Number(right.y) - Number(center.y))
+        Math.hypot(Number(left.x) - reviewCenter.x, Number(left.y) - reviewCenter.y)
+        - Math.hypot(Number(right.x) - reviewCenter.x, Number(right.y) - reviewCenter.y)
       ))[0]
       || null;
 
     return {
       storyId: "police-wet-civic",
-      center: { x: Number(center.x), y: Number(center.y) },
+      center: reviewCenter,
+      policePoint,
       roadId: receiver.roadId,
       roadDistanceFromCivic: receiver.distance,
       civicLight: matchingCivic ? {
@@ -302,6 +310,8 @@ async function preparePoliceWetCivic(page) {
       } : null,
       police: {
         unitId: slot.unitId,
+        x: slot.x,
+        y: slot.y,
         visible: slot.container?.visible !== false,
         families: [...new Set(vehicleLights.map(item => item.family))]
       },
@@ -344,6 +354,7 @@ export async function captureM7MicroScenes(page, outputDir) {
 
   const police = await preparePoliceWetCivic(page);
   expect(police, "expected police wet-civic micro-scene").toBeTruthy();
+  expect(police.roadDistanceFromCivic).toBeLessThanOrEqual(220);
   expect(police.civicLight?.family).toBe("cool-civic");
   expect(police.civicLight?.runtimeVisible).toBe(true);
   expect(police.police.visible).toBe(true);
