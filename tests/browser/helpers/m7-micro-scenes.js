@@ -26,18 +26,6 @@ async function waitForMicroSceneSystems(page) {
   });
 }
 
-function nearestByDistance(items, point, coordinate = item => item) {
-  return [...items]
-    .map(item => {
-      const position = coordinate(item);
-      return {
-        item,
-        distance: Math.hypot(Number(position.x) - Number(point.x), Number(position.y) - Number(point.y))
-      };
-    })
-    .sort((left, right) => left.distance - right.distance)[0] || null;
-}
-
 async function prepareClubQueue(page) {
   return page.evaluate(async () => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
@@ -152,24 +140,25 @@ async function prepareFoundryNightShift(page) {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     if (scene.scene.isPaused()) scene.scene.resume();
     const district = await import("/phaser/src/data/district.js");
-    const lightPolicy = await import("/phaser/src/policies/CityPracticalLightPresentationPolicy.js");
+    const grimePolicy = await import("/phaser/src/policies/CityGrimePresentationPolicy.js");
 
     const vehicle = scene.vehicleSystem.vehicle("foundry:vehicle:utility");
     if (!vehicle) return null;
     const vehiclePoint = { x: Number(vehicle.x), y: Number(vehicle.y) };
-    const industrialLights = lightPolicy.buildIndustrialDirtyLightDescriptors(district.buildings, null);
-    const nearestLight = [...industrialLights]
+    const serviceAnchors = grimePolicy.buildServiceFrontageGrimeDescriptors(district.buildings, null)
+      .filter(item => ["industrial", "warehouse"].includes(item.profileId));
+    const framingAnchor = [...serviceAnchors]
       .map(item => ({
         item,
         distance: Math.hypot(Number(item.x) - vehiclePoint.x, Number(item.y) - vehiclePoint.y)
       }))
       .sort((left, right) => left.distance - right.distance)[0]
       || null;
-    if (!nearestLight) return null;
+    if (!framingAnchor) return null;
 
     const reviewCenter = {
-      x: (vehiclePoint.x + Number(nearestLight.item.x)) / 2,
-      y: (vehiclePoint.y + Number(nearestLight.item.y)) / 2
+      x: (vehiclePoint.x + Number(framingAnchor.item.x)) / 2,
+      y: (vehiclePoint.y + Number(framingAnchor.item.y)) / 2
     };
     const offsets = [
       [0, 90], [0, -90], [90, 0], [-90, 0],
@@ -190,6 +179,12 @@ async function prepareFoundryNightShift(page) {
 
     const runtimeIndustrial = (scene.cityPracticalLightDescriptors || [])
       .filter(item => item.family === "industrial-dirty");
+    const matchingIndustrial = runtimeIndustrial.find(item => (
+      item.buildingId === String(framingAnchor.item.buildingId || "")
+    )) || [...runtimeIndustrial].sort((left, right) => (
+      Math.hypot(Number(left.x) - vehiclePoint.x, Number(left.y) - vehiclePoint.y)
+      - Math.hypot(Number(right.x) - vehiclePoint.x, Number(right.y) - vehiclePoint.y)
+    ))[0] || null;
     const nearbyGrime = (scene.cityServiceFrontageGrimeDescriptors || []).filter(item => (
       Math.hypot(Number(item.x) - vehiclePoint.x, Number(item.y) - vehiclePoint.y) <= 280
     ));
@@ -211,12 +206,21 @@ async function prepareFoundryNightShift(page) {
         parked: Boolean(vehicle.parked),
         visible: vehicle.container?.visible !== false
       },
-      industrialLight: {
-        sourceId: nearestLight.item.sourceId,
-        buildingId: nearestLight.item.buildingId,
-        family: nearestLight.item.family,
-        distanceToVehicle: nearestLight.distance,
-        runtimeVisible: runtimeIndustrial.some(item => item.sourceId === nearestLight.item.sourceId)
+      industrialLight: matchingIndustrial ? {
+        sourceId: matchingIndustrial.sourceId,
+        buildingId: matchingIndustrial.buildingId,
+        family: matchingIndustrial.family,
+        distanceToVehicle: Math.hypot(
+          Number(matchingIndustrial.x) - vehiclePoint.x,
+          Number(matchingIndustrial.y) - vehiclePoint.y
+        ),
+        runtimeVisible: true
+      } : null,
+      framingService: {
+        sourceId: framingAnchor.item.sourceId,
+        buildingId: framingAnchor.item.buildingId,
+        profileId: framingAnchor.item.profileId,
+        distanceToVehicle: framingAnchor.distance
       },
       nearbyServiceContext: {
         grimeCount: nearbyGrime.length,
@@ -277,19 +281,25 @@ async function preparePoliceWetCivic(page) {
     ));
     const runtimeCivic = (scene.cityPracticalLightDescriptors || [])
       .filter(item => item.family === "cool-civic");
+    const matchingCivic = runtimeCivic.find(item => item.buildingId === String(civic.buildingId || ""))
+      || [...runtimeCivic].sort((left, right) => (
+        Math.hypot(Number(left.x) - Number(center.x), Number(left.y) - Number(center.y))
+        - Math.hypot(Number(right.x) - Number(center.x), Number(right.y) - Number(center.y))
+      ))[0]
+      || null;
 
     return {
       storyId: "police-wet-civic",
       center: { x: Number(center.x), y: Number(center.y) },
       roadId: receiver.roadId,
       roadDistanceFromCivic: receiver.distance,
-      civicLight: {
-        sourceId: civic.sourceId,
-        buildingId: civic.buildingId,
-        profileId: civic.profileId,
-        family: civic.family,
-        runtimeVisible: runtimeCivic.some(item => item.sourceId === civic.sourceId)
-      },
+      civicLight: matchingCivic ? {
+        sourceId: matchingCivic.sourceId,
+        buildingId: matchingCivic.buildingId,
+        profileId: matchingCivic.profileId,
+        family: matchingCivic.family,
+        runtimeVisible: true
+      } : null,
       police: {
         unitId: slot.unitId,
         visible: slot.container?.visible !== false,
@@ -322,9 +332,9 @@ export async function captureM7MicroScenes(page, outputDir) {
   expect(foundry.vehicle.id).toBe("foundry:vehicle:utility");
   expect(foundry.vehicle.parked).toBe(true);
   expect(foundry.vehicle.visible).toBe(true);
-  expect(foundry.industrialLight.family).toBe("industrial-dirty");
-  expect(foundry.industrialLight.runtimeVisible).toBe(true);
-  expect(foundry.industrialLight.distanceToVehicle).toBeLessThanOrEqual(320);
+  expect(foundry.industrialLight?.family).toBe("industrial-dirty");
+  expect(foundry.industrialLight?.runtimeVisible).toBe(true);
+  expect(foundry.industrialLight?.distanceToVehicle).toBeLessThanOrEqual(320);
   expect(
     foundry.nearbyServiceContext.grimeCount
       + foundry.nearbyServiceContext.steamSourceCount
@@ -334,8 +344,8 @@ export async function captureM7MicroScenes(page, outputDir) {
 
   const police = await preparePoliceWetCivic(page);
   expect(police, "expected police wet-civic micro-scene").toBeTruthy();
-  expect(police.civicLight.family).toBe("cool-civic");
-  expect(police.civicLight.runtimeVisible).toBe(true);
+  expect(police.civicLight?.family).toBe("cool-civic");
+  expect(police.civicLight?.runtimeVisible).toBe(true);
   expect(police.police.visible).toBe(true);
   expect(police.police.families).toContain("police-red");
   expect(police.police.families).toContain("police-blue");
