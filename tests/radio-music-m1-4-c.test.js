@@ -12,13 +12,13 @@ import {
   MAPLE_LEAF_GFUNK_C_PLAN
 } from "../tools/radio-composer/proofs/m1-4-maple-leaf-gfunk-c.js";
 
-test("M1.4 Vice FM C is a deterministic hip-hop-first funk-forward full-song refinement", () => {
+test("M1.4 Vice FM C remains a deterministic but musically rejected historical experiment", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "viceblood-maple-c-"));
   const midiPath = path.join(dir, "maple-leaf-gfunk-c.mid");
   const first = buildMapleLeafGfunkC();
   const second = buildMapleLeafGfunkC();
 
-  assert.equal(sha256(first), sha256(second), "M1.4 C recipe must be deterministic");
+  assert.equal(sha256(first), sha256(second), "M1.4 C recipe must remain deterministic as historical R&D");
   fs.writeFileSync(midiPath, first);
 
   const verified = validateCandidateFiles(
@@ -33,8 +33,10 @@ test("M1.4 Vice FM C is a deterministic hip-hop-first funk-forward full-song ref
   assert.ok(Math.abs(verified.midiInfo.bpm - 94) < 0.01);
   assert.ok(durationSeconds >= 128 && durationSeconds <= 136, `duration=${durationSeconds}`);
 
-  assert.equal(verified.manifest.status, "proof");
-  assert.equal(verified.manifest.userReview, "pending");
+  assert.equal(verified.manifest.status, "rejected");
+  assert.equal(verified.manifest.userReview, "revise");
+  assert.equal(verified.manifest.reviewFeedback.verdict, "rejected-prefer-B");
+  assert.equal(verified.manifest.reviewFeedback.strategicOutcome, "Autonomous catalogue composition paused; finished licensed-track curation is canonical.");
   assert.equal(verified.manifest.stationEmphasis, "hip-hop-first-funk-forward");
   assert.equal(verified.manifest.proofBatch, "M1.4-vice-fm-style-refinement");
   assert.equal(verified.manifest.songCompleteness.coreBarsBelowFourRoles, 0);
@@ -50,14 +52,5 @@ test("M1.4 Vice FM C is a deterministic hip-hop-first funk-forward full-song ref
     "funk bass/riff",
     "hook identity",
     "harmonic color"
-  ]);
-  assert.deepEqual(MAPLE_LEAF_GFUNK_C_PLAN.sections, [
-    "INTRO",
-    "VERSE A",
-    "HOOK A",
-    "VERSE B",
-    "FUNK BREAK",
-    "HOOK B / PEAK",
-    "OUTRO"
   ]);
 });
