@@ -18,6 +18,22 @@ function moveToward(current, target, amount) {
   return from + Math.sign(to - from) * step;
 }
 
+function stableHash(value) {
+  let hash = 2166136261;
+  for (const character of String(value || "")) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+export function trafficGridlockInitiativeWinner(leftTokenId, rightTokenId) {
+  const ids = [String(leftTokenId || ""), String(rightTokenId || "")].sort();
+  if (!ids[0]) return ids[1] || null;
+  if (!ids[1]) return ids[0];
+  return stableHash(`${ids[0]}|${ids[1]}`) % 2 === 0 ? ids[0] : ids[1];
+}
+
 function polylineLength(points) {
   const list = Array.isArray(points) ? points : [];
   let total = 0;
@@ -105,6 +121,8 @@ export function createTrafficRouteBehaviorController(materializer, {
   let stoppedDecisions = 0;
   let playerReactiveDecisions = 0;
   let followingDecisions = 0;
+  let gridlockPushDecisions = 0;
+  let gridlockYieldDecisions = 0;
 
   function tuning() {
     const behavior = scene.trafficLocalBehaviorSystem;
@@ -114,7 +132,9 @@ export function createTrafficRouteBehaviorController(materializer, {
       playerLookAhead: Math.max(78, finite(behavior?.playerLookAhead, 132)),
       laneTolerance: Math.max(18, finite(behavior?.laneTolerance, 38)),
       accelerationRate: Math.max(0.1, finite(behavior?.accelerationRate, 1.35)),
-      brakingRate: Math.max(1, finite(behavior?.brakingRate, 5.8))
+      brakingRate: Math.max(1, finite(behavior?.brakingRate, 5.8)),
+      gridlockBreakSeconds: Math.max(0.6, finite(behavior?.gridlockBreakSeconds, 1.2)),
+      gridlockPushSpeedFactor: clamp(finite(behavior?.gridlockPushSpeedFactor, 0.28), 0.12, 0.55)
     };
   }
 
@@ -193,7 +213,7 @@ export function createTrafficRouteBehaviorController(materializer, {
     return best;
   }
 
-  function decisionFor(agent, agentsById, blockedById, settings) {
+  function decisionFor(agent, state, agentsById, blockedById, settings) {
     if (agent.stage === "connector") {
       return {
         desiredSpeedFactor: 1,
@@ -206,7 +226,7 @@ export function createTrafficRouteBehaviorController(materializer, {
     const routeBlock = blockedById.get(agent.tokenId);
     if (routeBlock?.reason === "junction-yield") {
       return {
-        desiredSpeedFactor: 1,
+        desiredSpeedFactor: 0,
         reason: "junction-yield",
         gap: 0,
         blockerId: null
@@ -235,6 +255,29 @@ export function createTrafficRouteBehaviorController(materializer, {
         gap: null,
         blockerId: null
       };
+    }
+
+    if (blocker.reason === "traffic" && blocker.gap <= settings.hardStopDistance + 6) {
+      const blockerState = states.get(blocker.blockerId);
+      const ownSlot = materializer.assignments.get(agent.tokenId);
+      if (state.stoppedSeconds >= settings.gridlockBreakSeconds
+        && blockerState?.stoppedSeconds >= settings.gridlockBreakSeconds) {
+        const winner = trafficGridlockInitiativeWinner(agent.tokenId, blocker.blockerId);
+        if (winner === agent.tokenId && !ownSlot?.gridlockPushBlocked) {
+          return {
+            desiredSpeedFactor: settings.gridlockPushSpeedFactor,
+            reason: "gridlock-push",
+            gap: blocker.gap,
+            blockerId: blocker.blockerId
+          };
+        }
+        return {
+          desiredSpeedFactor: 0,
+          reason: ownSlot?.gridlockPushBlocked ? "gridlock-blocked" : "gridlock-yield",
+          gap: blocker.gap,
+          blockerId: blocker.blockerId
+        };
+      }
     }
 
     const persistent = ["player-vehicle", "player-on-foot", "parked-vehicle"].includes(blocker.reason);
@@ -280,7 +323,7 @@ export function createTrafficRouteBehaviorController(materializer, {
     for (const agent of agents) {
       liveIds.add(agent.tokenId);
       const state = stateFor(agent);
-      const decision = decisionFor(agent, agentsById, blockedById, settings);
+      const decision = decisionFor(agent, state, agentsById, blockedById, settings);
       const rate = decision.desiredSpeedFactor < state.speedFactor
         ? settings.brakingRate
         : settings.accelerationRate;
@@ -298,6 +341,8 @@ export function createTrafficRouteBehaviorController(materializer, {
       if (state.speedFactor <= 0.03) stoppedDecisions++;
       if (["player-vehicle", "player-on-foot"].includes(state.reason)) playerReactiveDecisions++;
       if (state.reason === "traffic") followingDecisions++;
+      if (state.reason === "gridlock-push") gridlockPushDecisions++;
+      if (["gridlock-yield", "gridlock-blocked"].includes(state.reason)) gridlockYieldDecisions++;
       applySlotState(agent, state);
     }
 
@@ -328,10 +373,14 @@ export function createTrafficRouteBehaviorController(materializer, {
       stoppedVehicles: vehicles.filter(item => item.speedFactor <= 0.03).length,
       playerReactiveVehicles: vehicles.filter(item => ["player-vehicle", "player-on-foot"].includes(item.reason)).length,
       followingVehicles: vehicles.filter(item => item.reason === "traffic").length,
+      gridlockPushingVehicles: vehicles.filter(item => item.reason === "gridlock-push").length,
+      gridlockYieldingVehicles: vehicles.filter(item => ["gridlock-yield", "gridlock-blocked"].includes(item.reason)).length,
       brakingDecisions,
       stoppedDecisions,
       playerReactiveDecisions,
       followingDecisions,
+      gridlockPushDecisions,
+      gridlockYieldDecisions,
       vehicles
     };
   }
