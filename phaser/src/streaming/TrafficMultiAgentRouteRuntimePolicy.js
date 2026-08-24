@@ -9,6 +9,7 @@ import { trafficRouteAgentMaterializationToken } from "./TrafficRouteMaterializa
 import { seedTrafficRouteAgentsFromMacroPopulation } from "./TrafficRoutePopulationSeed.js";
 
 const EPSILON = 0.000001;
+const DEFAULT_ROUTE_SPEED = 112;
 
 function finite(value, fallback = 0) {
   if (value === null || value === undefined || value === "") return fallback;
@@ -48,7 +49,7 @@ export function createTrafficMultiAgentRouteRuntime({
   trafficFlows,
   macroGraph,
   topology,
-  speed = 168,
+  speed = DEFAULT_ROUTE_SPEED,
   reservationRegistry = null,
   reservationStaleAfterSeconds = 3,
   tokenIdFor = ({ edgeId, tokenIndex }) => `${edgeId}#${tokenIndex}`
@@ -66,7 +67,7 @@ export function createTrafficMultiAgentRouteRuntime({
     staleAfterSeconds: reservationStaleAfterSeconds
   });
   const ownsReservationRegistry = !reservationRegistry;
-  const unitsPerSecond = Math.max(1, finite(speed, 168));
+  const unitsPerSecond = Math.max(1, finite(speed, DEFAULT_ROUTE_SPEED));
   let agents = seeded.agents.map(cloneAgent);
   let clockSeconds = 0;
   let ticks = 0;
@@ -140,12 +141,10 @@ export function createTrafficMultiAgentRouteRuntime({
     const hooks = reservationHooks();
     for (const current of [...agents].sort((left, right) => left.tokenId.localeCompare(right.tokenId))) {
       const stableTokenId = current.tokenId;
-      const requestedFactor = current.stage === "connector"
-        ? 1
-        : typeof speedFactorFor === "function"
-          ? speedFactorFor(current)
-          : 1;
-      const speedFactor = clamp(requestedFactor, 0, 1.5);
+      const requestedFactor = typeof speedFactorFor === "function"
+        ? speedFactorFor(current)
+        : 1;
+      const speedFactor = clamp(requestedFactor, 0, 1);
       const result = speedFactor <= EPSILON
         ? {
             agent: cloneAgent(current),
@@ -201,6 +200,8 @@ export function createTrafficMultiAgentRouteRuntime({
       ready: !destroyed,
       mode: "multi-agent-route-runtime",
       movementAuthority: "compiler-local-topology",
+      speedAuthority: "route-behavior-factor",
+      maximumSpeedFactor: 1,
       macroMutationAuthority: false,
       macroCoordinateAuthority: false,
       speed: unitsPerSecond,
@@ -260,7 +261,7 @@ export function createTrafficMultiAgentRouteRuntime({
 }
 
 export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
-  speed = 168,
+  speed = DEFAULT_ROUTE_SPEED,
   reservationStaleAfterSeconds = 3,
   defaultEnabled = true
 } = {}) {
@@ -518,6 +519,8 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
       presentationReady: presentationReady(),
       movementAuthority: enabled ? "multi-agent-compiler-route" : "authored-local-lanes",
       defaultTrafficAuthority: defaultEnabled ? "multi-agent-compiler-route" : "authored-local-lanes",
+      speedAuthority: enabled ? "route-behavior-fsm" : "authored-local-behavior",
+      maximumRouteSpeedFactor: 1,
       macroMutationAuthority: false,
       macroCoordinateAuthority: false,
       macroAccountingInstalled: Boolean(macroAccountingProvider),
@@ -531,9 +534,12 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
       steeringGuardInstalled: Boolean(steering && steering.applyPresentation === routeGuardedApplyPresentation),
       routeBehavior: routeBehavior?.snapshot?.() || {
         active: false,
+        architecture: "explicit-route-behavior-fsm",
         movementAuthority: false,
         geometryAuthority: "compiler-local-topology",
         lateralSteeringAuthority: false,
+        speedAuthority: "route-behavior-fsm",
+        maximumSpeedFactor: 1,
         activeVehicles: 0,
         brakingVehicles: 0,
         stoppedVehicles: 0,
