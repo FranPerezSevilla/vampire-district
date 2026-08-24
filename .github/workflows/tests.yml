@@ -33,7 +33,19 @@ jobs:
         run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
       - name: Verify browser suite ownership
         run: npm run check:browser:suites
-      - name: Install Chromium once for affected browser coverage
+      - name: Plan affected validation
+        id: affected-plan
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run check:affected:plan -- --base=origin/${{ github.base_ref }} 2>&1 | tee affected-test-plan.log
+          if grep -Fq "npx --no-install playwright test" affected-test-plan.log; then
+            echo "browser=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "browser=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install Chromium for affected browser coverage
+        if: steps.affected-plan.outputs.browser == 'true'
         run: npx playwright install --with-deps chromium
       - name: Run affected validation plan
         shell: bash
@@ -46,6 +58,7 @@ jobs:
         with:
           name: affected-test-diagnostics
           path: |
+            affected-test-plan.log
             affected-test.log
             playwright-report/
             test-results/
