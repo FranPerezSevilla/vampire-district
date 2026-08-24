@@ -18,3 +18,7 @@ test-results/
 
 # Offline city compiler output
 .city-compiler/
+
+# Licensed radio acquisition masters/evidence (local only)
+**/radio-acquisition/
+**/radio-acquisition-report.json

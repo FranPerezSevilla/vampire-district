@@ -8,6 +8,7 @@
     "test:radio": "node --test tests/radio-composer-workbench.test.js",
     "radio:smoke": "node tools/radio-composer/smoke.js",
     "radio:validate": "node tools/radio-composer/validate-candidate.js",
+    "radio:acquisition-hash": "node tools/radio-curator/hash-acquired-audio.js",
     "test:input": "node --test tests/input-actions.test.js tests/geometry.test.js tests/input-system.test.js",
     "test:browser": "playwright test",
     "test:browser:boot": "playwright test tests/browser/runtime-smoke.spec.js tests/browser/render-quality.spec.js tests/browser/ui-accessibility.spec.js tests/browser/playtest-entry.spec.js tests/browser/playtest-slice.spec.js",
