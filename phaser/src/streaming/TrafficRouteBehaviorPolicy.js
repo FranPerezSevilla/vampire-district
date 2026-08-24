@@ -148,7 +148,8 @@ export function createTrafficRouteBehaviorController(materializer, {
         reason: "route-cruise",
         gap: null,
         blockerId: null,
-        stoppedSeconds: 0
+        stoppedSeconds: 0,
+        gridlockPushTargetId: null
       };
       states.set(agent.tokenId, state);
     }
@@ -215,6 +216,7 @@ export function createTrafficRouteBehaviorController(materializer, {
 
   function decisionFor(agent, state, agentsById, blockedById, settings) {
     if (agent.stage === "connector") {
+      state.gridlockPushTargetId = null;
       return {
         desiredSpeedFactor: 1,
         reason: "route-connector-clear",
@@ -225,6 +227,7 @@ export function createTrafficRouteBehaviorController(materializer, {
 
     const routeBlock = blockedById.get(agent.tokenId);
     if (routeBlock?.reason === "junction-yield") {
+      state.gridlockPushTargetId = null;
       return {
         desiredSpeedFactor: 0,
         reason: "junction-yield",
@@ -235,6 +238,7 @@ export function createTrafficRouteBehaviorController(materializer, {
 
     const lane = laneGeometry(topology, agent);
     if (!lane) {
+      state.gridlockPushTargetId = null;
       return {
         desiredSpeedFactor: 0,
         reason: "route-missing-lane",
@@ -249,6 +253,7 @@ export function createTrafficRouteBehaviorController(materializer, {
     ].filter(Boolean).sort((left, right) => left.gap - right.gap || left.reason.localeCompare(right.reason));
     const blocker = blockers[0] || null;
     if (!blocker) {
+      state.gridlockPushTargetId = null;
       return {
         desiredSpeedFactor: 1,
         reason: "route-cruise",
@@ -260,10 +265,34 @@ export function createTrafficRouteBehaviorController(materializer, {
     if (blocker.reason === "traffic" && blocker.gap <= settings.hardStopDistance + 6) {
       const blockerState = states.get(blocker.blockerId);
       const ownSlot = materializer.assignments.get(agent.tokenId);
+
+      // Once a car wins initiative, keep that decision latched while the same car
+      // remains immediately ahead. Otherwise the first low-speed movement would
+      // reset stoppedSeconds and create a brake/push/brake oscillation.
+      if (state.gridlockPushTargetId === blocker.blockerId) {
+        if (ownSlot?.gridlockPushBlocked) {
+          state.gridlockPushTargetId = null;
+          return {
+            desiredSpeedFactor: 0,
+            reason: "gridlock-blocked",
+            gap: blocker.gap,
+            blockerId: blocker.blockerId
+          };
+        }
+        return {
+          desiredSpeedFactor: settings.gridlockPushSpeedFactor,
+          reason: "gridlock-push",
+          gap: blocker.gap,
+          blockerId: blocker.blockerId
+        };
+      }
+
+      state.gridlockPushTargetId = null;
       if (state.stoppedSeconds >= settings.gridlockBreakSeconds
         && blockerState?.stoppedSeconds >= settings.gridlockBreakSeconds) {
         const winner = trafficGridlockInitiativeWinner(agent.tokenId, blocker.blockerId);
         if (winner === agent.tokenId && !ownSlot?.gridlockPushBlocked) {
+          state.gridlockPushTargetId = blocker.blockerId;
           return {
             desiredSpeedFactor: settings.gridlockPushSpeedFactor,
             reason: "gridlock-push",
@@ -278,6 +307,8 @@ export function createTrafficRouteBehaviorController(materializer, {
           blockerId: blocker.blockerId
         };
       }
+    } else {
+      state.gridlockPushTargetId = null;
     }
 
     const persistent = ["player-vehicle", "player-on-foot", "parked-vehicle"].includes(blocker.reason);
