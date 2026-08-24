@@ -14,22 +14,18 @@
   "sourceEvidence": "IMSLP identifies the first edition, Sedalia: John Stark & Son, 1899, as Public Domain.",
   "sourceSeed": true,
   "proofBatch": "M1.3-batch-1",
-  "transcriptionCrossChecks": [
-    "Public-domain first-edition score image / public-domain typesetting used only to cross-check the opening motif pitches and rhythm."
-  ],
+  "transcriptionCrossChecks": ["Public-domain first-edition score image / public-domain typesetting used only to cross-check the opening motif pitches and rhythm."],
   "arrangementLane": "g-funk-west-coast-hip-hop-instrumental",
   "bpm": 96,
   "durationSeconds": 60,
-  "midiTracks": [
-    "01 Source Motif - Joplin",
-    "02 G-Funk Drums",
-    "03 Funk Bass",
-    "04 Electric Piano / Clav",
-    "05 Mono Lead - Glide Guide",
-    "06 Low Strings / Cruise Pad"
-  ],
-  "status": "proof",
-  "userReview": "not-requested",
+  "midiTracks": ["01 Source Motif - Joplin","02 G-Funk Drums","03 Funk Bass","04 Electric Piano / Clav","05 Mono Lead - Glide Guide","06 Low Strings / Cruise Pad"],
+  "status": "rejected",
+  "userReview": "revise",
+  "reviewFeedback": {
+    "reviewedAt": "2026-08-24",
+    "verdict": "M1.3 proof set rejected musically",
+    "summary": "Too sparse, too many empty spaces, too little musical content and does not feel like a complete song. General MIDI timbre is secondary to the arrangement failure."
+  },
   "attribution": {
     "creditMode": "required-player-credit",
     "playerCredit": "“Maple Leaf Rag” — Scott Joplin (1899). Arranged for ViceBlood (2026).",
@@ -38,5 +34,5 @@
     "thirdPartyAssets": []
   },
   "sha256": "e1ed276f39d3223149193725b69ea6e5fff2b893eaa14241ed552de778d8b58b",
-  "notes": "M1.3 proof. The opening Maple Leaf Rag motif is isolated on a source-derived track; the ragtime accompaniment is deliberately not copied. ViceBlood adds a relaxed 96 BPM G-funk pocket, funk bass, electric-piano/clav comping, an original mono-lead call/response guide and low cruise pad. General MIDI sounds are placeholders; no third-party audio is embedded or required."
+  "notes": "Historical M1.3 A proof retained as rejected evidence. Technically valid and provenance-clean, but musically rejected at the user gate for incomplete-song/sparsity problems. Superseded by the M1.4 B full-song pilot."
 }

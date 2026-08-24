@@ -16,22 +16,18 @@
   "proofBatch": "M1.3-batch-2",
   "artifactMode": "generated-from-recipe",
   "generatorPath": "tools/radio-composer/proofs/m1-3-batch2.js",
-  "transcriptionCrossChecks": [
-    "Opening theme nucleus cross-checked against public-domain notation: F#–G#–A#–B–C#–A#–C# / D–A#–D–C#–A#–C#."
-  ],
+  "transcriptionCrossChecks": ["Opening theme nucleus cross-checked against public-domain notation: F#–G#–A#–B–C#–A#–C# / D–A#–D–C#–A#–C#."],
   "arrangementLane": "big-beat-breakbeat-industrial-dance",
   "bpm": 138,
   "durationSeconds": 46.96,
-  "midiTracks": [
-    "01 Source Motif - Grieg",
-    "02 Big Beat Break",
-    "03 Distorted Bass",
-    "04 Industrial Hits",
-    "05 Low Strings / Pulse",
-    "06 Riser / FX Guide"
-  ],
-  "status": "proof",
-  "userReview": "not-requested",
+  "midiTracks": ["01 Source Motif - Grieg","02 Big Beat Break","03 Distorted Bass","04 Industrial Hits","05 Low Strings / Pulse","06 Riser / FX Guide"],
+  "status": "rejected",
+  "userReview": "revise",
+  "reviewFeedback": {
+    "reviewedAt": "2026-08-24",
+    "verdict": "M1.3 proof set rejected musically",
+    "summary": "Too sparse, too many empty spaces, too little musical content and does not feel like a complete song. General MIDI timbre is secondary to the arrangement failure."
+  },
   "attribution": {
     "creditMode": "required-player-credit",
     "playerCredit": "“In the Hall of the Mountain King” — Edvard Grieg (1874–75). Arranged for ViceBlood (2026).",
@@ -39,5 +35,5 @@
     "licenseOrStatus": "Public Domain composer manuscript; composer/work attribution retained under the ViceBlood radio attribution policy.",
     "thirdPartyAssets": []
   },
-  "notes": "M1.3 proof. The recognisable Grieg theme remains isolated on its source-derived track. ViceBlood adds a 138 BPM late-1990s big-beat sketch with programmed drums, distorted bass, industrial hits, low-string pulse and riser guide. The canonical repository source is a deterministic MIDI recipe; no commercial break recording or third-party audio is embedded or required."
+  "notes": "Historical M1.3 A proof retained as rejected evidence. Technically valid and provenance-clean, but musically rejected at the user gate for incomplete-song/sparsity problems. Do not count toward accepted catalogue totals."
 }

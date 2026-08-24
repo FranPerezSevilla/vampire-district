@@ -14,22 +14,18 @@
   "sourceEvidence": "IMSLP identifies Book I (Nos.1–14), Wessel & Co., ca.1839, plate W. & Co. No. 3098, as Public Domain.",
   "sourceSeed": true,
   "proofBatch": "M1.3-batch-1",
-  "transcriptionCrossChecks": [
-    "Public-domain first German edition (Breitkopf & Härtel, ca.1839) and public-domain score typesetting used only to cross-check opening pitch/rhythm identity."
-  ],
+  "transcriptionCrossChecks": ["Public-domain first German edition (Breitkopf & Härtel, ca.1839) and public-domain score typesetting used only to cross-check opening pitch/rhythm identity."],
   "arrangementLane": "boom-bap-trip-hop",
   "bpm": 88,
   "durationSeconds": 60,
-  "midiTracks": [
-    "01 Source Melody - Chopin",
-    "02 Source Harmony - Chopin",
-    "03 Boom Bap Drums",
-    "04 Sub Bass - Chromatic Descent",
-    "05 Rhodes / Sample Stabs",
-    "06 Night Texture / FX Guide"
-  ],
-  "status": "proof",
-  "userReview": "not-requested",
+  "midiTracks": ["01 Source Melody - Chopin","02 Source Harmony - Chopin","03 Boom Bap Drums","04 Sub Bass - Chromatic Descent","05 Rhodes / Sample Stabs","06 Night Texture / FX Guide"],
+  "status": "rejected",
+  "userReview": "revise",
+  "reviewFeedback": {
+    "reviewedAt": "2026-08-24",
+    "verdict": "M1.3 proof set rejected musically",
+    "summary": "Too sparse, too many empty spaces, too little musical content and does not feel like a complete song. General MIDI timbre is secondary to the arrangement failure."
+  },
   "attribution": {
     "creditMode": "required-player-credit",
     "playerCredit": "“Prelude in E minor, Op. 28 No. 4” — Frédéric Chopin (1838–39). Arranged for ViceBlood (2026).",
@@ -38,5 +34,5 @@
     "thirdPartyAssets": []
   },
   "sha256": "da4adb4fae37695a787f048f421a6dfabe315da90e1a3be7021abd0266a002e5",
-  "notes": "M1.3 proof. Opening Chopin melody and descending harmonic identity remain on separate source-derived tracks. ViceBlood arrangement adds dusty 88 BPM boom-bap/trip-hop drums, chromatic sub, Rhodes/sample-style stabs and a night-texture guide. General MIDI sounds are placeholders for DAW replacement; no third-party audio is embedded or required."
+  "notes": "Historical M1.3 A proof retained as rejected evidence. Technically valid and provenance-clean, but musically rejected at the user gate for incomplete-song/sparsity problems. Do not count toward accepted catalogue totals."
 }

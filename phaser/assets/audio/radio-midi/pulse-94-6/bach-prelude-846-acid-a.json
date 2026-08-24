@@ -16,22 +16,18 @@
   "proofBatch": "M1.3-batch-2",
   "artifactMode": "generated-from-recipe",
   "generatorPath": "tools/radio-composer/proofs/m1-3-batch2.js",
-  "transcriptionCrossChecks": [
-    "Opening broken-chord identity cross-checked against public-domain score notation: C major → Dm7/C → G7/B."
-  ],
+  "transcriptionCrossChecks": ["Opening broken-chord identity cross-checked against public-domain score notation: C major → Dm7/C → G7/B."],
   "arrangementLane": "house-acid-house-techno",
   "bpm": 128,
   "durationSeconds": 44.55,
-  "midiTracks": [
-    "01 Source Pattern - Bach",
-    "02 909-Style Placeholder Drums",
-    "03 Acid Bass - 303 Guide",
-    "04 Piano / Organ Stabs",
-    "05 Club Pad",
-    "06 Club FX Guide"
-  ],
-  "status": "proof",
-  "userReview": "not-requested",
+  "midiTracks": ["01 Source Pattern - Bach","02 909-Style Placeholder Drums","03 Acid Bass - 303 Guide","04 Piano / Organ Stabs","05 Club Pad","06 Club FX Guide"],
+  "status": "rejected",
+  "userReview": "revise",
+  "reviewFeedback": {
+    "reviewedAt": "2026-08-24",
+    "verdict": "M1.3 proof set rejected musically",
+    "summary": "Too sparse, too many empty spaces, too little musical content and does not feel like a complete song. General MIDI timbre is secondary to the arrangement failure."
+  },
   "attribution": {
     "creditMode": "required-player-credit",
     "playerCredit": "“Prelude in C major, BWV 846” — Johann Sebastian Bach (1722). Arranged for ViceBlood (2026).",
@@ -39,5 +35,5 @@
     "licenseOrStatus": "Public Domain holograph manuscript; composer/work attribution retained under the ViceBlood radio attribution policy.",
     "thirdPartyAssets": []
   },
-  "notes": "M1.3 proof. Bach's broken-chord engine remains isolated on the source-derived track. ViceBlood adds a 128 BPM 1990s house/acid framework with four-on-the-floor drums, an original 303-style bass guide, organ/piano stabs, club pad and FX guide. The canonical repository source is a deterministic MIDI recipe; no third-party audio is embedded or required."
+  "notes": "Historical M1.3 A proof retained as rejected evidence. Technically valid and provenance-clean, but musically rejected at the user gate for incomplete-song/sparsity problems. Do not count toward accepted catalogue totals."
 }

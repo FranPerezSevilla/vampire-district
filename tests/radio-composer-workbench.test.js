@@ -15,6 +15,10 @@ import {
   buildGriegProofMidi,
   buildBachProofMidi
 } from "../tools/radio-composer/proofs/m1-3-batch2.js";
+import {
+  buildMapleLeafGfunkB,
+  MAPLE_LEAF_GFUNK_B_PLAN
+} from "../tools/radio-composer/proofs/m1-4-maple-leaf-gfunk-b.js";
 
 test("radio composer writes a named Type-1 MIDI with conductor metadata", () => {
   const midi = buildMidiFile({
@@ -69,7 +73,7 @@ test("smoke fixture writes MIDI + manifest and validates them together", () => {
   assert.equal(verified.manifest.attribution.creditMode, "internal-only");
 });
 
-test("M1.2 source seeds satisfy provenance and attribution manifest rules", () => {
+test("M1.2 source seeds remain provenance-valid after musical rejection", () => {
   const seeds = [
     "phaser/assets/audio/radio-midi/blood-city-beats/chopin-prelude-04-boombap-a.json",
     "phaser/assets/audio/radio-midi/vice-fm/maple-leaf-gfunk-a.json",
@@ -82,8 +86,8 @@ test("M1.2 source seeds satisfy provenance and attribution manifest rules", () =
     const manifest = JSON.parse(fs.readFileSync(relativePath, "utf8"));
     assert.deepEqual(validateManifest(manifest), [], relativePath);
     assert.equal(manifest.sourceSeed, true, relativePath);
-    assert.ok(["prototype", "proof"].includes(manifest.status), relativePath);
-    assert.equal(manifest.userReview, "not-requested", relativePath);
+    assert.ok(["prototype", "proof", "rejected"].includes(manifest.status), relativePath);
+    assert.ok(["not-requested", "revise"].includes(manifest.userReview), relativePath);
     assert.equal(manifest.attribution.creditMode, "required-player-credit", relativePath);
     assert.deepEqual(manifest.attribution.thirdPartyAssets, [], relativePath);
     assert.match(manifest.sourceStatus, /Public Domain/i, relativePath);
@@ -98,7 +102,7 @@ test("M1.2 source seeds satisfy provenance and attribution manifest rules", () =
   ]);
 });
 
-test("M1.3 batch 1 proof MIDIs validate with their attribution manifests", () => {
+test("M1.3 batch 1 rejected MIDIs remain technically valid historical evidence", () => {
   const pairs = [
     [
       "phaser/assets/audio/radio-midi/blood-city-beats/chopin-prelude-04-boombap-a.mid",
@@ -118,15 +122,15 @@ test("M1.3 batch 1 proof MIDIs validate with their attribution manifests", () =>
     assert.equal(verified.midiInfo.ppq, 480, midiPath);
     assert.equal(verified.midiInfo.trackCount, 7, midiPath);
     assert.ok(Math.abs(verified.midiInfo.bpm - bpm) < 0.01, midiPath);
-    assert.equal(verified.manifest.status, "proof", manifestPath);
-    assert.equal(verified.manifest.userReview, "not-requested", manifestPath);
+    assert.equal(verified.manifest.status, "rejected", manifestPath);
+    assert.equal(verified.manifest.userReview, "revise", manifestPath);
     assert.equal(verified.manifest.proofBatch, "M1.3-batch-1", manifestPath);
     assert.deepEqual(verified.manifest.attribution.thirdPartyAssets, [], manifestPath);
     assert.match(verified.manifest.sourceStatus, /Public Domain/i, manifestPath);
   }
 });
 
-test("M1.3 batch 2 recipes generate valid proof MIDIs with their attribution manifests", () => {
+test("M1.3 batch 2 rejected recipes remain deterministic and technically valid", () => {
   const cases = [
     {
       id: "mountain-king-bigbeat-a",
@@ -155,7 +159,8 @@ test("M1.3 batch 2 recipes generate valid proof MIDIs with their attribution man
     assert.equal(verified.midiInfo.ppq, 480, proof.id);
     assert.equal(verified.midiInfo.trackCount, 7, proof.id);
     assert.ok(Math.abs(verified.midiInfo.bpm - proof.bpm) < 0.01, proof.id);
-    assert.equal(verified.manifest.status, "proof", proof.id);
+    assert.equal(verified.manifest.status, "rejected", proof.id);
+    assert.equal(verified.manifest.userReview, "revise", proof.id);
     assert.equal(verified.manifest.proofBatch, "M1.3-batch-2", proof.id);
     assert.equal(verified.manifest.artifactMode, "generated-from-recipe", proof.id);
     assert.deepEqual(verified.manifest.attribution.thirdPartyAssets, [], proof.id);
@@ -163,7 +168,7 @@ test("M1.3 batch 2 recipes generate valid proof MIDIs with their attribution man
   }
 });
 
-test("M1.3 complete proof set covers the four core radio stations exactly once", () => {
+test("M1.3 rejected proof set covers the four core stations exactly once but counts as zero accepted songs", () => {
   const manifests = [
     "phaser/assets/audio/radio-midi/blood-city-beats/chopin-prelude-04-boombap-a.json",
     "phaser/assets/audio/radio-midi/vice-fm/maple-leaf-gfunk-a.json",
@@ -178,9 +183,48 @@ test("M1.3 complete proof set covers the four core radio stations exactly once",
     "vice-fm"
   ]);
   for (const manifest of manifests) {
-    assert.equal(manifest.status, "proof");
+    assert.equal(manifest.status, "rejected");
+    assert.equal(manifest.userReview, "revise");
     assert.equal(manifest.attribution.creditMode, "required-player-credit");
     assert.deepEqual(manifest.attribution.thirdPartyAssets, []);
     assert.match(manifest.sourceStatus, /Public Domain/i);
   }
+});
+
+test("M1.4 Maple Leaf B is a deterministic full-song pilot with the new completeness contract", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "viceblood-maple-b-"));
+  const midiPath = path.join(dir, "maple-leaf-gfunk-b.mid");
+  const first = buildMapleLeafGfunkB();
+  const second = buildMapleLeafGfunkB();
+  assert.equal(sha256(first), sha256(second), "M1.4 B recipe must be deterministic");
+  fs.writeFileSync(midiPath, first);
+
+  const verified = validateCandidateFiles(
+    midiPath,
+    "phaser/assets/audio/radio-midi/vice-fm/maple-leaf-gfunk-b.json"
+  );
+  const durationSeconds = (verified.midiInfo.endTick / verified.midiInfo.ppq) * (60 / verified.midiInfo.bpm);
+
+  assert.equal(verified.midiInfo.format, 1);
+  assert.equal(verified.midiInfo.ppq, 480);
+  assert.equal(verified.midiInfo.trackCount, 12);
+  assert.ok(Math.abs(verified.midiInfo.bpm - 96) < 0.01);
+  assert.ok(durationSeconds >= 135 && durationSeconds <= 145, `duration=${durationSeconds}`);
+  assert.equal(verified.manifest.status, "proof");
+  assert.equal(verified.manifest.proofBatch, "M1.4-complete-song-pilot");
+  assert.equal(verified.manifest.songCompleteness.coreBarsBelowThreeRoles, 0);
+  assert.ok(verified.manifest.songCompleteness.measuredCoreMinActiveRoles >= 5);
+  assert.ok(verified.manifest.songCompleteness.measuredCoreAverageActiveRoles >= 6);
+  assert.ok(verified.manifest.songCompleteness.measuredPeakActiveRoles >= 8);
+  assert.deepEqual(verified.manifest.attribution.thirdPartyAssets, []);
+  assert.match(verified.manifest.sourceStatus, /Public Domain/i);
+  assert.deepEqual(MAPLE_LEAF_GFUNK_B_PLAN.sections, [
+    "INTRO",
+    "A1",
+    "A2 VARIATION",
+    "B SECTION",
+    "BREAKDOWN",
+    "A PRIME / PEAK",
+    "OUTRO"
+  ]);
 });

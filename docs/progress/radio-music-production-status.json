@@ -3,24 +3,24 @@
   "initiative": "90s-radio-music-production",
   "branch": "codex/90s-radio-music-production",
   "pullRequestNumber": 76,
-  "state": "user-validation-pending",
-  "currentMilestone": "M1.3-complete-user-validation-pending",
-  "nextTask": "M1.3-user-listening-gate",
-  "mission": "Produce editable ViceBlood car-radio MIDI arrangements from provenance-cleared public-domain compositions using distinct 1990s station grammars; user performs final DAW production.",
+  "state": "active",
+  "currentMilestone": "M1.4-pilot-implementation-complete-validation-pending",
+  "nextTask": "M1.4-pilot-ci-validation-and-user-gate",
+  "mission": "Produce complete editable ViceBlood car-radio songs from provenance-cleared public-domain compositions using convincing 1990s station grammars; user performs final DAW production.",
   "authority": {
     "owns": [
       "radio music source provenance",
       "radio music attribution/credit contract",
-      "radio MIDI arrangement workbench",
-      "generated radio MIDI candidates and deterministic proof recipes",
-      "station composition grammar and production progress"
+      "full-song arrangement architecture",
+      "radio MIDI generation/recipes",
+      "generated candidates and review status"
     ],
     "doesNotOwn": [
       "runtime radio playback",
       "vehicle controls or UI",
       "final DAW mix/master",
       "voice announcers",
-      "general SFX catalogue runtime",
+      "general SFX runtime",
       "automatic merge"
     ]
   },
@@ -30,69 +30,72 @@
     { "id": "night-shift", "workingName": "Night Shift", "lane": "big-beat-breakbeat-industrial-dance", "bpmRange": [125, 150] },
     { "id": "pulse-94-6", "workingName": "Pulse 94.6", "lane": "house-acid-house-techno", "bpmRange": [120, 140] }
   ],
-  "stretchStations": ["static"],
-  "output": {
-    "kind": "multitrack-midi-production-sketch",
-    "canonicalCandidatePath": "phaser/assets/audio/radio-midi/<station-id>/<track-id>.mid when binary transport is reliable",
-    "sidecarManifest": true,
-    "deterministicRecipeAllowed": true,
-    "attributionSidecarRequired": true,
-    "finalRenderedAudioInScope": false,
-    "runtimeIntegrationInScope": false
-  },
   "attributionPolicy": {
     "contract": "docs/audio/RADIO_MUSIC_ATTRIBUTION.md",
     "composerAndWorkPlayerCreditRequired": true,
-    "preferredSourceClasses": ["public-domain-clean-reuse", "CC0"],
-    "conditionalSourceClass": "CC-BY-with-complete-attribution",
-    "blockedWithoutExplicitUserApproval": ["NC", "ND", "SA", "unclear-commercial-reuse"],
     "thirdPartyRecordingSamplesDefault": "forbidden-without-explicit-compatible-licence",
-    "creditClassifications": ["required-player-credit", "courtesy-player-credit", "internal-only"],
-    "dawCandidateRequiresCompleteAttribution": true,
-    "finalCreditRollupRequiredAtM7": true
+    "dawCandidateRequiresCompleteAttribution": true
   },
   "midiWorkbench": {
-    "implementationCommit": "85e22cc49ccfe15092d9a8127f85e4b4e47751d2",
-    "validationHead": "cc475ebe47097fff8f05f5021495f2613f92f06c",
     "path": "tools/radio-composer/",
     "runtimeDependencyAdded": false,
-    "githubWorkflow": { "name": "Tests", "runNumber": 2223, "runId": 32578300486, "status": "completed", "conclusion": "success" }
+    "baselineValidation": { "workflow": "Tests #2223", "conclusion": "success" }
   },
   "sourceSeedSet": {
     "checkedAt": "2026-08-22",
     "policy": "public-domain score/manuscript references only; no third-party recording/sample dependencies",
     "documentation": "docs/audio/RADIO_MUSIC_SOURCE_SEEDS.md",
-    "validationHead": "564ad89c91d42f4ab8037eee0a6be1d1ab1e31c1",
-    "githubWorkflow": { "name": "Tests", "runNumber": 2237, "runId": 32584035996, "status": "completed", "conclusion": "success" }
+    "validation": { "workflow": "Tests #2237", "conclusion": "success" }
   },
-  "proofSet": {
-    "targetCount": 4,
-    "completedImplementationCount": 4,
-    "validatedCount": 4,
-    "userGateDocument": "docs/progress/RADIO_MUSIC_M1_3_USER_GATE.md",
-    "batch1": {
-      "state": "complete",
-      "artifactMode": "committed-midi",
-      "validationHead": "6e4167cefc11dd0b8275ea51b62af20ada42c30a",
-      "githubWorkflow": { "name": "Tests", "runNumber": 2254, "runId": 32597308747, "status": "completed", "conclusion": "success" },
-      "candidates": ["chopin-prelude-04-boombap-a", "maple-leaf-gfunk-a"]
-    },
-    "batch2": {
-      "state": "complete",
-      "artifactMode": "generated-from-recipe",
-      "generatorPath": "tools/radio-composer/proofs/m1-3-batch2.js",
-      "validationHead": "d58337de1d7ca4df07e5c9561d6cf8462ea947dc",
-      "githubWorkflow": { "name": "Tests", "runNumber": 2260, "runId": 32631473877, "status": "completed", "conclusion": "success" },
-      "supersededBinaryTransportRun": { "name": "Tests", "runNumber": 2259, "runId": 32630789118, "conclusion": "failure", "reason": "connected binary payload was not byte-identical to locally validated MIDI; corrupted binary commit removed and replaced by deterministic recipe authority" },
-      "candidates": ["mountain-king-bigbeat-a", "bach-prelude-846-acid-a"]
-    }
+  "m1_3Verdict": {
+    "reviewedAt": "2026-08-24",
+    "technicalValidation": { "workflow": "Tests #2260", "conclusion": "success" },
+    "musicalVerdict": "rejected-revise-all",
+    "acceptedSongCount": 0,
+    "feedback": [
+      "all four arrangements are musically weak",
+      "too many empty spaces",
+      "too little simultaneous musical content",
+      "they feel like sketches rather than complete songs",
+      "General MIDI timbre is also weak but is not the primary failure"
+    ],
+    "rejectedCandidates": [
+      "chopin-prelude-04-boombap-a",
+      "maple-leaf-gfunk-a",
+      "mountain-king-bigbeat-a",
+      "bach-prelude-846-acid-a"
+    ]
+  },
+  "qualityRevision": {
+    "contract": "docs/audio/RADIO_SONG_COMPLETENESS_CONTRACT.md",
+    "arrangerAgent": "docs/agents/RADIO_ARRANGER_AGENT.md",
+    "roadmapOverride": "docs/roadmaps/RADIO_MUSIC_PRODUCTION_REVISION_2026-08-24.md",
+    "checkpoint": "docs/progress/RADIO_MUSIC_M1_4_REVISION_CHECKPOINT.md",
+    "rule": "Complete song first; motif-plus-beat sketches do not pass musical gates."
+  },
+  "m1_4Pilot": {
+    "id": "maple-leaf-gfunk-b",
+    "stationId": "vice-fm",
+    "generatorPath": "tools/radio-composer/proofs/m1-4-maple-leaf-gfunk-b.js",
+    "manifestPath": "phaser/assets/audio/radio-midi/vice-fm/maple-leaf-gfunk-b.json",
+    "bpm": 96,
+    "bars": 56,
+    "targetDurationSeconds": 140,
+    "musicalTrackCount": 11,
+    "measuredCoreMinActiveRoles": 5,
+    "measuredCoreAverageActiveRoles": 6.8,
+    "measuredPeakActiveRoles": 10,
+    "coreBarsBelowThreeRoles": 0,
+    "state": "implementation-complete-validation-pending"
   },
   "milestones": {
     "M0": "complete",
     "M1.1": "complete",
     "M1.2": "complete",
-    "M1.3": "user-validation-pending",
-    "M2": "blocked-on-user-feedback",
+    "M1.3": "technically-complete-musically-rejected",
+    "M1.4": "validation-pending",
+    "M1.5": "planned-after-M1.4-user-approval",
+    "M2": "blocked-until-M1.5",
     "M3": "planned-after-M2",
     "M4": "planned",
     "M5": "planned",
@@ -100,27 +103,41 @@
     "M7": "planned-final-user-gate"
   },
   "userGates": [
-    { "afterTask": "M1.3-four-proof-of-style-midis", "requiredState": "user-validation-pending", "reason": "User must audition and approve/revise the four station directions before catalogue scaling." },
-    { "afterTask": "M7-daw-handoff", "requiredState": "final-validation-pending", "reason": "User chooses final DAW candidates and explicitly approves merge readiness." }
+    {
+      "afterTask": "M1.4-maple-leaf-gfunk-b-full-song-pilot",
+      "requiredState": "user-validation-pending",
+      "reason": "User must confirm the new complete-song bar is materially better before the other three stations are rebuilt."
+    },
+    {
+      "afterTask": "M1.5-four-complete-song-proofs",
+      "requiredState": "user-validation-pending",
+      "reason": "User must approve/revise the rebuilt four-station direction before M2/M3 scaling."
+    },
+    {
+      "afterTask": "M7-daw-handoff",
+      "requiredState": "final-validation-pending",
+      "reason": "User explicitly approves merge readiness."
+    }
   ],
   "autonomousStopConditions": [
-    "explicit user listening gate reached",
+    "M1.4 pilot listening gate reached",
+    "M1.5 four-station listening gate reached",
     "source provenance/attribution cannot be established and no equivalent candidate can be substituted",
     "task would require runtime/gameplay scope",
-    "task requires final DAW subjective judgment rather than MIDI production"
+    "task requires final DAW subjective judgment rather than MIDI structure"
   ],
   "canonicalReadOrder": [
     "docs/progress/radio-music-production-status.json",
+    "docs/roadmaps/RADIO_MUSIC_PRODUCTION_REVISION_2026-08-24.md",
+    "docs/audio/RADIO_SONG_COMPLETENESS_CONTRACT.md",
+    "docs/agents/RADIO_ARRANGER_AGENT.md",
     "docs/roadmaps/RADIO_MUSIC_PRODUCTION_ROADMAP.md",
     "docs/audio/RADIO_MUSIC_BIBLE.md",
     "docs/audio/RADIO_MUSIC_ATTRIBUTION.md",
     "docs/audio/RADIO_MUSIC_SOURCE_SEEDS.md",
     "docs/agents/RADIO_COMPOSER_AGENT.md",
-    "docs/agent-tasks/2026-08-22-radio-music-production.md",
-    "docs/progress/RADIO_MUSIC_M1_3_BATCH1_CHECKPOINT.md",
-    "docs/progress/RADIO_MUSIC_M1_3_BATCH2_CHECKPOINT.md",
-    "docs/progress/RADIO_MUSIC_M1_3_USER_GATE.md",
-    "docs/progress/RADIO_MUSIC_PRODUCTION_PROGRESS.md"
+    "docs/progress/RADIO_MUSIC_M1_4_REVISION_CHECKPOINT.md",
+    "docs/progress/RADIO_MUSIC_M1_3_USER_GATE.md"
   ],
   "mergePolicy": "draft-until-explicit-user-approval"
 }
