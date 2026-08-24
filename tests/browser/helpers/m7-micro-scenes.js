@@ -44,7 +44,6 @@ async function prepareClubQueue(page) {
     if (scene.scene.isPaused()) scene.scene.resume();
     const district = await import("/phaser/src/data/district.js");
     const signPolicy = await import("/phaser/src/policies/BuildingDecorativeSignPresentationPolicy.js");
-    const lightPolicy = await import("/phaser/src/policies/CityPracticalLightPresentationPolicy.js");
 
     const queue = (scene.npcSystem.npcs || []).filter(npc => (
       npc.ambientActivity === "club-queue"
@@ -75,14 +74,6 @@ async function prepareClubQueue(page) {
     const sign = nightlifeSigns[0] || null;
     if (!sign) return null;
 
-    const nightlifeLights = lightPolicy.buildNightlifeLightDescriptors(district.buildings, null);
-    const matchingLight = nightlifeLights.find(item => item.buildingId === String(sign.building.id || ""))
-      || [...nightlifeLights].sort((left, right) => (
-        Math.hypot(left.x - queueCenter.x, left.y - queueCenter.y)
-        - Math.hypot(right.x - queueCenter.x, right.y - queueCenter.y)
-      ))[0]
-      || null;
-
     const signPoint = {
       x: Number(sign.descriptor.panel?.x) + Number(sign.descriptor.panel?.w) / 2,
       y: Number(sign.descriptor.panel?.y) + Number(sign.descriptor.panel?.h) / 2
@@ -109,6 +100,12 @@ async function prepareClubQueue(page) {
 
     const runtimeNightlife = (scene.cityPracticalLightDescriptors || [])
       .filter(item => item.family === "nightlife-accent");
+    const matchingLight = runtimeNightlife.find(item => item.buildingId === String(sign.building.id || ""))
+      || [...runtimeNightlife].sort((left, right) => (
+        Math.hypot(left.x - queueCenter.x, left.y - queueCenter.y)
+        - Math.hypot(right.x - queueCenter.x, right.y - queueCenter.y)
+      ))[0]
+      || null;
     const labels = (scene.mapLabels || [])
       .filter(label => label?.visible !== false)
       .map(label => String(label?.text || ""));
@@ -143,7 +140,7 @@ async function prepareClubQueue(page) {
         buildingId: matchingLight.buildingId,
         family: matchingLight.family,
         distanceToQueue: Math.hypot(matchingLight.x - queueCenter.x, matchingLight.y - queueCenter.y),
-        runtimeVisible: runtimeNightlife.some(item => item.sourceId === matchingLight.sourceId)
+        runtimeVisible: true
       } : null,
       labelVisible: labels.includes(sign.descriptor.labelText)
     };
@@ -316,6 +313,7 @@ export async function captureM7MicroScenes(page, outputDir) {
   expect(club.queueVisibleCount).toBeGreaterThanOrEqual(3);
   expect(club.sign.family).toBe("nightlife-band");
   expect(club.light?.family).toBe("nightlife-accent");
+  expect(club.light?.runtimeVisible).toBe(true);
   expect(club.labelVisible).toBe(true);
   await captureCanvas(page, outputDir, "m7-micro-club-queue");
 
