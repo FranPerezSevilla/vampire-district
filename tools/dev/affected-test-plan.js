@@ -121,8 +121,7 @@ const SYSTEM_GROUPS = [
 
 const FULL_RC_FILES = new Set([
   "package.json",
-  "playwright.config.js",
-  ".github/workflows/tests.yml"
+  "playwright.config.js"
 ]);
 
 function normalizeFiles(files) {
