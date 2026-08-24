@@ -206,6 +206,24 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   materializer.update = localBehaviorUpdate;
   materializer.snapshot = localBehaviorSnapshot;
 
+  // Establish the production density baseline before any route policy can capture
+  // the fixed-pool size. On normal startup configure() will create the pool at this
+  // limit; if this policy is installed late, grow once before route activation.
+  const configuredTrafficLimit = Math.max(
+    TARGET_ACTIVE_TRAFFIC,
+    Math.floor(finite(materializer.maxActiveVehicles, TARGET_ACTIVE_TRAFFIC))
+  );
+  if (materializer.maxActiveVehicles !== configuredTrafficLimit) {
+    materializer.maxActiveVehicles = configuredTrafficLimit;
+    densityTuned = true;
+  }
+  if (materializer.ready
+    && typeof materializer.ensurePool === "function"
+    && materializer.pool.length < configuredTrafficLimit) {
+    materializer.ensurePool(configuredTrafficLimit);
+    materializer.reconcile?.(true);
+  }
+
   routeMaterializationMetadataPolicy = installTrafficRouteMaterializationMetadataPolicy(materializer);
   const lifecyclePolicy = installTrafficLifecyclePolicy(materializer);
   // Controlled single-route activation remains available for M6/M7 regression proof.
@@ -214,24 +232,6 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   // continuity authority. The policy itself refuses activation unless the full
   // production population and accounting projection are conservative and complete.
   multiAgentRoutePolicy = installTrafficMultiAgentRouteRuntimePolicy(materializer);
-
-  // The previous pool cap of ten made the city read sparsely even when macro
-  // population existed nearby. Keep population identity fixed but allow more of it
-  // to materialize around the player; no dynamic pool growth occurs during route
-  // crossings after this one-time configured baseline increase.
-  Promise.resolve(materializer.initialization).then(() => {
-    if (materializer.destroyed || typeof materializer.ensurePool !== "function") return;
-    const target = Math.max(
-      TARGET_ACTIVE_TRAFFIC,
-      Math.floor(finite(materializer.lanes?.defaults?.maxActiveVehicles, TARGET_ACTIVE_TRAFFIC))
-    );
-    if (materializer.maxActiveVehicles < target) {
-      materializer.maxActiveVehicles = target;
-      materializer.ensurePool(target);
-      densityTuned = true;
-      materializer.reconcile?.(true);
-    }
-  }).catch(() => {});
 
   const policy = {
     originalEligible,
