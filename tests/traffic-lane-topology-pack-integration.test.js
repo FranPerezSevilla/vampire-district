@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
 
@@ -17,6 +19,17 @@ function buildBase() {
     blueprint: currentCityBlueprint,
     roadGraph: cityRoadGraph
   });
+}
+
+function semanticHash(value) {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function committedTrafficPack() {
+  return JSON.parse(readFileSync(
+    new URL("../phaser/assets/city/packs/traffic-lanes.json", import.meta.url),
+    "utf8"
+  ));
 }
 
 test("local compiler topology is added without mutating legacy traffic lane compatibility data", () => {
@@ -74,6 +87,24 @@ test("generated local topology contains only activation-safe compiler junction c
     assert.equal(connector.activationSafe, true, `${connector.id}: ${connector.rejectionReasons.join(",")}`);
     assert.equal(connector.rejectionReasons.length, 0, connector.id);
   }
+});
+
+test("committed runtime traffic pack exactly matches compiler output", () => {
+  const expected = attachCompilerTrafficLaneTopology(buildBase()).fileSet.trafficLanes;
+  const committed = committedTrafficPack();
+
+  assert.equal(
+    committed.schemaVersion,
+    TRAFFIC_LANE_PACK_SCHEMA_VERSION,
+    "Static playtest pack is stale. Run `npm run city:streaming` and commit phaser/assets/city/packs/traffic-lanes.json."
+  );
+  assert.equal(committed.version, TRAFFIC_LANE_PACK_SCHEMA_VERSION);
+  assert.equal(committed.localTopology?.ownershipMode, "compiler-node-id");
+  assert.equal(
+    semanticHash(committed),
+    semanticHash(expected),
+    "Static playtest traffic pack differs from compiler output. Run `npm run city:streaming` and commit the generated pack before relying on browser/manual traffic validation."
+  );
 });
 
 test("legacy district-streaming validation remains green after additive topology integration", () => {
