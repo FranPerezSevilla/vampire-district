@@ -22,3 +22,6 @@ test-results/
 # Licensed radio acquisition masters/evidence (local only)
 **/radio-acquisition/
 **/radio-acquisition-report.json
+
+# Licence-safe runtime staging: included in private/distributable builds, never public Git
+phaser/assets/audio/radio-private/
