@@ -1,13 +1,13 @@
 {
   "initiative": "traffic-lane-junction-topology",
-  "version": 13,
-  "updatedAt": "2026-08-22",
+  "version": 14,
+  "updatedAt": "2026-08-24",
   "pullRequest": 73,
   "branch": "codex/traffic-junction-topology",
   "state": "final-validation-pending",
   "currentMilestone": "M9",
   "currentTask": "M9.2-explicit-user-gameplay-validation",
-  "lastValidatedImplementationHead": "763d6a12824d3d83d3fea92f549c56d1b1a04202",
+  "lastValidatedImplementationHead": "3f6082a650ed6e865ab9a8dce709959cac077023",
   "baseAtBootstrap": "805ea5d107dcddcef4cd564294569455093af4b0",
   "canonicalDocs": {
     "roadmap": "docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md",
@@ -27,6 +27,8 @@
     "controlledRouteActivation": "phaser/src/streaming/TrafficControlledRouteActivationPolicy.js; default-off regression harness only",
     "multiAgentRouteRuntime": "phaser/src/streaming/TrafficMultiAgentRouteRuntimePolicy.js; normal civilian continuity authority",
     "junctionReservation": "phaser/src/streaming/TrafficJunctionReservationRegistry.js; deterministic compiler-junction reservation authority",
+    "gridlockRecovery": "phaser/src/streaming/TrafficGridlockRecoveryPolicy.js; deterministic latched initiative may request low-speed physical traffic-to-traffic shoves without gaining route geometry authority",
+    "visibleDensity": "TrafficLocalAssignmentPolicy establishes a fixed production materialization baseline of 16 slots before route activation; no post-activation density growth is allowed",
     "defaultMovementAuthority": "compiler-route-lanes",
     "macroRole": "bootstrap population plus conservative route-projection accounting and independent police travel; never civilian local geometry",
     "legacyCivilianPhaseRole": "bootstrap/fallback compatibility only; phase advancement is disabled while normal compiler-route authority is active"
@@ -60,10 +62,14 @@
     "stable tokenId and materialization slot survive visible route stage changes",
     "no coordinate teleport across lane/connector/lane",
     "normal crossing release is protected; forced hijack/layer/teardown exits remain legal",
+    "visible route-active slots remain retained through connector and chunk-boundary crossings while still inside the camera/follow retention envelope",
     "legacy local behavior and steering never overwrite routeActive x/y",
+    "route-active materialized pose is resampled every frame from the compiler route before physical offsets are layered back on",
     "route-aware behavior may modulate scalar speed but has no lateral/world-space pose authority",
     "junction conflicts delay connector entry while cars already inside normally clear",
     "reservation ownership releases on exit/forced teardown and stale owners recover",
+    "gridlock initiative may latch to one physical blocker and request bounded traffic-to-traffic shoves, but never teleports, snaps or invents route coordinates",
+    "the civilian materialization pool baseline is established before route activation and remains fixed during runtime continuity",
     "compatibility projection never drops population or guesses ambiguous macro ownership",
     "MacroTrafficRouteContinuityPolicy and TrafficIntentDrivingPolicy have no live production activation path",
     "generated topology is fixed in compiler sources, never hand-edited as a runtime workaround"
@@ -134,23 +140,52 @@
         "browser-building-review": "skipped-by-design"
       },
       "notes": "After the semantic CI split from main, browser-world now regenerates city:streaming before Playwright. This restores the M8 compiler-route prerequisite without regenerating road/sidewalk geometry under the world-geometry tests."
+    },
+    "m9ManualGameplayFeedbackFixCycle": {
+      "state": "passed",
+      "workflow": "Tests",
+      "runNumber": 2273,
+      "runId": 32699969927,
+      "head": "3f6082a650ed6e865ab9a8dce709959cac077023",
+      "jobs": {
+        "unit-tests": "success",
+        "browser-boot": "success",
+        "browser-campaign": "success",
+        "browser-world": "success",
+        "browser-traffic": "success",
+        "browser-police": "success",
+        "browser-gameplay": "success",
+        "browser-performance": "success",
+        "browser-building-review": "skipped-by-design"
+      },
+      "feedbackAddressed": [
+        "route-active visible pose is synchronized every frame so internal route progress cannot leave a visually frozen/bobbing car",
+        "prolonged vehicle gridlock gains deterministic latched initiative and bounded physical traffic-to-traffic shove recovery",
+        "player vehicle continues to physically displace civilian traffic",
+        "route-active materialized slots are retained through connector/chunk crossing while inside the retention envelope to prevent junction disappearances",
+        "civilian materialization baseline increased from 10 to 16 and is established before route activation so the pool remains fixed"
+      ],
+      "notes": "The first feedback implementation exposed a one-frame initiative oscillation and a post-activation 10-to-16 pool growth. Both were corrected: initiative now remains latched to the blocker until resolved, and density is configured before any route policy captures its fixed-pool baseline."
     }
   },
   "nextTask": {
     "id": "M9.2-explicit-user-gameplay-validation",
     "milestone": "M9",
-    "goal": "Stop autonomous implementation and obtain explicit user gameplay approval of the final compiler-route traffic behavior before any ready/merge decision.",
+    "goal": "Stop autonomous implementation and obtain explicit user gameplay approval of the corrected compiler-route traffic behavior before any ready/merge decision.",
     "actions": [
-      "User drives or observes civilian traffic through several junctions and verifies cars stay on lanes without visible teleport/snap.",
-      "User observes straight/right/left crossings where practical and verifies no obvious junction deadlock.",
-      "User blocks or parks near traffic and verifies cars brake, wait and recover without leaving compiler geometry.",
+      "User drives or observes civilian traffic through several junctions and verifies cars stay on lanes with no visible disappearance, snap or teleport.",
+      "User creates or observes a prolonged traffic blockage and verifies one vehicle eventually gains initiative and physically shoves through when space exists, without frame-to-frame start/stop oscillation or teleporting.",
+      "User verifies civilian cars can physically displace other civilian cars rather than behaving as immovable scenery.",
+      "User rams civilian traffic with the protagonist vehicle and verifies the impacted car is physically displaced without duplicate/ghost slot replacement.",
+      "User confirms traffic now reads materially denser in normal populated areas; the fixed materialization baseline is 16 slots rather than 10.",
+      "User observes straight/right/left crossings where practical and verifies no obvious junction deadlock pattern.",
       "User hijacks a traffic vehicle and verifies no duplicate/ghost vehicle and normal slot/lifecycle behavior.",
-      "User triggers police and crosses districts to verify macro police/pursuit remains functional.",
-      "User moves through streaming/camera transitions and verifies no visible traffic pop, jump or continuity regression."
+      "User triggers police and crosses districts, then moves through streaming/camera transitions, verifying police continuity and no traffic pop/jump regression."
     ],
     "acceptance": [
       "user explicitly approves gameplay validation",
-      "no visible lane departure, teleport, duplicate vehicle, stuck-junction pattern or police/streaming regression is reported"
+      "no visible lane departure, junction disappearance, teleport, duplicate vehicle, persistent passive gridlock, density regression or police/streaming regression is reported",
+      "physical gridlock recovery feels plausible enough for the intended GTA2-like traffic rather than perfectly polite waiting"
     ],
     "doNotAdvanceIf": [
       "user has not explicitly approved the gameplay checklist",
