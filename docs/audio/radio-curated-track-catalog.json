@@ -1,9 +1,14 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "initiative": "viceblood-curated-radio-soundtrack",
   "checkedAt": "2026-08-24",
   "strategy": "finished-modern-tracks-with-commercial-use-permission",
   "policy": "docs/audio/RADIO_CURATED_MUSIC_POLICY.md",
+  "userReview": {
+    "reviewedAt": "2026-08-24",
+    "verdict": "approved-all-twelve",
+    "note": "User enthusiastically approved all 12 licence-verified tracks for the ViceBlood radio soundtrack shortlist."
+  },
   "tracks": [
     {
       "id": "daisuke-teiko-real-deal-90s-hip-hop",
@@ -21,7 +26,7 @@
       "contentId": "not-indicated-on-source-page-at-check-time",
       "aiFlag": "not-indicated-on-source-page-at-check-time",
       "state": "acquisition-ready",
-      "userReview": "shortlist-approved",
+      "userReview": "approved",
       "fit": "old-school 90s hip-hop instrumental; primary Vice FM seed"
     },
     {
@@ -40,7 +45,7 @@
       "contentId": "not-applicable",
       "aiFlag": "no",
       "state": "acquisition-ready",
-      "userReview": "shortlist-approved",
+      "userReview": "approved",
       "fit": "melodic alternative hip-hop; clean reusable CC BY seed"
     },
     {
@@ -58,10 +63,10 @@
       "recommendedCredit": "catch22music — Coasting West Coast Hip Hop (via Pixabay)",
       "contentId": "registered",
       "aiFlag": "not-indicated-on-source-page-at-check-time",
-      "state": "licence-verified",
-      "userReview": "pending",
+      "state": "acquisition-ready",
+      "userReview": "approved",
       "fit": "explicit West Coast hip-hop / G-funk; strong Vice FM candidate",
-      "operationalNote": "Content ID registered; keep official source/download evidence if user approves it."
+      "operationalNote": "Content ID registered; keep official source/download evidence for trailers and video uploads."
     },
     {
       "id": "kulakovka-trip-hop",
@@ -79,9 +84,9 @@
       "contentId": "registered",
       "aiFlag": "not-indicated-on-source-page-at-check-time",
       "state": "acquisition-ready",
-      "userReview": "shortlist-approved",
+      "userReview": "approved",
       "fit": "trip-hop; primary Blood City Beats seed",
-      "operationalNote": "Content ID registered; keep official source/download evidence."
+      "operationalNote": "Content ID registered; keep official source/download evidence for trailers and video uploads."
     },
     {
       "id": "abydos-trip-hop-lovers",
@@ -98,8 +103,8 @@
       "recommendedCredit": "Abydos_Music — Trip Hop Lovers (via Pixabay)",
       "contentId": "not-indicated-on-source-page-at-check-time",
       "aiFlag": "not-indicated-on-source-page-at-check-time",
-      "state": "licence-verified",
-      "userReview": "pending",
+      "state": "acquisition-ready",
+      "userReview": "approved",
       "fit": "3-minute trip-hop track from named producer; strong Blood City Beats candidate"
     },
     {
@@ -117,8 +122,8 @@
       "recommendedCredit": "Kyoto — 1000 Handz — CC BY 4.0",
       "contentId": "not-applicable",
       "aiFlag": "no",
-      "state": "licence-verified",
-      "userReview": "pending",
+      "state": "acquisition-ready",
+      "userReview": "approved",
       "fit": "alternative hip-hop / ambient electronic; darker contrast for Blood City Beats"
     },
     {
@@ -137,7 +142,7 @@
       "contentId": "not-indicated-on-source-page-at-check-time",
       "aiFlag": "not-indicated-on-source-page-at-check-time",
       "state": "acquisition-ready",
-      "userReview": "shortlist-approved",
+      "userReview": "approved",
       "fit": "big beat / industrial breakbeat; primary Night Shift seed"
     },
     {
@@ -155,8 +160,8 @@
       "recommendedCredit": "NaturesEye — Dirty Industrial Rave (via Pixabay)",
       "contentId": "not-indicated-on-source-page-at-check-time",
       "aiFlag": "not-indicated-on-source-page-at-check-time",
-      "state": "licence-verified",
-      "userReview": "pending",
+      "state": "acquisition-ready",
+      "userReview": "approved",
       "fit": "aggressive distorted industrial dance/rave; good Night Shift contrast"
     },
     {
@@ -174,8 +179,8 @@
       "recommendedCredit": "Delon_Boomkin — Big Beat Rave _ Industrial Breakbeat 3 (via Pixabay)",
       "contentId": "not-indicated-on-source-page-at-check-time",
       "aiFlag": "not-indicated-on-source-page-at-check-time",
-      "state": "licence-verified",
-      "userReview": "pending",
+      "state": "acquisition-ready",
+      "userReview": "approved",
       "fit": "longer hard-rock/big-beat/breakbeat option for Night Shift"
     },
     {
@@ -194,7 +199,7 @@
       "contentId": "not-indicated-on-source-page-at-check-time",
       "aiFlag": "not-indicated-on-source-page-at-check-time",
       "state": "acquisition-ready",
-      "userReview": "shortlist-approved",
+      "userReview": "approved",
       "fit": "long-form acid house; primary Pulse 94.6 seed"
     },
     {
@@ -212,8 +217,8 @@
       "recommendedCredit": "Placidplace — Franic (acid trance) (via Pixabay)",
       "contentId": "not-indicated-on-source-page-at-check-time",
       "aiFlag": "not-indicated-on-source-page-at-check-time",
-      "state": "licence-verified",
-      "userReview": "pending",
+      "state": "acquisition-ready",
+      "userReview": "approved",
       "fit": "acid/trance crossover; energetic late-night Pulse option"
     },
     {
@@ -231,10 +236,10 @@
       "recommendedCredit": "BerryDeep — Back To 90s (via Pixabay)",
       "contentId": "registered",
       "aiFlag": "not-indicated-on-source-page-at-check-time",
-      "state": "licence-verified",
-      "userReview": "pending",
+      "state": "acquisition-ready",
+      "userReview": "approved",
       "fit": "explicit 90s dance / classic piano-house identity; strong Pulse candidate",
-      "operationalNote": "Content ID registered; preserve source/download evidence if approved."
+      "operationalNote": "Content ID registered; preserve source/download evidence for trailers and video uploads."
     }
   ],
   "stationCounts": {
@@ -244,13 +249,14 @@
     "pulse-94-6": 3
   },
   "reviewCounts": {
-    "shortlistApproved": 5,
-    "pendingUserReview": 7
+    "approved": 12,
+    "pendingUserReview": 0,
+    "acquisitionReady": 12
   },
   "contentIdWarnings": [
     "catch22-coasting-west-coast-hip-hop",
     "kulakovka-trip-hop",
     "berrydeep-back-to-90s"
   ],
-  "nextTarget": "user listening/pruning gate for the 7 newly verified tracks; approved tracks then move to acquisition-ready before any third-party audio download/commit"
+  "nextTarget": "acquire exact approved source files under the licence-safe acquisition workflow, record download evidence and hashes, then prepare runtime handoff"
 }
