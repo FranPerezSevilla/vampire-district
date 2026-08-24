@@ -73,6 +73,81 @@ for (const route of ROUTES) {
   });
 }
 
+test("normal static boot activates compiler-route traffic at the first junction east of spawn", async ({ page }) => {
+  const pageErrors = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
+  await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => Boolean(
+    window.NBD_APP_READY
+    && window.NBD_TRAFFIC_READY
+    && window.NBD_TRAFFIC
+    && window.NBD_TRAFFIC_ROUTE_MULTI_AGENT
+    && window.NBD_PHASER_GAME?.scene?.getScene?.("GameScene")?.trafficMaterializationSystem?.ready
+  ));
+  await page.waitForFunction(() => window.NBD_TRAFFIC_ROUTE_MULTI_AGENT?.snapshot?.().enabled === true);
+
+  const state = await page.evaluate(() => {
+    const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
+    const materializer = scene.trafficMaterializationSystem;
+    const pack = materializer.lanes;
+    const topology = pack?.localTopology;
+    const junctionId = "stream-node:1754:1574";
+    const junction = topology?.nodes?.[junctionId] || null;
+    const preferredTransitions = Object.values(topology?.transitions || {})
+      .filter(transition => transition?.nodeId === junctionId && transition?.preferred);
+    const safeConnectors = Object.values(topology?.junctionConnectors?.connectors || {})
+      .filter(connector => connector?.nodeId === junctionId && connector?.activationSafe);
+    const traffic = window.NBD_TRAFFIC.snapshot();
+    const route = window.NBD_TRAFFIC_ROUTE_MULTI_AGENT.snapshot();
+    return {
+      schemaVersion: pack?.schemaVersion || null,
+      ownershipMode: topology?.ownershipMode || null,
+      laneAuthority: traffic.laneAuthority,
+      topologyReady: traffic.compilerLocalTopology?.ready,
+      routeEnabled: route.enabled,
+      defaultTrafficAuthority: route.defaultTrafficAuthority,
+      fixedPoolPreserved: route.fixedPoolPreserved,
+      poolSize: materializer.pool.length,
+      junction: junction && {
+        id: junction.id,
+        x: junction.x,
+        y: junction.y,
+        degree: junction.degree,
+        incomingLaneCount: junction.incomingLaneIds?.length || 0,
+        outgoingLaneCount: junction.outgoingLaneIds?.length || 0
+      },
+      preferredTransitionCount: preferredTransitions.length,
+      safeConnectorCount: safeConnectors.length,
+      rejectedConnectorCount: topology?.junctionConnectors?.stats?.rejectedConnectorCount,
+      outsideRoadConnectorCount: topology?.junctionConnectors?.stats?.outsideRoadConnectorCount,
+      tangentFailureCount: topology?.junctionConnectors?.stats?.tangentFailureCount
+    };
+  });
+
+  expect(state.schemaVersion).toBe(6);
+  expect(state.ownershipMode).toBe("compiler-node-id");
+  expect(state.laneAuthority).toBe("compiler-route-lanes");
+  expect(state.topologyReady).toBe(true);
+  expect(state.routeEnabled).toBe(true);
+  expect(state.defaultTrafficAuthority).toBe("multi-agent-compiler-route");
+  expect(state.fixedPoolPreserved).toBe(true);
+  expect(state.poolSize).toBe(16);
+  expect(state.junction).toEqual({
+    id: "stream-node:1754:1574",
+    x: 1754,
+    y: 1574,
+    degree: 4,
+    incomingLaneCount: 4,
+    outgoingLaneCount: 4
+  });
+  expect(state.preferredTransitionCount).toBe(12);
+  expect(state.safeConnectorCount).toBe(12);
+  expect(state.rejectedConnectorCount).toBe(0);
+  expect(state.outsideRoadConnectorCount).toBe(0);
+  expect(state.tangentFailureCount).toBe(0);
+  expect(pageErrors).toEqual([]);
+});
+
 test("normal boot skips the retired narrative and opens persistent street free roam", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
