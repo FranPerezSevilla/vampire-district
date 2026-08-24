@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { expect, test } from "@playwright/test";
+import { captureM7MicroScenes } from "./helpers/m7-micro-scenes.js";
 
 const OUTPUT_DIR = path.resolve(".artifacts/city-atmosphere-review");
 const MAX_FAMILY_CAPTURES = 4;
@@ -171,6 +172,9 @@ test("captures M7.1 semantic sign/neon grammar at gameplay scale", async ({ page
     control,
     captures
   }, null, 2)}\n`, "utf8");
+
+  const microScenes = await captureM7MicroScenes(page, OUTPUT_DIR);
+  expect(microScenes.stories).toHaveLength(3);
 
   expect(pageErrors).toEqual([]);
 });
