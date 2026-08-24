@@ -5,11 +5,12 @@ At `2026-08-24T12:56:00+02:00` the user supplied `Archivo.zip` with official-sit
 ## Result
 
 - 9 valid MP3 masters acquired and hashed.
+- All 9 valid MP3s also decode cleanly from start to finish with ffmpeg.
 - 1 incomplete DuckDuckGo temporary download rejected: `kulakovka-trip-hop-278457.duckload`.
 - 2 approved Free Music Archive tracks were not present: `Architexture ft. Cobabeats` and `Kyoto`.
 - Raw third-party audio remains outside the public Git repository.
 
-The nine valid MP3s were parsed with ffprobe and recorded in `docs/audio/radio-acquisition-ledger.json` with original filename, SHA-256, byte size, duration and bitrate.
+The nine valid MP3s are recorded in `docs/audio/radio-acquisition-ledger.json` with original filename, SHA-256, byte size, duration and bitrate.
 
 ## Remaining three
 
