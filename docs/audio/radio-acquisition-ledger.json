@@ -1,11 +1,24 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "initiative": "viceblood-curated-radio-acquisition",
   "checkedAt": "2026-08-24",
+  "lastIngestAt": "2026-08-24T12:56:00+02:00",
   "sourceCatalog": "docs/audio/radio-curated-track-catalog.json",
   "policy": "docs/audio/RADIO_CURATED_MUSIC_POLICY.md",
   "privateAcquisitionDirectory": ".private/radio-acquisition",
   "publicRepositoryRule": "Do not commit substantially unchanged Pixabay masters to the public repository. Keep runtime masters in the private acquisition/build asset flow and record hashes/evidence here.",
+  "ingestSummary": {
+    "approvedTracks": 12,
+    "acquiredValidMasters": 9,
+    "remaining": 3,
+    "missingOfficialDownloads": [
+      "1000-handz-architexture-cobabeats",
+      "1000-handz-kyoto"
+    ],
+    "incompleteRedownload": [
+      "kulakovka-trip-hop"
+    ]
+  },
   "tracks": [
     {
       "id": "daisuke-teiko-real-deal-90s-hip-hop",
@@ -20,17 +33,20 @@
       "requiredCredit": null,
       "courtesyCredit": "Daisuke Teiko — The Real Deal 90s hip hop instrumental (via Pixabay)",
       "expectedMasterFilename": "vice-fm__daisuke-teiko__the-real-deal-90s-hip-hop-instrumental.mp3",
+      "downloadAccess": "official-interactive-free-download-control",
+      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
       "sourceEvidence": {
         "checkedAt": "2026-08-24",
         "summary": "Official Pixabay track page identifies the 3:20 MP3 as Old School/Alternative Hip Hop and states it is free for use under the Pixabay Content License with a free-download control."
       },
-      "downloadAccess": "official-interactive-free-download-control",
-      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
-      "acquisitionStatus": "official-interactive-download-pending",
-      "downloadedFilename": null,
-      "sha256": null,
-      "sizeBytes": null,
-      "acquiredAt": null
+      "acquisitionStatus": "acquired-user-supplied-official-download",
+      "downloadedFilename": "25562653-daisuke-teiko-the-real-deal-90s-hip-hop-instrumental-111454.mp3",
+      "sha256": "c5930d15c5dab3320e447026c0bccdc93bca8345244ea19d56e775e977f488cf",
+      "sizeBytes": 6408150,
+      "durationSeconds": 200.255,
+      "bitRate": 255999,
+      "acquiredAt": "2026-08-24T12:56:00+02:00",
+      "ingestEvidence": "Received in user-supplied Archivo.zip; MP3 parsed by ffprobe and exact bytes hashed during CURATED-3 ingest."
     },
     {
       "id": "1000-handz-architexture-cobabeats",
@@ -45,17 +61,18 @@
       "requiredCredit": "Architexture ft. Cobabeats — 1000 Handz & Cobabeats — CC BY 4.0",
       "courtesyCredit": null,
       "expectedMasterFilename": "vice-fm__1000-handz-cobabeats__architexture.mp3",
+      "downloadAccess": "official-interactive-download-arrow",
+      "publicRepoMasterPolicy": "private-runtime-asset-workflow-for-consistency",
       "sourceEvidence": {
         "checkedAt": "2026-08-24",
         "summary": "Official FMA listing applies CC BY 4.0, says the music is free to use in any project with attribution, requests credit to '1000 Handz & Cobabeats', and marks the track instrumental and not AI-generated."
       },
-      "downloadAccess": "official-interactive-download-arrow",
-      "publicRepoMasterPolicy": "private-runtime-asset-workflow-for-consistency",
       "acquisitionStatus": "official-interactive-download-pending",
       "downloadedFilename": null,
       "sha256": null,
       "sizeBytes": null,
-      "acquiredAt": null
+      "acquiredAt": null,
+      "ingestNote": "Not present in the user-supplied Archivo.zip received 2026-08-24."
     },
     {
       "id": "catch22-coasting-west-coast-hip-hop",
@@ -70,17 +87,20 @@
       "requiredCredit": null,
       "courtesyCredit": "catch22music — Coasting West Coast Hip Hop (via Pixabay)",
       "expectedMasterFilename": "vice-fm__catch22music__coasting-west-coast-hip-hop.mp3",
+      "downloadAccess": "official-interactive-free-download-control",
+      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
       "sourceEvidence": {
         "checkedAt": "2026-08-24",
         "summary": "Official Pixabay page identifies a 3:09 West Coast/Hip Hop/G-funk MP3, states free use under the Pixabay Content License, exposes a free-download control and marks Content ID as registered."
       },
-      "downloadAccess": "official-interactive-free-download-control",
-      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
-      "acquisitionStatus": "official-interactive-download-pending",
-      "downloadedFilename": null,
-      "sha256": null,
-      "sizeBytes": null,
-      "acquiredAt": null
+      "acquisitionStatus": "acquired-user-supplied-official-download",
+      "downloadedFilename": "catch22music-coasting-west-coast-hip-hop-381615.mp3",
+      "sha256": "aee570225b41f68282eaca7b498d06994b2bf125bc61b5e4e02d06b218907025",
+      "sizeBytes": 6043689,
+      "durationSeconds": 188.865,
+      "bitRate": 256000,
+      "acquiredAt": "2026-08-24T12:56:00+02:00",
+      "ingestEvidence": "Received in user-supplied Archivo.zip; MP3 parsed by ffprobe and exact bytes hashed during CURATED-3 ingest."
     },
     {
       "id": "kulakovka-trip-hop",
@@ -95,17 +115,25 @@
       "requiredCredit": null,
       "courtesyCredit": "Kulakovka — Trip Hop (via Pixabay)",
       "expectedMasterFilename": "blood-city-beats__kulakovka__trip-hop.mp3",
+      "downloadAccess": "official-interactive-free-download-control",
+      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
       "sourceEvidence": {
         "checkedAt": "2026-08-24",
         "summary": "Official Pixabay track page was verified for the approved Trip Hop recording and its Pixabay Content License; Content ID is registered."
       },
-      "downloadAccess": "official-interactive-free-download-control",
-      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
-      "acquisitionStatus": "official-interactive-download-pending",
+      "acquisitionStatus": "received-incomplete-redownload-required",
       "downloadedFilename": null,
       "sha256": null,
       "sizeBytes": null,
-      "acquiredAt": null
+      "acquiredAt": null,
+      "incompleteDownloadEvidence": {
+        "receivedFilename": "kulakovka-trip-hop-278457.duckload",
+        "sizeBytes": 4172608,
+        "sha256": "d6fcc88372c6be9a99284740bf3da7e73a839064c31a84fa5e55de0ccc84cb60",
+        "ffprobeDurationSeconds": 130.394,
+        "validation": "rejected-incomplete",
+        "reason": "DuckDuckGo temporary .duckload file; ffmpeg reports invalid MP3 data/header while decoding."
+      }
     },
     {
       "id": "abydos-trip-hop-lovers",
@@ -120,17 +148,20 @@
       "requiredCredit": null,
       "courtesyCredit": "Abydos_Music — Trip Hop Lovers (via Pixabay)",
       "expectedMasterFilename": "blood-city-beats__abydos-music__trip-hop-lovers.mp3",
+      "downloadAccess": "official-interactive-free-download-control",
+      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
       "sourceEvidence": {
         "checkedAt": "2026-08-24",
         "summary": "Official Pixabay track page was verified for the approved Trip Hop Lovers recording and Pixabay Content License."
       },
-      "downloadAccess": "official-interactive-free-download-control",
-      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
-      "acquisitionStatus": "official-interactive-download-pending",
-      "downloadedFilename": null,
-      "sha256": null,
-      "sizeBytes": null,
-      "acquiredAt": null
+      "acquisitionStatus": "acquired-user-supplied-official-download",
+      "downloadedFilename": "abydos_music-trip-hop-lovers-206690.mp3",
+      "sha256": "c5f5e938a6d1af5084dd3ffa27232ee1d1075f43b2e1d73ddb40d4e58f1166f8",
+      "sizeBytes": 5984339,
+      "durationSeconds": 187.011,
+      "bitRate": 255999,
+      "acquiredAt": "2026-08-24T12:56:00+02:00",
+      "ingestEvidence": "Received in user-supplied Archivo.zip; MP3 parsed by ffprobe and exact bytes hashed during CURATED-3 ingest."
     },
     {
       "id": "1000-handz-kyoto",
@@ -145,17 +176,18 @@
       "requiredCredit": "Kyoto — 1000 Handz — CC BY 4.0",
       "courtesyCredit": null,
       "expectedMasterFilename": "blood-city-beats__1000-handz__kyoto.mp3",
+      "downloadAccess": "official-interactive-download-arrow",
+      "publicRepoMasterPolicy": "private-runtime-asset-workflow-for-consistency",
       "sourceEvidence": {
         "checkedAt": "2026-08-24",
         "summary": "Official FMA listing applies CC BY 4.0, states the track is completely free to use in any project with attribution, requests credit to '1000 Handz', and marks it instrumental and not AI-generated."
       },
-      "downloadAccess": "official-interactive-download-arrow",
-      "publicRepoMasterPolicy": "private-runtime-asset-workflow-for-consistency",
       "acquisitionStatus": "official-interactive-download-pending",
       "downloadedFilename": null,
       "sha256": null,
       "sizeBytes": null,
-      "acquiredAt": null
+      "acquiredAt": null,
+      "ingestNote": "Not present in the user-supplied Archivo.zip received 2026-08-24."
     },
     {
       "id": "ejah-big-beat-industrial-breakbeat-1",
@@ -170,17 +202,20 @@
       "requiredCredit": null,
       "courtesyCredit": "ejah_music — Big Beat Rave _ Industrial Breakbeat 1 (via Pixabay)",
       "expectedMasterFilename": "night-shift__ejah-music__big-beat-industrial-breakbeat-1.mp3",
+      "downloadAccess": "official-interactive-free-download-control",
+      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
       "sourceEvidence": {
         "checkedAt": "2026-08-24",
         "summary": "Official Pixabay track page was verified for the approved big-beat/industrial-breakbeat recording and Pixabay Content License."
       },
-      "downloadAccess": "official-interactive-free-download-control",
-      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
-      "acquisitionStatus": "official-interactive-download-pending",
-      "downloadedFilename": null,
-      "sha256": null,
-      "sizeBytes": null,
-      "acquiredAt": null
+      "acquisitionStatus": "acquired-user-supplied-official-download",
+      "downloadedFilename": "ejah_music-big-beat-rave-_-industrial-breakbeat-1-472114.mp3",
+      "sha256": "2bfbba89575be89b343766baee8d74bc986ef3685e3810a0fd319a424529f081",
+      "sizeBytes": 4421172,
+      "durationSeconds": 138.162,
+      "bitRate": 256000,
+      "acquiredAt": "2026-08-24T12:56:00+02:00",
+      "ingestEvidence": "Received in user-supplied Archivo.zip; MP3 parsed by ffprobe and exact bytes hashed during CURATED-3 ingest."
     },
     {
       "id": "natureseye-dirty-industrial-rave",
@@ -195,42 +230,49 @@
       "requiredCredit": null,
       "courtesyCredit": "NaturesEye — Dirty Industrial Rave (via Pixabay)",
       "expectedMasterFilename": "night-shift__natureseye__dirty-industrial-rave.mp3",
+      "downloadAccess": "official-interactive-free-download-control",
+      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
       "sourceEvidence": {
         "checkedAt": "2026-08-24",
         "summary": "Official Pixabay track page was verified for the approved Dirty Industrial Rave recording and Pixabay Content License."
       },
-      "downloadAccess": "official-interactive-free-download-control",
-      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
-      "acquisitionStatus": "official-interactive-download-pending",
-      "downloadedFilename": null,
-      "sha256": null,
-      "sizeBytes": null,
-      "acquiredAt": null
+      "acquisitionStatus": "acquired-user-supplied-official-download",
+      "downloadedFilename": "natureseye-dirty-industrial-rave-177919.mp3",
+      "sha256": "0b03416b2254957115065dee6863ab8a4052ef47b5f000afe081335c6e89a6f3",
+      "sizeBytes": 6401280,
+      "durationSeconds": 200.04,
+      "bitRate": 256000,
+      "acquiredAt": "2026-08-24T12:56:00+02:00",
+      "ingestEvidence": "Received in user-supplied Archivo.zip; MP3 parsed by ffprobe and exact bytes hashed during CURATED-3 ingest."
     },
     {
       "id": "delon-big-beat-industrial-breakbeat-3",
       "stationId": "night-shift",
       "title": "Big Beat Rave _ Industrial Breakbeat 3",
-      "creator": "Delon_Boomkin",
+      "creator": "ejah_music",
       "sourcePlatform": "Pixabay",
       "sourceUrl": "https://pixabay.com/music/hard-rock-big-beat-rave-industrial-breakbeat-3-473019/",
       "licenseClass": "Pixabay-Content-License",
       "licenseUrl": "https://pixabay.com/service/license-summary/",
       "contentId": "not-indicated-on-source-page-at-check-time",
       "requiredCredit": null,
-      "courtesyCredit": "Delon_Boomkin — Big Beat Rave _ Industrial Breakbeat 3 (via Pixabay)",
-      "expectedMasterFilename": "night-shift__delon-boomkin__big-beat-industrial-breakbeat-3.mp3",
-      "sourceEvidence": {
-        "checkedAt": "2026-08-24",
-        "summary": "Official Pixabay track page was verified for the approved Big Beat Rave / Industrial Breakbeat 3 recording and Pixabay Content License."
-      },
+      "courtesyCredit": "ejah_music — Big Beat Rave _ Industrial Breakbeat 3 (via Pixabay)",
+      "expectedMasterFilename": "night-shift__ejah-music__big-beat-industrial-breakbeat-3.mp3",
       "downloadAccess": "official-interactive-free-download-control",
       "publicRepoMasterPolicy": "do-not-commit-standalone-master",
-      "acquisitionStatus": "official-interactive-download-pending",
-      "downloadedFilename": null,
-      "sha256": null,
-      "sizeBytes": null,
-      "acquiredAt": null
+      "sourceEvidence": {
+        "checkedAt": "2026-08-24",
+        "summary": "Official Pixabay listing/profile confirms Big Beat Rave _ Industrial Breakbeat 3 is by ejah_music. Earlier ViceBlood metadata incorrectly named Delon_Boomkin; corrected during exact-master acquisition."
+      },
+      "acquisitionStatus": "acquired-user-supplied-official-download",
+      "downloadedFilename": "ejah_music-big-beat-rave-_-industrial-breakbeat-3-473019.mp3",
+      "sha256": "f2d2e2308e2b87c893a14ff5a326b3af30f8a8e779ae6532ee8f6bbd8a1a9a1b",
+      "sizeBytes": 8110080,
+      "durationSeconds": 253.44,
+      "bitRate": 256000,
+      "acquiredAt": "2026-08-24T12:56:00+02:00",
+      "ingestEvidence": "Received in user-supplied Archivo.zip; MP3 parsed by ffprobe and exact bytes hashed during CURATED-3 ingest.",
+      "metadataCorrection": "creator corrected from Delon_Boomkin to ejah_music on 2026-08-24 during acquisition"
     },
     {
       "id": "maty1309-tema-acid-house",
@@ -245,17 +287,20 @@
       "requiredCredit": null,
       "courtesyCredit": "maty1309 — Tema Acid House (via Pixabay)",
       "expectedMasterFilename": "pulse-94-6__maty1309__tema-acid-house.mp3",
+      "downloadAccess": "official-interactive-free-download-control",
+      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
       "sourceEvidence": {
         "checkedAt": "2026-08-24",
         "summary": "Official Pixabay track page was verified for the approved long-form acid-house recording and Pixabay Content License."
       },
-      "downloadAccess": "official-interactive-free-download-control",
-      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
-      "acquisitionStatus": "official-interactive-download-pending",
-      "downloadedFilename": null,
-      "sha256": null,
-      "sizeBytes": null,
-      "acquiredAt": null
+      "acquisitionStatus": "acquired-user-supplied-official-download",
+      "downloadedFilename": "maty1309-tema-acid-house-329018.mp3",
+      "sha256": "5156d054eab2d5b39fdc495f3522aa1487173f15f0cf4a7f020435d4a4cb0cb0",
+      "sizeBytes": 7622739,
+      "durationSeconds": 238.211,
+      "bitRate": 255999,
+      "acquiredAt": "2026-08-24T12:56:00+02:00",
+      "ingestEvidence": "Received in user-supplied Archivo.zip; MP3 parsed by ffprobe and exact bytes hashed during CURATED-3 ingest."
     },
     {
       "id": "placidplace-franic-acid-trance",
@@ -270,17 +315,20 @@
       "requiredCredit": null,
       "courtesyCredit": "Placidplace — Franic (acid trance) (via Pixabay)",
       "expectedMasterFilename": "pulse-94-6__placidplace__franic-acid-trance.mp3",
+      "downloadAccess": "official-interactive-free-download-control",
+      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
       "sourceEvidence": {
         "checkedAt": "2026-08-24",
         "summary": "Official Pixabay track page was verified for the approved acid-trance recording and Pixabay Content License."
       },
-      "downloadAccess": "official-interactive-free-download-control",
-      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
-      "acquisitionStatus": "official-interactive-download-pending",
-      "downloadedFilename": null,
-      "sha256": null,
-      "sizeBytes": null,
-      "acquiredAt": null
+      "acquisitionStatus": "acquired-user-supplied-official-download",
+      "downloadedFilename": "placidplace-franic-acid-trance-395688.mp3",
+      "sha256": "3ef685bb89fe0010e3894206886075fc48e1483ea56b83726a698a45097dbad5",
+      "sizeBytes": 7858468,
+      "durationSeconds": 245.577,
+      "bitRate": 256000,
+      "acquiredAt": "2026-08-24T12:56:00+02:00",
+      "ingestEvidence": "Received in user-supplied Archivo.zip; MP3 parsed by ffprobe and exact bytes hashed during CURATED-3 ingest."
     },
     {
       "id": "berrydeep-back-to-90s",
@@ -295,17 +343,20 @@
       "requiredCredit": null,
       "courtesyCredit": "BerryDeep — Back To 90s (via Pixabay)",
       "expectedMasterFilename": "pulse-94-6__berrydeep__back-to-90s.mp3",
+      "downloadAccess": "official-interactive-free-download-control",
+      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
       "sourceEvidence": {
         "checkedAt": "2026-08-24",
         "summary": "Official Pixabay track page was verified for the approved 90s/classic-piano-house recording and Pixabay Content License; Content ID is registered."
       },
-      "downloadAccess": "official-interactive-free-download-control",
-      "publicRepoMasterPolicy": "do-not-commit-standalone-master",
-      "acquisitionStatus": "official-interactive-download-pending",
-      "downloadedFilename": null,
-      "sha256": null,
-      "sizeBytes": null,
-      "acquiredAt": null
+      "acquisitionStatus": "acquired-user-supplied-official-download",
+      "downloadedFilename": "berrydeep-back-to-90s-579460.mp3",
+      "sha256": "d5f483b7a0e3bc16f80759117be6bc485d2ab1463690c79eb2272af91af1fda9",
+      "sizeBytes": 4690338,
+      "durationSeconds": 146.573,
+      "bitRate": 255999,
+      "acquiredAt": "2026-08-24T12:56:00+02:00",
+      "ingestEvidence": "Received in user-supplied Archivo.zip; MP3 parsed by ffprobe and exact bytes hashed during CURATED-3 ingest."
     }
   ]
 }
