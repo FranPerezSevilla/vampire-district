@@ -174,7 +174,7 @@ test("radio cycles stations only while driving, advances playlists and remembers
   scene.events.emit("vehicle:entered", { vehicleId: "car-2" });
   assert.equal(playback.calls.at(-1), "natureseye-dirty-industrial-rave", "re-entry keeps station playlist cursor");
   radio.update(0.016, {});
-  assert.match(vehicleSystem.hud.text, /RADIO NIGHT SHIFT · WHEEL station/);
+  assert.match(vehicleSystem.hud.text, /RADIO Night Shift · WHEEL station/);
 });
 
 test("RadioPlayback connects long-form media to the existing RawAudio master", async () => {
