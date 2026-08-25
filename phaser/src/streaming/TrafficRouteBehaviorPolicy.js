@@ -293,27 +293,27 @@ export function createTrafficRouteBehaviorController(materializer, {
       && state.blockerId === blocker.blockerId
       && !state.recoveryBlocked) {
       return {
+        ...blocker,
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC,
         desiredSpeedFactor: settings.trafficRecoverySpeedFactor,
-        reason: "gridlock-push",
-        ...blocker
+        reason: "gridlock-push"
       };
     }
 
     if (canAttemptRecovery) {
       return {
+        ...blocker,
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC,
         desiredSpeedFactor: settings.trafficRecoverySpeedFactor,
-        reason: "gridlock-push",
-        ...blocker
+        reason: "gridlock-push"
       };
     }
 
     return {
+      ...blocker,
       fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.STOPPED_TRAFFIC,
       desiredSpeedFactor: 0,
-      reason: state.recoveryBlocked ? "gridlock-blocked" : "gridlock-yield",
-      ...blocker
+      reason: state.recoveryBlocked ? "gridlock-blocked" : "gridlock-yield"
     };
   }
 
@@ -354,19 +354,19 @@ export function createTrafficRouteBehaviorController(materializer, {
       && state.blockerId === blocker.blockerId
       && !state.recoveryBlocked) {
       return {
+        ...blocker,
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC,
         desiredSpeedFactor: settings.staticRecoverySpeedFactor,
-        reason: "parked-vehicle-recovery",
-        ...blocker
+        reason: "parked-vehicle-recovery"
       };
     }
 
     if (canAttemptRecovery) {
       return {
+        ...blocker,
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC,
         desiredSpeedFactor: settings.staticRecoverySpeedFactor,
-        reason: "parked-vehicle-recovery",
-        ...blocker
+        reason: "parked-vehicle-recovery"
       };
     }
 
