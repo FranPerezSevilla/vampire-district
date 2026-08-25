@@ -122,7 +122,8 @@ function staticRecoveryOrigin(vehicle) {
       x: currentX,
       y: currentY,
       lastX: currentX,
-      lastY: currentY
+      lastY: currentY,
+      side: null
     };
     staticRecoveryOrigins.set(vehicle, origin);
   }
@@ -153,7 +154,9 @@ export function executeStaticRecovery(scene, materializer, {
   const origin = staticRecoveryOrigin(vehicle);
   const routeAngle = finite(requester.angle);
   const preferredSide = stableHash(`${requester.tokenId}|${vehicle.id}`) % 2 === 0 ? 1 : -1;
-  const sides = [preferredSide, -preferredSide];
+  const sides = origin.side === 1 || origin.side === -1
+    ? [origin.side]
+    : [preferredSide, -preferredSide];
 
   for (const side of sides) {
     const offsetX = Math.cos(routeAngle + Math.PI / 2) * displacement * side;
@@ -171,6 +174,7 @@ export function executeStaticRecovery(scene, materializer, {
     vehicle.parked = true;
     origin.lastX = nextX;
     origin.lastY = nextY;
+    origin.side = side;
     vehicle.container?.setPosition?.(nextX, nextY);
     vehicleSystem?.persistVehicle?.(vehicle);
     return success("static-recovery-clearance", {
