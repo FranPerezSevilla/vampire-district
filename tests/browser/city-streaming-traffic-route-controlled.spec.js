@@ -107,7 +107,7 @@ test("controlled compiler routes still cross straight/right/left when default M8
       }
 
       const duringTraffic = window.NBD_TRAFFIC.snapshot();
-      const finalSlot = scene.trafficMaterializationSystem.pool[slotIndex];
+      const finalSlotTokenId = scene.trafficMaterializationSystem.pool[slotIndex]?.tokenId || null;
       const stopped = control.stop();
       const afterStop = control.snapshot();
       return {
@@ -129,7 +129,7 @@ test("controlled compiler routes still cross straight/right/left when default M8
         fixedPoolDuring: snapshot.fixedPoolPreserved,
         routeMovementActiveDuring: duringTraffic.routeMovementActive,
         laneAuthorityDuring: duringTraffic.laneAuthority,
-        finalSlotTokenId: finalSlot?.tokenId || null,
+        finalSlotTokenId,
         stopped,
         enabledAfterStop: afterStop.enabled,
         routeReservationCountAfterStop: afterStop.routeReservationCount,
@@ -289,7 +289,7 @@ test("the first junction east of spawn keeps one visible slot through west-to-ea
       if ((snapshot.lastBlockedReason && snapshot.lastBlockedReason !== "junction-yield") || snapshot.slotLost) break;
     }
 
-    const finalSlot = materializer.pool[slotIndex];
+    const finalSlotTokenId = materializer.pool[slotIndex]?.tokenId || null;
     const stopped = control.stop();
     return {
       missingTransition: false,
@@ -311,7 +311,7 @@ test("the first junction east of spawn keeps one visible slot through west-to-ea
       teleportCount: snapshot.teleportCount,
       maximumStepDistance: snapshot.maximumStepDistance,
       maxObservedStep,
-      finalSlotTokenId: finalSlot?.tokenId || null,
+      finalSlotTokenId,
       fixedPoolPreserved: snapshot.fixedPoolPreserved,
       stopped,
       samples
