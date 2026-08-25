@@ -29,6 +29,8 @@ function success(reason, details = {}) {
   return Object.freeze({ success: true, reason, ...details });
 }
 
+const staticRecoveryOrigins = new WeakMap();
+
 export function executeTrafficRecovery(scene, materializer, {
   pusherTokenId,
   targetTokenId,
@@ -110,10 +112,28 @@ function persistentVehicleSafe(scene, materializer, vehicle, x, y) {
   return true;
 }
 
+function staticRecoveryOrigin(vehicle) {
+  const currentX = finite(vehicle?.x);
+  const currentY = finite(vehicle?.y);
+  let origin = staticRecoveryOrigins.get(vehicle);
+  if (!origin
+    || Math.hypot(currentX - origin.lastX, currentY - origin.lastY) > 0.5) {
+    origin = {
+      x: currentX,
+      y: currentY,
+      lastX: currentX,
+      lastY: currentY
+    };
+    staticRecoveryOrigins.set(vehicle, origin);
+  }
+  return origin;
+}
+
 export function executeStaticRecovery(scene, materializer, {
   requesterTokenId,
   vehicleId,
-  step = 5
+  step = 5,
+  maximumTotalDisplacement = 64
 } = {}) {
   const vehicleSystem = scene?.vehicleSystem;
   const requester = materializer?.assignments?.get?.(requesterTokenId);
@@ -122,7 +142,15 @@ export function executeStaticRecovery(scene, materializer, {
   if (!requester || !vehicle) return failure("static-recovery-target-missing");
   if (vehicle.id === vehicleSystem?.currentVehicleId) return failure("static-recovery-target-driven");
 
+  const linearSpeed = Math.max(
+    Math.abs(finite(vehicle.speed)),
+    Math.hypot(finite(vehicle.velocityX), finite(vehicle.velocityY))
+  );
+  if (!vehicle.parked && linearSpeed > 1) return failure("static-recovery-target-moving");
+
   const displacement = clamp(step, 2, 8);
+  const totalLimit = clamp(maximumTotalDisplacement, 16, 96);
+  const origin = staticRecoveryOrigin(vehicle);
   const routeAngle = finite(requester.angle);
   const preferredSide = stableHash(`${requester.tokenId}|${vehicle.id}`) % 2 === 0 ? 1 : -1;
   const sides = [preferredSide, -preferredSide];
@@ -132,6 +160,7 @@ export function executeStaticRecovery(scene, materializer, {
     const offsetY = Math.sin(routeAngle + Math.PI / 2) * displacement * side;
     const nextX = finite(vehicle.x) + offsetX;
     const nextY = finite(vehicle.y) + offsetY;
+    if (Math.hypot(nextX - origin.x, nextY - origin.y) > totalLimit) continue;
     if (!persistentVehicleSafe(scene, materializer, vehicle, nextX, nextY)) continue;
 
     vehicle.x = nextX;
@@ -140,15 +169,21 @@ export function executeStaticRecovery(scene, materializer, {
     vehicle.velocityX = 0;
     vehicle.velocityY = 0;
     vehicle.parked = true;
+    origin.lastX = nextX;
+    origin.lastY = nextY;
     vehicle.container?.setPosition?.(nextX, nextY);
     vehicleSystem?.persistVehicle?.(vehicle);
     return success("static-recovery-clearance", {
       requesterTokenId: requester.tokenId,
       vehicleId: vehicle.id,
       displacement,
+      totalDisplacement: Math.hypot(nextX - origin.x, nextY - origin.y),
+      maximumTotalDisplacement: totalLimit,
       side
     });
   }
 
-  return failure("static-recovery-space-blocked");
+  const atLimit = Math.hypot(finite(vehicle.x) - origin.x, finite(vehicle.y) - origin.y)
+    + displacement > totalLimit;
+  return failure(atLimit ? "static-recovery-offset-limit" : "static-recovery-space-blocked");
 }
