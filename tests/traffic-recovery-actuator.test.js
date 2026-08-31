@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { executeStaticRecovery } from "../phaser/src/streaming/TrafficRecoveryActuator.js";
+import {
+  executeDrivenVehiclePressure,
+  executeStaticRecovery
+} from "../phaser/src/streaming/TrafficRecoveryActuator.js";
 
 function fixture({ parked = true, speed = 0 } = {}) {
   const requester = {
@@ -21,7 +24,12 @@ function fixture({ parked = true, speed = 0 } = {}) {
     velocityX: speed,
     velocityY: 0,
     archetype: { width: 28, height: 14 },
-    container: { setPosition() {} }
+    container: {
+      setPosition(x, y) {
+        this.x = x;
+        this.y = y;
+      }
+    }
   };
   const vehicleSystem = {
     currentVehicleId: null,
@@ -32,7 +40,11 @@ function fixture({ parked = true, speed = 0 } = {}) {
   };
   const materializer = {
     pool: [requester],
-    assignments: new Map([[requester.tokenId, requester]])
+    assignments: new Map([[requester.tokenId, requester]]),
+    originalVehicleCanOccupy() { return true; },
+    blocksVehicle(_x, _y, _radius, { ignoreTokenId } = {}) {
+      return this.pool.some(slot => slot.tokenId && slot.tokenId !== ignoreTokenId);
+    }
   };
   const scene = { vehicleSystem };
   return { scene, materializer, requester, vehicle, vehicleSystem };
@@ -84,5 +96,37 @@ test("static recovery rejects a moving non-parked persistent vehicle", () => {
 
   assert.equal(result.success, false);
   assert.equal(result.reason, "static-recovery-target-moving");
+  assert.deepEqual({ x: vehicle.x, y: vehicle.y }, before);
+});
+
+test("stationary player vehicle can be nudged by an aggressive blocked traffic car", () => {
+  const { scene, materializer, requester, vehicle, vehicleSystem } = fixture({ parked: false, speed: 0 });
+  vehicleSystem.currentVehicleId = vehicle.id;
+  const beforeX = vehicle.x;
+
+  const result = executeDrivenVehiclePressure(scene, materializer, {
+    requesterTokenId: requester.tokenId,
+    vehicleId: vehicle.id,
+    step: 4
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.reason, "player-pressure-nudge");
+  assert.ok(vehicle.x > beforeX);
+  assert.equal(vehicle.container.x, vehicle.x);
+});
+
+test("aggressive pressure backs off when the player is already moving", () => {
+  const { scene, materializer, requester, vehicle, vehicleSystem } = fixture({ parked: false, speed: 24 });
+  vehicleSystem.currentVehicleId = vehicle.id;
+  const before = { x: vehicle.x, y: vehicle.y };
+
+  const result = executeDrivenVehiclePressure(scene, materializer, {
+    requesterTokenId: requester.tokenId,
+    vehicleId: vehicle.id
+  });
+
+  assert.equal(result.success, false);
+  assert.equal(result.reason, "player-pressure-target-moving");
   assert.deepEqual({ x: vehicle.x, y: vehicle.y }, before);
 });
