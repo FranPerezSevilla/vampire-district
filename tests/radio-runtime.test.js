@@ -103,23 +103,22 @@ function fakeScene() {
   return { scene, vehicleSystem, registryValues };
 }
 
-test("locked radio catalogue contains exactly the nine acquired runtime tracks", () => {
+test("locked radio catalogue contains exactly three stations with three acquired tracks each", () => {
   assert.deepEqual(RADIO_STATION_ORDER, [
     "off",
     "vice-fm",
-    "blood-city-beats",
     "night-shift",
     "pulse-94-6"
   ]);
   assert.equal(radioTrackCount(), 9);
   assert.deepEqual(Object.fromEntries(RADIO_STATIONS.map(station => [station.id, station.tracks.length])), {
-    "vice-fm": 2,
-    "blood-city-beats": 1,
+    "vice-fm": 3,
     "night-shift": 3,
     "pulse-94-6": 3
   });
   const ids = new Set(RADIO_STATIONS.flatMap(station => station.tracks.map(track => track.id)));
   assert.equal(ids.size, 9);
+  assert.ok(ids.has("abydos-trip-hop-lovers"));
   assert.ok(!ids.has("1000-handz-architexture-cobabeats"));
   assert.ok(!ids.has("kulakovka-trip-hop"));
   assert.ok(!ids.has("1000-handz-kyoto"));
@@ -142,17 +141,17 @@ test("radio cycles stations only while driving, advances playlists and remembers
   const radio = new RadioSystem(scene, { vehicleSystem, playback });
 
   assert.equal(radio.snapshot().selectedStationId, "vice-fm");
+  assert.equal(radio.snapshot().trackCount, 3);
   assert.equal(playback.calls.length, 0);
 
   vehicleSystem.driving = true;
   scene.events.emit("vehicle:entered", { vehicleId: "car-1" });
   assert.equal(playback.calls.at(-1), "daisuke-teiko-real-deal-90s-hip-hop");
 
-  radio.update(0.016, { radioStep: 1 });
-  assert.equal(radio.snapshot().selectedStationId, "blood-city-beats");
-  assert.equal(playback.calls.at(-1), "abydos-trip-hop-lovers");
   playback.finish();
-  assert.equal(playback.calls.at(-1), "abydos-trip-hop-lovers", "single-track station repeats");
+  assert.equal(playback.calls.at(-1), "catch22-coasting-west-coast-hip-hop");
+  playback.finish();
+  assert.equal(playback.calls.at(-1), "abydos-trip-hop-lovers");
 
   radio.update(0.016, { radioStep: 1 });
   assert.equal(radio.snapshot().selectedStationId, "night-shift");
