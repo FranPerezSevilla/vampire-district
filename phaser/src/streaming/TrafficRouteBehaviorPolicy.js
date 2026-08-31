@@ -1,4 +1,5 @@
 import {
+  executeDrivenVehiclePressure,
   executeStaticRecovery,
   executeTrafficRecovery
 } from "./TrafficRecoveryActuator.js";
@@ -134,6 +135,8 @@ export function createTrafficRouteBehaviorController(materializer, {
   let brakingDecisions = 0;
   let stoppedDecisions = 0;
   let playerReactiveDecisions = 0;
+  let playerPressureDecisions = 0;
+  let playerPressureActions = 0;
   let followingDecisions = 0;
   let trafficRecoveryDecisions = 0;
   let trafficRecoveryActions = 0;
@@ -143,18 +146,22 @@ export function createTrafficRouteBehaviorController(materializer, {
   function tuning() {
     const behavior = scene.trafficLocalBehaviorSystem;
     return {
-      followDistance: Math.max(24, finite(behavior?.followDistance, 78)),
-      hardStopDistance: Math.max(8, finite(behavior?.hardStopDistance, 34)),
-      persistentLookAhead: Math.max(78, finite(behavior?.playerLookAhead, 132)),
+      // Deliberately tighter than the legacy polite behavior. Route geometry remains
+      // authoritative; aggression changes only longitudinal spacing and recovery.
+      followDistance: clamp(finite(behavior?.followDistance, 78) * 0.74, 42, 62),
+      hardStopDistance: clamp(finite(behavior?.hardStopDistance, 34) * 0.78, 20, 30),
+      persistentLookAhead: Math.max(100, finite(behavior?.playerLookAhead, 132)),
       laneTolerance: Math.max(18, finite(behavior?.laneTolerance, 38)),
-      accelerationRate: Math.max(0.1, finite(behavior?.accelerationRate, 1.35)),
-      brakingRate: Math.max(1, finite(behavior?.brakingRate, 5.8)),
-      trafficRecoveryDelay: Math.max(0.8, finite(behavior?.gridlockBreakSeconds, 1.4)),
-      staticRecoveryDelay: Math.max(1.2, finite(behavior?.staticRecoveryDelay, 2.0)),
-      recoveryActionInterval: Math.max(0.12, finite(behavior?.recoveryActionInterval, 0.2)),
-      failedRecoveryBackoff: Math.max(0.4, finite(behavior?.failedRecoveryBackoff, 1.0)),
-      trafficRecoverySpeedFactor: clamp(finite(behavior?.gridlockPushSpeedFactor, 0.2), 0.1, 0.35),
-      staticRecoverySpeedFactor: clamp(finite(behavior?.staticRecoverySpeedFactor, 0.14), 0.08, 0.25)
+      accelerationRate: Math.max(2.2, finite(behavior?.accelerationRate, 1.35)),
+      brakingRate: Math.max(6.2, finite(behavior?.brakingRate, 5.8)),
+      trafficRecoveryDelay: clamp(finite(behavior?.gridlockBreakSeconds, 1.4) * 0.58, 0.55, 0.9),
+      staticRecoveryDelay: clamp(finite(behavior?.staticRecoveryDelay, 2.0) * 0.62, 0.85, 1.3),
+      playerPressureDelay: clamp(finite(behavior?.playerPressureDelay, 1.15), 0.8, 1.8),
+      maxPlayerPressureAttempts: Math.max(2, Math.min(8, Math.floor(finite(behavior?.maxPlayerPressureAttempts, 6)))),
+      recoveryActionInterval: Math.max(0.12, finite(behavior?.recoveryActionInterval, 0.18)),
+      failedRecoveryBackoff: Math.max(0.35, finite(behavior?.failedRecoveryBackoff, 0.65)),
+      trafficRecoverySpeedFactor: clamp(finite(behavior?.gridlockPushSpeedFactor, 0.25), 0.14, 0.4),
+      staticRecoverySpeedFactor: clamp(finite(behavior?.staticRecoverySpeedFactor, 0.18), 0.1, 0.3)
     };
   }
 
@@ -269,7 +276,7 @@ export function createTrafficRouteBehaviorController(materializer, {
   }
 
   function trafficDecision(agent, state, blocker, settings) {
-    if (blocker.gap > settings.hardStopDistance + 6) {
+    if (blocker.gap > settings.hardStopDistance + 4) {
       return {
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW,
         desiredSpeedFactor: clamp(
@@ -317,9 +324,10 @@ export function createTrafficRouteBehaviorController(materializer, {
     };
   }
 
-  function persistentDecision(state, blocker, settings) {
-    if (["player-vehicle", "player-on-foot"].includes(blocker.reason)) {
+  function playerDecision(state, blocker, settings) {
+    if (blocker.reason === "player-on-foot") {
       return {
+        ...blocker,
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER,
         desiredSpeedFactor: blocker.gap <= settings.hardStopDistance
           ? 0
@@ -328,9 +336,39 @@ export function createTrafficRouteBehaviorController(materializer, {
                 / Math.max(1, settings.persistentLookAhead - settings.hardStopDistance),
               0,
               1
-            ),
-        ...blocker
+            )
       };
+    }
+
+    if (blocker.gap > settings.hardStopDistance) {
+      return {
+        ...blocker,
+        fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER,
+        desiredSpeedFactor: clamp(
+          (blocker.gap - settings.hardStopDistance)
+            / Math.max(1, settings.persistentLookAhead - settings.hardStopDistance),
+          0,
+          1
+        )
+      };
+    }
+
+    const mayPressure = !state.recoveryBlocked
+      && state.recoveryCooldownSeconds <= EPSILON
+      && state.stoppedSeconds >= settings.playerPressureDelay
+      && state.recoveryAttempts < settings.maxPlayerPressureAttempts;
+
+    return {
+      ...blocker,
+      fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER,
+      desiredSpeedFactor: 0,
+      reason: mayPressure ? "player-pressure" : "player-vehicle"
+    };
+  }
+
+  function persistentDecision(state, blocker, settings) {
+    if (["player-vehicle", "player-on-foot"].includes(blocker.reason)) {
+      return playerDecision(state, blocker, settings);
     }
 
     if (blocker.gap > settings.hardStopDistance) {
@@ -467,6 +505,15 @@ export function createTrafficRouteBehaviorController(materializer, {
         vehicleId: state.blockerId
       });
       staticRecoveryActions++;
+    } else if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER
+      && state.reason === "player-pressure"
+      && state.recoveryAttempts < settings.maxPlayerPressureAttempts) {
+      state.recoveryAttempts++;
+      result = executeDrivenVehiclePressure(scene, materializer, {
+        requesterTokenId: state.tokenId,
+        vehicleId: state.blockerId
+      });
+      playerPressureActions++;
     }
 
     if (!result) return null;
@@ -523,6 +570,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       if (state.speedFactor < 0.95 && state.speedFactor > 0.03) brakingDecisions++;
       if (state.speedFactor <= 0.03) stoppedDecisions++;
       if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER) playerReactiveDecisions++;
+      if (state.reason === "player-pressure") playerPressureDecisions++;
       if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW) followingDecisions++;
       if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC) trafficRecoveryDecisions++;
       if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC) staticRecoveryDecisions++;
@@ -553,6 +601,7 @@ export function createTrafficRouteBehaviorController(materializer, {
     return {
       active: true,
       architecture: "explicit-route-behavior-fsm",
+      behaviorProfile: "aggressive-city-traffic",
       movementAuthority: false,
       geometryAuthority: "compiler-local-topology",
       lateralSteeringAuthority: false,
@@ -566,6 +615,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       brakingVehicles: vehicles.filter(item => item.speedFactor < 0.95 && item.speedFactor > 0.03).length,
       stoppedVehicles: vehicles.filter(item => item.speedFactor <= 0.03).length,
       playerReactiveVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER] || 0,
+      playerPressureVehicles: vehicles.filter(item => item.reason === "player-pressure").length,
       followingVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW] || 0,
       gridlockPushingVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC] || 0,
       gridlockYieldingVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.STOPPED_TRAFFIC] || 0,
@@ -573,6 +623,8 @@ export function createTrafficRouteBehaviorController(materializer, {
       brakingDecisions,
       stoppedDecisions,
       playerReactiveDecisions,
+      playerPressureDecisions,
+      playerPressureActions,
       followingDecisions,
       trafficRecoveryDecisions,
       trafficRecoveryActions,
