@@ -191,3 +191,66 @@ export function executeStaticRecovery(scene, materializer, {
     + displacement > totalLimit;
   return failure(atLimit ? "static-recovery-offset-limit" : "static-recovery-space-blocked");
 }
+
+export function executeDrivenVehiclePressure(scene, materializer, {
+  requesterTokenId,
+  vehicleId,
+  step = 4,
+  maximumDrivenSpeed = 10
+} = {}) {
+  const vehicleSystem = scene?.vehicleSystem;
+  const requester = materializer?.assignments?.get?.(requesterTokenId);
+  const vehicle = vehicleSystem?.vehicle?.(vehicleId)
+    || vehicleSystem?.vehicles?.find?.(candidate => candidate.id === vehicleId);
+  if (!requester || !vehicle) return failure("player-pressure-target-missing");
+  if (vehicle.id !== vehicleSystem?.currentVehicleId) return failure("player-pressure-target-not-driven");
+
+  const linearSpeed = Math.max(
+    Math.abs(finite(vehicle.speed)),
+    Math.hypot(finite(vehicle.velocityX), finite(vehicle.velocityY))
+  );
+  if (linearSpeed > Math.max(1, finite(maximumDrivenSpeed, 10))) {
+    return failure("player-pressure-target-moving");
+  }
+
+  let dx = finite(vehicle.x) - finite(requester.x);
+  let dy = finite(vehicle.y) - finite(requester.y);
+  let length = Math.hypot(dx, dy);
+  if (length <= 0.001) {
+    dx = Math.cos(finite(requester.angle));
+    dy = Math.sin(finite(requester.angle));
+    length = 1;
+  }
+
+  const displacement = clamp(step, 2, 6);
+  const nextX = finite(vehicle.x) + (dx / length) * displacement;
+  const nextY = finite(vehicle.y) + (dy / length) * displacement;
+  const originalCanOccupy = materializer?.originalVehicleCanOccupy;
+  const worldSafe = typeof originalCanOccupy === "function"
+    ? originalCanOccupy.call(vehicleSystem, vehicle, nextX, nextY, finite(vehicle.angle))
+    : vehicleSystem?.canOccupy?.(vehicle, nextX, nextY, finite(vehicle.angle));
+  if (!worldSafe) return failure("player-pressure-world-blocked");
+
+  if (materializer?.blocksVehicle?.(
+    nextX,
+    nextY,
+    vehicleRadius(vehicle.archetype),
+    { ignoreTokenId: requesterTokenId }
+  )) {
+    return failure("player-pressure-traffic-blocked");
+  }
+
+  vehicle.x = nextX;
+  vehicle.y = nextY;
+  vehicle.speed = finite(vehicle.speed) * 0.45;
+  vehicle.velocityX = finite(vehicle.velocityX) * 0.45;
+  vehicle.velocityY = finite(vehicle.velocityY) * 0.45;
+  vehicle.parked = false;
+  vehicle.container?.setPosition?.(nextX, nextY);
+
+  return success("player-pressure-nudge", {
+    requesterTokenId: requester.tokenId,
+    vehicleId: vehicle.id,
+    displacement
+  });
+}
