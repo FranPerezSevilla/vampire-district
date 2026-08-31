@@ -114,6 +114,9 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     if (!slot?.tokenId) return;
     routePresentationPoses.delete(slot.tokenId);
     delete slot.routePresentationInitialized;
+    delete slot.routeBaseX;
+    delete slot.routeBaseY;
+    delete slot.routeBaseAngle;
   }
 
   function localBehaviorRelease(slot, options = {}) {
@@ -185,6 +188,14 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     return { ...token, x: safeX, y: safeY, angle: safeAngle };
   }
 
+  function publishRouteBase(slot, token) {
+    // This is the only base pose traffic physics may compose with. slot.x/y are
+    // presentation coordinates and may already contain a physical offset.
+    slot.routeBaseX = finite(token.x);
+    slot.routeBaseY = finite(token.y);
+    slot.routeBaseAngle = finite(token.angle);
+  }
+
   function syncRouteActivePoses(seconds = 0.05) {
     if (!multiAgentRoutePolicy?.snapshot?.().enabled) return 0;
     const tokens = new Map((materializer.trafficTokens?.() || []).map(token => [token.tokenId, token]));
@@ -193,7 +204,9 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       if (!slot?.routeActive) continue;
       const token = tokens.get(tokenId);
       if (!token?.routeActive) continue;
-      materializer.updateSlot(slot, continuitySafeToken(slot, token, seconds));
+      const safeToken = continuitySafeToken(slot, token, seconds);
+      materializer.updateSlot(slot, safeToken);
+      publishRouteBase(slot, safeToken);
       synced++;
     }
     return synced;
@@ -201,8 +214,8 @@ export function installTrafficLocalAssignmentPolicy(scene) {
 
   function localBehaviorUpdate(...args) {
     // Route state advances before materialization. Re-sample every assigned route
-    // token every frame so visible pose follows route state. Physical consequence
-    // offsets are layered back on later by TrafficPhysicalConsequencesSystem.
+    // token every frame. The physical system then composes routeBase + offset
+    // exactly once; it must never infer its base from the rendered slot position.
     syncRouteActivePoses(args[0]);
     return originalUpdate.apply(this, args);
   }
@@ -235,6 +248,7 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       routePoseContinuityCorrections,
       lastRoutePoseAnomaly,
       routePoseMaximumPresentationSpeed: PRODUCTION_ROUTE_SPEED * ROUTE_POSE_SPEED_MULTIPLIER,
+      routePhysicalBaseAuthority: "explicit-route-base-pose",
       macroRouteContinuityActive: false,
       legacyEndpointJunctionInferenceActive: false,
       laneAuthority: multiAgent.enabled ? "compiler-route-lanes" : "authored-local-lanes",
@@ -308,6 +322,11 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       lifecyclePolicy?.destroy?.();
       routeMaterializationMetadataPolicy?.destroy?.();
       routePresentationPoses.clear();
+      for (const slot of materializer.pool || []) {
+        delete slot.routeBaseX;
+        delete slot.routeBaseY;
+        delete slot.routeBaseAngle;
+      }
       if (materializer.eligible === localBehaviorEligible) materializer.eligible = originalEligible;
       if (materializer.release === localBehaviorRelease) materializer.release = originalRelease;
       if (materializer.hijack === localBehaviorHijack) materializer.hijack = originalHijack;
