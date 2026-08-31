@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { stageRuntimeAudio } from "./stage-runtime-audio.js";
+import { buildRuntimeStagePlan, stageRuntimeAudio } from "./stage-runtime-audio.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const DEFAULT_SOURCE = path.join(ROOT, ".private/radio-acquisition");
@@ -23,6 +23,46 @@ function run(command, args, { cwd = ROOT } = {}) {
   }
 }
 
+function findFileRecursive(directory, targetName) {
+  const stack = [directory];
+  while (stack.length) {
+    const current = stack.pop();
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      if (entry.name.startsWith("._")) continue;
+      const fullPath = path.join(current, entry.name);
+      if (entry.isDirectory()) stack.push(fullPath);
+      else if (entry.isFile() && entry.name === targetName) return fullPath;
+    }
+  }
+  return null;
+}
+
+function normalizeSourceDirectory(sourceInput, tempRoot) {
+  let candidate = sourceInput;
+  if (fs.statSync(sourceInput).isFile()) {
+    if (path.extname(sourceInput).toLowerCase() !== ".zip") {
+      throw new Error(`Radio source file must be a ZIP: ${sourceInput}`);
+    }
+    candidate = path.join(tempRoot, "radio-source-unzipped");
+    fs.mkdirSync(candidate, { recursive: true });
+    console.log(`Extracting radio masters from ${sourceInput}...`);
+    run("unzip", ["-q", sourceInput, "-d", candidate]);
+  }
+
+  const plan = buildRuntimeStagePlan({ sourceDirectory: candidate });
+  const directReady = plan.every(item => item.sourcePath && fs.existsSync(item.sourcePath));
+  if (directReady) return candidate;
+
+  const normalized = path.join(tempRoot, "radio-source-normalized");
+  fs.mkdirSync(normalized, { recursive: true });
+  for (const item of plan) {
+    if (!item.originalFilename) continue;
+    const found = findFileRecursive(candidate, item.originalFilename);
+    if (found) fs.copyFileSync(found, path.join(normalized, item.originalFilename));
+  }
+  return normalized;
+}
+
 function ensureLinked(projectName) {
   const statePath = path.join(ROOT, ".netlify", "state.json");
   if (fs.existsSync(statePath)) return;
@@ -32,13 +72,13 @@ function ensureLinked(projectName) {
 }
 
 function main() {
-  const sourceDirectory = path.resolve(process.argv[2] || DEFAULT_SOURCE);
+  const sourceInput = path.resolve(process.argv[2] || DEFAULT_SOURCE);
   const projectName = process.env.VICEBLOOD_NETLIFY_PROJECT || DEFAULT_PROJECT;
   const alias = process.env.VICEBLOOD_NETLIFY_ALIAS || DEFAULT_ALIAS;
   const keepStage = process.env.VICEBLOOD_KEEP_DEPLOY_STAGE === "1";
 
-  if (!fs.existsSync(sourceDirectory)) {
-    throw new Error(`Radio source directory does not exist: ${sourceDirectory}`);
+  if (!fs.existsSync(sourceInput)) {
+    throw new Error(`Radio source path does not exist: ${sourceInput}`);
   }
 
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "viceblood-radio-netlify-"));
@@ -47,6 +87,8 @@ function main() {
   fs.mkdirSync(siteDirectory, { recursive: true });
 
   try {
+    const sourceDirectory = normalizeSourceDirectory(sourceInput, tempRoot);
+
     console.log("Creating clean deploy snapshot from current Git HEAD...");
     run("git", ["archive", "--format=tar", "-o", archivePath, "HEAD"]);
     run("tar", ["-xf", archivePath, "-C", siteDirectory]);
