@@ -31,7 +31,7 @@ async function forceEnterRefugeCompact(page) {
   await page.waitForFunction(() => window.NBD_RADIO.snapshot().driving === true);
 }
 
-test("in-car radio cycles from the existing wheel, stops on foot and remembers the session station", async ({ page }) => {
+test("in-car radio exposes three three-track stations, cycles from the wheel, stops on foot and remembers the session station", async ({ page }) => {
   await page.goto("/?testScenario=vehicle-core", { waitUntil: "domcontentloaded" });
   await waitForRadioRuntime(page);
   await forceEnterRefugeCompact(page);
@@ -42,6 +42,7 @@ test("in-car radio cycles from the existing wheel, stops on foot and remembers t
   }));
   expect(initial.radio.selectedStationId).toBe("vice-fm");
   expect(initial.radio.stationLabel).toBe("Vice FM");
+  expect(initial.radio.trackCount).toBe(3);
   expect(initial.radio.track?.id).toBe("daisuke-teiko-real-deal-90s-hip-hop");
   expect(initial.hud).toContain("RADIO Vice FM");
 
@@ -53,7 +54,7 @@ test("in-car radio cycles from the existing wheel, stops on foot and remembers t
   await page.waitForFunction(() => window.NBD_RADIO.snapshot().selectedStationId !== "vice-fm");
 
   const afterWheel = await page.evaluate(() => window.NBD_RADIO.snapshot());
-  expect(["off", "blood-city-beats"]).toContain(afterWheel.selectedStationId);
+  expect(["off", "night-shift"]).toContain(afterWheel.selectedStationId);
 
   await page.evaluate(() => window.NBD_RADIO.select("night-shift"));
   await page.waitForFunction(() => window.NBD_RADIO.snapshot().selectedStationId === "night-shift");
@@ -77,6 +78,11 @@ test("in-car radio cycles from the existing wheel, stops on foot and remembers t
   const reentered = await page.evaluate(() => window.NBD_RADIO.snapshot());
   expect(reentered.selectedStationId).toBe("night-shift");
   expect(reentered.track?.id).toBe("ejah-big-beat-industrial-breakbeat-1");
+
+  await page.evaluate(() => window.NBD_RADIO.select("pulse-94-6"));
+  const pulse = await page.evaluate(() => window.NBD_RADIO.snapshot());
+  expect(pulse.stationLabel).toBe("Pulse 94.6");
+  expect(pulse.trackCount).toBe(3);
 
   await page.evaluate(() => window.NBD_RADIO.select("off"));
   const off = await page.evaluate(() => window.NBD_RADIO.snapshot());
