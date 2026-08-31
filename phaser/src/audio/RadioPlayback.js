@@ -26,9 +26,13 @@ function decodeAudioData(context, encoded) {
 }
 
 export class RadioPlayback {
-  constructor(rawAudio = RawAudio, { fetchFn = globalThis?.fetch } = {}) {
+  constructor(rawAudio = RawAudio, {
+    fetchFn = globalThis?.fetch,
+    AudioCtor = globalThis?.Audio
+  } = {}) {
     this.rawAudio = rawAudio;
     this.fetchFn = fetchFn;
+    this.AudioCtor = AudioCtor;
     this.handle = null;
     this.status = "idle";
     this.trackKey = null;
@@ -43,19 +47,18 @@ export class RadioPlayback {
     const key = String(track?.id || url || "radio-track");
     const ctx = this.rawAudio?.unlock?.();
     const master = this.rawAudio?.master;
-    if (
-      !url
-      || !ctx
-      || !master
-      || typeof this.fetchFn !== "function"
-      || typeof ctx.createBufferSource !== "function"
-      || typeof ctx.createGain !== "function"
-      || typeof ctx.decodeAudioData !== "function"
-    ) {
-      this.status = "unavailable";
-      this.lastError = "Radio playback authority is unavailable.";
-      onError?.(new Error(this.lastError));
-      return false;
+    const canBufferPlayback = Boolean(
+      url
+      && ctx
+      && master
+      && typeof this.fetchFn === "function"
+      && typeof ctx.createBufferSource === "function"
+      && typeof ctx.createGain === "function"
+      && typeof ctx.decodeAudioData === "function"
+    );
+
+    if (!canBufferPlayback) {
+      return this.playMediaElementFallback(track, { volume, onEnded, onError }, ctx, master);
     }
 
     this.stop();
@@ -66,6 +69,7 @@ export class RadioPlayback {
     gain.connect(master);
 
     const handle = {
+      kind: "buffer",
       controller,
       source: null,
       gain,
@@ -129,13 +133,102 @@ export class RadioPlayback {
     }
   }
 
+  playMediaElementFallback(track, { volume, onEnded, onError }, ctx = this.rawAudio?.unlock?.(), master = this.rawAudio?.master) {
+    const url = String(track?.src || "");
+    const key = String(track?.id || url || "radio-track");
+    if (!url || !ctx || !master || !this.AudioCtor || typeof ctx.createMediaElementSource !== "function") {
+      this.status = "unavailable";
+      this.lastError = "Radio playback authority is unavailable.";
+      onError?.(new Error(this.lastError));
+      return false;
+    }
+
+    this.stop();
+    try {
+      const element = new this.AudioCtor();
+      const source = ctx.createMediaElementSource(element);
+      const gain = ctx.createGain();
+      element.preload = "auto";
+      element.loop = false;
+      element.src = url;
+      gain.gain.value = Math.max(0, Math.min(2, Number(volume) || DEFAULT_RADIO_VOLUME));
+      source.connect(gain);
+      gain.connect(master);
+
+      const handle = {
+        kind: "media-element",
+        element,
+        source,
+        gain,
+        key,
+        url,
+        released: false,
+        ended: null,
+        errored: null
+      };
+      handle.ended = () => {
+        if (this.handle !== handle || handle.released) return;
+        this.status = "ended";
+        this.lastError = null;
+        this.releaseHandle(handle, { stopSource: false });
+        onEnded?.();
+      };
+      handle.errored = () => {
+        if (this.handle !== handle || handle.released) return;
+        this.status = "unavailable";
+        this.lastError = `Radio track failed to load: ${url}`;
+        this.releaseHandle(handle);
+        onError?.(new Error(this.lastError));
+      };
+      element.addEventListener?.("ended", handle.ended);
+      element.addEventListener?.("error", handle.errored);
+
+      this.handle = handle;
+      this.trackKey = key;
+      this.trackUrl = url;
+      this.status = "loading";
+      this.lastError = null;
+
+      const attempt = element.play?.();
+      if (attempt?.then) {
+        attempt.then(() => {
+          if (this.handle === handle && !handle.released) this.status = "playing";
+        }).catch(error => {
+          if (this.handle !== handle || handle.released) return;
+          this.status = "blocked";
+          this.lastError = error?.message || String(error || "Media playback was blocked.");
+          onError?.(error);
+        });
+      } else {
+        this.status = "playing";
+      }
+      return true;
+    } catch (error) {
+      this.status = "unavailable";
+      this.lastError = error?.message || String(error || "Radio playback failed.");
+      onError?.(error);
+      return false;
+    }
+  }
+
   releaseHandle(handle, { stopSource = true } = {}) {
     if (!handle || handle.released) return;
     handle.released = true;
     try { handle.controller?.abort?.(); } catch {}
+
+    if (handle.kind === "media-element") {
+      handle.element?.removeEventListener?.("ended", handle.ended);
+      handle.element?.removeEventListener?.("error", handle.errored);
+      try { handle.element?.pause?.(); } catch {}
+      try {
+        handle.element?.removeAttribute?.("src");
+        handle.element?.load?.();
+      } catch {}
+    }
+
     if (handle.source) {
-      handle.source.onended = null;
-      if (stopSource) {
+      if (handle.kind === "buffer") handle.source.onended = null;
+      if (stopSource && handle.kind === "buffer") {
         try { handle.source.stop?.(); } catch {}
       }
       try { handle.source.disconnect?.(); } catch {}
@@ -160,6 +253,7 @@ export class RadioPlayback {
       trackKey: this.trackKey,
       trackUrl: this.trackUrl,
       active: Boolean(this.handle),
+      playbackKind: this.handle?.kind || null,
       contextState: this.rawAudio?.ctx?.state || null,
       lastError: this.lastError
     };
