@@ -2,6 +2,12 @@ import { RawAudio } from "../systems/RawAudioSystem.js";
 
 const DEFAULT_RADIO_VOLUME = 1.0;
 
+function defaultFetch() {
+  return typeof globalThis?.fetch === "function"
+    ? globalThis.fetch.bind(globalThis)
+    : null;
+}
+
 function decodeAudioData(context, encoded) {
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -27,7 +33,7 @@ function decodeAudioData(context, encoded) {
 
 export class RadioPlayback {
   constructor(rawAudio = RawAudio, {
-    fetchFn = globalThis?.fetch,
+    fetchFn = defaultFetch(),
     AudioCtor = globalThis?.Audio
   } = {}) {
     this.rawAudio = rawAudio;
