@@ -5,9 +5,9 @@ import { installTrafficLifecyclePolicy } from "./TrafficLifecyclePolicy.js";
 import { installTrafficMultiAgentRouteRuntimePolicy } from "./TrafficMultiAgentRouteRuntimePolicy.js";
 import { installTrafficRouteMaterializationMetadataPolicy } from "./TrafficRouteMaterializationPolicy.js";
 
-const CAMERA_RETENTION_MARGIN = 360;
-const VIEWPORT_GUARD_MARGIN = 120;
-const TARGET_ACTIVE_TRAFFIC = 16;
+const CAMERA_RETENTION_MARGIN = 420;
+const VIEWPORT_GUARD_MARGIN = 140;
+const TARGET_ACTIVE_TRAFFIC = 32;
 const PRODUCTION_ROUTE_SPEED = 112;
 
 function finite(value, fallback = 0) {
@@ -80,7 +80,11 @@ export function installTrafficLocalAssignmentPolicy(scene) {
 
   function visibleRetention(slot) {
     if (scene.currentLayer !== LAYERS.STREET || !slot?.tokenId) return false;
-    if (slot.container?.active === false || slot.container?.visible === false) return false;
+    // Route-active slots are protected by their camera geometry, not by the
+    // previous frame's presentation flags. Otherwise a one-frame visibility
+    // transition can disable its own retention and cause a release/reassign pop.
+    const rendered = slot.container?.active !== false && slot.container?.visible !== false;
+    if (!slot.routeActive && !rendered) return false;
     return slotIntersectsCamera(slot, cameraWorldBounds(scene), VIEWPORT_GUARD_MARGIN);
   }
 
@@ -106,6 +110,9 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       preventedVisibleDespawns++;
       lastPreventedTokenId = slot.tokenId;
       slot.visibilityRetentionReason = "viewport";
+      if (slot.routeActive && scene.currentLayer === LAYERS.STREET) {
+        slot.container?.setActive?.(true)?.setVisible?.(true);
+      }
       return false;
     }
     if (slot) slot.visibilityRetentionReason = null;
