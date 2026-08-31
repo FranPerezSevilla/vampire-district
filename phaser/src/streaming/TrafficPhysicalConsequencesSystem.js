@@ -17,14 +17,6 @@ function round(value, digits = 2) {
   return Math.round(finite(value) * factor) / factor;
 }
 
-function moveToward(value, target, amount) {
-  const current = finite(value);
-  const goal = finite(target);
-  const step = Math.max(0, finite(amount));
-  if (Math.abs(goal - current) <= step) return goal;
-  return current + Math.sign(goal - current) * step;
-}
-
 function vehicleRadius(archetype) {
   return Math.max(finite(archetype?.width, 28), finite(archetype?.height, 14)) * 0.43;
 }
@@ -67,6 +59,29 @@ export function decayTrafficOffset(offsetX, offsetY, amount) {
   return { x: x * scale, y: y * scale };
 }
 
+// Traffic physics must never derive its route base from the rendered slot position:
+// rendered x/y may already contain the previous frame's physical offset. Route-active
+// cars receive an explicit routeBaseX/Y from TrafficLocalAssignmentPolicy. The fallback
+// subtracts the already-applied offset, which also makes non-route regression fixtures safe.
+export function trafficPhysicalBasePose(slot, state = {}) {
+  if (slot?.routeActive
+    && Number.isFinite(Number(slot.routeBaseX))
+    && Number.isFinite(Number(slot.routeBaseY))) {
+    return {
+      x: finite(slot.routeBaseX),
+      y: finite(slot.routeBaseY),
+      angle: finite(slot.routeBaseAngle, slot.angle),
+      authority: "route-base"
+    };
+  }
+  return {
+    x: finite(slot?.x) - finite(state?.offsetX),
+    y: finite(slot?.y) - finite(state?.offsetY),
+    angle: finite(slot?.angle),
+    authority: "rendered-minus-offset"
+  };
+}
+
 export class TrafficPhysicalConsequencesSystem {
   constructor(scene, options = {}) {
     if (!scene?.trafficMaterializationSystem || !scene?.trafficLocalBehaviorSystem || !scene?.vehicleSystem) {
@@ -88,6 +103,7 @@ export class TrafficPhysicalConsequencesSystem {
     this.totalContacts = 0;
     this.totalPushes = 0;
     this.totalBlocks = 0;
+    this.basePoseFallbacks = 0;
     this.lastContact = null;
     this.destroyed = false;
     this.ready = false;
@@ -155,18 +171,32 @@ export class TrafficPhysicalConsequencesSystem {
         offsetX: 0,
         offsetY: 0,
         holdSeconds: 0,
-        baseX: finite(slot.x),
-        baseY: finite(slot.y),
+        baseX: 0,
+        baseY: 0,
+        baseAuthority: null,
         lastImpactSpeed: 0,
         lastVehicleId: null,
         lastReason: "none",
         pushes: 0,
         blocks: 0
       };
+      const base = trafficPhysicalBasePose(slot, state);
+      state.baseX = base.x;
+      state.baseY = base.y;
+      state.baseAuthority = base.authority;
       this.states.set(slot.tokenId, state);
     }
     state.slotIndex = slot.slotIndex;
     return state;
+  }
+
+  refreshBasePose(slot, state) {
+    const base = trafficPhysicalBasePose(slot, state);
+    state.baseX = base.x;
+    state.baseY = base.y;
+    state.baseAuthority = base.authority;
+    if (slot?.routeActive && base.authority !== "route-base") this.basePoseFallbacks++;
+    return base;
   }
 
   behaviorConstraintFor(slot) {
@@ -243,6 +273,9 @@ export class TrafficPhysicalConsequencesSystem {
     const y = finite(state.baseY) + finite(state.offsetY);
     slot.x = x;
     slot.y = y;
+    slot.physicalBaseX = state.baseX;
+    slot.physicalBaseY = state.baseY;
+    slot.physicalBaseAuthority = state.baseAuthority;
     slot.physicalOffsetX = state.offsetX;
     slot.physicalOffsetY = state.offsetY;
     slot.physicalHoldSeconds = state.holdSeconds;
@@ -254,6 +287,7 @@ export class TrafficPhysicalConsequencesSystem {
   pushContact(vehicle, candidate, contact) {
     const slot = contact.slot;
     const state = this.stateFor(slot);
+    this.refreshBasePose(slot, state);
     const impactSpeed = Math.abs(finite(candidate?.speed, vehicle?.speed));
     let dx = contact.dx;
     let dy = contact.dy;
@@ -295,6 +329,7 @@ export class TrafficPhysicalConsequencesSystem {
 
   markBlocked(vehicle, contact, impactSpeed) {
     const state = this.stateFor(contact.slot);
+    this.refreshBasePose(contact.slot, state);
     state.holdSeconds = Math.max(state.holdSeconds, this.blockedHoldSeconds);
     state.lastImpactSpeed = Math.abs(finite(impactSpeed));
     state.lastVehicleId = vehicle.id;
@@ -384,8 +419,9 @@ export class TrafficPhysicalConsequencesSystem {
     for (const slot of this.activeSlots()) {
       const state = this.stateFor(slot);
       activeIds.add(slot.tokenId);
-      state.baseX = finite(slot.x);
-      state.baseY = finite(slot.y);
+      // Critical invariant: route base and rendered position are different concepts.
+      // Never use slot.x/y directly as a new base while an offset is present.
+      this.refreshBasePose(slot, state);
       state.holdSeconds = Math.max(0, state.holdSeconds - seconds);
 
       if (state.holdSeconds <= 0 && Math.hypot(state.offsetX, state.offsetY) > 0.001) {
@@ -414,6 +450,9 @@ export class TrafficPhysicalConsequencesSystem {
       .map(state => ({
         tokenId: state.tokenId,
         slotIndex: state.slotIndex,
+        baseX: round(state.baseX),
+        baseY: round(state.baseY),
+        baseAuthority: state.baseAuthority,
         offsetX: round(state.offsetX),
         offsetY: round(state.offsetY),
         offsetDistance: round(Math.hypot(state.offsetX, state.offsetY)),
@@ -427,12 +466,14 @@ export class TrafficPhysicalConsequencesSystem {
       .sort((left, right) => left.slotIndex - right.slotIndex);
     return {
       ready: this.ready,
+      compositionAuthority: "route-base-plus-physical-offset-once",
       activeContacts: contacts.filter(item => item.holdSeconds > 0 || item.offsetDistance > 0).length,
       pushedVehicles: contacts.filter(item => item.offsetDistance > 0).length,
       blockedVehicles: contacts.filter(item => item.reason === "blocked" && item.holdSeconds > 0).length,
       totalContacts: this.totalContacts,
       totalPushes: this.totalPushes,
       totalBlocks: this.totalBlocks,
+      basePoseFallbacks: this.basePoseFallbacks,
       maxPushStep: round(this.maxPushStep),
       maxOffset: round(this.maxOffset),
       offsetRecoveryRate: round(this.offsetRecoveryRate),
@@ -449,6 +490,7 @@ export class TrafficPhysicalConsequencesSystem {
       snapshot.totalContacts,
       snapshot.totalPushes,
       snapshot.totalBlocks,
+      snapshot.basePoseFallbacks,
       snapshot.lastContact
     ]);
     if (!force && key === this.lastPublishedKey) return snapshot;
