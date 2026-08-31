@@ -1,9 +1,10 @@
 import { RawAudio } from "../systems/RawAudioSystem.js";
 
 const DEFAULT_RADIO_VOLUME = 1.0;
+const DEFAULT_MAX_DECODED_BUFFERS = 4;
 
 function defaultFetch() {
-  return typeof globalThis?.fetch === "function"
+  return typeof globalThis.fetch === "function"
     ? globalThis.fetch.bind(globalThis)
     : null;
 }
@@ -31,21 +32,169 @@ function decodeAudioData(context, encoded) {
   });
 }
 
+function uniqueTracks(stations = []) {
+  const seen = new Set();
+  const tracks = [];
+  for (const station of stations || []) {
+    for (const track of station?.tracks || []) {
+      const url = String(track?.src || "");
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+      tracks.push(track);
+    }
+  }
+  return tracks;
+}
+
 export class RadioPlayback {
   constructor(rawAudio = RawAudio, {
     fetchFn = defaultFetch(),
-    AudioCtor = globalThis?.Audio
+    AudioCtor = globalThis?.Audio,
+    maxDecodedBuffers = DEFAULT_MAX_DECODED_BUFFERS
   } = {}) {
     this.rawAudio = rawAudio;
     this.fetchFn = fetchFn;
     this.AudioCtor = AudioCtor;
+    this.maxDecodedBuffers = Math.max(1, Number(maxDecodedBuffers) || DEFAULT_MAX_DECODED_BUFFERS);
     this.handle = null;
     this.status = "idle";
     this.trackKey = null;
     this.trackUrl = null;
     this.lastError = null;
 
+    this.encodedCache = new Map();
+    this.encodedLoads = new Map();
+    this.bufferCache = new Map();
+    this.bufferLoads = new Map();
+    this.decodedLru = [];
+    this.preloadFailures = new Set();
+    this.preloadStarted = false;
+    this.preloadComplete = false;
+    this.preloadTotal = 0;
+    this.preloadPromise = null;
+
     this.rawAudio?.ensureListeners?.();
+  }
+
+  preloadCatalog(stations = []) {
+    const tracks = uniqueTracks(stations);
+    if (!tracks.length || typeof this.fetchFn !== "function") {
+      this.preloadStarted = true;
+      this.preloadComplete = true;
+      this.preloadTotal = tracks.length;
+      return Promise.resolve(this.preloadSnapshot());
+    }
+    if (this.preloadPromise) return this.preloadPromise;
+
+    this.preloadStarted = true;
+    this.preloadComplete = false;
+    this.preloadTotal = tracks.length;
+
+    // Creating the shared context here is safe even if autoplay policy keeps it
+    // suspended. decodeAudioData does not need audible playback, while RawAudio's
+    // normal pointer/keyboard bridge resumes the same context before sound starts.
+    const ctx = this.rawAudio?.unlock?.();
+    const firstTracks = (stations || [])
+      .map(station => station?.tracks?.[0])
+      .filter(Boolean);
+
+    const fetchJobs = tracks.map(track => this.ensureEncoded(track.src));
+    const decodeJobs = ctx
+      ? firstTracks.map(track => this.ensureDecoded(track.src, ctx))
+      : [];
+
+    this.preloadPromise = Promise.allSettled([...fetchJobs, ...decodeJobs])
+      .then(() => {
+        this.preloadComplete = true;
+        return this.preloadSnapshot();
+      });
+    return this.preloadPromise;
+  }
+
+  preloadSnapshot() {
+    return {
+      started: this.preloadStarted,
+      complete: this.preloadComplete,
+      total: this.preloadTotal,
+      fetched: this.encodedCache.size,
+      decoded: this.bufferCache.size,
+      failed: this.preloadFailures.size
+    };
+  }
+
+  ensureEncoded(url) {
+    const normalizedUrl = String(url || "");
+    if (!normalizedUrl) return Promise.reject(new Error("Radio track URL is missing."));
+    if (this.encodedCache.has(normalizedUrl)) return Promise.resolve(this.encodedCache.get(normalizedUrl));
+    if (this.encodedLoads.has(normalizedUrl)) return this.encodedLoads.get(normalizedUrl);
+    if (typeof this.fetchFn !== "function") return Promise.reject(new Error("Fetch is unavailable for radio preload."));
+
+    const task = Promise.resolve()
+      .then(() => this.fetchFn(normalizedUrl))
+      .then(async response => {
+        if (!response?.ok) throw new Error(`Radio track HTTP ${response?.status || "error"}: ${normalizedUrl}`);
+        const encoded = await response.arrayBuffer();
+        this.encodedCache.set(normalizedUrl, encoded);
+        this.preloadFailures.delete(normalizedUrl);
+        return encoded;
+      })
+      .catch(error => {
+        this.preloadFailures.add(normalizedUrl);
+        throw error;
+      })
+      .finally(() => this.encodedLoads.delete(normalizedUrl));
+
+    this.encodedLoads.set(normalizedUrl, task);
+    return task;
+  }
+
+  ensureDecoded(url, ctx = this.rawAudio?.ctx || this.rawAudio?.unlock?.()) {
+    const normalizedUrl = String(url || "");
+    if (!normalizedUrl || !ctx || typeof ctx.decodeAudioData !== "function") {
+      return Promise.reject(new Error("Web Audio decoding is unavailable for radio playback."));
+    }
+    if (this.bufferCache.has(normalizedUrl)) {
+      this.touchDecoded(normalizedUrl);
+      return Promise.resolve(this.bufferCache.get(normalizedUrl));
+    }
+    if (this.bufferLoads.has(normalizedUrl)) return this.bufferLoads.get(normalizedUrl);
+
+    const task = this.ensureEncoded(normalizedUrl)
+      .then(encoded => decodeAudioData(ctx, encoded.slice(0)))
+      .then(buffer => {
+        this.bufferCache.set(normalizedUrl, buffer);
+        this.touchDecoded(normalizedUrl);
+        this.trimDecodedCache();
+        return buffer;
+      })
+      .finally(() => this.bufferLoads.delete(normalizedUrl));
+
+    this.bufferLoads.set(normalizedUrl, task);
+    return task;
+  }
+
+  prepare(track) {
+    const url = String(track?.src || "");
+    const ctx = this.rawAudio?.ctx || this.rawAudio?.unlock?.();
+    if (!url || !ctx) return Promise.resolve(false);
+    return this.ensureDecoded(url, ctx)
+      .then(() => true)
+      .catch(() => false);
+  }
+
+  touchDecoded(url) {
+    const index = this.decodedLru.indexOf(url);
+    if (index >= 0) this.decodedLru.splice(index, 1);
+    this.decodedLru.push(url);
+  }
+
+  trimDecodedCache() {
+    while (this.bufferCache.size > this.maxDecodedBuffers && this.decodedLru.length) {
+      let victimIndex = this.decodedLru.findIndex(url => url !== this.handle?.url);
+      if (victimIndex < 0) victimIndex = 0;
+      const [victim] = this.decodedLru.splice(victimIndex, 1);
+      if (victim) this.bufferCache.delete(victim);
+    }
   }
 
   play(track, { volume = DEFAULT_RADIO_VOLUME, onEnded = null, onError = null } = {}) {
@@ -69,14 +218,12 @@ export class RadioPlayback {
 
     this.stop();
 
-    const controller = typeof AbortController === "function" ? new AbortController() : null;
     const gain = ctx.createGain();
     gain.gain.value = Math.max(0, Math.min(2, Number(volume) || DEFAULT_RADIO_VOLUME));
     gain.connect(master);
 
     const handle = {
       kind: "buffer",
-      controller,
       source: null,
       gain,
       key,
@@ -107,12 +254,7 @@ export class RadioPlayback {
         return;
       }
 
-      const response = await this.fetchFn(handle.url, handle.controller ? { signal: handle.controller.signal } : undefined);
-      if (!response?.ok) throw new Error(`Radio track HTTP ${response?.status || "error"}: ${handle.url}`);
-      const encoded = await response.arrayBuffer();
-      if (this.handle !== handle || handle.released) return;
-
-      const buffer = await decodeAudioData(ctx, encoded);
+      const buffer = await this.ensureDecoded(handle.url, ctx);
       if (this.handle !== handle || handle.released) return;
 
       const source = ctx.createBufferSource();
@@ -131,7 +273,6 @@ export class RadioPlayback {
       this.lastError = null;
     } catch (error) {
       if (this.handle !== handle || handle.released) return;
-      if (error?.name === "AbortError") return;
       this.status = "unavailable";
       this.lastError = error?.message || String(error || "Radio playback failed.");
       this.releaseHandle(handle);
@@ -220,7 +361,6 @@ export class RadioPlayback {
   releaseHandle(handle, { stopSource = true } = {}) {
     if (!handle || handle.released) return;
     handle.released = true;
-    try { handle.controller?.abort?.(); } catch {}
 
     if (handle.kind === "media-element") {
       handle.element?.removeEventListener?.("ended", handle.ended);
@@ -261,11 +401,15 @@ export class RadioPlayback {
       active: Boolean(this.handle),
       playbackKind: this.handle?.kind || null,
       contextState: this.rawAudio?.ctx?.state || null,
-      lastError: this.lastError
+      lastError: this.lastError,
+      preload: this.preloadSnapshot()
     };
   }
 
   destroy() {
     this.stop();
+    this.encodedCache.clear();
+    this.bufferCache.clear();
+    this.decodedLru.length = 0;
   }
 }
