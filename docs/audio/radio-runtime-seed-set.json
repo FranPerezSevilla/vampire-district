@@ -18,8 +18,8 @@
     },
     {
       "id": "abydos-trip-hop-lovers",
-      "stationId": "blood-city-beats",
-      "runtimeFilename": "blood-city-beats__abydos-music__trip-hop-lovers.mp3"
+      "stationId": "vice-fm",
+      "runtimeFilename": "vice-fm__abydos-music__trip-hop-lovers.mp3"
     },
     {
       "id": "ejah-big-beat-industrial-breakbeat-1",
@@ -53,8 +53,7 @@
     }
   ],
   "stationCounts": {
-    "vice-fm": 2,
-    "blood-city-beats": 1,
+    "vice-fm": 3,
     "night-shift": 3,
     "pulse-94-6": 3
   },
@@ -72,5 +71,5 @@
       "reason": "User chose not to pursue the missing download."
     }
   ],
-  "rule": "The nine acquired masters are sufficient for the first runtime radio implementation. The three dropped tracks are historical curated candidates and must not block runtime work."
+  "rule": "The nine acquired masters form three runtime stations with three tracks each. The three dropped tracks are historical curated candidates and must not block runtime work."
 }
