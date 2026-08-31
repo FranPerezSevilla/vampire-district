@@ -106,7 +106,7 @@ export class RadioSystem {
       onEnded: () => this.handleTrackEnded(stationId, trackId),
       onError: () => {
         if (this.destroyed || this.selectedStationId !== stationId) return;
-        this.playbackStatus = "unavailable";
+        this.playbackStatus = this.playback.snapshot?.().status || "unavailable";
         this.publish(true);
       }
     });
@@ -161,7 +161,10 @@ export class RadioSystem {
   hudLabel() {
     if (this.selectedStationId === "off") return "RADIO OFF · WHEEL station";
     const station = this.station();
-    return `RADIO ${station?.label || this.selectedStationId} · WHEEL station`;
+    const failure = this.playbackStatus === "blocked" || this.playbackStatus === "unavailable"
+      ? ` · ${this.playbackStatus.toUpperCase()}`
+      : "";
+    return `RADIO ${station?.label || this.selectedStationId}${failure} · WHEEL station`;
   }
 
   decorateVehicleHud() {
@@ -179,6 +182,7 @@ export class RadioSystem {
   snapshot() {
     const station = this.station();
     const track = this.currentTrack();
+    const playback = this.playback.snapshot?.() || {};
     return {
       driving: this.driving,
       selectedStationId: this.selectedStationId,
@@ -191,7 +195,10 @@ export class RadioSystem {
       } : null,
       trackIndex: station ? (this.trackCursors.get(station.id) || 0) : -1,
       trackCount: station?.tracks?.length || 0,
-      playbackStatus: this.playbackStatus
+      playbackStatus: this.playbackStatus,
+      playbackContextState: playback.contextState || null,
+      playbackError: playback.lastError || null,
+      playbackUrl: playback.trackUrl || null
     };
   }
 
