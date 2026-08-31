@@ -5,6 +5,8 @@ import {
 } from "./TrafficRecoveryActuator.js";
 
 const EPSILON = 0.000001;
+const GUNSHOT_PANIC_RADIUS = 260;
+const GUNSHOT_PANIC_SECONDS = 4.2;
 
 function finite(value, fallback = 0) {
   if (value === null || value === undefined || value === "") return fallback;
@@ -43,6 +45,7 @@ export function trafficGridlockInitiativeWinner(leftTokenId, rightTokenId) {
 export const TRAFFIC_ROUTE_BEHAVIOR_STATE = Object.freeze({
   CRUISE: "cruise",
   CONNECTOR: "connector",
+  PANIC: "panic",
   FOLLOW: "follow",
   YIELD_JUNCTION: "yield-junction",
   STOPPED_TRAFFIC: "stopped-traffic",
@@ -114,8 +117,8 @@ function laneGeometry(topology, agent) {
   };
 }
 
-function blockerDecision(gap, reason, blockerId, blockerKind = null) {
-  return { gap, reason, blockerId: blockerId || null, blockerKind };
+function blockerDecision(gap, reason, blockerId, blockerKind = null, details = {}) {
+  return { gap, reason, blockerId: blockerId || null, blockerKind, ...details };
 }
 
 export function createTrafficRouteBehaviorController(materializer, {
@@ -142,19 +145,23 @@ export function createTrafficRouteBehaviorController(materializer, {
   let trafficRecoveryActions = 0;
   let staticRecoveryDecisions = 0;
   let staticRecoveryActions = 0;
+  let panicDecisions = 0;
+  let gunshotThreatEvents = 0;
+  let disposed = false;
 
   function tuning() {
     const behavior = scene.trafficLocalBehaviorSystem;
     return {
-      // Deliberately tighter than the legacy polite behavior. Route geometry remains
-      // authoritative; aggression changes only longitudinal spacing and recovery.
       followDistance: clamp(finite(behavior?.followDistance, 78) * 0.74, 42, 62),
       hardStopDistance: clamp(finite(behavior?.hardStopDistance, 34) * 0.78, 20, 30),
       persistentLookAhead: Math.max(100, finite(behavior?.playerLookAhead, 132)),
       laneTolerance: Math.max(18, finite(behavior?.laneTolerance, 38)),
+      pedestrianLaneTolerance: clamp(finite(behavior?.pedestrianLaneTolerance, 18), 14, 24),
       accelerationRate: Math.max(2.2, finite(behavior?.accelerationRate, 1.35)),
+      panicAccelerationRate: Math.max(3.4, finite(behavior?.panicAccelerationRate, 3.8)),
       brakingRate: Math.max(6.2, finite(behavior?.brakingRate, 5.8)),
       trafficRecoveryDelay: clamp(finite(behavior?.gridlockBreakSeconds, 1.4) * 0.58, 0.55, 0.9),
+      panicRecoveryDelay: clamp(finite(behavior?.panicRecoveryDelay, 0.3), 0.18, 0.45),
       staticRecoveryDelay: clamp(finite(behavior?.staticRecoveryDelay, 2.0) * 0.62, 0.85, 1.3),
       playerPressureDelay: clamp(finite(behavior?.playerPressureDelay, 1.15), 0.8, 1.8),
       maxPlayerPressureAttempts: Math.max(2, Math.min(8, Math.floor(finite(behavior?.maxPlayerPressureAttempts, 6)))),
@@ -184,6 +191,9 @@ export function createTrafficRouteBehaviorController(materializer, {
         recoverySuccesses: 0,
         recoveryBlocked: false,
         recoveryCooldownSeconds: 0,
+        panicSeconds: 0,
+        panicSourceX: null,
+        panicSourceY: null,
         lastRecoveryReason: null
       };
       states.set(agent.tokenId, state);
@@ -191,15 +201,33 @@ export function createTrafficRouteBehaviorController(materializer, {
     return state;
   }
 
+  function onWeaponFired() {
+    if (disposed || scene.currentLayer == null) return;
+    const sourceX = finite(scene.player?.x);
+    const sourceY = finite(scene.player?.y);
+    let threatened = 0;
+    for (const [tokenId, slot] of materializer.assignments) {
+      if (!slot?.routeActive) continue;
+      if (Math.hypot(finite(slot.x) - sourceX, finite(slot.y) - sourceY) > GUNSHOT_PANIC_RADIUS) continue;
+      const state = states.get(tokenId) || stateFor({ tokenId });
+      const jitter = (stableHash(tokenId) % 9) * 0.08;
+      state.panicSeconds = Math.max(state.panicSeconds, GUNSHOT_PANIC_SECONDS + jitter);
+      state.panicSourceX = sourceX;
+      state.panicSourceY = sourceY;
+      threatened++;
+    }
+    if (threatened) gunshotThreatEvents++;
+  }
+
+  scene.events?.on?.("weapon:fired", onWeaponFired);
+
   function nearestLead(agent, lane, agentsById, settings) {
     let best = null;
     const ownProgress = clamp(agent.stageProgress, 0, 1);
     const ownSlot = materializer.assignments.get(agent.tokenId);
     const ownRadius = Math.max(1, finite(ownSlot?.radius, 14));
     for (const other of agentsById.values()) {
-      if (other.tokenId === agent.tokenId
-        || other.stage !== "lane"
-        || other.currentLaneId !== agent.currentLaneId) continue;
+      if (other.tokenId === agent.tokenId || other.stage !== "lane" || other.currentLaneId !== agent.currentLaneId) continue;
       const delta = clamp(other.stageProgress, 0, 1) - ownProgress;
       if (delta <= EPSILON) continue;
       const otherSlot = materializer.assignments.get(other.tokenId);
@@ -245,9 +273,17 @@ export function createTrafficRouteBehaviorController(materializer, {
     }
 
     if (!vehicleSystem?.isDriving?.() && scene.player) {
-      const projected = projectedBlocker(agent, lane, scene.player.x, scene.player.y, 22, settings);
-      if (projected && projected.gap <= settings.persistentLookAhead) {
-        const candidate = blockerDecision(projected.gap, "player-on-foot", "player", "player");
+      const projected = projectedBlocker(agent, lane, scene.player.x, scene.player.y, 8, settings);
+      if (projected
+        && projected.gap <= settings.persistentLookAhead
+        && projected.projection.distance <= settings.pedestrianLaneTolerance) {
+        const candidate = blockerDecision(
+          projected.gap,
+          "player-on-foot",
+          "player",
+          "player",
+          { lateralDistance: projected.projection.distance }
+        );
         if (!best || candidate.gap < best.gap) best = candidate;
       }
     }
@@ -280,8 +316,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       return {
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW,
         desiredSpeedFactor: clamp(
-          (blocker.gap - settings.hardStopDistance)
-            / Math.max(1, settings.followDistance - settings.hardStopDistance),
+          (blocker.gap - settings.hardStopDistance) / Math.max(1, settings.followDistance - settings.hardStopDistance),
           0,
           1
         ),
@@ -290,29 +325,20 @@ export function createTrafficRouteBehaviorController(materializer, {
     }
 
     const blockerState = states.get(blocker.blockerId);
+    const recoveryDelay = state.panicSeconds > EPSILON ? settings.panicRecoveryDelay : settings.trafficRecoveryDelay;
     const canAttemptRecovery = !state.recoveryBlocked
       && state.recoveryCooldownSeconds <= EPSILON
-      && state.stoppedSeconds >= settings.trafficRecoveryDelay
-      && blockerState?.stoppedSeconds >= settings.trafficRecoveryDelay
+      && state.stoppedSeconds >= recoveryDelay
+      && blockerState?.stoppedSeconds >= recoveryDelay
       && trafficGridlockInitiativeWinner(agent.tokenId, blocker.blockerId) === agent.tokenId;
 
-    if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC
-      && state.blockerId === blocker.blockerId
-      && !state.recoveryBlocked) {
+    if ((state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC && state.blockerId === blocker.blockerId && !state.recoveryBlocked)
+      || canAttemptRecovery) {
       return {
         ...blocker,
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC,
         desiredSpeedFactor: settings.trafficRecoverySpeedFactor,
-        reason: "gridlock-push"
-      };
-    }
-
-    if (canAttemptRecovery) {
-      return {
-        ...blocker,
-        fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC,
-        desiredSpeedFactor: settings.trafficRecoverySpeedFactor,
-        reason: "gridlock-push"
+        reason: state.panicSeconds > EPSILON ? "panic-gridlock-push" : "gridlock-push"
       };
     }
 
@@ -331,12 +357,7 @@ export function createTrafficRouteBehaviorController(materializer, {
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER,
         desiredSpeedFactor: blocker.gap <= settings.hardStopDistance
           ? 0
-          : clamp(
-              (blocker.gap - settings.hardStopDistance)
-                / Math.max(1, settings.persistentLookAhead - settings.hardStopDistance),
-              0,
-              1
-            )
+          : clamp((blocker.gap - settings.hardStopDistance) / Math.max(1, settings.persistentLookAhead - settings.hardStopDistance), 0, 1)
       };
     }
 
@@ -344,12 +365,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       return {
         ...blocker,
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER,
-        desiredSpeedFactor: clamp(
-          (blocker.gap - settings.hardStopDistance)
-            / Math.max(1, settings.persistentLookAhead - settings.hardStopDistance),
-          0,
-          1
-        )
+        desiredSpeedFactor: clamp((blocker.gap - settings.hardStopDistance) / Math.max(1, settings.persistentLookAhead - settings.hardStopDistance), 0, 1)
       };
     }
 
@@ -367,19 +383,12 @@ export function createTrafficRouteBehaviorController(materializer, {
   }
 
   function persistentDecision(state, blocker, settings) {
-    if (["player-vehicle", "player-on-foot"].includes(blocker.reason)) {
-      return playerDecision(state, blocker, settings);
-    }
+    if (["player-vehicle", "player-on-foot"].includes(blocker.reason)) return playerDecision(state, blocker, settings);
 
     if (blocker.gap > settings.hardStopDistance) {
       return {
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.STOPPED_STATIC,
-        desiredSpeedFactor: clamp(
-          (blocker.gap - settings.hardStopDistance)
-            / Math.max(1, settings.persistentLookAhead - settings.hardStopDistance),
-          0,
-          1
-        ),
+        desiredSpeedFactor: clamp((blocker.gap - settings.hardStopDistance) / Math.max(1, settings.persistentLookAhead - settings.hardStopDistance), 0, 1),
         ...blocker
       };
     }
@@ -388,9 +397,8 @@ export function createTrafficRouteBehaviorController(materializer, {
       && state.recoveryCooldownSeconds <= EPSILON
       && state.stoppedSeconds >= settings.staticRecoveryDelay;
 
-    if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC
-      && state.blockerId === blocker.blockerId
-      && !state.recoveryBlocked) {
+    if ((state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC && state.blockerId === blocker.blockerId && !state.recoveryBlocked)
+      || canAttemptRecovery) {
       return {
         ...blocker,
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC,
@@ -399,28 +407,15 @@ export function createTrafficRouteBehaviorController(materializer, {
       };
     }
 
-    if (canAttemptRecovery) {
-      return {
-        ...blocker,
-        fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC,
-        desiredSpeedFactor: settings.staticRecoverySpeedFactor,
-        reason: "parked-vehicle-recovery"
-      };
-    }
-
-    return {
-      fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.STOPPED_STATIC,
-      desiredSpeedFactor: 0,
-      ...blocker
-    };
+    return { fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.STOPPED_STATIC, desiredSpeedFactor: 0, ...blocker };
   }
 
   function decisionFor(agent, state, agentsById, blockedById, settings) {
     if (agent.stage === "connector") {
       return {
-        fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.CONNECTOR,
+        fsmState: state.panicSeconds > EPSILON ? TRAFFIC_ROUTE_BEHAVIOR_STATE.PANIC : TRAFFIC_ROUTE_BEHAVIOR_STATE.CONNECTOR,
         desiredSpeedFactor: 1,
-        reason: "route-connector-clear",
+        reason: state.panicSeconds > EPSILON ? "gunshot-panic" : "route-connector-clear",
         gap: null,
         blockerId: null,
         blockerKind: null
@@ -458,10 +453,11 @@ export function createTrafficRouteBehaviorController(materializer, {
     const blocker = blockers[0] || null;
 
     if (!blocker) {
+      const panicking = state.panicSeconds > EPSILON;
       return {
-        fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.CRUISE,
+        fsmState: panicking ? TRAFFIC_ROUTE_BEHAVIOR_STATE.PANIC : TRAFFIC_ROUTE_BEHAVIOR_STATE.CRUISE,
         desiredSpeedFactor: 1,
-        reason: "route-cruise",
+        reason: panicking ? "gunshot-panic" : "route-cruise",
         gap: null,
         blockerId: null,
         blockerKind: null
@@ -484,35 +480,26 @@ export function createTrafficRouteBehaviorController(materializer, {
     slot.behaviorLag = 0;
     slot.behaviorBlockerId = state.blockerId;
     slot.behaviorBlockerKind = state.blockerKind;
+    slot.trafficThreatSeconds = state.panicSeconds;
     slot.engineSpeed = Math.max(0, finite(baseSpeed, 112) * slot.speedFactor);
   }
 
   function executeRecovery(state, settings) {
     if (state.recoveryCooldownSeconds > EPSILON || state.recoveryBlocked) return null;
-
     let result = null;
     if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC) {
       state.recoveryAttempts++;
-      result = executeTrafficRecovery(scene, materializer, {
-        pusherTokenId: state.tokenId,
-        targetTokenId: state.blockerId
-      });
+      result = executeTrafficRecovery(scene, materializer, { pusherTokenId: state.tokenId, targetTokenId: state.blockerId });
       trafficRecoveryActions++;
     } else if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC) {
       state.recoveryAttempts++;
-      result = executeStaticRecovery(scene, materializer, {
-        requesterTokenId: state.tokenId,
-        vehicleId: state.blockerId
-      });
+      result = executeStaticRecovery(scene, materializer, { requesterTokenId: state.tokenId, vehicleId: state.blockerId });
       staticRecoveryActions++;
     } else if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER
       && state.reason === "player-pressure"
       && state.recoveryAttempts < settings.maxPlayerPressureAttempts) {
       state.recoveryAttempts++;
-      result = executeDrivenVehiclePressure(scene, materializer, {
-        requesterTokenId: state.tokenId,
-        vehicleId: state.blockerId
-      });
+      result = executeDrivenVehiclePressure(scene, materializer, { requesterTokenId: state.tokenId, vehicleId: state.blockerId });
       playerPressureActions++;
     }
 
@@ -530,7 +517,7 @@ export function createTrafficRouteBehaviorController(materializer, {
   }
 
   function update(runtime, seconds = 0.05) {
-    const duration = Math.max(0, finite(seconds, 0.05));
+    const duration = clamp(seconds, 0, 0.05);
     const settings = tuning();
     const agents = runtime?.agents?.() || [];
     const agentsById = new Map(agents.map(agent => [agent.tokenId, agent]));
@@ -541,20 +528,18 @@ export function createTrafficRouteBehaviorController(materializer, {
       liveIds.add(agent.tokenId);
       const state = stateFor(agent);
       state.recoveryCooldownSeconds = Math.max(0, finite(state.recoveryCooldownSeconds) - duration);
+      state.panicSeconds = Math.max(0, finite(state.panicSeconds) - duration);
       if (state.recoveryBlocked && state.recoveryCooldownSeconds <= EPSILON) state.recoveryBlocked = false;
 
       const decision = decisionFor(agent, state, agentsById, blockedById, settings);
       transition(state, decision, duration);
-
       const rate = decision.desiredSpeedFactor < state.speedFactor
         ? settings.brakingRate
-        : settings.accelerationRate;
+        : state.panicSeconds > EPSILON
+          ? settings.panicAccelerationRate
+          : settings.accelerationRate;
       state.desiredSpeedFactor = clamp(decision.desiredSpeedFactor, 0, 1);
-      state.speedFactor = clamp(
-        moveToward(state.speedFactor, state.desiredSpeedFactor, rate * duration),
-        0,
-        1
-      );
+      state.speedFactor = clamp(moveToward(state.speedFactor, state.desiredSpeedFactor, rate * duration), 0, 1);
       if (state.desiredSpeedFactor < 1) state.speedFactor = Math.min(state.speedFactor, 0.95);
       state.reason = decision.reason;
       state.gap = decision.gap;
@@ -562,8 +547,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       state.blockerKind = decision.blockerKind || null;
       state.stoppedSeconds = state.speedFactor <= 0.03
         ? state.stoppedSeconds + duration
-        : [TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC, TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC]
-            .includes(state.fsmState)
+        : [TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC, TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC].includes(state.fsmState)
           ? state.stoppedSeconds
           : 0;
 
@@ -572,6 +556,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER) playerReactiveDecisions++;
       if (state.reason === "player-pressure") playerPressureDecisions++;
       if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW) followingDecisions++;
+      if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.PANIC || state.reason === "panic-gridlock-push") panicDecisions++;
       if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC) trafficRecoveryDecisions++;
       if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC) staticRecoveryDecisions++;
 
@@ -591,9 +576,7 @@ export function createTrafficRouteBehaviorController(materializer, {
   }
 
   function snapshot() {
-    const vehicles = [...states.values()]
-      .map(state => ({ ...state }))
-      .sort((left, right) => left.tokenId.localeCompare(right.tokenId));
+    const vehicles = [...states.values()].map(state => ({ ...state })).sort((left, right) => left.tokenId.localeCompare(right.tokenId));
     const stateCounts = {};
     for (const state of Object.values(TRAFFIC_ROUTE_BEHAVIOR_STATE)) stateCounts[state] = 0;
     for (const vehicle of vehicles) stateCounts[vehicle.fsmState] = (stateCounts[vehicle.fsmState] || 0) + 1;
@@ -616,6 +599,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       stoppedVehicles: vehicles.filter(item => item.speedFactor <= 0.03).length,
       playerReactiveVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER] || 0,
       playerPressureVehicles: vehicles.filter(item => item.reason === "player-pressure").length,
+      panickingVehicles: vehicles.filter(item => item.panicSeconds > EPSILON).length,
       followingVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW] || 0,
       gridlockPushingVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC] || 0,
       gridlockYieldingVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.STOPPED_TRAFFIC] || 0,
@@ -625,6 +609,8 @@ export function createTrafficRouteBehaviorController(materializer, {
       playerReactiveDecisions,
       playerPressureDecisions,
       playerPressureActions,
+      panicDecisions,
+      gunshotThreatEvents,
       followingDecisions,
       trafficRecoveryDecisions,
       trafficRecoveryActions,
@@ -635,6 +621,10 @@ export function createTrafficRouteBehaviorController(materializer, {
   }
 
   function clear() {
+    if (!disposed) {
+      scene.events?.off?.("weapon:fired", onWeaponFired);
+      disposed = true;
+    }
     states.clear();
   }
 
