@@ -1,4 +1,5 @@
 import {
+  RADIO_STATIONS,
   RADIO_STATION_ORDER,
   radioStationById
 } from "../audio/RadioCatalog.js";
@@ -27,6 +28,12 @@ export class RadioSystem {
     this.playbackStatus = "idle";
     this.destroyed = false;
     this.lastPublishedKey = "";
+
+    // Download all nine compressed masters immediately and decode the first
+    // track of each station in parallel. RadioPlayback keeps the decoded cache
+    // bounded, so startup responsiveness improves without retaining the entire
+    // ~30-minute catalogue as PCM in memory.
+    this.preloadPromise = this.playback.preloadCatalog?.(RADIO_STATIONS) || null;
 
     this.onVehicleEntered = () => {
       if (this.destroyed) return;
@@ -66,6 +73,12 @@ export class RadioSystem {
     if (!station?.tracks?.length) return null;
     const cursor = this.trackCursors.get(station.id) || 0;
     return station.tracks[cursor % station.tracks.length] || station.tracks[0] || null;
+  }
+
+  nextTrack(station = this.station()) {
+    if (!station?.tracks?.length) return null;
+    const cursor = this.trackCursors.get(station.id) || 0;
+    return station.tracks[(cursor + 1) % station.tracks.length] || null;
   }
 
   cycleStation(step) {
@@ -111,7 +124,11 @@ export class RadioSystem {
       }
     });
     if (!started) this.playbackStatus = "unavailable";
-    else this.playbackStatus = this.playback.snapshot?.().status || "loading";
+    else {
+      this.playbackStatus = this.playback.snapshot?.().status || "loading";
+      const upcoming = this.nextTrack(station);
+      if (upcoming && upcoming.id !== track.id) this.playback.prepare?.(upcoming);
+    }
     return started;
   }
 
@@ -196,9 +213,11 @@ export class RadioSystem {
       trackIndex: station ? (this.trackCursors.get(station.id) || 0) : -1,
       trackCount: station?.tracks?.length || 0,
       playbackStatus: this.playbackStatus,
+      playbackKind: playback.playbackKind || null,
       playbackContextState: playback.contextState || null,
       playbackError: playback.lastError || null,
-      playbackUrl: playback.trackUrl || null
+      playbackUrl: playback.trackUrl || null,
+      preload: playback.preload || null
     };
   }
 
