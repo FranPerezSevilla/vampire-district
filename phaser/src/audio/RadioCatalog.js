@@ -27,14 +27,12 @@ export const RADIO_STATIONS = Object.freeze([
       "Coasting West Coast Hip Hop",
       "catch22music",
       "vice-fm__catch22music__coasting-west-coast-hip-hop.mp3"
-    )
-  ]),
-  radioStation("blood-city-beats", "Blood City Beats", [
+    ),
     radioTrack(
       "abydos-trip-hop-lovers",
       "Trip Hop Lovers",
       "Abydos_Music",
-      "blood-city-beats__abydos-music__trip-hop-lovers.mp3"
+      "vice-fm__abydos-music__trip-hop-lovers.mp3"
     )
   ]),
   radioStation("night-shift", "Night Shift", [
