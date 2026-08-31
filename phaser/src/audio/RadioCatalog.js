@@ -1,4 +1,6 @@
-const RADIO_ASSET_BASE = "phaser/assets/audio/radio-private";
+function runtimeRadioAssetUrl(filename) {
+  return new URL(`../../assets/audio/radio-private/${filename}`, import.meta.url).href;
+}
 
 function radioTrack(id, title, creator, filename) {
   return Object.freeze({
@@ -6,7 +8,7 @@ function radioTrack(id, title, creator, filename) {
     title,
     creator,
     filename,
-    src: `${RADIO_ASSET_BASE}/${filename}`
+    src: runtimeRadioAssetUrl(filename)
   });
 }
 
