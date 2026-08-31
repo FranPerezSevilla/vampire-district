@@ -4,7 +4,7 @@ import fs from "node:fs";
 
 const seed = JSON.parse(fs.readFileSync("docs/audio/radio-runtime-seed-set.json", "utf8"));
 
-test("runtime radio seed locks nine acquired tracks and drops the three unacquired candidates", () => {
+test("runtime radio seed locks nine acquired tracks as three stations and drops the three unacquired candidates", () => {
   assert.equal(seed.schemaVersion, 1);
   assert.equal(seed.decision, "ship-with-nine-acquired-masters");
   assert.equal(seed.tracks.length, 9);
@@ -17,8 +17,7 @@ test("runtime radio seed locks nine acquired tracks and drops the three unacquir
   }
 
   assert.deepEqual(seed.stationCounts, {
-    "vice-fm": 2,
-    "blood-city-beats": 1,
+    "vice-fm": 3,
     "night-shift": 3,
     "pulse-94-6": 3
   });
