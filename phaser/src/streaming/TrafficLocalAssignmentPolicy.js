@@ -9,6 +9,8 @@ const CAMERA_RETENTION_MARGIN = 420;
 const VIEWPORT_GUARD_MARGIN = 140;
 const TARGET_ACTIVE_TRAFFIC = 32;
 const PRODUCTION_ROUTE_SPEED = 112;
+const ROUTE_POSE_SPEED_MULTIPLIER = 1.7;
+const ROUTE_POSE_SLACK = 2.5;
 
 function finite(value, fallback = 0) {
   const number = Number(value);
@@ -70,9 +72,13 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   const originalHijack = materializer.hijack;
   const originalSnapshot = materializer.snapshot;
   const originalUpdate = materializer.update;
+  const routePresentationPoses = new Map();
   let releaseBypassDepth = 0;
   let preventedVisibleDespawns = 0;
   let lastPreventedTokenId = null;
+  let routePoseContinuityAnomalies = 0;
+  let routePoseContinuityCorrections = 0;
+  let lastRoutePoseAnomaly = null;
   let routeMaterializationMetadataPolicy = null;
   let controlledRoutePolicy = null;
   let multiAgentRoutePolicy = null;
@@ -104,6 +110,12 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     return this.pointReady(localPoint, true);
   }
 
+  function forgetPresentationPose(slot) {
+    if (!slot?.tokenId) return;
+    routePresentationPoses.delete(slot.tokenId);
+    delete slot.routePresentationInitialized;
+  }
+
   function localBehaviorRelease(slot, options = {}) {
     const forced = Boolean(options?.force || releaseBypassDepth > 0);
     if (!forced && visibleRetention(slot)) {
@@ -116,6 +128,7 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       return false;
     }
     if (slot) slot.visibilityRetentionReason = null;
+    forgetPresentationPose(slot);
     return originalRelease.call(this, slot, options);
   }
 
@@ -130,7 +143,49 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     }
   }
 
-  function syncRouteActivePoses() {
+  function continuitySafeToken(slot, token, seconds) {
+    const dt = Math.min(0.05, Math.max(0.001, finite(seconds, 0.05)));
+    const previous = routePresentationPoses.get(token.tokenId);
+    if (!slot.routePresentationInitialized || !previous) {
+      const initial = { x: finite(token.x), y: finite(token.y), angle: finite(token.angle) };
+      routePresentationPoses.set(token.tokenId, initial);
+      slot.routePresentationInitialized = true;
+      return token;
+    }
+
+    const targetX = finite(token.x);
+    const targetY = finite(token.y);
+    const dx = targetX - previous.x;
+    const dy = targetY - previous.y;
+    const distance = Math.hypot(dx, dy);
+    const maximumStep = PRODUCTION_ROUTE_SPEED * dt * ROUTE_POSE_SPEED_MULTIPLIER + ROUTE_POSE_SLACK;
+    if (distance <= maximumStep || distance <= 0.0001) {
+      routePresentationPoses.set(token.tokenId, { x: targetX, y: targetY, angle: finite(token.angle) });
+      return token;
+    }
+
+    // A visible car must never appear to move faster than the route runtime can
+    // physically justify. Keep compiler route state authoritative, but bound the
+    // presentation catch-up and expose the anomaly so the underlying discontinuity
+    // remains diagnosable instead of showing up as a "Flash" car on screen.
+    const ratio = maximumStep / distance;
+    const safeX = previous.x + dx * ratio;
+    const safeY = previous.y + dy * ratio;
+    const safeAngle = Math.atan2(dy, dx);
+    routePoseContinuityAnomalies++;
+    routePoseContinuityCorrections++;
+    lastRoutePoseAnomaly = {
+      tokenId: token.tokenId,
+      requestedDistance: Math.round(distance * 100) / 100,
+      allowedDistance: Math.round(maximumStep * 100) / 100,
+      stage: token.routeStage || token.stage || null,
+      edgeId: token.edgeId || null
+    };
+    routePresentationPoses.set(token.tokenId, { x: safeX, y: safeY, angle: safeAngle });
+    return { ...token, x: safeX, y: safeY, angle: safeAngle };
+  }
+
+  function syncRouteActivePoses(seconds = 0.05) {
     if (!multiAgentRoutePolicy?.snapshot?.().enabled) return 0;
     const tokens = new Map((materializer.trafficTokens?.() || []).map(token => [token.tokenId, token]));
     let synced = 0;
@@ -138,7 +193,7 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       if (!slot?.routeActive) continue;
       const token = tokens.get(tokenId);
       if (!token?.routeActive) continue;
-      materializer.updateSlot(slot, token);
+      materializer.updateSlot(slot, continuitySafeToken(slot, token, seconds));
       synced++;
     }
     return synced;
@@ -148,7 +203,7 @@ export function installTrafficLocalAssignmentPolicy(scene) {
     // Route state advances before materialization. Re-sample every assigned route
     // token every frame so visible pose follows route state. Physical consequence
     // offsets are layered back on later by TrafficPhysicalConsequencesSystem.
-    syncRouteActivePoses();
+    syncRouteActivePoses(args[0]);
     return originalUpdate.apply(this, args);
   }
 
@@ -176,6 +231,10 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       retainedVisibleCount: (this.pool || []).filter(visibleRetention).length,
       preventedVisibleDespawns,
       lastPreventedTokenId,
+      routePoseContinuityAnomalies,
+      routePoseContinuityCorrections,
+      lastRoutePoseAnomaly,
+      routePoseMaximumPresentationSpeed: PRODUCTION_ROUTE_SPEED * ROUTE_POSE_SPEED_MULTIPLIER,
       macroRouteContinuityActive: false,
       legacyEndpointJunctionInferenceActive: false,
       laneAuthority: multiAgent.enabled ? "compiler-route-lanes" : "authored-local-lanes",
@@ -248,6 +307,7 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       controlledRoutePolicy?.destroy?.();
       lifecyclePolicy?.destroy?.();
       routeMaterializationMetadataPolicy?.destroy?.();
+      routePresentationPoses.clear();
       if (materializer.eligible === localBehaviorEligible) materializer.eligible = originalEligible;
       if (materializer.release === localBehaviorRelease) materializer.release = originalRelease;
       if (materializer.hijack === localBehaviorHijack) materializer.hijack = originalHijack;
