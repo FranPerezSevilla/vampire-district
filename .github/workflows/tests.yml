@@ -39,7 +39,8 @@ jobs:
         run: |
           set -o pipefail
           npm run check:affected:plan -- --base=origin/${{ github.base_ref }} 2>&1 | tee affected-test-plan.log
-          if grep -Fq "npx --no-install playwright test" affected-test-plan.log; then
+          if grep -Fq "npx --no-install playwright test" affected-test-plan.log \
+            || grep -Fq -- "- npm run test:rc" affected-test-plan.log; then
             echo "browser=true" >> "$GITHUB_OUTPUT"
           else
             echo "browser=false" >> "$GITHUB_OUTPUT"

@@ -16,5 +16,15 @@ node_modules/
 playwright-report/
 test-results/
 
+# Netlify local project link state
+.netlify/
+
 # Offline city compiler output
 .city-compiler/
+
+# Licensed radio acquisition masters/evidence (local only)
+**/radio-acquisition/
+**/radio-acquisition-report.json
+
+# Licence-safe runtime staging: included in private/distributable builds, never public Git
+phaser/assets/audio/radio-private/

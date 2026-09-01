@@ -3,6 +3,9 @@ export function enrichVehicleInputFrame(frame, handbrakeHeld = false) {
   const vehicleActionPressed = Boolean(frame.menuConfirmPressed && !frame.interactPressed);
   frame.vehicleActionPressed = vehicleActionPressed;
   frame.handbrakeHeld = Boolean(handbrakeHeld);
+  // Reuse the existing wheel authority. On foot, weaponStep remains unchanged;
+  // the vehicle filter clears weaponStep while this parallel edge becomes radio input.
+  frame.radioStep = Math.sign(Number(frame.weaponStep) || 0);
   if (vehicleActionPressed) frame.traversePressed = true;
   return frame;
 }
