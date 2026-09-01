@@ -29,6 +29,8 @@ function topologyFixture() {
       "lane-a": {
         id: "lane-a",
         length: 300,
+        roadWidth: 52,
+        laneOffset: 10.4,
         points: [{ x: 0, y: 0 }, { x: 300, y: 0 }]
       }
     }
@@ -45,6 +47,7 @@ function routeSlot(tokenId, x = 40, y = 0) {
     angle: 0,
     speedFactor: 1,
     desiredSpeedFactor: 1,
+    archetype: { width: 28, height: 14 },
     container: { active: true }
   };
 }
@@ -88,15 +91,30 @@ function sceneFixture(slot, player) {
   };
 }
 
+function materializerFixture(scene, slot) {
+  return {
+    scene,
+    pool: [slot],
+    assignments: new Map([[slot.tokenId, slot]]),
+    trafficTokens() {
+      return [{
+        tokenId: slot.tokenId,
+        routeActive: true,
+        x: slot.x,
+        y: slot.y,
+        angle: slot.angle,
+        routeStage: "lane",
+        routeLaneId: "lane-a"
+      }];
+    }
+  };
+}
+
 test("player standing on the sidewalk does not stop a route-active civilian car", () => {
   const topology = topologyFixture();
   const slot = routeSlot("traffic-a");
   const scene = sceneFixture(slot, { x: 90, y: 36 });
-  const materializer = {
-    scene,
-    pool: [slot],
-    assignments: new Map([[slot.tokenId, slot]])
-  };
+  const materializer = materializerFixture(scene, slot);
   const controller = createTrafficRouteBehaviorController(materializer, { topology, baseSpeed: 112 });
 
   controller.update(runtimeFor(slot.tokenId), 0.05);
@@ -113,11 +131,7 @@ test("player actually occupying the lane still causes a safe stop reaction", () 
   const topology = topologyFixture();
   const slot = routeSlot("traffic-a");
   const scene = sceneFixture(slot, { x: 90, y: 6 });
-  const materializer = {
-    scene,
-    pool: [slot],
-    assignments: new Map([[slot.tokenId, slot]])
-  };
+  const materializer = materializerFixture(scene, slot);
   const controller = createTrafficRouteBehaviorController(materializer, { topology, baseSpeed: 112 });
 
   for (let index = 0; index < 8; index++) controller.update(runtimeFor(slot.tokenId), 0.05);
@@ -134,11 +148,7 @@ test("a nearby gunshot puts civilian traffic into panic without exceeding route 
   const topology = topologyFixture();
   const slot = routeSlot("traffic-a", 80, 0);
   const scene = sceneFixture(slot, { x: 76, y: 12 });
-  const materializer = {
-    scene,
-    pool: [slot],
-    assignments: new Map([[slot.tokenId, slot]])
-  };
+  const materializer = materializerFixture(scene, slot);
   const controller = createTrafficRouteBehaviorController(materializer, { topology, baseSpeed: 112 });
   const runtime = runtimeFor(slot.tokenId, 80 / 300);
 
