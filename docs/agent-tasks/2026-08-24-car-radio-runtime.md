@@ -19,14 +19,17 @@ Make the locked nine-track ViceBlood radio seed behave as a usable in-car radio:
   - current station is visible in the existing vehicle HUD;
   - missing private masters fail silently without gameplay failure;
   - the nine private MP3 masters can be staged into a gitignored served directory using a deterministic script;
-  - a Netlify draft preview can be built from a clean Git snapshot plus the local/ZIP masters without committing those masters to public Git.
+  - normal local/packaged/production runtime uses the private staged masters;
+  - automatic Netlify Deploy Preview hosts (`deploy-preview-*--vampire-district.netlify.app`) may fetch the exact official Pixabay CDN copies pinned in the radio catalogue so reviewers can test radio without local staging;
+  - every pinned preview URL must be byte-identical to the acquired master (SHA-256) and CORS-readable before it is accepted.
 
 ## Out of scope
 
 - DJ voice, station IDs, advertisements, stingers or crossfades.
 - Radio save/resume across browser sessions or campaign saves.
 - Per-car remembered station.
-- Runtime download from Pixabay/FMA/CDN URLs.
+- Generic runtime download from Pixabay/FMA/CDN URLs outside the explicit automatic Netlify Deploy Preview exception.
+- Build-time scraping or recurring source discovery from Pixabay.
 - Publishing substantially unchanged third-party masters in public Git.
 - Changing the locked nine-track seed or searching for replacement music.
 - Merging automatically.
@@ -42,7 +45,8 @@ NPC civilian-car diegetic radio ambience remains part of the overall PR scope bu
 - [ ] Nine runtime tracks match `docs/audio/radio-runtime-seed-set.json` exactly and are grouped 3/3/3.
 - [ ] Private runtime masters are gitignored and stageable without public source-control publication.
 - [ ] Missing assets produce an unavailable playback state rather than an exception or game failure.
-- [ ] Manual Netlify draft deployment may include the nine masters only in the deploy snapshot.
+- [ ] Automatic Netlify Deploy Preview resolves the nine tracks from verified official CDN copies without requiring the reviewer to stage or deploy audio manually.
+- [ ] Production/local hosts do not switch to the preview CDN path.
 
 ## Validation
 
@@ -55,27 +59,25 @@ npm run check:affected -- --base=origin/main
 Focused tests:
 
 ```bash
-node --test tests/radio-runtime.test.js tests/radio-runtime-seed-set.test.js
+node --test tests/radio-runtime.test.js tests/radio-runtime-seed-set.test.js tests/radio-preview-source.test.js
 ```
 
-Manual player-radio scenario once private masters are staged/deployed:
+Manual player-radio scenario in the automatic PR Deploy Preview:
 
-1. Enter a vehicle: Vice FM starts.
-2. Scroll wheel: `OFF -> Vice FM -> Night Shift -> Pulse 94.6` cycles and HUD updates.
-3. Leave vehicle: radio becomes inaudible.
-4. Re-enter: previously selected station remains selected for the page session.
-5. Let a track finish: next same-station track begins and wraps after track three.
+1. Open `https://deploy-preview-78--vampire-district.netlify.app`.
+2. Enter a vehicle: Vice FM starts.
+3. Scroll wheel: `OFF -> Vice FM -> Night Shift -> Pulse 94.6` cycles and HUD updates.
+4. Leave vehicle: radio becomes inaudible.
+5. Re-enter: previously selected station remains selected for the page session.
+6. Let a track finish: next same-station track begins and wraps after track three.
 
-Netlify draft with a source directory or ZIP containing the nine official masters:
+The preview-only CDN URLs were recovered from each Pixabay page's published `AudioObject.contentUrl`, then downloaded and checked against the already acquired masters. All nine matched their locked SHA-256 values and returned `audio/mpeg` with `Access-Control-Allow-Origin: *`. No discovery/scraping workflow remains in the branch after verification.
 
-```bash
-npm run radio:deploy-netlify -- /path/to/Archivo.zip
-```
-
-The deploy tool creates a clean `git archive` snapshot, injects the masters only into that temporary snapshot, links to Netlify project `vampire-district` when necessary, deploys draft alias `radio-78`, then removes staging. Production is not modified.
+The existing manual `radio:deploy-netlify` tooling may remain as a fallback/debug path, but it is not the normal reviewer workflow.
 
 ## Delivery
 
 - Draft PR #78 targeting `main`.
-- Explicit private-master boundary plus one-command Netlify manual-preview path.
+- Private-master boundary preserved for production/local packaged runtime.
+- Automatic Git-connected Netlify Deploy Preview is directly testable with the verified nine-track radio seed.
 - No automatic merge.
