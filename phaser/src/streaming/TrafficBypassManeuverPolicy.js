@@ -170,7 +170,14 @@ export function trafficBypassPoseSafe(materializer, topology, agent, {
 
   const current = poseFor(lane, agent, offset, angleDelta);
   if (!candidateSafe(materializer, slot, current)) return false;
-  const lookAhead = Math.max(0, finite(forwardDistance));
+  const requestedLookAhead = Math.max(0, finite(forwardDistance));
+  // The full target corridor is validated before commitment. During the lateral
+  // ramp, only probe a short distance ahead so the car is allowed to create
+  // clearance before testing positions that would still intersect the blocker.
+  const lookAhead = Math.min(
+    requestedLookAhead,
+    Math.max(2, Math.abs(finite(offset)) * 0.35)
+  );
   if (lookAhead <= EPSILON) return true;
   const nextProgress = clamp(finite(agent?.stageProgress) + lookAhead / lane.length, 0, 1);
   const next = poseFor(lane, agent, offset, angleDelta, nextProgress);
