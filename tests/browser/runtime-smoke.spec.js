@@ -108,6 +108,7 @@ test("normal static boot activates compiler-route traffic at the first junction 
       defaultTrafficAuthority: route.defaultTrafficAuthority,
       fixedPoolPreserved: route.fixedPoolPreserved,
       poolSize: materializer.pool.length,
+      targetActiveTraffic: traffic.targetActiveTraffic,
       junction: junction && {
         id: junction.id,
         x: junction.x,
@@ -131,7 +132,8 @@ test("normal static boot activates compiler-route traffic at the first junction 
   expect(state.routeEnabled).toBe(true);
   expect(state.defaultTrafficAuthority).toBe("multi-agent-compiler-route");
   expect(state.fixedPoolPreserved).toBe(true);
-  expect(state.poolSize).toBe(16);
+  expect(state.poolSize).toBe(state.targetActiveTraffic);
+  expect(state.poolSize).toBe(32);
   expect(state.junction).toEqual({
     id: "stream-node:1754:1574",
     x: 1754,
