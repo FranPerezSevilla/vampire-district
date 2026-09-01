@@ -445,12 +445,14 @@ export class TrafficPhysicalConsequencesSystem {
     if (!pushed) {
       this.markBlocked(vehicle, item, impactSpeed);
       this.stopDrivenVehicle(vehicle);
+      this.scene.lastActionText = "Traffic contact · both vehicles are blocked.";
       const result = this.originalUpdateDriving.call(vehicleSystem, 0, neutralDrivingFrame(frame));
       this.publish(true);
       return result;
     }
     const result = this.originalUpdateDriving.call(vehicleSystem, dt, frame);
     this.dampDrivenVehicle(vehicle);
+    this.scene.lastActionText = "Traffic contact · the ambient car is pushed aside.";
     this.publish(true);
     return result;
   }
