@@ -1,8 +1,9 @@
+import { executeDrivenVehiclePressure } from "./TrafficRecoveryActuator.js";
 import {
-  executeDrivenVehiclePressure,
-  executeStaticRecovery,
-  executeTrafficRecovery
-} from "./TrafficRecoveryActuator.js";
+  installTrafficBypassManeuverPolicy,
+  planTrafficBypass,
+  trafficBypassPoseSafe
+} from "./TrafficBypassManeuverPolicy.js";
 
 const EPSILON = 0.000001;
 const GUNSHOT_PANIC_RADIUS = 260;
@@ -49,6 +50,12 @@ export const TRAFFIC_ROUTE_BEHAVIOR_STATE = Object.freeze({
   FOLLOW: "follow",
   YIELD_JUNCTION: "yield-junction",
   STOPPED_TRAFFIC: "stopped-traffic",
+  ASSESS_BYPASS: "assess-bypass",
+  BYPASS_LEFT: "bypass-left",
+  BYPASS_RIGHT: "bypass-right",
+  REJOIN_ROUTE: "rejoin-route",
+  // Retained as historical snapshot keys. Production navigation no longer enters
+  // these shove-style recovery states.
   RECOVER_TRAFFIC: "recover-traffic",
   STOPPED_STATIC: "stopped-static",
   RECOVER_STATIC: "recover-static",
@@ -121,6 +128,23 @@ function blockerDecision(gap, reason, blockerId, blockerKind = null, details = {
   return { gap, reason, blockerId: blockerId || null, blockerKind, ...details };
 }
 
+function bypassStateForSide(side) {
+  return side < 0
+    ? TRAFFIC_ROUTE_BEHAVIOR_STATE.BYPASS_LEFT
+    : TRAFFIC_ROUTE_BEHAVIOR_STATE.BYPASS_RIGHT;
+}
+
+function bypassState(state) {
+  return [
+    TRAFFIC_ROUTE_BEHAVIOR_STATE.BYPASS_LEFT,
+    TRAFFIC_ROUTE_BEHAVIOR_STATE.BYPASS_RIGHT
+  ].includes(state?.fsmState);
+}
+
+function maneuverActive(state) {
+  return Boolean(state?.bypassSide) || Math.abs(finite(state?.bypassOffset)) > 0.01;
+}
+
 export function createTrafficRouteBehaviorController(materializer, {
   topology,
   baseSpeed = 112
@@ -134,6 +158,7 @@ export function createTrafficRouteBehaviorController(materializer, {
 
   const scene = materializer.scene;
   const states = new Map();
+  const bypassPolicy = installTrafficBypassManeuverPolicy(materializer);
   let updates = 0;
   let brakingDecisions = 0;
   let stoppedDecisions = 0;
@@ -145,12 +170,17 @@ export function createTrafficRouteBehaviorController(materializer, {
   let trafficRecoveryActions = 0;
   let staticRecoveryDecisions = 0;
   let staticRecoveryActions = 0;
+  let bypassAssessments = 0;
+  let bypassCommitments = 0;
+  let bypassBlockedFrames = 0;
+  let bypassCompletions = 0;
   let panicDecisions = 0;
   let gunshotThreatEvents = 0;
   let disposed = false;
 
   function tuning() {
     const behavior = scene.trafficLocalBehaviorSystem;
+    const legacyPushFactor = clamp(finite(behavior?.gridlockPushSpeedFactor, 0.25), 0.14, 0.4);
     return {
       followDistance: clamp(finite(behavior?.followDistance, 78) * 0.74, 42, 62),
       hardStopDistance: clamp(finite(behavior?.hardStopDistance, 34) * 0.78, 20, 30),
@@ -167,8 +197,13 @@ export function createTrafficRouteBehaviorController(materializer, {
       maxPlayerPressureAttempts: Math.max(2, Math.min(8, Math.floor(finite(behavior?.maxPlayerPressureAttempts, 6)))),
       recoveryActionInterval: Math.max(0.12, finite(behavior?.recoveryActionInterval, 0.18)),
       failedRecoveryBackoff: Math.max(0.35, finite(behavior?.failedRecoveryBackoff, 0.65)),
-      trafficRecoverySpeedFactor: clamp(finite(behavior?.gridlockPushSpeedFactor, 0.25), 0.14, 0.4),
-      staticRecoverySpeedFactor: clamp(finite(behavior?.staticRecoverySpeedFactor, 0.18), 0.1, 0.3)
+      bypassSpeedFactor: clamp(finite(behavior?.bypassSpeedFactor, legacyPushFactor * 1.35), 0.28, 0.48),
+      bypassRejoinSpeedFactor: clamp(finite(behavior?.bypassRejoinSpeedFactor, 0.52), 0.36, 0.7),
+      bypassLateralRate: clamp(finite(behavior?.bypassLateralRate, 52), 28, 72),
+      bypassAngleRate: clamp(finite(behavior?.bypassAngleRate, 2.8), 1.4, 4.5),
+      bypassSteeringLimit: clamp(finite(behavior?.bypassSteeringLimit, 0.38), 0.2, 0.52),
+      bypassForwardProbe: clamp(finite(behavior?.bypassForwardProbe, 18), 8, 28),
+      bypassBlockedAbortSeconds: clamp(finite(behavior?.bypassBlockedAbortSeconds, 0.85), 0.5, 1.6)
     };
   }
 
@@ -194,7 +229,17 @@ export function createTrafficRouteBehaviorController(materializer, {
         panicSeconds: 0,
         panicSourceX: null,
         panicSourceY: null,
-        lastRecoveryReason: null
+        lastRecoveryReason: null,
+        bypassSide: 0,
+        bypassTargetOffset: 0,
+        bypassOffset: 0,
+        bypassAngleDelta: 0,
+        bypassBlockerId: null,
+        bypassBlockerKind: null,
+        bypassBlockedSeconds: 0,
+        bypassPlanAttempts: 0,
+        bypassSuccesses: 0,
+        lastBypassReason: null
       };
       states.set(agent.tokenId, state);
     }
@@ -311,6 +356,50 @@ export function createTrafficRouteBehaviorController(materializer, {
     }
   }
 
+  function committedBypassDecision(state, blocker, settings) {
+    if (!state.bypassSide || state.bypassBlockerId !== blocker.blockerId) return null;
+    return {
+      ...blocker,
+      fsmState: bypassStateForSide(state.bypassSide),
+      desiredSpeedFactor: settings.bypassSpeedFactor,
+      reason: state.panicSeconds > EPSILON ? "panic-bypass-committed" : "bypass-committed"
+    };
+  }
+
+  function assessBypass(agent, state, blocker, settings, {
+    delay,
+    requireTrafficWinner = false,
+    requireBlockedPeer = false
+  } = {}) {
+    const committed = committedBypassDecision(state, blocker, settings);
+    if (committed) return committed;
+    if (state.recoveryCooldownSeconds > EPSILON || state.recoveryBlocked) return null;
+    if (state.stoppedSeconds < Math.max(0, finite(delay))) return null;
+
+    if (requireTrafficWinner) {
+      const blockerState = states.get(blocker.blockerId);
+      if (requireBlockedPeer && blockerState?.stoppedSeconds < Math.max(0, finite(delay))) return null;
+      if (trafficGridlockInitiativeWinner(agent.tokenId, blocker.blockerId) !== agent.tokenId) return null;
+    }
+
+    state.bypassPlanAttempts++;
+    bypassAssessments++;
+    const plan = planTrafficBypass(materializer, topology, agent, blocker);
+    if (!plan) {
+      state.lastBypassReason = "bypass-no-legal-corridor";
+      state.recoveryBlocked = true;
+      state.recoveryCooldownSeconds = settings.failedRecoveryBackoff;
+      return null;
+    }
+    return {
+      ...blocker,
+      fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.ASSESS_BYPASS,
+      desiredSpeedFactor: 0,
+      reason: "bypass-assess",
+      bypassPlan: plan
+    };
+  }
+
   function trafficDecision(agent, state, blocker, settings) {
     if (blocker.gap > settings.hardStopDistance + 4) {
       return {
@@ -324,33 +413,23 @@ export function createTrafficRouteBehaviorController(materializer, {
       };
     }
 
-    const blockerState = states.get(blocker.blockerId);
     const recoveryDelay = state.panicSeconds > EPSILON ? settings.panicRecoveryDelay : settings.trafficRecoveryDelay;
-    const canAttemptRecovery = !state.recoveryBlocked
-      && state.recoveryCooldownSeconds <= EPSILON
-      && state.stoppedSeconds >= recoveryDelay
-      && blockerState?.stoppedSeconds >= recoveryDelay
-      && trafficGridlockInitiativeWinner(agent.tokenId, blocker.blockerId) === agent.tokenId;
-
-    if ((state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC && state.blockerId === blocker.blockerId && !state.recoveryBlocked)
-      || canAttemptRecovery) {
-      return {
-        ...blocker,
-        fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC,
-        desiredSpeedFactor: settings.trafficRecoverySpeedFactor,
-        reason: state.panicSeconds > EPSILON ? "panic-gridlock-push" : "gridlock-push"
-      };
-    }
+    const bypass = assessBypass(agent, state, blocker, settings, {
+      delay: recoveryDelay,
+      requireTrafficWinner: true,
+      requireBlockedPeer: true
+    });
+    if (bypass) return bypass;
 
     return {
       ...blocker,
       fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.STOPPED_TRAFFIC,
       desiredSpeedFactor: 0,
-      reason: state.recoveryBlocked ? "gridlock-blocked" : "gridlock-yield"
+      reason: state.recoveryBlocked ? "gridlock-no-bypass" : "gridlock-yield"
     };
   }
 
-  function playerDecision(state, blocker, settings) {
+  function playerDecision(agent, state, blocker, settings) {
     if (blocker.reason === "player-on-foot") {
       return {
         ...blocker,
@@ -369,6 +448,11 @@ export function createTrafficRouteBehaviorController(materializer, {
       };
     }
 
+    const bypass = assessBypass(agent, state, blocker, settings, {
+      delay: Math.max(0.55, settings.playerPressureDelay * 0.65)
+    });
+    if (bypass) return bypass;
+
     const mayPressure = !state.recoveryBlocked
       && state.recoveryCooldownSeconds <= EPSILON
       && state.stoppedSeconds >= settings.playerPressureDelay
@@ -382,8 +466,10 @@ export function createTrafficRouteBehaviorController(materializer, {
     };
   }
 
-  function persistentDecision(state, blocker, settings) {
-    if (["player-vehicle", "player-on-foot"].includes(blocker.reason)) return playerDecision(state, blocker, settings);
+  function persistentDecision(agent, state, blocker, settings) {
+    if (["player-vehicle", "player-on-foot"].includes(blocker.reason)) {
+      return playerDecision(agent, state, blocker, settings);
+    }
 
     if (blocker.gap > settings.hardStopDistance) {
       return {
@@ -393,25 +479,33 @@ export function createTrafficRouteBehaviorController(materializer, {
       };
     }
 
-    const canAttemptRecovery = !state.recoveryBlocked
-      && state.recoveryCooldownSeconds <= EPSILON
-      && state.stoppedSeconds >= settings.staticRecoveryDelay;
+    const bypass = assessBypass(agent, state, blocker, settings, {
+      delay: settings.staticRecoveryDelay
+    });
+    if (bypass) return bypass;
 
-    if ((state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC && state.blockerId === blocker.blockerId && !state.recoveryBlocked)
-      || canAttemptRecovery) {
-      return {
-        ...blocker,
-        fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC,
-        desiredSpeedFactor: settings.staticRecoverySpeedFactor,
-        reason: "parked-vehicle-recovery"
-      };
-    }
+    return {
+      fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.STOPPED_STATIC,
+      desiredSpeedFactor: 0,
+      reason: state.recoveryBlocked ? "parked-vehicle-no-bypass" : "parked-vehicle",
+      ...blocker
+    };
+  }
 
-    return { fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.STOPPED_STATIC, desiredSpeedFactor: 0, ...blocker };
+  function rejoinDecision(state, reason = "bypass-rejoin", desiredSpeedFactor = null) {
+    return {
+      fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.REJOIN_ROUTE,
+      desiredSpeedFactor: desiredSpeedFactor == null ? 0.52 : desiredSpeedFactor,
+      reason,
+      gap: null,
+      blockerId: state.bypassBlockerId || null,
+      blockerKind: state.bypassBlockerKind || null
+    };
   }
 
   function decisionFor(agent, state, agentsById, blockedById, settings) {
     if (agent.stage === "connector") {
+      if (maneuverActive(state)) return rejoinDecision(state, "bypass-rejoin-connector", 0);
       return {
         fsmState: state.panicSeconds > EPSILON ? TRAFFIC_ROUTE_BEHAVIOR_STATE.PANIC : TRAFFIC_ROUTE_BEHAVIOR_STATE.CONNECTOR,
         desiredSpeedFactor: 1,
@@ -424,6 +518,7 @@ export function createTrafficRouteBehaviorController(materializer, {
 
     const routeBlock = blockedById.get(agent.tokenId);
     if (routeBlock?.reason === "junction-yield") {
+      if (maneuverActive(state)) return rejoinDecision(state, "bypass-rejoin-before-junction", 0);
       return {
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.YIELD_JUNCTION,
         desiredSpeedFactor: 0,
@@ -453,6 +548,7 @@ export function createTrafficRouteBehaviorController(materializer, {
     const blocker = blockers[0] || null;
 
     if (!blocker) {
+      if (maneuverActive(state)) return rejoinDecision(state, "bypass-rejoin", settings.bypassRejoinSpeedFactor);
       const panicking = state.panicSeconds > EPSILON;
       return {
         fsmState: panicking ? TRAFFIC_ROUTE_BEHAVIOR_STATE.PANIC : TRAFFIC_ROUTE_BEHAVIOR_STATE.CRUISE,
@@ -466,7 +562,93 @@ export function createTrafficRouteBehaviorController(materializer, {
 
     return blocker.reason === "traffic"
       ? trafficDecision(agent, state, blocker, settings)
-      : persistentDecision(state, blocker, settings);
+      : persistentDecision(agent, state, blocker, settings);
+  }
+
+  function acceptBypassPlan(state, decision) {
+    const plan = decision?.bypassPlan;
+    if (!plan) return false;
+    state.bypassSide = plan.side;
+    state.bypassTargetOffset = plan.targetOffset;
+    state.bypassBlockerId = plan.blockerId;
+    state.bypassBlockerKind = plan.blockerKind;
+    state.bypassBlockedSeconds = 0;
+    state.lastBypassReason = plan.reason;
+    state.recoveryBlocked = false;
+    state.recoveryCooldownSeconds = 0;
+    bypassCommitments++;
+    return true;
+  }
+
+  function clearBypassCommitment(state) {
+    state.bypassSide = 0;
+    state.bypassTargetOffset = 0;
+    state.bypassBlockerId = null;
+    state.bypassBlockerKind = null;
+    state.bypassBlockedSeconds = 0;
+  }
+
+  function advanceManeuver(agent, state, settings, duration) {
+    const activeBypass = bypassState(state);
+    const rejoining = state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.REJOIN_ROUTE;
+    if (!activeBypass && !rejoining) {
+      if (Math.abs(state.bypassOffset) <= 0.01) state.bypassAngleDelta = moveToward(state.bypassAngleDelta, 0, settings.bypassAngleRate * duration);
+      return;
+    }
+
+    const targetOffset = rejoining ? 0 : state.bypassTargetOffset;
+    const nextOffset = moveToward(
+      state.bypassOffset,
+      targetOffset,
+      settings.bypassLateralRate * duration
+    );
+    const lateralStep = nextOffset - state.bypassOffset;
+    const forwardStep = Math.max(
+      2,
+      Math.max(0, finite(baseSpeed, 112)) * Math.max(0.18, state.speedFactor) * duration
+    );
+    const desiredAngleDelta = clamp(
+      Math.atan2(lateralStep, forwardStep),
+      -settings.bypassSteeringLimit,
+      settings.bypassSteeringLimit
+    );
+    const nextAngleDelta = moveToward(
+      state.bypassAngleDelta,
+      desiredAngleDelta,
+      settings.bypassAngleRate * duration
+    );
+    const safe = trafficBypassPoseSafe(materializer, topology, agent, {
+      offset: nextOffset,
+      angleDelta: nextAngleDelta,
+      forwardDistance: settings.bypassForwardProbe
+    });
+
+    if (!safe) {
+      bypassBlockedFrames++;
+      state.bypassBlockedSeconds += duration;
+      state.desiredSpeedFactor = 0;
+      state.speedFactor = 0;
+      state.bypassAngleDelta = moveToward(state.bypassAngleDelta, 0, settings.bypassAngleRate * duration);
+      if (activeBypass && state.bypassBlockedSeconds >= settings.bypassBlockedAbortSeconds) {
+        state.previousState = state.fsmState;
+        state.fsmState = TRAFFIC_ROUTE_BEHAVIOR_STATE.REJOIN_ROUTE;
+        state.stateSeconds = 0;
+        state.reason = "bypass-abort-blocked";
+      }
+      return;
+    }
+
+    state.bypassOffset = nextOffset;
+    state.bypassAngleDelta = nextAngleDelta;
+    state.bypassBlockedSeconds = 0;
+
+    if (rejoining && Math.abs(state.bypassOffset) <= 0.2) {
+      state.bypassOffset = 0;
+      state.bypassAngleDelta = 0;
+      state.bypassSuccesses++;
+      bypassCompletions++;
+      clearBypassCommitment(state);
+    }
   }
 
   function applySlotState(agent, state) {
@@ -481,29 +663,27 @@ export function createTrafficRouteBehaviorController(materializer, {
     slot.behaviorBlockerId = state.blockerId;
     slot.behaviorBlockerKind = state.blockerKind;
     slot.trafficThreatSeconds = state.panicSeconds;
+    slot.routeManeuverOffset = finite(state.bypassOffset);
+    slot.routeManeuverAngleDelta = finite(state.bypassAngleDelta);
+    slot.routeManeuverSide = state.bypassSide;
+    slot.routeManeuverPhase = state.fsmState;
     slot.engineSpeed = Math.max(0, finite(baseSpeed, 112) * slot.speedFactor);
   }
 
   function executeRecovery(state, settings) {
     if (state.recoveryCooldownSeconds > EPSILON || state.recoveryBlocked) return null;
-    let result = null;
-    if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC) {
-      state.recoveryAttempts++;
-      result = executeTrafficRecovery(scene, materializer, { pusherTokenId: state.tokenId, targetTokenId: state.blockerId });
-      trafficRecoveryActions++;
-    } else if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC) {
-      state.recoveryAttempts++;
-      result = executeStaticRecovery(scene, materializer, { requesterTokenId: state.tokenId, vehicleId: state.blockerId });
-      staticRecoveryActions++;
-    } else if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER
-      && state.reason === "player-pressure"
-      && state.recoveryAttempts < settings.maxPlayerPressureAttempts) {
-      state.recoveryAttempts++;
-      result = executeDrivenVehiclePressure(scene, materializer, { requesterTokenId: state.tokenId, vehicleId: state.blockerId });
-      playerPressureActions++;
+    if (state.fsmState !== TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER
+      || state.reason !== "player-pressure"
+      || state.recoveryAttempts >= settings.maxPlayerPressureAttempts) {
+      return null;
     }
 
-    if (!result) return null;
+    state.recoveryAttempts++;
+    const result = executeDrivenVehiclePressure(scene, materializer, {
+      requesterTokenId: state.tokenId,
+      vehicleId: state.blockerId
+    });
+    playerPressureActions++;
     state.lastRecoveryReason = result.reason;
     if (result.success) {
       state.recoverySuccesses++;
@@ -533,6 +713,8 @@ export function createTrafficRouteBehaviorController(materializer, {
 
       const decision = decisionFor(agent, state, agentsById, blockedById, settings);
       transition(state, decision, duration);
+      acceptBypassPlan(state, decision);
+
       const rate = decision.desiredSpeedFactor < state.speedFactor
         ? settings.brakingRate
         : state.panicSeconds > EPSILON
@@ -547,18 +729,24 @@ export function createTrafficRouteBehaviorController(materializer, {
       state.blockerKind = decision.blockerKind || null;
       state.stoppedSeconds = state.speedFactor <= 0.03
         ? state.stoppedSeconds + duration
-        : [TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC, TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC].includes(state.fsmState)
+        : [
+            TRAFFIC_ROUTE_BEHAVIOR_STATE.ASSESS_BYPASS,
+            TRAFFIC_ROUTE_BEHAVIOR_STATE.BYPASS_LEFT,
+            TRAFFIC_ROUTE_BEHAVIOR_STATE.BYPASS_RIGHT,
+            TRAFFIC_ROUTE_BEHAVIOR_STATE.REJOIN_ROUTE
+          ].includes(state.fsmState)
           ? state.stoppedSeconds
           : 0;
+
+      advanceManeuver(agent, state, settings, duration);
 
       if (state.speedFactor < 0.95 && state.speedFactor > 0.03) brakingDecisions++;
       if (state.speedFactor <= 0.03) stoppedDecisions++;
       if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.BLOCKED_PLAYER) playerReactiveDecisions++;
       if (state.reason === "player-pressure") playerPressureDecisions++;
       if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW) followingDecisions++;
-      if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.PANIC || state.reason === "panic-gridlock-push") panicDecisions++;
-      if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC) trafficRecoveryDecisions++;
-      if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC) staticRecoveryDecisions++;
+      if (state.fsmState === TRAFFIC_ROUTE_BEHAVIOR_STATE.PANIC || state.reason === "panic-bypass-committed") panicDecisions++;
+      if (bypassState(state)) trafficRecoveryDecisions++;
 
       applySlotState(agent, state);
       executeRecovery(state, settings);
@@ -581,15 +769,18 @@ export function createTrafficRouteBehaviorController(materializer, {
     for (const state of Object.values(TRAFFIC_ROUTE_BEHAVIOR_STATE)) stateCounts[state] = 0;
     for (const vehicle of vehicles) stateCounts[vehicle.fsmState] = (stateCounts[vehicle.fsmState] || 0) + 1;
 
+    const bypassingVehicles = (stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.BYPASS_LEFT] || 0)
+      + (stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.BYPASS_RIGHT] || 0);
     return {
       active: true,
-      architecture: "explicit-route-behavior-fsm",
+      architecture: "explicit-route-behavior-fsm-with-bounded-bypass",
       behaviorProfile: "aggressive-city-traffic",
       movementAuthority: false,
       geometryAuthority: "compiler-local-topology",
-      lateralSteeringAuthority: false,
+      lateralSteeringAuthority: "bounded-bypass-corridor-only",
       speedAuthority: "route-behavior-fsm",
-      recoveryExecutionAuthority: "TrafficRecoveryActuator",
+      maneuverAuthority: "TrafficBypassManeuverPolicy",
+      recoveryExecutionAuthority: "driver-fsm-bypass-plus-player-pressure-fallback",
       maximumSpeedFactor: 1,
       baseSpeed: Math.max(0, finite(baseSpeed, 112)),
       updates,
@@ -601,9 +792,12 @@ export function createTrafficRouteBehaviorController(materializer, {
       playerPressureVehicles: vehicles.filter(item => item.reason === "player-pressure").length,
       panickingVehicles: vehicles.filter(item => item.panicSeconds > EPSILON).length,
       followingVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW] || 0,
-      gridlockPushingVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_TRAFFIC] || 0,
+      assessingBypassVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.ASSESS_BYPASS] || 0,
+      bypassingVehicles,
+      rejoiningVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.REJOIN_ROUTE] || 0,
+      gridlockPushingVehicles: 0,
       gridlockYieldingVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.STOPPED_TRAFFIC] || 0,
-      staticRecoveringVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.RECOVER_STATIC] || 0,
+      staticRecoveringVehicles: 0,
       brakingDecisions,
       stoppedDecisions,
       playerReactiveDecisions,
@@ -616,6 +810,11 @@ export function createTrafficRouteBehaviorController(materializer, {
       trafficRecoveryActions,
       staticRecoveryDecisions,
       staticRecoveryActions,
+      bypassAssessments,
+      bypassCommitments,
+      bypassBlockedFrames,
+      bypassCompletions,
+      bypassPolicy: bypassPolicy?.snapshot?.() || null,
       vehicles
     };
   }
@@ -625,6 +824,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       scene.events?.off?.("weapon:fired", onWeaponFired);
       disposed = true;
     }
+    bypassPolicy?.destroy?.();
     states.clear();
   }
 
