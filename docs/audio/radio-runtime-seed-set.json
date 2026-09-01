@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "initiative": "viceblood-radio-runtime-seed",
+  "lockedAt": "2026-08-24",
+  "decision": "ship-with-nine-acquired-masters",
+  "sourceCatalog": "docs/audio/radio-curated-track-catalog.json",
+  "sourceLedger": "docs/audio/radio-acquisition-ledger.json",
+  "tracks": [
+    {
+      "id": "daisuke-teiko-real-deal-90s-hip-hop",
+      "stationId": "vice-fm",
+      "runtimeFilename": "vice-fm__daisuke-teiko__the-real-deal-90s-hip-hop-instrumental.mp3"
+    },
+    {
+      "id": "catch22-coasting-west-coast-hip-hop",
+      "stationId": "vice-fm",
+      "runtimeFilename": "vice-fm__catch22music__coasting-west-coast-hip-hop.mp3"
+    },
+    {
+      "id": "abydos-trip-hop-lovers",
+      "stationId": "vice-fm",
+      "runtimeFilename": "vice-fm__abydos-music__trip-hop-lovers.mp3"
+    },
+    {
+      "id": "ejah-big-beat-industrial-breakbeat-1",
+      "stationId": "night-shift",
+      "runtimeFilename": "night-shift__ejah-music__big-beat-industrial-breakbeat-1.mp3"
+    },
+    {
+      "id": "natureseye-dirty-industrial-rave",
+      "stationId": "night-shift",
+      "runtimeFilename": "night-shift__natureseye__dirty-industrial-rave.mp3"
+    },
+    {
+      "id": "delon-big-beat-industrial-breakbeat-3",
+      "stationId": "night-shift",
+      "runtimeFilename": "night-shift__ejah-music__big-beat-industrial-breakbeat-3.mp3"
+    },
+    {
+      "id": "maty1309-tema-acid-house",
+      "stationId": "pulse-94-6",
+      "runtimeFilename": "pulse-94-6__maty1309__tema-acid-house.mp3"
+    },
+    {
+      "id": "placidplace-franic-acid-trance",
+      "stationId": "pulse-94-6",
+      "runtimeFilename": "pulse-94-6__placidplace__franic-acid-trance.mp3"
+    },
+    {
+      "id": "berrydeep-back-to-90s",
+      "stationId": "pulse-94-6",
+      "runtimeFilename": "pulse-94-6__berrydeep__back-to-90s.mp3"
+    }
+  ],
+  "stationCounts": {
+    "vice-fm": 3,
+    "night-shift": 3,
+    "pulse-94-6": 3
+  },
+  "droppedAfterApproval": [
+    {
+      "id": "1000-handz-architexture-cobabeats",
+      "reason": "User chose not to pursue the missing download."
+    },
+    {
+      "id": "kulakovka-trip-hop",
+      "reason": "First download was incomplete and user chose not to redownload it."
+    },
+    {
+      "id": "1000-handz-kyoto",
+      "reason": "User chose not to pursue the missing download."
+    }
+  ],
+  "rule": "The nine acquired masters form three runtime stations with three tracks each. The three dropped tracks are historical curated candidates and must not block runtime work."
+}

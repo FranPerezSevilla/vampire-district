@@ -23,6 +23,7 @@
     "test:browser:traffic": [
       "tests/browser/vehicle-core.spec.js",
       "tests/browser/vehicle-maintenance.spec.js",
+      "tests/browser/radio-runtime.spec.js",
       "tests/browser/city-streaming-traffic.spec.js",
       "tests/browser/city-streaming-traffic-route-controlled.spec.js",
       "tests/browser/city-streaming-traffic-route-multi-agent.spec.js",

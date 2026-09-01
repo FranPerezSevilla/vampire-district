@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "mountain-king-bigbeat-a",
+  "stationId": "night-shift",
+  "workingTitle": "Mountain King / Big Beat Proof A",
+  "sourceWork": "In the Hall of the Mountain King (Peer Gynt Suite No. 1, Op. 46 No. 4)",
+  "sourceComposer": "Edvard Grieg",
+  "sourceEditionOrCatalogue": "Composer's holograph piano manuscript, 21 January 1888; scanned by Bergen Public Library (N-Bo); IMSLP #810457",
+  "sourceUrl": "https://imslp.org/wiki/Peer_Gynt_Suite_No.1,_Op.46_(Grieg,_Edvard)",
+  "sourceStatus": "Public Domain — IMSLP lists Grieg's 1888 holograph piano manuscript as Public Domain.",
+  "sourceReuseTerms": "Public-domain composer manuscript used as transcription/motif authority; no modern recording, commercial break, sample or later copyrighted edition is used.",
+  "sourceCheckedAt": "2026-08-22",
+  "sourceItemId": "IMSLP #810457",
+  "sourceEvidence": "IMSLP identifies the holograph piano manuscript dated 21 January 1888, scanned by Bergen Public Library, as Public Domain.",
+  "sourceSeed": true,
+  "proofBatch": "M1.3-batch-2",
+  "artifactMode": "generated-from-recipe",
+  "generatorPath": "tools/radio-composer/proofs/m1-3-batch2.js",
+  "transcriptionCrossChecks": ["Opening theme nucleus cross-checked against public-domain notation: F#–G#–A#–B–C#–A#–C# / D–A#–D–C#–A#–C#."],
+  "arrangementLane": "big-beat-breakbeat-industrial-dance",
+  "bpm": 138,
+  "durationSeconds": 46.96,
+  "midiTracks": ["01 Source Motif - Grieg","02 Big Beat Break","03 Distorted Bass","04 Industrial Hits","05 Low Strings / Pulse","06 Riser / FX Guide"],
+  "status": "rejected",
+  "userReview": "revise",
+  "reviewFeedback": {
+    "reviewedAt": "2026-08-24",
+    "verdict": "M1.3 proof set rejected musically",
+    "summary": "Too sparse, too many empty spaces, too little musical content and does not feel like a complete song. General MIDI timbre is secondary to the arrangement failure."
+  },
+  "attribution": {
+    "creditMode": "required-player-credit",
+    "playerCredit": "“In the Hall of the Mountain King” — Edvard Grieg (1874–75). Arranged for ViceBlood (2026).",
+    "internalSourceCredit": "IMSLP #810457 — Grieg holograph piano manuscript, 21 January 1888, Bergen Public Library (N-Bo); listed Public Domain.",
+    "licenseOrStatus": "Public Domain composer manuscript; composer/work attribution retained under the ViceBlood radio attribution policy.",
+    "thirdPartyAssets": []
+  },
+  "notes": "Historical M1.3 A proof retained as rejected evidence. Technically valid and provenance-clean, but musically rejected at the user gate for incomplete-song/sparsity problems. Do not count toward accepted catalogue totals."
+}

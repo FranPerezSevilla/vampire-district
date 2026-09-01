@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 5,
+  "initiative": "viceblood-radio-soundtrack",
+  "branch": "codex/90s-radio-music-production",
+  "pullRequestNumber": 76,
+  "state": "runtime-handoff-ready",
+  "currentMilestone": "CURATED-4-runtime-handoff",
+  "nextTask": "RUNTIME-0-open-stacked-radio-runtime-pr",
+  "mission": "Curate finished modern tracks with verified commercial-game-use permission for ViceBlood's 1990s-style car-radio stations and hand an exact acquired seed set to a separate runtime implementation PR.",
+  "strategy": {
+    "canonical": "finished-track-curation",
+    "adoptedAt": "2026-08-24",
+    "policy": "docs/audio/RADIO_CURATED_MUSIC_POLICY.md",
+    "catalog": "docs/audio/radio-curated-track-catalog.json",
+    "acquisitionLedger": "docs/audio/radio-acquisition-ledger.json",
+    "runtimeSeed": "docs/audio/radio-runtime-seed-set.json",
+    "runtimeCredits": "docs/audio/RADIO_RUNTIME_SEED_CREDITS.md",
+    "curatorAgent": "docs/agents/RADIO_CURATOR_AGENT.md",
+    "seedLockCheckpoint": "docs/progress/RADIO_MUSIC_CURATED_SEED_LOCK_2026-08-24.md",
+    "compositionStatus": "historical-experimental-only-unless-user-explicitly-resumes"
+  },
+  "coreStations": [
+    {
+      "id": "blood-city-beats",
+      "workingName": "Blood City Beats",
+      "lane": "trip-hop / boom-bap / nocturnal downtempo hip-hop"
+    },
+    {
+      "id": "vice-fm",
+      "workingName": "Vice FM",
+      "lane": "1990s hip-hop / G-funk / funk-forward rap instrumentals"
+    },
+    {
+      "id": "night-shift",
+      "workingName": "Night Shift",
+      "lane": "big beat / breakbeat / industrial dance / period rave"
+    },
+    {
+      "id": "pulse-94-6",
+      "workingName": "Pulse 94.6",
+      "lane": "house / acid house / techno / acid-trance crossover"
+    }
+  ],
+  "curatedHistory": {
+    "licenceVerifiedAndUserApproved": 12,
+    "exactValidMastersAcquired": 9,
+    "droppedAfterApproval": 3,
+    "droppedTrackIds": [
+      "1000-handz-architexture-cobabeats",
+      "kulakovka-trip-hop",
+      "1000-handz-kyoto"
+    ]
+  },
+  "runtimeSeed": {
+    "lockedAt": "2026-08-24",
+    "trackCount": 9,
+    "stationCounts": {
+      "vice-fm": 2,
+      "blood-city-beats": 1,
+      "night-shift": 3,
+      "pulse-94-6": 3
+    },
+    "allMastersHashed": true,
+    "allMastersDecodeCleanly": true,
+    "publicGitContainsRawMasters": false,
+    "contentIdWarnings": [
+      "catch22-coasting-west-coast-hip-hop",
+      "berrydeep-back-to-90s"
+    ]
+  },
+  "metadataCorrections": [
+    {
+      "trackId": "delon-big-beat-industrial-breakbeat-3",
+      "field": "creator",
+      "from": "Delon_Boomkin",
+      "to": "ejah_music",
+      "reason": "Exact official download filename plus current Pixabay listing/profile confirm ejah_music."
+    }
+  ],
+  "licenceRules": {
+    "accepted": [
+      "Pixabay-Content-License",
+      "CC-BY-4.0",
+      "CC0",
+      "Public-Domain-recording"
+    ],
+    "perTrackVerificationRequired": true,
+    "contentIdRecordedSeparately": true,
+    "keepInternalCreditEvenWhenOptional": true,
+    "rawThirdPartyAudioPublicRepoRule": "do-not-commit-substantially-unchanged-pixabay-masters"
+  },
+  "curatedMilestones": {
+    "CURATED-0-policy-and-agent": "complete",
+    "CURATED-1-balanced-shortlist": "complete",
+    "CURATED-2-user-pruning": "complete",
+    "CURATED-3-acquisition": "complete-nine-track-runtime-seed",
+    "CURATED-4-runtime-handoff": "ready"
+  },
+  "historicalMidiRAndD": {
+    "workbench": "complete-and-technically-valid",
+    "firstFourProofs": "musically-rejected",
+    "mapleLeafB": "preferred-over-C-but-not-shipping-canonical",
+    "mapleLeafC": "musically-rejected-by-user",
+    "autonomousComposition": "paused"
+  },
+  "userGates": [
+    {
+      "afterTask": "PR76-curation-and-acquisition",
+      "requiredState": "explicit-merge-approval",
+      "reason": "PR #76 remains draft until the user explicitly approves merging it; runtime development may proceed in a stacked PR meanwhile."
+    }
+  ],
+  "autonomousStopConditions": [
+    "task would publish substantially unchanged third-party masters in public Git",
+    "runtime implementation requires changing the locked station/seed decision",
+    "user explicitly asks to stop or change soundtrack direction"
+  ],
+  "canonicalReadOrder": [
+    "docs/progress/radio-music-production-status.json",
+    "docs/audio/radio-runtime-seed-set.json",
+    "docs/audio/RADIO_RUNTIME_SEED_CREDITS.md",
+    "docs/audio/RADIO_CURATED_MUSIC_POLICY.md",
+    "docs/audio/radio-acquisition-ledger.json",
+    "docs/progress/RADIO_MUSIC_CURATED_SEED_LOCK_2026-08-24.md",
+    "docs/audio/RADIO_MUSIC_BIBLE.md"
+  ],
+  "mergePolicy": "draft-until-explicit-user-approval"
+}
