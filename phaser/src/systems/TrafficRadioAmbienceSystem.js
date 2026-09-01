@@ -5,12 +5,13 @@ import { RawAudio } from "./RawAudioSystem.js";
 export const TRAFFIC_RADIO_DEFAULTS = Object.freeze({
   maxEmitters: 3,
   audibleRadius: 180,
-  fullVolumeRadius: 28,
-  maxGain: 0.026,
-  playerRadioDuck: 0.28,
-  drivingDuck: 0.58,
-  nearFilterHz: 2100,
-  farFilterHz: 650
+  fullVolumeRadius: 36,
+  maxGain: 0.10,
+  falloffExponent: 1.9,
+  playerRadioDuck: 0.22,
+  drivingDuck: 0.52,
+  nearFilterHz: 3400,
+  farFilterHz: 850
 });
 
 const BUFFER_END_EPSILON_SECONDS = 0.04;
@@ -37,6 +38,12 @@ function stableHash(value) {
   return hash >>> 0;
 }
 
+function setAudioParam(param, value, now, timeConstant) {
+  if (!param) return;
+  if (typeof param.setTargetAtTime === "function") param.setTargetAtTime(value, now, timeConstant);
+  else param.value = value;
+}
+
 export function trafficRadioStationId(tokenId, stations = RADIO_STATIONS) {
   const list = Array.isArray(stations) ? stations.filter(station => station?.id) : [];
   if (!list.length) return null;
@@ -47,6 +54,7 @@ export function trafficRadioGain(distance, {
   audibleRadius = TRAFFIC_RADIO_DEFAULTS.audibleRadius,
   fullVolumeRadius = TRAFFIC_RADIO_DEFAULTS.fullVolumeRadius,
   maxGain = TRAFFIC_RADIO_DEFAULTS.maxGain,
+  falloffExponent = TRAFFIC_RADIO_DEFAULTS.falloffExponent,
   multiplier = 1
 } = {}) {
   const outer = Math.max(1, finite(audibleRadius, TRAFFIC_RADIO_DEFAULTS.audibleRadius));
@@ -55,7 +63,7 @@ export function trafficRadioGain(distance, {
   if (d >= outer) return 0;
   const presence = d <= inner ? 1 : 1 - clamp01((d - inner) / (outer - inner));
   return Math.max(0, finite(maxGain, TRAFFIC_RADIO_DEFAULTS.maxGain))
-    * Math.pow(presence, 2.35)
+    * Math.pow(presence, Math.max(0.25, finite(falloffExponent, TRAFFIC_RADIO_DEFAULTS.falloffExponent)))
     * Math.max(0, finite(multiplier, 1));
 }
 
@@ -157,11 +165,9 @@ export class TrafficRadioAmbienceSystem {
     });
     const desiredIds = new Set(candidates.map(candidate => candidate.tokenId));
 
-    for (const tokenId of [...this.emitters.keys()]) {
-      const emitter = this.emitters.get(tokenId);
+    for (const [tokenId, emitter] of [...this.emitters.entries()]) {
       if (!desiredIds.has(tokenId) || emitter?.slot?.tokenId !== tokenId) this.releaseEmitter(tokenId);
     }
-
     for (const candidate of candidates) this.syncCandidate(candidate, ctx);
     return candidates.length > 0;
   }
@@ -227,7 +233,6 @@ export class TrafficRadioAmbienceSystem {
           this.releaseEmitter(emitter.tokenId);
           return;
         }
-
         const position = this.radioSystem.timeline.position(emitter.stationId);
         if (!position?.track || position.track.id !== emitter.trackId) {
           this.releaseEmitter(emitter.tokenId);
@@ -280,12 +285,14 @@ export class TrafficRadioAmbienceSystem {
       emitter.startOffsetSeconds = Math.max(0, finite(offsetSeconds));
 
       const focus = this.listenerFocus();
-      const candidate = {
+      this.updateEmitterSpatial(emitter, {
         dx: finite(emitter.slot?.x) - finite(focus.x),
         dy: finite(emitter.slot?.y) - finite(focus.y),
-        distance: Math.hypot(finite(emitter.slot?.x) - finite(focus.x), finite(emitter.slot?.y) - finite(focus.y))
-      };
-      this.updateEmitterSpatial(emitter, candidate, ctx);
+        distance: Math.hypot(
+          finite(emitter.slot?.x) - finite(focus.x),
+          finite(emitter.slot?.y) - finite(focus.y)
+        )
+      }, ctx);
 
       source.onended = () => {
         if (this.emitters.get(emitter.tokenId) !== emitter || emitter.source !== source) return;
@@ -303,12 +310,11 @@ export class TrafficRadioAmbienceSystem {
 
   updateEmitterSpatial(emitter, candidate, ctx) {
     emitter.distance = Math.max(0, finite(candidate.distance));
-    const multiplier = this.receiverMultiplier();
     const gainValue = trafficRadioGain(emitter.distance, {
       audibleRadius: this.audibleRadius,
       fullVolumeRadius: this.fullVolumeRadius,
       maxGain: this.maxGain,
-      multiplier
+      multiplier: this.receiverMultiplier()
     });
     const panValue = clamp(finite(candidate.dx) / Math.max(1, this.audibleRadius * 0.55), -0.85, 0.85);
     const closeness = 1 - clamp01(emitter.distance / this.audibleRadius);
@@ -319,28 +325,9 @@ export class TrafficRadioAmbienceSystem {
     emitter.gainValue = gainValue;
     emitter.panValue = panValue;
     emitter.filterHz = filterHz;
-
-    if (emitter.gain?.gain) {
-      if (typeof emitter.gain.gain.setTargetAtTime === "function") {
-        emitter.gain.gain.setTargetAtTime(Math.max(0.0001, gainValue), now, 0.065);
-      } else {
-        emitter.gain.gain.value = gainValue;
-      }
-    }
-    if (emitter.filter?.frequency) {
-      if (typeof emitter.filter.frequency.setTargetAtTime === "function") {
-        emitter.filter.frequency.setTargetAtTime(filterHz, now, 0.08);
-      } else {
-        emitter.filter.frequency.value = filterHz;
-      }
-    }
-    if (emitter.panner?.pan) {
-      if (typeof emitter.panner.pan.setTargetAtTime === "function") {
-        emitter.panner.pan.setTargetAtTime(panValue, now, 0.07);
-      } else {
-        emitter.panner.pan.value = panValue;
-      }
-    }
+    setAudioParam(emitter.gain?.gain, Math.max(0.0001, gainValue), now, 0.065);
+    setAudioParam(emitter.filter?.frequency, filterHz, now, 0.08);
+    setAudioParam(emitter.panner?.pan, panValue, now, 0.07);
     return gainValue;
   }
 
@@ -378,6 +365,9 @@ export class TrafficRadioAmbienceSystem {
     return {
       maxEmitters: this.maxEmitters,
       audibleRadius: this.audibleRadius,
+      fullVolumeRadius: this.fullVolumeRadius,
+      maxGain: this.maxGain,
+      audioContextState: this.rawAudio?.ctx?.state || "unavailable",
       activeCount: [...this.emitters.values()].filter(emitter => emitter.state === "playing").length,
       trackedCount: this.emitters.size,
       failedTrackCount: this.failedUrls.size,
@@ -403,7 +393,8 @@ export class TrafficRadioAmbienceSystem {
     if (typeof window === "undefined") return;
     window.NBD_TRAFFIC_RADIO = Object.freeze({
       snapshot: () => this.snapshot(),
-      stationFor: tokenId => trafficRadioStationId(tokenId)
+      stationFor: tokenId => trafficRadioStationId(tokenId),
+      gainAt: distance => trafficRadioGain(distance)
     });
     window.NBD_TRAFFIC_RADIO_READY = true;
   }
