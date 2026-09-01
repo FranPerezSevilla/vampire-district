@@ -1,3 +1,5 @@
+import { installTrafficRigidBodyCollisionPolicy } from "./TrafficRigidBodyCollisionPolicy.js";
+
 function finite(value, fallback = 0) {
   if (value === null || value === undefined || value === "") return fallback;
   const number = Number(value);
@@ -38,6 +40,7 @@ export function installTrafficMassCollisionPolicy(physicalSystem) {
   }
   if (physicalSystem.__nbdMassCollisionPolicy) return physicalSystem.__nbdMassCollisionPolicy;
 
+  const rigidBodyPolicy = installTrafficRigidBodyCollisionPolicy(physicalSystem);
   const originalPushContact = physicalSystem.pushContact;
   const originalDampDrivenVehicle = physicalSystem.dampDrivenVehicle;
   let lastResponse = null;
@@ -84,7 +87,8 @@ export function installTrafficMassCollisionPolicy(physicalSystem) {
     snapshot() {
       return {
         weightedContacts,
-        lastResponse: lastResponse ? { ...lastResponse } : null
+        lastResponse: lastResponse ? { ...lastResponse } : null,
+        rigidBody: rigidBodyPolicy.snapshot()
       };
     },
     destroy() {
@@ -92,6 +96,7 @@ export function installTrafficMassCollisionPolicy(physicalSystem) {
       if (physicalSystem.dampDrivenVehicle === massAwareDampDrivenVehicle) {
         physicalSystem.dampDrivenVehicle = originalDampDrivenVehicle;
       }
+      rigidBodyPolicy.destroy();
       if (physicalSystem.__nbdMassCollisionPolicy === policy) delete physicalSystem.__nbdMassCollisionPolicy;
     }
   });
