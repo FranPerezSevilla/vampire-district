@@ -79,12 +79,13 @@ test("traffic radio assigns each traffic token to one deterministic station", ()
   assert.ok(ids.has(trafficRadioStationId("road-7#3")));
 });
 
-test("traffic radio attenuation is faint, monotonic and silent outside the local radius", () => {
+test("traffic radio is perceptible nearby, falls quickly and is silent outside the local radius", () => {
   const near = trafficRadioGain(20);
   const mid = trafficRadioGain(90);
   const far = trafficRadioGain(160);
-  assert.ok(near > mid && mid > far && far > 0);
-  assert.ok(near <= 0.026);
+  assert.ok(near >= 0.095 && near <= 0.101, `near gain ${near} should be about 0.10`);
+  assert.ok(mid > 0.03 && mid < near, `mid gain ${mid} should remain audible but secondary`);
+  assert.ok(far > 0 && far < 0.01, `far gain ${far} should be nearly gone`);
   assert.equal(trafficRadioGain(180), 0);
   assert.equal(trafficRadioGain(500), 0);
 });
@@ -160,9 +161,11 @@ test("traffic radio shares decoded buffers, seeks to the live timeline and relea
   const initial = system.snapshot();
   assert.equal(initial.trackedCount, 2);
   assert.equal(initial.activeCount, 2);
+  assert.equal(initial.maxGain, 0.10);
+  assert.equal(initial.audioContextState, "running");
   assert.equal(decodeCalls.length, 2);
   assert.deepEqual(audio.starts.map(args => args.slice(0, 2)), [[0, 37], [0, 37]]);
-  assert.ok(initial.emitters.every(emitter => emitter.gain > 0 && emitter.gain <= 0.026));
+  assert.ok(initial.emitters.every(emitter => emitter.gain > 0 && emitter.gain <= 0.10));
 
   const walkingGain = initial.emitters[0].gain;
   radioSystem.driving = true;
