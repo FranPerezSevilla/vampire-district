@@ -88,6 +88,7 @@ test("traffic radio is perceptible nearby, falls quickly and is silent outside t
   assert.ok(far > 0 && far < 0.01, `far gain ${far} should be nearly gone`);
   assert.equal(trafficRadioGain(180), 0);
   assert.equal(trafficRadioGain(500), 0);
+  assert.equal(trafficRadioGain(20, { multiplier: 0 }), 0);
 });
 
 test("traffic radio selects only the nearest bounded materialized cars", () => {
@@ -167,12 +168,23 @@ test("traffic radio shares decoded buffers, seeks to the live timeline and relea
   assert.deepEqual(audio.starts.map(args => args.slice(0, 2)), [[0, 37], [0, 37]]);
   assert.ok(initial.emitters.every(emitter => emitter.gain > 0 && emitter.gain <= 0.10));
 
-  const walkingGain = initial.emitters[0].gain;
   radioSystem.driving = true;
   radioSystem.selectedStationId = "vice-fm";
   system.update();
-  const drivingGain = system.snapshot().emitters[0].gain;
-  assert.ok(drivingGain < walkingGain, "nearby NPC radios are ducked under the player's own car radio");
+  const drivingSnapshot = system.snapshot();
+  assert.ok(drivingSnapshot.emitters.length > 0);
+  assert.ok(
+    drivingSnapshot.emitters.every(emitter => emitter.gain === 0),
+    "nearby NPC radios are silent while the player's own car radio is on"
+  );
+
+  radioSystem.selectedStationId = "off";
+  system.update();
+  const radioOffSnapshot = system.snapshot();
+  assert.ok(
+    radioOffSnapshot.emitters.every(emitter => emitter.gain > 0),
+    "nearby NPC radios return when the player switches the car radio off"
+  );
 
   trafficSystem.pool[0].tokenId = null;
   system.update();
