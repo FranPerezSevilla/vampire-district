@@ -5,6 +5,7 @@ import {
 } from "../audio/RadioCatalog.js";
 import { RadioBroadcastPlayback } from "../audio/RadioBroadcastPlayback.js";
 import { RadioTimeline } from "../audio/RadioTimeline.js";
+import { TrafficRadioAmbienceSystem } from "./TrafficRadioAmbienceSystem.js";
 
 const DEFAULT_STATION_ID = "vice-fm";
 const TIMELINE_BOUNDARY_EPSILON_SECONDS = 0.05;
@@ -38,6 +39,17 @@ export class RadioSystem {
     // bounded, so startup responsiveness improves without retaining the entire
     // ~30-minute catalogue as PCM in memory.
     this.preloadPromise = this.playback.preloadCatalog?.(RADIO_STATIONS) || null;
+
+    // NPC traffic listens to the exact same station clocks and decoded-buffer
+    // cache as the player receiver. The ambience layer is optional in focused
+    // tests that construct RadioSystem without the traffic runtime.
+    this.trafficAmbience = scene.trafficMaterializationSystem
+      ? new TrafficRadioAmbienceSystem(scene, {
+        radioSystem: this,
+        trafficSystem: scene.trafficMaterializationSystem,
+        rawAudio: this.playback?.rawAudio
+      })
+      : null;
 
     this.onVehicleEntered = () => {
       if (this.destroyed) return;
@@ -230,6 +242,7 @@ export class RadioSystem {
       this.playbackStatus = playbackState.status;
     }
 
+    this.trafficAmbience?.update?.(_dt);
     this.decorateVehicleHud();
     this.publish();
     return driving;
@@ -317,6 +330,8 @@ export class RadioSystem {
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.trafficAmbience?.destroy?.();
+    this.trafficAmbience = null;
     this.playback.destroy?.();
     this.scene.events?.off?.("vehicle:entered", this.onVehicleEntered);
     this.scene.events?.off?.("vehicle:exited", this.onVehicleExited);
