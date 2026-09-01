@@ -221,6 +221,23 @@ test("M8 multi-agent route progression is deterministic for the same population 
 
 function fakeMaterializer() {
   const topology = topologyFixture();
+  topology.nodes = {
+    "junction-1": { id: "junction-1", x: 100, y: 0, trimDistance: 20, maximumRoadWidth: 40 }
+  };
+  topology.lanes["lane-a"].points = [{ x: 0, y: 0 }, { x: 80, y: 0 }];
+  topology.lanes["lane-b"].points = [{ x: 100, y: -100 }, { x: 100, y: -20 }];
+  topology.lanes["lane-c"].points = [{ x: 120, y: 0 }, { x: 220, y: 0 }];
+  topology.lanes["lane-d"].points = [{ x: 100, y: 20 }, { x: 100, y: 120 }];
+  topology.transitions["a-to-c"].turnType = "straight";
+  topology.transitions["b-to-d"].turnType = "straight";
+  topology.junctionConnectors.connectors["connector-a"].length = 40;
+  topology.junctionConnectors.connectors["connector-a"].points = [
+    { x: 80, y: 0 }, { x: 100, y: 0 }, { x: 120, y: 0 }
+  ];
+  topology.junctionConnectors.connectors["connector-b"].length = 40;
+  topology.junctionConnectors.connectors["connector-b"].points = [
+    { x: 100, y: -20 }, { x: 100, y: 0 }, { x: 100, y: 20 }
+  ];
   const { graph, trafficFlows } = macroFixture();
   const legacyTokens = [
     { tokenId: "macro-a#0", edgeId: "macro-a", tokenIndex: 0, direction: "forward", phase: 0.99, x: -50, y: -50, angle: 0 },
