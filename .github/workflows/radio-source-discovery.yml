@@ -1,0 +1,50 @@
+name: Radio source discovery
+
+on:
+  push:
+    branches:
+      - codex/car-radio-runtime
+    paths:
+      - .github/workflows/radio-source-discovery.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Discover Pixabay audio URLs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const pages = [
+            ['daisuke','https://pixabay.com/music/beats-daisuke-teiko-the-real-deal-90s-hip-hop-instrumental-111454/'],
+            ['catch22','https://pixabay.com/music/beats-coasting-west-coast-hip-hop-381615/'],
+            ['abydos','https://pixabay.com/music/beats-trip-hop-lovers-206690/'],
+            ['ejah1','https://pixabay.com/music/electronic-big-beat-rave-industrial-breakbeat-1-472114/'],
+            ['natureseye','https://pixabay.com/music/upbeat-dirty-industrial-rave-177919/'],
+            ['ejah3','https://pixabay.com/music/hard-rock-big-beat-rave-industrial-breakbeat-3-473019/'],
+            ['maty','https://pixabay.com/es/music/optimista-tema-acid-house-329018/'],
+            ['placidplace','https://pixabay.com/es/music/techno-y-trance-franic-acid-trance-395688/'],
+            ['berrydeep','https://pixabay.com/music/soft-house-back-to-90s-579460/']
+          ];
+          for (const [id, url] of pages) {
+            const response = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0 ViceBlood preview-source verification' } });
+            const html = await response.text();
+            const decoded = html.replaceAll('\\u002F','/').replaceAll('\\/','/').replaceAll('&amp;','&');
+            const urls = [...decoded.matchAll(/https?:\/\/[^"'<>\\s]+(?:\.mp3|audio_file)[^"'<>\\s]*/gi)].map(m => m[0]);
+            const cdn = [...new Set(urls.filter(value => /pixabay|cdn/i.test(value)))];
+            console.log(`::group::${id} HTTP ${response.status} bytes=${html.length}`);
+            if (cdn.length) {
+              for (const value of cdn.slice(0, 20)) console.log(value);
+            } else {
+              const hints = [...decoded.matchAll(/.{0,160}(?:\.mp3|audio_url|audioUrl|download_url|downloadUrl).{0,240}/gi)].map(m => m[0]);
+              for (const value of hints.slice(0, 20)) console.log(value.replace(/\s+/g,' '));
+            }
+            console.log('::endgroup::');
+          }
+          NODE
