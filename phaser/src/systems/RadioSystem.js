@@ -118,7 +118,7 @@ export class RadioSystem {
     const started = this.playback.play(track, {
       onEnded: () => this.handleTrackEnded(stationId, trackId),
       onError: () => {
-        if (this.destroyed || this.selectedStationId !== stationId) return;
+        if (this.destroyed || !this.driving || this.selectedStationId !== stationId) return;
         this.playbackStatus = this.playback.snapshot?.().status || "unavailable";
         this.publish(true);
       }
@@ -166,7 +166,13 @@ export class RadioSystem {
     }
 
     const playbackState = this.playback.snapshot?.();
-    if (playbackState?.status && playbackState.status !== this.playbackStatus) {
+    if (!driving) {
+      // A private master may have failed to preload while CI/local runs without
+      // staged radio assets. Once the player is on foot the radio is stopped by
+      // definition, so a stale underlying `unavailable` state must not leak back
+      // into the player-facing runtime state after `stopPlayback("on-foot")`.
+      this.playbackStatus = "idle";
+    } else if (playbackState?.status && playbackState.status !== this.playbackStatus) {
       this.playbackStatus = playbackState.status;
     }
 
