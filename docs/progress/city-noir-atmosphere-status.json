@@ -1,0 +1,291 @@
+{
+  "initiative": "city-noir-atmosphere",
+  "version": 14,
+  "updatedAt": "2026-08-24",
+  "branch": "agent/city-noir-atmosphere",
+  "state": "autonomous-in-progress",
+  "currentMilestone": "M7",
+  "currentTask": "checkpoint-after-M7.2",
+  "executionCadence": {
+    "default": "task-validate-document-report-wait",
+    "waitForUserAfterEachBoundedTask": true,
+    "genericContinueAuthorizes": "next-bounded-task-only",
+    "batchOverrideRequiresExplicitUserInstruction": true,
+    "documentationRequiredInBatchMode": true,
+    "lastBatchScope": "explicit continuation: M7.2 steam/smoke service effects only",
+    "lastBatchState": "complete",
+    "rule": "Every bounded task must be validated and documented before the next task starts. M7.2 is closed; M7.3 requires new user direction."
+  },
+  "dependency": {
+    "pullRequest": 69,
+    "title": "City street visual pass",
+    "state": "merged-and-integrated",
+    "mergedMainCommit": "f803c974817c92666b82a60fac808d54c2c4bc05",
+    "integrationCommit": "a408a1342989868ad62a09e0df12d0742830ee4a",
+    "rule": "PR #69 remains the sole road/sidewalk/crosswalk surface authority. Atmosphere work layers above it and does not duplicate curb, gutter, drain, crack, repair or road-paint geometry."
+  },
+  "branchSync": {
+    "lastIntegratedMain": "26b2b456172d3261a9685c1c9a70f87dc591ba8c",
+    "observedMain": "26b2b456172d3261a9685c1c9a70f87dc591ba8c",
+    "state": "synced",
+    "evidence": "PR #72 integrates main@26b2b456172d3261a9685c1c9a70f87dc591ba8c, including the canonical split browser-suite CI architecture.",
+    "rule": "Unrelated vehicle/traffic work is integrated only for branch continuity and must not expand atmosphere scope."
+  },
+  "completedTasks": [
+    "M0.1",
+    "M0.2",
+    "M0.3",
+    "M1.1",
+    "M1.2",
+    "M2.1",
+    "M2.2",
+    "M2.3-focused-value-assertions",
+    "M2.3-gameplay-scale-browser-evidence",
+    "M3.1-warm-street-descriptor-model",
+    "M3.2-warm-street-runtime-slice",
+    "M3.2-gameplay-scale-browser-evidence",
+    "M3.3-warm-frontage-spill",
+    "M3.3-gameplay-scale-browser-evidence",
+    "M3.4-contextual-family-model",
+    "M3.4-cool-civic",
+    "M3.4-nightlife-accent",
+    "M3.4-industrial-dirty",
+    "M3.4-focused-tests",
+    "M3.4-gameplay-scale-browser-evidence",
+    "M3.5-dynamic-vehicle-light-model",
+    "M3.5-focused-tests",
+    "M3.5-gameplay-scale-browser-evidence",
+    "M4.1-source-and-road-receiver-contract",
+    "M4.2-asphalt-only-receiver-descriptors",
+    "M4.3-static-wet-response",
+    "M4.4-dynamic-vehicle-emergency-response",
+    "M4.5-focused-tests",
+    "M4.6-gameplay-scale-browser-evidence",
+    "M4.7-continuity",
+    "M5.1-responsibility-audit",
+    "M5.2-service-frontage-grime",
+    "M5.2-focused-tests",
+    "M5.2-gameplay-scale-browser-evidence",
+    "M5.2-documentation-checkpoint",
+    "M5.3-service-corner-litter",
+    "M5.3-focused-tests",
+    "M5.3-gameplay-scale-browser-evidence",
+    "M5.3-documentation-checkpoint",
+    "M6.1-shadow-language-audit",
+    "M6.1-documentation-checkpoint",
+    "M6.2-vehicle-contact-shadow",
+    "M6.2-focused-tests",
+    "M6.2-gameplay-scale-browser-evidence",
+    "M6.2-documentation-checkpoint",
+    "M6.3-skipped-not-required",
+    "M7.1-decorative-sign-neon-grammar",
+    "M7.1-focused-tests",
+    "M7.1-gameplay-scale-browser-evidence",
+    "M7.1-documentation-checkpoint",
+    "M7.2-steam-smoke-service-effects",
+    "M7.2-focused-tests",
+    "M7.2-gameplay-scale-browser-evidence",
+    "M7.2-documentation-checkpoint"
+  ],
+  "milestones": {
+    "M0": { "title": "Canonical direction, references and agent continuity", "state": "complete" },
+    "M1": { "title": "Integrate the street-surface foundation", "state": "complete" },
+    "M2": { "title": "Global value hierarchy and night exposure", "state": "complete" },
+    "M3": { "title": "Practical-light islands", "state": "complete" },
+    "M4": { "title": "Wet asphalt and local reflection language", "state": "complete" },
+    "M5": { "title": "Low-frequency grime and urban surface dressing", "state": "complete" },
+    "M6": { "title": "Grounding and shadow consistency", "state": "complete" },
+    "M7": { "title": "Environmental storytelling and atmospheric set dressing", "state": "in-progress" },
+    "M8": { "title": "District colour/material identity", "state": "planned" },
+    "M9": { "title": "Final gameplay-scale review and bounded corrections", "state": "planned" }
+  },
+  "m2": {
+    "state": "complete",
+    "implementation": "palette-refinement",
+    "focusedTest": "tests/city-night-value-hierarchy.test.js",
+    "browserEvidence": { "workflowRun": 32464436723, "artifactId": 9440164701 }
+  },
+  "m3": {
+    "state": "complete",
+    "presentationPolicies": [
+      "phaser/src/policies/CityPracticalLightPresentationPolicy.js",
+      "phaser/src/policies/CityVehicleLightPresentationPolicy.js"
+    ],
+    "browserEvidence": {
+      "contextualFamilies": { "workflowRun": 32468999890, "artifactId": 9441823514 },
+      "vehicleAndEmergency": { "workflowRun": 32470828688, "artifactId": 9442522378 }
+    }
+  },
+  "m4": {
+    "state": "complete",
+    "task": "docs/agent-tasks/2026-08-21-city-noir-m4-wet-street-reflections.md",
+    "authority": "phaser/src/policies/CityWetStreetPresentationPolicy.js",
+    "validation": {
+      "testsWorkflowRun": 32475694164,
+      "atmosphereWorkflowRun": 32475694166,
+      "artifactId": 9444326985,
+      "conclusion": "success"
+    }
+  },
+  "m5": {
+    "state": "complete",
+    "task": "docs/agent-tasks/2026-08-21-city-noir-m5-grime-dressing.md",
+    "m5_2": {
+      "state": "complete",
+      "family": "service-frontage-grime",
+      "authority": "phaser/src/policies/CityGrimePresentationPolicy.js",
+      "validatedHead": "485ad7074f1ddfcbb1ab8e8f70d33125cd4a0aa4",
+      "validation": {
+        "testsWorkflowRun": 32488128735,
+        "atmosphereWorkflowRun": 32488128814,
+        "artifactId": 9448812773,
+        "conclusion": "success"
+      }
+    },
+    "m5_3": {
+      "state": "complete",
+      "family": "service-corner-litter",
+      "authority": "phaser/src/policies/CityServiceCornerDressingPolicy.js",
+      "sourceAuthority": "existing M5.2 service-strip descriptors plus read-only building geometry",
+      "focusedTest": "tests/city-service-corner-dressing-presentation.test.js",
+      "browserTest": "tests/browser/city-grime-review.spec.js",
+      "validatedHead": "034e165ecd9436e6b697ad248d7bab9b605214a8",
+      "validation": {
+        "testsWorkflowRun": 32491558013,
+        "atmosphereWorkflowRun": 32491558002,
+        "artifactId": 9450153767,
+        "conclusion": "success"
+      },
+      "captures": [
+        "service-corner-dressing.png",
+        "service-frontage-grime.png",
+        "mixed-grime-context.png",
+        "grime-dark-control.png"
+      ],
+      "visualAssessment": "accepted: tiny industrial/service-corner debris is discoverable but subordinate; mixed and dark controls stay sparse; no world-wide litter field or gameplay cue is introduced",
+      "reviewHarnessCorrection": "The initial browser harness tried to sort the intentionally frozen descriptor array in place. It was corrected to sort a copied array; production immutability/rendering were unchanged."
+    }
+  },
+  "m6": {
+    "state": "complete",
+    "task": "docs/agent-tasks/2026-08-21-city-noir-m6-grounding-shadows.md",
+    "checkpointEvidence": "docs/progress/CITY_NOIR_ATMOSPHERE_M6_2_CHECKPOINT.md",
+    "m6_1": {
+      "state": "complete",
+      "type": "read-only-authority-audit",
+      "building": "existing PR #63 layered building shadow/depth grammar is sufficient and locked",
+      "characters": "ModularCharacterView already has a shallow contact ellipse; no second atmosphere character shadow",
+      "vehicles": "VehicleView's former nearly coincident body underlay was the clearest remaining grounding deficit",
+      "streetProps": "dumpsters have no separate contact shadow but are secondary; no additional prop shadow was justified by M6.2 evidence",
+      "decision": "M6.2 is vehicle contact shadow only"
+    },
+    "m6_2": {
+      "state": "complete",
+      "family": "vehicle-contact-shadow",
+      "authority": "VehicleView remains sole vehicle presentation authority; VehicleGroundingPresentation provides the pure presentation primitive",
+      "presentationPolicy": {
+        "color": "0x000000",
+        "alpha": 0.17,
+        "widthScale": 0.92,
+        "heightScale": 0.7,
+        "offsetX": 0.7,
+        "offsetY": 1.3,
+        "minimumWidth": 8,
+        "minimumHeight": 4
+      },
+      "focusedTest": "tests/vehicle-contact-shadow-presentation.test.js",
+      "browserTest": "tests/browser/city-vehicle-light-review.spec.js",
+      "validatedHead": "5468cca1a0b75316aecc9f7d5fc3ac2c03671955",
+      "validation": {
+        "testsWorkflowRun": 32554016255,
+        "atmosphereWorkflowRun": 32554016253,
+        "artifactId": 9470977413,
+        "conclusion": "success"
+      },
+      "captures": [
+        "grounding-traffic.png",
+        "grounding-large-vehicle.png",
+        "grounding-police-wet.png",
+        "grounding-dark-control.png"
+      ],
+      "visualAssessment": "accepted: the shallow footprint seats ordinary and large vehicles on the road, remains compatible with wet police lighting, and does not swallow the vehicle silhouette in the dark control"
+    },
+    "m6_3": {
+      "state": "skipped-not-required",
+      "reason": "M6.2 gameplay-scale evidence did not prove a meaningful residual floating-prop deficit. Street props remain with their existing presentation/gameplay authority."
+    }
+  },
+  "m7": {
+    "state": "in-progress",
+    "checkpointEvidence": "docs/progress/CITY_NOIR_ATMOSPHERE_M7_2_CHECKPOINT.md",
+    "m7_1": {
+      "state": "complete",
+      "authority": "phaser/src/policies/BuildingDecorativeSignPresentationPolicy.js",
+      "sourceAuthority": "existing authored building semantics plus direct reuse of M3 practical-light presentation palettes",
+      "families": {
+        "nightlife-band": "nightlife-accent",
+        "motel-marquee": "warm-frontage",
+        "medical-panel": "cool-civic",
+        "service-panel": "industrial-dirty"
+      },
+      "focusedTest": "tests/building-decorative-sign-presentation-policy.test.js",
+      "browserTest": "tests/browser/city-sign-neon-review.spec.js",
+      "validatedHead": "fbdebe0d0f1f1a19bd509dddae721ed77b99ea12",
+      "validation": {
+        "testsWorkflowRun": 32585402509,
+        "atmosphereWorkflowRun": 32585402507,
+        "artifactId": 9478965549,
+        "conclusion": "success"
+      },
+      "captures": [
+        "m7-sign-01-medical-panel.png",
+        "m7-sign-02-nightlife-band.png",
+        "m7-sign-03-motel-marquee.png",
+        "m7-sign-04-service-panel.png",
+        "m7-sign-control-dark.png"
+      ],
+      "candidateCount": 29,
+      "visualAssessment": "accepted: sparse semantic plaques add local urban identity; nightlife is the strongest saturated accent, hotel is warm, service remains subdued, and unsigned/dark controls do not inherit generic neon",
+      "implementationCorrection": "Gameplay evidence exposed that addMapLabel expects a numeric color; passing a CSS string produced invalid ##rrggbb and black text. M7.1 now passes the numeric M3 coreColor and the focused test locks the contract.",
+      "ciCorrection": "The atmosphere package grew to six serial tests and exceeded its old inner 8m timeout after five passes. The capture allowance is now 10m inside a 15m job; no runtime behavior changed."
+    },
+    "m7_2": {
+      "state": "complete",
+      "family": "service-steam-smoke",
+      "authority": "phaser/src/policies/CityServiceSteamPresentationPolicy.js",
+      "sourceAuthority": "existing M5 service-strip descriptors; camera bounds only cull the stable selected source set",
+      "presentationPolicy": {
+        "maximumSources": 3,
+        "maximumPuffsPerSource": 3,
+        "maximumAlpha": 0.18,
+        "lifetimeMs": 2800,
+        "plumeDistance": 34,
+        "driftDistance": 7
+      },
+      "focusedTest": "tests/city-service-steam-presentation.test.js",
+      "browserTest": "tests/browser/city-grime-review.spec.js",
+      "validatedHead": "f9c1c78a86c3e34c7b733ecff5a66ea0c3b8dde6",
+      "validation": {
+        "testsWorkflowRun": 32705536855,
+        "atmosphereWorkflowRun": 32705536822,
+        "artifactId": 9512382899,
+        "conclusion": "success"
+      },
+      "captures": [
+        "m7-service-steam-a.png",
+        "m7-service-steam-b.png",
+        "m7-steam-dark-control.png"
+      ],
+      "visualAssessment": "accepted: a single visible warehouse source produces three small local puffs at gameplay scale, animation changes across sampled frames, and the distant dark control has zero sources and zero puffs; the effect reads as sparse service exhaust rather than global fog",
+      "reviewHarnessCorrection": "The first M7.2 review failure was evidence-only: camera.worldView was sampled in the same tick as centerOn(), before Phaser preRender refreshed it. The screenshot already showed steam. The harness now computes the centered viewport from camera dimensions and zoom; production runtime was unchanged."
+    },
+    "nextPlannedTask": "M7.3-contextual-micro-scenes",
+    "nextTaskState": "awaiting-user-direction"
+  },
+  "finalGate": {
+    "requiresUserVisualApproval": true,
+    "autonomousWorkStopsAt": "final-validation-pending",
+    "autoMergeAllowed": false
+  },
+  "nextAction": "M7.2 is complete and documented. Report validation and wait for user direction. If authorized, execute only M7.3 contextual micro-scenes; do not expand into M8 district identity in the same slice."
+}

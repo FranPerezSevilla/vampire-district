@@ -64,6 +64,7 @@ function fakeScene() {
     vehicleSystem,
     add: {
       container(x, y) { return chainable({ x, y, children: [] }); },
+      ellipse() { return chainable(); },
       rectangle() { return chainable(); },
       triangle() { return chainable(); },
       text() { return chainable(); }
