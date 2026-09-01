@@ -31,7 +31,7 @@ async function forceEnterRefugeCompact(page) {
   await page.waitForFunction(() => window.NBD_RADIO.snapshot().driving === true);
 }
 
-test("in-car radio exposes three three-track stations, cycles from the wheel, stops on foot and remembers the session station", async ({ page }) => {
+test("in-car radio follows a continuous station timeline, cycles from the wheel and stops audio on foot", async ({ page }) => {
   await page.goto("/?testScenario=vehicle-core", { waitUntil: "domcontentloaded" });
   await waitForRadioRuntime(page);
   await forceEnterRefugeCompact(page);
@@ -43,7 +43,9 @@ test("in-car radio exposes three three-track stations, cycles from the wheel, st
   expect(initial.radio.selectedStationId).toBe("vice-fm");
   expect(initial.radio.stationLabel).toBe("Vice FM");
   expect(initial.radio.trackCount).toBe(3);
-  expect(initial.radio.track?.id).toBe("daisuke-teiko-real-deal-90s-hip-hop");
+  expect(initial.radio.track?.id).toBeTruthy();
+  expect(initial.radio.trackOffsetSeconds).toBeGreaterThanOrEqual(0);
+  expect(initial.radio.cycleDurationSeconds).toBeGreaterThan(0);
   expect(initial.hud).toContain("RADIO Vice FM");
 
   const canvas = page.locator("#game-root canvas");
@@ -63,6 +65,7 @@ test("in-car radio exposes three three-track stations, cycles from the wheel, st
     hud: window.NBD_PHASER_GAME.scene.getScene("GameScene").vehicleSystem.hud.text
   }));
   expect(selected.radio.trackCount).toBe(3);
+  expect(selected.radio.track?.id).toBeTruthy();
   expect(selected.hud).toContain("RADIO Night Shift");
 
   await page.evaluate(() => {
@@ -70,19 +73,26 @@ test("in-car radio exposes three three-track stations, cycles from the wheel, st
     scene.vehicleSystem.exitVehicle({ force: true });
   });
   await page.waitForFunction(() => window.NBD_RADIO.snapshot().driving === false);
-  const onFoot = await page.evaluate(() => window.NBD_RADIO.snapshot());
-  expect(onFoot.selectedStationId).toBe("night-shift");
-  expect(onFoot.playbackStatus).toBe("idle");
+  const onFootA = await page.evaluate(() => window.NBD_RADIO.snapshot());
+  expect(onFootA.selectedStationId).toBe("night-shift");
+  expect(onFootA.playbackStatus).toBe("idle");
+
+  await page.waitForTimeout(1_200);
+  const onFootB = await page.evaluate(() => window.NBD_RADIO.snapshot());
+  expect(onFootB.selectedStationId).toBe("night-shift");
+  expect(onFootB.cycleOffsetSeconds).not.toBe(onFootA.cycleOffsetSeconds);
 
   await forceEnterRefugeCompact(page);
   const reentered = await page.evaluate(() => window.NBD_RADIO.snapshot());
   expect(reentered.selectedStationId).toBe("night-shift");
-  expect(reentered.track?.id).toBe("ejah-big-beat-industrial-breakbeat-1");
+  expect(reentered.track?.id).toBeTruthy();
+  expect(reentered.trackOffsetSeconds).toBeGreaterThanOrEqual(0);
 
   await page.evaluate(() => window.NBD_RADIO.select("pulse-94-6"));
   const pulse = await page.evaluate(() => window.NBD_RADIO.snapshot());
   expect(pulse.stationLabel).toBe("Pulse 94.6");
   expect(pulse.trackCount).toBe(3);
+  expect(pulse.track?.id).toBeTruthy();
 
   await page.evaluate(() => window.NBD_RADIO.select("off"));
   const off = await page.evaluate(() => window.NBD_RADIO.snapshot());

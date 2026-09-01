@@ -3,9 +3,11 @@ import {
   RADIO_STATION_ORDER,
   radioStationById
 } from "../audio/RadioCatalog.js";
-import { RadioPlayback } from "../audio/RadioPlayback.js";
+import { RadioBroadcastPlayback } from "../audio/RadioBroadcastPlayback.js";
+import { RadioTimeline } from "../audio/RadioTimeline.js";
 
 const DEFAULT_STATION_ID = "vice-fm";
+const TIMELINE_BOUNDARY_EPSILON_SECONDS = 0.05;
 
 function normalizedStep(value) {
   const numeric = Number(value) || 0;
@@ -15,19 +17,21 @@ function normalizedStep(value) {
 export class RadioSystem {
   constructor(scene, {
     vehicleSystem = scene?.vehicleSystem,
-    playback = new RadioPlayback(),
+    playback = new RadioBroadcastPlayback(),
+    timeline = new RadioTimeline(RADIO_STATIONS),
     defaultStationId = DEFAULT_STATION_ID
   } = {}) {
     if (!scene) throw new TypeError("RadioSystem requires GameScene.");
     this.scene = scene;
     this.vehicleSystem = vehicleSystem;
     this.playback = playback;
+    this.timeline = timeline;
     this.selectedStationId = radioStationById(defaultStationId) ? defaultStationId : DEFAULT_STATION_ID;
-    this.trackCursors = new Map();
     this.driving = Boolean(vehicleSystem?.isDriving?.());
     this.playbackStatus = "idle";
     this.destroyed = false;
     this.lastPublishedKey = "";
+    this.waitingForTimelineTrackId = null;
 
     // Download all nine compressed masters immediately and decode the first
     // track of each station in parallel. RadioPlayback keeps the decoded cache
@@ -68,17 +72,18 @@ export class RadioSystem {
       : radioStationById(this.selectedStationId);
   }
 
+  currentPosition(station = this.station()) {
+    if (!station) return null;
+    return this.timeline?.position?.(station.id) || null;
+  }
+
   currentTrack() {
-    const station = this.station();
-    if (!station?.tracks?.length) return null;
-    const cursor = this.trackCursors.get(station.id) || 0;
-    return station.tracks[cursor % station.tracks.length] || station.tracks[0] || null;
+    return this.currentPosition()?.track || null;
   }
 
   nextTrack(station = this.station()) {
     if (!station?.tracks?.length) return null;
-    const cursor = this.trackCursors.get(station.id) || 0;
-    return station.tracks[(cursor + 1) % station.tracks.length] || null;
+    return this.timeline?.nextTrack?.(station.id) || null;
   }
 
   cycleStation(step) {
@@ -106,16 +111,21 @@ export class RadioSystem {
   startSelectedStation() {
     if (!this.driving || this.selectedStationId === "off") return false;
     const station = this.station();
-    const track = this.currentTrack();
-    if (!station || !track) {
+    const position = this.currentPosition(station);
+    const track = position?.track;
+    if (!station || !position || !track) {
       this.playbackStatus = "unavailable";
       return false;
     }
 
+    this.waitingForTimelineTrackId = null;
     const stationId = station.id;
     const trackId = track.id;
     this.playbackStatus = "loading";
     const started = this.playback.play(track, {
+      offsetSeconds: position.offsetSeconds,
+      timelineObservedAtMs: position.observedAtMs,
+      timelineDurationSeconds: position.durationSeconds,
       onEnded: () => this.handleTrackEnded(stationId, trackId),
       onError: () => {
         if (this.destroyed || !this.driving || this.selectedStationId !== stationId) return;
@@ -135,20 +145,61 @@ export class RadioSystem {
   handleTrackEnded(stationId, trackId) {
     if (this.destroyed || !this.driving || this.selectedStationId !== stationId) return false;
     const station = radioStationById(stationId);
-    if (!station?.tracks?.length) return false;
-    const currentIndex = station.tracks.findIndex(track => track.id === trackId);
-    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % station.tracks.length : 0;
-    this.trackCursors.set(station.id, nextIndex);
+    const livePosition = this.currentPosition(station);
     this.playbackStatus = "idle";
+
+    // Source-page durations are whole-second schedule metadata. If the encoded
+    // master ends a fraction early, do not restart its tail; wait silently for
+    // the broadcast boundary, then join the next live track on the next update.
+    if (
+      livePosition?.track?.id === trackId
+      && livePosition.remainingSeconds > TIMELINE_BOUNDARY_EPSILON_SECONDS
+    ) {
+      this.waitingForTimelineTrackId = trackId;
+      this.publish(true);
+      return false;
+    }
+
     const started = this.startSelectedStation();
     this.publish(true);
     return started;
   }
 
   stopPlayback(reason = "stopped") {
+    this.waitingForTimelineTrackId = null;
     this.playback.stop?.();
     this.playbackStatus = reason === "station-off" || reason === "on-foot" ? "idle" : reason;
     return true;
+  }
+
+  syncToLiveTimeline(playbackState = this.playback.snapshot?.() || {}) {
+    if (!this.driving || this.selectedStationId === "off") return playbackState;
+    const position = this.currentPosition();
+    const liveTrackId = position?.track?.id || null;
+    if (!liveTrackId) return playbackState;
+
+    if (this.waitingForTimelineTrackId) {
+      if (liveTrackId !== this.waitingForTimelineTrackId) {
+        this.waitingForTimelineTrackId = null;
+        this.startSelectedStation();
+        return this.playback.snapshot?.() || playbackState;
+      }
+      return playbackState;
+    }
+
+    // The station clock owns track boundaries. If source metadata and the
+    // decoded MP3 differ by a fraction of a second, resync at the schedule
+    // boundary instead of allowing cumulative drift across the playlist.
+    if (
+      playbackState?.status === "playing"
+      && playbackState.trackKey
+      && playbackState.trackKey !== liveTrackId
+    ) {
+      this.startSelectedStation();
+      return this.playback.snapshot?.() || playbackState;
+    }
+
+    return playbackState;
   }
 
   update(_dt = 0, frame = this.scene.currentInputFrame || {}) {
@@ -165,12 +216,15 @@ export class RadioSystem {
       if (step) this.cycleStation(step);
     }
 
-    const playbackState = this.playback.snapshot?.();
+    let playbackState = this.playback.snapshot?.() || {};
+    playbackState = this.syncToLiveTimeline(playbackState);
     if (!driving) {
       // A private master may have failed to preload while CI/local runs without
       // staged radio assets. Once the player is on foot the radio is stopped by
       // definition, so a stale underlying `unavailable` state must not leak back
       // into the player-facing runtime state after `stopPlayback("on-foot")`.
+      this.playbackStatus = "idle";
+    } else if (this.waitingForTimelineTrackId) {
       this.playbackStatus = "idle";
     } else if (playbackState?.status && playbackState.status !== this.playbackStatus) {
       this.playbackStatus = playbackState.status;
@@ -204,7 +258,8 @@ export class RadioSystem {
 
   snapshot() {
     const station = this.station();
-    const track = this.currentTrack();
+    const position = this.currentPosition(station);
+    const track = position?.track || null;
     const playback = this.playback.snapshot?.() || {};
     return {
       driving: this.driving,
@@ -214,15 +269,20 @@ export class RadioSystem {
         id: track.id,
         title: track.title,
         creator: track.creator,
-        filename: track.filename
+        filename: track.filename,
+        durationSeconds: position.durationSeconds
       } : null,
-      trackIndex: station ? (this.trackCursors.get(station.id) || 0) : -1,
-      trackCount: station?.tracks?.length || 0,
+      trackIndex: position?.trackIndex ?? -1,
+      trackCount: position?.trackCount ?? 0,
+      trackOffsetSeconds: position ? Math.floor(position.offsetSeconds) : null,
+      cycleOffsetSeconds: position ? Math.floor(position.cycleOffsetSeconds) : null,
+      cycleDurationSeconds: position?.cycleSeconds ?? 0,
       playbackStatus: this.playbackStatus,
       playbackKind: playback.playbackKind || null,
       playbackContextState: playback.contextState || null,
       playbackError: playback.lastError || null,
       playbackUrl: playback.trackUrl || null,
+      playbackStartOffsetSeconds: playback.startOffsetSeconds ?? null,
       preload: playback.preload || null
     };
   }
