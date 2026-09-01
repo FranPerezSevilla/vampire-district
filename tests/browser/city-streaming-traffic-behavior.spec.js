@@ -273,6 +273,6 @@ test("default compiler-route traffic brakes for a parked car without leaving com
   expect(result.steeringOffset).toBe(0);
   expect(result.steeringAngle).toBe(0);
   expect(result.steeringReason).toBe("route-braking-no-lateral");
-  expect(result.routeBehavior.lateralSteeringAuthority).toBe(false);
+  expect(result.routeBehavior.lateralSteeringAuthority).toBe("bounded-bypass-corridor-only");
   expect(pageErrors).toEqual([]);
 });
