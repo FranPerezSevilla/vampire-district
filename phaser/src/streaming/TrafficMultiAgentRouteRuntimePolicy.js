@@ -1,4 +1,5 @@
 import { advanceTrafficRouteAgent } from "./TrafficRouteCursor.js";
+import { createTrafficJunctionFlowController } from "./TrafficJunctionFlowPolicy.js";
 import { createTrafficJunctionReservationRegistry } from "./TrafficJunctionReservationRegistry.js";
 import {
   projectTrafficRouteAgentsToMacroCompatibility,
@@ -52,7 +53,8 @@ export function createTrafficMultiAgentRouteRuntime({
   speed = DEFAULT_ROUTE_SPEED,
   reservationRegistry = null,
   reservationStaleAfterSeconds = 3,
-  tokenIdFor = ({ edgeId, tokenIndex }) => `${edgeId}#${tokenIndex}`
+  tokenIdFor = ({ edgeId, tokenIndex }) => `${edgeId}#${tokenIndex}`,
+  materializer = null
 } = {}) {
   const seeded = seedTrafficRouteAgentsFromMacroPopulation(
     trafficFlows,
@@ -68,7 +70,11 @@ export function createTrafficMultiAgentRouteRuntime({
   });
   const ownsReservationRegistry = !reservationRegistry;
   const unitsPerSecond = Math.max(1, finite(speed, DEFAULT_ROUTE_SPEED));
+  const junctionFlow = materializer
+    ? createTrafficJunctionFlowController(materializer, { topology })
+    : null;
   let agents = seeded.agents.map(cloneAgent);
+  if (junctionFlow) agents = junctionFlow.normalizeAgents(agents).map(cloneAgent);
   let clockSeconds = 0;
   let ticks = 0;
   let totalStageTransitions = 0;
@@ -78,7 +84,9 @@ export function createTrafficMultiAgentRouteRuntime({
   let destroyed = false;
 
   function releaseTokenReservations(tokenId, reason) {
-    return reservations.releaseByToken(tokenId, reason);
+    const removed = reservations.releaseByToken(tokenId, reason);
+    junctionFlow?.releaseToken?.(tokenId, reason, null);
+    return removed;
   }
 
   function refreshConnectorOwnership(agent) {
@@ -86,6 +94,16 @@ export function createTrafficMultiAgentRouteRuntime({
     const connector = topology?.junctionConnectors?.connectors?.[agent.connectorId];
     const junctionId = connectorJunctionId(topology, agent);
     if (!connector || !junctionId) return false;
+    if (junctionFlow) {
+      const transition = topology?.transitions?.[connector.transitionId] || null;
+      return junctionFlow.confirmConnectorEntry({
+        tokenId: agent.tokenId,
+        transition,
+        connector,
+        nowSeconds: clockSeconds,
+        reservationRegistry: reservations
+      }).allowed;
+    }
     const ownership = reservations.request({
       junctionId,
       tokenId: agent.tokenId,
@@ -98,6 +116,24 @@ export function createTrafficMultiAgentRouteRuntime({
   function reservationHooks() {
     return {
       beforeConnectorEntry({ tokenId, transition, connector }) {
+        if (junctionFlow) {
+          const confirmation = junctionFlow.confirmConnectorEntry({
+            tokenId,
+            transition,
+            connector,
+            nowSeconds: clockSeconds,
+            reservationRegistry: reservations
+          });
+          if (!confirmation.allowed) {
+            totalYieldCount++;
+            return {
+              allowed: false,
+              reason: "junction-yield",
+              detailReason: confirmation.reason
+            };
+          }
+          return { allowed: true };
+        }
         const junctionId = transition?.nodeId || connector?.nodeId || null;
         if (!junctionId) {
           return { allowed: false, reason: "missing-junction-reservation-authority" };
@@ -118,10 +154,70 @@ export function createTrafficMultiAgentRouteRuntime({
         }
         return { allowed: true };
       },
-      afterConnectorExit({ tokenId }) {
+      afterConnectorExit({ tokenId, outgoingLaneId }) {
+        if (junctionFlow) {
+          junctionFlow.markConnectorExit({
+            tokenId,
+            outgoingLaneId,
+            nowSeconds: clockSeconds,
+            reservationRegistry: reservations
+          });
+          return;
+        }
         releaseTokenReservations(tokenId, "connector-exit");
       }
     };
+  }
+
+  function stoppedResult(current, duration, blockedReason = null) {
+    return {
+      agent: cloneAgent(current),
+      stageTransitions: 0,
+      junctionDecisions: 0,
+      remainingSeconds: duration,
+      blockedReason
+    };
+  }
+
+  function advanceWithFlowControl(current, duration, speedFactor, hooks) {
+    const effectiveSpeed = unitsPerSecond * speedFactor;
+    const allowance = junctionFlow?.movementAllowance?.({
+      agent: current,
+      duration,
+      speed: effectiveSpeed,
+      nowSeconds: clockSeconds,
+      reservationRegistry: reservations
+    }) || { allowed: true };
+
+    if (!allowance.allowed) {
+      totalYieldCount++;
+      const allowedSeconds = Math.max(0, Math.min(duration, finite(allowance.allowedSeconds)));
+      const result = effectiveSpeed > EPSILON && allowedSeconds > EPSILON
+        ? advanceTrafficRouteAgent(current, allowedSeconds, topology, {
+            speed: effectiveSpeed,
+            maxStageTransitions: 16,
+            ...hooks
+          })
+        : stoppedResult(current, duration);
+      if (result.agent.stage === "lane" && result.agent.currentLaneId === current.currentLaneId) {
+        result.agent.stageProgress = Math.min(
+          clamp(result.agent.stageProgress, 0, 1),
+          clamp(allowance.holdProgress, 0, 1)
+        );
+      }
+      result.remainingSeconds = Math.max(0, duration - allowedSeconds);
+      result.blockedReason = "junction-yield";
+      result.blockedDetailReason = allowance.detailReason || "junction-admission-wait";
+      result.blockerId = allowance.blockerId || null;
+      return result;
+    }
+
+    if (speedFactor <= EPSILON) return stoppedResult(current, duration);
+    return advanceTrafficRouteAgent(current, duration, topology, {
+      speed: effectiveSpeed,
+      maxStageTransitions: 16,
+      ...hooks
+    });
   }
 
   function step(seconds = 0.05, { speedFactorFor = null } = {}) {
@@ -130,11 +226,19 @@ export function createTrafficMultiAgentRouteRuntime({
     if (duration <= EPSILON) return snapshot();
     clockSeconds += duration;
 
-    const connectorAgents = agents
-      .filter(agent => agent.stage === "connector")
-      .sort((left, right) => left.tokenId.localeCompare(right.tokenId));
-    for (const agent of connectorAgents) refreshConnectorOwnership(agent);
-    reservations.cleanup(clockSeconds);
+    if (junctionFlow) {
+      junctionFlow.prepareStep({
+        agents,
+        nowSeconds: clockSeconds,
+        reservationRegistry: reservations
+      });
+    } else {
+      const connectorAgents = agents
+        .filter(agent => agent.stage === "connector")
+        .sort((left, right) => left.tokenId.localeCompare(right.tokenId));
+      for (const agent of connectorAgents) refreshConnectorOwnership(agent);
+      reservations.cleanup(clockSeconds);
+    }
 
     const nextAgents = [];
     const nextBlocked = [];
@@ -145,22 +249,23 @@ export function createTrafficMultiAgentRouteRuntime({
         ? speedFactorFor(current)
         : 1;
       const speedFactor = clamp(requestedFactor, 0, 1);
-      const result = speedFactor <= EPSILON
-        ? {
-            agent: cloneAgent(current),
-            stageTransitions: 0,
-            junctionDecisions: 0,
-            remainingSeconds: duration,
-            blockedReason: null
-          }
-        : advanceTrafficRouteAgent(current, duration, topology, {
-            speed: unitsPerSecond * speedFactor,
-            maxStageTransitions: 16,
-            ...hooks
-          });
+      const result = junctionFlow
+        ? advanceWithFlowControl(current, duration, speedFactor, hooks)
+        : speedFactor <= EPSILON
+          ? stoppedResult(current, duration)
+          : advanceTrafficRouteAgent(current, duration, topology, {
+              speed: unitsPerSecond * speedFactor,
+              maxStageTransitions: 16,
+              ...hooks
+            });
       if (result.agent.tokenId !== stableTokenId) {
         throw new Error(`Multi-agent route runtime changed stable identity ${stableTokenId}.`);
       }
+      junctionFlow?.afterAdvance?.({
+        agent: result.agent,
+        nowSeconds: clockSeconds,
+        reservationRegistry: reservations
+      });
       nextAgents.push(result.agent);
       totalStageTransitions += result.stageTransitions;
       totalJunctionDecisions += result.junctionDecisions;
@@ -168,6 +273,8 @@ export function createTrafficMultiAgentRouteRuntime({
         nextBlocked.push({
           tokenId: stableTokenId,
           reason: result.blockedReason,
+          detailReason: result.blockedDetailReason || null,
+          blockerId: result.blockerId || null,
           laneId: result.agent.currentLaneId,
           stage: result.agent.stage,
           stageProgress: result.agent.stageProgress
@@ -188,6 +295,7 @@ export function createTrafficMultiAgentRouteRuntime({
     const projection = projectTrafficRouteAgentsToMacroCompatibility(agents, topology, macroGraph);
     const projectionValidation = validateTrafficRouteMacroProjection(projection, macroGraph);
     const reservationSnapshot = reservations.snapshot();
+    const flowSnapshot = junctionFlow?.snapshot?.() || null;
     const stageCounts = { lane: 0, connector: 0, other: 0 };
     for (const agent of agents) {
       if (agent.stage === "lane") stageCounts.lane++;
@@ -200,7 +308,9 @@ export function createTrafficMultiAgentRouteRuntime({
       ready: !destroyed,
       mode: "multi-agent-route-runtime",
       movementAuthority: "compiler-local-topology",
-      speedAuthority: "route-behavior-factor",
+      speedAuthority: junctionFlow
+        ? "route-behavior-factor-plus-junction-admission"
+        : "route-behavior-factor",
       maximumSpeedFactor: 1,
       macroMutationAuthority: false,
       macroCoordinateAuthority: false,
@@ -226,6 +336,14 @@ export function createTrafficMultiAgentRouteRuntime({
       routeReservationReleases: reservationSnapshot.releases,
       routeReservationStaleReleases: reservationSnapshot.staleReleases,
       routeReservations: reservationSnapshot.reservations,
+      junctionFlow: flowSnapshot,
+      junctionFlowActive: Boolean(flowSnapshot?.active),
+      junctionAdmissionAuthority: flowSnapshot?.authority || null,
+      junctionActivePermitCount: flowSnapshot?.activePermitCount || 0,
+      junctionAdmissionDenials: flowSnapshot?.admissionDenials || 0,
+      junctionExitBlockedDenials: flowSnapshot?.exitBlockedDenials || 0,
+      junctionClearanceReleases: flowSnapshot?.clearanceReleases || 0,
+      junctionFlowState: flowSnapshot,
       materializationTokenCount: agents.length,
       projectionValid: projectionValidation.valid,
       projectionErrors: [...projectionValidation.errors],
@@ -243,6 +361,7 @@ export function createTrafficMultiAgentRouteRuntime({
     if (destroyed) return;
     for (const agent of agents) releaseTokenReservations(agent.tokenId, reason);
     if (ownsReservationRegistry) reservations.clear(reason);
+    junctionFlow?.destroy?.();
     agents = [];
     blocked = [];
     destroyed = true;
@@ -369,7 +488,8 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
       macroGraph: materializer.macro.graph,
       topology: topology(),
       speed,
-      reservationStaleAfterSeconds
+      reservationStaleAfterSeconds,
+      materializer
     });
   }
 
@@ -458,11 +578,21 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
     return runtime.materializationTokens();
   }
 
+  function physicalSpeedFactor(agent) {
+    const slot = materializer.assignments.get(agent?.tokenId);
+    if (!slot) return 1;
+    if (slot.trafficDisabled) return 0;
+    return finite(slot.physicalHoldSeconds) > EPSILON ? 0 : 1;
+  }
+
   function advanceRoute(seconds) {
     ensurePresentationGuards();
     routeBehavior?.update?.(runtime, seconds);
     runtime.step(seconds, {
-      speedFactorFor: agent => routeBehavior?.speedFactor?.(agent.tokenId, agent.stage) ?? 1
+      speedFactorFor: agent => Math.min(
+        routeBehavior?.speedFactor?.(agent.tokenId, agent.stage) ?? 1,
+        physicalSpeedFactor(agent)
+      )
     });
     return snapshot();
   }
@@ -519,7 +649,9 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
       presentationReady: presentationReady(),
       movementAuthority: enabled ? "multi-agent-compiler-route" : "authored-local-lanes",
       defaultTrafficAuthority: defaultEnabled ? "multi-agent-compiler-route" : "authored-local-lanes",
-      speedAuthority: enabled ? "route-behavior-fsm" : "authored-local-behavior",
+      speedAuthority: enabled
+        ? "route-behavior-fsm-plus-physical-hold-and-junction-admission"
+        : "authored-local-behavior",
       maximumRouteSpeedFactor: 1,
       macroMutationAuthority: false,
       macroCoordinateAuthority: false,
@@ -564,7 +696,13 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
         routeReservationCount: 0,
         materializationTokenCount: 0,
         blockedAgentCount: 0,
-        totalYieldCount: 0
+        totalYieldCount: 0,
+        junctionFlowActive: false,
+        junctionActivePermitCount: 0,
+        junctionAdmissionDenials: 0,
+        junctionExitBlockedDenials: 0,
+        junctionClearanceReleases: 0,
+        junctionFlowState: null
       })
     };
   }

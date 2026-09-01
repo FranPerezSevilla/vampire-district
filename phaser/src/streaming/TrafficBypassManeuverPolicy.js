@@ -206,8 +206,14 @@ export function planTrafficBypass(materializer, topology, agent, blocker, {
     ownRadius + blockerRadius,
     finite(blocker?.gap) + ownRadius + blockerRadius
   );
+  const requiredManeuverDistance = blockerCenterDistance + Math.max(36, finite(rejoinReserve, 56));
+  const junctionFlow = materializer?.__nbdTrafficJunctionFlowController;
+  if (junctionFlow?.bypassAllowed
+    && !junctionFlow.bypassAllowed(agent, { requiredDistance: requiredManeuverDistance })) {
+    return null;
+  }
   const remainingDistance = (1 - clamp(agent?.stageProgress, 0, 1)) * lane.length;
-  if (remainingDistance < blockerCenterDistance + Math.max(36, finite(rejoinReserve, 56))) return null;
+  if (remainingDistance < requiredManeuverDistance) return null;
 
   const preferredSide = stableHash(`${agent.tokenId}|${blocker.blockerId}`) % 2 === 0 ? -1 : 1;
   for (const side of [preferredSide, -preferredSide]) {

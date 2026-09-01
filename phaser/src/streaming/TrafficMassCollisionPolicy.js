@@ -41,6 +41,8 @@ export function installTrafficMassCollisionPolicy(physicalSystem) {
   if (physicalSystem.__nbdMassCollisionPolicy) return physicalSystem.__nbdMassCollisionPolicy;
 
   const rigidBodyPolicy = installTrafficRigidBodyCollisionPolicy(physicalSystem);
+  const junctionFlowController = () => physicalSystem.materializer?.__nbdTrafficJunctionFlowController || null;
+  junctionFlowController()?.installPhysicalGuard?.(physicalSystem);
   const originalPushContact = physicalSystem.pushContact;
   const originalDampDrivenVehicle = physicalSystem.dampDrivenVehicle;
   let lastResponse = null;
@@ -88,7 +90,8 @@ export function installTrafficMassCollisionPolicy(physicalSystem) {
       return {
         weightedContacts,
         lastResponse: lastResponse ? { ...lastResponse } : null,
-        rigidBody: rigidBodyPolicy.snapshot()
+        rigidBody: rigidBodyPolicy.snapshot(),
+        junctionFlow: junctionFlowController()?.snapshot?.() || null
       };
     },
     destroy() {
