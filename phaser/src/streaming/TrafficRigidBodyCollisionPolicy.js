@@ -14,6 +14,38 @@ function pairKey(left, right) {
   return [String(left?.tokenId || ""), String(right?.tokenId || "")].sort().join("|");
 }
 
+function projectedRadius(box, axis) {
+  return Math.abs(axis.x * finite(box?.forward?.x, 1) + axis.y * finite(box?.forward?.y)) * finite(box?.halfLength)
+    + Math.abs(axis.x * finite(box?.right?.x) + axis.y * finite(box?.right?.y, 1)) * finite(box?.halfWidth);
+}
+
+function separationAxis(contact) {
+  const left = contact?.left;
+  const right = contact?.right;
+  const dx = finite(right?.x) - finite(left?.x);
+  const dy = finite(right?.y) - finite(left?.y);
+  const distance = Math.hypot(dx, dy);
+  if (distance <= 0.0001) {
+    const nx = finite(contact?.normal?.x, 1);
+    const ny = finite(contact?.normal?.y, 0);
+    const normalLength = Math.max(0.0001, Math.hypot(nx, ny));
+    return {
+      x: nx / normalLength,
+      y: ny / normalLength,
+      overlap: Math.max(0, finite(contact?.overlap))
+    };
+  }
+
+  const axis = { x: dx / distance, y: dy / distance };
+  // SAT's minimum translation vector is mathematically minimal, but for long
+  // traffic rectangles it can turn a deep rear-end overlap into a lateral shove.
+  // Resolve along the centre-to-centre line instead: longitudinal contacts stay
+  // longitudinal, side-by-side contacts stay lateral, and the result is stable
+  // even when a frame starts with a deep penetration.
+  const overlap = projectedRadius(left, axis) + projectedRadius(right, axis) - distance;
+  return { ...axis, overlap: Math.max(0, overlap) };
+}
+
 function candidate(system, slot, state, dx, dy, activeSlots) {
   const offsetX = finite(state?.offsetX) + finite(dx);
   const offsetY = finite(state?.offsetY) + finite(dy);
@@ -58,16 +90,17 @@ function separatePair(system, left, right, contact, activeSlots) {
   const rightState = system.stateFor(right);
   if (!leftState || !rightState) return false;
 
+  const axis = separationAxis(contact);
   const padding = Math.max(0.5, finite(system.collisionPadding, 1));
   const maxStep = Math.max(2, finite(system.maxPushStep, 16));
-  const separation = Math.min(maxStep, Math.max(0.8, finite(contact?.overlap) + padding));
+  const separation = Math.min(maxStep, Math.max(0.8, finite(axis.overlap) + padding));
   const leftMass = collisionMass(left);
   const rightMass = collisionMass(right);
   const totalMass = leftMass + rightMass;
   const leftShare = rightMass / totalMass;
   const rightShare = leftMass / totalMass;
-  const nx = finite(contact?.normal?.x, 1);
-  const ny = finite(contact?.normal?.y, 0);
+  const nx = finite(axis.x, 1);
+  const ny = finite(axis.y, 0);
   const holdSeconds = Math.max(0.12, finite(system.pushHoldSeconds, 0.16));
 
   const leftNext = candidate(system, left, leftState, -nx * separation * leftShare, -ny * separation * leftShare, activeSlots);
@@ -186,6 +219,7 @@ export function installTrafficRigidBodyCollisionPolicy(physicalSystem, { solverP
     snapshot() {
       return {
         solver: "iterative-oriented-box-depenetration",
+        separationAxis: "centerline-projection",
         solverPasses: passes,
         framesWithContacts,
         depenetratedPairs,
