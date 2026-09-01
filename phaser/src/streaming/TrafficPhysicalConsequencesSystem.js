@@ -439,7 +439,8 @@ export class TrafficPhysicalConsequencesSystem {
     const damage = trafficCollisionDamage(impactSpeed, item.contact.overlap);
     if (damage > 0) {
       this.damageTrafficToken(item.slot.tokenId, damage, "player-vehicle-impact");
-      this.vehicleSystem.damageVehicle?.(vehicle.id, Math.max(1, damage * 0.45), { reason: "traffic-impact", persist: !vehicle.transient });
+      // TrafficImpactConsequencesSystem owns driven-vehicle damage, tiering and
+      // cooldown/suppression. Physical contact only damages the ambient traffic token here.
     }
     if (!pushed) {
       this.markBlocked(vehicle, item, impactSpeed);
