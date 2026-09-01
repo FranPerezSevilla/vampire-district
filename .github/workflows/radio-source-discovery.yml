@@ -14,30 +14,46 @@ permissions:
 jobs:
   discover:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 8
     steps:
-      - name: Extract all preview AudioObject sources once
+      - name: Verify official preview masters and CORS
         shell: bash
         run: |
           set -euo pipefail
-          declare -A PAGES=(
-            [daisuke]='https://pixabay.com/music/beats-daisuke-teiko-the-real-deal-90s-hip-hop-instrumental-111454/'
-            [catch22]='https://pixabay.com/music/beats-coasting-west-coast-hip-hop-381615/'
-            [abydos]='https://pixabay.com/music/beats-trip-hop-lovers-206690/'
-            [ejah1]='https://pixabay.com/music/electronic-big-beat-rave-industrial-breakbeat-1-472114/'
-            [natureseye]='https://pixabay.com/music/upbeat-dirty-industrial-rave-177919/'
-            [ejah3]='https://pixabay.com/music/hard-rock-big-beat-rave-industrial-breakbeat-3-473019/'
-            [maty]='https://pixabay.com/es/music/optimista-tema-acid-house-329018/'
-            [placidplace]='https://pixabay.com/es/music/techno-y-trance-franic-acid-trance-395688/'
-            [berrydeep]='https://pixabay.com/music/soft-house-back-to-90s-579460/'
-          )
-          for id in daisuke catch22 abydos ejah1 natureseye ejah3 maty placidplace berrydeep; do
+          verify() {
+            id="$1"; expected="$2"; url="$3"
+            file="/tmp/${id}.mp3"; headers="/tmp/${id}.headers"
             echo "::group::$id"
-            tmp="/tmp/${id}.json"
-            curl --fail-with-body --silent --show-error --max-time 60 \
-              -H 'Accept: application/json' \
-              -H 'X-Target-Selector: script[type="application/ld+json"]' \
-              "https://r.jina.ai/${PAGES[$id]}" > "$tmp"
-            grep -Eo 'https://cdn\.pixabay\.com[^"[:space:]<>]+\.mp3[^"[:space:]<>]*' "$tmp" | head -1
+            curl --fail --silent --show-error --location --max-time 90 \
+              -D "$headers" -o "$file" "$url"
+            actual="$(sha256sum "$file" | awk '{print $1}')"
+            size="$(stat -c '%s' "$file")"
+            cors="$(awk 'BEGIN{IGNORECASE=1} /^access-control-allow-origin:/ {gsub("\r",""); print $0}' "$headers" | tail -1)"
+            type="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {gsub("\r",""); print $0}' "$headers" | tail -1)"
+            echo "sha256=$actual"
+            echo "size=$size"
+            echo "${type:-content-type=MISSING}"
+            echo "${cors:-access-control-allow-origin=MISSING}"
+            test "$actual" = "$expected"
+            test -n "$cors"
             echo '::endgroup::'
-          done
+          }
+
+          verify daisuke c5930d15c5dab3320e447026c0bccdc93bca8345244ea19d56e775e977f488cf \
+            'https://cdn.pixabay.com/download/audio/2022/05/18/audio_1adefe18a4.mp3?filename=25562653-daisuke-teiko-the-real-deal-90s-hip-hop-instrumental-111454.mp3'
+          verify catch22 aee570225b41f68282eaca7b498d06994b2bf125bc61b5e4e02d06b218907025 \
+            'https://cdn.pixabay.com/download/audio/2025/07/28/audio_eb5639a6c2.mp3?filename=catch22music-coasting-west-coast-hip-hop-381615.mp3'
+          verify abydos c5f5e938a6d1af5084dd3ffa27232ee1d1075f43b2e1d73ddb40d4e58f1166f8 \
+            'https://cdn.pixabay.com/download/audio/2024/05/05/audio_963db85fda.mp3?filename=abydos_music-trip-hop-lovers-206690.mp3'
+          verify ejah1 2bfbba89575be89b343766baee8d74bc986ef3685e3810a0fd319a424529f081 \
+            'https://cdn.pixabay.com/download/audio/2026/01/23/audio_2a37b5ba73.mp3?filename=ejah_music-big-beat-rave-_-industrial-breakbeat-1-472114.mp3'
+          verify natureseye 0b03416b2254957115065dee6863ab8a4052ef47b5f000afe081335c6e89a6f3 \
+            'https://cdn.pixabay.com/download/audio/2023/11/23/audio_4de2256b59.mp3?filename=natureseye-dirty-industrial-rave-177919.mp3'
+          verify ejah3 f2d2e2308e2b87c893a14ff5a326b3af30f8a8e779ae6532ee8f6bbd8a1a9a1b \
+            'https://cdn.pixabay.com/download/audio/2026/01/25/audio_68b584da36.mp3?filename=ejah_music-big-beat-rave-_-industrial-breakbeat-3-473019.mp3'
+          verify maty 5156d054eab2d5b39fdc495f3522aa1487173f15f0cf4a7f020435d4a4cb0cb0 \
+            'https://cdn.pixabay.com/download/audio/2025/04/18/audio_692b94d24f.mp3?filename=maty1309-tema-acid-house-329018.mp3'
+          verify placidplace 3ef685bb89fe0010e3894206886075fc48e1483ea56b83726a698a45097dbad5 \
+            'https://cdn.pixabay.com/download/audio/2025/08/27/audio_9b7d48803a.mp3?filename=placidplace-franic-acid-trance-395688.mp3'
+          verify berrydeep d5f483b7a0e3bc16f80759117be6bc485d2ab1463690c79eb2272af91af1fda9 \
+            'https://cdn.pixabay.com/download/audio/2026/08/03/audio_f8c8062775.mp3?filename=berrydeep-back-to-90s-579460.mp3'
