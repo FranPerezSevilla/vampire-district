@@ -8,7 +8,7 @@ export const TRAFFIC_RADIO_DEFAULTS = Object.freeze({
   fullVolumeRadius: 36,
   maxGain: 0.10,
   falloffExponent: 1.9,
-  playerRadioDuck: 0.22,
+  playerRadioDuck: 0,
   drivingDuck: 0.52,
   nearFilterHz: 3400,
   farFilterHz: 850
@@ -325,7 +325,7 @@ export class TrafficRadioAmbienceSystem {
     emitter.gainValue = gainValue;
     emitter.panValue = panValue;
     emitter.filterHz = filterHz;
-    setAudioParam(emitter.gain?.gain, Math.max(0.0001, gainValue), now, 0.065);
+    setAudioParam(emitter.gain?.gain, gainValue > 0 ? Math.max(0.0001, gainValue) : 0, now, 0.065);
     setAudioParam(emitter.filter?.frequency, filterHz, now, 0.08);
     setAudioParam(emitter.panner?.pan, panValue, now, 0.07);
     return gainValue;
