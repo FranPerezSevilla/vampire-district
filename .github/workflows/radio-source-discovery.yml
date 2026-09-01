@@ -14,16 +14,30 @@ permissions:
 jobs:
   discover:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 6
     steps:
-      - name: Test standard reader against one AudioObject
+      - name: Extract all preview AudioObject sources once
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail-with-body --silent --show-error --max-time 60 \
-            -H 'Accept: application/json' \
-            -H 'X-Target-Selector: script[type="application/ld+json"]' \
-            'https://r.jina.ai/https://pixabay.com/music/beats-daisuke-teiko-the-real-deal-90s-hip-hop-instrumental-111454/' \
-            | tee /tmp/reader.json
-          echo
-          grep -Eo 'https://cdn\.pixabay\.com[^"[:space:]<>]+\.mp3[^"[:space:]<>]*' /tmp/reader.json || true
+          declare -A PAGES=(
+            [daisuke]='https://pixabay.com/music/beats-daisuke-teiko-the-real-deal-90s-hip-hop-instrumental-111454/'
+            [catch22]='https://pixabay.com/music/beats-coasting-west-coast-hip-hop-381615/'
+            [abydos]='https://pixabay.com/music/beats-trip-hop-lovers-206690/'
+            [ejah1]='https://pixabay.com/music/electronic-big-beat-rave-industrial-breakbeat-1-472114/'
+            [natureseye]='https://pixabay.com/music/upbeat-dirty-industrial-rave-177919/'
+            [ejah3]='https://pixabay.com/music/hard-rock-big-beat-rave-industrial-breakbeat-3-473019/'
+            [maty]='https://pixabay.com/es/music/optimista-tema-acid-house-329018/'
+            [placidplace]='https://pixabay.com/es/music/techno-y-trance-franic-acid-trance-395688/'
+            [berrydeep]='https://pixabay.com/music/soft-house-back-to-90s-579460/'
+          )
+          for id in daisuke catch22 abydos ejah1 natureseye ejah3 maty placidplace berrydeep; do
+            echo "::group::$id"
+            tmp="/tmp/${id}.json"
+            curl --fail-with-body --silent --show-error --max-time 60 \
+              -H 'Accept: application/json' \
+              -H 'X-Target-Selector: script[type="application/ld+json"]' \
+              "https://r.jina.ai/${PAGES[$id]}" > "$tmp"
+            grep -Eo 'https://cdn\.pixabay\.com[^"[:space:]<>]+\.mp3[^"[:space:]<>]*' "$tmp" | head -1
+            echo '::endgroup::'
+          done
