@@ -369,7 +369,8 @@ export function createTrafficRouteBehaviorController(materializer, {
   function assessBypass(agent, state, blocker, settings, {
     delay,
     requireTrafficWinner = false,
-    requireBlockedPeer = false
+    requireBlockedPeer = false,
+    backoffOnFailure = true
   } = {}) {
     const committed = committedBypassDecision(state, blocker, settings);
     if (committed) return committed;
@@ -387,8 +388,10 @@ export function createTrafficRouteBehaviorController(materializer, {
     const plan = planTrafficBypass(materializer, topology, agent, blocker);
     if (!plan) {
       state.lastBypassReason = "bypass-no-legal-corridor";
-      state.recoveryBlocked = true;
-      state.recoveryCooldownSeconds = settings.failedRecoveryBackoff;
+      if (backoffOnFailure) {
+        state.recoveryBlocked = true;
+        state.recoveryCooldownSeconds = settings.failedRecoveryBackoff;
+      }
       return null;
     }
     return {
@@ -449,7 +452,11 @@ export function createTrafficRouteBehaviorController(materializer, {
     }
 
     const bypass = assessBypass(agent, state, blocker, settings, {
-      delay: Math.max(0.55, settings.playerPressureDelay * 0.65)
+      delay: Math.max(0.55, settings.playerPressureDelay * 0.65),
+      // A missing road corridor is not a failed physical-pressure attempt. Keep
+      // those latches independent so the driver can escalate after deciding it
+      // cannot legally go around the player car.
+      backoffOnFailure: false
     });
     if (bypass) return bypass;
 
