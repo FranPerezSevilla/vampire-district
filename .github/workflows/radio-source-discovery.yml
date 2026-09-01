@@ -14,57 +14,32 @@ permissions:
 jobs:
   discover:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm install
-      - run: npx playwright install --with-deps chromium
-      - name: Discover Pixabay audio URLs in browser JSON-LD
+      - name: Extract Pixabay AudioObject contentUrl once
         shell: bash
         run: |
           set -euo pipefail
-          node --input-type=module <<'NODE'
-          import { chromium } from 'playwright';
-          const pages = [
-            ['daisuke','https://pixabay.com/music/beats-daisuke-teiko-the-real-deal-90s-hip-hop-instrumental-111454/'],
-            ['catch22','https://pixabay.com/music/beats-coasting-west-coast-hip-hop-381615/'],
-            ['abydos','https://pixabay.com/music/beats-trip-hop-lovers-206690/'],
-            ['ejah1','https://pixabay.com/music/electronic-big-beat-rave-industrial-breakbeat-1-472114/'],
-            ['natureseye','https://pixabay.com/music/upbeat-dirty-industrial-rave-177919/'],
-            ['ejah3','https://pixabay.com/music/hard-rock-big-beat-rave-industrial-breakbeat-3-473019/'],
-            ['maty','https://pixabay.com/es/music/optimista-tema-acid-house-329018/'],
-            ['placidplace','https://pixabay.com/es/music/techno-y-trance-franic-acid-trance-395688/'],
-            ['berrydeep','https://pixabay.com/music/soft-house-back-to-90s-579460/']
-          ];
-          const browser = await chromium.launch({ headless: true });
-          const page = await browser.newPage({ locale: 'en-US' });
-          for (const [id, url] of pages) {
-            const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-            await page.waitForTimeout(1200);
-            const result = await page.evaluate(() => {
-              const scripts = [...document.querySelectorAll('script[type="application/ld+json"]')];
-              const entries = [];
-              for (const script of scripts) {
-                try {
-                  const parsed = JSON.parse(script.textContent || '{}');
-                  const queue = Array.isArray(parsed) ? [...parsed] : [parsed];
-                  while (queue.length) {
-                    const item = queue.shift();
-                    if (!item || typeof item !== 'object') continue;
-                    if (Array.isArray(item)) { queue.push(...item); continue; }
-                    if (item.contentUrl) entries.push({ type: item['@type'] || null, contentUrl: item.contentUrl, name: item.name || null });
-                    for (const value of Object.values(item)) if (value && typeof value === 'object') queue.push(value);
-                  }
-                } catch {}
-              }
-              return { title: document.title, entries };
-            });
-            console.log(`::group::${id} HTTP ${response?.status() ?? 'n/a'} title=${JSON.stringify(result.title)}`);
-            console.log(JSON.stringify(result.entries));
-            console.log('::endgroup::');
-          }
-          await browser.close();
-          NODE
+          declare -A PAGES=(
+            [daisuke]='https://pixabay.com/music/beats-daisuke-teiko-the-real-deal-90s-hip-hop-instrumental-111454/'
+            [catch22]='https://pixabay.com/music/beats-coasting-west-coast-hip-hop-381615/'
+            [abydos]='https://pixabay.com/music/beats-trip-hop-lovers-206690/'
+            [ejah1]='https://pixabay.com/music/electronic-big-beat-rave-industrial-breakbeat-1-472114/'
+            [natureseye]='https://pixabay.com/music/upbeat-dirty-industrial-rave-177919/'
+            [ejah3]='https://pixabay.com/music/hard-rock-big-beat-rave-industrial-breakbeat-3-473019/'
+            [maty]='https://pixabay.com/es/music/optimista-tema-acid-house-329018/'
+            [placidplace]='https://pixabay.com/es/music/techno-y-trance-franic-acid-trance-395688/'
+            [berrydeep]='https://pixabay.com/music/soft-house-back-to-90s-579460/'
+          )
+          for id in daisuke catch22 abydos ejah1 natureseye ejah3 maty placidplace berrydeep; do
+            target="${PAGES[$id]}"
+            echo "::group::$id"
+            curl --fail-with-body --silent --show-error --max-time 45 \
+              -H 'Accept: application/json' \
+              -H 'X-Engine: cf-browser-rendering' \
+              -H 'X-Respond-With: readerlm-v2' \
+              -H 'X-Instruction: Extract the AudioObject direct MP3 contentUrl from the page structured data. Return only JSON with keys contentUrl and name. Do not invent a URL.' \
+              "https://r.jina.ai/${target}" || true
+            echo
+            echo '::endgroup::'
+          done
