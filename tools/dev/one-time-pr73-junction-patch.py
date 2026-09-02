@@ -248,11 +248,6 @@ replace_once(
     if (physicalBeyondStop > 0.25) return false;
 
     const broadRadius = entityBroadRadius(item.entity);
-    if (distance(item.entity, queuedApproach.node)
-      <= queuedApproach.conflictRadius + broadRadius + 0.25) {
-      return false;
-    }
-
     const requesterPath = movementPathFor(requesterApproach);
     const projection = nearestPointOnPolyline(
       requesterPath,
