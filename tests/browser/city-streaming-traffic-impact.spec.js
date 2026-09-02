@@ -141,7 +141,7 @@ test("a hard civilian traffic impact damages once, stays mundane and keeps the p
   });
 
   expect(result.missing).toBe(false);
-  expect(result.poolSize).toBe(10);
+  expect(result.poolSize).toBe(32);
   expect(result.firstImpact.totalHardImpacts).toBe(1);
   expect(result.firstImpact.totalSevereImpacts).toBe(0);
   expect(result.firstImpact.lastImpact.tier).toBe("hard");

@@ -1,10 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-function baseBehaviorReason(reason) {
-  return String(reason || "").replace(/^assertive-/, "");
-}
-
-async function waitForTrafficBehavior(page) {
+async function waitForRouteBehavior(page) {
   await page.waitForFunction(() => Boolean(
     window.NBD_APP_READY
     && window.NBD_SCENARIO_READY
@@ -12,13 +8,14 @@ async function waitForTrafficBehavior(page) {
     && window.NBD_MACRO_CITY_READY
     && window.NBD_TRAFFIC_READY
     && window.NBD_TRAFFIC_BEHAVIOR_READY
-    && window.NBD_TRAFFIC
-    && window.NBD_TRAFFIC_BEHAVIOR
+    && window.NBD_TRAFFIC_ROUTE_MULTI_AGENT
+    && window.NBD_TRAFFIC_ROUTE_MULTI_AGENT.snapshot().enabled
+    && window.NBD_TRAFFIC_ROUTE_MULTI_AGENT.snapshot().routeBehavior?.active
   ));
 }
 
 async function waitForTrafficSteering(page) {
-  await waitForTrafficBehavior(page);
+  await waitForRouteBehavior(page);
   await page.waitForFunction(() => Boolean(
     window.NBD_TRAFFIC_STEERING_READY
     && window.NBD_TRAFFIC_STEERING
@@ -27,25 +24,42 @@ async function waitForTrafficSteering(page) {
 
 test.describe.configure({ timeout: 75_000 });
 
-test("local traffic reacts to the driven vehicle, keeps its slot and resumes when clear", async ({ page }) => {
+test("default compiler-route traffic brakes for the driven vehicle, keeps its slot and resumes when clear", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
-  await waitForTrafficBehavior(page);
+  await waitForRouteBehavior(page);
 
   const result = await page.evaluate(async () => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
-    scene.switchLayer(0, { x: 1140, y: 960 }, "Local traffic behavior test.");
+    const multi = window.NBD_TRAFFIC_ROUTE_MULTI_AGENT;
+    const materializer = scene.trafficMaterializationSystem;
+    const topology = materializer.lanes.localTopology;
+    const runtime = multi.__policy.runtime();
+
+    scene.switchLayer(0, { x: 1140, y: 960 }, "Route-aware traffic behavior test.");
     await window.NBD_CITY_STREAM.forceFocus(1140, 960);
     window.NBD_TRAFFIC.resync();
-    window.NBD_TRAFFIC_BEHAVIOR.step(0.05);
+    multi.step(0.05);
 
-    const initialBehavior = window.NBD_TRAFFIC_BEHAVIOR.snapshot();
-    const selected = initialBehavior.vehicles.find(vehicle => vehicle.phase > 0.1 && vehicle.phase < 0.72)
-      || initialBehavior.vehicles[0];
-    if (!selected) return { missing: true, initialBehavior };
+    function candidate() {
+      const behavior = multi.snapshot().routeBehavior;
+      const agents = new Map(runtime.agents().map(agent => [agent.tokenId, agent]));
+      return behavior.vehicles
+        .filter(vehicle => vehicle.reason === "route-cruise")
+        .map(vehicle => ({ vehicle, agent: agents.get(vehicle.tokenId), slot: materializer.assignments.get(vehicle.tokenId) }))
+        .find(item => item.slot?.routeActive
+          && item.agent?.stage === "lane"
+          && item.agent.stageProgress > 0.08
+          && item.agent.stageProgress < 0.78) || null;
+    }
 
-    const slot = scene.trafficMaterializationSystem.pool[selected.slotIndex];
+    const selected = candidate();
+    if (!selected) return { missing: true, routeBehavior: multi.snapshot().routeBehavior };
+
+    const { agent, slot } = selected;
+    const lane = topology.lanes[agent.currentLaneId];
+    const laneLength = Math.max(1, Number(lane.length) || 1);
     const playerVehicle = scene.vehicleSystem.vehicles[0];
     const originalVehicle = {
       currentVehicleId: scene.vehicleSystem.currentVehicleId,
@@ -58,7 +72,8 @@ test("local traffic reacts to the driven vehicle, keeps its slot and resumes whe
       playerX: scene.player.x,
       playerY: scene.player.y
     };
-    const blockerPoint = window.NBD_TRAFFIC_BEHAVIOR.point(selected.tokenId, selected.phase + 0.055);
+    const blockerProgress = Math.min(0.94, agent.stageProgress + 72 / laneLength);
+    const blockerPoint = materializer.constructor.pointAlongPolyline(lane.points, blockerProgress);
     playerVehicle.x = blockerPoint.x;
     playerVehicle.y = blockerPoint.y;
     playerVehicle.angle = blockerPoint.angle;
@@ -66,23 +81,33 @@ test("local traffic reacts to the driven vehicle, keeps its slot and resumes whe
     scene.vehicleSystem.currentVehicleId = playerVehicle.id;
     scene.player.setPosition(playerVehicle.x, playerVehicle.y);
 
-    window.NBD_TRAFFIC.resync();
-    const assignmentBefore = window.NBD_TRAFFIC.snapshot().materialized.find(item => item.tokenId === selected.tokenId);
-    const brakingSnapshot = window.NBD_TRAFFIC_BEHAVIOR.step(0.35);
-    const braking = brakingSnapshot.vehicles.find(vehicle => vehicle.tokenId === selected.tokenId);
-    const assignmentDuring = window.NBD_TRAFFIC.snapshot().materialized.find(item => item.tokenId === selected.tokenId);
+    const slotIndex = slot.slotIndex;
+    const slotRef = slot;
+    let braking = null;
+    for (let index = 0; index < 9; index++) {
+      multi.step(0.05);
+      braking = multi.snapshot().routeBehavior.vehicles.find(vehicle => vehicle.tokenId === agent.tokenId) || braking;
+      if (braking?.blockerId === playerVehicle.id && braking.speedFactor < 0.9) break;
+    }
+    const assignmentDuring = materializer.assignments.get(agent.tokenId);
 
-    const clearPoint = window.NBD_TRAFFIC_BEHAVIOR.point(selected.tokenId, Math.max(0.01, braking.phase - 0.08));
+    const currentAgent = runtime.agents().find(item => item.tokenId === agent.tokenId);
+    const clearLane = topology.lanes[currentAgent.currentLaneId];
+    const clearProgress = Math.max(0.01, currentAgent.stageProgress - 0.12);
+    const clearPoint = materializer.constructor.pointAlongPolyline(clearLane.points, clearProgress);
     playerVehicle.x = clearPoint.x;
     playerVehicle.y = clearPoint.y;
     playerVehicle.angle = clearPoint.angle;
     playerVehicle.container.setPosition(playerVehicle.x, playerVehicle.y).setRotation(playerVehicle.angle);
     scene.player.setPosition(playerVehicle.x, playerVehicle.y);
-    window.NBD_MACRO_CITY.forceTick(0.6);
-    window.NBD_TRAFFIC.resync();
-    const recoveredSnapshot = window.NBD_TRAFFIC_BEHAVIOR.step(0.9);
-    const recovered = recoveredSnapshot.vehicles.find(vehicle => vehicle.tokenId === selected.tokenId);
-    const assignmentAfter = window.NBD_TRAFFIC.snapshot().materialized.find(item => item.tokenId === selected.tokenId);
+
+    let recovered = braking;
+    for (let index = 0; index < 24; index++) {
+      multi.step(0.05);
+      recovered = multi.snapshot().routeBehavior.vehicles.find(vehicle => vehicle.tokenId === agent.tokenId) || recovered;
+    }
+    const assignmentAfter = materializer.assignments.get(agent.tokenId);
+
     scene.vehicleSystem.currentVehicleId = originalVehicle.currentVehicleId;
     playerVehicle.x = originalVehicle.x;
     playerVehicle.y = originalVehicle.y;
@@ -91,45 +116,36 @@ test("local traffic reacts to the driven vehicle, keeps its slot and resumes whe
       .setPosition(originalVehicle.containerX, originalVehicle.containerY)
       .setRotation(originalVehicle.containerRotation);
     scene.player.setPosition(originalVehicle.playerX, originalVehicle.playerY);
+
     return {
       missing: false,
-      poolSize: scene.trafficMaterializationSystem.pool.length,
-      selected,
+      tokenId: agent.tokenId,
       playerVehicleId: playerVehicle.id,
+      slotIndex,
+      sameSlotDuring: assignmentDuring === slotRef && assignmentDuring?.slotIndex === slotIndex,
+      sameSlotAfter: assignmentAfter === slotRef && assignmentAfter?.slotIndex === slotIndex,
       braking,
       recovered,
-      assignmentBefore,
-      assignmentDuring,
-      assignmentAfter,
-      slotStillActive: slot.container.active,
-      finalPlayerReactiveVehicles: recoveredSnapshot.playerReactiveVehicles
+      laneAuthority: window.NBD_TRAFFIC.snapshot().laneAuthority,
+      routeBehavior: multi.snapshot().routeBehavior
     };
   });
 
   expect(result.missing).toBe(false);
-  expect(result.poolSize).toBe(10);
-  expect(result.assignmentBefore.slotIndex).toBe(result.selected.slotIndex);
-  expect(result.assignmentDuring.slotIndex).toBe(result.selected.slotIndex);
-  expect(result.assignmentAfter.slotIndex).toBe(result.selected.slotIndex);
-
-  const brakingReason = baseBehaviorReason(result.braking.reason);
-  // The driven car can be detected directly, as a junction occupant, or through
-  // the approved local avoidance pass. The blocker identity is the stable invariant.
-  expect(["player-vehicle", "junction-player", "obstacle-avoid", "steering-around-stopped-player"])
-    .toContain(brakingReason);
+  expect(result.laneAuthority).toBe("compiler-route-lanes");
+  expect(result.sameSlotDuring).toBe(true);
+  expect(result.sameSlotAfter).toBe(true);
   expect(result.braking.blockerId).toBe(result.playerVehicleId);
+  expect(result.braking.reason).toBe("player-vehicle");
   expect(result.braking.speedFactor).toBeLessThan(1);
-
   expect(result.recovered.speedFactor).toBeGreaterThan(result.braking.speedFactor);
-  expect(["player-vehicle", "junction-player", "steering-around-stopped-player"])
-    .not.toContain(baseBehaviorReason(result.recovered.reason));
   expect(result.recovered.blockerId).not.toBe(result.playerVehicleId);
-  expect(result.finalPlayerReactiveVehicles).toBe(0);
-  expect(result.slotStillActive).toBe(true);
+  expect(result.routeBehavior.movementAuthority).toBe(false);
+  expect(result.routeBehavior.geometryAuthority).toBe("compiler-local-topology");
   expect(pageErrors).toEqual([]);
 });
 
-test("local traffic visibly steers around a parked car and counter-steers back into lane", async ({ page }) => {
+test("default compiler-route traffic brakes for a parked car without leaving compiler geometry", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
@@ -137,25 +153,33 @@ test("local traffic visibly steers around a parked car and counter-steers back i
 
   const result = await page.evaluate(async () => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
-    scene.switchLayer(0, { x: 1140, y: 960 }, "Visible traffic steering test.");
+    const multi = window.NBD_TRAFFIC_ROUTE_MULTI_AGENT;
+    const materializer = scene.trafficMaterializationSystem;
+    const topology = materializer.lanes.localTopology;
+    const runtime = multi.__policy.runtime();
+
+    scene.switchLayer(0, { x: 1140, y: 960 }, "Route-safe parked blocker test.");
     await window.NBD_CITY_STREAM.forceFocus(1140, 960);
     window.NBD_TRAFFIC.resync();
-    window.NBD_TRAFFIC_BEHAVIOR.step(0.05);
+    multi.step(0.05);
 
-    const initial = window.NBD_TRAFFIC_BEHAVIOR.snapshot();
-    const cruisingTokenIds = initial.vehicles
-      .filter(vehicle => String(vehicle.reason || "").replace(/^assertive-/, "") === "cruise")
-      .map(vehicle => vehicle.tokenId);
-    const candidateTokenIds = [
-      ...cruisingTokenIds,
-      ...initial.vehicles
-        .map(vehicle => vehicle.tokenId)
-        .filter(tokenId => !cruisingTokenIds.includes(tokenId))
-    ];
+    const agents = new Map(runtime.agents().map(agent => [agent.tokenId, agent]));
+    const selected = multi.snapshot().routeBehavior.vehicles
+      .filter(vehicle => vehicle.reason === "route-cruise")
+      .map(vehicle => ({ vehicle, agent: agents.get(vehicle.tokenId), slot: materializer.assignments.get(vehicle.tokenId) }))
+      .find(item => item.slot?.routeActive
+        && item.agent?.stage === "lane"
+        && item.agent.stageProgress > 0.08
+        && item.agent.stageProgress < 0.78) || null;
     const blocker = scene.vehicleSystem.vehicle("market_sedan")
       || scene.vehicleSystem.vehicles.find(vehicle => vehicle.id !== scene.vehicleSystem.currentVehicleId);
-    if (!blocker) return { missing: true, noBlocker: true, initial };
+    if (!selected || !blocker) {
+      return { missing: true, noBlocker: !blocker, routeBehavior: multi.snapshot().routeBehavior };
+    }
 
+    const { agent, slot } = selected;
+    const lane = topology.lanes[agent.currentLaneId];
+    const laneLength = Math.max(1, Number(lane.length) || 1);
     const original = {
       x: blocker.x,
       y: blocker.y,
@@ -165,71 +189,45 @@ test("local traffic visibly steers around a parked car and counter-steers back i
       containerY: blocker.container.y,
       containerRotation: blocker.container.rotation
     };
-    const blockerRadius = Math.max(
-      Number(blocker.archetype?.width) || 28,
-      Number(blocker.archetype?.height) || 14
-    ) * 0.43;
-    const attempts = [];
-    let selectedTokenId = null;
-    let behaviorDuring = null;
-    let steeringDuring = null;
+    const blockerProgress = Math.min(0.94, agent.stageProgress + 72 / laneLength);
+    const blockerPoint = materializer.constructor.pointAlongPolyline(lane.points, blockerProgress);
+    blocker.x = blockerPoint.x;
+    blocker.y = blockerPoint.y;
+    blocker.angle = blockerPoint.angle;
+    blocker.parked = true;
+    blocker.container.setPosition(blocker.x, blocker.y).setRotation(blocker.angle);
 
-    for (const tokenId of candidateTokenIds) {
-      const current = window.NBD_TRAFFIC_BEHAVIOR.snapshot().vehicles
-        .find(vehicle => vehicle.tokenId === tokenId);
-      if (!current) continue;
-      const slot = scene.trafficMaterializationSystem.pool[current.slotIndex];
-      const lane = scene.trafficLocalBehaviorSystem.laneFor(current);
-      if (!slot || !lane?.length) continue;
-
-      const targetGap = 58;
-      const phaseOffset = (targetGap + Math.max(1, Number(slot.radius) || 14) + blockerRadius) / lane.length;
-      const blockerPhase = current.phase + phaseOffset;
-      if (blockerPhase >= 0.94) continue;
-      const point = window.NBD_TRAFFIC_BEHAVIOR.point(tokenId, blockerPhase);
-      if (!point) continue;
-
-      blocker.x = point.x;
-      blocker.y = point.y;
-      blocker.angle = point.angle;
-      blocker.parked = true;
-      blocker.container.setPosition(blocker.x, blocker.y).setRotation(blocker.angle);
-
-      const behavior = window.NBD_TRAFFIC_BEHAVIOR.step(0.05);
-      const currentBehavior = behavior.vehicles.find(vehicle => vehicle.tokenId === tokenId) || null;
-      const steering = window.NBD_TRAFFIC_STEERING.step(0.05);
-      const currentSteering = steering.vehicles.find(vehicle => vehicle.tokenId === tokenId) || null;
-      attempts.push({
-        tokenId,
-        blockerPhase,
-        behaviorReason: currentBehavior?.reason || null,
-        behaviorBlockerId: currentBehavior?.blockerId || null,
-        behaviorGap: currentBehavior?.gap ?? null,
-        steeringActive: Boolean(currentSteering?.active)
-      });
-
-      if (currentBehavior?.blockerId === blocker.id && currentSteering?.active) {
-        selectedTokenId = tokenId;
-        behaviorDuring = currentBehavior;
-        steeringDuring = currentSteering;
-        break;
-      }
+    const slotRef = slot;
+    const slotIndex = slot.slotIndex;
+    let braking = null;
+    for (let index = 0; index < 9; index++) {
+      multi.step(0.05);
+      braking = multi.snapshot().routeBehavior.vehicles.find(vehicle => vehicle.tokenId === agent.tokenId) || braking;
+      if (braking?.blockerId === blocker.id && braking.speedFactor < 0.9) break;
     }
 
-    if (selectedTokenId) {
-      for (let index = 0; index < 7; index++) {
-        const behavior = window.NBD_TRAFFIC_BEHAVIOR.step(0.05);
-        const currentBehavior = behavior.vehicles.find(vehicle => vehicle.tokenId === selectedTokenId) || null;
-        if (currentBehavior?.blockerId === blocker.id) behaviorDuring = currentBehavior;
-
-        const steering = window.NBD_TRAFFIC_STEERING.step(0.05);
-        const currentSteering = steering.vehicles.find(vehicle => vehicle.tokenId === selectedTokenId) || null;
-        if (currentSteering?.active
-          && (!steeringDuring || Math.abs(currentSteering.offset) > Math.abs(steeringDuring.offset))) {
-          steeringDuring = currentSteering;
-        }
-      }
-    }
+    const routePoseBeforeSteering = runtime.materializationTokens().find(token => token.tokenId === agent.tokenId);
+    const slotBeforeSteering = materializer.assignments.get(agent.tokenId);
+    const before = { x: slotBeforeSteering.x, y: slotBeforeSteering.y };
+    const compilerPoseDeltaBefore = Math.hypot(
+      before.x - routePoseBeforeSteering.x,
+      before.y - routePoseBeforeSteering.y
+    );
+    window.NBD_TRAFFIC_STEERING.step(0.25);
+    const slotAfterSteering = materializer.assignments.get(agent.tokenId);
+    const routePoseAfterSteering = runtime.materializationTokens().find(token => token.tokenId === agent.tokenId);
+    const afterSteering = {
+      x: slotAfterSteering.x,
+      y: slotAfterSteering.y,
+      steeringOffset: slotAfterSteering.steeringOffset,
+      steeringAngle: slotAfterSteering.steeringAngle,
+      steeringReason: slotAfterSteering.steeringReason
+    };
+    const poseDeltaFromSteering = Math.hypot(afterSteering.x - before.x, afterSteering.y - before.y);
+    const compilerPoseDeltaAfter = Math.hypot(
+      afterSteering.x - routePoseAfterSteering.x,
+      afterSteering.y - routePoseAfterSteering.y
+    );
 
     blocker.x = original.x;
     blocker.y = original.y;
@@ -239,37 +237,42 @@ test("local traffic visibly steers around a parked car and counter-steers back i
       .setPosition(original.containerX, original.containerY)
       .setRotation(original.containerRotation);
 
-    let steeringRecovered = null;
-    if (selectedTokenId) {
-      for (let index = 0; index < 24; index++) {
-        window.NBD_TRAFFIC_BEHAVIOR.step(0.05);
-        const steering = window.NBD_TRAFFIC_STEERING.step(0.05);
-        steeringRecovered = steering.vehicles.find(vehicle => vehicle.tokenId === selectedTokenId) || steeringRecovered;
-      }
+    let recovered = braking;
+    for (let index = 0; index < 24; index++) {
+      multi.step(0.05);
+      recovered = multi.snapshot().routeBehavior.vehicles.find(vehicle => vehicle.tokenId === agent.tokenId) || recovered;
     }
 
     return {
-      missing: candidateTokenIds.length === 0,
-      setupFound: Boolean(selectedTokenId),
+      missing: false,
       blockerId: blocker.id,
-      selectedTokenId,
-      behaviorDuring,
-      steeringDuring,
-      steeringRecovered,
-      totalAvoidances: window.NBD_TRAFFIC_STEERING.snapshot().totalAvoidances,
-      candidateTokenIds,
-      attempts
+      tokenId: agent.tokenId,
+      slotIndex,
+      sameSlot: materializer.assignments.get(agent.tokenId) === slotRef,
+      braking,
+      recovered,
+      poseDeltaFromSteering,
+      compilerPoseDeltaBefore,
+      compilerPoseDeltaAfter,
+      steeringOffset: afterSteering.steeringOffset,
+      steeringAngle: afterSteering.steeringAngle,
+      steeringReason: afterSteering.steeringReason,
+      routeBehavior: multi.snapshot().routeBehavior
     };
   });
 
   expect(result.missing).toBe(false);
-  expect(result.setupFound, JSON.stringify(result.attempts)).toBe(true);
-  expect(result.behaviorDuring?.blockerId).toBe(result.blockerId);
-  expect(result.steeringDuring?.active).toBe(true);
-  expect(Math.abs(result.steeringDuring?.offset || 0)).toBeGreaterThan(2);
-  expect(Math.abs(result.steeringDuring?.steerAngle || 0)).toBeGreaterThan(0.02);
-  expect(result.totalAvoidances).toBeGreaterThan(0);
-  expect(result.steeringRecovered?.active).toBe(false);
-  expect(Math.abs(result.steeringRecovered?.offset || 0)).toBeLessThan(0.5);
+  expect(result.sameSlot).toBe(true);
+  expect(result.braking.blockerId).toBe(result.blockerId);
+  expect(result.braking.reason).toBe("parked-vehicle");
+  expect(result.braking.speedFactor).toBeLessThan(1);
+  expect(result.recovered.speedFactor).toBeGreaterThan(result.braking.speedFactor);
+  expect(result.poseDeltaFromSteering).toBeLessThanOrEqual(0.001);
+  expect(result.compilerPoseDeltaBefore).toBeLessThanOrEqual(0.001);
+  expect(result.compilerPoseDeltaAfter).toBeLessThanOrEqual(0.001);
+  expect(result.steeringOffset).toBe(0);
+  expect(result.steeringAngle).toBe(0);
+  expect(result.steeringReason).toBe("route-braking-no-lateral");
+  expect(result.routeBehavior.lateralSteeringAuthority).toBe("bounded-bypass-corridor-only");
   expect(pageErrors).toEqual([]);
 });

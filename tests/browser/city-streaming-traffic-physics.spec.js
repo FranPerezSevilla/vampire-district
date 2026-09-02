@@ -152,7 +152,7 @@ test("the driven car softly pushes local traffic without damage, heat or slot re
   });
 
   expect(result.missing).toBe(false);
-  expect(result.poolSize).toBe(10);
+  expect(result.poolSize).toBe(32);
   expect(result.physicsAfterImpact.totalContacts).toBeGreaterThan(0);
   expect(result.physicsAfterImpact.totalPushes).toBeGreaterThan(0);
   expect(result.physicsAfterImpact.totalBlocks).toBe(0);

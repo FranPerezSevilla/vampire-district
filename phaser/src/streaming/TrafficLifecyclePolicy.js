@@ -31,6 +31,9 @@ export const TRAFFIC_LIFECYCLE_STATES = Object.freeze({
 export function trafficLifecycleState({
   phase = 0,
   edgeChanged = false,
+  routeActive = false,
+  routeStage = null,
+  routeStageProgress = 0,
   behaviorReason = "",
   visible = false,
   recentVisibleSeconds = 0
@@ -39,6 +42,19 @@ export function trafficLifecycleState({
   if (reason.includes("steering-around") || reason.includes("obstacle")) return TRAFFIC_LIFECYCLE_STATES.AVOIDING;
   if (reason.includes("physical") || reason.includes("blocked")) return TRAFFIC_LIFECYCLE_STATES.BLOCKED;
   if (reason === "traffic" || reason.includes("junction-yield")) return TRAFFIC_LIFECYCLE_STATES.FOLLOWING;
+
+  // Once a stable route token is explicitly materialized, route stage becomes the
+  // lifecycle authority. Legacy edge phase remains a fallback only for current traffic.
+  if (routeActive) {
+    if (routeStage === "connector") return TRAFFIC_LIFECYCLE_STATES.CROSSING_JUNCTION;
+    if (routeStage === "lane" && finite(routeStageProgress) >= 0.82) {
+      return TRAFFIC_LIFECYCLE_STATES.APPROACH_JUNCTION;
+    }
+    if (visible) return TRAFFIC_LIFECYCLE_STATES.CRUISING;
+    if (recentVisibleSeconds > 0) return TRAFFIC_LIFECYCLE_STATES.RECENTLY_VISIBLE;
+    return TRAFFIC_LIFECYCLE_STATES.LEAVING_VIEW;
+  }
+
   if (edgeChanged || phase <= 0.10) return TRAFFIC_LIFECYCLE_STATES.CROSSING_JUNCTION;
   if (phase >= 0.82) return TRAFFIC_LIFECYCLE_STATES.APPROACH_JUNCTION;
   if (visible) return TRAFFIC_LIFECYCLE_STATES.CRUISING;
@@ -76,6 +92,7 @@ export function installTrafficLifecyclePolicy(materializer, {
   const states = new Map();
   let preventedLifecycleDespawns = 0;
   let edgeHandoffs = 0;
+  let protectedRouteCrossingReleases = 0;
 
   function routedTokens() {
     const routed = materializer.macro?.routedTrafficTokens?.();
@@ -110,7 +127,12 @@ export function installTrafficLifecyclePolicy(materializer, {
         previousEdgeId: slot.edgeId,
         edgeChanged: false,
         junctionHold: 0,
-        lastVisible: false
+        lastVisible: false,
+        routeActive: Boolean(slot.routeActive),
+        routeStage: slot.routeStage || null,
+        routeLaneId: slot.routeLaneId || null,
+        routeConnectorId: slot.routeConnectorId || null,
+        routeStageProgress: finite(slot.routeStageProgress)
       };
       states.set(slot.tokenId, state);
     }
@@ -126,6 +148,11 @@ export function installTrafficLifecyclePolicy(materializer, {
       state.previousEdgeId = token.edgeId;
       state.edgeChanged = false;
       state.junctionHold = 0;
+      state.routeActive = Boolean(assigned.routeActive);
+      state.routeStage = assigned.routeStage || null;
+      state.routeLaneId = assigned.routeLaneId || null;
+      state.routeConnectorId = assigned.routeConnectorId || null;
+      state.routeStageProgress = finite(assigned.routeStageProgress);
     }
     return assigned;
   }
@@ -149,12 +176,11 @@ export function installTrafficLifecyclePolicy(materializer, {
       || materializer.__nbdForceTrafficLifecycleRelease
       || materializer.scene?.currentLayer !== LAYERS.STREET
     );
-    // Lifecycle states protect a live macro vehicle from local churn. If its macro
-    // token vanished, defer to the local viewport guard instead: it may survive
-    // while actually visible, but must be releasable as soon as it is offscreen.
     if (!forced && protectedSlot(slot) && macroTokenExists(slot?.tokenId)) {
       preventedLifecycleDespawns++;
-      slot.lifecycleRetentionReason = states.get(slot.tokenId)?.lifecycle || "protected";
+      const state = states.get(slot.tokenId);
+      if (state?.routeActive && state.routeStage === "connector") protectedRouteCrossingReleases++;
+      slot.lifecycleRetentionReason = state?.lifecycle || "protected";
       return false;
     }
     if (slot) slot.lifecycleRetentionReason = null;
@@ -175,18 +201,34 @@ export function installTrafficLifecyclePolicy(materializer, {
       if (visible) state.recentVisibleSeconds = recentVisibilitySeconds;
       else state.recentVisibleSeconds = Math.max(0, state.recentVisibleSeconds - seconds);
 
-      const edgeChanged = Boolean(state.previousEdgeId && slot.edgeId && state.previousEdgeId !== slot.edgeId);
-      if (edgeChanged) {
-        state.edgeChanged = true;
-        state.junctionHold = Math.max(state.junctionHold, 0.55);
-        edgeHandoffs++;
+      state.routeActive = Boolean(slot.routeActive);
+      state.routeStage = slot.routeStage || null;
+      state.routeLaneId = slot.routeLaneId || null;
+      state.routeConnectorId = slot.routeConnectorId || null;
+      state.routeStageProgress = finite(slot.routeStageProgress);
+
+      if (state.routeActive) {
+        // Stable route stage owns junction semantics; compatibility edge changes must
+        // not manufacture a second crossing state or reset the route token.
+        state.edgeChanged = false;
+        state.junctionHold = 0;
+      } else {
+        const edgeChanged = Boolean(state.previousEdgeId && slot.edgeId && state.previousEdgeId !== slot.edgeId);
+        if (edgeChanged) {
+          state.edgeChanged = true;
+          state.junctionHold = Math.max(state.junctionHold, 0.55);
+          edgeHandoffs++;
+        }
+        state.junctionHold = Math.max(0, state.junctionHold - seconds);
+        if (state.edgeChanged && slot.phase >= junctionExitPhase && state.junctionHold <= 0) state.edgeChanged = false;
       }
-      state.junctionHold = Math.max(0, state.junctionHold - seconds);
-      if (state.edgeChanged && slot.phase >= junctionExitPhase && state.junctionHold <= 0) state.edgeChanged = false;
 
       state.lifecycle = trafficLifecycleState({
         phase: finite(slot.phase),
         edgeChanged: state.edgeChanged,
+        routeActive: state.routeActive,
+        routeStage: state.routeStage,
+        routeStageProgress: state.routeStageProgress,
         behaviorReason: slot.behaviorReason,
         visible,
         recentVisibleSeconds: state.recentVisibleSeconds
@@ -212,7 +254,12 @@ export function installTrafficLifecyclePolicy(materializer, {
       tokenId: state.tokenId,
       state: state.lifecycle,
       recentVisibleSeconds: Math.round(state.recentVisibleSeconds * 100) / 100,
-      edgeChanged: state.edgeChanged
+      edgeChanged: state.edgeChanged,
+      routeActive: state.routeActive,
+      routeStage: state.routeStage,
+      routeLaneId: state.routeLaneId,
+      routeConnectorId: state.routeConnectorId,
+      routeStageProgress: Math.round(state.routeStageProgress * 1000) / 1000
     }));
     return {
       ...snapshot,
@@ -222,6 +269,7 @@ export function installTrafficLifecyclePolicy(materializer, {
       ])),
       lifecycle,
       preventedLifecycleDespawns,
+      protectedRouteCrossingReleases,
       edgeHandoffs
     };
   }

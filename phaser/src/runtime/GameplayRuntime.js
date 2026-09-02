@@ -43,6 +43,11 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.diagnostics.claim("DistrictPackSystem.update", "DistrictPackSystem");
     this.diagnostics.claim("EntityStreamSystem.update", "EntityStreamSystem");
     this.diagnostics.claim("DistantSimulationSystem.update", "DistantSimulationSystem");
+    this.diagnostics.claim("TrafficMultiAgentRouteRuntimePolicy.update", "TrafficMultiAgentRouteRuntimePolicy");
+    this.diagnostics.claim(
+      "TrafficPhysicalConsequencesSystem.prepareRouteFrame",
+      "TrafficPhysicalConsequencesSystem"
+    );
     this.diagnostics.claim("MacroTrafficPoliceSystem.update", "MacroTrafficPoliceSystem");
     this.diagnostics.claim("TrafficMaterializationSystem.update", "TrafficMaterializationSystem");
     this.diagnostics.claim("TrafficOccupantWitnessSystem.update", "TrafficOccupantWitnessSystem");
@@ -62,6 +67,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.diagnostics.registerSystem("DistrictPackSystem");
     this.diagnostics.registerSystem("EntityStreamSystem");
     this.diagnostics.registerSystem("DistantSimulationSystem");
+    this.diagnostics.registerSystem("TrafficMultiAgentRouteRuntimePolicy");
     this.diagnostics.registerSystem("MacroTrafficPoliceSystem");
     this.diagnostics.registerSystem("TrafficMaterializationSystem");
     this.diagnostics.registerSystem("TrafficOccupantWitnessSystem");
@@ -105,9 +111,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.trafficLocalAssignmentPolicy = installTrafficLocalAssignmentPolicy(scene);
     scene.trafficLocalBehaviorSystem = new TrafficLocalBehaviorSystem(scene);
     scene.trafficSteeringPresentationSystem = new TrafficSteeringPresentationSystem(scene);
-    // Keep civilian movement on authored lane geometry. The experimental intent
-    // driver is intentionally not installed until junctions have lane-level
-    // connectivity and collision-safe turn paths.
+    // M8.3 promotes compiler-owned directed lanes/connectors to normal civilian
+    // continuity. Legacy intent/world-space steering remains intentionally absent.
     scene.trafficPhysicalConsequencesSystem = new TrafficPhysicalConsequencesSystem(scene);
     scene.trafficMassCollisionPolicy = installTrafficMassCollisionPolicy(scene.trafficPhysicalConsequencesSystem);
     scene.trafficImpactConsequencesSystem = new TrafficImpactConsequencesSystem(scene);
@@ -160,6 +165,14 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     diagnostics.endSystem("StreamingPipeline", profileMark);
 
     profileMark = diagnostics.beginSystem("TrafficPipeline");
+    // Gate unresolved route-to-route contacts before advancing compiler-route
+    // state. This prevents a car body pinned in a junction from rotating or
+    // tunnelling through route stages underneath the physical pile.
+    scene.trafficPhysicalConsequencesSystem?.prepareRouteFrame?.(dt);
+    // Civilian route state advances after the physical gate. Macro traffic then
+    // consumes only the conservative route projection for accounting while
+    // retaining its independent macro police simulation.
+    scene.trafficLocalAssignmentPolicy?.multiAgentRoutePolicy?.update?.(dt);
     scene.macroTrafficPoliceSystem?.update?.(dt);
     scene.trafficMaterializationSystem?.update?.(dt);
     scene.trafficOccupantWitnessSystem?.update?.(dt);
