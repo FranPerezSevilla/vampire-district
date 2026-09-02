@@ -44,6 +44,10 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.diagnostics.claim("EntityStreamSystem.update", "EntityStreamSystem");
     this.diagnostics.claim("DistantSimulationSystem.update", "DistantSimulationSystem");
     this.diagnostics.claim("TrafficMultiAgentRouteRuntimePolicy.update", "TrafficMultiAgentRouteRuntimePolicy");
+    this.diagnostics.claim(
+      "TrafficPhysicalConsequencesSystem.prepareRouteFrame",
+      "TrafficPhysicalConsequencesSystem"
+    );
     this.diagnostics.claim("MacroTrafficPoliceSystem.update", "MacroTrafficPoliceSystem");
     this.diagnostics.claim("TrafficMaterializationSystem.update", "TrafficMaterializationSystem");
     this.diagnostics.claim("TrafficOccupantWitnessSystem.update", "TrafficOccupantWitnessSystem");
@@ -161,10 +165,13 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     diagnostics.endSystem("StreamingPipeline", profileMark);
 
     profileMark = diagnostics.beginSystem("TrafficPipeline");
-    // Civilian route state advances first. Macro traffic then consumes only the
-    // conservative route projection for civilian accounting while retaining its
-    // independent macro police simulation. Materialization samples the same route
-    // state afterwards, so route identity/pose/accounting describe one frame.
+    // Gate unresolved route-to-route contacts before advancing compiler-route
+    // state. This prevents a car body pinned in a junction from rotating or
+    // tunnelling through route stages underneath the physical pile.
+    scene.trafficPhysicalConsequencesSystem?.prepareRouteFrame?.(dt);
+    // Civilian route state advances after the physical gate. Macro traffic then
+    // consumes only the conservative route projection for accounting while
+    // retaining its independent macro police simulation.
     scene.trafficLocalAssignmentPolicy?.multiAgentRoutePolicy?.update?.(dt);
     scene.macroTrafficPoliceSystem?.update?.(dt);
     scene.trafficMaterializationSystem?.update?.(dt);

@@ -49,6 +49,7 @@ export const TRAFFIC_ROUTE_BEHAVIOR_STATE = Object.freeze({
   PANIC: "panic",
   FOLLOW: "follow",
   YIELD_JUNCTION: "yield-junction",
+  PHYSICAL_HOLD: "physical-hold",
   STOPPED_TRAFFIC: "stopped-traffic",
   ASSESS_BYPASS: "assess-bypass",
   BYPASS_LEFT: "bypass-left",
@@ -166,6 +167,7 @@ export function createTrafficRouteBehaviorController(materializer, {
   let playerPressureDecisions = 0;
   let playerPressureActions = 0;
   let followingDecisions = 0;
+  let physicalHoldDecisions = 0;
   let trafficRecoveryDecisions = 0;
   let trafficRecoveryActions = 0;
   let staticRecoveryDecisions = 0;
@@ -718,6 +720,35 @@ export function createTrafficRouteBehaviorController(materializer, {
       state.panicSeconds = Math.max(0, finite(state.panicSeconds) - duration);
       if (state.recoveryBlocked && state.recoveryCooldownSeconds <= EPSILON) state.recoveryBlocked = false;
 
+      const slot = materializer.assignments.get(agent.tokenId);
+      const physicalHoldSeconds = Math.max(0, finite(slot?.physicalHoldSeconds));
+      if (physicalHoldSeconds > EPSILON) {
+        const decision = {
+          fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.PHYSICAL_HOLD,
+          desiredSpeedFactor: 0,
+          reason: slot?.physicalReason === "route-contact-yield"
+            ? "physical-contact-yield"
+            : slot?.physicalReason === "blocked"
+              ? "physical-blocked"
+              : "physical-contact-hold",
+          gap: 0,
+          blockerId: slot?.physicalBlockerId || null,
+          blockerKind: "physical"
+        };
+        transition(state, decision, duration);
+        state.desiredSpeedFactor = 0;
+        state.speedFactor = 0;
+        state.reason = decision.reason;
+        state.gap = 0;
+        state.blockerId = decision.blockerId;
+        state.blockerKind = decision.blockerKind;
+        state.stoppedSeconds += duration;
+        physicalHoldDecisions++;
+        stoppedDecisions++;
+        applySlotState(agent, state);
+        continue;
+      }
+
       const decision = decisionFor(agent, state, agentsById, blockedById, settings);
       transition(state, decision, duration);
       acceptBypassPlan(state, decision);
@@ -799,6 +830,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       playerPressureVehicles: vehicles.filter(item => item.reason === "player-pressure").length,
       panickingVehicles: vehicles.filter(item => item.panicSeconds > EPSILON).length,
       followingVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW] || 0,
+      physicalHoldingVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.PHYSICAL_HOLD] || 0,
       assessingBypassVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.ASSESS_BYPASS] || 0,
       bypassingVehicles,
       rejoiningVehicles: stateCounts[TRAFFIC_ROUTE_BEHAVIOR_STATE.REJOIN_ROUTE] || 0,
@@ -813,6 +845,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       panicDecisions,
       gunshotThreatEvents,
       followingDecisions,
+      physicalHoldDecisions,
       trafficRecoveryDecisions,
       trafficRecoveryActions,
       staticRecoveryDecisions,
