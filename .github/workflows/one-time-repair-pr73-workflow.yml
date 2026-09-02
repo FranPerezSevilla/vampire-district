@@ -1,0 +1,77 @@
+name: Repair PR73 one-time workflow
+
+on:
+  push:
+    branches:
+      - codex/traffic-junction-topology
+    paths:
+      - .github/workflows/one-time-repair-pr73-workflow.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair-workflow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/traffic-junction-topology
+          fetch-depth: 0
+
+      - name: Correct embedded patch indentation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/one-time-pr73-video-traffic-fix.yml')
+          lines = path.read_text(encoding='utf-8').splitlines(True)
+
+          for index, line in enumerate(lines):
+              old = 'raise SystemExit(f"{path}: expected exactly one patch point, found {count}")'
+              if old in line:
+                  lines[index] = line.replace(
+                      old,
+                      'raise SystemExit(f"{path}: expected exactly one patch point, found {count}; anchor={old.splitlines()[0]!r}")'
+                  )
+                  break
+
+          def reduce_between(start_marker, end_marker, occurrence=1):
+              starts = [index for index, line in enumerate(lines) if start_marker in line]
+              if len(starts) < occurrence:
+                  raise SystemExit(f'Missing workflow marker: {start_marker!r} occurrence {occurrence}')
+              start = starts[occurrence - 1]
+              end = next(
+                  index for index in range(start + 1, len(lines))
+                  if end_marker in lines[index]
+              )
+              for index in range(start + 1, end + 1):
+                  if not lines[index].startswith('  '):
+                      raise SystemExit(f'Cannot reduce indentation at workflow line {index + 1}')
+                  lines[index] = lines[index][2:]
+
+          reduce_between("'''    this.lastContact = null;", "this.destroyed = false;''',", 1)
+          reduce_between("'''    this.lastContact = null;", "this.destroyed = false;'''", 2)
+          reduce_between("'''    this.blockedHoldSeconds = clamp(option(\"blockedHoldSeconds\"", "this.playerSpeedRetention = clamp(option(\"playerSpeedRetention\"", 1)
+          reduce_between("'''    this.blockedHoldSeconds = clamp(option(\"blockedHoldSeconds\"", "this.playerSpeedRetention = clamp(option(\"playerSpeedRetention\"", 2)
+          reduce_between("'''    slot.physicalHoldSeconds = state.holdSeconds;", "slot.container?.setPosition?.(x, y);''',", 1)
+          reduce_between("'''    slot.physicalHoldSeconds = state.holdSeconds;", "slot.container?.setPosition?.(x, y);'''", 2)
+          reduce_between("'''    this.diagnostics.claim(\"TrafficMultiAgentRouteRuntimePolicy.update\"", "this.diagnostics.claim(\"MacroTrafficPoliceSystem.update\"", 1)
+          reduce_between("'''    this.diagnostics.claim(\"TrafficMultiAgentRouteRuntimePolicy.update\"", "this.diagnostics.claim(\"MacroTrafficPoliceSystem.update\"", 2)
+          reduce_between("'''    // Civilian route state advances first.", "scene.trafficLocalAssignmentPolicy?.multiAgentRoutePolicy?.update?.(dt);''',", 1)
+          reduce_between("'''    // Gate unresolved route-to-route contacts", "scene.trafficLocalAssignmentPolicy?.multiAgentRoutePolicy?.update?.(dt);'''", 1)
+
+          path.write_text(''.join(lines), encoding='utf-8')
+          Path('.github/workflows/one-time-repair-pr73-workflow.yml').unlink()
+          PY
+
+      - name: Commit corrected one-time workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/one-time-pr73-video-traffic-fix.yml .github/workflows/one-time-repair-pr73-workflow.yml
+          git commit -m "chore: repair PR73 video fix workflow"
+          git push origin HEAD:codex/traffic-junction-topology
