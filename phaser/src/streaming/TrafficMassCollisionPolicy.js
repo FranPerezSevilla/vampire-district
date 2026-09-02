@@ -1,3 +1,4 @@
+import { installTrafficAgentPhysicalAuthorityPolicy } from "./TrafficAgentPhysicalAuthorityPolicy.js";
 import { installTrafficRigidBodyCollisionPolicy } from "./TrafficRigidBodyCollisionPolicy.js";
 
 function finite(value, fallback = 0) {
@@ -41,6 +42,7 @@ export function installTrafficMassCollisionPolicy(physicalSystem) {
   if (physicalSystem.__nbdMassCollisionPolicy) return physicalSystem.__nbdMassCollisionPolicy;
 
   const rigidBodyPolicy = installTrafficRigidBodyCollisionPolicy(physicalSystem);
+  const agentPhysicalAuthority = installTrafficAgentPhysicalAuthorityPolicy(physicalSystem);
   const junctionFlowController = () => physicalSystem.materializer?.__nbdTrafficJunctionFlowController || null;
   junctionFlowController()?.installPhysicalGuard?.(physicalSystem);
   const originalPushContact = physicalSystem.pushContact;
@@ -91,6 +93,7 @@ export function installTrafficMassCollisionPolicy(physicalSystem) {
         weightedContacts,
         lastResponse: lastResponse ? { ...lastResponse } : null,
         rigidBody: rigidBodyPolicy.snapshot(),
+        agentPhysicalAuthority: agentPhysicalAuthority.snapshot(),
         junctionFlow: junctionFlowController()?.snapshot?.() || null
       };
     },
@@ -99,6 +102,7 @@ export function installTrafficMassCollisionPolicy(physicalSystem) {
       if (physicalSystem.dampDrivenVehicle === massAwareDampDrivenVehicle) {
         physicalSystem.dampDrivenVehicle = originalDampDrivenVehicle;
       }
+      agentPhysicalAuthority.destroy();
       rigidBodyPolicy.destroy();
       if (physicalSystem.__nbdMassCollisionPolicy === policy) delete physicalSystem.__nbdMassCollisionPolicy;
     }
