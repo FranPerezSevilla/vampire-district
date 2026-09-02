@@ -20,18 +20,18 @@ jobs:
           ref: codex/traffic-junction-topology
           fetch-depth: 0
 
-      - name: Correct queued-body policy and validation staging
+      - name: Correct queued-body policy
         run: python tools/dev/one-time-pr73-meta-repair.py
 
-      - name: Commit repaired repair inputs
+      - name: Commit helper correction without workflow mutation
         shell: bash
         run: |
+          git checkout -- .github/workflows/one-time-pr73-video-traffic-fix.yml
           rm tools/dev/one-time-pr73-meta-repair.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
             tools/dev/one-time-pr73-junction-patch.py \
-            tools/dev/one-time-pr73-meta-repair.py \
-            .github/workflows/one-time-pr73-video-traffic-fix.yml
-          git commit -m "chore: correct PR73 video repair validation"
+            tools/dev/one-time-pr73-meta-repair.py
+          git commit -m "chore: correct queued-body PR73 repair input"
           git push origin HEAD:codex/traffic-junction-topology
