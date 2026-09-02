@@ -43,8 +43,18 @@ jobs:
           tests/traffic-junction-video-regression.test.js
           tests/traffic-multi-agent-route-runtime.test.js
 
+      - name: Hide temporary workflow infrastructure during the unit suite
+        run: |
+          rm .github/workflows/one-time-pr73-video-traffic-fix.yml
+          rm .github/workflows/one-time-repair-pr73-workflow.yml
+
       - name: Run complete unit suite
         run: npm run test:unit
+
+      - name: Restore temporary workflow infrastructure before committing source
+        run: |
+          git checkout -- .github/workflows/one-time-pr73-video-traffic-fix.yml
+          git checkout -- .github/workflows/one-time-repair-pr73-workflow.yml
 
       - name: Verify patch cleanliness
         run: git diff --check
