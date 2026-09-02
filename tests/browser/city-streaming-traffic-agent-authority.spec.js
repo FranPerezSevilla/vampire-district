@@ -14,15 +14,6 @@ async function waitForTrafficAgentAuthority(page) {
   ));
 }
 
-function sameRoutePose(left, right) {
-  return left?.stage === right?.stage
-    && left?.currentLaneId === right?.currentLaneId
-    && left?.connectorId === right?.connectorId
-    && left?.nextLaneId === right?.nextLaneId
-    && left?.routeHop === right?.routeHop
-    && Math.abs(Number(left?.stageProgress || 0) - Number(right?.stageProgress || 0)) <= 0.000001;
-}
-
 test.describe.configure({ timeout: 90_000 });
 
 test("a materialized car cannot advance or rotate while a residual physical offset is recovering", async ({ page }) => {
@@ -32,6 +23,15 @@ test("a materialized car cannot advance or rotate while a residual physical offs
   await waitForTrafficAgentAuthority(page);
 
   const result = await page.evaluate(async () => {
+    function sameRoutePose(left, right) {
+      return left?.stage === right?.stage
+        && left?.currentLaneId === right?.currentLaneId
+        && left?.connectorId === right?.connectorId
+        && left?.nextLaneId === right?.nextLaneId
+        && left?.routeHop === right?.routeHop
+        && Math.abs(Number(left?.stageProgress || 0) - Number(right?.stageProgress || 0)) <= 0.000001;
+    }
+
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
     scene.switchLayer(0, { x: 1140, y: 960 }, "Traffic agent physical authority regression.");
     await window.NBD_CITY_STREAM.forceFocus(1140, 960);
