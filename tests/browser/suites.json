@@ -29,6 +29,7 @@
       "tests/browser/city-streaming-traffic-route-multi-agent.spec.js",
       "tests/browser/city-streaming-traffic-behavior.spec.js",
       "tests/browser/city-streaming-traffic-physics.spec.js",
+      "tests/browser/city-streaming-traffic-agent-authority.spec.js",
       "tests/browser/city-streaming-traffic-impact.spec.js",
       "tests/browser/traffic-hijack.spec.js",
       "tests/browser/traffic-visibility-retention.spec.js",
