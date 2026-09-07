@@ -705,3 +705,44 @@ protected. No route coordinates, junction rules, police or radio code changed.
 - State is `implementation-validation`; CI evidence must be recorded before
   returning to `final-validation-pending`. The user's gameplay approval and
   merge approval remain outstanding.
+
+### Published implementation and integrated physical recovery
+
+Implementation `e3e4d6c239e003cbfce053ebc3f8cce5723fb0d7` is published on the
+existing PR branch. Its remote Git tree exactly matches the locally validated
+tree. Tests #2469 / run `34096775416` is executing the full release-candidate
+suite with the repository's exact dependencies and Chromium.
+
+A local integration diagnostic composed the real route runtime, junction
+controller, physical consequences, rigid-body solver and per-agent authority
+using the existing junction fixture. After an 18-unit rear-impact displacement,
+300 steps of 0.05 seconds let both stable tokens cross to the outgoing lane.
+Both physical offsets returned to zero and neither agent remained physically
+locked. This checks recovery across the actual policy boundaries; it does not
+replace browser or user gameplay validation.
+
+### Full release-candidate validation passed
+
+Tests #2469 / run `34096775416`, job `101662078673`, completed successfully
+on implementation `e3e4d6c239e003cbfce053ebc3f8cce5723fb0d7`:
+
+- unit: 865 passed, zero failures;
+- browser boot: 12 passed;
+- browser world: 14 passed;
+- browser traffic: 20 passed;
+- browser police: 6 passed;
+- browser gameplay: 6 passed;
+- browser performance: 1 passed;
+- browser campaign: 1 passed.
+
+All 60 browser cases passed; no flaky/retried case was reported in the final
+family summaries. The later documentation checkpoint changes no runtime,
+tests, dependencies or generated content. The PR records its current CI status
+separately so that the implementation evidence is not confused with a newer
+documentation-triggered run.
+
+State returns to `final-validation-pending`. PR #73 remains draft. The remaining
+acceptance is the user's gameplay pass, particularly dense queues, the reported
+junction pile, visibility/streaming continuity and hijacking/police behavior.
+Cloud preview access was rejected by automatic permission review; no visual
+approval or resolution of the previously reported hosting/radio issue is claimed.

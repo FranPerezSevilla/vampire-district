@@ -1,13 +1,13 @@
 {
   "initiative": "traffic-lane-junction-topology",
-  "version": 15,
+  "version": 16,
   "updatedAt": "2026-09-07",
   "pullRequest": 73,
   "branch": "codex/traffic-junction-topology",
-  "state": "implementation-validation",
+  "state": "final-validation-pending",
   "currentMilestone": "M9",
-  "currentTask": "M9.3-physical-queue-clearance-validation",
-  "lastValidatedImplementationHead": "6405160415e5c17fc48a955da1c70befcd4f3a61",
+  "currentTask": "M9.2-explicit-user-gameplay-validation",
+  "lastValidatedImplementationHead": "e3e4d6c239e003cbfce053ebc3f8cce5723fb0d7",
   "baseAtBootstrap": "805ea5d107dcddcef4cd564294569455093af4b0",
   "canonicalDocs": {
     "roadmap": "docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md",
@@ -94,7 +94,8 @@
     "M8.1-multi-agent-route-runtime-substrate",
     "M8.2-opt-in-multi-agent-browser-soak",
     "M8.3-default-compiler-route-activation-and-macro-accounting-migration",
-    "M9.1-legacy-cleanup-audit-and-final-validation-prep"
+    "M9.1-legacy-cleanup-audit-and-final-validation-prep",
+    "M9.3-physical-queue-clearance-validation"
   ],
   "milestones": {
     "M0": {
@@ -135,7 +136,7 @@
     },
     "M9": {
       "title": "Legacy cleanup, documentation and user validation gate",
-      "state": "implementation-validation"
+      "state": "final-validation-pending"
     }
   },
   "validation": {
@@ -242,7 +243,7 @@
       "notes": "The first feedback implementation exposed a one-frame initiative oscillation and a post-activation 10-to-16 pool growth. Both were corrected: initiative now remains latched to the blocker until resolved, and density is configured before any route policy captures its fixed-pool baseline."
     },
     "m9PhysicalQueueClearance": {
-      "state": "local-fast-passed-browser-pending",
+      "state": "passed",
       "baselineHead": "b023411be75f4f6c1ffbb66220dde04d10dac685",
       "baselineCi": {
         "workflow": "Tests",
@@ -258,14 +259,39 @@
         "browserSuiteOwnership": "41 specs across 8 canonical suites"
       },
       "releaseCandidate": {
-        "state": "pending-ci",
-        "localLimitation": "Dependency installation was rejected by the environment; local affected validation cannot start Playwright."
+        "state": "passed",
+        "localLimitation": "Dependency installation was rejected by the environment; local affected validation cannot start Playwright.",
+        "workflow": "Tests",
+        "runNumber": 2469,
+        "runId": 34096775416,
+        "head": "e3e4d6c239e003cbfce053ebc3f8cce5723fb0d7",
+        "unitTests": 865,
+        "browserTests": 60,
+        "browserFamilies": {
+          "boot": 12,
+          "world": 14,
+          "traffic": 20,
+          "police": 6,
+          "gameplay": 6,
+          "performance": 1,
+          "campaign": 1
+        },
+        "conclusion": "success",
+        "jobId": 101662078673
       },
       "preview": {
         "state": "not-validated",
         "reason": "Cloud browser access to the Netlify preview was rejected by the environment."
       },
-      "manualGameplay": "pending-explicit-user-approval"
+      "manualGameplay": "pending-explicit-user-approval",
+      "implementationHead": "e3e4d6c239e003cbfce053ebc3f8cce5723fb0d7",
+      "physicalQueueIntegration": {
+        "state": "passed",
+        "scenario": "Two production-seeded route agents on one approach; 18-unit rear impact displacement; native route, junction, physical and rigid-body policies stepped for 300 frames of 0.05 seconds.",
+        "result": "Both stable tokens reached the outgoing lane; both physical offsets recovered to zero; no permanent physical-authority lock remained.",
+        "scope": "Local isolated integration diagnostic; not a replacement for browser or user gameplay approval."
+      },
+      "handoff": "This documentation checkpoint changes no runtime, test, dependency or generated content; the complete suite above validates the unchanged implementation. Any new CI triggered by this documentation commit is recorded separately in the PR."
     },
     "m9PhysicalAuthorityInstallation": {
       "state": "passed",
@@ -276,35 +302,6 @@
     }
   },
   "nextTask": {
-    "id": "M9.3-physical-queue-clearance-validation",
-    "milestone": "M9",
-    "goal": "Validate the focused rear-contact correction on the PR head, then return to explicit user gameplay validation.",
-    "readFirst": [
-      "docs/agent-tasks/2026-09-07-traffic-physical-queue-clearance.md",
-      "phaser/src/streaming/TrafficAgentPhysicalAuthorityPolicy.js",
-      "tests/traffic-agent-physical-authority.test.js"
-    ],
-    "actions": [
-      "Run check:fast and the affected release-candidate plan.",
-      "Push the focused correction and inspect exact-head CI. Investigate any failed job before retrying.",
-      "Record exact CI evidence and return to final-validation-pending only after automated validation succeeds."
-    ],
-    "acceptance": [
-      "Forward clearance no longer mistakes a same-lane rear contact for a lead vehicle.",
-      "Followers, crossing traffic, native physical impact holds and residual-offset locks remain protected.",
-      "Release-candidate suite passes on the final implementation."
-    ],
-    "doNotAdvanceIf": [
-      "CI is red or unexplained.",
-      "Manual gameplay has not been explicitly approved: keep the PR draft and never auto-merge."
-    ]
-  },
-  "finalGate": {
-    "requiresUserGameplayApproval": true,
-    "autonomousWorkStopsAt": "final-validation-pending",
-    "autoMergeAllowed": false
-  },
-  "manualGameplayTask": {
     "id": "M9.2-explicit-user-gameplay-validation",
     "milestone": "M9",
     "goal": "Stop autonomous implementation and obtain explicit user gameplay approval of the corrected compiler-route traffic behavior before any ready/merge decision.",
@@ -327,6 +324,15 @@
       "user has not explicitly approved the gameplay checklist",
       "any reported gameplay regression remains unexplained or unresolved",
       "the task would merge PR #73 automatically"
+    ],
+    "readFirst": [
+      "docs/agent-tasks/2026-09-07-traffic-physical-queue-clearance.md",
+      "docs/progress/TRAFFIC_LANE_JUNCTION_TOPOLOGY_PROGRESS.md"
     ]
+  },
+  "finalGate": {
+    "requiresUserGameplayApproval": true,
+    "autonomousWorkStopsAt": "final-validation-pending",
+    "autoMergeAllowed": false
   }
 }

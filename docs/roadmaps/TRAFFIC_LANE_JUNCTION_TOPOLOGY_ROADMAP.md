@@ -7,8 +7,9 @@ The user has reopened corrective work. Follow the live
 `docs/agent-tasks/2026-09-07-traffic-physical-queue-clearance.md`.
 The August milestone narrative below is historical: production now uses 32
 fixed slots, body-safe admission/exit clearance, bounded road-safe bypass and
-per-agent physical locks. Automated validation is in progress; the explicit
-user gameplay gate and prohibition on automatic merge remain in force.
+per-agent physical locks. Tests #2469 passed the full suite on `e3e4d6c`: 865 unit tests and 60 browser
+tests. The current gate is explicit user gameplay validation; the prohibition
+on automatic merge remains in force.
 
 
 Canonical phase roadmap for PR #73 (`codex/traffic-junction-topology`).
