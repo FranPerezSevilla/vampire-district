@@ -1,4 +1,27 @@
 const EPSILON = 0.000001;
+const topologyIndexes = new WeakMap();
+const geometryLengths = new WeakMap();
+const JOURNEY_MEMORY = 16;
+
+function topologyIndex(topology) {
+  let index = topologyIndexes.get(topology);
+  const bundle = topology?.junctionConnectors;
+  if (index && index.transitionIds === topology.transitionIds && index?.connectorIds === bundle?.connectorIds) return index;
+  index = { transitionIds: topology.transitionIds, connectorIds: bundle?.connectorIds, byLane: new Map(), byTransition: new Map() };
+  for (const id of topology.transitionIds || []) {
+    const transition = topology.transitions?.[id];
+    if (!transition?.preferred) continue;
+    if (!index.byLane.has(transition.incomingLaneId)) index.byLane.set(transition.incomingLaneId, []);
+    index.byLane.get(transition.incomingLaneId).push(transition);
+  }
+  for (const choices of index.byLane.values()) choices.sort((a, b) => a.id.localeCompare(b.id));
+  for (const id of bundle?.connectorIds || []) {
+    const connector = bundle.connectors?.[id];
+    if (connector?.activationSafe && !connector.rejectionReasons?.length) index.byTransition.set(connector.transitionId, connector);
+  }
+  topologyIndexes.set(topology, index);
+  return index;
+}
 
 function finite(value, fallback = 0) {
   if (value === null || value === undefined || value === "") return fallback;
@@ -21,6 +44,7 @@ function stableHash(value) {
 
 function polylineLength(points) {
   const list = Array.isArray(points) ? points : [];
+  if (geometryLengths.has(list)) return geometryLengths.get(list);
   let total = 0;
   for (let index = 0; index < list.length - 1; index++) {
     total += Math.hypot(
@@ -28,26 +52,17 @@ function polylineLength(points) {
       finite(list[index + 1]?.y) - finite(list[index]?.y)
     );
   }
+  geometryLengths.set(list, total);
   return total;
 }
 
 function preferredTransitions(topology, laneId) {
-  return (topology?.transitionIds || [])
-    .map(id => topology.transitions?.[id])
-    .filter(transition => transition?.preferred && transition.incomingLaneId === laneId)
-    .sort((left, right) => left.id.localeCompare(right.id));
+  return topologyIndex(topology).byLane.get(laneId) || [];
 }
 
-function safeConnectorForTransition(topology, transitionId) {
-  const bundle = topology?.junctionConnectors;
-  if (!bundle?.connectors) return null;
-  return (bundle.connectorIds || [])
-    .map(id => bundle.connectors[id])
-    .find(connector => (
-      connector?.transitionId === transitionId
-      && connector.activationSafe === true
-      && (!Array.isArray(connector.rejectionReasons) || connector.rejectionReasons.length === 0)
-    )) || null;
+export function safeTrafficRouteConnector(topology, transitionId) {
+  const connector = topologyIndex(topology).byTransition.get(transitionId);
+  return connector?.activationSafe && !connector.rejectionReasons?.length ? connector : null;
 }
 
 function directHandoffIsValidated(topology, transitionId) {
@@ -67,11 +82,26 @@ function connectorGateAllows(result) {
   return { allowed: Boolean(result), reason: result ? null : "junction-yield" };
 }
 
-export function chooseTrafficRouteTransition(topology, laneId, tokenId, routeHop = 0) {
-  const choices = preferredTransitions(topology, laneId);
+export function chooseTrafficRouteTransition(topology, laneId, tokenId, routeHop = 0, recentLaneIds = []) {
+  let choices = preferredTransitions(topology, laneId);
   if (!choices.length) return null;
+  const safe = choices.filter(choice => choice.requiresConnector
+    ? safeTrafficRouteConnector(topology, choice.id)
+    : directHandoffIsValidated(topology, choice.id));
+  // Keep a missing-geometry continuation explicit when there is no legal exit.
+  if (safe.length) choices = safe;
+  const recent = Array.isArray(recentLaneIds) ? recentLaneIds : [];
+  const oldestVisit = Math.min(...choices.map(choice => recent.lastIndexOf(choice.outgoingLaneId)));
+  choices = choices.filter(choice => recent.lastIndexOf(choice.outgoingLaneId) === oldestVisit);
   const hop = Math.max(0, Math.floor(finite(routeHop)));
-  return choices[(stableHash(tokenId) + hop) % choices.length] || null;
+  const weights = choices.map(choice => choice.turnType === "straight" ? 3 : 1);
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  let draw = stableHash(`${tokenId}|${laneId}|${hop}`) / 0x100000000 * total;
+  for (let i = 0; i < choices.length; i++) {
+    draw -= weights[i];
+    if (draw < 0) return choices[i];
+  }
+  return choices[choices.length - 1];
 }
 
 export function createTrafficRouteAgent(topology, {
@@ -80,6 +110,7 @@ export function createTrafficRouteAgent(topology, {
   routeHop = 0,
   stageProgress = 0,
   previousLaneId = null,
+  recentLaneIds = [],
   archetypeId = null,
   trafficMetadata = null
 } = {}) {
@@ -93,6 +124,7 @@ export function createTrafficRouteAgent(topology, {
     connectorId: null,
     nextLaneId: null,
     previousLaneId: previousLaneId || null,
+    recentLaneIds: [...recentLaneIds].slice(-JOURNEY_MEMORY),
     stageProgress: clamp01(stageProgress),
     archetypeId: archetypeId || null,
     trafficMetadata: trafficMetadata && typeof trafficMetadata === "object"
@@ -125,6 +157,7 @@ export function trafficRouteStageGeometry(topology, agent) {
 function cloneAgent(agent) {
   return {
     ...agent,
+    recentLaneIds: [...(agent.recentLaneIds || [])],
     trafficMetadata: agent?.trafficMetadata && typeof agent.trafficMetadata === "object"
       ? { ...agent.trafficMetadata }
       : null
@@ -136,7 +169,8 @@ function leaveLane(topology, agent, { beforeConnectorEntry = null } = {}) {
     topology,
     agent.currentLaneId,
     agent.tokenId,
-    agent.routeHop
+    agent.routeHop,
+    agent.recentLaneIds
   );
   if (!transition) return { ok: false, reason: "no-preferred-transition" };
   if (!topology?.lanes?.[transition.outgoingLaneId]) {
@@ -149,6 +183,7 @@ function leaveLane(topology, agent, { beforeConnectorEntry = null } = {}) {
       return { ok: false, reason: "missing-direct-handoff-contract" };
     }
     agent.previousLaneId = previousLaneId;
+    agent.recentLaneIds = [...(agent.recentLaneIds || []), previousLaneId].slice(-JOURNEY_MEMORY);
     agent.currentLaneId = transition.outgoingLaneId;
     agent.stage = "lane";
     agent.connectorId = null;
@@ -158,7 +193,7 @@ function leaveLane(topology, agent, { beforeConnectorEntry = null } = {}) {
     return { ok: true, junctionDecision: true, transitionId: transition.id };
   }
 
-  const connector = safeConnectorForTransition(topology, transition.id);
+  const connector = safeTrafficRouteConnector(topology, transition.id);
   if (!connector) return { ok: false, reason: "missing-safe-connector" };
 
   if (typeof beforeConnectorEntry === "function") {
@@ -182,6 +217,7 @@ function leaveLane(topology, agent, { beforeConnectorEntry = null } = {}) {
   }
 
   agent.previousLaneId = previousLaneId;
+  agent.recentLaneIds = [...(agent.recentLaneIds || []), previousLaneId].slice(-JOURNEY_MEMORY);
   agent.stage = "connector";
   agent.connectorId = connector.id;
   agent.nextLaneId = transition.outgoingLaneId;
@@ -276,4 +312,49 @@ export function advanceTrafficRouteAgent(agent, seconds, topology, {
     remainingSeconds,
     blockedReason
   };
+}
+
+// Read-only preview of the same cursor decisions used by advancement. Compiler
+// segment boundaries are not traffic boundaries: drivers see the entire queue.
+export function trafficRouteLookAhead(topology, agent, distance = 180) {
+  if (!agent) return [];
+  const cursor = cloneAgent(agent);
+  const stages = [];
+  let start = 0;
+  for (let i = 0; i < 12; i++) {
+    const geometry = trafficRouteStageGeometry(topology, cursor);
+    if (!geometry || geometry.length <= EPSILON) break;
+    if (i === 0) start = -clamp01(cursor.stageProgress) * geometry.length;
+    stages.push({ ...geometry, start, laneId: cursor.currentLaneId });
+    start += geometry.length;
+    if (start >= distance) break;
+    const result = cursor.stage === "connector"
+      ? leaveConnector(topology, cursor)
+      : leaveLane(topology, cursor);
+    if (!result.ok) break;
+  }
+  return stages;
+}
+
+export function projectTrafficRouteAhead(stages, x, y) {
+  let best = null;
+  for (const stage of stages) {
+    let start = stage.start;
+    for (let i = 1; i < stage.points.length; i++) {
+      const a = stage.points[i - 1], b = stage.points[i];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const length = Math.hypot(dx, dy);
+      if (length <= EPSILON) continue;
+      const t = clamp01(((x - a.x) * dx + (y - a.y) * dy) / (length * length));
+      const candidate = {
+        along: start + length * t,
+        distance: Math.hypot(x - a.x - dx * t, y - a.y - dy * t),
+        angle: Math.atan2(dy, dx),
+        geometryId: stage.id
+      };
+      if (!best || candidate.distance < best.distance) best = candidate;
+      start += length;
+    }
+  }
+  return best;
 }

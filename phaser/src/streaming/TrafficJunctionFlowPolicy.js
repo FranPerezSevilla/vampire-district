@@ -1,6 +1,7 @@
-import { chooseTrafficRouteTransition } from "./TrafficRouteCursor.js";
+import { chooseTrafficRouteTransition, safeTrafficRouteConnector, trafficRouteLookAhead } from "./TrafficRouteCursor.js";
 
 const EPSILON = 0.000001;
+const metricsCache = new WeakMap();
 
 function finite(value, fallback = 0) {
   if (value === null || value === undefined || value === "") return fallback;
@@ -18,6 +19,7 @@ function distance(left, right) {
 
 function polylineMetrics(points) {
   const list = Array.isArray(points) ? points : [];
+  if (metricsCache.has(list)) return metricsCache.get(list);
   const segments = [];
   let length = 0;
   for (let index = 0; index < list.length - 1; index++) {
@@ -30,7 +32,9 @@ function polylineMetrics(points) {
     segments.push({ from, to, dx, dy, length: segmentLength, startDistance: length });
     length += segmentLength;
   }
-  return { points: list, segments, length };
+  const metrics = { points: list, segments, length };
+  metricsCache.set(list, metrics);
+  return metrics;
 }
 
 function pointAtDistance(points, requestedDistance) {
@@ -193,18 +197,6 @@ function polylinePrefix(points, requestedLength) {
   return prefix;
 }
 
-function safeConnectorForTransition(topology, transition) {
-  if (!transition?.requiresConnector) return null;
-  const bundle = topology?.junctionConnectors;
-  return (bundle?.connectorIds || [])
-    .map(id => bundle.connectors?.[id])
-    .find(connector => (
-      connector?.transitionId === transition.id
-      && connector.activationSafe === true
-      && (!Array.isArray(connector.rejectionReasons) || connector.rejectionReasons.length === 0)
-    )) || null;
-}
-
 function entityHalfLength(entity) {
   return Math.max(9, finite(entity?.archetype?.width, finite(entity?.width, 28)) * 0.43);
 }
@@ -238,6 +230,7 @@ function routeAgentFromSlot(slot) {
     tokenId: slot.tokenId,
     stage: "lane",
     currentLaneId: slot.routeLaneId,
+    recentLaneIds: slot.routeRecentLaneIds || [],
     routeHop: Math.max(0, Math.floor(finite(slot.routeHop))),
     stageProgress: clamp(slot.routeStageProgress, 0, 1)
   };
@@ -258,17 +251,18 @@ export function trafficJunctionApproach(topology, agent, entity = null, {
     topology,
     agent.currentLaneId,
     agent.tokenId,
-    agent.routeHop
+    agent.routeHop,
+    agent.recentLaneIds
   );
   if (!transition?.requiresConnector) return null;
-  const connector = safeConnectorForTransition(topology, transition);
+  const connector = safeTrafficRouteConnector(topology, transition.id);
   const outgoingLane = topology?.lanes?.[transition.outgoingLaneId];
   if (!connector || !outgoingLane?.points?.length) return null;
 
   const laneMetrics = polylineMetrics(lane.points);
   if (laneMetrics.length <= EPSILON) return null;
   const halfLength = entityHalfLength(entity);
-  const maxByLane = Math.max(8, laneMetrics.length * 0.35);
+  const maxByLane = Math.max(8, laneMetrics.length);
   const stopDistance = clamp(
     Math.max(minimumStopDistance, halfLength + Math.max(0, finite(stopMargin, 8))),
     8,
@@ -289,12 +283,29 @@ export function trafficJunctionApproach(topology, agent, entity = null, {
     halfLength * 2 + Math.max(0, finite(exitMargin, 10))
   );
 
+  // A car cannot wait between junctions when the connecting lane is shorter
+  // than its body. Reserve its continuation through those junctions up front.
+  const clearancePath = [];
+  let clearanceLaneId = transition.outgoingLaneId;
+  const horizon = trafficRouteLookAhead(topology, { ...agent, stageProgress: 1 }, 1024);
+  for (const stage of horizon.slice(1)) {
+    if (stage.kind === "lane" && stage.length >= exitClearanceDistance + halfLength) {
+      clearanceLaneId = stage.id;
+      clearancePath.push(...polylinePrefix(stage.points, exitClearanceDistance + halfLength));
+      break;
+    }
+    clearancePath.push(...stage.points);
+    if (stage.kind === "lane") clearanceLaneId = stage.id;
+  }
+
   return {
     junctionId: transition.nodeId || connector.nodeId,
     transitionId: transition.id,
     connectorId: connector.id,
     incomingLaneId: transition.incomingLaneId,
     outgoingLaneId: transition.outgoingLaneId,
+    clearanceLaneId,
+    clearancePath,
     laneLength: laneMetrics.length,
     stopDistance,
     stopProgress: clamp(stopPoint.progress, 0, 1),
@@ -344,6 +355,8 @@ export function createTrafficJunctionFlowController(materializer, {
     throw new TypeError("Traffic junction flow controller requires compiler-owned junction topology.");
   }
 
+  const approachCache = new Map();
+  const movementPaths = new WeakMap();
   const waitersByJunction = new Map();
   const permits = new Map();
   let currentAgents = [];
@@ -372,14 +385,17 @@ export function createTrafficJunctionFlowController(materializer, {
   }
 
   function approachFor(agent) {
-    return trafficJunctionApproach(topology, agent, slotFor(agent?.tokenId), {
-      stopMargin,
-      minimumStopDistance,
-      maximumStopDistance,
-      exitMargin,
-      minimumExitClearance,
-      conflictMargin
+    if (!agent || agent.stage !== "lane") return null;
+    const slot = slotFor(agent.tokenId);
+    const key = `${agent.currentLaneId}|${agent.routeHop}|${entityHalfLength(slot)}|${entityHalfWidth(slot)}|${(agent.recentLaneIds || []).join(",")}`;
+    const cached = approachCache.get(agent.tokenId);
+    if (cached?.key === key) return cached.approach;
+    const approach = trafficJunctionApproach(topology, agent, slot, {
+      stopMargin, minimumStopDistance, maximumStopDistance,
+      exitMargin, minimumExitClearance, conflictMargin
     });
+    approachCache.set(agent.tokenId, { key, approach });
+    return approach;
   }
 
   function appendPathPoints(target, points) {
@@ -394,10 +410,16 @@ export function createTrafficJunctionFlowController(materializer, {
 
   function movementPathFor(approach) {
     if (!approach) return [];
+    if (movementPaths.has(approach)) return movementPaths.get(approach);
     const connector = topology.junctionConnectors.connectors?.[approach.connectorId];
     const outgoing = topology.lanes?.[approach.outgoingLaneId];
     const path = [];
     appendPathPoints(path, [approach.stopPoint]);
+    if (approach.clearancePath?.length) {
+      appendPathPoints(path, approach.clearancePath);
+      movementPaths.set(approach, path);
+      return path;
+    }
     appendPathPoints(path, connector?.points);
     appendPathPoints(
       path,
@@ -413,7 +435,8 @@ export function createTrafficJunctionFlowController(materializer, {
     const requesterPath = movementPathFor(approach);
     if (requesterPath.length < 2) return null;
     const candidates = [...permits.values()]
-      .filter(permit => String(permit.tokenId) !== String(requesterTokenId))
+      .filter(permit => String(permit.tokenId) !== String(requesterTokenId) && (permit.phase !== "clearing-exit"
+        || permit.clearanceLaneId !== permit.outgoingLaneId && agentFor(permit.tokenId)?.currentLaneId !== permit.clearanceLaneId))
       .sort((left, right) => String(left.tokenId).localeCompare(String(right.tokenId)));
     for (const permit of candidates) {
       const permitPath = movementPathFor(permit);
@@ -526,57 +549,47 @@ export function createTrafficJunctionFlowController(materializer, {
     return entities;
   }
 
-  function safelyQueuedRouteEntity(item, requesterApproach) {
-    if (item?.kind !== "route-traffic" || !item.tokenId || permits.has(String(item.tokenId))) return false;
-    const routeAgent = agentFor(item.tokenId);
-    if (!routeAgent || routeAgent.stage !== "lane") return false;
-    const queuedApproach = approachFor(routeAgent);
-    if (!queuedApproach || routeAgent.currentLaneId !== queuedApproach.incomingLaneId) return false;
-    if (item.entity?.routeStage !== "lane"
-      || item.entity?.routeLaneId !== queuedApproach.incomingLaneId) {
-      return false;
+  function movementHitsEntity(path, approach, entity) {
+    const angle = finite(entity.angle);
+    const c = Math.cos(angle), s = Math.sin(angle);
+    for (let i = 1; i < path.length; i++) {
+      const a = path[i - 1], b = path[i];
+      const heading = Math.atan2(b.y - a.y, b.x - a.x) - angle;
+      const hc = Math.abs(Math.cos(heading)), hs = Math.abs(Math.sin(heading));
+      const extents = [
+        entityHalfLength(entity) + approach.halfLength * hc + approach.halfWidth * hs + 2,
+        entityHalfWidth(entity) + approach.halfLength * hs + approach.halfWidth * hc + 2
+      ];
+      const ax = a.x - entity.x, ay = a.y - entity.y;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const origin = [ax * c + ay * s, -ax * s + ay * c];
+      const delta = [dx * c + dy * s, -dx * s + dy * c];
+      let enter = 0, leave = 1;
+      for (let axis = 0; axis < 2; axis++) {
+        if (Math.abs(delta[axis]) <= EPSILON) {
+          if (Math.abs(origin[axis]) > extents[axis]) { enter = 2; break; }
+        } else {
+          const t1 = (-extents[axis] - origin[axis]) / delta[axis];
+          const t2 = (extents[axis] - origin[axis]) / delta[axis];
+          enter = Math.max(enter, Math.min(t1, t2));
+          leave = Math.min(leave, Math.max(t1, t2));
+        }
+      }
+      if (enter <= leave) return true;
     }
-    if (clamp(routeAgent.stageProgress, 0, 1) > queuedApproach.stopProgress + EPSILON) return false;
-
-    const forwardX = Math.cos(queuedApproach.stopPoint.angle);
-    const forwardY = Math.sin(queuedApproach.stopPoint.angle);
-    const physicalBeyondStop = (finite(item.entity?.x) - queuedApproach.stopPoint.x) * forwardX
-      + (finite(item.entity?.y) - queuedApproach.stopPoint.y) * forwardY;
-    if (physicalBeyondStop > 0.25) return false;
-
-    const broadRadius = entityBroadRadius(item.entity);
-    const requesterPath = movementPathFor(requesterApproach);
-    const projection = nearestPointOnPolyline(
-      requesterPath,
-      item.entity?.x,
-      item.entity?.y
-    );
-    if (!projection) return false;
-    const requesterClearance = Math.max(0, finite(requesterApproach?.halfWidth))
-      + broadRadius
-      + Math.max(0, finite(movementConflictMargin, 3));
-    return projection.distance > requesterClearance + EPSILON;
+    return false;
   }
 
   function junctionOccupied(approach, requesterTokenId) {
-    for (const agent of currentAgents) {
-      if (agent.tokenId === requesterTokenId || agent.stage !== "connector" || !agent.connectorId) continue;
-      const connector = topology.junctionConnectors.connectors[agent.connectorId];
-      if (connector?.nodeId === approach.junctionId) {
-        return { blocked: true, kind: "route-connector", blockerId: agent.tokenId };
-      }
-    }
-
+    const path = movementPathFor(approach);
     for (const item of physicalEntities()) {
       if (item.tokenId === requesterTokenId) continue;
-      if (safelyQueuedRouteEntity(item, approach)) continue;
-      const broadRadius = entityBroadRadius(item.entity);
-      if (distance(item.entity, approach.node) <= approach.conflictRadius + broadRadius) {
-        return {
-          blocked: true,
-          kind: item.kind,
-          blockerId: item.tokenId || item.entity?.id || item.kind
-        };
+      if ((nearestPointOnPolyline(path, item.entity.x, item.entity.y)?.distance ?? Infinity)
+        > entityBroadRadius(item.entity) + approach.halfLength + 3) continue;
+      // Nearby queued cars and opposing lanes do not occupy every movement in
+      // a junction. Test the swept body along the requested movement instead.
+      if (movementHitsEntity(path, approach, item.entity)) {
+        return { blocked: true, kind: item.kind, blockerId: item.tokenId || item.entity?.id || item.kind };
       }
     }
     return { blocked: false, kind: null, blockerId: null };
@@ -584,8 +597,8 @@ export function createTrafficJunctionFlowController(materializer, {
 
   function routeAgentBlocksExit(agent, approach, requesterTokenId) {
     if (!agent || agent.tokenId === requesterTokenId) return false;
-    if (agent.stage !== "lane" || agent.currentLaneId !== approach.outgoingLaneId) return false;
-    const lane = topology.lanes[approach.outgoingLaneId];
+    if (agent.stage !== "lane" || agent.currentLaneId !== (approach.clearanceLaneId || approach.outgoingLaneId)) return false;
+    const lane = topology.lanes[approach.clearanceLaneId || approach.outgoingLaneId];
     const laneLength = polylineMetrics(lane?.points).length;
     if (laneLength <= EPSILON) return false;
     const slot = slotFor(agent.tokenId);
@@ -595,7 +608,7 @@ export function createTrafficJunctionFlowController(materializer, {
 
   function physicalEntityBlocksExit(item, approach, requesterTokenId) {
     if (item.tokenId === requesterTokenId) return false;
-    const lane = topology.lanes[approach.outgoingLaneId];
+    const lane = topology.lanes[approach.clearanceLaneId || approach.outgoingLaneId];
     const projection = nearestPointOnPolyline(lane?.points, item.entity?.x, item.entity?.y);
     if (!projection) return false;
     const longitudinalPadding = entityHalfLength(item.entity) + 2;
@@ -648,6 +661,15 @@ export function createTrafficJunctionFlowController(materializer, {
       };
     }
 
+    const exit = exitCorridorBlocked(approach, agent.tokenId);
+    if (exit.blocked) {
+      return {
+        blocked: true,
+        reason: "junction-exit-blocked",
+        kind: exit.kind,
+        blockerId: exit.blockerId
+      };
+    }
     const occupancy = junctionOccupied(approach, agent.tokenId);
     if (occupancy.blocked) {
       return {
@@ -658,15 +680,6 @@ export function createTrafficJunctionFlowController(materializer, {
       };
     }
 
-    const exit = exitCorridorBlocked(approach, agent.tokenId);
-    if (exit.blocked) {
-      return {
-        blocked: true,
-        reason: "junction-exit-blocked",
-        kind: exit.kind,
-        blockerId: exit.blockerId
-      };
-    }
     return { blocked: false, reason: null, kind: null, blockerId: null };
   }
 
@@ -733,7 +746,13 @@ export function createTrafficJunctionFlowController(materializer, {
     }
 
     enqueue(approach, tokenId, nowSeconds);
-    if (owned && owned.tokenId !== tokenId) {
+    const ownerPermit = owned && permits.get(String(owned.tokenId));
+    const ownerBody = owned && slotFor(owned.tokenId);
+    const clearingOwner = ownerPermit?.phase === "clearing-exit"
+      && (ownerBody?.container?.active !== false && ownerBody?.routeActive
+        || polylineMetrics(topology.lanes[ownerPermit.outgoingLaneId]?.points).length
+          < ownerPermit.exitClearanceDistance + ownerPermit.halfLength);
+    if (owned && owned.tokenId !== tokenId && !clearingOwner) {
       admissionDenials++;
       occupiedDenials++;
       return {
@@ -780,6 +799,12 @@ export function createTrafficJunctionFlowController(materializer, {
       };
     }
 
+    // A departed car's tail still participates in swept-body occupancy above.
+    // Its old exclusive reservation must not block a clear movement while it
+    // queues at a neighbouring junction on a short connecting road.
+    if (clearingOwner && owned.tokenId !== tokenId) {
+      reservationRegistry.release({ junctionId: approach.junctionId, tokenId: owned.tokenId, reason: "junction-clear-movement" });
+    }
     const request = reservationRegistry?.request?.({
       junctionId: approach.junctionId,
       tokenId,
@@ -804,6 +829,11 @@ export function createTrafficJunctionFlowController(materializer, {
       };
     }
 
+    const previousPermit = permits.get(tokenId);
+    if (previousPermit && previousPermit.junctionId !== approach.junctionId) {
+      reservationRegistry?.release?.({ junctionId: previousPermit.junctionId, tokenId, reason: "junction-next-movement" });
+      clearanceReleases++;
+    }
     const permit = {
       ...approach,
       tokenId,
@@ -899,50 +929,38 @@ export function createTrafficJunctionFlowController(materializer, {
   }
 
   function agentClearedPermit(agent, permit) {
-    if (!agent || !permit || agent.stage !== "lane" || agent.currentLaneId !== permit.outgoingLaneId) return false;
+    if (!agent || !permit || agent.stage === "connector" && agent.connectorId === permit.connectorId) return false;
+    if (agent.stage === "lane" && agent.currentLaneId === permit.incomingLaneId) return false;
+    const slot = slotFor(agent.tokenId);
     const lane = topology.lanes[permit.outgoingLaneId];
     const laneLength = polylineMetrics(lane?.points).length;
-    const progressDistance = clamp(agent.stageProgress, 0, 1) * laneLength;
-    const progressClear = progressDistance + EPSILON >= permit.exitClearanceDistance;
-
-    const slot = slotFor(agent.tokenId);
-    if (!slot) return progressClear;
-    if (slot.routeStage !== "lane" || slot.routeLaneId !== permit.outgoingLaneId) return false;
-    const centerDistance = distance(slot, permit.node);
-    const geometryClear = centerDistance > permit.conflictRadius
-      + entityBroadRadius(slot)
-      + Math.max(0, finite(clearGeometryMargin, 2));
-    return progressClear && geometryClear;
+    if (!slot) return agent.currentLaneId !== permit.outgoingLaneId
+      || clamp(agent.stageProgress, 0, 1) * laneLength >= permit.exitClearanceDistance;
+    // Follow the actual body after direct handoffs too. A short compiler lane
+    // must not keep an already departed vehicle's junction reserved forever.
+    const exit = lane?.points?.[0];
+    const next = lane?.points?.[1];
+    if (!exit || !next) return false;
+    const angle = Math.atan2(next.y - exit.y, next.x - exit.x);
+    const beyondExit = (slot.x - exit.x) * Math.cos(angle) + (slot.y - exit.y) * Math.sin(angle);
+    return (beyondExit >= permit.exitClearanceDistance || agent.currentLaneId !== permit.outgoingLaneId
+      || agent.stage === "connector" && agent.connectorId !== permit.connectorId)
+      && nearestPointOnPolyline(topology.junctionConnectors.connectors[permit.connectorId]?.points, slot.x, slot.y)?.distance
+        > entityBroadRadius(slot) + Math.max(0, finite(clearGeometryMargin, 2));
   }
 
-  function afterAdvance({
-    agent,
-    nowSeconds = 0,
-    reservationRegistry
-  } = {}) {
+  function afterAdvance({ agent, nowSeconds = 0, reservationRegistry } = {}) {
     const permit = permits.get(String(agent?.tokenId || ""));
     if (!permit) return false;
     permit.lastTouchedAt = Math.max(0, finite(nowSeconds));
-    if (agent.stage === "connector") {
-      permit.phase = "connector";
-      reservationRegistry?.touch?.({ junctionId: permit.junctionId, tokenId: permit.tokenId, nowSeconds });
-      return false;
+    if (agentClearedPermit(agent, permit)) {
+      reservationRegistry?.release?.({ junctionId: permit.junctionId, tokenId: permit.tokenId, reason: "junction-fully-cleared" });
+      permits.delete(permit.tokenId);
+      clearanceReleases++;
+      return true;
     }
-    if (agent.stage === "lane" && agent.currentLaneId === permit.outgoingLaneId) {
-      permit.phase = "clearing-exit";
-      if (agentClearedPermit(agent, permit)) {
-        reservationRegistry?.release?.({
-          junctionId: permit.junctionId,
-          tokenId: permit.tokenId,
-          reason: "junction-fully-cleared"
-        });
-        permits.delete(permit.tokenId);
-        clearanceReleases++;
-        return true;
-      }
-      reservationRegistry?.touch?.({ junctionId: permit.junctionId, tokenId: permit.tokenId, nowSeconds });
-      return false;
-    }
+    if (agent.stage === "connector" && agent.connectorId === permit.connectorId) permit.phase = "connector";
+    else if (agent.currentLaneId !== permit.incomingLaneId) permit.phase = "clearing-exit";
     reservationRegistry?.touch?.({ junctionId: permit.junctionId, tokenId: permit.tokenId, nowSeconds });
     return false;
   }
@@ -964,6 +982,7 @@ export function createTrafficJunctionFlowController(materializer, {
     currentAgents = Array.isArray(agents) ? agents : [];
     const liveIds = new Set(currentAgents.map(agent => String(agent.tokenId)));
     cleanupQueues(liveIds);
+    for (const tokenId of approachCache.keys()) if (!liveIds.has(tokenId)) approachCache.delete(tokenId);
     for (const [tokenId, permit] of [...permits.entries()]) {
       const agent = currentAgents.find(candidate => String(candidate.tokenId) === tokenId);
       if (!agent) {
@@ -1079,8 +1098,6 @@ export function createTrafficJunctionFlowController(materializer, {
     const beyondStop = (finite(x) - approach.stopPoint.x) * forwardX
       + (finite(y) - approach.stopPoint.y) * forwardY;
     if (beyondStop > 0.25) return false;
-    const broadRadius = entityBroadRadius({ ...slot, x, y });
-    if (distance({ x, y }, approach.node) <= approach.conflictRadius + broadRadius) return false;
     return true;
   }
 
@@ -1138,6 +1155,7 @@ export function createTrafficJunctionFlowController(materializer, {
     if (materializer.__nbdTrafficJunctionFlowController === controller) {
       delete materializer.__nbdTrafficJunctionFlowController;
     }
+    approachCache.clear();
     waitersByJunction.clear();
     permits.clear();
     currentAgents = [];

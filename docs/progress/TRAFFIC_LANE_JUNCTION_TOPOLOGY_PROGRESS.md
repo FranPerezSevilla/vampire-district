@@ -769,3 +769,37 @@ does not prove an input regression. No input or traffic authority is changed.
 
 State is `implementation-validation` for this correction. Corrected Pages/CI
 results will be recorded in the PR. The draft/user gameplay gate remains intact.
+
+
+## 2026-09-07 — M9.4 sustained traffic correction after rejected Pages playthrough
+
+The user rejected general traffic flow, repeated block circuits, junction queues,
+car-to-car collisions and motion quality. The previous isolated-turn observation
+and green tests were insufficient; implementation was reopened explicitly.
+
+A native generated-network cohort with production spawn separation and archetype
+selection reproduces 29/32 cars stopped for over ten seconds on `be60ec6` at
+120 simulated seconds. The worst stop is 118.15 seconds, despite zero contacts.
+The initial exploratory cohort had omitted spawn separation, so its collision
+counts were discarded from this comparison.
+
+Corrections remain in the existing route/behavior/junction/physical authorities:
+read-only continuation lookahead across compiler seams, 16-lane journey memory,
+whole-body stop lines, combined reservations across too-short junction links,
+swept-body occupancy, release after direct handoffs, safe physical offset return,
+speed-aware following, anticipatory braking/turn speed and forward-driven bypass.
+No generated geometry, pool population or token identity is replaced to hide jams.
+
+The durable three-minute regression requires every one of 32 cars to complete at
+least 30 decisions, visit 25 lane segments, stay below a 15-second stop, and avoid
+all normal contacts/overlaps and slot replacements. A separate native gunfire and
+side-impact exercise verifies reaction, frozen logical movement during impact,
+physical recovery and resumed travel by the same car. Focused seam/stop-line/
+route-history/curvature tests cover the concrete failure boundaries.
+
+Validation before publication: `check:fast` passes **873/873 unit tests** and the
+41-spec/8-suite ownership guard. The reviewed affected plan selects the full RC
+because of the cumulative PR infrastructure diff. Its 873 unit tests pass locally;
+browser boot cannot start because Playwright is unavailable. Existing GitHub CI
+will run browser validation. Pages remains the user-authorized deployment target;
+Netlify has no quota. No merge or user gameplay approval is claimed.

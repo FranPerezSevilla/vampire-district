@@ -15,6 +15,7 @@ export function clearTrafficRouteSlotMetadata(slot) {
   slot.routeConnectorId = null;
   slot.routeNextLaneId = null;
   slot.routePreviousLaneId = null;
+  slot.routeRecentLaneIds = [];
   slot.routeHop = 0;
   slot.routeStageProgress = 0;
   slot.routeGeometryId = null;
@@ -31,6 +32,7 @@ export function applyTrafficRouteSlotMetadata(slot, token) {
   slot.routeConnectorId = token.routeConnectorId || null;
   slot.routeNextLaneId = token.routeNextLaneId || null;
   slot.routePreviousLaneId = token.routePreviousLaneId || null;
+  slot.routeRecentLaneIds = [...(token.routeRecentLaneIds || [])];
   slot.routeHop = Math.max(0, Math.floor(finite(token.routeHop)));
   slot.routeStageProgress = Math.max(0, Math.min(1, finite(token.routeStageProgress)));
   slot.routeGeometryId = token.routeGeometryId || null;
@@ -66,6 +68,7 @@ export function trafficRouteAgentMaterializationToken(topology, agent, {
     routeConnectorId: agent.connectorId || null,
     routeNextLaneId: agent.nextLaneId || null,
     routePreviousLaneId: agent.previousLaneId || null,
+    routeRecentLaneIds: [...(agent.recentLaneIds || [])],
     routeHop: Math.max(0, Math.floor(finite(agent.routeHop))),
     routeStageProgress: Math.max(0, Math.min(1, finite(agent.stageProgress))),
     routeGeometryId: geometry.id,

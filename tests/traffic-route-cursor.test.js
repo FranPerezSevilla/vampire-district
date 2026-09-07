@@ -5,7 +5,9 @@ import {
   advanceTrafficRouteAgent,
   chooseTrafficRouteTransition,
   createTrafficRouteAgent,
-  trafficRouteStageGeometry
+  trafficRouteStageGeometry,
+  trafficRouteLookAhead,
+  projectTrafficRouteAhead
 } from "../phaser/src/streaming/TrafficRouteCursor.js";
 
 function fixture({ includeConnector = true, includeDirectHandoff = false } = {}) {
@@ -62,6 +64,32 @@ function fixture({ includeConnector = true, includeDirectHandoff = false } = {})
     }
   };
 }
+
+test("route preview sees a leader beyond a direct handoff without advancing the cursor", () => {
+  const topology = fixture({ includeDirectHandoff: true });
+  topology.lanes["lane:b"].points[0].x = 100;
+  const agent = createTrafficRouteAgent(topology, { tokenId: "car", laneId: "lane:a", stageProgress: 0.9 });
+  const before = structuredClone(agent);
+  const projection = projectTrafficRouteAhead(trafficRouteLookAhead(topology, agent, 100), 135, 0);
+  assert.equal(projection.along, 45);
+  assert.equal(projection.distance, 0);
+  assert.deepEqual(agent, before);
+});
+
+test("journey memory chooses an unvisited legal continuation instead of repeating the block", () => {
+  const topology = fixture();
+  topology.transitionIds.push("transition:a-c");
+  topology.junctionConnectors.connectorIds.push("connector:a-c");
+  topology.junctionConnectors.connectors["connector:a-c"] = {
+    ...topology.junctionConnectors.connectors["connector:a-b"],
+    id: "connector:a-c", transitionId: "transition:a-c"
+  };
+  assert.equal(chooseTrafficRouteTransition(topology, "lane:a", "car", 5, ["lane:b"]).outgoingLaneId, "lane:c");
+  const input = createTrafficRouteAgent(topology, { tokenId: "car", laneId: "lane:a", recentLaneIds: ["lane:b"] });
+  const advanced = advanceTrafficRouteAgent(input, 1.1, topology, { speed: 100 });
+  assert.deepEqual(input.recentLaneIds, ["lane:b"]);
+  assert.deepEqual(advanced.agent.recentLaneIds, ["lane:b", "lane:a"]);
+});
 
 test("one advance consumes leftover time across lane -> connector -> outgoing lane", () => {
   const topology = fixture();

@@ -92,6 +92,38 @@ function agent(tokenId, laneId, progress) {
   };
 }
 
+test("a short approach leaves room for the car's nose before crossing traffic", () => {
+  const topology = topologyFixture();
+  topology.lanes["west-in"].points = [{ x: 41, y: 0 }, { x: 80, y: 0 }];
+  const approach = trafficJunctionApproach(topology, agent("car", "west-in", 0), { archetype: { width: 40, height: 19 } });
+  assert.ok(approach.stopPoint.x + 40 * 0.43 <= 72, "the full body must remain eight units behind the connector");
+  assert.ok(approach.stopPoint.x >= 41);
+});
+
+test("junction ownership is released after an outgoing lane ends at a direct handoff", () => {
+  const { materializer, pool } = materializerFixture();
+  const topology = materializer.lanes.localTopology;
+  topology.lanes["east-out"].points = [{ x: 120, y: 0 }, { x: 159, y: 0 }];
+  topology.lanes["east-continuation"] = { id: "east-continuation", points: [{ x: 159, y: 0 }, { x: 300, y: 0 }] };
+  topology.transitionIds.push("east-seam");
+  topology.transitions["east-seam"] = { id: "east-seam", incomingLaneId: "east-out", outgoingLaneId: "east-continuation", preferred: true, requiresConnector: false };
+  topology.junctionConnectors.directHandoffTransitionIds.push("east-seam");
+  const car = agent("car", "west-in", 0.75);
+  const body = slot("car", "west-in", 0.75, 60, 0);
+  pool.push(body);
+  materializer.assignments.set(car.tokenId, body);
+  const registry = createTrafficJunctionReservationRegistry();
+  const controller = createTrafficJunctionFlowController(materializer);
+  controller.prepareStep({ agents: [car], reservationRegistry: registry });
+  assert.equal(controller.requestAdmission({ agent: car, reservationRegistry: registry }).granted, true);
+  Object.assign(car, { currentLaneId: "east-continuation", stageProgress: 0.6, routeHop: 2 });
+  Object.assign(body, { routeLaneId: car.currentLaneId, routeStageProgress: 0.6, x: 243.6 });
+  controller.afterAdvance({ agent: car, reservationRegistry: registry, nowSeconds: 2 });
+  assert.equal(registry.reservationFor("j1"), null);
+  assert.equal(controller.hasPermit("car"), false);
+  controller.destroy();
+});
+
 function slot(tokenId, laneId, progress, x, y) {
   return {
     tokenId,

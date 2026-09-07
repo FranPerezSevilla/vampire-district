@@ -1,3 +1,4 @@
+import { trafficRouteLookAhead, projectTrafficRouteAhead } from "./TrafficRouteCursor.js";
 import { orientedVehicleContact } from "./TrafficPhysicalConsequencesSystem.js";
 
 const EPSILON = 0.000001;
@@ -10,50 +11,6 @@ function finite(value, fallback = 0) {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, finite(value, min)));
-}
-
-function polylineMetrics(points) {
-  const list = Array.isArray(points) ? points : [];
-  const segments = [];
-  let length = 0;
-  for (let index = 0; index < list.length - 1; index++) {
-    const from = list[index];
-    const to = list[index + 1];
-    const dx = finite(to?.x) - finite(from?.x);
-    const dy = finite(to?.y) - finite(from?.y);
-    const segmentLength = Math.hypot(dx, dy);
-    if (segmentLength <= EPSILON) continue;
-    segments.push({ from, dx, dy, length: segmentLength, start: length });
-    length += segmentLength;
-  }
-  return { segments, length };
-}
-
-function nearestPointOnPolyline(points, x, y) {
-  const metrics = polylineMetrics(points);
-  if (!metrics.segments.length || metrics.length <= EPSILON) return null;
-  let best = null;
-  for (const segment of metrics.segments) {
-    const local = clamp(
-      ((finite(x) - finite(segment.from?.x)) * segment.dx
-        + (finite(y) - finite(segment.from?.y)) * segment.dy)
-      / (segment.length * segment.length),
-      0,
-      1
-    );
-    const px = finite(segment.from?.x) + segment.dx * local;
-    const py = finite(segment.from?.y) + segment.dy * local;
-    const candidate = {
-      x: px,
-      y: py,
-      distance: Math.hypot(finite(x) - px, finite(y) - py),
-      along: segment.start + segment.length * local,
-      progress: (segment.start + segment.length * local) / metrics.length,
-      length: metrics.length
-    };
-    if (!best || candidate.distance < best.distance) best = candidate;
-  }
-  return best;
 }
 
 function entityHalfLength(entity) {
@@ -196,12 +153,13 @@ export function createTrafficAgentPhysicalAuthority(materializer, physicalSystem
     if (agent?.stage !== "lane" || !agent.currentLaneId || !ownSlot) return null;
     const lane = topology()?.lanes?.[agent.currentLaneId];
     if (!lane?.points?.length) return null;
-    const ownProjection = nearestPointOnPolyline(lane.points, ownSlot.x, ownSlot.y);
+    const path = trafficRouteLookAhead(topology(), agent, routeLeadLookAhead + 60);
+    const ownProjection = projectTrafficRouteAhead(path, ownSlot.x, ownSlot.y);
     if (!ownProjection) return null;
 
     const ownHalfLength = entityHalfLength(ownSlot);
     const ownHalfWidth = entityHalfWidth(ownSlot);
-    const predictedTravel = Math.max(0, finite(routeSpeed, 112))
+    const predictedTravel = Math.max(0, finite(ownSlot.engineSpeed, routeSpeed))
       * Math.max(0, finite(duration, 0.05));
     const emergencyDistance = predictedTravel * Math.max(1, finite(emergencyTravelMultiplier, 1.6))
       + Math.max(0, finite(emergencyMargin, 7));
@@ -210,7 +168,7 @@ export function createTrafficAgentPhysicalAuthority(materializer, physicalSystem
     for (const other of activeSlots()) {
       if (other === ownSlot || other.tokenId === ownSlot.tokenId) continue;
       const contact = orientedVehicleContact(ownSlot, other);
-      const otherProjection = nearestPointOnPolyline(lane.points, other.x, other.y);
+      const otherProjection = projectTrafficRouteAhead(path, other.x, other.y);
       if (!otherProjection) continue;
       const lateralLimit = ownHalfWidth
         + entityHalfWidth(other)
@@ -220,8 +178,8 @@ export function createTrafficAgentPhysicalAuthority(materializer, physicalSystem
       const delta = otherProjection.along - ownProjection.along;
       const otherAgent = agentsById.get(String(other.tokenId)) || null;
       const sameLaneAgent = Boolean(
-        otherAgent?.stage === "lane"
-        && otherAgent.currentLaneId === agent.currentLaneId
+        otherAgent && (otherAgent.stage === "lane" || path.some(stage => stage.id === otherAgent.connectorId))
+          && Math.cos(finite(other.angle) - otherProjection.angle) > 0.5
       );
       // Contact alone does not make the car behind a forward obstruction.
       // Otherwise both members of a rear-end queue acquire synthetic holds,

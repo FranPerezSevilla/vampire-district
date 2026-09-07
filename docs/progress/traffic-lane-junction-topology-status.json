@@ -1,13 +1,13 @@
 {
   "initiative": "traffic-lane-junction-topology",
-  "version": 17,
+  "version": 18,
   "updatedAt": "2026-09-07",
   "pullRequest": 73,
   "branch": "codex/traffic-junction-topology",
   "state": "implementation-validation",
   "currentMilestone": "M9",
-  "currentTask": "M9.3-pages-render-validation",
-  "lastValidatedImplementationHead": "e3e4d6c239e003cbfce053ebc3f8cce5723fb0d7",
+  "currentTask": "M9.4-sustained-arcade-traffic",
+  "lastValidatedImplementationHead": "be60ec65b0ad2ecc2893d6f2daac94f6b296c8be",
   "baseAtBootstrap": "805ea5d107dcddcef4cd564294569455093af4b0",
   "canonicalDocs": {
     "roadmap": "docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md",
@@ -16,7 +16,8 @@
     "m1CompilerContract": "docs/agent-tasks/2026-08-21-traffic-lane-junction-m1-compiler-contract.md",
     "progressLog": "docs/progress/TRAFFIC_LANE_JUNCTION_TOPOLOGY_PROGRESS.md",
     "physicalQueueCorrection": "docs/agent-tasks/2026-09-07-traffic-physical-queue-clearance.md",
-    "pagesValidation": "docs/agent-tasks/2026-09-07-pages-traffic-validation.md"
+    "pagesValidation": "docs/agent-tasks/2026-09-07-pages-traffic-validation.md",
+    "sustainedTraffic": "docs/agent-tasks/2026-09-07-sustained-arcade-traffic.md"
   },
   "authority": {
     "localTopologyCompiler": "tools/city-compiler/traffic-lane-topology.js",
@@ -24,7 +25,7 @@
     "pureRouteCursor": "phaser/src/streaming/TrafficRouteCursor.js",
     "populationSeed": "phaser/src/streaming/TrafficRoutePopulationSeed.js; macro provenance is bootstrap compatibility only",
     "compatibilityProjection": "phaser/src/streaming/TrafficRouteCompatibilityProjection.js; live civilian aggregate accounting source",
-    "routeBehavior": "phaser/src/streaming/TrafficRouteBehaviorPolicy.js; scalar speed modulation only on compiler routes",
+    "routeBehavior": "TrafficRouteBehaviorPolicy; cursor lookahead, speed-aware following, curvature speed, bounded bypass/rejoin and driver reactions",
     "routeMaterializationSubstrate": "phaser/src/streaming/TrafficRouteMaterializationPolicy.js plus route-aware TrafficLifecyclePolicy",
     "controlledRouteActivation": "phaser/src/streaming/TrafficControlledRouteActivationPolicy.js; default-off regression harness only",
     "multiAgentRouteRuntime": "phaser/src/streaming/TrafficMultiAgentRouteRuntimePolicy.js; normal civilian continuity authority",
@@ -35,7 +36,7 @@
     "macroRole": "bootstrap population plus conservative route-projection accounting and independent police travel; never civilian local geometry",
     "legacyCivilianPhaseRole": "bootstrap/fallback compatibility only; phase advancement is disabled while normal compiler-route authority is active",
     "physicalAgentAuthority": "TrafficAgentPhysicalAuthorityPolicy; gates each route agent on actual physical hold, residual displacement and forward body clearance",
-    "junctionFlow": "TrafficJunctionFlowPolicy; body-safe stop-line admission, exit clearance and permit retention; no free-form route geometry"
+    "junctionFlow": "TrafficJunctionFlowPolicy; whole-body stop lines, swept movement admission, short-link continuation reservations and physical exit clearance"
   },
   "cleanupAudit": {
     "productionRequiredCompatibility": [
@@ -302,7 +303,7 @@
       "runId": 33595263124
     },
     "m9PagesValidation": {
-      "state": "implementation-validation",
+      "state": "ci-passed-user-rejected-traffic",
       "url": "https://franperezsevilla.github.io/vampire-district/",
       "baselineHead": "95e344b082ecdf0eff8adf8691d138baa048e824",
       "pagesRunId": 34098911361,
@@ -314,35 +315,52 @@
       "observed": "Normal title/audio and New Night load. Civilian vehicles move at the first junction east of spawn. An oversized authored-car label obscures the roadway.",
       "correction": "Initialize readable text resolution before constructing its Phaser texture source; preserve logical Canvas dimensions.",
       "regression": "Production Canvas fallback checks actual label render dimensions and movement using held input after New Night.",
-      "remaining": "Validate corrected Pages deployment and CI; explicit user gameplay approval remains pending."
+      "remaining": "Tests #2472 passed on be60ec6. User rejected the wider traffic behavior; M9.4 reopens implementation and supersedes the isolated-turn observation."
+    },
+    "m9SustainedTraffic": {
+      "state": "local-passed-ci-pending",
+      "baselineHead": "be60ec65b0ad2ecc2893d6f2daac94f6b296c8be",
+      "baseline": {
+        "seconds": 120,
+        "cars": 32,
+        "stoppedOverTenSeconds": 29,
+        "worstStopSeconds": 118.15,
+        "contacts": 0
+      },
+      "regression": "tests/traffic-network-flow.test.js",
+      "durationSeconds": 180,
+      "coverage": [
+        "per-car sustained progress and route variety",
+        "no normal traffic contacts or slot replacement",
+        "native gunfire and physical impact recovery",
+        "short junction approaches, adjacent junction continuation and direct handoffs",
+        "following and braking across compiler seams"
+      ],
+      "browserValidation": "Pending existing full affected CI and Pages deployment.",
+      "local": {
+        "fast": "873/873 unit tests pass; 41 browser specs assigned to 8 canonical suites",
+        "affected": "Full release-candidate plan selected; 873 unit tests pass, local browser boot stops at missing Playwright",
+        "network": "All 32 cars satisfy three-minute per-car progress, stop, collision and identity assertions",
+        "reactions": "Native gunfire and side impact: route holds, physical offset recovers, same car resumes"
+      }
     }
   },
   "nextTask": {
-    "id": "M9.2-explicit-user-gameplay-validation",
+    "id": "M9.4-sustained-traffic-ci-and-pages",
     "milestone": "M9",
-    "goal": "Stop autonomous implementation and obtain explicit user gameplay approval of the corrected compiler-route traffic behavior before any ready/merge decision.",
+    "goal": "Finish the user-authorized traffic correction in PR 73 and verify the deployed branch.",
     "actions": [
-      "User drives or observes civilian traffic through several junctions and verifies cars stay on lanes with no visible disappearance, snap or teleport.",
-      "User creates or observes a prolonged traffic blockage and verifies one vehicle eventually gains initiative and physically shoves through when space exists, without frame-to-frame start/stop oscillation or teleporting.",
-      "User verifies civilian cars can physically displace other civilian cars rather than behaving as immovable scenery.",
-      "User rams civilian traffic with the protagonist vehicle and verifies the impacted car is physically displaced without duplicate/ghost slot replacement.",
-      "User confirms traffic now reads materially denser in normal populated areas; the fixed materialization baseline is 32 slots.",
-      "User observes straight/right/left crossings where practical and verifies no obvious junction deadlock pattern.",
-      "User hijacks a traffic vehicle and verifies no duplicate/ghost vehicle and normal slot/lifecycle behavior.",
-      "User triggers police and crosses districts, then moves through streaming/camera transitions, verifying police continuity and no traffic pop/jump regression."
+      "Run current fast and affected checks; publish the reviewed correction to the existing branch.",
+      "Inspect CI failures if any and fix concrete regressions.",
+      "Check the corrected GitHub Pages deployment and record the limits of interactive observation."
     ],
     "acceptance": [
-      "user explicitly approves gameplay validation",
-      "no visible lane departure, junction disappearance, teleport, duplicate vehicle, persistent passive gridlock, density regression or police/streaming regression is reported",
-      "physical gridlock recovery feels plausible enough for the intended GTA2-like traffic rather than perfectly polite waiting"
-    ],
-    "doNotAdvanceIf": [
-      "user has not explicitly approved the gameplay checklist",
-      "any reported gameplay regression remains unexplained or unresolved",
-      "the task would merge PR #73 automatically"
+      "Sustained per-car traffic regression passes, including reactions and physical recovery.",
+      "Affected automated browser coverage passes and corrected Pages loads.",
+      "No automatic merge; explicit user approval controls the ready/merge gate."
     ],
     "readFirst": [
-      "docs/agent-tasks/2026-09-07-traffic-physical-queue-clearance.md",
+      "docs/agent-tasks/2026-09-07-sustained-arcade-traffic.md",
       "docs/progress/TRAFFIC_LANE_JUNCTION_TOPOLOGY_PROGRESS.md"
     ]
   },

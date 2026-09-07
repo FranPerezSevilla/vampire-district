@@ -1,3 +1,4 @@
+import { trafficRouteLookAhead, projectTrafficRouteAhead, trafficRouteStageGeometry } from "./TrafficRouteCursor.js";
 import { executeDrivenVehiclePressure } from "./TrafficRecoveryActuator.js";
 import {
   installTrafficBypassManeuverPolicy,
@@ -64,65 +65,8 @@ export const TRAFFIC_ROUTE_BEHAVIOR_STATE = Object.freeze({
   MISSING_ROUTE: "missing-route"
 });
 
-function polylineLength(points) {
-  const list = Array.isArray(points) ? points : [];
-  let total = 0;
-  for (let index = 0; index < list.length - 1; index++) {
-    total += Math.hypot(
-      finite(list[index + 1]?.x) - finite(list[index]?.x),
-      finite(list[index + 1]?.y) - finite(list[index]?.y)
-    );
-  }
-  return total;
-}
-
-function nearestPointOnPolyline(points, x, y) {
-  const list = Array.isArray(points) ? points : [];
-  if (!list.length) return null;
-  const total = polylineLength(list);
-  if (list.length === 1 || total <= EPSILON) {
-    return {
-      progress: 0,
-      distance: Math.hypot(finite(x) - finite(list[0]?.x), finite(y) - finite(list[0]?.y))
-    };
-  }
-
-  let traversed = 0;
-  let best = null;
-  for (let index = 0; index < list.length - 1; index++) {
-    const from = list[index];
-    const to = list[index + 1];
-    const ax = finite(from?.x);
-    const ay = finite(from?.y);
-    const dx = finite(to?.x) - ax;
-    const dy = finite(to?.y) - ay;
-    const length = Math.hypot(dx, dy);
-    if (length <= EPSILON) continue;
-    const local = clamp(((finite(x) - ax) * dx + (finite(y) - ay) * dy) / (length * length), 0, 1);
-    const px = ax + dx * local;
-    const py = ay + dy * local;
-    const candidate = {
-      progress: (traversed + length * local) / total,
-      distance: Math.hypot(finite(x) - px, finite(y) - py)
-    };
-    if (!best || candidate.distance < best.distance) best = candidate;
-    traversed += length;
-  }
-  return best;
-}
-
 function vehicleRadius(archetype) {
   return Math.max(finite(archetype?.width, 28), finite(archetype?.height, 14)) * 0.43;
-}
-
-function laneGeometry(topology, agent) {
-  if (agent?.stage !== "lane" || !agent.currentLaneId) return null;
-  const lane = topology?.lanes?.[agent.currentLaneId];
-  if (!lane?.points?.length) return null;
-  return {
-    ...lane,
-    length: Math.max(1, finite(lane.length, polylineLength(lane.points)))
-  };
 }
 
 function blockerDecision(gap, reason, blockerId, blockerKind = null, details = {}) {
@@ -184,14 +128,14 @@ export function createTrafficRouteBehaviorController(materializer, {
     const behavior = scene.trafficLocalBehaviorSystem;
     const legacyPushFactor = clamp(finite(behavior?.gridlockPushSpeedFactor, 0.25), 0.14, 0.4);
     return {
-      followDistance: clamp(finite(behavior?.followDistance, 78) * 0.74, 42, 62),
+      followDistance: Math.max(150, finite(behavior?.followDistance, 150)),
       hardStopDistance: clamp(finite(behavior?.hardStopDistance, 34) * 0.78, 20, 30),
       persistentLookAhead: Math.max(100, finite(behavior?.playerLookAhead, 132)),
       laneTolerance: Math.max(18, finite(behavior?.laneTolerance, 38)),
       pedestrianLaneTolerance: clamp(finite(behavior?.pedestrianLaneTolerance, 18), 14, 24),
-      accelerationRate: Math.max(2.2, finite(behavior?.accelerationRate, 1.35)),
+      accelerationRate: 0.85,
       panicAccelerationRate: Math.max(3.4, finite(behavior?.panicAccelerationRate, 3.8)),
-      brakingRate: Math.max(6.2, finite(behavior?.brakingRate, 5.8)),
+      brakingRate: 2.4,
       trafficRecoveryDelay: clamp(finite(behavior?.gridlockBreakSeconds, 1.4) * 0.58, 0.55, 0.9),
       panicRecoveryDelay: clamp(finite(behavior?.panicRecoveryDelay, 0.3), 0.18, 0.45),
       staticRecoveryDelay: clamp(finite(behavior?.staticRecoveryDelay, 2.0) * 0.62, 0.85, 1.3),
@@ -270,33 +214,41 @@ export function createTrafficRouteBehaviorController(materializer, {
 
   function nearestLead(agent, lane, agentsById, settings) {
     let best = null;
-    const ownProgress = clamp(agent.stageProgress, 0, 1);
     const ownSlot = materializer.assignments.get(agent.tokenId);
     const ownRadius = Math.max(1, finite(ownSlot?.radius, 14));
+    const path = trafficRouteLookAhead(topology, agent, settings.followDistance + 50);
     for (const other of agentsById.values()) {
-      if (other.tokenId === agent.tokenId || other.stage !== "lane" || other.currentLaneId !== agent.currentLaneId) continue;
-      const delta = clamp(other.stageProgress, 0, 1) - ownProgress;
-      if (delta <= EPSILON) continue;
+      if (other.tokenId === agent.tokenId) continue;
       const otherSlot = materializer.assignments.get(other.tokenId);
-      const otherRadius = Math.max(1, finite(otherSlot?.radius, 14));
-      const gap = delta * lane.length - ownRadius - otherRadius;
+      if (!otherSlot) continue;
+      const projection = projectTrafficRouteAhead(path, otherSlot.x, otherSlot.y);
+      const lateral = finite(ownSlot?.archetype?.height, 14) * 0.41
+        + finite(otherSlot.archetype?.height, 14) * 0.41 + 2;
+      if (!projection || projection.along <= EPSILON || projection.distance > lateral) continue;
+      // Cross traffic is admitted by junction flow. Following looks at vehicles
+      // travelling with us, including leaders beyond a lane/connector seam.
+      if (Math.cos(finite(otherSlot.angle) - projection.angle) < 0.5) continue;
+      const gap = projection.along - ownRadius - Math.max(1, finite(otherSlot.radius, 14));
       if (gap > settings.followDistance) continue;
-      const candidate = blockerDecision(gap, "traffic", other.tokenId, "route-traffic");
+      const candidate = blockerDecision(gap, "traffic", other.tokenId, "route-traffic", {
+        leadSpeed: Math.max(0, finite(otherSlot.engineSpeed)),
+        queuedAtJunction: String(otherSlot.behaviorReason || "").includes("junction")
+      });
       if (!best || candidate.gap < best.gap) best = candidate;
     }
     return best;
   }
 
   function projectedBlocker(agent, lane, x, y, radius, settings) {
-    const projection = nearestPointOnPolyline(lane.points, x, y);
+    const projection = projectTrafficRouteAhead(trafficRouteLookAhead(topology, agent, settings.persistentLookAhead + 50), x, y);
     if (!projection) return null;
     const ownSlot = materializer.assignments.get(agent.tokenId);
     const ownRadius = Math.max(1, finite(ownSlot?.radius, 14));
-    if (projection.distance > settings.laneTolerance + Math.max(0, radius) + ownRadius) return null;
-    const delta = projection.progress - clamp(agent.stageProgress, 0, 1);
+    if (projection.distance > finite(ownSlot?.archetype?.height, 14) * 0.41 + Math.max(0, radius) * 0.5 + 3) return null;
+    const delta = projection.along;
     if (delta <= EPSILON) return null;
     return {
-      gap: delta * lane.length - Math.max(0, radius) - ownRadius,
+      gap: delta - Math.max(0, radius) - ownRadius,
       projection
     };
   }
@@ -406,16 +358,15 @@ export function createTrafficRouteBehaviorController(materializer, {
   }
 
   function trafficDecision(agent, state, blocker, settings) {
-    if (blocker.gap > settings.hardStopDistance + 4) {
-      return {
-        fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW,
-        desiredSpeedFactor: clamp(
-          (blocker.gap - settings.hardStopDistance) / Math.max(1, settings.followDistance - settings.hardStopDistance),
-          0,
-          1
-        ),
-        ...blocker
-      };
+    const standstillGap = 9;
+    const leadSpeed = Math.max(0, finite(blocker.leadSpeed));
+    if (blocker.gap > standstillGap + 0.5 || leadSpeed > 2 || blocker.queuedAtJunction || agent.stage === "connector") {
+      // Match the leader's speed and retain a reaction gap. The braking bound
+      // anticipates a stopped queue rather than relying on collision holds.
+      const comfortable = Math.max(0, leadSpeed + (blocker.gap - standstillGap - leadSpeed * 0.45) * 1.5);
+      const braking = Math.sqrt(leadSpeed * leadSpeed + 2 * baseSpeed * settings.brakingRate * Math.max(0, blocker.gap - standstillGap));
+      return { ...blocker, fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW,
+        desiredSpeedFactor: clamp(Math.min(comfortable, braking) / baseSpeed, 0, 1) };
     }
 
     const recoveryDelay = state.panicSeconds > EPSILON ? settings.panicRecoveryDelay : settings.trafficRecoveryDelay;
@@ -513,18 +464,6 @@ export function createTrafficRouteBehaviorController(materializer, {
   }
 
   function decisionFor(agent, state, agentsById, blockedById, settings) {
-    if (agent.stage === "connector") {
-      if (maneuverActive(state)) return rejoinDecision(state, "bypass-rejoin-connector", 0);
-      return {
-        fsmState: state.panicSeconds > EPSILON ? TRAFFIC_ROUTE_BEHAVIOR_STATE.PANIC : TRAFFIC_ROUTE_BEHAVIOR_STATE.CONNECTOR,
-        desiredSpeedFactor: 1,
-        reason: state.panicSeconds > EPSILON ? "gunshot-panic" : "route-connector-clear",
-        gap: null,
-        blockerId: null,
-        blockerKind: null
-      };
-    }
-
     const routeBlock = blockedById.get(agent.tokenId);
     if (routeBlock?.reason === "junction-yield") {
       if (maneuverActive(state)) return rejoinDecision(state, "bypass-rejoin-before-junction", 0);
@@ -538,7 +477,7 @@ export function createTrafficRouteBehaviorController(materializer, {
       };
     }
 
-    const lane = laneGeometry(topology, agent);
+    const lane = trafficRouteStageGeometry(topology, agent);
     if (!lane) {
       return {
         fsmState: TRAFFIC_ROUTE_BEHAVIOR_STATE.MISSING_ROUTE,
@@ -560,9 +499,9 @@ export function createTrafficRouteBehaviorController(materializer, {
       if (maneuverActive(state)) return rejoinDecision(state, "bypass-rejoin", settings.bypassRejoinSpeedFactor);
       const panicking = state.panicSeconds > EPSILON;
       return {
-        fsmState: panicking ? TRAFFIC_ROUTE_BEHAVIOR_STATE.PANIC : TRAFFIC_ROUTE_BEHAVIOR_STATE.CRUISE,
-        desiredSpeedFactor: 1,
-        reason: panicking ? "gunshot-panic" : "route-cruise",
+        fsmState: panicking ? TRAFFIC_ROUTE_BEHAVIOR_STATE.PANIC : agent.stage === "connector" ? TRAFFIC_ROUTE_BEHAVIOR_STATE.CONNECTOR : TRAFFIC_ROUTE_BEHAVIOR_STATE.CRUISE,
+        desiredSpeedFactor: panicking || agent.stage === "connector" ? 1 : 0.86 + (stableHash(agent.tokenId) % 15) / 100,
+        reason: panicking ? "gunshot-panic" : agent.stage === "connector" ? "route-connector-clear" : "route-cruise",
         gap: null,
         blockerId: null,
         blockerKind: null
@@ -606,26 +545,22 @@ export function createTrafficRouteBehaviorController(materializer, {
     }
 
     const targetOffset = rejoining ? 0 : state.bypassTargetOffset;
-    const nextOffset = moveToward(
-      state.bypassOffset,
-      targetOffset,
-      settings.bypassLateralRate * duration
-    );
-    const lateralStep = nextOffset - state.bypassOffset;
-    const forwardStep = Math.max(
-      2,
-      Math.max(0, finite(baseSpeed, 112)) * Math.max(0.18, state.speedFactor) * duration
-    );
+    const speed = Math.max(0, finite(baseSpeed, 112)) * Math.max(0, state.speedFactor);
+    const forwardStep = speed * duration;
     const desiredAngleDelta = clamp(
-      Math.atan2(lateralStep, forwardStep),
+      Math.atan2(targetOffset - state.bypassOffset, Math.max(18, speed * 0.45)),
       -settings.bypassSteeringLimit,
       settings.bypassSteeringLimit
     );
-    const nextAngleDelta = moveToward(
-      state.bypassAngleDelta,
-      desiredAngleDelta,
-      settings.bypassAngleRate * duration
-    );
+    const nextAngleDelta = moveToward(state.bypassAngleDelta, desiredAngleDelta, settings.bypassAngleRate * duration);
+    // Steering produces lateral travel only while the wheels move forward.
+    // This keeps the body aligned with the manoeuvre instead of sliding it
+    // sideways at a fixed rate, especially during a stop or slow departure.
+    const lateralStep = clamp(Math.tan(nextAngleDelta) * forwardStep,
+      -settings.bypassLateralRate * duration, settings.bypassLateralRate * duration);
+    const remaining = targetOffset - state.bypassOffset;
+    const nextOffset = state.bypassOffset + (Math.sign(lateralStep) === Math.sign(remaining)
+      ? Math.sign(remaining) * Math.min(Math.abs(remaining), Math.abs(lateralStep)) : lateralStep);
     const safe = trafficBypassPoseSafe(materializer, topology, agent, {
       offset: nextOffset,
       angleDelta: nextAngleDelta,
@@ -753,6 +688,34 @@ export function createTrafficRouteBehaviorController(materializer, {
       transition(state, decision, duration);
       acceptBypassPlan(state, decision);
 
+      const path = trafficRouteLookAhead(topology, agent, 120);
+      let previousHeading = null;
+      let cornerLimit = 1;
+      for (const stage of path) {
+        let along = stage.start;
+        for (let i = 1; i < stage.points.length; i++) {
+          const a = stage.points[i - 1], b = stage.points[i];
+          const length = Math.hypot(b.x - a.x, b.y - a.y);
+          const heading = Math.atan2(b.y - a.y, b.x - a.x);
+          if (previousHeading !== null && along >= -length) {
+            const bend = Math.abs(Math.atan2(Math.sin(heading - previousHeading), Math.cos(heading - previousHeading)));
+            if (bend > 0.025) {
+              const turnSpeed = Math.sqrt(100 * Math.max(6, length / bend));
+              const allowable = Math.sqrt(turnSpeed * turnSpeed + 2 * baseSpeed * settings.brakingRate * Math.max(0, along - 12));
+              cornerLimit = Math.min(cornerLimit, allowable / baseSpeed);
+            }
+          }
+          previousHeading = heading;
+          along += length;
+        }
+      }
+      const flow = materializer.__nbdTrafficJunctionFlowController;
+      const approach = flow?.approachFor?.(agent);
+      if (approach && !flow.hasPermit(agent.tokenId)) {
+        const distanceToStop = Math.max(0, (approach.stopProgress - agent.stageProgress) * approach.laneLength);
+        cornerLimit = Math.min(cornerLimit, Math.max(0.08, Math.sqrt(2 * baseSpeed * settings.brakingRate * distanceToStop) / baseSpeed));
+      }
+      decision.desiredSpeedFactor = Math.min(decision.desiredSpeedFactor, cornerLimit);
       const rate = decision.desiredSpeedFactor < state.speedFactor
         ? settings.brakingRate
         : state.panicSeconds > EPSILON

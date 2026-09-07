@@ -25,6 +25,7 @@ function clamp(value, min, max) {
 function cloneAgent(agent) {
   return {
     ...agent,
+    recentLaneIds: [...(agent.recentLaneIds || [])],
     trafficMetadata: agent?.trafficMetadata && typeof agent.trafficMetadata === "object"
       ? structuredClone(agent.trafficMetadata)
       : null

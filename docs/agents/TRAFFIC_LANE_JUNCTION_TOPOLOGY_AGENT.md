@@ -2,15 +2,14 @@
 
 ## Current continuation — 2026-09-07
 
-The user has reopened corrective work. Follow the live
-`docs/progress/traffic-lane-junction-topology-status.json` and
-`docs/agent-tasks/2026-09-07-traffic-physical-queue-clearance.md`.
-The August milestone narrative below is historical: production now uses 32
-fixed slots, body-safe admission/exit clearance, bounded road-safe bypass and
-per-agent physical locks. Tests #2469 passed the full suite on `e3e4d6c`: 865 unit tests and 60 browser
-tests. The current gate is explicit user gameplay validation; the prohibition
-on automatic merge remains in force.
-
+The user rejected sustained traffic behavior after the Pages playthrough and
+explicitly reopened implementation. Follow
+`docs/agent-tasks/2026-09-07-sustained-arcade-traffic.md` and the live machine
+status. The August narrative below is historical. M9.4 adds route lookahead,
+whole-body stop lines, combined short-link reservations, varied journeys and
+native sustained network/reaction regressions. Explicit gameplay approval is
+the ready/merge gate; it does not prevent fixing newly reported traffic defects.
+No automatic merge.
 
 Operational handoff contract for PR #73 (`codex/traffic-junction-topology`).
 

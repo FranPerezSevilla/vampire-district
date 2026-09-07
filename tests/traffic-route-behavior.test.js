@@ -161,6 +161,10 @@ test("route behavior keeps compiler route pose authoritative and exposes bounded
 
 test("connector behavior stays bounded to the production route speed", () => {
   const topology = topologyFixture();
+  topology.junctionConnectors = { connectors: { "connector-a": {
+    id: "connector-a", activationSafe: true, length: 40,
+    points: [{ x: 68, y: 0 }, { x: 108, y: 0 }]
+  } } };
   const slot = routeSlot("traffic-a", 80);
   const materializer = withTrafficTokens({
     pool: [slot],
@@ -195,7 +199,46 @@ test("connector behavior stays bounded to the production route speed", () => {
   assert.equal(slot.engineSpeed, 112);
 });
 
-test("a prolonged traffic queue chooses one deterministic bypass actor without shoving the lead car", () => {
+test("following anticipates a moving leader beyond a compiler seam", () => {
+  const topology = topologyFixture(100);
+  topology.lanes["lane-b"] = { id: "lane-b", points: [{ x: 100, y: 0 }, { x: 300, y: 0 }] };
+  topology.transitionIds = ["seam"];
+  topology.transitions = { seam: { id: "seam", incomingLaneId: "lane-a", outgoingLaneId: "lane-b", preferred: true, requiresConnector: false } };
+  topology.junctionConnectors = { connectorIds: [], connectors: {}, directHandoffTransitionIds: ["seam"] };
+  const rear = routeSlot("rear", 80), lead = routeSlot("lead", 140);
+  lead.engineSpeed = 56;
+  const materializer = withTrafficTokens({ pool: [rear, lead], assignments: new Map([["rear", rear], ["lead", lead]]),
+    scene: { vehicleSystem: { vehicles: [], isDriving: () => false }, player: null } });
+  const controller = createTrafficRouteBehaviorController(materializer, { topology, baseSpeed: 112 });
+  controller.update({ agents: () => [
+    { tokenId: "rear", stage: "lane", currentLaneId: "lane-a", stageProgress: 0.8 },
+    { tokenId: "lead", stage: "lane", currentLaneId: "lane-b", stageProgress: 0.2 }
+  ], snapshot: () => ({ blocked: [] }) }, 0.05);
+  const following = controller.snapshot().vehicles.find(item => item.tokenId === "rear");
+  assert.equal(following.blockerId, "lead");
+  assert.equal(following.fsmState, TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW);
+  assert.ok(following.desiredSpeedFactor > 0 && following.desiredSpeedFactor < 1);
+  assert.ok(following.speedFactor >= 0.88, "comfortable braking must not snap to zero in one frame");
+  controller.clear();
+});
+
+test("a driver reduces speed for a tight connector before its sharpest bend", () => {
+  const topology = topologyFixture(100);
+  topology.junctionConnectors = { connectorIds: ["curve"], connectors: { curve: {
+    id: "curve", activationSafe: true, points: [{ x: 100, y: 0 }, { x: 108, y: 2 }, { x: 113, y: 7 }, { x: 115, y: 15 }]
+  } } };
+  const slot = routeSlot("car", 100);
+  const materializer = withTrafficTokens({ pool: [slot], assignments: new Map([["car", slot]]),
+    scene: { vehicleSystem: { vehicles: [], isDriving: () => false }, player: null } });
+  const controller = createTrafficRouteBehaviorController(materializer, { topology, baseSpeed: 112 });
+  const runtime = { agents: () => [{ tokenId: "car", stage: "connector", currentLaneId: "lane-a", connectorId: "curve", stageProgress: 0 }], snapshot: () => ({ blocked: [] }) };
+  for (let i = 0; i < 10; i++) controller.update(runtime, 0.05);
+  assert.ok(slot.speedFactor < 0.65 && slot.speedFactor > 0.2);
+  assert.equal(slot.behaviorState, TRAFFIC_ROUTE_BEHAVIOR_STATE.CONNECTOR);
+  controller.clear();
+});
+
+test("a prolonged junction queue keeps its lane without bypassing or shoving the lead car", () => {
   const topology = topologyFixture();
   const ids = ["traffic-a", "traffic-b"];
   const winner = trafficGridlockInitiativeWinner(ids[0], ids[1]);
@@ -234,17 +277,14 @@ test("a prolonged traffic queue chooses one deterministic bypass actor without s
   const states = new Map(controller.snapshot().vehicles.map(item => [item.tokenId, item]));
   const actor = states.get(winner);
 
-  assert.ok([
-    TRAFFIC_ROUTE_BEHAVIOR_STATE.BYPASS_LEFT,
-    TRAFFIC_ROUTE_BEHAVIOR_STATE.BYPASS_RIGHT
-  ].includes(actor.fsmState));
-  assert.ok(Math.abs(actor.bypassOffset) > 0);
-  assert.equal(actor.bypassSide, Math.sign(actor.bypassTargetOffset));
+  assert.equal(actor.fsmState, TRAFFIC_ROUTE_BEHAVIOR_STATE.FOLLOW);
+  assert.equal(actor.bypassOffset, 0);
+  assert.equal(actor.bypassSide, 0);
   assert.equal(states.get(loser).fsmState, TRAFFIC_ROUTE_BEHAVIOR_STATE.YIELD_JUNCTION);
   assert.equal(physical.states.has(loser), false);
   assert.equal(physical.totalPushes, 0);
   assert.equal(controller.snapshot().gridlockPushingVehicles, 0);
-  assert.equal(controller.snapshot().bypassingVehicles, 1);
+  assert.equal(controller.snapshot().bypassingVehicles, 0);
 });
 
 test("bypass side is committed and does not alternate while the blocker remains stable", () => {
@@ -272,8 +312,9 @@ test("bypass side is committed and does not alternate while the blocker remains 
   ];
   const runtime = {
     agents() { return agents.map(agent => ({ ...agent })); },
-    snapshot() { return { blocked: [{ tokenId: blockerSlot.tokenId, reason: "junction-yield" }] }; }
+    snapshot() { return { blocked: [] }; }
   };
+  blockerSlot.physicalHoldSeconds = 5;
   const controller = createTrafficRouteBehaviorController(materializer, { topology, baseSpeed: 112 });
 
   for (let index = 0; index < 28; index++) controller.update(runtime, 0.05);

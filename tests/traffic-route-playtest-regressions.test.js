@@ -123,7 +123,7 @@ test("player standing on the sidewalk does not stop a route-active civilian car"
   assert.equal(state.fsmState, TRAFFIC_ROUTE_BEHAVIOR_STATE.CRUISE);
   assert.equal(state.reason, "route-cruise");
   assert.equal(state.blockerId, null);
-  assert.equal(controller.speedFactor(slot.tokenId), 1);
+  assert.ok(controller.speedFactor(slot.tokenId) >= 0.86, "the sidewalk does not inhibit cruising");
   controller.clear();
 });
 
