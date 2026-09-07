@@ -1,0 +1,215 @@
+name: One-time radio deploy-preview diagnostic
+
+on:
+  push:
+    branches:
+      - codex/traffic-junction-topology
+    paths:
+      - .github/workflows/one-time-radio-preview-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      PREVIEW_URL: https://deploy-preview-73--vampire-district.netlify.app
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install exact dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+
+      - name: Wait for Netlify preview and verify radio masters
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error --location --max-time 20 "$PREVIEW_URL/phaser/src/audio/RadioCatalog.js" -o /tmp/RadioCatalog.js; then
+              if grep -q 'cdn.pixabay.com' /tmp/RadioCatalog.js; then
+                echo "Preview exposes the merged radio catalogue."
+                break
+              fi
+            fi
+            if [[ "$attempt" == 30 ]]; then
+              echo "Netlify preview did not expose the radio catalogue in time." >&2
+              exit 1
+            fi
+            sleep 10
+          done
+
+          python - <<'PY'
+          import pathlib, re
+          text = pathlib.Path('/tmp/RadioCatalog.js').read_text(encoding='utf-8')
+          urls = re.findall(r'"(https://cdn\.pixabay\.com/[^"]+\.mp3\?filename=[^"]+)"', text)
+          if len(urls) != 9:
+              raise SystemExit(f'Expected 9 radio preview URLs, found {len(urls)}')
+          pathlib.Path('/tmp/radio-urls.txt').write_text('\n'.join(urls) + '\n', encoding='utf-8')
+          PY
+
+          : > /tmp/radio-http-report.txt
+          while IFS= read -r url; do
+            echo "==== $url" | tee -a /tmp/radio-http-report.txt
+            curl --fail --silent --show-error --location --max-time 90 \
+              -H "Origin: $PREVIEW_URL" \
+              -D /tmp/radio.headers \
+              -o /tmp/radio.mp3 \
+              "$url"
+            stat -c 'bytes=%s' /tmp/radio.mp3 | tee -a /tmp/radio-http-report.txt
+            grep -Ei '^(HTTP/|content-type:|content-length:|access-control-allow-origin:|cross-origin-resource-policy:)' /tmp/radio.headers \
+              | tr -d '\r' | tee -a /tmp/radio-http-report.txt || true
+          done < /tmp/radio-urls.txt
+
+      - name: Install Chromium and WebKit
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Exercise actual player-radio playback in deployed browsers
+        shell: bash
+        run: |
+          cat > /tmp/radio-deploy-diagnostic.mjs <<'NODE'
+          import fs from 'node:fs';
+          import { chromium, webkit } from '@playwright/test';
+
+          const preview = process.env.PREVIEW_URL;
+          const results = [];
+
+          for (const [name, browserType] of [['chromium', chromium], ['webkit', webkit]]) {
+            const browser = await browserType.launch({ headless: true });
+            const context = await browser.newContext();
+            const page = await context.newPage();
+            const consoleMessages = [];
+            const failedRequests = [];
+            const audioResponses = [];
+            page.on('console', message => consoleMessages.push(`${message.type()}: ${message.text()}`));
+            page.on('pageerror', error => consoleMessages.push(`pageerror: ${error.message}`));
+            page.on('requestfailed', request => {
+              if (request.url().includes('pixabay.com') || request.url().includes('radio-private')) {
+                failedRequests.push({ url: request.url(), error: request.failure()?.errorText || null });
+              }
+            });
+            page.on('response', response => {
+              if (response.url().includes('pixabay.com') || response.url().includes('radio-private')) {
+                audioResponses.push({ url: response.url(), status: response.status(), headers: response.headers() });
+              }
+            });
+
+            let browserResult;
+            try {
+              await page.goto(`${preview}/?testScenario=vehicle-core&radioDiagnostic=${Date.now()}`, {
+                waitUntil: 'domcontentloaded',
+                timeout: 60_000
+              });
+              await page.waitForFunction(() => Boolean(
+                window.NBD_APP_READY
+                && window.NBD_SCENARIO_READY
+                && window.NBD_VEHICLES_READY
+                && window.NBD_RADIO_READY
+                && window.NBD_PHASER_GAME?.scene?.getScene?.('GameScene')?.radioSystem
+              ), null, { timeout: 60_000 });
+
+              const canvas = page.locator('#game-root canvas');
+              await canvas.click({ position: { x: 40, y: 40 } });
+              await page.keyboard.press('KeyW');
+              await page.waitForTimeout(150);
+
+              await page.evaluate(() => {
+                const scene = window.NBD_PHASER_GAME.scene.getScene('GameScene');
+                scene.vehicleSystem.exitVehicle({ force: true });
+                const vehicle = scene.vehicleSystem.vehicle('refuge_compact');
+                vehicle.x = 760;
+                vehicle.y = 760;
+                vehicle.angle = 0;
+                vehicle.travelAngle = 0;
+                vehicle.speed = 0;
+                vehicle.disabled = false;
+                vehicle.container?.setPosition?.(vehicle.x, vehicle.y).setRotation?.(0);
+                scene.switchLayer(0, { x: vehicle.x - 18, y: vehicle.y }, 'Radio deploy diagnostic.');
+                scene.vehicleSystem.enterVehicle(vehicle.id, { force: true });
+                window.NBD_RADIO.select('vice-fm');
+              });
+
+              await page.waitForTimeout(8_000);
+              browserResult = await page.evaluate(async () => {
+                const scene = window.NBD_PHASER_GAME.scene.getScene('GameScene');
+                const playback = scene.radioSystem.playback;
+                const handle = playback.handle;
+                let pageFetch = null;
+                const url = window.NBD_RADIO.snapshot().playbackUrl;
+                if (url) {
+                  try {
+                    const response = await fetch(url, { cache: 'no-store' });
+                    const bytes = await response.arrayBuffer();
+                    pageFetch = {
+                      ok: response.ok,
+                      status: response.status,
+                      type: response.type,
+                      bytes: bytes.byteLength,
+                      allowOrigin: response.headers.get('access-control-allow-origin'),
+                      contentType: response.headers.get('content-type')
+                    };
+                  } catch (error) {
+                    pageFetch = { ok: false, error: error?.message || String(error) };
+                  }
+                }
+                return {
+                  radio: window.NBD_RADIO.snapshot(),
+                  rawAudio: {
+                    contextState: playback.rawAudio?.ctx?.state || null,
+                    currentTime: playback.rawAudio?.ctx?.currentTime || null,
+                    masterGain: playback.rawAudio?.master?.gain?.value ?? null
+                  },
+                  handle: handle ? {
+                    kind: handle.kind,
+                    released: Boolean(handle.released),
+                    hasSource: Boolean(handle.source),
+                    mediaPaused: handle.element?.paused ?? null,
+                    mediaReadyState: handle.element?.readyState ?? null,
+                    mediaNetworkState: handle.element?.networkState ?? null,
+                    mediaCurrentTime: handle.element?.currentTime ?? null,
+                    mediaMuted: handle.element?.muted ?? null,
+                    mediaVolume: handle.element?.volume ?? null
+                  } : null,
+                  pageFetch
+                };
+              });
+            } catch (error) {
+              browserResult = { fatal: error?.stack || error?.message || String(error) };
+            }
+
+            results.push({ name, ...browserResult, consoleMessages, failedRequests, audioResponses });
+            await context.close();
+            await browser.close();
+          }
+
+          fs.writeFileSync('/tmp/radio-browser-report.json', JSON.stringify(results, null, 2));
+          console.log(JSON.stringify(results, null, 2));
+
+          const failed = results.some(result => (
+            result.fatal
+            || result.radio?.playbackStatus !== 'playing'
+            || result.radio?.playbackContextState !== 'running'
+            || !result.pageFetch?.ok
+            || Number(result.pageFetch?.bytes || 0) < 100_000
+          ));
+          if (failed) process.exitCode = 1;
+          NODE
+          node /tmp/radio-deploy-diagnostic.mjs
+
+      - name: Upload radio diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: one-time-radio-preview-diagnostic
+          path: |
+            /tmp/radio-http-report.txt
+            /tmp/radio-browser-report.json
+          if-no-files-found: warn
+          retention-days: 7
