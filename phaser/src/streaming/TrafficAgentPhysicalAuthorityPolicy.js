@@ -218,17 +218,22 @@ export function createTrafficAgentPhysicalAuthority(materializer, physicalSystem
       if (!contact && otherProjection.distance > lateralLimit) continue;
 
       const delta = otherProjection.along - ownProjection.along;
+      const otherAgent = agentsById.get(String(other.tokenId)) || null;
+      const sameLaneAgent = Boolean(
+        otherAgent?.stage === "lane"
+        && otherAgent.currentLaneId === agent.currentLaneId
+      );
+      // Contact alone does not make the car behind a forward obstruction.
+      // Otherwise both members of a rear-end queue acquire synthetic holds,
+      // including the leader that physical contact priority allowed to clear.
+      // Native impact/offset locks are checked separately before lead detection.
+      if (sameLaneAgent && delta < -EPSILON) continue;
       if (!contact && delta <= EPSILON) continue;
       const gap = contact
         ? -Math.max(0, finite(contact.overlap))
         : delta - ownHalfLength - entityHalfLength(other);
       if (!contact && gap > Math.max(0, finite(routeLeadLookAhead, 62))) continue;
 
-      const otherAgent = agentsById.get(String(other.tokenId)) || null;
-      const sameLaneAgent = Boolean(
-        otherAgent?.stage === "lane"
-        && otherAgent.currentLaneId === agent.currentLaneId
-      );
       const physicallyCrossing = !sameLaneAgent;
       const stopDistance = physicallyCrossing
         ? Math.max(emergencyDistance, finite(crossingLeadStopDistance, 34))

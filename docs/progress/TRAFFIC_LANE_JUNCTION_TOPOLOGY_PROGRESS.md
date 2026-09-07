@@ -664,3 +664,44 @@ GitHub Tests #2220 / run `32577687431` — full semantic workflow success:
 M9.1 is complete. There is no remaining known live production path that competes with compiler-route civilian geometry. Required bootstrap/accounting/police compatibility remains, controlled/historical regression evidence remains isolated, and the semantic CI matrix validates the final authority stack.
 
 Canonical state is now `final-validation-pending`. Autonomous implementation stops at `M9.2-explicit-user-gameplay-validation`. PR #73 remains draft and must not be merged or marked ready without explicit user gameplay approval.
+
+
+---
+
+## 2026-09-07 — Per-agent rear-contact correction and handoff reconciliation
+
+Live baseline: `b023411be75f4f6c1ffbb66220dde04d10dac685`, main
+`19900bdb28d7d26c4008aae4e10bfe207070fdfb`. Tests #2468 / run
+`34093466042` failed because the one-time radio diagnostic remained in the
+workflow inventory. The diagnostic is removed and the guard remains unchanged.
+
+The machine-readable state had not caught up with subsequent corrective work:
+production now has 32 fixed slots, junction admission and exit clearance, a
+bounded bypass FSM, rigid-body contact resolution and the per-agent authority
+installed after lane initialization (`6405160`). Those are existing changes,
+not newly implemented in this checkpoint.
+
+### Reproduced defect and fix
+
+Physical lead detection treated any same-lane body contact as a forward obstacle,
+including contact from behind. Both leader and follower therefore received
+synthetic holds, overriding the pre-route physical priority that should let the
+leader leave a queue. The new regression failed on the baseline with
+`the clear leader must advance`. Lead detection now ignores same-lane bodies
+strictly behind the actual vehicle projection. Native impact/displacement locks
+are still evaluated first. Cross-route blockers and the follower's stop remain
+protected. No route coordinates, junction rules, police or radio code changed.
+
+### Validation and remaining gate
+
+- Six focused authority tests pass, including the before/after reproduction and
+  protection of an actual impact hold on the leader.
+- `npm run check:fast` passes: 865 unit tests, 41 browser specs across 8 suites.
+- The affected plan selects the full release-candidate suite for the whole PR.
+- Local dependency installation was rejected by the environment; browser
+  validation must be completed by the existing GitHub CI.
+- Cloud browser access to the Netlify preview was rejected. This is not gameplay
+  evidence and does not resolve the previously reported hosting/radio problem.
+- State is `implementation-validation`; CI evidence must be recorded before
+  returning to `final-validation-pending`. The user's gameplay approval and
+  merge approval remain outstanding.

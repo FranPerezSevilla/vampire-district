@@ -1,5 +1,16 @@
 # Traffic lane / junction topology roadmap
 
+## Current continuation — 2026-09-07
+
+The user has reopened corrective work. Follow the live
+`docs/progress/traffic-lane-junction-topology-status.json` and
+`docs/agent-tasks/2026-09-07-traffic-physical-queue-clearance.md`.
+The August milestone narrative below is historical: production now uses 32
+fixed slots, body-safe admission/exit clearance, bounded road-safe bypass and
+per-agent physical locks. Automated validation is in progress; the explicit
+user gameplay gate and prohibition on automatic merge remain in force.
+
+
 Canonical phase roadmap for PR #73 (`codex/traffic-junction-topology`).
 
 > **Live execution state:** read `docs/progress/traffic-lane-junction-topology-status.json` first. It owns the exact task, validated implementation head and continuation gate.

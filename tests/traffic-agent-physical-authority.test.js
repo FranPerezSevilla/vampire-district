@@ -259,6 +259,54 @@ test("a connector-stage car physically occupying the approach still blocks the f
   fixture.authority.destroy();
 });
 
+test("rear contact cannot turn a same-lane queue into reciprocal forward locks", () => {
+  const follower = slotFixture("traffic-follower", 50);
+  const leader = slotFixture("traffic-leader", 72);
+  const agents = [follower, leader].map(slot => ({
+    tokenId: slot.tokenId,
+    stage: "lane",
+    currentLaneId: "lane-a",
+    connectorId: null,
+    nextLaneId: null,
+    routeHop: 0,
+    stageProgress: slot.x / 200
+  }));
+  const fixture = installFixture({ slots: [follower, leader], agents });
+  const before = agents.map(agent => agent.stageProgress);
+
+  fixture.routePolicy.update(0.05);
+
+  assert.equal(agents[0].stageProgress, before[0], "the touching follower must wait");
+  assert.ok(agents[1].stageProgress > before[1], "the clear leader must advance");
+  assert.equal(leader.agentMotionAuthorityLocked, false);
+  assert.equal(follower.agentMotionAuthorityLocked, true);
+  fixture.authority.destroy();
+});
+
+test("rear-contact clearance never overrides a leader's actual impact hold", () => {
+  const follower = slotFixture("traffic-follower", 50);
+  const leader = slotFixture("traffic-leader", 72);
+  const agents = [follower, leader].map(slot => ({
+    tokenId: slot.tokenId,
+    stage: "lane",
+    currentLaneId: "lane-a",
+    connectorId: null,
+    nextLaneId: null,
+    routeHop: 0,
+    stageProgress: slot.x / 200
+  }));
+  const fixture = installFixture({ slots: [follower, leader], agents });
+  fixture.physical.states.set(leader.tokenId, {
+    offsetX: 0, offsetY: 0, holdSeconds: 0.5,
+    baseX: leader.x, baseY: leader.y, lastReason: "pushed"
+  });
+  const before = agents[1].stageProgress;
+  fixture.routePolicy.update(0.05);
+  assert.equal(agents[1].stageProgress, before);
+  assert.equal(leader.agentMotionAuthorityLocked, true);
+  fixture.authority.destroy();
+});
+
 test("the visible angle stays at the pre-route pose while physical recovery owns the car", () => {
   const slot = slotFixture("traffic-a", 50, { angle: 0.2 });
   const agents = [{
