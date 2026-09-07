@@ -746,3 +746,26 @@ acceptance is the user's gameplay pass, particularly dense queues, the reported
 junction pile, visibility/streaming continuity and hijacking/police behavior.
 Cloud preview access was rejected by automatic permission review; no visual
 approval or resolution of the previously reported hosting/radio issue is claimed.
+
+## 2026-09-07 — user-authorized GitHub Pages validation
+
+The user reports exhausted Netlify quota and requests testing the PR branch on
+Pages. Deployment `34098911361` successfully serves `95e344b` at
+https://franperezsevilla.github.io/vampire-district/ . That head's Tests #2470
+(`34098917526`) also completed successfully.
+
+Normal title/audio startup and New Night work on Pages. Civilian cars move at
+the first junction east of spawn. However, the authored compact-car label covers
+much of the road at roughly three times its intended size. Phaser 3.90's Canvas
+renderer uses `frame.source.resolution`, copied at Text construction; the old
+readable-text factory changed only the style resolution afterwards. Initialize
+resolution in the construction style so both rendering paths share logical size.
+
+The bounded correction touches the existing text factory and render-quality
+browser coverage. The new production-boot regression disables WebGL to exercise
+Canvas, checks actual texture render dimensions, and holds a movement key after
+New Night. Interactive cloud key taps have not yet moved the player; that alone
+does not prove an input regression. No input or traffic authority is changed.
+
+State is `implementation-validation` for this correction. Corrected Pages/CI
+results will be recorded in the PR. The draft/user gameplay gate remains intact.

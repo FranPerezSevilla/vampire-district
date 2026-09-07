@@ -1,12 +1,12 @@
 {
   "initiative": "traffic-lane-junction-topology",
-  "version": 16,
+  "version": 17,
   "updatedAt": "2026-09-07",
   "pullRequest": 73,
   "branch": "codex/traffic-junction-topology",
-  "state": "final-validation-pending",
+  "state": "implementation-validation",
   "currentMilestone": "M9",
-  "currentTask": "M9.2-explicit-user-gameplay-validation",
+  "currentTask": "M9.3-pages-render-validation",
   "lastValidatedImplementationHead": "e3e4d6c239e003cbfce053ebc3f8cce5723fb0d7",
   "baseAtBootstrap": "805ea5d107dcddcef4cd564294569455093af4b0",
   "canonicalDocs": {
@@ -15,7 +15,8 @@
     "taskBoundary": "docs/agent-tasks/2026-08-21-traffic-lane-junction-topology.md",
     "m1CompilerContract": "docs/agent-tasks/2026-08-21-traffic-lane-junction-m1-compiler-contract.md",
     "progressLog": "docs/progress/TRAFFIC_LANE_JUNCTION_TOPOLOGY_PROGRESS.md",
-    "physicalQueueCorrection": "docs/agent-tasks/2026-09-07-traffic-physical-queue-clearance.md"
+    "physicalQueueCorrection": "docs/agent-tasks/2026-09-07-traffic-physical-queue-clearance.md",
+    "pagesValidation": "docs/agent-tasks/2026-09-07-pages-traffic-validation.md"
   },
   "authority": {
     "localTopologyCompiler": "tools/city-compiler/traffic-lane-topology.js",
@@ -299,6 +300,21 @@
       "workflow": "Tests",
       "runNumber": 2461,
       "runId": 33595263124
+    },
+    "m9PagesValidation": {
+      "state": "implementation-validation",
+      "url": "https://franperezsevilla.github.io/vampire-district/",
+      "baselineHead": "95e344b082ecdf0eff8adf8691d138baa048e824",
+      "pagesRunId": 34098911361,
+      "baselineCi": {
+        "runId": 34098917526,
+        "runNumber": 2470,
+        "conclusion": "success"
+      },
+      "observed": "Normal title/audio and New Night load. Civilian vehicles move at the first junction east of spawn. An oversized authored-car label obscures the roadway.",
+      "correction": "Initialize readable text resolution before constructing its Phaser texture source; preserve logical Canvas dimensions.",
+      "regression": "Production Canvas fallback checks actual label render dimensions and movement using held input after New Night.",
+      "remaining": "Validate corrected Pages deployment and CI; explicit user gameplay approval remains pending."
     }
   },
   "nextTask": {
