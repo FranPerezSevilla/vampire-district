@@ -340,9 +340,9 @@ Own:
 
 ### Civilian traffic proxies
 
-- Fixed pool of 32, each with a stable token, physical vehicle state and planned destination.
+- Fixed pool of 32, each with a stable token, physical vehicle state and a predefined broad city circuit that repeats continuously.
 - Drivers follow compiler navigation with the player's acceleration, braking, steering and reverse model.
-- Whole-body junction clearance, normal following and physically driven emergency manoeuvres.
+- Whole-body junction clearance, normal following and physically driven emergency manoeuvres, including crossing recovery and bounded reverse/reassessment when a complete bypass is unavailable.
 - Native collisions, damage, disablement and theft into a transient vehicle; no campaign save ownership for ambient proxies.
 - Macro traffic supplies population and receives accounting, without positioning local cars.
 

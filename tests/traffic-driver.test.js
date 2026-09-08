@@ -12,18 +12,24 @@ import { createTrafficNetworkRuntime } from "./helpers/traffic-network-runtime.j
 const topology = JSON.parse(readFileSync(new URL("../phaser/assets/city/packs/traffic-lanes.json", import.meta.url))).localTopology;
 const archetype = trafficVehicleArchetype("test");
 
-test("drivers preplan deterministic distant journeys without repeated lanes and finish mid-block", () => {
+test("drivers preplan broad circular routes with one closing lane and a continuous mid-block seam", () => {
   const planner = createTrafficJourneyPlanner(topology);
   for (const laneId of topology.laneIds.filter((_, index) => index % 17 === 0)) {
     const journey = planner.plan(laneId, `driver:${laneId}`);
     assert.deepEqual(planner.plan(laneId, `driver:${laneId}`).laneIds, journey.laneIds);
-    assert.equal(new Set(journey.laneIds).size, journey.laneIds.length);
+    assert.equal(new Set(journey.laneIds).size, journey.laneIds.length - 1);
+    assert.equal(journey.laneIds.at(-1), journey.loopLane);
+    assert.equal(journey.circular, true);
+    assert.ok(journey.circuitLength >= 2000);
     assert.ok(journey.laneIds.length > 1);
     assert.ok(journey.destinationProgress > 800);
     const last = journey.stages.at(-1);
     assert.ok(journey.destinationProgress - last.start >= 60);
     assert.ok(last.end - journey.destinationProgress >= 60);
-    assert.equal(journeyPoint(journey, journey.destinationProgress).segment.stage.laneId, journey.destination);
+    const entrance = journeyPoint(journey, journey.loopStartProgress);
+    const exit = journeyPoint(journey, journey.destinationProgress);
+    assert.ok(Math.hypot(exit.x - entrance.x, exit.y - entrance.y) < 1e-6);
+    assert.ok(Math.abs(angleDelta(exit.angle, entrance.angle)) < 1e-6);
   }
 });
 
@@ -102,7 +108,7 @@ for (const frameRate of [20, 60]) test(`the production driver executes an emerge
   try {
     network.step(200);
     const runtime = network.route.runtime();
-    const selected = runtime.agents().find(agent => {
+    const selectApproach = () => runtime.agents().find(agent => {
       const driver = runtime.driver(agent.tokenId);
       const slot = network.materializer.assignments.get(agent.tokenId);
       const stage = driver.journey.stages.find(stage => stage.kind === "lane" && stage.laneId === agent.currentLaneId);
@@ -110,6 +116,10 @@ for (const frameRate of [20, 60]) test(`the production driver executes an emerge
         && topology.lanes[agent.currentLaneId].roadWidth >= 100
         && [...network.materializer.assignments.values()].every(other => other === slot || Math.hypot(other.x - slot.x, other.y - slot.y) > 130);
     });
+    let selected = selectApproach();
+    for (let attempt = 0; !selected && attempt < 20; attempt++) {
+      network.step(20); selected = selectApproach();
+    }
     assert.ok(selected);
     const slot = network.materializer.assignments.get(selected.tokenId);
     const forward = { x: Math.cos(slot.angle), y: Math.sin(slot.angle) };

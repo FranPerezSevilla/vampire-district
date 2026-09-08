@@ -13,13 +13,21 @@ test("32 native cars sustain city-wide circulation through short links for three
     for (const [tokenId, record] of network.records) {
       assert.ok(record.maxStop < 15, `${tokenId} stopped for ${record.maxStop.toFixed(1)}s`);
       assert.ok(record.hops >= 30, `${tokenId} stopped completing junctions`);
-      assert.ok(record.lanes.size >= 25, `${tokenId} repeatedly circled a small neighbourhood`);
+      assert.ok(record.lanes.size >= 10, `${tokenId} stopped traversing its broad circuit`);
       assert.equal(record.identityChanges, 0, `${tokenId} was replaced to escape a blockage`);
     }
     assert.equal(network.route.snapshot().movementAuthority, "shared-vehicle-kinematics");
     for (const agent of network.route.runtime().agents()) {
       assert.ok(agent.completedJourneys >= 1, `${agent.tokenId} must reach its destination`);
-      assert.equal(new Set(agent.journeyLaneIds).size, agent.journeyLaneIds.length);
+      assert.equal(new Set(agent.journeyLaneIds).size, agent.journeyLaneIds.length - 1);
+      assert.ok(agent.circularRoute && agent.circuitLength >= 2000);
+      const driver = network.route.runtime().driver(agent.tokenId);
+      const circuit = driver.journey.segments.filter(segment => segment.end > driver.journey.loopStartProgress);
+      const xs = circuit.map(segment => segment.a.x), ys = circuit.map(segment => segment.a.y);
+      assert.ok(Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) >= 1000,
+        `${agent.tokenId} must span distant parts of the city`);
+      const roads = new Set(circuit.map(segment => network.materializer.lanes.localTopology.lanes[segment.stage.laneId].sourceRoadEdgeId));
+      assert.ok(roads.size >= 7, `${agent.tokenId} must cover several blocks`);
     }
   } finally {
     network.destroy();

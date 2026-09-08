@@ -50,7 +50,7 @@ export function createTrafficDriverWorld(topology, materializer) {
     });
     return nearby;
   }
-  function blocker(driver, pose, objects, margin = 1.5) {
+  function blocker(driver, pose, objects, margin = 1.5, previous = null) {
     const proxy = { ...pose, archetype: { ...driver.archetype, width: driver.archetype.width + margin * 2, height: driver.archetype.height + margin * 2 } };
     if (!vehicleFootprintPoints(pose, { width: driver.archetype.width * 0.86, height: driver.archetype.height * 0.82 }).every(onRoad)) {
       return { id: "road-edge" };
@@ -58,7 +58,16 @@ export function createTrafficDriverWorld(topology, materializer) {
     for (const other of objects) {
       const reach = (driver.archetype.width + (other.archetype?.width || 30)) * 0.6 + margin + 4;
       if (Math.abs(pose.x - other.x) > reach || Math.abs(pose.y - other.y) > reach) continue;
-      if (orientedVehicleContact(proxy, other)) return other;
+      if (!orientedVehicleContact(proxy, other)) continue;
+      // An existing contact may be unwound by driving away. Never allow a new
+      // contact, deeper penetration, or movement through the other body.
+      const before = previous && orientedVehicleContact({ ...previous, archetype: driver.archetype }, other);
+      if (before) {
+        const after = orientedVehicleContact({ ...pose, archetype: driver.archetype }, other);
+        const separating = (pose.x - previous.x) * before.normal.x + (pose.y - previous.y) * before.normal.y < -1e-7;
+        if (separating && (!after || after.overlap < before.overlap - 1e-7)) continue;
+      }
+      return other;
     }
     return null;
   }

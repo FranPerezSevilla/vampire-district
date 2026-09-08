@@ -1,13 +1,13 @@
 {
   "initiative": "traffic-lane-junction-topology",
-  "version": 19,
+  "version": 20,
   "updatedAt": "2026-09-08",
   "pullRequest": 73,
   "branch": "codex/traffic-junction-topology",
-  "state": "implementation-validation",
-  "currentMilestone": "M10",
-  "currentTask": "M10-physical-destination-drivers",
-  "lastValidatedImplementationHead": "be60ec65b0ad2ecc2893d6f2daac94f6b296c8be",
+  "state": "local-validated-publish-pending",
+  "currentMilestone": "M11",
+  "currentTask": "M11-recovery-and-broad-circuits",
+  "lastValidatedImplementationHead": "1d8d7e3edcf594f5c1db6a2a0aa6d1b395542652",
   "baseAtBootstrap": "805ea5d107dcddcef4cd564294569455093af4b0",
   "canonicalDocs": {
     "roadmap": "docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md",
@@ -18,7 +18,8 @@
     "physicalQueueCorrection": "docs/agent-tasks/2026-09-07-traffic-physical-queue-clearance.md",
     "pagesValidation": "docs/agent-tasks/2026-09-07-pages-traffic-validation.md",
     "sustainedTraffic": "docs/agent-tasks/2026-09-07-sustained-arcade-traffic.md",
-    "physicalDrivers": "docs/agent-tasks/2026-09-08-physical-traffic-drivers.md"
+    "physicalDrivers": "docs/agent-tasks/2026-09-08-physical-traffic-drivers.md",
+    "recoveryCircuits": "docs/agent-tasks/2026-09-08-traffic-recovery-circuits.md"
   },
   "authority": {
     "localTopologyCompiler": "tools/city-compiler/traffic-lane-topology.js",
@@ -31,14 +32,14 @@
     "controlledRouteActivation": "phaser/src/streaming/TrafficControlledRouteActivationPolicy.js; default-off regression harness only",
     "multiAgentRouteRuntime": "TrafficMultiAgentRouteRuntimePolicy selects TrafficDriverRuntime by default; driving:false is a controlled cursor fixture",
     "junctionReservation": "TrafficDriverJunctions; buffered path permissions, whole-body intersection boundaries and downstream clearance",
-    "gridlockRecovery": "TrafficDriverController; bounded search over physically reachable forward/reverse states",
+    "gridlockRecovery": "TrafficDriverController; complete physical bypass or bounded partial reverse and reassessment; separating existing contacts is allowed",
     "visibleDensity": "TrafficLocalAssignmentPolicy establishes a fixed production materialization baseline of 32 slots before route activation; no post-activation density growth is allowed",
     "defaultMovementAuthority": "shared-vehicle-kinematics",
     "macroRole": "bootstrap population plus conservative route-projection accounting and independent police travel; never civilian local geometry",
     "legacyCivilianPhaseRole": "bootstrap/fallback compatibility only; phase advancement is disabled while normal compiler-route authority is active",
     "physicalAgentAuthority": "TrafficDriverRuntime adopts native impacts into actual poses; no route-offset recovery authority in production",
-    "junctionFlow": "TrafficDriverJunctions; compound crossings, clear approach spawning and per-junction arrival priority",
-    "journeyPlanner": "TrafficJourneyPlanner; deterministic shortest journeys to distant mid-block destinations, without repeated directed lanes or artificial cul-de-sac trips"
+    "junctionFlow": "TrafficDriverJunctions; normal and recovery path permissions, progressive rear clearance, inside-first clearing and fair pending approaches",
+    "journeyPlanner": "TrafficJourneyPlanner; predefined distant outbound/return circuits, continuous mid-block seam, one-time entry leg when needed"
   },
   "cleanupAudit": {
     "productionRequiredCompatibility": [
@@ -64,23 +65,24 @@
     ]
   },
   "hardInvariants": [
-    "route geometry is compiler-node-owned directed lanes plus activation-safe connectors only",
+    "compiler lanes and safe connectors define navigation; emergency controls may use physically clear pavement across lanes",
     "macro graph centres never become civilian local driving coordinates",
     "stable tokenId and materialization slot survive visible route stage changes",
     "no coordinate teleport across lane/connector/lane",
     "normal crossing release is protected; forced hijack/layer/teardown exits remain legal",
     "visible route-active slots remain retained through connector and chunk-boundary crossings while still inside the camera/follow retention envelope",
     "legacy local behavior and steering never overwrite routeActive x/y",
-    "route-active materialized pose is resampled every frame from the compiler route before physical offsets are layered back on",
-    "route-aware behavior may modulate scalar speed but has no lateral/world-space pose authority",
+    "driver-active pose is integrated by shared VehicleModel controls; a native impact is adopted into that physical state once",
+    "driver controls throttle, brake, steering and reverse; no independent lateral translation or route snapping",
     "junction conflicts delay connector entry while cars already inside normally clear",
     "reservation ownership releases on exit/forced teardown and stale owners recover",
-    "gridlock initiative may latch to one physical blocker and request bounded traffic-to-traffic shoves, but never teleports, snaps or invents route coordinates",
+    "gridlock recovery reserves a physically driven bypass or reverses a bounded distance and reassesses; no teleport, snap or new overlap",
     "the civilian materialization pool baseline is established before route activation and remains fixed during runtime continuity",
     "compatibility projection never drops population or guesses ambiguous macro ownership",
     "MacroTrafficRouteContinuityPolicy and TrafficIntentDrivingPolicy have no live production activation path",
     "generated topology is fixed in compiler sources, never hand-edited as a runtime workaround",
-    "a same-lane rear contact never becomes a forward lead lock; native physical holds and residual-offset locks remain authoritative"
+    "wrecks remain disabled; an existing body contact may decrease while driving away, without creating a new contact",
+    "predefined city circuits repeat with a continuous physical pose; no short one-block fallback"
   ],
   "completedTasks": [
     "M0-foundation",
@@ -141,6 +143,14 @@
     "M9": {
       "title": "Legacy cleanup, documentation and user validation gate",
       "state": "final-validation-pending"
+    },
+    "M10": {
+      "title": "Physical vehicle driver rebuild",
+      "state": "implemented; extended by M11"
+    },
+    "M11": {
+      "title": "Junction recovery and broad circular itineraries",
+      "state": "local-validated-publish-pending"
     }
   },
   "validation": {
@@ -364,24 +374,42 @@
       "browser": "Updated production boot/accounting, driver behavior, native soft push and impact adoption specs; CI pending",
       "pages": "Publish and inspect the updated GitHub Pages deployment; no Netlify",
       "deadEndCheck": "Two native cars seeded near the western dead end run for 50 seconds, each completing 14 lane handoffs with no rejected step, contact or overlap."
+    },
+    "m11RecoveryCircuits": {
+      "state": "local-passed",
+      "baselineHead": "1d8d7e3edcf594f5c1db6a2a0aa6d1b395542652",
+      "task": "docs/agent-tasks/2026-09-08-traffic-recovery-circuits.md",
+      "localFast": "888/888 unit tests pass; static suite ownership passes (41 specs, 8 suites)",
+      "focused": "17/17 focused driver, recovery and network tests pass",
+      "network": "32 native cars for 180 seconds: no contacts, overlaps or slot replacement; no stop reaches 15 seconds; each completes at least 30 handoffs and one circuit. Circuits cover at least 7 source roads and span at least 1000 world units.",
+      "recovery": "Real generated crossing at 20 and 60 Hz: an overlapping lead car reverses and two followers bypass via clear opposing pavement; no new contacts, increasing penetration or lateral translations.",
+      "partialReverse": "Bounded reverse and stop without a complete escape; reassessment and resumption when a full-width obstruction clears; blocked rear cannot be traversed.",
+      "circuitAudit": {
+        "startingLanes": 434,
+        "circularRoutesFound": 434,
+        "minimumCircuitLength": 2340.9875711310524
+      },
+      "affectedPlan": "Cumulative PR selects release-candidate coverage; browser execution explicitly excluded by the user. Native units/simulations and static ownership executed instead.",
+      "browser": "Not run and not an acceptance gate, by explicit user instruction. PR 73 CI skips Chromium and runs check:fast; other PRs and main keep their validation.",
+      "deployment": "Push to the existing Pages branch; report actual deployment status in the live PR handoff. No browser playtest."
     }
   },
   "nextTask": {
-    "id": "M10-driver-ci-and-pages",
-    "milestone": "M10",
-    "goal": "Finish validation of the user-requested physical driver rebuild in PR 73.",
+    "id": "M11-publish-and-user-feedback",
+    "milestone": "M11",
+    "goal": "Publish the locally validated recovery/circuit changes in PR 73 and handle concrete user feedback.",
     "actions": [
-      "Publish reviewed implementation on codex/traffic-junction-topology and update PR 73.",
-      "Inspect focused CI failures and fix concrete regressions; no automatic merge.",
-      "Verify the updated GitHub Pages build and normal boot; accurately distinguish visual observation from automated driving checks."
+      "Publish the reviewed tree and update PR 73 with exact head and local evidence.",
+      "Observe native CI and Pages deployment with bounded checks; no browser testing.",
+      "Keep PR 73 draft and address concrete validation failures or user feedback; no automatic merge."
     ],
     "acceptance": [
-      "Physical driver and sustained network regressions pass.",
-      "Updated automated browser checks pass and Pages loads.",
-      "Keep PR 73 draft; no automatic merge."
+      "888 native unit tests and static ownership pass.",
+      "Recovery and broad circuit evidence is recorded in the task and PR.",
+      "Browser testing is excluded by the user."
     ],
     "readFirst": [
-      "docs/agent-tasks/2026-09-08-physical-traffic-drivers.md",
+      "docs/agent-tasks/2026-09-08-traffic-recovery-circuits.md",
       "docs/TECHNICAL_ARCHITECTURE.md",
       "docs/progress/TRAFFIC_LANE_JUNCTION_TOPOLOGY_PROGRESS.md"
     ]
@@ -389,6 +417,7 @@
   "finalGate": {
     "requiresUserGameplayApproval": true,
     "autonomousWorkStopsAt": "final-validation-pending",
-    "autoMergeAllowed": false
+    "autoMergeAllowed": false,
+    "browserTestsRequired": false
   }
 }

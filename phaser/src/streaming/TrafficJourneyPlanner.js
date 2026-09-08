@@ -54,8 +54,8 @@ export function createTrafficJourneyPlanner(topology) {
   }
   for (const choices of edges.values()) choices.sort((a, b) => a.transition.id.localeCompare(b.transition.id));
   const trees = new Map();
-  function shortestPaths(start) {
-    if (trees.has(start)) return trees.get(start);
+  function shortestPaths(start, forbidden = null) {
+    if (!forbidden && trees.has(start)) return trees.get(start);
     const distances = new Map([[start, 0]]), parents = new Map(), pending = new Set([start]);
     while (pending.size) {
       let current = null;
@@ -63,6 +63,7 @@ export function createTrafficJourneyPlanner(topology) {
       pending.delete(current);
       for (const edge of edges.get(current) || []) {
         const next = edge.transition.outgoingLaneId;
+        if (forbidden?.has(next)) continue;
         const cost = distances.get(current) + pathLength(topology.lanes[next].points)
           + (edge.connector?.length || 0) + (edge.transition.turnType === "straight" ? 0 : 28) + 1;
         if (cost >= (distances.get(next) ?? Infinity)) continue;
@@ -70,11 +71,11 @@ export function createTrafficJourneyPlanner(topology) {
       }
     }
     const tree = { distances, parents };
-    trees.set(start, tree);
+    if (!forbidden) trees.set(start, tree);
     return tree;
   }
-  function plan(start, tokenId, trip = 0, destination = null) {
-    const { distances, parents } = shortestPaths(start);
+  function planLeg(start, tokenId, trip = 0, destination = null, forbidden = null) {
+    const { distances, parents } = shortestPaths(start, forbidden);
     const reachable = [...distances].filter(([id]) => id !== start && edges.has(id)).sort((a, b) => a[0].localeCompare(b[0]));
     // Ambient through traffic should not deliberately visit a cul-de-sac merely
     // to turn around. Drivers seeded there can leave via its legal U-turn.
@@ -85,7 +86,7 @@ export function createTrafficJourneyPlanner(topology) {
     const distant = eligible.filter(([, distance]) => distance >= Math.min(1200, maximum * 0.6));
     const candidates = distant.length ? distant : eligible;
     const target = destination || candidates[trafficJourneyHash(`${tokenId}:${trip}`) % candidates.length]?.[0] || start;
-    if (target !== start && !parents.has(target)) throw new Error(`Unreachable traffic destination: ${target}`);
+    if (target !== start && !parents.has(target)) return null;
     const route = [], laneIds = [target];
     for (let cursor = target; cursor !== start;) {
       const parent = parents.get(cursor);
@@ -114,6 +115,41 @@ export function createTrafficJourneyPlanner(topology) {
     });
     const last = stages.at(-1);
     return { destination: target, destinationProgress: (last.start + last.end) / 2, laneIds, stages, segments, length, trip };
+  }
+  function plan(start, tokenId, trip = 0) {
+    // Close the route via distant streets, avoiding the outbound directed lanes.
+    // A dead-end seed has a one-time entry leg before joining its broad circuit.
+    for (let attempt = 0; attempt < 64; attempt++) {
+      const outward = planLeg(start, tokenId, trip + attempt);
+      const possibleReturns = shortestPaths(outward.destination).distances;
+      for (const loopLane of outward.laneIds.filter(id => pathLength(topology.lanes[id].points) >= 120
+        && !deadEndRoads.has(topology.lanes[id].sourceRoadEdgeId) && possibleReturns.has(id) && id !== outward.destination)) {
+        const forbidden = new Set(outward.laneIds.filter(id => id !== loopLane && id !== outward.destination));
+        const back = planLeg(outward.destination, tokenId, trip, loopLane, forbidden);
+        if (!back) continue;
+        const shift = outward.length - back.stages[0].end;
+        const laneShift = outward.laneIds.length - 1;
+        const stageCopies = new Map(back.stages.slice(1).map(stage => [stage,
+          { ...stage, start: stage.start + shift, end: stage.end + shift, laneIndex: stage.laneIndex + laneShift }]));
+        const stages = [...outward.stages, ...stageCopies.values()];
+        const segments = [...outward.segments, ...back.segments.filter(segment => stageCopies.has(segment.stage)).map(segment => ({
+          ...segment, start: segment.start + shift, end: segment.end + shift, stage: stageCopies.get(segment.stage)
+        }))];
+        const loopStartStage = outward.stages.find(stage => stage.kind === "lane" && stage.laneId === loopLane);
+        const loopStartProgress = (loopStartStage.start + loopStartStage.end) / 2;
+        const destinationProgress = (stages.at(-1).start + stages.at(-1).end) / 2;
+        const circuitLength = destinationProgress - loopStartProgress;
+        if (circuitLength < 2000) continue;
+        return { ...outward, trip, circular: true, loopLane, loopStartProgress, circuitLength,
+          circuitLaneCount: stages.at(-1).laneIndex - loopStartStage.laneIndex,
+          destinationProgress, laneIds: [...outward.laneIds, ...back.laneIds.slice(1)],
+          stages, segments, length: outward.length + back.length - back.stages[0].end };
+      }
+    }
+    // In an incomplete/disconnected network, finish a finite reachable leg and
+    // stop. Never invent a return edge or silently repeat a tiny block.
+    const furthest = [...shortestPaths(start).distances].sort((a, b) => b[1] - a[1])[0]?.[0] || start;
+    return { ...planLeg(start, tokenId, trip, furthest), circular: false, circuitLength: 0 };
   }
   return { plan };
 }

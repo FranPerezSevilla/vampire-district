@@ -3,7 +3,7 @@ import { createVehicleState, stepVehicleKinematics } from "../vehicles/VehicleMo
 import { seedTrafficRouteAgentsFromMacroPopulation } from "./TrafficRoutePopulationSeed.js";
 import { projectTrafficRouteAgentsToMacroCompatibility, validateTrafficRouteMacroProjection } from "./TrafficRouteCompatibilityProjection.js";
 import { createTrafficJourneyPlanner, journeyPoint, projectJourney, trafficJourneyHash, pathLength } from "./TrafficJourneyPlanner.js";
-import { driverControls, journeyDrivingTarget, planDriverManeuver } from "./TrafficDriverController.js";
+import { driverControls, journeyDrivingTarget, planDriverManeuver, planDriverReverse } from "./TrafficDriverController.js";
 import { createTrafficDriverWorld } from "./TrafficDriverWorld.js";
 import { createTrafficDriverJunctions } from "./TrafficDriverJunctions.js";
 
@@ -26,7 +26,7 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
     const initial = journeyPoint(journey, progress);
     return { ...agent, archetype, journey, progress, pose: createVehicleState({ id: agent.tokenId, ...initial }, archetype),
       cruiseSpeed: speed * (0.87 + trafficJourneyHash(agent.tokenId) % 14 / 100), wait: 0, retryAt: 0,
-      maneuver: null, maneuverSeconds: 0, panicUntil: 0, reason: "cruise", controls: { move: { x: 0, y: 0 } },
+      maneuver: null, maneuverSeconds: 0, recovery: null, panicUntil: 0, reason: "cruise", controls: { move: { x: 0, y: 0 } },
       distanceTravelled: 0, completedJourneys: 0, adoptedImpacts: 0, rejectedSteps: 0, routeHop: 0 };
   });
   const byId = new Map(drivers.map(driver => [driver.tokenId, driver]));
@@ -54,6 +54,7 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
       routeHop: driver.routeHop + laneIndex, trafficMetadata: driver.trafficMetadata,
       destinationLaneId: driver.journey.destination, journeyLaneIds: [...driver.journey.laneIds],
       journeyProgress: driver.progress, completedJourneys: driver.completedJourneys,
+      circularRoute: driver.journey.circular, circuitLength: driver.journey.circuitLength,
       pose: { ...driver.pose }, controls: structuredClone(driver.controls), reason: driver.reason,
       distanceTravelled: driver.distanceTravelled, adoptedImpacts: driver.adoptedImpacts, rejectedSteps: driver.rejectedSteps };
   }
@@ -82,7 +83,7 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
     if (displaced) {
       driver.pose = { ...driver.pose, x: slot.x, y: slot.y, angle: slot.angle, travelAngle: slot.angle,
         speed: 0, velocityX: 0, velocityY: 0 };
-      driver.maneuver = null; driver.adoptedImpacts++;
+      driver.maneuver = null; junctions.releaseManeuver(driver); driver.adoptedImpacts++;
     }
     // Consume the impact into actual state once. There is no ideal base to decay
     // back toward; subsequent rejoining must be performed with steering.
@@ -104,11 +105,20 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
     slot.driverDestination = driver.journey.destination;
     slot.driverReason = driver.reason;
   }
+  function blockedQueue(driver, visited = new Set()) {
+    if (Math.abs(driver.pose.speed) > 4 || driver.wait < 4) return false;
+    if (visited.has(driver.tokenId)) return true;
+    visited.add(driver.tokenId);
+    const leader = byId.get(driver.blockerId || junctions.blockingDriver(driver));
+    if (leader) return blockedQueue(leader, visited);
+    return Boolean(driver.blockerId) || ["physical-disabled", "physical-contact", "obstacle"].includes(driver.reason);
+  }
   function drive(driver, dt, active) {
     const slot = materializer.assignments.get(driver.tokenId);
     const start = driver.pose;
     const desired = journeyDrivingTarget(driver, driver.panicUntil > clock ? speed : driver.cruiseSpeed);
     let targetSpeed = desired.speed;
+    if (!driver.journey.circular) targetSpeed = Math.min(targetSpeed, Math.max(0, driver.journey.destinationProgress - driver.progress - 2));
     let reason = driver.panicUntil > clock ? "panic" : "cruise";
     const objects = active ? world.obstacles(driver) : [];
     const stopDistance = active ? junctions.stopDistance(driver) : Infinity;
@@ -122,8 +132,8 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
       let predicted = start, progress = driver.progress, travelled = 0;
       // Predict using the very same steering and braking model as the committed
       // step. The road path may bend; a straight ray would miss a queued car.
-      const horizon = Math.max(30, start.speed ** 2 / (2 * driver.archetype.brake) + Math.abs(start.speed) * 0.55 + 16);
-      for (let i = 0; i < 28 && travelled < horizon; i++) {
+      const horizon = Math.max(driver.wait > 4 ? 150 : 30, start.speed ** 2 / (2 * driver.archetype.brake) + Math.abs(start.speed) * 0.55 + 16);
+      for (let i = 0; i < 40 && travelled < horizon; i++) {
         const aim = journeyDrivingTarget({ ...driver, pose: predicted, progress }, driver.cruiseSpeed);
         const frame = driverControls(predicted, aim.target, aim.speed, driver.archetype, 0.1);
         const next = stepVehicleKinematics(predicted, frame, 0.1, driver.archetype);
@@ -141,51 +151,74 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
     driver.blockerId = blocker?.tokenId || blocker?.id || null;
     const physical = scene.trafficPhysicalConsequencesSystem?.states?.get(driver.tokenId);
     const held = slot?.trafficDisabled || (physical?.holdSeconds || 0) > 0;
-    if (held) { targetSpeed = 0; reason = slot.trafficDisabled ? "physical-disabled" : "physical-contact"; driver.maneuver = null; }
+    if (held) {
+      targetSpeed = 0; reason = slot.trafficDisabled ? "physical-disabled" : "physical-contact";
+      if (slot.trafficDisabled) { driver.maneuver = null; junctions.releaseManeuver(driver); }
+    }
     const queueLeader = blocker?.tokenId ? byId.get(blocker.tokenId) : null;
-    const ordinaryQueue = queueLeader && (queueLeader.reason === "junction-yield" || Math.abs(queueLeader.pose.speed) > 4);
-    if (active && blocker && !held && !ordinaryQueue && junctions.maneuverAllowed(driver) && driver.wait > (queueLeader ? 4 : 0.75)
+    const ordinaryQueue = queueLeader && !blockedQueue(queueLeader);
+    if (blocker && driver.recovery?.blockerId !== driver.blockerId) driver.recovery = null;
+    if (driver.recovery && !driver.maneuver) {
+      if (!blocker || ordinaryQueue) driver.recovery = null;
+      else targetSpeed = 0;
+    }
+    if (active && blocker && !slot?.trafficDisabled && !ordinaryQueue && driver.wait > (queueLeader ? 4 : 0.75)
       && !driver.maneuver && clock >= driver.retryAt && planningBudget > 0) {
       driver.retryAt = clock + 2; planningBudget--;
       const goal = journeyPoint(driver.journey, Math.min(driver.journey.length - 5, driver.progress + 115));
-      driver.maneuver = planDriverManeuver({ pose: driver.pose, archetype: driver.archetype, goal,
+      const request = { pose: driver.pose, archetype: driver.archetype, goal, dt: Math.max(1 / 120, dt),
         // A car stopped close to a bumper may initially lack the preferred
         // comfort margin. Let it reverse out using actual body clearance, then
         // grow the margin as it creates room; never shrink the physical body.
-        safe: candidate => !world.blocker(driver, candidate, objects,
-          Math.min(2, Math.hypot(candidate.x - start.x, candidate.y - start.y) * 0.15)) });
+        safe: (candidate, previous) => !world.blocker(driver, candidate, objects,
+          Math.min(2, Math.hypot(candidate.x - start.x, candidate.y - start.y) * 0.15), previous) };
+      let maneuver = held ? null : planDriverManeuver(request);
+      if (maneuver && !junctions.reserveManeuver(driver, maneuver)) maneuver = null;
+      if (!maneuver) {
+        maneuver = planDriverReverse({ ...request, distance: Math.min(18, 48 - (driver.recovery?.reversed || 0)) });
+        if (maneuver && !junctions.reserveManeuver(driver, maneuver)) maneuver = null;
+      }
+      if (maneuver?.kind === "reverse-reassess") {
+        driver.recovery ||= { blockerId: driver.blockerId, reversed: 0 };
+        driver.recovery.reversed += Math.hypot(maneuver.goal.x - start.x, maneuver.goal.y - start.y);
+      }
+      driver.maneuver = maneuver;
       driver.maneuverSeconds = 0;
     }
     let frame = driverControls(start, desired.target, targetSpeed, driver.archetype, dt);
-    if (driver.maneuver && !held) {
-      const index = Math.floor((driver.maneuverSeconds + 0.000001) / 0.05);
-      if (index >= driver.maneuver.frames.length) { driver.maneuver = null; driver.wait = 0; }
-      else { frame = driver.maneuver.frames[index]; reason = start.speed < -0.1 ? "reverse-maneuver" : "bypass"; }
+    if (driver.maneuver && !slot?.trafficDisabled) {
+      const index = Math.floor((driver.maneuverSeconds + 0.000001) / driver.maneuver.frameSeconds);
+      if (index >= driver.maneuver.frames.length) {
+        const partial = driver.maneuver.kind === "reverse-reassess";
+        driver.maneuver = null; junctions.releaseManeuver(driver);
+        if (!partial) driver.recovery = null;
+        driver.wait = partial ? Math.max(driver.wait, 5) : 0; driver.retryAt = clock;
+        frame = driverControls(start, desired.target, 0, driver.archetype, dt);
+      } else { frame = driver.maneuver.frames[index]; reason = start.speed < -0.1 ? "reverse-maneuver" : "bypass"; }
     }
     let next = stepVehicleKinematics(start, frame, dt, driver.archetype);
     // Native contact may already overlap. Never invent an x-only/y-only slide,
     // snap to a waypoint or rotate a stopped body to make the candidate fit.
-    if (active && world.blocker(driver, next, objects, 0)) {
+    if (active && world.blocker(driver, next, objects, 0, start)) {
       next = { ...start, speed: 0, velocityX: 0, velocityY: 0, parked: true };
       driver.rejectedSteps++;
-      if (driver.maneuver) { driver.maneuver = null; driver.retryAt = clock + 0.5; }
+      if (driver.maneuver) { driver.maneuver = null; junctions.releaseManeuver(driver); driver.retryAt = clock + 0.5; }
       reason = held ? reason : "obstacle";
     } else if (driver.maneuver) driver.maneuverSeconds += dt;
     const moved = Math.hypot(next.x - start.x, next.y - start.y);
-    driver.wait = moved < dt * 2 ? driver.wait + dt : Math.max(0, driver.wait - dt * 0.4);
+    // An emergency belongs to the current stop, not waiting credit retained
+    // from a previous crossing after the car has already driven away.
+    driver.wait = moved < dt * 2 ? driver.wait + dt : 0;
     driver.distanceTravelled += moved;
     driver.pose = next; driver.controls = frame; driver.reason = reason;
     driver.progress = projectJourney(driver.journey, next, driver.progress).progress;
     const destination = journeyPoint(driver.journey, driver.journey.destinationProgress);
-    // A trip ends mid-block, never while occupying a junction. Planning a new
-    // journey inside a crossing would discard its clearance permit too early.
-    if (driver.progress >= driver.journey.destinationProgress && Math.hypot(next.x - destination.x, next.y - destination.y) < 30) {
-      const laneId = driver.journey.destination;
-      driver.routeHop += driver.journey.laneIds.length - 1;
+    // The same broad circuit repeats at a mid-block seam. Only navigation
+    // progress wraps; the physical pose and the predefined itinerary persist.
+    if (driver.journey.circular && driver.progress >= driver.journey.destinationProgress && Math.hypot(next.x - destination.x, next.y - destination.y) < 30) {
+      driver.routeHop += driver.journey.circuitLaneCount;
       driver.completedJourneys++;
-      const remainingProgress = driver.progress - driver.journey.stages.at(-1).start;
-      driver.journey = planner.plan(laneId, driver.tokenId, driver.completedJourneys);
-      driver.progress = remainingProgress;
+      driver.progress -= driver.journey.circuitLength;
     }
     publish(driver, slot);
     // Commit before the next driver checks clearance. Materialization renders

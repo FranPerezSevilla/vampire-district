@@ -864,3 +864,18 @@ Publish to the existing branch, inspect its GitHub Pages deployment, and fix
 concrete CI failures. No Netlify deployment and no automatic merge. Updated
 architecture: `docs/TECHNICAL_ARCHITECTURE.md` section 13; task:
 `docs/agent-tasks/2026-09-08-physical-traffic-drivers.md`.
+
+
+## M11 — recovery in crossings and broad circuits — 2026-09-08
+
+The user authorized manoeuvres in crossings, reversing away from an existing contact, partial reverse/reassessment when a complete bypass cannot be planned, and repeating broad city circuits. Browser tests are explicitly excluded.
+
+The existing physical driver now reserves its emergency swept path through `TrafficDriverJunctions`. Moving traffic retains priority; stalled future paths can yield to recovery. Cars already clearing a crossing precede new arrivals, cleared portions of compound paths are released progressively, and later arrivals cannot repeatedly leapfrog a conflicting waiting approach. Queue decisions follow stopped leaders and permission dependencies. Waiting time belongs to the current stop.
+
+Existing penetration can only decrease while driving away. Full manoeuvres and partial reverse use shared player controls at the bounded runtime integration interval. Partial recovery fits the available rear gap, stops, and reassesses, with a 48-unit cumulative retreat budget per obstruction. Wrecks remain disabled and new overlaps are rejected.
+
+The journey planner joins distant outbound and non-repeating return paths into a predefined circuit. Any entry leg is traversed once. The mid-block seam wraps only measured progress, preserving the exact physical pose, itinerary and slot. A disconnected finite road stops without inventing a small circular fallback.
+
+Validation: **888/888 units pass**, plus static ownership of 41 browser specs across 8 suites. **17/17 focused driver/recovery/network tests pass**. Generated crossing cases at 20 and 60 Hz cover an overlapping lead car reversing and two following cars using clear opposing pavement around the obstruction. Separate cases cover decreasing contact, no new collision, a blocked rear, partial reverse and later reassessment, normal right of way, and an exact circuit seam. The 32-car native simulation runs for 180 seconds with zero contacts/overlaps/replacements, no stop reaching 15 seconds, and at least one completed circuit and 30 handoffs per car. Broad-route coverage is measured by source roads and spatial extent, consistent with the clarified repeating-route requirement. All 434 generated starting lanes produce a broad circuit in the planner audit (minimum 2340.99 world units).
+
+The affected plan selects cumulative release-candidate coverage. Its browser execution is excluded by the user's instruction. PR 73 alone runs native `check:fast` in CI and skips Chromium; other PRs and main retain their existing validation. No browser tests or browser playtest were run for M11. Publish on the existing branch and report exact head, native CI and Pages status in the live PR handoff. No automatic merge.

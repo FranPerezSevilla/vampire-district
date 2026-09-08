@@ -45,13 +45,20 @@ jobs:
             echo "browser=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Install Chromium for affected browser coverage
-        if: steps.affected-plan.outputs.browser == 'true'
+        if: steps.affected-plan.outputs.browser == 'true' && github.event.pull_request.number != 73
         run: npx playwright install --with-deps chromium
       - name: Run affected validation plan
+        # PR 73's author explicitly requested native simulations and no browser tests.
+        env:
+          TRAFFIC_UNIT_ONLY: ${{ github.event.pull_request.number == 73 }}
         shell: bash
         run: |
           set -o pipefail
-          npm run check:affected -- --base=origin/${{ github.base_ref }} 2>&1 | tee affected-test.log
+          if [ "$TRAFFIC_UNIT_ONLY" = "true" ]; then
+            npm run check:fast 2>&1 | tee affected-test.log
+          else
+            npm run check:affected -- --base=origin/${{ github.base_ref }} 2>&1 | tee affected-test.log
+          fi
       - name: Upload affected-test diagnostics
         if: failure()
         uses: actions/upload-artifact@v4

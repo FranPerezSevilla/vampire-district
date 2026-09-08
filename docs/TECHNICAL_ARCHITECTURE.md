@@ -413,11 +413,13 @@ After maintenance, `syncFromCampaign()` updates position, velocity/drift, hull, 
 
 `TrafficDriverRuntime` is the production civilian locomotion owner, selected by
 `TrafficMultiAgentRouteRuntimePolicy` in the existing `GameplayRuntime` update.
-Each stable token owns a physical vehicle state and a complete journey to a
-reachable destination. `TrafficJourneyPlanner` uses compiler directed lanes and
-safe connectors to plan a shortest itinerary without repeated directed lanes;
-destinations lie mid-block, away from junction clearance. A preferred U-turn is
-allowed at a dead end.
+Each stable token owns a physical vehicle state and a predefined broad city
+circuit. `TrafficJourneyPlanner` joins a distant outbound shortest path to a
+return path that avoids its directed lanes, except the closing lane. A one-time
+entry leg permits departure from dead ends or approaches outside the cycle.
+At the mid-block seam only measured navigation progress wraps: the itinerary,
+vehicle identity and physical pose persist. An incomplete network with no broad
+cycle retains a finite reachable leg and stops, without inventing a return road.
 
 `TrafficDriverController` issues throttle, brake, reverse and steering controls to
 `VehicleModel.stepVehicleKinematics`, the same pure model used by the player's
@@ -426,14 +428,25 @@ spawned car's position or heading. Emergency manoeuvres search reachable poses
 using the same controls and validate the whole body against pavement, buildings,
 vehicles and the player. Blocked steps stop without axis-aligned slides or
 rotation in place. Normal queues yield; road width can be used when a safe
-emergency manoeuvre exists.
+emergency manoeuvre exists, including the opposing half of the road. When a
+complete bypass is unavailable, the driver can reverse a safe 5–18 units, stop
+and reassess, with a cumulative 48-unit retreat limit for the same obstruction.
+Existing penetration may decrease only while moving away from the contact;
+new contacts and deeper penetration remain forbidden. Wrecks stay disabled.
+Queue decisions trace stationary leaders and junction permissions to distinguish
+an obstruction or cyclic wait from ordinary right of way.
 
 `TrafficDriverJunctions` grants movement permission and downstream clearance.
 Whole-body stop lines account for the widest adjoining road, including short
 compiler links whose endpoints lie inside the conflict area. Reservations span
 compound crossings until the rear has cleared. Compatible movements may proceed together when their buffered paths do not
 intersect; priority uses arrival at the current crossing, without carrying
-waiting credit from previous junctions.
+waiting credit from previous junctions. Recovery is allowed inside crossings:
+its swept path is reserved by this same owner. Moving permit holders keep their
+priority, stalled future paths can yield, and vehicles clearing the crossing
+precede new arrivals. Cleared portions of a compound crossing are released as
+the buffered rear moves past. Manoeuvre controls are planned at the current
+bounded integration interval and each executed movement is rechecked.
 
 `TrafficMaterializationSystem` owns a fixed pool of 32 civilian proxies, their
 visuals, residency and conversion into a transient player vehicle on theft.

@@ -45,9 +45,9 @@ export function journeyDrivingTarget(driver, cruiseSpeed) {
 }
 
 // Hybrid search nodes are reachable vehicle poses, never lateral offsets. Each
-// edge records the exact controls consumed by VehicleModel at 50 ms intervals.
+// edge records the exact controls consumed by VehicleModel at the integration interval.
 // Reverse is another gear/control choice and gets a cost so normal driving wins.
-export function planDriverManeuver({ pose, archetype, goal, safe, maxNodes = 600 }) {
+export function planDriverManeuver({ pose, archetype, goal, safe, maxNodes = 600, dt = 0.05 }) {
   const distance = state => Math.hypot(state.x - goal.x, state.y - goal.y);
   const heuristic = state => distance(state) + Math.abs(angleDelta(state.angle, goal.angle)) * 18;
   const key = state => `${Math.round(state.x / 5)},${Math.round(state.y / 5)},${Math.round(state.angle / 0.2)},${Math.sign(state.speed)}`;
@@ -61,23 +61,25 @@ export function planDriverManeuver({ pose, archetype, goal, safe, maxNodes = 600
     if (distance(current.pose) < 13 && Math.abs(angleDelta(current.pose.angle, goal.angle)) < 0.4 && current.pose.speed > 0) {
       const frames = [];
       for (let node = current; node.parent; node = node.parent) frames.unshift(...node.frames);
-      return { frames, goal, expanded };
+      return { frames, goal, expanded, kind: "bypass", frameSeconds: dt };
     }
     for (const direction of [1, -1]) for (const steer of [0, -0.5, 0.5, -1, 1]) {
       let next = current.pose;
       const frames = [];
       let clear = true;
-      for (let tick = 0; tick < 8; tick++) {
+      for (let tick = 0; tick < Math.ceil(0.4 / dt); tick++) {
         const signedSpeed = next.speed * direction;
-        const throttle = signedSpeed < 27 ? direction : -direction * Math.min(1, (signedSpeed - 26) / (archetype.brake * 0.05));
+        const throttle = signedSpeed < 27 ? direction : -direction * Math.min(1, (signedSpeed - 26) / (archetype.brake * dt));
         const frame = { move: { x: steer, y: -throttle }, handbrakeHeld: false };
-        const candidate = stepVehicleKinematics(next, frame, 0.05, archetype);
+        const candidate = stepVehicleKinematics(next, frame, dt, archetype);
         if (!safe(candidate, next)) { clear = false; break; }
         frames.push(frame); next = candidate;
       }
       if (!clear) continue;
+      // Prefer passing on the left when both sides have physical clearance.
+      const rightOffset = -(next.x - pose.x) * Math.sin(pose.angle) + (next.y - pose.y) * Math.cos(pose.angle);
       const cost = current.cost + Math.hypot(next.x - current.pose.x, next.y - current.pose.y)
-        + 1 + (direction < 0 ? 7 : 0) + Math.abs(steer) * 0.5;
+        + 1 + (direction < 0 ? 7 : 0) + Math.abs(steer) * 0.5 + Math.max(0, rightOffset) * 0.2;
       const id = key(next);
       if ((costs.get(id) ?? Infinity) <= cost) continue;
       costs.set(id, cost);
@@ -85,4 +87,32 @@ export function planDriverManeuver({ pose, archetype, goal, safe, maxNodes = 600
     }
   }
   return null;
+}
+
+// A useful reverse is an action in its own right: gain bounded room, stop,
+// then let the driver observe traffic and search again from the new pose.
+export function planDriverReverse({ pose, archetype, safe, distance = 18, dt = 0.05 }) {
+  if (distance < 5) return null;
+  let best = null;
+  for (const retreat of new Set([distance, distance / 2, Math.min(5, distance)])) for (const steer of [0, -0.5, 0.5, -1, 1]) {
+    let next = pose;
+    const frames = [];
+    let braking = false, clear = true;
+    for (let tick = 0; tick < Math.ceil(3.5 / dt); tick++) {
+      const travelled = Math.hypot(next.x - pose.x, next.y - pose.y);
+      braking ||= travelled + next.speed ** 2 / (2 * archetype.brake) >= retreat || tick * dt >= 2.75;
+      const throttle = braking ? Math.min(1, Math.abs(next.speed) / (archetype.brake * dt)) : next.speed > -20 ? -1 : 0;
+      const frame = { move: { x: steer, y: -throttle }, handbrakeHeld: false };
+      const candidate = stepVehicleKinematics(next, frame, dt, archetype);
+      if (!safe(candidate, next)) { clear = false; break; }
+      frames.push(frame); next = candidate;
+      if (braking && Math.abs(next.speed) < 0.01) break;
+    }
+    const backwards = -(next.x - pose.x) * Math.cos(pose.angle) - (next.y - pose.y) * Math.sin(pose.angle);
+    const score = backwards - Math.abs(steer) * 3;
+    if (clear && backwards >= 5 && Math.abs(next.speed) < 0.01 && (!best || score > best.score)) {
+      best = { frames, kind: "reverse-reassess", goal: next, score, frameSeconds: dt };
+    }
+  }
+  return best;
 }

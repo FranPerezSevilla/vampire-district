@@ -1,10 +1,13 @@
 import { journeyPoint } from "./TrafficJourneyPlanner.js";
 import { orientedVehicleContact } from "./TrafficPhysicalConsequencesSystem.js";
+import { stepVehicleKinematics } from "../vehicles/VehicleModel.js";
 
 // A permit reserves a path, including short links and the downstream space for
 // the entire car. It never advances, positions or rotates the driver.
 export function createTrafficDriverJunctions(topology) {
   const permits = new Map();
+  const maneuvers = new Map();
+  let active = new Map();
   const sections = new WeakMap();
   const arrivals = new Map();
   const nodes = new Map();
@@ -19,7 +22,7 @@ export function createTrafficDriverJunctions(topology) {
   }
   let admissions = 0, denials = 0;
   function upcoming(driver) {
-    if (sections.has(driver.journey)) return sections.get(driver.journey).find(section => section.exit + 8 >= driver.progress) || null;
+    if (sections.has(driver.journey)) return sections.get(driver.journey).find(section => section.exit >= driver.progress) || null;
     const stages = driver.journey.stages;
     const result = [];
     for (let index = 0; index < stages.length; index++) {
@@ -45,7 +48,7 @@ export function createTrafficDriverJunctions(topology) {
       result.push({ key: `${driver.tokenId}:${driver.journey.trip}:${index}`, start: first.start, entry, end, exit, nodeIds });
     }
     sections.set(driver.journey, result);
-    return result.find(section => section.exit + 8 >= driver.progress) || null;
+    return result.find(section => section.exit >= driver.progress) || null;
   }
   function path(driver, section) {
     const points = [];
@@ -59,31 +62,46 @@ export function createTrafficDriverJunctions(topology) {
     return left.some(a => right.some(b => Math.hypot(a.x - b.x, a.y - b.y) < 62 && orientedVehicleContact(a, b)));
   }
   function prepare(drivers, slots, now = 0) {
-    const active = new Map(drivers.map(driver => [driver.tokenId, driver]));
+    active = new Map(drivers.map(driver => [driver.tokenId, driver]));
+    for (const id of maneuvers.keys()) if (!active.get(id)?.maneuver) maneuvers.delete(id);
     for (const [id, permit] of permits) {
       const driver = active.get(id);
       if (!driver || driver.journey !== permit.journey || driver.progress > permit.exit + 8
         || (driver.wait > 2 && driver.pose.speed < 2 && driver.progress < permit.entry - driver.archetype.width * 0.43 - 2)) permits.delete(id);
+      else {
+        // Release already-cleared pavement progressively, including compound
+        // crossings. The first buffered body still protects the owner's rear.
+        permit.points = path(driver, permit);
+      }
     }
     const requests = drivers.map(driver => ({ driver, section: upcoming(driver) }))
-      .filter(({ driver, section }) => section && section.entry - driver.progress < 110 && !permits.has(driver.tokenId))
+      .filter(({ driver, section }) => section && section.entry - driver.progress < 110 && !permits.has(driver.tokenId) && !maneuvers.has(driver.tokenId))
       .map(request => {
         if (!arrivals.has(request.section.key)) arrivals.set(request.section.key, now);
         return request;
       })
-      .sort((a, b) => arrivals.get(a.section.key) - arrivals.get(b.section.key)
+      .sort((a, b) => Number(b.driver.progress >= b.section.entry) - Number(a.driver.progress >= a.section.entry)
+        || (a.driver.progress >= a.section.entry && b.driver.progress >= b.section.entry
+          ? (a.section.exit - a.driver.progress) - (b.section.exit - b.driver.progress) : 0)
+        || arrivals.get(a.section.key) - arrivals.get(b.section.key)
         || (a.section.entry - a.driver.progress) - (b.section.entry - b.driver.progress)
         || a.driver.tokenId.localeCompare(b.driver.tokenId));
     const waitingKeys = new Set(requests.map(request => request.section.key));
     for (const key of arrivals.keys()) if (!waitingKeys.has(key)) arrivals.delete(key);
+    const waitingPaths = [];
     for (const { driver, section } of requests) {
       const points = path(driver, section);
-      const conflict = [...permits.values()].some(permit => overlaps(points, permit.points));
+      const conflict = [...permits.values(), ...maneuvers.values()].some(permit => overlaps(points, permit.points))
+        || (driver.progress < section.entry && waitingPaths.some(waiting => overlaps(points, waiting)));
       // Vehicles already inside must clear the crossing. Before entry, require
       // an unoccupied downstream body, so a queue cannot fill the crossing.
       const exitBlocked = driver.progress < section.start && slots.some(slot => slot.tokenId !== driver.tokenId
         && orientedVehicleContact(points.at(-1), slot));
-      if (conflict || exitBlocked) { denials++; continue; }
+      if (conflict || exitBlocked) {
+        // Later conflicting arrivals must not repeatedly leapfrog a waiting
+        // approach. Cars already inside still clear the crossing first.
+        waitingPaths.push(points); denials++; continue;
+      }
       permits.set(driver.tokenId, { ...section, journey: driver.journey, points }); admissions++;
     }
   }
@@ -92,11 +110,35 @@ export function createTrafficDriverJunctions(topology) {
     if (!section || permits.has(driver.tokenId)) return Infinity;
     return Math.max(0, section.entry - driver.progress - driver.archetype.width * 0.43 - 5);
   }
+  function blockingDriver(driver) {
+    const section = upcoming(driver);
+    if (!section || permits.has(driver.tokenId)) return null;
+    const points = path(driver, section);
+    return [...permits].find(([id, permit]) => id !== driver.tokenId && overlaps(points, permit.points))?.[0]
+      || [...maneuvers].find(([id, permit]) => id !== driver.tokenId && overlaps(points, permit.points))?.[0] || null;
+  }
+  function reserveManeuver(driver, maneuver) {
+    let pose = driver.pose;
+    const points = [{ ...pose, archetype: driver.archetype }];
+    for (const frame of maneuver.frames) {
+      pose = stepVehicleKinematics(pose, frame, maneuver.frameSeconds, driver.archetype);
+      if (Math.hypot(pose.x - points.at(-1).x, pose.y - points.at(-1).y) >= 5) points.push({ ...pose, archetype: driver.archetype });
+    }
+    points.push({ ...pose, archetype: driver.archetype });
+    if ([...maneuvers].some(([id, other]) => id !== driver.tokenId && overlaps(points, other.points))) return false;
+    const conflicts = [...permits].filter(([id, other]) => id !== driver.tokenId && overlaps(points, other.points));
+    // Moving traffic keeps its right of way. A stalled driver's obsolete future
+    // path can yield to recovery; its actual body remains a physical obstacle.
+    if (conflicts.some(([id]) => Math.abs(active.get(id)?.pose.speed || 0) > 4 || (active.get(id)?.wait || 0) < 2)) return false;
+    for (const [id] of conflicts) permits.delete(id);
+    permits.delete(driver.tokenId);
+    maneuvers.set(driver.tokenId, { points });
+    return true;
+  }
   return {
-    prepare, stopDistance,
-    maneuverAllowed: driver => { const section = upcoming(driver); return !section || section.start - driver.progress > 140; },
-    snapshot: () => ({ active: true, authority: "driver-path-permission", activePermitCount: permits.size, admissions, admissionDenials: denials,
+    prepare, stopDistance, blockingDriver, reserveManeuver, releaseManeuver: driver => maneuvers.delete(driver.tokenId),
+    snapshot: () => ({ active: true, authority: "driver-path-permission", activePermitCount: permits.size, activeManeuverCount: maneuvers.size, admissions, admissionDenials: denials,
       permits: [...permits].map(([tokenId, permit]) => ({ tokenId, start: permit.start, exit: permit.exit })) }),
-    clear() { permits.clear(); arrivals.clear(); }
+    clear() { permits.clear(); maneuvers.clear(); arrivals.clear(); }
   };
 }

@@ -28,7 +28,7 @@ test("normal boot uses destination drivers, a fixed pool and output-only macro a
       if (agents.map(agent => agent.tokenId).sort().join("|") !== ids) identityChanges++;
       for (const agent of agents) {
         const old = previous.get(agent.tokenId);
-        if (new Set(agent.journeyLaneIds).size !== agent.journeyLaneIds.length) duplicateLanes++;
+        if (new Set(agent.journeyLaneIds).size !== agent.journeyLaneIds.length - (agent.circularRoute ? 1 : 0)) duplicateLanes++;
         if (old && Math.hypot(agent.pose.x - old.pose.x, agent.pose.y - old.pose.y) > 160 * elapsed + 1) discontinuities++;
         if (agent.stage === "connector") sawTurn = true;
       }
