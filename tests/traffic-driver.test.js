@@ -94,11 +94,11 @@ test("normal production driver poses come from player kinematics, including 60 H
 
 test("road clearance checks the whole rotated vehicle, not just its centre", () => {
   const world = createTrafficDriverWorld(topology, { scene: {}, assignments: new Map() });
-  const lane = Object.values(topology.lanes).find(lane => lane.roadWidth === 120 && lane.points[0].y === lane.points[1].y);
+  const lane = Object.values(topology.lanes).find(lane => lane.roadClass === "major" && lane.points[0].y === lane.points[1].y);
   const middle = { x: (lane.points[0].x + lane.points[1].x) / 2, y: lane.points[0].y, angle: 0 };
   const driver = { tokenId: "body", archetype, pose: middle };
   assert.equal(world.blocker(driver, middle, []), null);
-  const edge = { ...middle, y: middle.y + 39, angle: Math.PI / 2 };
+  const edge = { ...middle, y: middle.y + lane.roadWidth / 2 - lane.laneOffset - 6, angle: Math.PI / 2 };
   assert.equal(world.onRoad(edge), true);
   assert.equal(world.blocker(driver, edge, []).id, "road-edge");
 });

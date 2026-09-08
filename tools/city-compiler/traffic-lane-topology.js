@@ -66,13 +66,13 @@ export function lanesPerDirection(segment) {
 
 function laneOffset(segment, {
   minimumLaneOffset = 8,
-  maximumLaneOffset = 16,
-  laneWidthFactor = 0.2
+  maximumLaneOffset = 32,
+  laneWidthFactor = 0.25
 } = {}) {
   return rounded(clamp(
-    finite(segment?.width, 52) * Math.max(0, finite(laneWidthFactor, 0.2)),
+    finite(segment?.width, 52) * Math.max(0, finite(laneWidthFactor, 0.25)),
     Math.max(0, finite(minimumLaneOffset, 8)),
-    Math.max(0, finite(maximumLaneOffset, 16))
+    Math.max(0, finite(maximumLaneOffset, 32))
   ));
 }
 
@@ -102,7 +102,7 @@ function nodeTopologyMetadata(node, segmentById, nodeById, options) {
   const widthTransition = degree === 2 && axes.size === 1 && offsetSpread > EPSILON;
   const requiresJunctionGeometry = degree <= 1 || degree >= 3 || corner || widthTransition;
   const minimumTrim = Math.max(0, finite(options?.minimumJunctionTrim, 18));
-  const maximumTrim = Math.max(minimumTrim, finite(options?.maximumJunctionTrim, 64));
+  const maximumTrim = Math.max(minimumTrim, finite(options?.maximumJunctionTrim, 96));
   const trimWidthFactor = Math.max(0, finite(options?.junctionTrimWidthFactor, 0.5));
   const trimDistance = requiresJunctionGeometry
     ? rounded(clamp(maximumWidth * trimWidthFactor, minimumTrim, maximumTrim))

@@ -18,7 +18,13 @@ Logical viewport: `960 × 640`. Current world: `4800 × 3600`. The game does not
 
 ## 1.1 City Topology V2 and road geometry
 
-`city-road-graph-v1.js` is the authoritative road input. `generate-road-topology.js` compiles its 114 nodes and 158 edges into clipped straight segments, unique junction/transition surfaces, sidewalks, crosswalks, post-layout lights, pedestrian routes and navigation points.
+`city-road-graph-v1.js` is the authoritative road input. `generate-road-topology.js` compiles its 107 nodes and 148 edges into clipped straight segments, unique junction/transition surfaces, sidewalks, crosswalks, post-layout lights, pedestrian routes and navigation points.
+
+Road geometry v5 uses 150-unit avenues (two lanes per direction), 96-unit local streets and 88-unit service/alley streets (one lane per direction). Street lane centres use a quarter of the road width; avenue lanes use the eighth and three-eighth offsets. Junction trims scale to half the adjoining road width, capped at 96 units. The hall's west approach is shifted 24 units east to retain the minimum block depth beside Civic Avenue.
+
+The generator reserves 22-unit sidewalks plus four units of façade clearance around road surfaces before rebuilding pedestrian geometry and furniture. `road-clearance.js` fits affected rectangular buildings around their existing centres, retaining all 93 identities, updates attached roof bounds and roof traversal endpoints, and rejects a footprint that cannot fit. Landmark reservations remain outside roads. Authored pedestrian loops retain their IDs and neighbourhood spans while their referenced final sidewalks own lateral placement. Re-running the fit is idempotent.
+
+Foundry candidate templates are selected against the remaining parcel size and may shrink within it to meet their maximum footprint dimensions. They cannot expand buildings back into the road reservation; template dimensions and candidate acceptance gates remain authoritative.
 
 `city-topology-v2.js` remains the generated runtime dataset for world dimensions, semantic anchors, landmark sites, road graph/output geometry, buildings, roofs, sewers, district zones and police topology. `ROAD_GEOMETRY_VERSION` versions the road compiler independently from campaign topology migration.
 
@@ -30,10 +36,10 @@ Generation order:
 road graph
 → junction authority
 → clipped segments/transitions
+→ reserved sidewalks and building/roof clearance
 → segment and junction-owned sidewalks
 → crosswalks
 → prop-exclusion zones
-→ building clearance
 → kerb lights and service furniture
 → pedestrian routes/navigation
 → chunks
@@ -593,8 +599,8 @@ The current city is generated and hard-valid:
 
 ```text
 protectedZones        []
-road graph nodes      114
-road graph edges      158
+road graph nodes      107
+road graph edges      148
 road piece overlaps     0
 building/road overlaps  0
 validation warnings     0
@@ -618,7 +624,7 @@ Lights are post-layout objects generated only after road, pedestrian and buildin
 
 ### Remaining geometry extension
 
-Geometry v4 is axis-aligned. A future version may add arbitrary polyline offsets, rounded joins and polygonal ordinary parcels while retaining stable graph/site identities.
+Geometry v5 is axis-aligned. A future version may add arbitrary polyline offsets, rounded joins and polygonal ordinary parcels while retaining stable graph/site identities.
 
 ## 17. Authority table
 
@@ -676,7 +682,7 @@ Mission-specific Chromium golden paths were deleted because the contracts are no
 
 Current constraints:
 
-- geometry v4 accepts axis-aligned edges only;
+- geometry v5 accepts axis-aligned edges only;
 - arbitrary curved offsets and rounded carriageway joins are not implemented;
 - ordinary parcel/building bounds remain rectangular at runtime;
 - graph changes require atomic regeneration of pedestrian routes and chunks;
