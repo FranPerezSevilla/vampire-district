@@ -461,10 +461,26 @@ route, and local presentation does not interpolate a separate catch-up path.
 The previous cursor/FSM/offset policies remain explicit controlled regression
 harnesses (`driving: false`), with no production movement ownership.
 
-`MacroTrafficPoliceSystem` supplies bootstrap population and receives output-only
-route accounting; legacy civilian phases do not advance while the driver owns
-traffic. Police travel, streaming, campaign vehicles and input retain their
-existing owners.
+`MacroTrafficPoliceSystem` sizes bootstrap civilian flows from compiler road
+length in both directions and the adjoining districts' traffic density: one car
+per 240 world units at full density, rounded per macro connection. The current
+city yields 223 global drivers. The 32 physical slots are a local capacity, not
+a target number of cars on camera.
+
+`TrafficPopulationPolicy` allocates their broad circuits once at bootstrap.
+Eight deterministic alternatives per driver compete against road and district
+capacity; alternatives can originate in underserved districts. Initial phases
+spread cars along clear lane interiors with body separation. Compiler geometry,
+the original off-camera spawn guard, active/resident chunks and local clearance
+still determine physical appearances. No running car is relocated, no circuit
+is replaced, and manual legacy populations retain their supplied bootstrap.
+Diagnostics distinguish circuit-length-weighted planned occupancy from actual
+camera counts. North Harbor remains below its capacity target because the
+chosen broad circuits spend much of their length in other districts.
+
+Macro traffic receives output-only route accounting; legacy civilian phases
+do not advance while the driver owns traffic. Police travel, streaming,
+campaign vehicles and input retain their existing owners.
 
 ## 14. Motorized police architecture
 

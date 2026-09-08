@@ -1,5 +1,6 @@
 import { NPC_TYPES } from "../data/npcs.js";
 import { ENTITY_STREAM_STATES } from "./EntityStreamPolicy.js";
+import { trafficFlowPopulation } from "./TrafficPopulationPolicy.js";
 
 function finite(value, fallback = 0) {
   const number = Number(value);
@@ -112,16 +113,14 @@ export class MacroTrafficPoliceSystem {
     this.trafficFlows.clear();
     for (const edgeId of this.graph.edgeIds) {
       const edge = this.graph.edges[edgeId];
-      const a = this.graph.nodes[edge.a];
-      const b = this.graph.nodes[edge.b];
-      const density = (finite(a?.trafficDensity) + finite(b?.trafficDensity)) / 2;
-      const tokenCount = Math.max(1, Math.round(density * 4));
+      const population = trafficFlowPopulation(this.graph, edge);
+      const { tokenCount } = population;
       const phases = Array.from({ length: tokenCount }, (_, index) => (
         (hashText(`${edgeId}:${index}`) % 1000) / 1000
       ));
       this.trafficFlows.set(edgeId, {
         edgeId,
-        tokenCount,
+        ...population,
         phases,
         completedTrips: 0
       });

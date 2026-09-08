@@ -2,11 +2,12 @@
 
 ## Current continuation — 2026-09-08
 
-The user clarified that routes should repeat broad city circuits, and requested
-manoeuvres inside crossings plus partial reverse/reassessment after a blockage.
-Follow `docs/agent-tasks/2026-09-08-traffic-recovery-circuits.md` and the live
+The user authorized increasing civilian population and balancing broad circuits
+across districts after the M11 driving/recovery changes.
+Follow `docs/agent-tasks/2026-09-08-traffic-density-distribution.md` and the live
 machine status. Do not run browser tests or use them as an acceptance gate;
-the user explicitly excluded them. M11 extends M10, which supersedes the rail cursor and offset-recovery movement
+the user explicitly excluded them. M12 adds capacity-based bootstrap allocation;
+M11 extends M10, which supersedes the rail cursor and offset-recovery movement
 contract below. Production now selects `TrafficDriverRuntime`: compiler topology
 is navigation, `VehicleModel.stepVehicleKinematics` owns locomotion,
 `TrafficDriverJunctions` grants clearance, and physical impacts become actual

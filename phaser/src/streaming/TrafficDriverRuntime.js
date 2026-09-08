@@ -6,12 +6,16 @@ import { createTrafficJourneyPlanner, journeyPoint, projectJourney, trafficJourn
 import { driverControls, journeyDrivingTarget, planDriverManeuver, planDriverReverse } from "./TrafficDriverController.js";
 import { createTrafficDriverWorld } from "./TrafficDriverWorld.js";
 import { createTrafficDriverJunctions } from "./TrafficDriverJunctions.js";
+import { createTrafficCircuitAllocation, TRAFFIC_POPULATION_POLICY } from "./TrafficPopulationPolicy.js";
 
 export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology, materializer, speed = 112 }) {
   const seeded = seedTrafficRouteAgentsFromMacroPopulation(trafficFlows, macroGraph, topology);
   const planner = createTrafficJourneyPlanner(topology);
   const world = createTrafficDriverWorld(topology, materializer);
   const junctions = createTrafficDriverJunctions(topology);
+  const capacityPopulation = [...(trafficFlows instanceof Map ? trafficFlows.values() : trafficFlows || [])]
+    .some(flow => flow.populationPolicy === TRAFFIC_POPULATION_POLICY);
+  const allocation = capacityPopulation ? createTrafficCircuitAllocation({ topology, graph: macroGraph, planner, population: seeded.agents.length }) : null;
   const drivers = seeded.agents.map(agent => {
     const archetype = trafficVehicleArchetype(agent.tokenId);
     let journey = planner.plan(agent.currentLaneId, agent.tokenId);
@@ -21,14 +25,17 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
       const laneId = journey.laneIds.find(id => pathLength(topology.lanes[id].points) >= archetype.width + 16);
       if (laneId) journey = planner.plan(laneId, agent.tokenId);
     }
+    if (allocation) journey = allocation.choose(journey, agent.tokenId);
     const firstLength = pathLength(topology.lanes[journey.laneIds[0]].points);
-    const progress = Math.min(agent.stageProgress * firstLength, Math.max(0, firstLength - archetype.width * 0.43 - 8));
+    let progress = Math.min(agent.stageProgress * firstLength, Math.max(0, firstLength - archetype.width * 0.43 - 8));
+    if (allocation) progress = allocation.initialProgress(journey, agent.tokenId, archetype, progress);
     const initial = journeyPoint(journey, progress);
     return { ...agent, archetype, journey, progress, pose: createVehicleState({ id: agent.tokenId, ...initial }, archetype),
       cruiseSpeed: speed * (0.87 + trafficJourneyHash(agent.tokenId) % 14 / 100), wait: 0, retryAt: 0,
       maneuver: null, maneuverSeconds: 0, recovery: null, panicUntil: 0, reason: "cruise", controls: { move: { x: 0, y: 0 } },
       distanceTravelled: 0, completedJourneys: 0, adoptedImpacts: 0, rejectedSteps: 0, routeHop: 0 };
   });
+  const populationAllocation = allocation?.snapshot() || null;
   const byId = new Map(drivers.map(driver => [driver.tokenId, driver]));
   const hijacked = new Set();
   let clock = 0, ticks = 0, destroyed = false;
@@ -43,7 +50,7 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
   const onHijack = event => { if (byId.has(event?.tokenId)) hijacked.add(event.tokenId); };
   scene.events?.on?.("traffic:vehicle-hijacked", onHijack);
 
-  function measuredAgent(driver) {
+  function routeAgent(driver) {
     const stage = journeyPoint(driver.journey, driver.progress).segment.stage;
     const laneIndex = stage.laneIndex;
     return { tokenId: driver.tokenId, currentLaneId: stage.laneId, stage: stage.kind,
@@ -51,7 +58,10 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
       connectorId: stage.connectorId || null, nextLaneId: stage.nextLaneId || null,
       previousLaneId: driver.journey.laneIds[laneIndex - 1] || null,
       recentLaneIds: driver.journey.laneIds.slice(Math.max(0, laneIndex - 16), laneIndex),
-      routeHop: driver.routeHop + laneIndex, trafficMetadata: driver.trafficMetadata,
+      routeHop: driver.routeHop + laneIndex, trafficMetadata: driver.trafficMetadata };
+  }
+  function measuredAgent(driver) {
+    return { ...routeAgent(driver),
       destinationLaneId: driver.journey.destination, journeyLaneIds: [...driver.journey.laneIds],
       journeyProgress: driver.progress, completedJourneys: driver.completedJourneys,
       circularRoute: driver.journey.circular, circuitLength: driver.journey.circuitLength,
@@ -59,7 +69,7 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
       distanceTravelled: driver.distanceTravelled, adoptedImpacts: driver.adoptedImpacts, rejectedSteps: driver.rejectedSteps };
   }
   function token(driver, index) {
-    const agent = measuredAgent(driver);
+    const agent = routeAgent(driver);
     const lane = topology.lanes[agent.currentLaneId];
     const stage = journeyPoint(driver.journey, driver.progress).segment.stage;
     const spawnMargin = driver.archetype.width * 0.5 + 35;
@@ -251,10 +261,12 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
       activeVehicles: vehicles.length, vehicles };
   }
   function snapshot() {
-    const agents = drivers.map(measuredAgent);
+    // Accounting and materialization need route identifiers, not deep copies
+    // of every itinerary, pose and input frame in the larger city population.
+    const agents = drivers.map(routeAgent);
     const projection = projectTrafficRouteAgentsToMacroCompatibility(agents, topology, macroGraph);
     const validation = validateTrafficRouteMacroProjection(projection, macroGraph);
-    return { driverActive: true, clockSeconds: clock, ticks, seededAgentCount: drivers.length,
+    return { driverActive: true, clockSeconds: clock, ticks, seededAgentCount: drivers.length, populationAllocation,
       totalMacroTokens: seeded.totalMacroTokens, unseededAgentCount: seeded.unseeded.length,
       populationConserved: drivers.length + seeded.unseeded.length === seeded.totalMacroTokens,
       materializationTokenCount: drivers.length - hijacked.size, hijackedAgentCount: hijacked.size,

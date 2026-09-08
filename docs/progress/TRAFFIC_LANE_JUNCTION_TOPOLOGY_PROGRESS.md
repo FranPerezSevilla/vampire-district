@@ -879,3 +879,24 @@ The journey planner joins distant outbound and non-repeating return paths into a
 Validation: **888/888 units pass**, plus static ownership of 41 browser specs across 8 suites. **17/17 focused driver/recovery/network tests pass**. Generated crossing cases at 20 and 60 Hz cover an overlapping lead car reversing and two following cars using clear opposing pavement around the obstruction. Separate cases cover decreasing contact, no new collision, a blocked rear, partial reverse and later reassessment, normal right of way, and an exact circuit seam. The 32-car native simulation runs for 180 seconds with zero contacts/overlaps/replacements, no stop reaching 15 seconds, and at least one completed circuit and 30 handoffs per car. Broad-route coverage is measured by source roads and spatial extent, consistent with the clarified repeating-route requirement. All 434 generated starting lanes produce a broad circuit in the planner audit (minimum 2340.99 world units).
 
 The affected plan selects cumulative release-candidate coverage. Its browser execution is excluded by the user's instruction. PR 73 alone runs native `check:fast` in CI and skips Chromium; other PRs and main retain their existing validation. No browser tests or browser playtest were run for M11. Publish on the existing branch and report exact head, native CI and Pages status in the live PR handoff. No automatic merge.
+
+
+## M12 — road-capacity population and circuit distribution — 2026-09-08
+
+After the user observed sparse traffic, a read-only audit found 58 global cars, an underfilled local pool, 363/434 recurring directed lanes and substantial district imbalance. The user authorized increasing population and improving distribution, preserving broad repeating routes and excluding browser tests.
+
+`MacroTrafficPoliceSystem` now derives civilian flow sizes from road length in both directions and adjoining district density (223 current-city drivers). `TrafficPopulationPolicy` compares eight broad circuit candidates per driver against source-road and district capacity. Four candidates can begin in underserved districts. It spreads initial phases along clear lane interiors before first appearance. Circuits, identity and physical poses remain under the existing driver after bootstrap. Compact route records avoid deep-cloning every itinerary and input frame during materialization/accounting. The local pool remains 32; camera margins, active/resident chunks, clearance, manoeuvres and police owners are unchanged.
+
+The selected recurring routes cover **414/434 directed lanes**, **138 source roads**, and all **14 districts**. Independent 256-point circuit sampling reduces aggregate district occupancy-fraction error from **0.42175 to 0.08636** (about 80%). North Harbor remains under its planned share: 2.41 cars versus a capacity target of 5.58. Planned length-weighted occupancy is not live camera density.
+
+Native comparisons run the production chunk stream, camera guards, materializer, physical drivers, macro accounting and contact system; only file transport and rendering are substituted. The player stands on a sidewalk at each viewpoint. Results over 90 seconds, excluding the first ten seconds while cars enter from off camera:
+
+| Viewpoint | Visible mean before → after | Nearby materialized mean before → after | Distinct cars seen before → after | Longest new stop |
+| --- | --- | --- | --- | --- |
+| Old Quarter (1754, 1515) | 1.17 → 2.05 | 9.04 → 22.10 | 10 → 17 | 11.55 s |
+| Blackwater (2280, 3280) | 1.28 → 12.01 | 5.23 → 25.89 | 10 → 52 | 12.50 s |
+| North Harbor (4440, 900) | 0.81 → 6.80 | 2.11 → 11.85 | 8 → 32 | 8.50 s |
+
+All six comparisons have zero traffic contacts, overlaps and guarded-camera spawns; local assignments never exceed 32. Permanent 60-second comparisons assert increased visible traffic, fewer empty frames, circuit identity and deterministic initial placement. **890/890 units pass**, including the two new population/density tests and the existing 17 driver/recovery/network regressions. Static ownership of 41 browser specs across 8 suites passes. The 32-car / 180-second circulation regression remains green.
+
+On this native runner the full traffic pipeline measures **4.98–6.65 ms mean**, **6.33–8.81 ms p95**, and **2.67–2.88 s setup** for the new population. These are bounded native measurements, not a browser frame-rate claim. No camera eligibility relaxation or second gameplay loop was needed. The affected plan selects cumulative release-candidate coverage; browser execution remains excluded by the user. Publish the reviewed tree on PR 73, report exact head and actual native CI/Pages status in the live PR, and keep it draft without automatic merge.

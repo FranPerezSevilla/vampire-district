@@ -1,13 +1,13 @@
 {
   "initiative": "traffic-lane-junction-topology",
-  "version": 20,
+  "version": 21,
   "updatedAt": "2026-09-08",
   "pullRequest": 73,
   "branch": "codex/traffic-junction-topology",
   "state": "local-validated-publish-pending",
-  "currentMilestone": "M11",
-  "currentTask": "M11-recovery-and-broad-circuits",
-  "lastValidatedImplementationHead": "1d8d7e3edcf594f5c1db6a2a0aa6d1b395542652",
+  "currentMilestone": "M12",
+  "currentTask": "M12-density-and-circuit-distribution",
+  "lastValidatedImplementationHead": "e6602530a0ecf0fe718ff7d5386400f820df650b",
   "baseAtBootstrap": "805ea5d107dcddcef4cd564294569455093af4b0",
   "canonicalDocs": {
     "roadmap": "docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md",
@@ -19,7 +19,8 @@
     "pagesValidation": "docs/agent-tasks/2026-09-07-pages-traffic-validation.md",
     "sustainedTraffic": "docs/agent-tasks/2026-09-07-sustained-arcade-traffic.md",
     "physicalDrivers": "docs/agent-tasks/2026-09-08-physical-traffic-drivers.md",
-    "recoveryCircuits": "docs/agent-tasks/2026-09-08-traffic-recovery-circuits.md"
+    "recoveryCircuits": "docs/agent-tasks/2026-09-08-traffic-recovery-circuits.md",
+    "densityDistribution": "docs/agent-tasks/2026-09-08-traffic-density-distribution.md"
   },
   "authority": {
     "localTopologyCompiler": "tools/city-compiler/traffic-lane-topology.js",
@@ -33,13 +34,14 @@
     "multiAgentRouteRuntime": "TrafficMultiAgentRouteRuntimePolicy selects TrafficDriverRuntime by default; driving:false is a controlled cursor fixture",
     "junctionReservation": "TrafficDriverJunctions; buffered path permissions, whole-body intersection boundaries and downstream clearance",
     "gridlockRecovery": "TrafficDriverController; complete physical bypass or bounded partial reverse and reassessment; separating existing contacts is allowed",
-    "visibleDensity": "TrafficLocalAssignmentPolicy establishes a fixed production materialization baseline of 32 slots before route activation; no post-activation density growth is allowed",
+    "visibleDensity": "MacroTrafficPoliceSystem sizes the global civilian population from road capacity (223 in the current city); TrafficPopulationPolicy allocates circuits and initial phases once. TrafficLocalAssignmentPolicy retains the 32-slot local capacity and original camera/streaming/clearance guards.",
     "defaultMovementAuthority": "shared-vehicle-kinematics",
     "macroRole": "bootstrap population plus conservative route-projection accounting and independent police travel; never civilian local geometry",
     "legacyCivilianPhaseRole": "bootstrap/fallback compatibility only; phase advancement is disabled while normal compiler-route authority is active",
     "physicalAgentAuthority": "TrafficDriverRuntime adopts native impacts into actual poses; no route-offset recovery authority in production",
     "junctionFlow": "TrafficDriverJunctions; normal and recovery path permissions, progressive rear clearance, inside-first clearing and fair pending approaches",
-    "journeyPlanner": "TrafficJourneyPlanner; predefined distant outbound/return circuits, continuous mid-block seam, one-time entry leg when needed"
+    "journeyPlanner": "TrafficJourneyPlanner; predefined distant outbound/return circuits, continuous mid-block seam, one-time entry leg when needed",
+    "circuitAllocation": "TrafficPopulationPolicy; deterministic bootstrap allocation against source-road and district capacity, without changing routes or physical poses after startup"
   },
   "cleanupAudit": {
     "productionRequiredCompatibility": [
@@ -150,6 +152,10 @@
     },
     "M11": {
       "title": "Junction recovery and broad circular itineraries",
+      "state": "published and deployed at e660253; extended by M12"
+    },
+    "M12": {
+      "title": "Road-capacity population and broad circuit distribution",
       "state": "local-validated-publish-pending"
     }
   },
@@ -392,26 +398,194 @@
       "affectedPlan": "Cumulative PR selects release-candidate coverage; browser execution explicitly excluded by the user. Native units/simulations and static ownership executed instead.",
       "browser": "Not run and not an acceptance gate, by explicit user instruction. PR 73 CI skips Chromium and runs check:fast; other PRs and main keep their validation.",
       "deployment": "Push to the existing Pages branch; report actual deployment status in the live PR handoff. No browser playtest."
+    },
+    "m12DensityDistribution": {
+      "state": "local-passed",
+      "baselineHead": "e6602530a0ecf0fe718ff7d5386400f820df650b",
+      "localFast": "890/890 units pass plus static ownership of 41 browser specs / 8 suites; no browser execution",
+      "focused": "17/17 driving/recovery/network regressions plus 2/2 population/density tests pass",
+      "population": {
+        "before": 58,
+        "after": 223,
+        "physicalPool": 32
+      },
+      "circuitCoverage": {
+        "before": 363,
+        "after": 414,
+        "totalDirectedLanes": 434,
+        "coveredSourceRoads": 138
+      },
+      "sampledDistrictDistributionError": {
+        "before": 0.42175402447835586,
+        "after": 0.08635863089270648,
+        "meaning": "Sum of absolute circuit-length occupancy fraction errors against district road-capacity shares; independent 256-point circuit sampling, not observed camera occupancy."
+      },
+      "cameraSimulation": {
+        "durationSeconds": 90,
+        "integrationHz": 20,
+        "warmupExcludedSeconds": 10,
+        "transportAndRendering": "Node file transport and render objects; production chunk residency, camera guards, materializer, driving, macro accounting and physical contacts",
+        "results": [
+          {
+            "center": {
+              "x": 1754,
+              "y": 1515
+            },
+            "historicalPopulation": true,
+            "bootMs": 263.45964200000003,
+            "population": 58,
+            "seconds": 90,
+            "visibleAverage": 1.16875,
+            "nearbyAverage": 9.035625,
+            "emptyFraction": 0.3275,
+            "seen": 10,
+            "maxNearby": 13,
+            "spawns": 43,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 5.699999999999988,
+            "frameP95Ms": 2.8904029999998784,
+            "frameMeanMs": 1.879101473333336
+          },
+          {
+            "center": {
+              "x": 1754,
+              "y": 1515
+            },
+            "historicalPopulation": false,
+            "bootMs": 2716.9582440000004,
+            "population": 223,
+            "seconds": 90,
+            "visibleAverage": 2.0475,
+            "nearbyAverage": 22.095625,
+            "emptyFraction": 0.1625,
+            "seen": 17,
+            "maxNearby": 32,
+            "spawns": 110,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 11.55000000000003,
+            "frameP95Ms": 8.814365000001999,
+            "frameMeanMs": 6.624333429444426
+          },
+          {
+            "center": {
+              "x": 2280,
+              "y": 3280
+            },
+            "historicalPopulation": true,
+            "bootMs": 211.3425320000024,
+            "population": 58,
+            "seconds": 90,
+            "visibleAverage": 1.276875,
+            "nearbyAverage": 5.23125,
+            "emptyFraction": 0.1425,
+            "seen": 10,
+            "maxNearby": 8,
+            "spawns": 32,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 3.099999999999997,
+            "frameP95Ms": 2.0330080000021553,
+            "frameMeanMs": 1.3629561977777565
+          },
+          {
+            "center": {
+              "x": 2280,
+              "y": 3280
+            },
+            "historicalPopulation": false,
+            "bootMs": 2884.6531140000006,
+            "population": 223,
+            "seconds": 90,
+            "visibleAverage": 12.01125,
+            "nearbyAverage": 25.889375,
+            "emptyFraction": 0,
+            "seen": 52,
+            "maxNearby": 32,
+            "spawns": 107,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 12.500000000000043,
+            "frameP95Ms": 8.760772999994515,
+            "frameMeanMs": 6.6538324022221405
+          },
+          {
+            "center": {
+              "x": 4440,
+              "y": 900
+            },
+            "historicalPopulation": true,
+            "bootMs": 199.52352300000348,
+            "population": 58,
+            "seconds": 90,
+            "visibleAverage": 0.813125,
+            "nearbyAverage": 2.110625,
+            "emptyFraction": 0.401875,
+            "seen": 8,
+            "maxNearby": 5,
+            "spawns": 14,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 0,
+            "frameP95Ms": 1.5965660000001662,
+            "frameMeanMs": 1.1035598694444222
+          },
+          {
+            "center": {
+              "x": 4440,
+              "y": 900
+            },
+            "historicalPopulation": false,
+            "bootMs": 2670.0600570000024,
+            "population": 223,
+            "seconds": 90,
+            "visibleAverage": 6.801875,
+            "nearbyAverage": 11.8525,
+            "emptyFraction": 0,
+            "seen": 32,
+            "maxNearby": 16,
+            "spawns": 64,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 8.499999999999986,
+            "frameP95Ms": 6.33049800000299,
+            "frameMeanMs": 4.977201358333417
+          }
+        ]
+      },
+      "limits": [
+        "North Harbor planned occupancy remains 2.41 cars against a 5.58 capacity target; broad circuits spend much of their length outside the district.",
+        "Native full traffic pipeline costs 4.98-6.65 ms mean, 6.33-8.81 ms p95 in the 90-second checks; setup is 2.67-2.88 seconds on this runner. These are not browser frame rates.",
+        "32 slots cap materialized local cars; no guaranteed count on screen. Existing off-screen appearance and theft retirement rules remain."
+      ],
+      "affectedPlan": "Cumulative release-candidate selection reviewed; browser execution excluded by explicit user instruction. Native checks and static ownership executed instead.",
+      "deployment": "Publish existing PR branch, report exact commit and bounded CI/Pages observations in the live PR body; no automatic merge."
     }
   },
   "nextTask": {
-    "id": "M11-publish-and-user-feedback",
-    "milestone": "M11",
-    "goal": "Publish the locally validated recovery/circuit changes in PR 73 and handle concrete user feedback.",
+    "id": "M12-publish-and-user-feedback",
+    "milestone": "M12",
+    "goal": "Publish validated density/distribution changes and handle concrete user feedback.",
     "actions": [
-      "Publish the reviewed tree and update PR 73 with exact head and local evidence.",
-      "Observe native CI and Pages deployment with bounded checks; no browser testing.",
-      "Keep PR 73 draft and address concrete validation failures or user feedback; no automatic merge."
+      "Publish the reviewed tree and update PR 73 with exact commit and validation.",
+      "Observe native CI and Pages with bounded checks; no browser tests.",
+      "Keep the PR draft and handle concrete feedback; no automatic merge."
     ],
     "acceptance": [
-      "888 native unit tests and static ownership pass.",
-      "Recovery and broad circuit evidence is recorded in the task and PR.",
-      "Browser testing is excluded by the user."
+      "890 native units and static ownership pass.",
+      "Three streamed camera comparisons show increased visible traffic without contacts or on-camera spawns.",
+      "Coverage and native runtime limits are documented."
     ],
     "readFirst": [
-      "docs/agent-tasks/2026-09-08-traffic-recovery-circuits.md",
-      "docs/TECHNICAL_ARCHITECTURE.md",
-      "docs/progress/TRAFFIC_LANE_JUNCTION_TOPOLOGY_PROGRESS.md"
+      "docs/agent-tasks/2026-09-08-traffic-density-distribution.md",
+      "docs/TECHNICAL_ARCHITECTURE.md"
     ]
   },
   "finalGate": {
