@@ -141,6 +141,7 @@ export class PedestrianSystem {
       || npc.inactive
       || npc.hiddenBody
       || npc.dragged
+      || npc.transitBoarded
       || npc.whisperPassengerBoarded) {
       return false;
     }
@@ -226,6 +227,7 @@ export class PedestrianSystem {
       !npc
       || npc.dead
       || npc.dragged
+      || npc.transitBoarded
       || npc.whisperPassengerBoarded
       || isActiveFeedingVictim(this.scene, npc)
     );
@@ -324,7 +326,7 @@ export class PedestrianSystem {
 
   resolvePlayerCollision(npc) {
     const player = this.scene.player;
-    if (!player || this.scene.currentLayer !== LAYERS.STREET || this.isCrowdLocked(npc)) return false;
+    if (!player || this.scene.transitSystem?.isRiding?.() || this.scene.currentLayer !== LAYERS.STREET || this.isCrowdLocked(npc)) return false;
     const plan = pedestrianSeparationPlan(npc, player, PEDESTRIAN_PLAYER_SEPARATION);
     if (!plan) return false;
     return this.applyDisplacement(npc, { x: plan.first.x * 2, y: plan.first.y * 2 });

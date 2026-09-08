@@ -44,7 +44,7 @@ export function projectJourney(journey, pose, previous = 0, window = 160) {
   return best;
 }
 
-export function createTrafficJourneyPlanner(topology) {
+export function createTrafficJourneyPlanner(topology, { laneFilter = () => true, allowDeadEnds = false } = {}) {
   const direct = new Set(topology.junctionConnectors?.directHandoffTransitionIds || []);
   const laneLengths = new Map(Object.values(topology.lanes).map(lane => [lane.id, pathLength(lane.points)]));
   const edges = new Map();
@@ -54,7 +54,8 @@ export function createTrafficJourneyPlanner(topology) {
   for (const transition of Object.values(topology.transitions)) {
     // The compiler marks a U-turn preferred only where it is the sole exit at
     // a dead end. A shortest journey may use that exit without circling blocks.
-    if (!transition.preferred) continue;
+    if (!transition.preferred || !laneFilter(topology.lanes[transition.incomingLaneId])
+      || !laneFilter(topology.lanes[transition.outgoingLaneId])) continue;
     const connector = safeTrafficRouteConnector(topology, transition.id);
     if (transition.requiresConnector ? !connector : !direct.has(transition.id)) continue;
     if (!edges.has(transition.incomingLaneId)) edges.set(transition.incomingLaneId, []);
@@ -64,18 +65,51 @@ export function createTrafficJourneyPlanner(topology) {
   const trees = new Map();
   function shortestPaths(start, forbidden = null) {
     if (!forbidden && trees.has(start)) return trees.get(start);
-    const distances = new Map([[start, 0]]), parents = new Map(), pending = new Set([start]);
-    while (pending.size) {
-      let current = null;
-      for (const lane of pending) if (current === null || distances.get(lane) < distances.get(current)) current = lane;
-      pending.delete(current);
+    const distances = new Map([[start, 0]]), parents = new Map();
+    const order = new Map([[start, 0]]), pending = [];
+    const before = (a, b) => a.cost < b.cost || a.cost === b.cost && a.order < b.order;
+    function push(id, cost) {
+      if (!order.has(id)) order.set(id, order.size);
+      const item = { id, cost, order: order.get(id) };
+      let index = pending.length; pending.push(item);
+      while (index > 0) {
+        const parent = (index - 1) >> 1;
+        if (!before(item, pending[parent])) break;
+        pending[index] = pending[parent]; index = parent;
+      }
+      pending[index] = item;
+    }
+    function pop() {
+      const first = pending[0], last = pending.pop();
+      if (pending.length) {
+        let index = 0;
+        while (index * 2 + 1 < pending.length) {
+          let child = index * 2 + 1;
+          if (child + 1 < pending.length && before(pending[child + 1], pending[child])) child++;
+          if (!before(pending[child], last)) break;
+          pending[index] = pending[child]; index = child;
+        }
+        pending[index] = last;
+      }
+      return first;
+    }
+    // Dijkstra's queue retains discovery order for equal costs, preserving the
+    // deterministic paths of the former linear minimum scan.
+    push(start, 0);
+    while (pending.length) {
+      const item = pop(), current = item.id;
+      if (item.cost !== distances.get(current)) continue;
       for (const edge of edges.get(current) || []) {
         const next = edge.transition.outgoingLaneId;
         if (forbidden?.has(next)) continue;
-        const cost = distances.get(current) + laneLengths.get(next)
+        // A cul-de-sac is an origin to leave, not a through-traffic shortcut
+        // for switching between parallel lanes or closing a return journey.
+        if (!allowDeadEnds && deadEndRoads.has(topology.lanes[next].sourceRoadEdgeId)
+          && topology.lanes[next].sourceRoadEdgeId !== topology.lanes[start].sourceRoadEdgeId) continue;
+        const cost = item.cost + laneLengths.get(next)
           + (edge.connector?.length || 0) + (edge.transition.turnType === "straight" ? 0 : 28) + 1;
         if (cost >= (distances.get(next) ?? Infinity)) continue;
-        distances.set(next, cost); parents.set(next, { from: current, edge }); pending.add(next);
+        distances.set(next, cost); parents.set(next, { from: current, edge }); push(next, cost);
       }
     }
     const tree = { distances, parents };
@@ -153,6 +187,14 @@ export function createTrafficJourneyPlanner(topology) {
         const destinationProgress = (stages.at(-1).start + stages.at(-1).end) / 2;
         const circuitLength = destinationProgress - loopStartProgress;
         if (circuitLength < 2000) continue;
+        const circuitStages = stages.filter(stage => stage.end > loopStartProgress && stage.start < destinationProgress);
+        const circuitRoads = new Set(circuitStages.map(stage => topology.lanes[stage.laneId].sourceRoadEdgeId));
+        // Extra parallel lanes must not let a return leg close a small circuit
+        // by revisiting the same avenue under a different directed-lane ID.
+        if (circuitRoads.size < 7 || stages.at(-1).laneIndex - loopStartStage.laneIndex < 10) continue;
+        const circuitPoints = circuitStages.filter(stage => stage.kind === "lane").flatMap(stage => topology.lanes[stage.laneId].points);
+        const xs = circuitPoints.map(point => point.x), ys = circuitPoints.map(point => point.y);
+        if (Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) < 1000) continue;
         return { ...outward, trip, circular: true, loopLane, loopStartProgress, circuitLength,
           circuitLaneCount: stages.at(-1).laneIndex - loopStartStage.laneIndex,
           destinationProgress, laneIds: [...outward.laneIds, ...back.laneIds.slice(1)],
@@ -164,5 +206,29 @@ export function createTrafficJourneyPlanner(topology) {
     const furthest = [...shortestPaths(start).distances].sort((a, b) => b[1] - a[1])[0]?.[0] || start;
     return { ...planLeg(start, tokenId, trip, furthest), circular: false, circuitLength: 0 };
   }
-  return { plan };
+  function planVia(laneIds) {
+    if (laneIds.length < 2) return null;
+    const stops = [...laneIds, laneIds[0]];
+    let result = planLeg(stops[0], "transit", 0, stops[1]);
+    if (!result) return null;
+    for (let i = 2; i < stops.length; i++) {
+      const leg = planLeg(stops[i - 1], "transit", 0, stops[i]);
+      if (!leg) return null;
+      const shift = result.length - leg.stages[0].end, laneShift = result.laneIds.length - 1;
+      const copies = new Map(leg.stages.slice(1).map(stage => [stage, {
+        ...stage, start: stage.start + shift, end: stage.end + shift, laneIndex: stage.laneIndex + laneShift
+      }]));
+      result = { ...result, length: result.length + leg.length - leg.stages[0].end,
+        laneIds: [...result.laneIds, ...leg.laneIds.slice(1)], stages: [...result.stages, ...copies.values()],
+        segments: [...result.segments, ...leg.segments.filter(segment => copies.has(segment.stage)).map(segment => ({
+          ...segment, start: segment.start + shift, end: segment.end + shift, stage: copies.get(segment.stage)
+        }))] };
+    }
+    const loopStartProgress = (result.stages[0].start + result.stages[0].end) / 2;
+    const destinationProgress = (result.stages.at(-1).start + result.stages.at(-1).end) / 2;
+    return { ...result, circular: true, loopLane: laneIds[0], destination: laneIds[0],
+      loopStartProgress, destinationProgress, circuitLength: destinationProgress - loopStartProgress,
+      circuitLaneCount: result.laneIds.length - 1 };
+  }
+  return { plan, planVia };
 }

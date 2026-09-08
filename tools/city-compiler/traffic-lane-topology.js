@@ -60,6 +60,10 @@ function turnType(incoming, outgoing, uTurn = false) {
   return angle > 0 ? "right" : "left";
 }
 
+export function lanesPerDirection(segment) {
+  return Number(segment?.width) >= 100 ? 2 : 1;
+}
+
 function laneOffset(segment, {
   minimumLaneOffset = 8,
   maximumLaneOffset = 16,
@@ -87,7 +91,7 @@ function nodeTopologyMetadata(node, segmentById, nodeById, options) {
     if (!other) continue;
     const tangent = unitVector(other.x - node.x, other.y - node.y);
     axes.add(Math.abs(tangent.x) >= Math.abs(tangent.y) ? "horizontal" : "vertical");
-    offsets.push(laneOffset(segment, options));
+    offsets.push(lanesPerDirection(segment) === 2 ? segment.width / 8 : laneOffset(segment, options));
     maximumWidth = Math.max(maximumWidth, finite(segment.width, 52));
   }
 
@@ -124,11 +128,11 @@ function nodeTopologyMetadata(node, segmentById, nodeById, options) {
   };
 }
 
-export function compilerTrafficLaneId(segmentId, direction = "forward") {
-  return `traffic-lane-segment:${String(segmentId)}:${direction === "reverse" ? "reverse" : "forward"}`;
+export function compilerTrafficLaneId(segmentId, direction = "forward", laneIndex = 0) {
+  return `traffic-lane-segment:${String(segmentId)}:${direction === "reverse" ? "reverse" : "forward"}${laneIndex ? `:lane-${laneIndex + 1}` : ""}`;
 }
 
-function buildDirectedLane(segment, direction, nodeById, nodeMetadataById, options) {
+function buildDirectedLane(segment, direction, nodeById, nodeMetadataById, options, laneIndex = 0) {
   const reverse = direction === "reverse";
   const fromNodeId = reverse ? segment.to : segment.from;
   const toNodeId = reverse ? segment.from : segment.to;
@@ -139,15 +143,24 @@ function buildDirectedLane(segment, direction, nodeById, nodeMetadataById, optio
   }
   const tangent = unitVector(toNode.x - fromNode.x, toNode.y - fromNode.y);
   const normal = screenRightNormal(tangent);
-  const offset = laneOffset(segment, options);
+  const count = lanesPerDirection(segment);
+  const offset = count === 2 ? rounded(segment.width * (2 * laneIndex + 1) / 8) : laneOffset(segment, options);
   const length = Math.max(EPSILON, finite(segment.length, distance(fromNode, toNode)));
-  const trimCap = length * Math.max(0, Math.min(0.45, finite(options?.maximumTrimFractionPerEnd, 0.35)));
-  const startTrim = Math.min(finite(nodeMetadataById.get(fromNodeId)?.trimDistance), trimCap);
-  const endTrim = Math.min(finite(nodeMetadataById.get(toNodeId)?.trimDistance), trimCap);
+  // Chunk seams can leave a short fragment beside a full-width intersection.
+  // Allocate its available length to the actual junction(s), not a fixed
+  // fraction per end: a 21-unit trim on a 45-unit curb lane folds a right turn
+  // backwards across the opposing approach. Keep a small positive lane span.
+  const requestedStart = finite(nodeMetadataById.get(fromNodeId)?.trimDistance);
+  const requestedEnd = finite(nodeMetadataById.get(toNodeId)?.trimDistance);
+  const trimScale = Math.min(1, Math.max(0, length - 1) / Math.max(EPSILON, requestedStart + requestedEnd));
+  const startTrim = requestedStart * trimScale;
+  const endTrim = requestedEnd * trimScale;
   const start = lanePoint(fromNode, tangent, normal, startTrim, offset);
   const end = lanePoint(toNode, tangent, normal, -endTrim, offset);
   return {
-    id: compilerTrafficLaneId(segment.id, direction),
+    id: compilerTrafficLaneId(segment.id, direction, laneIndex),
+    laneIndex,
+    lanesPerDirection: count,
     sourceSegmentId: segment.id,
     sourceRoadEdgeId: segment.sourceEdgeId,
     districtId: segment.districtId,
@@ -189,8 +202,10 @@ export function buildCompilerTrafficLaneTopology(network, options = {}) {
 
   const lanes = [];
   for (const segment of segments) {
-    lanes.push(buildDirectedLane(segment, "forward", nodeById, nodeMetadataById, options));
-    lanes.push(buildDirectedLane(segment, "reverse", nodeById, nodeMetadataById, options));
+    for (let index = 0; index < lanesPerDirection(segment); index++) {
+      lanes.push(buildDirectedLane(segment, "forward", nodeById, nodeMetadataById, options, index));
+      lanes.push(buildDirectedLane(segment, "reverse", nodeById, nodeMetadataById, options, index));
+    }
   }
   lanes.sort((left, right) => left.id.localeCompare(right.id));
 
@@ -206,7 +221,20 @@ export function buildCompilerTrafficLaneTopology(network, options = {}) {
   const transitions = [];
   for (const lane of lanes) {
     const outgoing = outgoingByNode.get(lane.toNodeId) || [];
-    const candidates = outgoing.filter(candidate => candidate.id !== lane.id);
+    const candidates = outgoing.filter(candidate => {
+      if (candidate.id === lane.id) return false;
+      // Retain the parallel lane through a junction, including turns. Only
+      // actual changes in road capacity split/merge through a connector.
+      if (turnType(lane.tangent, candidate.tangent) === "right") {
+        const dx = candidate.start.x - lane.end.x, dy = candidate.start.y - lane.end.y;
+        // Closely overlapping junctions may still leave no forward turning
+        // arc. Do not advertise a connector that doubles back on itself.
+        if (dx * lane.tangent.x + dy * lane.tangent.y < -EPSILON
+          || dx * candidate.tangent.x + dy * candidate.tangent.y < -EPSILON) return false;
+      }
+      return candidate.sourceSegmentId === lane.sourceSegmentId
+        || lane.lanesPerDirection !== candidate.lanesPerDirection || lane.laneIndex === candidate.laneIndex;
+    });
     const nonUTurns = candidates.filter(candidate => candidate.sourceSegmentId !== lane.sourceSegmentId);
     const preferredIds = new Set((nonUTurns.length ? nonUTurns : candidates).map(candidate => candidate.id));
     lane.outgoingLaneIds = candidates.map(candidate => candidate.id);

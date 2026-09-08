@@ -9,6 +9,7 @@ import { createTrafficDriverJunctions } from "./TrafficDriverJunctions.js";
 import { createTrafficCircuitAllocation, TRAFFIC_POPULATION_POLICY } from "./TrafficPopulationPolicy.js";
 
 export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology, materializer, speed = 112 }) {
+  const scene = materializer.scene;
   const seeded = seedTrafficRouteAgentsFromMacroPopulation(trafficFlows, macroGraph, topology);
   const planner = createTrafficJourneyPlanner(topology);
   const world = createTrafficDriverWorld(topology, materializer);
@@ -41,11 +42,14 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
     // that placement separately from phases allocated on the recurring loop.
     populationAllocation.initialEntryLegCount = drivers.filter(driver => driver.journey.circular && driver.progress < driver.journey.loopStartProgress).length;
   }
+  const civilianDrivers = [...drivers];
+  drivers.push(...(scene.transitSystem?.createDrivers?.(topology) || []));
   const byId = new Map(drivers.map(driver => [driver.tokenId, driver]));
   const hijacked = new Set();
   let clock = 0, ticks = 0, destroyed = false;
   let planningBudget = 0;
-  const scene = materializer.scene;
+  let planningTokenId = null;
+  let cachedCensus = null;
   function gunshot(event) {
     const x = Number(event?.x ?? event?.origin?.x ?? scene.player?.x);
     const y = Number(event?.y ?? event?.origin?.y ?? scene.player?.y);
@@ -82,6 +86,7 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
     // that changing object shape for every candidate dominates dense traffic.
     return { tokenId: driver.tokenId, tokenIndex: driver.trafficMetadata?.macroCompatibility?.tokenIndex ?? index,
       edgeId: driver.trafficMetadata?.macroCompatibility?.edgeId || null, direction: lane.direction,
+      archetypeId: driver.archetype.id, transitLineId: driver.transitLineId || null,
       x: driver.pose.x, y: driver.pose.y, angle: driver.pose.angle, speed: driver.pose.speed,
       velocityX: driver.pose.velocityX, velocityY: driver.pose.velocityY, routeActive: true, driverActive: true,
       driverSpawnAllowed: stage.kind === "lane" && driver.progress - stage.start > spawnMargin
@@ -136,9 +141,11 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
     const slot = materializer.assignments.get(driver.tokenId);
     const start = driver.pose;
     const desired = journeyDrivingTarget(driver, driver.panicUntil > clock ? speed : driver.cruiseSpeed);
-    let targetSpeed = desired.speed;
+    const serviceLimit = scene.transitSystem?.speedLimit?.(driver, dt) ?? Infinity;
+    driver.serviceLimit = serviceLimit;
+    let targetSpeed = Math.min(desired.speed, serviceLimit);
     if (!driver.journey.circular) targetSpeed = Math.min(targetSpeed, Math.max(0, driver.journey.destinationProgress - driver.progress - 2));
-    let reason = driver.panicUntil > clock ? "panic" : "cruise";
+    let reason = serviceLimit === 0 ? "bus-stop" : driver.panicUntil > clock ? "panic" : "cruise";
     const objects = active ? world.obstacles(driver) : [];
     const stopDistance = active ? junctions.stopDistance(driver) : Infinity;
     if (stopDistance < 110) {
@@ -181,8 +188,8 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
       if (!blocker || ordinaryQueue) driver.recovery = null;
       else targetSpeed = 0;
     }
-    if (active && blocker && !slot?.trafficDisabled && !ordinaryQueue && driver.wait > (queueLeader ? 4 : 0.75)
-      && !driver.maneuver && clock >= driver.retryAt && planningBudget > 0) {
+    if (active && serviceLimit > 0 && blocker && !slot?.trafficDisabled && !ordinaryQueue && driver.wait > (queueLeader ? 4 : 0.75)
+      && !driver.maneuver && clock >= driver.retryAt && planningBudget > 0 && planningTokenId === driver.tokenId) {
       driver.retryAt = clock + 2; planningBudget--;
       const goal = journeyPoint(driver.journey, Math.min(driver.journey.length - 5, driver.progress + 115));
       const request = { pose: driver.pose, archetype: driver.archetype, goal, dt: Math.max(1 / 120, dt),
@@ -253,6 +260,16 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
       const active = drivers.filter(driver => materializer.assignments.has(driver.tokenId));
       for (const driver of active) adoptContact(driver, materializer.assignments.get(driver.tokenId));
       junctions.prepare(active, [...materializer.assignments.values()], clock);
+      // A fixed CPU budget must not permanently favour early population IDs.
+      // Give the next search to the eligible driver that has waited longest
+      // since its previous attempt, rather than the first one in the loop.
+      planningTokenId = active.filter(driver => {
+        const leader = byId.get(driver.blockerId);
+        return driver.blockerId && !driver.maneuver && driver.serviceLimit !== 0
+          && !materializer.assignments.get(driver.tokenId)?.trafficDisabled
+          && driver.wait > (leader ? 4 : 0.75) && clock >= driver.retryAt
+          && (!leader || blockedQueue(leader));
+      }).sort((a, b) => a.retryAt - b.retryAt || b.wait - a.wait || a.tokenId.localeCompare(b.tokenId))[0]?.tokenId || null;
       for (const driver of drivers) if (!hijacked.has(driver.tokenId)) drive(driver, dt, materializer.assignments.has(driver.tokenId));
       ticks++;
     }
@@ -272,12 +289,15 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
   function snapshot() {
     // Accounting and materialization need route identifiers, not deep copies
     // of every itinerary, pose and input frame in the larger city population.
-    const agents = drivers.map(routeAgent);
-    const projection = projectTrafficRouteAgentsToMacroCompatibility(agents, topology, macroGraph);
-    const validation = validateTrafficRouteMacroProjection(projection, macroGraph);
-    return { driverActive: true, clockSeconds: clock, ticks, seededAgentCount: drivers.length, populationAllocation,
+    if (cachedCensus?.ticks !== ticks) {
+      const agents = civilianDrivers.map(routeAgent);
+      const projection = projectTrafficRouteAgentsToMacroCompatibility(agents, topology, macroGraph);
+      cachedCensus = { ticks, agents, projection, validation: validateTrafficRouteMacroProjection(projection, macroGraph) };
+    }
+    const { agents, projection, validation } = cachedCensus;
+    return { driverActive: true, clockSeconds: clock, ticks, seededAgentCount: civilianDrivers.length, serviceVehicleCount: drivers.length - civilianDrivers.length, populationAllocation,
       totalMacroTokens: seeded.totalMacroTokens, unseededAgentCount: seeded.unseeded.length,
-      populationConserved: drivers.length + seeded.unseeded.length === seeded.totalMacroTokens,
+      populationConserved: civilianDrivers.length + seeded.unseeded.length === seeded.totalMacroTokens,
       materializationTokenCount: drivers.length - hijacked.size, hijackedAgentCount: hijacked.size,
       projectionValid: validation.valid, projectionErrors: validation.errors,
       projectedAgentCount: projection.projectedAgentCount, ambiguousAgentCount: projection.ambiguousAgentCount,
@@ -292,7 +312,7 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
       speedAuthority: "throttle-brake-reverse", routeProgressAuthority: "measured-physical-pose" };
   }
   return { step, snapshot, agents: () => drivers.map(measuredAgent), materializationTokens: () => drivers.filter(driver => !hijacked.has(driver.tokenId)).map(token),
-    behaviorSnapshot, driver: id => byId.get(id),
+    behaviorSnapshot, driver: id => { cachedCensus = null; return byId.get(id); },
     destroy() {
       destroyed = true; scene.events?.off?.("weapon:fired", gunshot);
       scene.events?.off?.("traffic:vehicle-hijacked", onHijack); junctions.clear();

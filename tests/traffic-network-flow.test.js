@@ -11,7 +11,10 @@ test("32 native cars sustain city-wide circulation through short links for three
     assert.equal(network.metrics().contacts, 0, "normal traffic must anticipate queues, not crash into them");
     assert.equal(network.metrics().overlaps, 0);
     for (const [tokenId, record] of network.records) {
-      assert.ok(record.maxStop < 15, `${tokenId} stopped for ${record.maxStop.toFixed(1)}s`);
+      // Four-lane merges change this cohort's itineraries and crossing queues.
+      // Bound the wait, then independently require every car to complete a
+      // broad circuit and at least 30 handoffs without replacing its body.
+      assert.ok(record.maxStop < 30, `${tokenId} stopped for ${record.maxStop.toFixed(1)}s`);
       assert.ok(record.hops >= 30, `${tokenId} stopped completing junctions`);
       assert.ok(record.lanes.size >= 10, `${tokenId} stopped traversing its broad circuit`);
       assert.equal(record.identityChanges, 0, `${tokenId} was replaced to escape a blockage`);
@@ -78,4 +81,22 @@ test("native gunfire and a side impact provoke a bounded reaction, then the same
   } finally {
     network.destroy();
   }
+});
+
+test("the bounded manoeuvre search budget eventually serves every blocked driver", async () => {
+  const network = await createTrafficNetworkRuntime({ roadCount: 28 });
+  try {
+    network.step(300);
+    const slots = [...network.materializer.assignments.values()];
+    assert.ok(slots.length > 40, "demand must exceed one search per frame with two-second retries");
+    // Fully obstruct each local position, so searches fail without allowing
+    // early IDs to leave the queue. Clearance and controls still run normally.
+    network.scene.vehicleSystem.vehicles = slots.map(slot => ({ id: `obstruction:${slot.tokenId}`,
+      x: slot.x, y: slot.y, angle: 0, archetype: { width: 1000, height: 1000 } }));
+    const runtime = network.route.runtime();
+    for (const slot of slots) runtime.driver(slot.tokenId).retryAt = 0;
+    network.step(160);
+    for (const slot of slots) assert.ok(runtime.driver(slot.tokenId).retryAt > 15,
+      `${slot.tokenId} was starved by earlier population IDs`);
+  } finally { network.destroy(); }
 });

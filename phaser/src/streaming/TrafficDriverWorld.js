@@ -37,7 +37,7 @@ export function createTrafficDriverWorld(topology, materializer) {
   function obstacles(driver, radius = 240) {
     const scene = materializer?.scene;
     const all = [...(materializer?.assignments?.values() || []), ...(scene?.vehicleSystem?.vehicles || [])];
-    if (scene?.player && !scene.vehicleSystem?.isDriving?.()) {
+    if (scene?.player && !scene.vehicleSystem?.isDriving?.() && !scene.transitSystem?.isRiding?.()) {
       all.push({ ...scene.player, id: "player", archetype: { width: 16, height: 16 }, angle: 0 });
     }
     const nearby = all.filter(other => other.tokenId !== driver.tokenId && other.container?.active !== false

@@ -558,6 +558,7 @@ export class DeathRecoverySystem {
     this.resetTransientNpcAlarmState();
     this.clearTransientCombat();
 
+    this.scene.transitSystem?.leave?.({ force: true });
     if (this.scene.vehicleSystem?.isDriving?.()) this.scene.vehicleSystem.exitVehicle?.({ force: true });
     this.scene.currentLayer = LAYERS.STREET;
     this.scene.cityStreamSystem?.updateFocus?.(spawn.x, spawn.y, { force: true });

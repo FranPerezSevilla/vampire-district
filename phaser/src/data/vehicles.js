@@ -33,6 +33,15 @@ function defineArchetype(spec) {
 }
 
 export const VEHICLE_ARCHETYPES = Object.freeze({
+  bus: defineArchetype({
+    id: "bus", label: "Autobús urbano", bodyStyle: "bus", width: 60, height: 22,
+    maxSpeed: 230, gearCount: 4, gearShiftDuration: 0.22, gearHoldDuration: 0.6, firstGearHoldDuration: 0.4,
+    cameraLookAhead: 84, reverseSpeed: 64, acceleration: 190, reverseAcceleration: 90, launchBoost: 0.25,
+    brake: 240, handbrakeBrake: 180, handbrakeThrottleFactor: 0.12, handbrakeSteerMultiplier: 1.15,
+    handbrakeDriftKick: 0.2, grip: 10, handbrakeGrip: 3, drag: 40, steerRate: 2.3,
+    maxHealth: 220, trunkCapacity: 0, cameraZoomFactor: 0.62, mass: 3.4, collisionPush: 2.2,
+    occupantMin: 1, occupantMax: 1, trafficWeight: 0, color: 0x467b91, trim: 0xf4cf74
+  }),
   compact: defineArchetype({
     id: "compact", label: "Compact old car", bodyStyle: "compact", width: 28, height: 14,
     maxSpeed: 340, gearCount: 5, gearShiftDuration: 0.14, gearHoldDuration: 0.42, firstGearHoldDuration: 0.30,

@@ -1,3 +1,4 @@
+import { TransitSystem } from "../systems/TransitSystem.js";
 import { installMotorizedPoliceAggressionPolicy } from "../police/MotorizedPoliceAggressionPolicy.js";
 import { installMotorizedPoliceContainmentPolicy } from "../police/MotorizedPoliceContainmentPolicy.js";
 import { installMotorizedPoliceLocalPolicy } from "../police/MotorizedPoliceLocalPolicy.js";
@@ -108,6 +109,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.witnessPerceptionPolicy = new WitnessPerceptionPolicy(scene);
     scene.witnessReactionPolicy = new WitnessReactionPolicy(scene);
     scene.witnessMarkerPolicy = new WitnessMarkerPolicy(scene);
+    scene.transitSystem = new TransitSystem(scene);
     scene.trafficLocalAssignmentPolicy = installTrafficLocalAssignmentPolicy(scene);
     scene.trafficLocalBehaviorSystem = new TrafficLocalBehaviorSystem(scene);
     scene.trafficSteeringPresentationSystem = new TrafficSteeringPresentationSystem(scene);
@@ -133,6 +135,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     const frame = typeof beginFrame === "function" ? beginFrame.call(input) : null;
     if (!frame) return frame;
     enrichVehicleInputFrame(frame, input?.keys?.space?.isDown);
+    if (this.scene.transitSystem?.isRiding?.()) return this.scene.transitSystem.filterInput(frame);
     const vehicle = this.scene.vehicleSystem;
     return vehicle?.isDriving?.() ? vehicle.filterInputFrame(frame) : frame;
   }
@@ -180,6 +183,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.trafficSteeringPresentationSystem?.update?.(dt);
     scene.trafficPhysicalConsequencesSystem?.update?.(dt);
     scene.trafficImpactConsequencesSystem?.update?.(dt);
+    scene.transitSystem?.update?.(dt);
     diagnostics.endSystem("TrafficPipeline", profileMark);
 
     profileMark = diagnostics.beginSystem("MotorizedPoliceSystem");
@@ -245,6 +249,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.scene.trafficSteeringPresentationSystem = null;
     this.scene.trafficLocalBehaviorSystem?.destroy?.();
     this.scene.trafficLocalBehaviorSystem = null;
+    this.scene.transitSystem?.destroy?.();
+    this.scene.transitSystem = null;
     this.scene.trafficLocalAssignmentPolicy?.destroy?.();
     this.scene.trafficLocalAssignmentPolicy = null;
     this.scene.witnessMarkerPolicy?.destroy?.();

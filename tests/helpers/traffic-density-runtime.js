@@ -1,3 +1,4 @@
+import { TransitSystem } from "../../phaser/src/systems/TransitSystem.js";
 import { readFileSync } from "node:fs";
 import { EventEmitter } from "node:events";
 import { WORLD, CAMERA } from "../../phaser/src/data/balance.js";
@@ -16,16 +17,16 @@ function renderObject(extra = {}) {
     setRotation(v) { this.rotation = v; return this; }, setResolution() { return this; }, setStroke() { return this; },
     setVisible(v) { this.visible = v; return this; }, setActive(v) { this.active = v; return this; },
     setPosition(x, y) { this.x = x; this.y = y; return this; }, setDepth() { return this; },
-    setAlpha() { return this; }, add() { return this; }, destroy() {}, ...extra };
+    setText() { return this; }, removeAll() { return this; }, setAlpha() { return this; }, add() { return this; }, destroy() {}, ...extra };
 }
 
 // Rendering and file transport only are substituted. Population bootstrap,
 // physical driving, camera guards, chunk residency, pool assignment/retention,
 // macro accounting and traffic contacts execute the production pipeline.
-export async function createTrafficDensityRuntime({ center, historicalPopulation = false } = {}) {
+export async function createTrafficDensityRuntime({ center, historicalPopulation = false, transit = false } = {}) {
   const fetchImpl = async url => ({ ok: true, json: async () => JSON.parse(readFileSync(new URL(url))) });
   const scene = {
-    currentLayer: LAYERS.STREET, player: { ...center }, renderFocus: () => center,
+    currentLayer: LAYERS.STREET, player: renderObject({ ...center, body: { enable: true, setVelocity() {} } }), renderFocus: () => center,
     events: new EventEmitter(), registry: { get: () => false }, statePublisher: { setMany() {} },
     cameras: { main: { worldView: {
       x: center.x - WORLD.viewportWidth / CAMERA.streetZoom / 2,
@@ -38,6 +39,10 @@ export async function createTrafficDensityRuntime({ center, historicalPopulation
     trafficSteeringPresentationSystem: { applyPresentation: slot => slot },
     add: { container: (x, y) => renderObject({ x, y }), rectangle: () => renderObject(), triangle: () => renderObject(), text: () => renderObject() }
   };
+  if (transit) {
+    scene.transitSystem = new TransitSystem(scene);
+    scene.npcSystem.createNpc = definition => ({ ...definition, container: renderObject(), inactive: false, dead: false });
+  }
   const city = scene.cityStreamSystem = new ChunkStreamSystem(scene, { fileStore: new ChunkFileStore({ fetchImpl }) });
   await city.initialization;
   await Promise.all(city.loadPromises.values());
@@ -81,6 +86,7 @@ export async function createTrafficDensityRuntime({ center, historicalPopulation
       macro.update(0.05);
       materializer.update(0.05);
       physical.update(0.05);
+      scene.transitSystem?.update();
       frameTimes.push(performance.now() - start);
       frames++;
       const slots = [...materializer.assignments.values()];
@@ -91,8 +97,14 @@ export async function createTrafficDensityRuntime({ center, historicalPopulation
         const previous = records.get(slot.tokenId);
         const stopped = previous && Math.hypot(slot.x - previous.x, slot.y - previous.y) < 0.01 ? previous.stopped + 0.05 : 0;
         if (stopped >= 15 && previous.stopped < 15) longStops.push({ tokenId: slot.tokenId, x: slot.x, y: slot.y, observedAt: frames * 0.05, recovered: false });
-        for (const episode of longStops) if (episode.tokenId === slot.tokenId && Math.hypot(slot.x - episode.x, slot.y - episode.y) >= 100) episode.recovered = true;
         records.set(slot.tokenId, { x: slot.x, y: slot.y, stopped, maxStop: Math.max(previous?.maxStop || 0, stopped) });
+      }
+      // Follow the same physical driver after its proxy leaves the streamed
+      // area. Otherwise a recovered queue that exits the camera before moving
+      // 100 units is falsely reported as a permanent unresolved stop.
+      for (const episode of longStops) if (!episode.recovered) {
+        const pose = route.runtime().driver(episode.tokenId)?.pose;
+        if (pose && Math.hypot(pose.x - episode.x, pose.y - episode.y) >= 100) episode.recovered = true;
       }
       for (let a = 0; a < slots.length; a++) for (let b = a + 1; b < slots.length; b++) if (orientedVehicleContact(slots[a], slots[b])) overlaps++;
       // Ignore the first ten seconds while cars enter from outside the camera.
@@ -101,16 +113,16 @@ export async function createTrafficDensityRuntime({ center, historicalPopulation
     }
   }
   return { scene, city, macro, materializer, route, step,
-    metrics() {
+    metrics({ recoveryGrace = 15 } = {}) {
       const times = [...frameTimes].sort((a, b) => a - b), samples = Math.max(1, frames - 200);
       return { population: materializer.trafficTokens().length, seconds: frames * 0.05,
         visibleAverage: visibleSum / samples, nearbyAverage: nearbySum / samples, emptyFraction: emptyFrames / samples,
         seen: seen.size, maxNearby, spawns, visibleSpawns, overlaps, contacts: physical.totalTrafficContacts,
         maxStop: Math.max(0, ...[...records.values()].map(record => record.maxStop)),
         longStops: longStops.length, recoveredLongStops: longStops.filter(episode => episode.recovered).length,
-        unresolvedLongStops: longStops.filter(episode => !episode.recovered && episode.observedAt <= frames * 0.05 - 15).length,
+        unresolvedLongStops: longStops.filter(episode => !episode.recovered && episode.observedAt <= frames * 0.05 - recoveryGrace).length,
         frameP95Ms: times[Math.floor(times.length * 0.95)], frameMeanMs: times.reduce((sum, t) => sum + t, 0) / times.length };
     },
-    destroy() { mass.destroy(); physical.destroy(); policy.destroy(); materializer.destroy(); macro.destroy(); city.destroy(); }
+    destroy() { scene.transitSystem?.destroy(); mass.destroy(); physical.destroy(); policy.destroy(); materializer.destroy(); macro.destroy(); city.destroy(); }
   };
 }

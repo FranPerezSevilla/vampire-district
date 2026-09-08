@@ -18,6 +18,7 @@ function missionContentActive(context = {}) {
 
 export function npcCriticalReason(npc, context = {}) {
   if (!npc) return null;
+  if (["boarding", "riding", "alighting"].includes(npc.transit?.state)) return "bus-passenger";
   const missionActive = missionContentActive(context);
   if (missionActive && npc.missionInformant) return "mission-informant";
   if (missionActive && npc.type === NPC_TYPES.TARGET) return "mission-target";

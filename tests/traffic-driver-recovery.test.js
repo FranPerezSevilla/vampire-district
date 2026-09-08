@@ -186,7 +186,9 @@ for (const hz of [20, 60]) test(`a collided driver and two queued cars escape a 
     drivers.forEach((driver, i) => {
       assert.ok(bypassed.has(i), `car ${i} must manoeuvre around the obstruction`);
       assert.ok(side.get(i) > 12, `car ${i} must use available road width`);
-      if (i) assert.ok(opposing.has(i), `following car ${i} must use the free opposing half of the road`);
+      const lane = topology.lanes[journeyPoint(driver.journey, initial[i].progress).segment.stage.laneId];
+      // Four-lane avenues also offer the adjacent lane in the same direction.
+      if (i && lane.lanesPerDirection === 1) assert.ok(opposing.has(i), `following car ${i} must use the free opposing half of the road`);
       assert.ok(driver.progress > initial[i].progress + 150, `car ${i} remained blocked: ${JSON.stringify({ reason: driver.reason, pose: driver.pose, progress: driver.progress - initial[i].progress, wait: driver.wait, rejected: driver.rejectedSteps })}`);
     });
   } finally { network.destroy(); }

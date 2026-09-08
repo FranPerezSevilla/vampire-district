@@ -2,7 +2,7 @@ import { MovementNoiseSystem as MovementNoiseSystemCore } from "./MovementNoiseS
 
 export class MovementNoiseSystem extends MovementNoiseSystemCore {
   update(frame) {
-    if (this.scene.vehicleSystem?.isDriving?.()) {
+    if (this.scene.vehicleSystem?.isDriving?.() || this.scene.transitSystem?.isRiding?.()) {
       return super.update({
         ...frame,
         hasMovementIntent: false,

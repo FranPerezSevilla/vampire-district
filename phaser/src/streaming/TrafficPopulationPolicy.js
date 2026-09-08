@@ -1,20 +1,40 @@
+import { orientedVehicleContact } from "./TrafficPhysicalConsequencesSystem.js";
 import { journeyPoint, pathLength, trafficJourneyHash } from "./TrafficJourneyPlanner.js";
 
 export const TRAFFIC_POPULATION_POLICY = "road-capacity-circuits-v1";
-// World units per car at full district density, across both road directions.
-const CAPACITY_SPACING = 120;
+export const CITY_TRAFFIC_POPULATION = 1000;
+const populationByGraph = new WeakMap();
 
 export function trafficFlowPopulation(graph, edge) {
   const density = ((graph.nodes[edge.a]?.trafficDensity || 0) + (graph.nodes[edge.b]?.trafficDensity || 0)) / 2;
   if (!(edge.length > 0)) return { tokenCount: Math.max(1, Math.round(density * 4)) };
-  return { tokenCount: Math.max(1, Math.round(edge.length * 2 * density / CAPACITY_SPACING)), populationPolicy: TRAFFIC_POPULATION_POLICY };
+  if (!graph.edges) return { tokenCount: Math.max(1, Math.round(edge.length * 2 * density / 120)), populationPolicy: TRAFFIC_POPULATION_POLICY };
+  if (!populationByGraph.has(graph)) {
+    const entries = Object.values(graph.edges).filter(item => item.length > 0).map(item => ({
+      id: item.id, weight: item.length * Math.max(0.1,
+        ((graph.nodes[item.a]?.trafficDensity || 0) + (graph.nodes[item.b]?.trafficDensity || 0)) / 2)
+    }));
+    const total = entries.reduce((sum, item) => sum + item.weight, 0);
+    for (const item of entries) {
+      const share = item.weight / total * CITY_TRAFFIC_POPULATION;
+      item.count = Math.floor(share); item.remainder = share - item.count;
+    }
+    entries.sort((a, b) => b.remainder - a.remainder || a.id.localeCompare(b.id));
+    const remaining = CITY_TRAFFIC_POPULATION - entries.reduce((sum, item) => sum + item.count, 0);
+    for (let i = 0; i < remaining; i++) entries[i].count++;
+    populationByGraph.set(graph, new Map(entries.map(item => [item.id, item.count])));
+  }
+  return { tokenCount: populationByGraph.get(graph).get(edge.id) || 0, populationPolicy: TRAFFIC_POPULATION_POLICY };
 }
 
 // Bootstrap allocation only. This policy never changes a spawned car's route
 // or pose; the driver remains the sole movement authority after initialization.
 export function createTrafficCircuitAllocation({ topology, graph, planner, population }) {
+  const deadEnds = new Set(Object.values(topology.transitions).filter(transition => transition.preferred && transition.uTurn)
+    .map(transition => topology.lanes[transition.incomingLaneId].sourceRoadEdgeId));
   const roadWeights = new Map(), districtWeights = new Map();
   for (const lane of Object.values(topology.lanes)) {
+    if (deadEnds.has(lane.sourceRoadEdgeId)) continue;
     const weight = pathLength(lane.points) * Math.max(0.25, graph.nodes[lane.districtId]?.trafficDensity || 0.6);
     roadWeights.set(lane.sourceRoadEdgeId, (roadWeights.get(lane.sourceRoadEdgeId) || 0) + weight);
     districtWeights.set(lane.districtId, (districtWeights.get(lane.districtId) || 0) + weight);
@@ -24,8 +44,6 @@ export function createTrafficCircuitAllocation({ topology, graph, planner, popul
   const roadLoad = new Map(), districtLoad = new Map(), initialDistricts = new Map(), initialPoses = [];
   const coveredLanes = new Set();
   const districtLanes = new Map();
-  const deadEnds = new Set(Object.values(topology.transitions).filter(transition => transition.preferred && transition.uTurn)
-    .map(transition => topology.lanes[transition.incomingLaneId].sourceRoadEdgeId));
   for (const lane of Object.values(topology.lanes)) {
     if (pathLength(lane.points) < 120 || deadEnds.has(lane.sourceRoadEdgeId)) continue;
     if (!districtLanes.has(lane.districtId)) districtLanes.set(lane.districtId, []);
@@ -80,25 +98,33 @@ export function createTrafficCircuitAllocation({ topology, graph, planner, popul
     if (!journey.circular) return fallback;
     const phase = trafficJourneyHash(`${tokenId}:circuit-phase`) / 4294967296;
     let best = null;
-    for (let index = 0; index < 64; index++) {
-      const progress = journey.loopStartProgress + ((phase + index / 64) % 1) * journey.circuitLength;
-      const point = journeyPoint(journey, progress), stage = point.segment.stage;
-      const margin = archetype.width * 0.5 + 35;
-      if (stage.kind !== "lane" || progress - stage.start < margin || stage.end - progress < margin) continue;
-      const lane = topology.lanes[stage.laneId];
-      let crowd = 0, clear = true;
-      for (const other of initialPoses) {
-        const distance = Math.hypot(point.x - other.x, point.y - other.y);
-        if (distance < (archetype.width + other.width) * 0.5 + 12) { clear = false; break; }
-        crowd += Math.max(0, 150 - distance) / 25;
+    for (const samples of [64, Math.max(256, Math.ceil(journey.circuitLength / 16))]) {
+      if (best) break;
+      // A denser city can exhaust the coarse phase samples even with space
+      // between them. Search the same immutable itinerary at body-scale spacing
+      // instead of accepting an overlapping fallback on the entry leg.
+      for (let index = 0; index < samples; index++) {
+        const progress = journey.loopStartProgress + ((phase + index / samples) % 1) * journey.circuitLength;
+        const point = journeyPoint(journey, progress), stage = point.segment.stage;
+        const margin = archetype.width * 0.5 + 35;
+        if (stage.kind !== "lane" || progress - stage.start < margin || stage.end - progress < margin) continue;
+        const lane = topology.lanes[stage.laneId];
+        let crowd = 0, clear = true;
+        for (const other of initialPoses) {
+          const distance = Math.hypot(point.x - other.x, point.y - other.y);
+          if (distance < archetype.width + other.archetype.width && orientedVehicleContact(
+            { ...point, archetype: { width: archetype.width + 24, height: archetype.height + 8 } }, other)) { clear = false; break; }
+          crowd += Math.max(0, 150 - distance) / 25;
+        }
+        if (!clear) continue;
+        const score = crowd + (initialDistricts.get(lane.districtId) || 0) / Math.max(1, population * districtWeights.get(lane.districtId));
+        if (!best || score < best.score) best = { progress, point, district: lane.districtId, score };
       }
-      if (!clear) continue;
-      const score = crowd + (initialDistricts.get(lane.districtId) || 0) / Math.max(1, population * districtWeights.get(lane.districtId));
-      if (!best || score < best.score) best = { progress, point, district: lane.districtId, score };
     }
-    if (!best) return fallback;
+    if (!best) throw new Error(`No clear initial phase for traffic circuit ${tokenId}`);
     initialDistricts.set(best.district, (initialDistricts.get(best.district) || 0) + 1);
-    initialPoses.push({ x: best.point.x, y: best.point.y, width: archetype.width });
+    initialPoses.push({ x: best.point.x, y: best.point.y, angle: best.point.angle,
+      archetype: { width: archetype.width + 24, height: archetype.height + 8 } });
     return best.progress;
   }
   function snapshot() {

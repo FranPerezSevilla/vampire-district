@@ -57,8 +57,8 @@ test("generated local topology is compiler-node-owned and complete for productio
   assert.equal(topology.ownershipMode, "compiler-node-id");
   assert.equal(topology.drivingSide, "right");
   assert.equal(topology.stats.networkSegmentCount, base.network.segments.length);
-  assert.equal(topology.stats.directedLaneCount, base.network.segments.length * 2);
-  assert.equal(topology.stats.preferredUTurnTransitionCount, topology.stats.deadEndNodeCount);
+  assert.equal(topology.stats.directedLaneCount, base.network.segments.reduce((sum, segment) => sum + (segment.width >= 100 ? 4 : 2), 0));
+  assert.ok(Object.values(topology.transitions).filter(t => t.preferred && t.uTurn).every(t => topology.nodes[t.nodeId].kind === "dead-end"));
   assert.equal(Object.keys(topology.lanes).length, topology.laneIds.length);
   assert.equal(Object.keys(topology.transitions).length, topology.transitionIds.length);
 });

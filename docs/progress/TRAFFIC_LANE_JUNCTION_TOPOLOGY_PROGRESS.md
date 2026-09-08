@@ -921,3 +921,28 @@ The larger population continues to **90 seconds**: visible means are 5.73, 21.62
 Recurring coverage grows from **414 to 428 of 434 directed lanes**, across **145 source roads and all 14 districts**. Independent circuit sampling reports aggregate district-share error **0.08636 → 0.08137**, preserving the balanced distribution. North Harbor remains below its planned road-capacity share; live visible counts are separately measured above.
 
 The final isolated native density test measures **6.34–10.39 ms mean / 9.36–14.32 ms p95** for the traffic pipeline. This is not browser FPS evidence. The two density tests and the existing 17 driver/recovery/network regressions pass. **890/890 native units pass**, plus static ownership of 41 browser specs across 8 suites. The affected plan selects cumulative release-candidate coverage; browser execution is excluded by the user. Three existing browser pool assertions were aligned to 64 and syntax-checked, without execution. Publish in the existing PR/Pages branch; no automatic merge.
+
+
+## M14 — four-lane avenues and public transport — 2026-09-08
+
+The user approved M13 and requested two lanes in each direction on wide avenues, 1,000 cars across the city, and three usable bus lines. The compiler now emits **660 directed lanes** and **1,177 safe connectors**. Parallel lanes retain their index through turns and straight crossings; capacity changes use compiler connectors. Short fragments beside chunk seams allocate trim to their actual junctions, preventing backwards curb turns. Impossible forward right turns are excluded.
+
+There are **exactly 1,000 civilian car identities plus six buses**, with the existing 64 local slots and camera/chunk/clearance guards. Broad car circuits cover **567/574 eligible through lanes** and all **14 districts**; independent district-share error is **0.04267**. Cul-de-sacs cannot become civilian lane-switch shortcuts. Initial car bodies are separate and independent of camera position.
+
+The lines are **C Circular (20 stops)**, **N Norte–Sur return (10)** and **E Este–Oeste return (14)**, with two buses per line. Buses share VehicleModel controls and the traffic driver. TransitSystem owns stop scheduling and passenger state; NpcSystem moves actual commuters to/from the doors. Enter opens the existing chooser for **Subir como pasajero** or **Robar autobús**. Riding follows the bus with on-foot controls/body disabled; Enter requests a safe exit. Theft transfers the actual bus into VehicleSystem and evacuates the actual passengers. Visible NPCs cannot board invisible dormant buses, and displaced/missed stops cannot hold a bus at zero speed indefinitely.
+
+Extended density tests exposed and corrected real reservation failures: blocked exits holding priority, incomplete denial dependencies, rear cars reserving over their own queue leaders, and starvation in the bounded manoeuvre search budget. Ordinary circulation is measured from asserted sidewalk observer positions; deliberate player obstructions keep separate 20/60 Hz physical recovery cases. Recovery is tracked on the same driver after its proxy leaves the view, not only while materialized.
+
+The final native production pipeline runs **180 seconds per viewpoint with all 1,006 vehicles**, excluding the first ten seconds from visible means:
+
+| Viewpoint | Visible mean | Distinct vehicles seen | Longest stop | Long stops recovered by end |
+| --- | --- | --- | --- | --- |
+| old-quarter | 8.01 | 75 | 24.75 s | 9/10 |
+| blackwater | 27.80 | 143 | 25.90 s | 21/21 |
+| north-harbor | 22.75 | 179 | 7.05 s | 0/0 |
+
+Every viewpoint records **zero contacts, overlaps and guarded-camera spawns**, no local capacity overrun and no old unresolved stop. Recent queues may still be waiting at the sample boundary. These are native simulation measurements, not browser FPS or visual-playtest evidence.
+
+**897/897 native tests pass**, plus static ownership of 41 browser specs across 8 suites. A 300-second service test verifies repeated stops and real boarding/alighting, chooser/rider/theft boundaries and conservation. The 32-car three-minute cohort completes broad circuits with stable identities and at least 30 handoffs each. Its changed four-lane congestion bound is 30 seconds; the observed 20.3-second queue clears. A 56-driver obstruction case verifies fair access to bounded recovery searches.
+
+City validation reports **0 errors / 0 warnings, 87.9/A** and the committed lane pack exactly matches compiler output. The cumulative affected plan selects release-candidate coverage; browser execution remains excluded by the user. Publish the reviewed tree on PR 73, report the exact source commit and bounded CI/Pages observations in the live PR, and keep the PR draft without merging.

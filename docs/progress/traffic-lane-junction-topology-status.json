@@ -1,13 +1,13 @@
 {
   "initiative": "traffic-lane-junction-topology",
-  "version": 22,
+  "version": 23,
   "updatedAt": "2026-09-08",
   "pullRequest": 73,
   "branch": "codex/traffic-junction-topology",
   "state": "local-validated-publish-pending",
-  "currentMilestone": "M13",
-  "currentTask": "M13-more-visible-traffic",
-  "lastValidatedImplementationHead": "65f81bf5a6a390a6e2f4b0d289d9aceff833059e",
+  "currentMilestone": "M14",
+  "currentTask": "M14-avenues-and-buses",
+  "lastValidatedImplementationHead": "2a4924a380ac9a63cbf0a6196a6cb066164cfb7d",
   "baseAtBootstrap": "805ea5d107dcddcef4cd564294569455093af4b0",
   "canonicalDocs": {
     "roadmap": "docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md",
@@ -21,7 +21,8 @@
     "physicalDrivers": "docs/agent-tasks/2026-09-08-physical-traffic-drivers.md",
     "recoveryCircuits": "docs/agent-tasks/2026-09-08-traffic-recovery-circuits.md",
     "densityDistribution": "docs/agent-tasks/2026-09-08-traffic-density-distribution.md",
-    "moreTraffic": "docs/agent-tasks/2026-09-08-more-traffic.md"
+    "moreTraffic": "docs/agent-tasks/2026-09-08-more-traffic.md",
+    "avenuesAndBuses": "docs/agent-tasks/2026-09-08-avenues-and-buses.md"
   },
   "authority": {
     "localTopologyCompiler": "tools/city-compiler/traffic-lane-topology.js",
@@ -34,15 +35,16 @@
     "controlledRouteActivation": "phaser/src/streaming/TrafficControlledRouteActivationPolicy.js; default-off regression harness only",
     "multiAgentRouteRuntime": "TrafficMultiAgentRouteRuntimePolicy selects TrafficDriverRuntime by default; driving:false is a controlled cursor fixture",
     "junctionReservation": "TrafficDriverJunctions; buffered path permissions, whole-body intersection boundaries and downstream clearance",
-    "gridlockRecovery": "TrafficDriverController; complete physical bypass or bounded partial reverse and reassessment; separating existing contacts is allowed",
-    "visibleDensity": "MacroTrafficPoliceSystem / TrafficPopulationPolicy size global traffic from road capacity (437 current-city drivers). TrafficLocalAssignmentPolicy configures 64 local slots before activation; existing camera/streaming/clearance guards remain.",
+    "gridlockRecovery": "TrafficDriverController executes bypass or bounded reverse/reassessment. The one-search frame budget fairly selects the least recently attempted eligible driver.",
+    "visibleDensity": "TrafficPopulationPolicy apportions exactly 1,000 civilian cars across road/district capacity; TransitSystem adds six service buses. TrafficLocalAssignmentPolicy retains the fixed 64 local slots and camera/chunk/clearance guards.",
     "defaultMovementAuthority": "shared-vehicle-kinematics",
     "macroRole": "bootstrap population plus conservative route-projection accounting and independent police travel; never civilian local geometry",
     "legacyCivilianPhaseRole": "bootstrap/fallback compatibility only; phase advancement is disabled while normal compiler-route authority is active",
     "physicalAgentAuthority": "TrafficDriverRuntime adopts native impacts into actual poses; no route-offset recovery authority in production",
-    "junctionFlow": "TrafficDriverJunctions; normal and recovery path permissions, progressive rear clearance, inside-first clearing and fair pending approaches",
-    "journeyPlanner": "TrafficJourneyPlanner; predefined distant outbound/return circuits, continuous mid-block seam, one-time entry leg when needed",
-    "circuitAllocation": "TrafficPopulationPolicy; deterministic bootstrap allocation against source-road and district capacity, without changing routes or physical poses after startup"
+    "junctionFlow": "TrafficDriverJunctions; whole-body path permits, clear physical approaches and downstream exits, explicit denial dependencies, inside-first clearance. Queued rear cars cannot reserve over their leaders.",
+    "journeyPlanner": "TrafficJourneyPlanner; broad repeating circuits with continuous seams. Civilian through routes exclude cul-de-sacs; prescribed bus terminal itineraries may use them.",
+    "circuitAllocation": "TrafficPopulationPolicy; deterministic bootstrap allocation against source-road and district capacity, without changing routes or physical poses after startup",
+    "publicTransport": "TransitRoutes selects compiler curb lanes and prescribed itineraries. TransitSystem owns stops, passenger state and service braking; TrafficDriverRuntime/VehicleModel move buses, NpcSystem moves commuters, InteractionSystem owns the chooser."
   },
   "cleanupAudit": {
     "productionRequiredCompatibility": [
@@ -104,7 +106,8 @@
     "M8.2-opt-in-multi-agent-browser-soak",
     "M8.3-default-compiler-route-activation-and-macro-accounting-migration",
     "M9.1-legacy-cleanup-audit-and-final-validation-prep",
-    "M9.3-physical-queue-clearance-validation"
+    "M9.3-physical-queue-clearance-validation",
+    "M14-avenues-and-buses"
   ],
   "milestones": {
     "M0": {
@@ -161,6 +164,10 @@
     },
     "M13": {
       "title": "More visible traffic with bounded local capacity",
+      "state": "published and deployed at 2a4924a; user approved and requested four-lane avenues, 1,000 cars and bus service"
+    },
+    "M14": {
+      "title": "Four-lane avenues, 1,000 civilian cars and usable bus lines",
       "state": "local-validated-publish-pending"
     }
   },
@@ -801,24 +808,127 @@
       "affectedPlan": "Cumulative release-candidate coverage selected; browser execution excluded by explicit user instruction.",
       "deployment": "Publish once, update PR 73 promptly, observe native CI and Pages with bounded checks. Keep draft; no automatic merge.",
       "localFast": "890/890 native unit tests pass; static ownership of 41 browser specs across 8 suites passes. No browser execution."
+    },
+    "m14AvenuesAndBuses": {
+      "state": "local-validated-publish-pending",
+      "sourceParent": "2a4924a380ac9a63cbf0a6196a6cb066164cfb7d",
+      "localFast": "897/897 native tests pass; static ownership of 41 browser specs across 8 suites passes.",
+      "compiler": "660 directed lanes, 2,428 transitions, 1,177 activation-safe connectors; exact compiler/committed-pack parity. City validation: 0 errors, 0 warnings, score 87.9/A.",
+      "population": {
+        "civilianCars": 1000,
+        "buses": 6,
+        "localCapacity": 64,
+        "districts": 14,
+        "recurringLaneCoverage": 567,
+        "eligibleThroughLanes": 574,
+        "districtShareError": 0.04267394214583528,
+        "initialBodyOverlaps": 0
+      },
+      "busLines": [
+        {
+          "id": "C",
+          "name": "Circular",
+          "buses": 2,
+          "stops": 20
+        },
+        {
+          "id": "N",
+          "name": "Norte–Sur return",
+          "buses": 2,
+          "stops": 10
+        },
+        {
+          "id": "E",
+          "name": "Este–Oeste return",
+          "buses": 2,
+          "stops": 14
+        }
+      ],
+      "nativeDensity": [
+        {
+          "district": "old-quarter",
+          "population": 1006,
+          "seconds": 180,
+          "visibleAverage": 8.010294117647058,
+          "nearbyAverage": 63.99852941176471,
+          "emptyFraction": 0,
+          "seen": 75,
+          "maxNearby": 64,
+          "spawns": 399,
+          "visibleSpawns": 0,
+          "overlaps": 0,
+          "contacts": 0,
+          "maxStop": 24.750000000000217,
+          "longStops": 10,
+          "recoveredLongStops": 9,
+          "unresolvedLongStops": 0,
+          "frameP95Ms": 35.77767500000118,
+          "frameMeanMs": 25.878655408888775
+        },
+        {
+          "district": "blackwater",
+          "population": 1006,
+          "seconds": 180,
+          "visibleAverage": 27.79735294117647,
+          "nearbyAverage": 63.999117647058824,
+          "emptyFraction": 0,
+          "seen": 143,
+          "maxNearby": 64,
+          "spawns": 535,
+          "visibleSpawns": 0,
+          "overlaps": 0,
+          "contacts": 0,
+          "maxStop": 25.900000000000233,
+          "longStops": 21,
+          "recoveredLongStops": 21,
+          "unresolvedLongStops": 0,
+          "frameP95Ms": 31.04941500001587,
+          "frameMeanMs": 22.157706454166618
+        },
+        {
+          "district": "north-harbor",
+          "population": 1006,
+          "seconds": 180,
+          "visibleAverage": 22.75029411764706,
+          "nearbyAverage": 59.56852941176471,
+          "emptyFraction": 0,
+          "seen": 179,
+          "maxNearby": 64,
+          "spawns": 447,
+          "visibleSpawns": 0,
+          "overlaps": 0,
+          "contacts": 0,
+          "maxStop": 7.049999999999983,
+          "longStops": 0,
+          "recoveredLongStops": 0,
+          "unresolvedLongStops": 0,
+          "frameP95Ms": 37.71309200004907,
+          "frameMeanMs": 23.991011821944184
+        }
+      ],
+      "nativeService": "300 seconds with the six physical buses and actual NpcSystem walking: repeated stops, real boarding/alighting identities and conservation. Existing chooser, rider input/follow/exit, real materializer hijack and evacuation pass. Dormant visible transfers and displaced/missed-stop recovery are covered.",
+      "nativeRecovery": "20/60 Hz collision and queue escape regressions pass. The 32-car/180-second cohort retains all identities, completes broad circuits and at least 30 handoffs each; its congestion bound is now 30 seconds. A 56-driver obstruction test verifies fair bounded search access.",
+      "fixtureCorrections": "Sidewalk observer positions are asserted outside compiler road surfaces. Queue recovery follows the same physical driver after local proxy release, avoiding false unresolved stops. Deliberate player obstructions retain separate physical regressions.",
+      "affectedPlan": "Cumulative release-candidate coverage selected. Native, static and city checks run; browser execution excluded by explicit user instruction.",
+      "deployment": "Publish once on PR 73 and report exact source commit, native CI and Pages status in the live PR. Keep draft; no automatic merge."
     }
   },
   "nextTask": {
-    "id": "M13-publish-and-user-feedback",
-    "milestone": "M13",
-    "goal": "Publish the increased traffic density and handle concrete user feedback.",
+    "id": "M14-publish-and-user-feedback",
+    "milestone": "M14",
+    "goal": "Publish the reviewed avenues and transit implementation, then handle concrete user feedback.",
     "actions": [
-      "Publish the reviewed tree on PR 73; local check:fast is complete.",
-      "Report exact commit and bounded native CI / Pages observations.",
-      "Keep PR draft, no automatic merge or browser tests."
+      "Publish the reviewed tree on PR 73; native check:fast and compiler validation pass.",
+      "Report exact source commit and bounded native CI / Pages observations.",
+      "Keep draft; no automatic merge or browser tests."
     ],
     "acceptance": [
-      "Native density and recovery comparisons pass.",
-      "The full native safety net passes.",
-      "Published commit and Pages status are reported in the live PR."
+      "1,000-car/6-bus circulation and physical service regressions pass.",
+      "Full native safety net and compiler parity pass.",
+      "Published source commit and Pages status are reported in the live PR."
     ],
     "readFirst": [
-      "docs/agent-tasks/2026-09-08-more-traffic.md",
+      "docs/agent-tasks/2026-09-08-avenues-and-buses.md",
       "docs/TECHNICAL_ARCHITECTURE.md"
     ]
   },

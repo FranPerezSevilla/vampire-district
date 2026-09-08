@@ -20,16 +20,16 @@ export function driverControls(state, target, targetSpeed, archetype, dt = 0.05)
   else if (Math.abs(speed) > Math.abs(targetSpeed) + 0.5) {
     throttle = -direction * Math.min(1, (Math.abs(speed) - Math.abs(targetSpeed)) / (archetype.brake * dt));
   } else {
-    // Match the shared model's actual acceleration, gearbox and drag. A bounded
-    // scalar search avoids a throttle/coast oscillation at civilian cruise speed.
-    let low = 0.051, high = 1;
-    for (let i = 0; i < 7; i++) {
-      const middle = (low + high) / 2;
-      const next = stepVehicleKinematics(state, { move: { x: steer, y: -direction * middle } }, dt, archetype);
-      if (Math.abs(next.speed) > Math.abs(targetSpeed)) high = middle;
-      else low = middle;
-    }
-    throttle = direction * (low + high) / 2;
+    // Positive throttle is affine within the shared model's current gear.
+    // One low-pressure sample measures its actual torque (including shifts),
+    // avoiding seven full kinematic predictions per driver per frame. Keep the
+    // previous 128-bin pressure resolution so traffic behaviour is unchanged.
+    const minimum = 0.051, resolution = (1 - minimum) / 128;
+    const sample = stepVehicleKinematics(state, { move: { x: steer, y: -direction * minimum } }, dt, archetype);
+    const gain = (Math.abs(sample.speed) - Math.abs(speed)) / minimum;
+    const pressure = gain > 1e-9 ? (Math.abs(targetSpeed) - Math.abs(speed)) / gain : 1;
+    const bin = clamp(Math.floor((pressure - minimum) / resolution), 0, 127);
+    throttle = direction * (minimum + (bin + 0.5) * resolution);
   }
   return { move: { x: Math.abs(speed) < 0.25 && !throttle ? 0 : steer, y: -throttle }, handbrakeHeld: false };
 }

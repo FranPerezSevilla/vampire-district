@@ -10,10 +10,12 @@ import {
   trafficVehicleArchetype
 } from "../phaser/src/data/vehicles.js";
 
-test("vehicle roster exposes fifteen civilian classes and four police classes", () => {
-  assert.equal(CIVILIAN_VEHICLE_ARCHETYPE_IDS.length, 15);
+test("vehicle roster exposes fifteen ambient car classes, a service bus and four police classes", () => {
+  assert.equal(CIVILIAN_VEHICLE_ARCHETYPE_IDS.length, 16);
   assert.equal(POLICE_VEHICLE_ARCHETYPE_IDS.length, 4);
-  assert.equal(Object.keys(VEHICLE_ARCHETYPES).length, 19);
+  assert.equal(Object.keys(VEHICLE_ARCHETYPES).length, 20);
+  assert.ok(CIVILIAN_VEHICLE_ARCHETYPE_IDS.includes("bus"));
+  assert.equal(VEHICLE_ARCHETYPES.bus.trafficWeight, 0, "only scheduled services instantiate buses");
   assert.ok(CIVILIAN_VEHICLE_ARCHETYPE_IDS.includes("hearse"));
   assert.ok(CIVILIAN_VEHICLE_ARCHETYPE_IDS.includes("sports"));
   assert.ok(POLICE_VEHICLE_ARCHETYPE_IDS.includes("police_interceptor"));

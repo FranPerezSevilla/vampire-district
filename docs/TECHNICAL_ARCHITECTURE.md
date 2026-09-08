@@ -448,7 +448,7 @@ precede new arrivals. Cleared portions of a compound crossing are released as
 the buffered rear moves past. Manoeuvre controls are planned at the current
 bounded integration interval and each executed movement is rechecked.
 
-`TrafficMaterializationSystem` owns a fixed pool of 64 civilian proxies, their
+`TrafficMaterializationSystem` owns a fixed pool of 64 local traffic proxies, their
 visuals, residency and conversion into a transient player vehicle on theft.
 Dormant tokens can appear only on a clear approach, outside the camera and
 reserved crossing. Theft retires the driver's materialization token. Proxies are
@@ -461,35 +461,84 @@ route, and local presentation does not interpolate a separate catch-up path.
 The previous cursor/FSM/offset policies remain explicit controlled regression
 harnesses (`driving: false`), with no production movement ownership.
 
-`MacroTrafficPoliceSystem` sizes bootstrap civilian flows from compiler road
-length in both directions and the adjoining districts' traffic density: one car
-per 120 world units at full density, rounded per macro connection. The current
-city yields 437 global drivers. The 64 physical slots are a local capacity, not
-a target number of cars on camera.
+The compiler emits **two lanes per direction on avenues at least 100 units wide**
+(120 in this city), and one per direction on narrower roads: **660 directed
+lanes**. Through traffic and turns retain their lane index; actual capacity
+changes split or merge through validated compiler connectors. A fragment beside
+a chunk seam allocates its available trim to the adjacent junction, preventing
+curb-lane turns from folding backwards. Impossible forward turning arcs are not
+advertised. The driver's whole-body reservations protect these movements; an
+exit-blocked request cannot deny traffic that would free its exit. Only a car
+with a clear approach can reserve entry: a rear car cannot hold a different
+turn over the head of its own queue. Denial
+dependencies include waiting approaches and downstream bodies. The bounded
+manoeuvre search budget serves the least recently attempted eligible driver,
+so early population IDs cannot starve later cars of recovery attempts. Avenue
+presentation adds dashed dividers between the parallel lanes.
+
+`MacroTrafficPoliceSystem` apportions exactly **1,000 civilian cars** using
+road length and district density with a largest-remainder allocation. The
+circuit allocator weights all actual directed lanes, so wide avenues carry
+more demand. The **six scheduled buses** are additional service identities;
+macro civilian conservation still counts only the 1,000 cars. The fixed 64-slot
+local pool is a capacity, not a target number on camera. Eligible buses receive
+priority for free slots without overriding visibility or collision guards.
 
 `TrafficPopulationPolicy` allocates their broad circuits once at bootstrap.
 Eight deterministic alternatives per driver compete against road and district
-capacity; alternatives can originate in underserved districts. Initial phases
-spread cars along clear lane interiors with body separation. A driver can
-retain its one-time entry leg if its circuit has no free initial sample; this
-is counted separately from placements on the recurring loop. Compiler geometry,
+capacity; alternatives can originate in underserved districts. Recurring car
+routes exclude cul-de-sacs, which otherwise become lane-switch shortcuts;
+drivers initially seeded there can still leave. Prescribed bus terminal routes
+explicitly allow them. Initial phases spread cars along clear lane interiors
+with body separation. If coarse samples are full, a finer body-scale search
+finds a clear phase on the same itinerary. The allocator never accepts an
+overlapping entry fallback. Compiler geometry,
 the original off-camera spawn guard, active/resident chunks and local clearance
 still determine physical appearances. No running car is relocated, no circuit
 is replaced, and manual legacy populations retain their supplied bootstrap.
 Diagnostics distinguish circuit-length-weighted planned occupancy from actual
-camera counts. North Harbor remains below its capacity target because the
-chosen broad circuits spend much of their length in other districts.
+camera counts. The planned district shares and measured camera density remain separate metrics.
 
 Materialization copies the pose/navigation fields it consumes; gearbox and
 other physical internals stay in driver state. Physical drivers publish their
 committed slot pose directly, avoiding a duplicate full-city presentation pass.
 Route projection searches only the nearby ordered segment range, and bootstrap
-return legs skip unused destination selection. These optimizations preserve
-driving and itinerary decisions as local capacity increases.
+return legs skip unused destination selection. An ordered Dijkstra heap
+preserves deterministic path ties. A 660-origin audit of the heap substitution,
+before the separate cul-de-sac policy change, matched the former linear scan.
+Scalar throttle control
+uses one shared-model torque sample with the same pressure resolution, and a
+per-tick civilian census avoids repeated macro projections.
 
 Macro traffic receives output-only route accounting; legacy civilian phases
 do not advance while the driver owns traffic. Police travel, streaming,
 campaign vehicles and input retain their existing owners.
+
+`TransitRoutes` selects major curb lanes from that compiler network, then the
+same journey planner builds three prescribed itineraries: **C Circular**, **N
+Norte–Sur** with a return trip, and **E Este–Oeste** with a return trip. Two buses
+per line start at separated stops. `TransitSystem` owns their stop index, lap,
+seven-second dwell and capacity of 24 passengers; `TrafficDriverRuntime` remains
+their sole mover. A missed stop after a physical bypass advances the schedule
+without omitting the remaining stops for an entire lap. A bus displaced beside
+an unreachable stop likewise continues to the next one instead of retaining an
+impossible zero-speed arrival condition.
+
+Waiting commuters are real NpcSystem entities. NpcSystem executes their walk to
+the bus door and away from it, while EntityStreamSystem pins boarding, riding
+and alighting actors. Onboard actors are hidden/inactive; later stops restore
+those same identities. Transfers into/from dormant buses are allowed only off
+screen, preventing visible passengers entering an invisible vehicle. Bus theft
+uses the existing transient VehicleSystem transfer, ejects the driver and actual
+passengers, and retires that service token.
+
+Enter near a bus opens the existing InteractionSystem chooser with **Subir como
+pasajero** and **Robar autobús**. Boarding requires a stopped materialized bus
+and space. Passenger input suppresses walking, weapons and powers; the hidden
+player and camera follow the real bus. Enter requests a safe exit when stopped.
+On-foot impact/crowd/noise paths exclude the rider, checkpoints defer while
+occupied, and hospital recovery or layer changes release the passenger state.
+There is no new input reader, gameplay loop or campaign persistence owner.
 
 ## 14. Motorized police architecture
 

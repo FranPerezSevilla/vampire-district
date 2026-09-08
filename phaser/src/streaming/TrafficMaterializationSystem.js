@@ -1,7 +1,7 @@
 import { AI_STATES } from "../data/ai.js";
 import { LAYERS } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
-import { VEHICLE_OWNERSHIP, trafficVehicleArchetype } from "../data/vehicles.js";
+import { VEHICLE_OWNERSHIP, trafficVehicleArchetype, vehicleArchetype } from "../data/vehicles.js";
 import { paintVehicle } from "../vehicles/VehicleView.js";
 
 const TRAFFIC_ENTER_RADIUS = 30;
@@ -251,11 +251,16 @@ export class TrafficMaterializationSystem {
   }
 
   configureSlotArchetype(slot, token) {
-    const archetype = trafficVehicleArchetype(token?.tokenId);
+    const archetype = token?.archetypeId ? vehicleArchetype(token.archetypeId) : trafficVehicleArchetype(token?.tokenId);
+    if (slot) {
+      slot.transitLineId = token?.transitLineId || null;
+      slot.visual?.routeBadge?.setText?.(slot.transitLineId || "BUS");
+    }
     if (!slot || !archetype || slot.archetypeId === archetype.id) return slot;
     slot.container.removeAll?.(true);
     const definition = {
       id: `traffic:${String(token?.tokenId || slot.slotIndex)}`,
+      transitLineId: token?.transitLineId,
       name: "City traffic",
       archetypeId: archetype.id,
       angle: finite(token?.angle)
@@ -321,7 +326,7 @@ export class TrafficMaterializationSystem {
       }
     }
     const player = this.scene.player;
-    if (!allowPlayer && !this.scene.vehicleSystem?.isDriving?.() && player
+    if (!allowPlayer && !this.scene.vehicleSystem?.isDriving?.() && !this.scene.transitSystem?.isRiding?.() && player
       && Math.hypot(finite(player.x) - token.x, finite(player.y) - token.y) < radius + 24) {
       return false;
     }
@@ -356,7 +361,7 @@ export class TrafficMaterializationSystem {
     if (distanceSquared(token, focus) > this.materializeRadius * this.materializeRadius) return false;
     if (pointInsideCamera(token, camera, SPAWN_CAMERA_MARGIN)) return false;
     if (!this.pointReady(token, false)) return false;
-    const radius = slot?.radius || 16;
+    const radius = slot?.radius || (token.archetypeId ? vehicleRadius(vehicleArchetype(token.archetypeId)) : 16);
     return this.safeFromPersistentVehicles(token, radius)
       && this.safeFromTraffic(token, radius, token.tokenId);
   }
@@ -421,7 +426,8 @@ export class TrafficMaterializationSystem {
     const candidates = tokens
       .filter(token => !this.assignments.has(token.tokenId))
       .map(token => ({ token, distance: distanceSquared(token, focus) }))
-      .sort((left, right) => left.distance - right.distance || left.token.tokenId.localeCompare(right.token.tokenId));
+      .sort((left, right) => Number(Boolean(right.token.transitLineId)) - Number(Boolean(left.token.transitLineId))
+        || left.distance - right.distance || left.token.tokenId.localeCompare(right.token.tokenId));
 
     this.lastCandidateCount = candidates.length;
     this.lastBlockedCandidateCount = 0;
@@ -459,18 +465,18 @@ export class TrafficMaterializationSystem {
     for (const slot of this.pool) {
       if (!slot.tokenId) continue;
       const distance = Math.hypot(slot.x - player.x, slot.y - player.y);
-      if (distance > TRAFFIC_ENTER_RADIUS) continue;
+      if (distance > (slot.transitLineId ? 48 : TRAFFIC_ENTER_RADIUS)) continue;
       options.push({
         id: `steal_${slot.tokenId}`,
         type: "vehicleEnter",
-        label: `Steal ${slot.archetype.label}`,
+        label: slot.transitLineId ? `Autobús ${slot.transitLineId}` : `Steal ${slot.archetype.label}`,
         detail: "ENTER · civilian traffic · occupants aboard",
         priority: 112,
         distance,
         x: slot.x,
         y: slot.y,
         target: slot,
-        run: () => this.hijack(slot.tokenId)
+        run: () => slot.transitLineId ? this.scene.transitSystem.openMenu(slot.tokenId) : this.hijack(slot.tokenId)
       });
     }
     return options;
@@ -554,7 +560,7 @@ export class TrafficMaterializationSystem {
     const slot = this.assignments.get(String(tokenId));
     if (!slot || this.scene.vehicleSystem?.isDriving?.()) return false;
     const distance = Math.hypot(slot.x - finite(this.scene.player?.x), slot.y - finite(this.scene.player?.y));
-    if (distance > TRAFFIC_ENTER_RADIUS + 3) return false;
+    if (distance > (slot.transitLineId ? 48 : TRAFFIC_ENTER_RADIUS + 3)) return false;
 
     const captured = {
       tokenId: slot.tokenId,
@@ -593,7 +599,8 @@ export class TrafficMaterializationSystem {
       return false;
     }
 
-    const occupants = this.spawnOccupants(captured, vehicle.id);
+    const occupants = [...this.spawnOccupants(captured, vehicle.id),
+      ...(this.scene.transitSystem?.evacuate?.(captured.tokenId, captured) || [])];
     this.scene.vehicleSystem.pruneTransientVehicles(MAX_TRANSIENT_TRAFFIC_VEHICLES);
     this.scene.lastActionText += ` ${occupants.length === 1 ? "The occupant jumps out" : `${occupants.length} occupants jump out`} in WTF mode.`;
     this.scene.events?.emit?.("traffic:vehicle-hijacked", {

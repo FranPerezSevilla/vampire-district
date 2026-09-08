@@ -102,6 +102,15 @@ export function paintVehicle(scene, container, definition, archetype) {
     cabinHeight = height * 0.68;
     hoodX = width * 0.38;
     hoodWidth = width * 0.16;
+  } else if (style === "bus") {
+    cabinX = width * 0.32; cabinWidth = width * 0.16;
+    cabinHeight = height * 0.78; hoodX = width * 0.45; hoodWidth = width * 0.05;
+    for (let i = 0; i < 5; i++) {
+      detail(-width * 0.35 + i * width * 0.12, -height * 0.38, width * 0.09, 3, 0x121c28);
+      detail(-width * 0.35 + i * width * 0.12, height * 0.38, width * 0.09, 3, 0x121c28);
+    }
+    detail(-width * 0.08, 0, width * 0.48, height * 0.45, trim, 0.85);
+    detail(width * 0.27, height * 0.48, width * 0.16, 2, trim);
   } else if (style === "limousine") {
     cabinX = -width * 0.05;
     cabinWidth = width * 0.64;
@@ -217,8 +226,11 @@ export function paintVehicle(scene, container, definition, archetype) {
   }).setOrigin(0.5, 1).setRotation(-(Number(definition.angle) || 0));
   label.setResolution?.(3);
   label.setStroke?.("#05060b", 2);
-  container.add([...parts, ...wheels, nose, label]);
-  return { body, cabin, hood, wheels, nose, label, details: parts.slice(3) };
+  const routeBadge = style === "bus" ? scene.add.text(-width * 0.08, 0, definition.transitLineId || "BUS", {
+    fontSize: "10px", fontStyle: "bold", color: "#18202c"
+  }).setOrigin(0.5) : null;
+  container.add([...parts, ...wheels, nose, label, ...(routeBadge ? [routeBadge] : [])]);
+  return { body, cabin, hood, wheels, nose, label, routeBadge, details: parts.slice(3) };
 }
 
 function plainVehicle(vehicle) {

@@ -386,6 +386,16 @@ function drawMajorRoadCentre(graphics, road, fragment) {
   }
 }
 
+export function buildAvenueLaneDividers(road, fragment) {
+  const horizontal = road.orientation === "horizontal" || road.w > road.h;
+  const width = horizontal ? road.h : road.w;
+  if (width < 100 || road.pieceKind !== "segment") return [];
+  return [-1, 1].flatMap(side => buildLocalRoadDashSegments(road, fragment).map(dash => ({
+    ...dash, x: dash.x + (horizontal ? 0 : side * width / 4),
+    y: dash.y + (horizontal ? side * width / 4 : 0)
+  })));
+}
+
 export function installCitySurfacePresentationPolicy(GameSceneClass) {
   const prototype = GameSceneClass?.prototype;
   if (!prototype || prototype.__viceCitySurfacePresentationPolicy) return;
@@ -499,7 +509,13 @@ export function installCitySurfacePresentationPolicy(GameSceneClass) {
 
     this.drawRoadSurfaceDetails(road, fragment);
     const roadClass = inferredRoadClass(road);
-    if (roadClass === "major") drawMajorRoadCentre(this.map, road, fragment);
+    if (roadClass === "major") {
+      drawMajorRoadCentre(this.map, road, fragment);
+      for (const dash of buildAvenueLaneDividers(road, fragment)) {
+        this.map.fillStyle(COLORS.roadStripe, dash.alpha * 0.65);
+        this.map.fillRect(dash.x, dash.y, dash.w, dash.h);
+      }
+    }
     else if (roadClass !== "alley") drawLocalRoadDashes(this.map, road, fragment);
   };
 
