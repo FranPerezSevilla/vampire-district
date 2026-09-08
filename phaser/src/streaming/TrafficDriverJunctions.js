@@ -1,5 +1,5 @@
 import { journeyPoint } from "./TrafficJourneyPlanner.js";
-import { orientedVehicleContact } from "./TrafficPhysicalConsequencesSystem.js";
+import { orientedVehicleContact, orientedTrafficBoxContact, trafficVehicleBox } from "./TrafficPhysicalConsequencesSystem.js";
 import { stepVehicleKinematics } from "../vehicles/VehicleModel.js";
 
 // A permit reserves a path, including short links and the downstream space for
@@ -9,6 +9,8 @@ export function createTrafficDriverJunctions(topology) {
   const maneuvers = new Map();
   let active = new Map();
   const sections = new WeakMap();
+  const paths = new WeakMap();
+  const pathGeometry = new WeakMap();
   const arrivals = new Map();
   const deniedBy = new Map();
   const nodes = new Map();
@@ -22,8 +24,18 @@ export function createTrafficDriverJunctions(topology) {
     }
   }
   let admissions = 0, denials = 0;
+  function sectionAt(list, progress) {
+    let low = 0, high = list.length;
+    while (low < high) {
+      const mid = (low + high) >> 1;
+      if (list[mid].exit < progress) low = mid + 1;
+      else high = mid;
+    }
+    return list[low] || null;
+  }
   function upcoming(driver) {
-    if (sections.has(driver.journey)) return sections.get(driver.journey).find(section => section.exit >= driver.progress) || null;
+    const cached = sections.get(driver);
+    if (cached?.journey === driver.journey && cached.width === driver.archetype.width) return sectionAt(cached.list, driver.progress);
     const stages = driver.journey.stages;
     const result = [];
     for (let index = 0; index < stages.length; index++) {
@@ -48,20 +60,51 @@ export function createTrafficDriverJunctions(topology) {
       const exit = Math.min(driver.journey.length, end + Math.max(0, (exitNode?.radius || 0) - exitTrim) + driver.archetype.width * 0.5 + 10);
       result.push({ key: `${driver.tokenId}:${driver.journey.trip}:${index}`, start: first.start, entry, end, exit, nodeIds });
     }
-    sections.set(driver.journey, result);
-    return result.find(section => section.exit >= driver.progress) || null;
+    sections.set(driver, { journey: driver.journey, width: driver.archetype.width, list: result });
+    return sectionAt(result, driver.progress);
   }
   function path(driver, section) {
+    const start = Math.max(driver.progress, section.start - driver.archetype.width / 2);
+    const cached = paths.get(driver);
+    if (cached?.section === section.key && cached.journey === driver.journey && cached.start === start
+      && cached.width === driver.archetype.width && cached.height === driver.archetype.height) return cached.points;
     const points = [];
-    for (let s = Math.max(driver.progress, section.start - driver.archetype.width / 2); s < section.exit; s += 10) {
-      points.push({ ...journeyPoint(driver.journey, s), archetype: { ...driver.archetype, width: driver.archetype.width + 8, height: driver.archetype.height + 12 } });
+    const archetype = { width: driver.archetype.width + 8, height: driver.archetype.height + 12 };
+    for (let s = start; s < section.exit; s += 10) {
+      points.push({ ...journeyPoint(driver.journey, s), archetype });
     }
     points.push({ ...journeyPoint(driver.journey, section.exit), archetype: driver.archetype });
+    paths.set(driver, { section: section.key, journey: driver.journey, start, width: driver.archetype.width, height: driver.archetype.height, points });
     return points;
   }
+  function geometry(points) {
+    if (pathGeometry.has(points)) return pathGeometry.get(points);
+    const boxes = points.map(point => trafficVehicleBox(point));
+    const cells = new Map();
+    let radius = 0, minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const box of boxes) {
+      radius = Math.max(radius, box.broadRadius);
+      minX = Math.min(minX, box.x - box.broadRadius); maxX = Math.max(maxX, box.x + box.broadRadius);
+      minY = Math.min(minY, box.y - box.broadRadius); maxY = Math.max(maxY, box.y + box.broadRadius);
+      const key = `${Math.floor(box.x / 64)}:${Math.floor(box.y / 64)}`;
+      if (!cells.has(key)) cells.set(key, []);
+      cells.get(key).push(box);
+    }
+    const result = { boxes, cells, radius, minX, minY, maxX, maxY };
+    pathGeometry.set(points, result); return result;
+  }
   function overlaps(left, right) {
-    return left.some(a => right.some(b => Math.hypot(a.x - b.x, a.y - b.y) < (a.archetype.width + a.archetype.height + b.archetype.width + b.archetype.height) / 2
-      && orientedVehicleContact(a, b)));
+    const a = geometry(left), b = geometry(right);
+    if (a.maxX < b.minX || b.maxX < a.minX || a.maxY < b.minY || b.maxY < a.minY) return false;
+    for (const box of a.boxes) {
+      const reach = box.broadRadius + b.radius;
+      for (let x = Math.floor((box.x - reach) / 64); x <= Math.floor((box.x + reach) / 64); x++) {
+        for (let y = Math.floor((box.y - reach) / 64); y <= Math.floor((box.y + reach) / 64); y++) {
+          for (const other of b.cells.get(`${x}:${y}`) || []) if (orientedTrafficBoxContact(box, other)) return true;
+        }
+      }
+    }
+    return false;
   }
   function prepare(drivers, slots, now = 0) {
     deniedBy.clear();

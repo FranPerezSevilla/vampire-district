@@ -165,6 +165,8 @@ export function installTrafficLifecyclePolicy(materializer, {
 
   function macroTokenExists(tokenId) {
     if (!tokenId) return false;
+    const runtime = materializer.driverRuntime?.();
+    if (runtime) return Boolean(runtime.tokenFor(tokenId));
     const tokens = materializer.trafficTokens?.();
     return Array.isArray(tokens) && tokens.some(token => token?.tokenId === tokenId);
   }

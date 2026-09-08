@@ -515,7 +515,7 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
   function attachMacroAccounting() {
     if (macroAccountingProvider) return true;
     if (typeof materializer.macro?.setCivilianRouteAccountingProvider !== "function") return false;
-    macroAccountingProvider = () => runtime?.snapshot?.() || null;
+    macroAccountingProvider = () => runtime?.accountingSnapshot?.() || runtime?.snapshot?.() || null;
     materializer.macro.setCivilianRouteAccountingProvider(macroAccountingProvider);
     return true;
   }
@@ -601,7 +601,6 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
         physicalSpeedFactor(agent)
       )
     });
-    return snapshot();
   }
 
   function start() {
@@ -610,12 +609,13 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
     return snapshot();
   }
 
-  function update(seconds = 0.05) {
+  function update(seconds = 0.05, { diagnostics = true } = {}) {
     if (!enabled && defaultEnabled && !manualPause) {
       activate({ automatic: true, reconcile: false });
     }
-    if (!enabled || !runtime) return snapshot();
-    return advanceRoute(seconds);
+    if (!enabled || !runtime) return diagnostics ? snapshot() : null;
+    advanceRoute(seconds);
+    return diagnostics ? snapshot() : null;
   }
 
   function step(seconds = 0.05) {

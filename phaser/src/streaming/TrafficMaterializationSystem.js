@@ -410,10 +410,16 @@ export class TrafficMaterializationSystem {
     return slot;
   }
 
+  driverRuntime() {
+    const policy = this.__nbdTrafficMultiAgentRouteRuntimePolicy;
+    return policy?.driving ? policy.runtime() : null;
+  }
+
   reconcile(force = false) {
     if (this.destroyed || !this.ready) return false;
-    const tokens = this.trafficTokens();
-    const byId = new Map(tokens.map(token => [token.tokenId, token]));
+    const runtime = this.driverRuntime();
+    const tokens = runtime ? null : this.trafficTokens();
+    const byId = runtime ? { get: id => runtime.tokenFor(id) } : new Map(tokens.map(token => [token.tokenId, token]));
     let changed = false;
 
     for (const slot of this.pool) {
@@ -422,25 +428,25 @@ export class TrafficMaterializationSystem {
       if (!token || !this.eligible(token, true)) changed = this.release(slot) || changed;
     }
 
-    const focus = this.focus();
-    const candidates = tokens
-      .filter(token => !this.assignments.has(token.tokenId))
-      .map(token => ({ token, distance: distanceSquared(token, focus) }))
-      .sort((left, right) => Number(Boolean(right.token.transitLineId)) - Number(Boolean(left.token.transitLineId))
-        || left.distance - right.distance || left.token.tokenId.localeCompare(right.token.tokenId));
-
-    this.lastCandidateCount = candidates.length;
+    this.lastCandidateCount = (runtime?.tokenCount() ?? tokens.length) - this.assignments.size;
     this.lastBlockedCandidateCount = 0;
-    for (const candidate of candidates) {
-      if (this.assignments.size >= this.maxActiveVehicles) break;
-      if (!this.eligible(candidate.token, false)) {
-        this.lastBlockedCandidateCount++;
-        continue;
+    // A full pool still checks retention every frame, but has no allocation
+    // work to do. Filter the physical catchment before sorting free candidates.
+    if (this.assignments.size < this.maxActiveVehicles) {
+      const focus = this.focus(), radiusSquared = this.materializeRadius ** 2;
+      const candidates = (runtime?.materializationTokens() || tokens)
+        .filter(token => !this.assignments.has(token.tokenId) && (!runtime || distanceSquared(token, focus) <= radiusSquared))
+        .map(token => ({ token, distance: distanceSquared(token, focus) }))
+        .sort((left, right) => Number(Boolean(right.token.transitLineId)) - Number(Boolean(left.token.transitLineId))
+          || left.distance - right.distance || left.token.tokenId.localeCompare(right.token.tokenId));
+      for (const candidate of candidates) {
+        if (this.assignments.size >= this.maxActiveVehicles) break;
+        if (!this.eligible(candidate.token, false)) { this.lastBlockedCandidateCount++; continue; }
+        const free = this.pool.find(slot => !slot.tokenId);
+        if (!free) break;
+        this.assign(free, candidate.token);
+        changed = true;
       }
-      const free = this.pool.find(slot => !slot.tokenId);
-      if (!free) break;
-      this.assign(free, candidate.token);
-      changed = true;
     }
 
     for (const [tokenId, slot] of this.assignments) {
@@ -650,7 +656,7 @@ export class TrafficMaterializationSystem {
         width: round(camera.width),
         height: round(camera.height)
       } : null,
-      tokenCount: this.trafficTokens().length,
+      tokenCount: this.driverRuntime()?.tokenCount() ?? this.trafficTokens().length,
       candidateCount: this.lastCandidateCount,
       blockedCandidateCount: this.lastBlockedCandidateCount,
       materializedCount: this.assignments.size,
@@ -677,17 +683,14 @@ export class TrafficMaterializationSystem {
   }
 
   publish(force = false) {
-    const snapshot = this.snapshot();
-    const key = JSON.stringify([
-      snapshot.ready,
-      snapshot.poolSize,
-      snapshot.materialized.map(item => item.tokenId),
-      snapshot.transientVehicleCount,
-      snapshot.transientOccupantCount,
-      snapshot.initializationError
-    ]);
-    if (!force && key === this.lastPublishedKey) return snapshot;
+    // Membership determines publication. Do not construct route/lifecycle and
+    // diagnostic snapshots merely to discover that this key did not change.
+    const key = JSON.stringify([this.ready, this.pool.length, this.pool.filter(slot => slot.tokenId).map(slot => slot.tokenId),
+      this.scene.vehicleSystem?.vehicles?.filter?.(vehicle => vehicle.transient).length || 0,
+      this.spawnedOccupants.length, this.initializationError ? String(this.initializationError.message || this.initializationError) : null]);
+    if (!force && key === this.lastPublishedKey) return null;
     this.lastPublishedKey = key;
+    const snapshot = this.snapshot();
     this.scene.statePublisher?.setMany?.({
       trafficMaterializationText: `Local traffic ${snapshot.materializedCount}/${snapshot.poolSize} · stolen ${snapshot.transientVehicleCount}`,
       trafficMaterializationState: snapshot
@@ -701,7 +704,7 @@ export class TrafficMaterializationSystem {
     window.NBD_TRAFFIC = Object.freeze({
       snapshot: () => this.snapshot(),
       resync: () => this.reconcile(true),
-      tokens: () => this.trafficTokens().map(token => ({ ...token })),
+      tokens: () => structuredClone(this.trafficTokens()),
       blocks: (x, y, radius = 0) => this.blocksVehicle(x, y, radius),
       steal: tokenId => this.hijack(tokenId)
     });

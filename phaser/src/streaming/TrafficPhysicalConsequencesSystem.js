@@ -70,9 +70,27 @@ export function trafficVehicleBox(entity, {
   };
 }
 
+const contactBoxes = new WeakMap();
+function contactBox(entity) {
+  if (!entity || typeof entity !== "object") return trafficVehicleBox(entity);
+  const cached = contactBoxes.get(entity), width = entity.archetype?.width, height = entity.archetype?.height;
+  if (cached && cached.x === entity.x && cached.y === entity.y && cached.angle === entity.angle
+    && cached.width === width && cached.height === height) return cached.box;
+  const box = trafficVehicleBox(entity);
+  contactBoxes.set(entity, { x: entity.x, y: entity.y, angle: entity.angle, width, height, box });
+  return box;
+}
+
 export function orientedVehicleContact(leftEntity, rightEntity) {
-  const left = trafficVehicleBox(leftEntity);
-  const right = trafficVehicleBox(rightEntity);
+  const contact = orientedTrafficBoxContact(contactBox(leftEntity), contactBox(rightEntity));
+  if (!contact) return null;
+  // Contacts are public values; mutations of a returned box cannot poison the
+  // next query. Unchanged bodies only compute trigonometry once across passes.
+  const copy = box => ({ ...box, forward: { ...box.forward }, right: { ...box.right } });
+  return { ...contact, left: copy(contact.left), right: copy(contact.right) };
+}
+
+export function orientedTrafficBoxContact(left, right) {
   const delta = { x: right.x - left.x, y: right.y - left.y };
   if (Math.hypot(delta.x, delta.y) > left.broadRadius + right.broadRadius) return null;
 

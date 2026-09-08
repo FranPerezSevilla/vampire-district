@@ -402,7 +402,7 @@ test("gameplay evaluates actual route-body contact before advancing the multi-ag
     "scene.trafficPhysicalConsequencesSystem?.prepareRouteFrame?.(dt);"
   );
   const routeAdvance = source.indexOf(
-    "scene.trafficLocalAssignmentPolicy?.multiAgentRoutePolicy?.update?.(dt);"
+    "scene.trafficLocalAssignmentPolicy?.multiAgentRoutePolicy?.update?.(dt"
   );
   assert.ok(preflight >= 0);
   assert.ok(routeAdvance > preflight);

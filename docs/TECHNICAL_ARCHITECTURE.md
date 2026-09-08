@@ -417,14 +417,14 @@ Each stable token owns a physical vehicle state and a predefined broad city
 circuit. `TrafficJourneyPlanner` joins a distant outbound shortest path to a
 return path that avoids its directed lanes, except the closing lane. A one-time
 entry leg permits departure from dead ends or approaches outside the cycle.
-At the mid-block seam only measured navigation progress wraps: the itinerary,
+During physical driving, only measured navigation progress wraps at the mid-block seam: the itinerary,
 vehicle identity and physical pose persist. An incomplete network with no broad
 cycle retains a finite reachable leg and stops, without inventing a return road.
 
 `TrafficDriverController` issues throttle, brake, reverse and steering controls to
 `VehicleModel.stepVehicleKinematics`, the same pure model used by the player's
 car. Route samples guide steering and measure progress; they never overwrite a
-spawned car's position or heading. Emergency manoeuvres search reachable poses
+materialized car's position or heading. Emergency manoeuvres search reachable poses
 using the same controls and validate the whole body against pavement, buildings,
 vehicles and the player. Blocked steps stop without axis-aligned slides or
 rotation in place. Normal queues yield; road width can be used when a safe
@@ -494,7 +494,7 @@ with body separation. If coarse samples are full, a finer body-scale search
 finds a clear phase on the same itinerary. The allocator never accepts an
 overlapping entry fallback. Compiler geometry,
 the original off-camera spawn guard, active/resident chunks and local clearance
-still determine physical appearances. No running car is relocated, no circuit
+still determine physical appearances. No materialized car is relocated, no circuit
 is replaced, and manual legacy populations retain their supplied bootstrap.
 Diagnostics distinguish circuit-length-weighted planned occupancy from actual
 camera counts. The planned district shares and measured camera density remain separate metrics.
@@ -507,18 +507,40 @@ return legs skip unused destination selection. An ordered Dijkstra heap
 preserves deterministic path ties. A 660-origin audit of the heap substitution,
 before the separate cul-de-sac policy change, matched the former linear scan.
 Scalar throttle control
-uses one shared-model torque sample with the same pressure resolution, and a
-per-tick civilian census avoids repeated macro projections.
+uses one shared-model torque sample with the same pressure resolution.
 
-The M15 reduction from 1,000 to 600 cars responds to excessive traffic reported
-in manual play. An isolated native Blackwater comparison measured mean pipeline
-cost of 24.67 → 17.29 ms and p95 of 35.83 → 25.96 ms; this is a single paired
-run with CPU profiling, not browser frame rate. Distant drivers still integrate
-physical controls every update, and materialization and diagnostics still
-reconstruct population records. The measured follow-up plan is in
-`docs/agent-tasks/2026-09-08-traffic-load-and-performance.md`. Simulation by
-distance, incremental accounting and cheaper publication are proposals, not
-implemented optimizations.
+M16 keeps pose/navigation tokens as borrowed internal records and updates macro
+counts on lane/stage changes. Macro accounting reads small detached aggregates;
+gameplay advances the route with diagnostics disabled. Public snapshots and
+debug token reads remain detached. Materialization still checks retention and
+clearance each frame, but a full pool skips allocation work and free candidates
+are filtered to the physical catchment before sorting. Publication checks its
+membership key before constructing expensive diagnostics.
+
+The same `TrafficDriverRuntime` schedules unmaterialized, distant civilians at
+**2 Hz**, staggered by identity. Their predefined compiler journey advances
+coarsely; all assigned vehicles, six buses, emergencies and finite routes retain
+shared physical integration. A dormant car wakes within materialization radius
++ 160 units (780 here); an unassigned physical car sleeps only beyond another
+160 units (940 here). Promotion resolves elapsed abstract travel before physical
+integration, outside normal appearance range. Camera/residency/body guards
+still decide appearance. An assigned body is never advanced by coarse route
+sampling, including during camera changes. Bus dwell and passenger exchange
+retain their existing continuously simulated clock.
+
+Clear-road prediction can be reused for at most 0.1 seconds, only with unchanged
+nearby obstacle poses/dimensions, a stable heading, limited movement, no panic
+or recovery, and no approaching junction. Changed obstacles invalidate it
+immediately. Exact whole-body clearance still checks every committed movement.
+Dynamic obstacle cells update after each driver's move and preserve first-blocker
+order. Junction paths reuse body geometry and spatial candidates; contact boxes
+invalidate on position, heading or dimension changes. Single-road convex
+containment avoids allocating footprint samples; junction unions retain the
+original full footprint check.
+
+The 600-car population and bootstrap routes/poses are unchanged from M15. Native
+measurement and the remaining performance limits are documented in
+`docs/agent-tasks/2026-09-08-traffic-performance-implementation.md`.
 
 Macro traffic receives output-only route accounting; legacy civilian phases
 do not advance while the driver owns traffic. Police travel, streaming,

@@ -175,7 +175,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     // Civilian route state advances after the physical gate. Macro traffic then
     // consumes only the conservative route projection for accounting while
     // retaining its independent macro police simulation.
-    scene.trafficLocalAssignmentPolicy?.multiAgentRoutePolicy?.update?.(dt);
+    scene.trafficLocalAssignmentPolicy?.multiAgentRoutePolicy?.update?.(dt, { diagnostics: false });
     scene.macroTrafficPoliceSystem?.update?.(dt);
     scene.trafficMaterializationSystem?.update?.(dt);
     scene.trafficOccupantWitnessSystem?.update?.(dt);

@@ -207,3 +207,43 @@ export function validateTrafficRouteMacroProjection(projection, macroGraph) {
     }
   };
 }
+
+// Output-only accounting. A driver's contribution changes at lane/stage
+// boundaries, not every time its physical position advances a few pixels.
+export function createIncrementalTrafficProjection(topology, macroGraph) {
+  const sourceIndex = macroSourceRoadIndex(macroGraph), records = new Map();
+  const projection = projectTrafficRouteAgentsToMacroCompatibility([], topology, macroGraph);
+  let revision = 0, cached = null;
+  function contribute(record, sign) {
+    projection.totalAgents += sign;
+    projection.stageCounts[record.stage === "lane" ? "lane" : record.stage === "connector" ? "connector" : "other"] += sign;
+    if (Object.hasOwn(projection.districtCounts, record.districtId)) projection.districtCounts[record.districtId] += sign;
+    else projection.unknownDistrictCount += sign;
+    if (record.status === "projected") { projection.projectedAgentCount += sign; projection.edgeCounts[record.macroEdgeId] += sign; }
+    else if (record.status === "ambiguous") projection.ambiguousAgentCount += sign;
+    else projection.unmatchedAgentCount += sign;
+  }
+  return {
+    update(agent) {
+      const previous = records.get(agent.tokenId), provenance = explicitMacroEdgeId(agent);
+      if (previous?.record.laneId === agent.currentLaneId && previous.record.stage === agent.stage && previous.provenance === provenance) return;
+      if (previous) contribute(previous.record, -1);
+      const record = projectTrafficRouteAgentToMacroCompatibility(agent, topology, macroGraph, sourceIndex);
+      records.set(agent.tokenId, { record, provenance }); contribute(record, 1); revision++;
+    },
+    snapshot() {
+      if (cached?.revision !== revision) {
+        const state = { ...projection, edgeCounts: { ...projection.edgeCounts }, districtCounts: { ...projection.districtCounts },
+          stageCounts: { ...projection.stageCounts }, records: [...records.values()].map(({ record }) => record) };
+        cached = { revision, state, validation: validateTrafficRouteMacroProjection(state, macroGraph) };
+      }
+      // Public diagnostics must never hand out the mutable aggregate or records.
+      return structuredClone(cached);
+    },
+    counts() {
+      // The frame pipeline consumes only detached small aggregates.
+      return { ...projection, records: undefined, edgeCounts: { ...projection.edgeCounts },
+        districtCounts: { ...projection.districtCounts }, stageCounts: { ...projection.stageCounts } };
+    }
+  };
+}

@@ -1,14 +1,14 @@
 import { trafficVehicleArchetype } from "../data/vehicles.js";
 import { createVehicleState, stepVehicleKinematics } from "../vehicles/VehicleModel.js";
 import { seedTrafficRouteAgentsFromMacroPopulation } from "./TrafficRoutePopulationSeed.js";
-import { projectTrafficRouteAgentsToMacroCompatibility, validateTrafficRouteMacroProjection } from "./TrafficRouteCompatibilityProjection.js";
+import { createIncrementalTrafficProjection, validateTrafficRouteMacroProjection } from "./TrafficRouteCompatibilityProjection.js";
 import { createTrafficJourneyPlanner, journeyPoint, projectJourney, trafficJourneyHash, pathLength } from "./TrafficJourneyPlanner.js";
 import { driverControls, journeyDrivingTarget, planDriverManeuver, planDriverReverse } from "./TrafficDriverController.js";
 import { createTrafficDriverWorld } from "./TrafficDriverWorld.js";
 import { createTrafficDriverJunctions } from "./TrafficDriverJunctions.js";
 import { createTrafficCircuitAllocation, TRAFFIC_POPULATION_POLICY } from "./TrafficPopulationPolicy.js";
 
-export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology, materializer, speed = 112 }) {
+export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology, materializer, speed = 112, distantSimulation = true }) {
   const scene = materializer.scene;
   const seeded = seedTrafficRouteAgentsFromMacroPopulation(trafficFlows, macroGraph, topology);
   const planner = createTrafficJourneyPlanner(topology);
@@ -49,14 +49,19 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
   let clock = 0, ticks = 0, destroyed = false;
   let planningBudget = 0;
   let planningTokenId = null;
-  let cachedCensus = null;
+  const projection = createIncrementalTrafficProjection(topology, macroGraph);
+  const tokenRecords = new Map(), externalReads = new Set();
+  let liveTokens = [], totalHops = 0;
+  const stats = { physicalSteps: 0, distantSteps: 0, predictionBuilds: 0, predictionReuses: 0 };
   function gunshot(event) {
     const x = Number(event?.x ?? event?.origin?.x ?? scene.player?.x);
     const y = Number(event?.y ?? event?.origin?.y ?? scene.player?.y);
     for (const driver of drivers) if (Math.hypot(driver.pose.x - x, driver.pose.y - y) < 260) driver.panicUntil = clock + 4.2;
   }
   scene.events?.on?.("weapon:fired", gunshot);
-  const onHijack = event => { if (byId.has(event?.tokenId)) hijacked.add(event.tokenId); };
+  const onHijack = event => {
+    if (byId.has(event?.tokenId)) { hijacked.add(event.tokenId); liveTokens = liveTokens.filter(token => token.tokenId !== event.tokenId); }
+  };
   scene.events?.on?.("traffic:vehicle-hijacked", onHijack);
 
   function routeAgent(driver) {
@@ -70,34 +75,54 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
       routeHop: driver.routeHop + laneIndex, trafficMetadata: driver.trafficMetadata };
   }
   function measuredAgent(driver) {
-    return { ...routeAgent(driver),
+    return { ...routeAgent(driver), trafficMetadata: structuredClone(driver.trafficMetadata),
       destinationLaneId: driver.journey.destination, journeyLaneIds: [...driver.journey.laneIds],
       journeyProgress: driver.progress, completedJourneys: driver.completedJourneys,
       circularRoute: driver.journey.circular, circuitLength: driver.journey.circuitLength,
       pose: { ...driver.pose }, controls: structuredClone(driver.controls), reason: driver.reason,
       distanceTravelled: driver.distanceTravelled, adoptedImpacts: driver.adoptedImpacts, rejectedSteps: driver.rejectedSteps };
   }
-  function token(driver, index) {
+  function token(driver, index = 0) {
+    let cached = tokenRecords.get(driver.tokenId);
+    const provenance = driver.trafficMetadata?.macroCompatibility?.edgeId || null;
+    if (cached?.pose === driver.pose && cached.progress === driver.progress && cached.journey === driver.journey
+      && cached.provenance === provenance && cached.hop === driver.routeHop) return cached.value;
     const stage = journeyPoint(driver.journey, driver.progress).segment.stage;
     const lane = topology.lanes[stage.laneId], laneIndex = stage.laneIndex;
     const spawnMargin = driver.archetype.width * 0.5 + 35;
-    // A materialization token needs the current pose and navigation metadata.
-    // Keep gearbox/health/input internals in the driver's physical state; copying
-    // that changing object shape for every candidate dominates dense traffic.
-    return { tokenId: driver.tokenId, tokenIndex: driver.trafficMetadata?.macroCompatibility?.tokenIndex ?? index,
-      edgeId: driver.trafficMetadata?.macroCompatibility?.edgeId || null, direction: lane.direction,
-      archetypeId: driver.archetype.id, transitLineId: driver.transitLineId || null,
-      x: driver.pose.x, y: driver.pose.y, angle: driver.pose.angle, speed: driver.pose.speed,
-      velocityX: driver.pose.velocityX, velocityY: driver.pose.velocityY, routeActive: true, driverActive: true,
-      driverSpawnAllowed: stage.kind === "lane" && driver.progress - stage.start > spawnMargin
+    if (!cached) {
+      cached = { value: { tokenId: driver.tokenId,
+        tokenIndex: driver.trafficMetadata?.macroCompatibility?.tokenIndex ?? index,
+        archetypeId: driver.archetype.id, transitLineId: driver.transitLineId || null, routeActive: true, driverActive: true }, hops: 0 };
+      tokenRecords.set(driver.tokenId, cached);
+    }
+    const value = cached.value;
+    if (cached.stage !== stage || cached.provenance !== provenance || cached.journey !== driver.journey) {
+      Object.assign(value, { edgeId: provenance, direction: lane.direction, routeStage: stage.kind,
+        routeLaneId: stage.laneId, routeConnectorId: stage.connectorId || null,
+        routeNextLaneId: stage.nextLaneId || null, routePreviousLaneId: driver.journey.laneIds[laneIndex - 1] || null,
+        routeRecentLaneIds: driver.journey.laneIds.slice(Math.max(0, laneIndex - 16), laneIndex),
+        routeGeometryId: stage.connectorId || stage.laneId, routeSourceRoadEdgeId: lane.sourceRoadEdgeId,
+        driverDestination: driver.journey.destination });
+      if (!driver.transitLineId) projection.update({ tokenId: driver.tokenId, currentLaneId: stage.laneId,
+        stage: stage.kind, trafficMetadata: driver.trafficMetadata });
+    }
+    Object.assign(value, { x: driver.pose.x, y: driver.pose.y, angle: driver.pose.angle, speed: driver.pose.speed,
+      velocityX: driver.pose.velocityX, velocityY: driver.pose.velocityY,
+      driverSpawnAllowed: driver.simulationTier !== "distant" && stage.kind === "lane" && driver.progress - stage.start > spawnMargin
         && stage.end - driver.progress > spawnMargin && junctions.stopDistance(driver) > 35,
-      routeStage: stage.kind, routeLaneId: stage.laneId, routeConnectorId: stage.connectorId || null,
-      routeNextLaneId: stage.nextLaneId || null, routePreviousLaneId: driver.journey.laneIds[laneIndex - 1] || null,
-      routeRecentLaneIds: driver.journey.laneIds.slice(Math.max(0, laneIndex - 16), laneIndex), routeHop: driver.routeHop + laneIndex,
+      routeHop: driver.routeHop + laneIndex,
       routeStageProgress: Math.max(0, Math.min(1, (driver.progress - stage.start) / Math.max(0.001, stage.end - stage.start))),
-      routeGeometryId: stage.connectorId || stage.laneId, routeSourceRoadEdgeId: lane.sourceRoadEdgeId,
-      driverDestination: driver.journey.destination, driverReason: driver.reason, driverControls: driver.controls };
+      driverReason: driver.reason, driverControls: driver.controls });
+    if (!driver.transitLineId) { totalHops += value.routeHop - cached.hops; cached.hops = value.routeHop; }
+    Object.assign(cached, { stage, pose: driver.pose, progress: driver.progress, journey: driver.journey, provenance, hop: driver.routeHop });
+    return value;
   }
+  function flushExternalReads() {
+    for (const driver of externalReads) { const cached = tokenRecords.get(driver.tokenId); if (cached) cached.pose = null; token(driver); }
+    externalReads.clear();
+  }
+  liveTokens = drivers.map(token);
   function adoptContact(driver, slot) {
     const physical = scene.trafficPhysicalConsequencesSystem;
     const state = physical?.states?.get(driver.tokenId);
@@ -107,7 +132,7 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
     if (displaced) {
       driver.pose = { ...driver.pose, x: slot.x, y: slot.y, angle: slot.angle, travelAngle: slot.angle,
         speed: 0, velocityX: 0, velocityY: 0 };
-      driver.maneuver = null; junctions.releaseManeuver(driver); driver.adoptedImpacts++;
+      driver.maneuver = null; driver.clearPrediction = null; junctions.releaseManeuver(driver); driver.adoptedImpacts++;
     }
     // Consume the impact into actual state once. There is no ideal base to decay
     // back toward; subsequent rejoining must be performed with steering.
@@ -138,6 +163,7 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
     return Boolean(driver.blockerId) || ["physical-disabled", "physical-contact", "obstacle"].includes(driver.reason);
   }
   function drive(driver, dt, active) {
+    stats.physicalSteps++;
     const slot = materializer.assignments.get(driver.tokenId);
     const start = driver.pose;
     const desired = journeyDrivingTarget(driver, driver.panicUntil > clock ? speed : driver.cruiseSpeed);
@@ -154,7 +180,20 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
       reason = "junction-yield";
     }
     let blocker = null;
-    if (active && !driver.maneuver) {
+    const prediction = driver.clearPrediction;
+    const reusePrediction = active && !driver.maneuver && prediction && clock < prediction.until
+      && stopDistance > 110 && driver.wait < 1 && driver.panicUntil <= clock
+      && prediction.journey === driver.journey && prediction.adoptedImpacts === driver.adoptedImpacts
+      && Math.hypot(start.x - prediction.x, start.y - prediction.y) < 8
+      && Math.abs(start.angle - prediction.angle) < 0.03
+      && objects.length === prediction.objects.length && objects.every((object, i) => {
+        const before = prediction.objects[i];
+        return (object.tokenId || object.id) === before.id && object.x === before.x && object.y === before.y
+          && object.angle === before.angle && object.archetype?.width === before.width && object.archetype?.height === before.height;
+      });
+    if (reusePrediction) stats.predictionReuses++;
+    if (active && !driver.maneuver && !reusePrediction) {
+      stats.predictionBuilds++;
       let predicted = start, progress = driver.progress, travelled = 0;
       // Predict using the very same steering and braking model as the committed
       // step. The road path may bend; a straight ray would miss a queued car.
@@ -173,6 +212,12 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
         travelled += Math.hypot(next.x - predicted.x, next.y - predicted.y);
         predicted = next; progress = projectJourney(driver.journey, predicted, progress).progress;
       }
+    }
+    if (active && !driver.maneuver && !reusePrediction) {
+      driver.clearPrediction = blocker ? null : { until: clock + 0.1, x: start.x, y: start.y, angle: start.angle,
+        journey: driver.journey, adoptedImpacts: driver.adoptedImpacts,
+        objects: objects.map(object => ({ id: object.tokenId || object.id, x: object.x, y: object.y, angle: object.angle,
+          width: object.archetype?.width, height: object.archetype?.height })) };
     }
     driver.blockerId = blocker?.tokenId || blocker?.id || null;
     const physical = scene.trafficPhysicalConsequencesSystem?.states?.get(driver.tokenId);
@@ -249,7 +294,8 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
     publish(driver, slot);
     // Commit before the next driver checks clearance. Materialization renders
     // this exact state later; there is no independent presentation catch-up.
-    if (slot) materializer.updateSlot(slot, token(driver, 0));
+    const currentToken = token(driver);
+    if (slot) { materializer.updateSlot(slot, currentToken); world.update(slot); }
   }
   function step(seconds = 0.05) {
     if (destroyed) throw new Error("Traffic driver runtime is destroyed.");
@@ -259,6 +305,7 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
       const dt = Math.min(0.05, remaining); remaining -= dt; clock += dt;
       const active = drivers.filter(driver => materializer.assignments.has(driver.tokenId));
       for (const driver of active) adoptContact(driver, materializer.assignments.get(driver.tokenId));
+      world.prepare();
       junctions.prepare(active, [...materializer.assignments.values()], clock);
       // A fixed CPU budget must not permanently favour early population IDs.
       // Give the next search to the eligible driver that has waited longest
@@ -270,9 +317,57 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
           && driver.wait > (leader ? 4 : 0.75) && clock >= driver.retryAt
           && (!leader || blockedQueue(leader));
       }).sort((a, b) => a.retryAt - b.retryAt || b.wait - a.wait || a.tokenId.localeCompare(b.tokenId))[0]?.tokenId || null;
-      for (const driver of drivers) if (!hijacked.has(driver.tokenId)) drive(driver, dt, materializer.assignments.has(driver.tokenId));
+      const focus = materializer.focus?.();
+      const wakeRadius = Number(materializer.materializeRadius) + 160;
+      const canSleep = distantSimulation && focus && Number.isFinite(wakeRadius);
+      for (const driver of drivers) {
+        if (hijacked.has(driver.tokenId)) continue;
+        const assigned = materializer.assignments.has(driver.tokenId);
+        const radius = driver.simulationTier === "physical" ? wakeRadius + 160 : wakeRadius;
+        const near = !canSleep || assigned || driver.transitLineId || driver.maneuver || driver.panicUntil > clock
+          || !driver.journey.circular || Math.hypot(driver.pose.x - focus.x, driver.pose.y - focus.y) <= radius;
+        if (near) {
+          if (driver.simulationTier === "distant" && driver.distantElapsed > 0 && !assigned) advanceDistant(driver, driver.distantElapsed);
+          driver.distantElapsed = 0; driver.simulationTier = "physical";
+          drive(driver, dt, assigned);
+        } else {
+          if (driver.simulationTier !== "distant") {
+            driver.simulationTier = "distant";
+            driver.distantElapsed = 0;
+            driver.distantDue = clock + (trafficJourneyHash(driver.tokenId) % 500) / 1000;
+            tokenRecords.get(driver.tokenId).pose = null;
+            token(driver);
+          }
+          driver.distantElapsed += dt;
+          if (clock + 1e-8 >= driver.distantDue) {
+            advanceDistant(driver, driver.distantElapsed);
+            driver.distantElapsed = 0; driver.distantDue = clock + 0.5;
+          }
+        }
+      }
       ticks++;
     }
+  }
+  function advanceDistant(driver, seconds) {
+    // Only unmaterialized civilian identities enter this tier. Their compiler
+    // journey and clock advance coarsely; no rendered body is moved this way.
+    // Promotion happens beyond the materialization radius. Buses always retain
+    // full kinematics so service dwell and passenger exchange keep one clock.
+    if (materializer.assignments.has(driver.tokenId)) throw new Error("A materialized driver cannot use distant progression.");
+    const desired = journeyDrivingTarget(driver, driver.cruiseSpeed);
+    const distance = desired.speed * seconds;
+    driver.progress += distance; driver.distanceTravelled += distance;
+    while (driver.progress >= driver.journey.destinationProgress) {
+      driver.progress -= driver.journey.circuitLength;
+      driver.routeHop += driver.journey.circuitLaneCount; driver.completedJourneys++;
+    }
+    const point = journeyPoint(driver.journey, driver.progress);
+    driver.pose = { ...driver.pose, x: point.x, y: point.y, angle: point.angle, travelAngle: point.angle,
+      speed: desired.speed, velocityX: Math.cos(point.angle) * desired.speed, velocityY: Math.sin(point.angle) * desired.speed,
+      parked: false };
+    driver.wait = 0; driver.blockerId = null; driver.reason = "distant-cruise"; driver.clearPrediction = null;
+    stats.distantSteps++;
+    token(driver);
   }
   function behaviorSnapshot() {
     const vehicles = drivers.filter(driver => materializer.assignments.has(driver.tokenId)).map(driver => ({
@@ -286,33 +381,36 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
       geometryAuthority: "compiler-local-topology", lateralSteeringAuthority: false, speedAuthority: "throttle-brake-reverse",
       activeVehicles: vehicles.length, vehicles };
   }
-  function snapshot() {
-    // Accounting and materialization need route identifiers, not deep copies
-    // of every itinerary, pose and input frame in the larger city population.
-    if (cachedCensus?.ticks !== ticks) {
-      const agents = civilianDrivers.map(routeAgent);
-      const projection = projectTrafficRouteAgentsToMacroCompatibility(agents, topology, macroGraph);
-      cachedCensus = { ticks, agents, projection, validation: validateTrafficRouteMacroProjection(projection, macroGraph) };
-    }
-    const { agents, projection, validation } = cachedCensus;
-    return { driverActive: true, clockSeconds: clock, ticks, seededAgentCount: civilianDrivers.length, serviceVehicleCount: drivers.length - civilianDrivers.length, populationAllocation,
+  function accountingSnapshot() {
+    flushExternalReads();
+    const state = projection.counts(), validation = validateTrafficRouteMacroProjection(state, macroGraph);
+    return { seededAgentCount: civilianDrivers.length, serviceVehicleCount: drivers.length - civilianDrivers.length,
       totalMacroTokens: seeded.totalMacroTokens, unseededAgentCount: seeded.unseeded.length,
       populationConserved: civilianDrivers.length + seeded.unseeded.length === seeded.totalMacroTokens,
-      materializationTokenCount: drivers.length - hijacked.size, hijackedAgentCount: hijacked.size,
+      materializationTokenCount: liveTokens.length, hijackedAgentCount: hijacked.size,
       projectionValid: validation.valid, projectionErrors: validation.errors,
-      projectedAgentCount: projection.projectedAgentCount, ambiguousAgentCount: projection.ambiguousAgentCount,
-      unmatchedAgentCount: projection.unmatchedAgentCount, districtCounts: projection.districtCounts, edgeCounts: projection.edgeCounts,
-      districtPopulationCount: agents.length, districtPopulationConserved: true,
-      totalJunctionDecisions: agents.reduce((sum, agent) => sum + agent.routeHop, 0),
-      totalStageTransitions: agents.reduce((sum, agent) => sum + agent.routeHop * 2, 0),
+      projectedAgentCount: state.projectedAgentCount, ambiguousAgentCount: state.ambiguousAgentCount,
+      unmatchedAgentCount: state.unmatchedAgentCount, districtCounts: state.districtCounts, edgeCounts: state.edgeCounts,
+      districtPopulationCount: civilianDrivers.length, districtPopulationConserved: true };
+  }
+  function snapshot() {
+    const flow = junctions.snapshot();
+    return { ...accountingSnapshot(), driverActive: true, clockSeconds: clock, ticks,
+      populationAllocation: structuredClone(populationAllocation),
+      totalJunctionDecisions: totalHops, totalStageTransitions: totalHops * 2,
       blockedAgentCount: drivers.filter(driver => driver.wait > 1).length,
-      junctionFlowActive: true, junctionFlow: junctions.snapshot(), junctionFlowState: junctions.snapshot(),
-      junctionActivePermitCount: junctions.snapshot().activePermitCount,
+      performance: { ...stats, physicalDrivers: drivers.filter(driver => !hijacked.has(driver.tokenId) && driver.simulationTier !== "distant").length,
+        distantDrivers: drivers.filter(driver => !hijacked.has(driver.tokenId) && driver.simulationTier === "distant").length },
+      junctionFlowActive: true, junctionFlow: flow, junctionFlowState: structuredClone(flow),
+      junctionActivePermitCount: flow.activePermitCount,
       routeBehavior: behaviorSnapshot(), movementAuthority: "shared-vehicle-kinematics",
       speedAuthority: "throttle-brake-reverse", routeProgressAuthority: "measured-physical-pose" };
   }
-  return { step, snapshot, agents: () => drivers.map(measuredAgent), materializationTokens: () => drivers.filter(driver => !hijacked.has(driver.tokenId)).map(token),
-    behaviorSnapshot, driver: id => { cachedCensus = null; return byId.get(id); },
+  return { step, snapshot, accountingSnapshot, agents: () => drivers.map(measuredAgent),
+    materializationTokens() { flushExternalReads(); return liveTokens; },
+    tokenCount: () => liveTokens.length,
+    tokenFor(id) { flushExternalReads(); return hijacked.has(id) ? null : tokenRecords.get(id)?.value; },
+    behaviorSnapshot, driver(id) { const driver = byId.get(id); if (driver) externalReads.add(driver); return driver; },
     destroy() {
       destroyed = true; scene.events?.off?.("weapon:fired", gunshot);
       scene.events?.off?.("traffic:vehicle-hijacked", onHijack); junctions.clear();

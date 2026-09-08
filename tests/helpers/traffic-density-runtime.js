@@ -77,26 +77,27 @@ export async function createTrafficDensityRuntime({ center, historicalPopulation
   const route = policy.multiAgentRoutePolicy;
   let frames = 0, visibleSum = 0, nearbySum = 0, maxNearby = 0, overlaps = 0, emptyFrames = 0;
   const frameTimes = [], seen = new Set(), records = new Map(), longStops = [];
-  function step(count = 1) {
+  let elapsed = 0, measuredFrames = 0;
+  function step(count = 1, dt = 0.05) {
     for (let i = 0; i < count; i++) {
       const start = performance.now();
       city.update();
-      physical.prepareRouteFrame(0.05);
-      route.update(0.05);
-      macro.update(0.05);
-      materializer.update(0.05);
-      physical.update(0.05);
+      physical.prepareRouteFrame(dt);
+      route.update(dt, { diagnostics: false });
+      macro.update(dt);
+      materializer.update(dt);
+      physical.update(dt);
       scene.transitSystem?.update();
       frameTimes.push(performance.now() - start);
-      frames++;
+      frames++; elapsed += dt;
       const slots = [...materializer.assignments.values()];
       let visible = 0;
       for (const slot of slots) {
         const shown = pointInsideCamera(slot, cameraWorldBounds(scene));
         if (shown) { visible++; seen.add(slot.tokenId); }
         const previous = records.get(slot.tokenId);
-        const stopped = previous && Math.hypot(slot.x - previous.x, slot.y - previous.y) < 0.01 ? previous.stopped + 0.05 : 0;
-        if (stopped >= 15 && previous.stopped < 15) longStops.push({ tokenId: slot.tokenId, x: slot.x, y: slot.y, observedAt: frames * 0.05, recovered: false });
+        const stopped = previous && Math.hypot(slot.x - previous.x, slot.y - previous.y) < 0.01 ? previous.stopped + dt : 0;
+        if (stopped >= 15 && previous.stopped < 15) longStops.push({ tokenId: slot.tokenId, x: slot.x, y: slot.y, observedAt: elapsed, recovered: false });
         records.set(slot.tokenId, { x: slot.x, y: slot.y, stopped, maxStop: Math.max(previous?.maxStop || 0, stopped) });
       }
       // Follow the same physical driver after its proxy leaves the streamed
@@ -108,19 +109,19 @@ export async function createTrafficDensityRuntime({ center, historicalPopulation
       }
       for (let a = 0; a < slots.length; a++) for (let b = a + 1; b < slots.length; b++) if (orientedVehicleContact(slots[a], slots[b])) overlaps++;
       // Ignore the first ten seconds while cars enter from outside the camera.
-      if (frames > 200) { visibleSum += visible; nearbySum += slots.length; if (!visible) emptyFrames++; }
+      if (elapsed > 10 + 1e-7) { measuredFrames++; visibleSum += visible; nearbySum += slots.length; if (!visible) emptyFrames++; }
       maxNearby = Math.max(maxNearby, slots.length);
     }
   }
   return { scene, city, macro, materializer, route, step,
     metrics({ recoveryGrace = 15 } = {}) {
-      const times = [...frameTimes].sort((a, b) => a - b), samples = Math.max(1, frames - 200);
-      return { population: materializer.trafficTokens().length, seconds: frames * 0.05,
+      const times = [...frameTimes].sort((a, b) => a - b), samples = Math.max(1, measuredFrames);
+      return { population: materializer.trafficTokens().length, seconds: elapsed,
         visibleAverage: visibleSum / samples, nearbyAverage: nearbySum / samples, emptyFraction: emptyFrames / samples,
         seen: seen.size, maxNearby, spawns, visibleSpawns, overlaps, contacts: physical.totalTrafficContacts,
         maxStop: Math.max(0, ...[...records.values()].map(record => record.maxStop)),
         longStops: longStops.length, recoveredLongStops: longStops.filter(episode => episode.recovered).length,
-        unresolvedLongStops: longStops.filter(episode => !episode.recovered && episode.observedAt <= frames * 0.05 - recoveryGrace).length,
+        unresolvedLongStops: longStops.filter(episode => !episode.recovered && episode.observedAt <= elapsed - recoveryGrace).length,
         frameP95Ms: times[Math.floor(times.length * 0.95)], frameMeanMs: times.reduce((sum, t) => sum + t, 0) / times.length };
     },
     destroy() { scene.transitSystem?.destroy(); mass.destroy(); physical.destroy(); policy.destroy(); materializer.destroy(); macro.destroy(); city.destroy(); }
