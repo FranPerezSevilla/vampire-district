@@ -2,7 +2,7 @@ import { orientedVehicleContact } from "./TrafficPhysicalConsequencesSystem.js";
 import { journeyPoint, pathLength, trafficJourneyHash } from "./TrafficJourneyPlanner.js";
 
 export const TRAFFIC_POPULATION_POLICY = "road-capacity-circuits-v1";
-export const CITY_TRAFFIC_POPULATION = 1000;
+export const CITY_TRAFFIC_POPULATION = 600;
 const populationByGraph = new WeakMap();
 
 export function trafficFlowPopulation(graph, edge) {

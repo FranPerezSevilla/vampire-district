@@ -476,11 +476,11 @@ manoeuvre search budget serves the least recently attempted eligible driver,
 so early population IDs cannot starve later cars of recovery attempts. Avenue
 presentation adds dashed dividers between the parallel lanes.
 
-`MacroTrafficPoliceSystem` apportions exactly **1,000 civilian cars** using
+`MacroTrafficPoliceSystem` apportions exactly **600 civilian cars** using
 road length and district density with a largest-remainder allocation. The
 circuit allocator weights all actual directed lanes, so wide avenues carry
 more demand. The **six scheduled buses** are additional service identities;
-macro civilian conservation still counts only the 1,000 cars. The fixed 64-slot
+macro civilian conservation still counts only the 600 cars. The fixed 64-slot
 local pool is a capacity, not a target number on camera. Eligible buses receive
 priority for free slots without overriding visibility or collision guards.
 
@@ -509,6 +509,16 @@ before the separate cul-de-sac policy change, matched the former linear scan.
 Scalar throttle control
 uses one shared-model torque sample with the same pressure resolution, and a
 per-tick civilian census avoids repeated macro projections.
+
+The M15 reduction from 1,000 to 600 cars responds to excessive traffic reported
+in manual play. An isolated native Blackwater comparison measured mean pipeline
+cost of 24.67 → 17.29 ms and p95 of 35.83 → 25.96 ms; this is a single paired
+run with CPU profiling, not browser frame rate. Distant drivers still integrate
+physical controls every update, and materialization and diagnostics still
+reconstruct population records. The measured follow-up plan is in
+`docs/agent-tasks/2026-09-08-traffic-load-and-performance.md`. Simulation by
+distance, incremental accounting and cheaper publication are proposals, not
+implemented optimizations.
 
 Macro traffic receives output-only route accounting; legacy civilian phases
 do not advance while the driver owns traffic. Police travel, streaming,

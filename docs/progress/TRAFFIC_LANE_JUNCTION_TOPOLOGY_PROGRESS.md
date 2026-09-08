@@ -946,3 +946,21 @@ Every viewpoint records **zero contacts, overlaps and guarded-camera spawns**, n
 **897/897 native tests pass**, plus static ownership of 41 browser specs across 8 suites. A 300-second service test verifies repeated stops and real boarding/alighting, chooser/rider/theft boundaries and conservation. The 32-car three-minute cohort completes broad circuits with stable identities and at least 30 handoffs each. Its changed four-lane congestion bound is 30 seconds; the observed 20.3-second queue clears. A 56-driver obstruction case verifies fair access to bounded recovery searches.
 
 City validation reports **0 errors / 0 warnings, 87.9/A** and the committed lane pack exactly matches compiler output. The cumulative affected plan selects release-candidate coverage; browser execution remains excluded by the user. Publish the reviewed tree on PR 73, report the exact source commit and bounded CI/Pages observations in the live PR, and keep the PR draft without merging.
+
+## M15 — lower traffic load and measured performance plan — 2026-09-08
+
+The user accepted reducing excessive traffic to **600 civilian cars** and asked how to cut runtime cost substantially. The single population authority now applies that count; the six service buses, two lanes per direction on avenues, broad circuits and 64-slot local capacity remain. No generated geometry or driver behaviour changed.
+
+Sequential native CPU comparisons at the same Blackwater viewpoint measured **24.67 → 17.29 ms mean** and **35.83 → 25.96 ms p95**, around 30% less mean cost. Setup decreased from 11.09 to 7.60 seconds. These are single paired traffic-pipeline measurements with Node inspector, not browser FPS or complete gameplay. Repeated token/diagnostic reconstruction, all-city physical integration and local path/body checks are the principal follow-up areas identified in the profile. The implementation sequence and continuity requirements are documented in `docs/agent-tasks/2026-09-08-traffic-load-and-performance.md`; none of that proposed optimization architecture is implemented in M15.
+
+Validation: **897/897 native tests pass**, plus static ownership of 41 browser specs across eight suites. City validation passes with zero errors/warnings and 87.9/A. The population audit retains 567/574 eligible directed lanes and all fourteen districts, with district share error 0.04748.
+
+| Three-minute viewpoint | Visible mean | Distinct vehicles | Longest stop |
+| --- | ---: | ---: | ---: |
+| Old Quarter | 3.08 | 49 | 25.45 s |
+| Blackwater | 29.01 | 108 | 35.70 s |
+| North Harbor | 12.33 | 128 | 7.05 s |
+
+Every fixture has zero contacts, overlaps, guarded-camera spawns and old unresolved queues. Blackwater still concentrates traffic and can wait longer than the previous cohort: fewer global cars do not guarantee lower local density. These native cases do not resolve or disprove the user's interactive-blockage report.
+
+The cumulative affected plan selects release-candidate coverage; native/static and city checks run, with browser execution excluded by user instruction. Publish the existing PR branch and report exact head plus bounded CI/Pages observations in the live PR. Keep draft; no automatic merge.

@@ -44,7 +44,7 @@ const viewpoints = [
   { name: "north-harbor", center: { x: 4420, y: 880 } }
 ];
 
-test("1,000 cars cover both avenue lanes and all districts, with bounded local traffic and recovering queues", async t => {
+test("600 cars cover both avenue lanes and all districts, with bounded local traffic and recovering queues", async t => {
   let canonicalPoses = null;
   for (const viewpoint of viewpoints) {
     const system = await createTrafficDensityRuntime({ center: viewpoint.center, transit: true });
@@ -81,16 +81,16 @@ test("1,000 cars cover both avenue lanes and all districts, with bounded local t
         }
         t.diagnostic(JSON.stringify({ coverage: coverage.lanes, deviation }));
       } else assert.deepEqual(poses, canonicalPoses, "camera position does not change the city population");
-      assert.equal(allocation.population, 1000);
+      assert.equal(allocation.population, 600);
       assert.equal(allocation.districts.length, 14);
       assert.ok(allocation.districts.every(district => district.planned > 0 && district.initiallyPlaced > 0));
       system.step(3600);
       const result = system.metrics({ recoveryGrace: 60 });
-      assert.equal(result.population, 1006);
+      assert.equal(result.population, 606);
       assert.equal(runtime.snapshot().serviceVehicleCount, 6);
       assert.equal(runtime.snapshot().populationConserved, true);
       assert.equal(result.visibleSpawns, 0); assert.equal(result.overlaps, 0); assert.equal(result.contacts, 0);
-      assert.ok(result.visibleAverage > (viewpoint.name === "old-quarter" ? 5 : 12));
+      assert.ok(result.visibleAverage > (viewpoint.name === "old-quarter" ? 3 : 8));
       assert.ok(result.maxNearby <= 64);
       // At this demand legitimate queues last longer than the former 437-car
       // baseline. A full minute without recovery is a deadlock, not progress.
@@ -101,10 +101,10 @@ test("1,000 cars cover both avenue lanes and all districts, with bounded local t
   }
 });
 
-test("largest-remainder allocation conserves exactly 1,000 identities across the macro graph", () => {
+test("largest-remainder allocation conserves exactly 600 identities across the macro graph", () => {
   const graph = JSON.parse(readFileSync(new URL("../phaser/assets/city/packs/macro-graph.json", import.meta.url)));
   const counts = graph.edgeIds.map(id => trafficFlowPopulation(graph, graph.edges[id]).tokenCount);
-  assert.equal(counts.reduce((a, b) => a + b, 0), 1000);
+  assert.equal(counts.reduce((a, b) => a + b, 0), 600);
   assert.ok(counts.every(count => count > 0));
   const before = [...counts];
   for (const edge of Object.values(graph.edges)) edge.travelSeconds = 0.01;
