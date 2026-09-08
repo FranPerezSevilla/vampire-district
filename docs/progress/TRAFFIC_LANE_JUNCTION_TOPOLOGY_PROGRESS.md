@@ -1,0 +1,980 @@
+# Traffic lane / junction topology progress
+
+Append-only execution log for PR #73 (`codex/traffic-junction-topology`).
+
+Canonical current state lives in `docs/progress/traffic-lane-junction-topology-status.json`; this file records how that state was reached and why decisions were made.
+
+---
+
+## 2026-08-21 — M0 foundation implemented
+
+### Problem carried from PR #71
+
+An earlier continuity experiment used macro street connectivity as local driving authority. Manual playtest showed the abstraction was invalid: civilian cars could cross sidewalks/buildings, shortcut between intersections and enter the wrong side of roads.
+
+The unsafe runtime activation was removed before PR #71 merged. #71 intentionally left authored local lanes as movement authority and established lifecycle retention/police behaviour independently.
+
+### Decision
+
+Create a new lane-level topology rather than trying to make the macro graph more geometric.
+
+Target path:
+
+`directed authored lane -> validated connector micro-lane -> directed authored lane`
+
+The macro layer may later own stable route identity/load, but it will never own local path coordinates.
+
+---
+
+## 2026-08-21 — M0.1–M0.5 directed topology and connector geometry
+
+### Implemented
+
+Added `phaser/src/streaming/TrafficLaneJunctionTopology.js` with:
+
+- directed lane identity (`edgeId + direction`);
+- geometric lane start/end ownership by authored junction;
+- incoming/outgoing lane indexing per junction;
+- deterministic legal continuation selection;
+- immediate U-turn avoidance when alternatives exist;
+- straight/left/right/U-turn classification;
+- sampled connector curves from exact incoming endpoint to exact outgoing start;
+- junction-envelope safety measurement;
+- connector IDs suitable for micro-lane injection.
+
+### Key architectural choice
+
+Connectors use exact lane endpoints and authored junction authority. They are not curves toward macro district/node centres. This guarantees that the eventual route stage change can occur without resetting the vehicle to a remote coordinate.
+
+### Tests
+
+Added `tests/traffic-lane-junction-topology.test.js` covering:
+
+- directed endpoint ownership;
+- legal outgoing choices;
+- deterministic U-turn avoidance;
+- exact connector endpoints;
+- junction-envelope confinement;
+- curve bending through junction authority rather than block-level shortcut geometry.
+
+---
+
+## 2026-08-21 — M0.6 read-only runtime installation
+
+### Implemented
+
+`TrafficLocalAssignmentPolicy` installs the lane/junction topology after lane-manifest initialization.
+
+Validated connector micro-lanes are injected into the loaded lane manifest as `traffic-connector:*` edges for lookup/diagnostics.
+
+### Safety boundary
+
+No traffic token is assigned to connector micro-lanes yet.
+
+Current movement remains owned by the pre-existing authored local lane path. This makes M0 safe to ship/test without altering driving behaviour.
+
+Diagnostics explicitly report:
+
+- topology readiness;
+- lane/junction/connection counts;
+- unsafe connector count;
+- injected connector count;
+- current lane authority remains `authored-local-lanes`.
+
+---
+
+## 2026-08-21 — M0.7/M0.8 validation complete
+
+### CI evidence
+
+Implementation head: `f481add4c79d6705de017e67e08810de35a24347`
+
+GitHub Tests #2046 / run `32472690729`:
+
+- `unit-tests` — success;
+- `browser-boot` — success;
+- `browser-campaign` — success;
+- `browser-systems (shard 1/3)` — success;
+- `browser-systems (shard 2/3)` — success;
+- `browser-systems (shard 3/3)` — success;
+- building visual review — skipped by workflow conditions.
+
+### Result
+
+M0 is complete: topology exists, is tested, is loaded read-only and does not change visible traffic movement.
+
+---
+
+## 2026-08-21 — Autonomous continuation package created
+
+### Reason
+
+PR #73 is expected to continue over multiple sessions/agents. Chat history must not be required to understand architecture, current state or the next safe task.
+
+### Added canonical handoff files
+
+- `docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md`
+- `docs/agents/TRAFFIC_LANE_JUNCTION_TOPOLOGY_AGENT.md`
+- `docs/progress/traffic-lane-junction-topology-status.json`
+- this append-only progress log
+
+The original task boundary remains:
+
+- `docs/agent-tasks/2026-08-21-traffic-lane-junction-topology.md`
+
+### Roadmap shape
+
+- M0 — read-only topology foundation — complete
+- M1 — production topology audit and hard safety contract — next
+- M2 — pure stable route-agent model
+- M3 — shadow macro continuity bridge
+- M4 — local continuous traversal harness
+- M5 — lifecycle/materialization/pool retention
+- M6 — opt-in browser activation
+- M7 — junction occupancy/yielding/conflicts
+- M8 — default runtime activation + macro migration
+- M9 — legacy cleanup + user gameplay validation gate
+
+### Locked rules
+
+- macro graph does not provide local path geometry;
+- no free-form drive-toward-next-lane steering;
+- no position snap at route-stage boundaries;
+- connector geometry must stay inside authored junction authority;
+- current local lane follower is reused rather than replaced;
+- stable token + pool slot survive crossing;
+- no normal crossing despawn/eviction;
+- `MacroTrafficRouteContinuityPolicy` and `TrafficIntentDrivingPolicy` are not re-enabled wholesale;
+- final merge requires explicit user gameplay approval.
+
+---
+
+## 2026-08-21 — M1.1 production manifest audit complete
+
+### Implementation
+
+Head `6e098646c93aebfe1db58585a11e2b85dfba173e` added deterministic production diagnostics in `TrafficLaneJunctionTopology` and `tests/traffic-lane-junction-production-audit.test.js`.
+
+The audit reports unmatched/ambiguous endpoints, orphan lanes, rejected connectors, duplicate identities, endpoint continuity, tangent continuity and turn-type distribution without changing visible traffic.
+
+### CI evidence
+
+GitHub Tests #2053 / run `32475274379` — full workflow success:
+
+- unit-tests — success;
+- browser-boot — success;
+- browser-campaign — success;
+- browser-systems 1/3 — success;
+- browser-systems 2/3 — success;
+- browser-systems 3/3 — success.
+
+### Production findings
+
+Legacy `traffic-lanes.json.edges` audit:
+
+- 48 directed legacy lanes;
+- 71 junction markers;
+- 99 candidate connectors;
+- 19 orphan directed lanes;
+- 24 unmatched endpoints;
+- 14 ambiguous endpoint/junction matches;
+- 0 endpoint-position continuity failures;
+- 96 tangent continuity failures;
+- 71/99 candidate connectors classified as U-turns;
+- 0 duplicate connector IDs;
+- 0 duplicate lane-pair IDs.
+
+### Architectural diagnosis
+
+Inspection of `tools/city-compiler/district-streaming.js` showed that legacy traffic `edges` are built by `buildMacroAndLanes(...)` as long district-anchor/portal paths. A single edge can traverse multiple real road-network nodes. Therefore its start/end are not a physical lane segment's two junction endpoints.
+
+The runtime M0 inference "legacy edge endpoint -> nearby junction envelope" is consequently not a valid production activation model. The large ambiguity/orphan/tangent counts are symptoms of the data-contract mismatch, not tuning values to hide with larger radii.
+
+### Decision
+
+Do not repair M0 activation by increasing endpoint tolerances or merely smoothing its quadratic curves.
+
+The real local topology must be derived one-to-one from compiler `network.segments`, where `from` and `to` node IDs are explicit.
+
+M2 is blocked until this M1 correction is complete.
+
+---
+
+## 2026-08-21 — M1.2 compiler-owned directed lane graph started
+
+### Implemented
+
+Added `tools/city-compiler/traffic-lane-topology.js`.
+
+The pure compiler topology:
+
+- emits exactly two directed lanes for each district-streaming `network.segment`;
+- uses compiler `fromNodeId` / `toNodeId` ownership rather than nearest-junction geometry;
+- offsets both directions to the right-hand side of travel;
+- preserves source segment, road edge, district, width/class/kind metadata;
+- builds legal outgoing lane IDs at the exact shared compiler node;
+- marks same-source-segment reversal as U-turn;
+- excludes immediate U-turns from preferred choices whenever another road segment exists;
+- identifies explicit dead-end nodes where reversal may be the only preferred continuation;
+- emits deterministic, serializable transition records;
+- includes validation for node ownership, right-side lane offset and preferred-U-turn legality.
+
+Added `tests/traffic-lane-topology-compiler.test.js` against the real production city compiler output.
+
+### Focused evidence so far
+
+Implementation head `6033d7983b1eb7ecebab53df783897940a139d01`:
+
+- unit-tests in GitHub Tests #2062 / run `32477998686` — success;
+- full browser jobs were still running when this checkpoint was written.
+
+### Safety boundary
+
+This compiler topology is not yet written into the production `traffic-lanes.json` pack and is not loaded by runtime vehicle movement.
+
+Legacy `traffic-lanes.json.edges` remain untouched for compatibility. The next safe step after full CI is additive generated-pack integration, not replacement.
+
+### Next sequence inside M1
+
+1. M1.2 — finish full CI validation of compiler-owned directed lanes.
+2. M1.3 — add the compiler topology to generated streaming output/validation without deleting legacy edges.
+3. M1.4 — generate tangent-preserving connector geometry from compiler lanes; tangent discontinuity becomes a hard rejection reason.
+4. M1.5 — retire legacy nearest-junction endpoint inference from the future activation path while retaining compatibility data until M8.
+
+Canonical details: `docs/agent-tasks/2026-08-21-traffic-lane-junction-m1-compiler-contract.md`.
+
+---
+
+## 2026-08-21 — M1.2–M1.5 compiler-owned topology completed
+
+### M1.2 — directed local lane graph
+
+The compiler-owned graph was completed and validated in GitHub Tests #2065 / run `32478211117`.
+
+Physical route ownership is now based on `district-streaming network.segments`, with explicit compiler node IDs. The legacy district-pair traffic edges are no longer candidates for physical junction routing.
+
+### M1.3 — additive generated-pack integration
+
+`tools/city-compiler/traffic-lane-topology-integration.js` adds `localTopology` to traffic-lane pack schema v6 while preserving legacy `edges` and `junctions` for compatibility.
+
+GitHub Tests #2068 / run `32478720212` passed the full workflow.
+
+### M1.4 — production-safe junction connectors
+
+`tools/city-compiler/traffic-junction-connectors.js` generates tangent-preserving cubic connectors from trimmed right-hand lanes and validates every sampled point against compiler-owned road surfaces.
+
+Production hard gates require:
+
+- exact incoming/outgoing endpoints;
+- exact compiler-node ownership;
+- zero sampled points outside road authority;
+- zero tangent-continuity failures;
+- zero rejected preferred connectors.
+
+GitHub Tests #2071 / run `32479384583` passed all jobs with those production invariants enforced.
+
+The connector bundle was then attached additively inside `localTopology`; GitHub Tests #2073 / run `32485167656` passed the full workflow.
+
+### M1.5 — provisional runtime inference retired
+
+`TrafficLocalAssignmentPolicy` no longer installs `TrafficLaneJunctionTopology` or injects connectors derived from legacy endpoint proximity.
+
+Runtime diagnostics may observe compiler-owned `localTopology`, but `movementActive` remains false and current visible movement remains `authored-local-lanes`.
+
+GitHub Tests #2083 / run `32485801858` passed unit, boot, campaign and all three browser-system shards.
+
+### Result
+
+M1 is complete. There is now one future physical route authority: compiler-owned directed lanes plus compiler-owned activation-safe junction connectors.
+
+---
+
+## 2026-08-21 — M2.1/M2.2 pure stable route cursor completed
+
+### Implemented
+
+Added `phaser/src/streaming/TrafficRouteCursor.js` and `tests/traffic-route-cursor.test.js`.
+
+The route cursor is deliberately pure and has no Phaser, scene, materializer, camera, police or macro-district dependency.
+
+A route agent retains:
+
+- stable `tokenId`;
+- `routeHop`;
+- stage (`lane` or `connector`);
+- current compiler lane ID;
+- current connector and next lane while crossing;
+- previous lane;
+- bounded stage progress;
+- archetype/traffic metadata carried without mutation.
+
+### Continuity contract
+
+`advanceTrafficRouteAgent(...)` consumes real elapsed seconds using stage geometry length and can cross multiple stage boundaries in one call.
+
+A focused test proves that at speed 100, 1.5 seconds can consume a 100-unit lane, a 20-unit connector and continue 30% into the next 100-unit lane while preserving the exact same token identity.
+
+Continuation is deterministic from stable token + route hop and consumes only compiler `preferred` transitions. A transition that requires geometry must have an activation-safe connector; a direct handoff must be explicitly validated by the compiler connector bundle.
+
+Missing continuation/connector does not trigger fallback steering or a coordinate guess. The route cursor stops at stage end with an explicit blocked reason and preserves unconsumed time.
+
+Input route agents and topology are never mutated.
+
+### CI evidence
+
+Implementation/test head: `9a7d45566b17c2a508e269c3d23b9f2d3b67ea1a`.
+
+GitHub Tests #2087 / run `32486691651` — full workflow success:
+
+- unit-tests — success;
+- browser-boot — success;
+- browser-campaign — success;
+- browser-systems 1/3 — success;
+- browser-systems 2/3 — success;
+- browser-systems 3/3 — success.
+
+### Safety boundary
+
+The route cursor is not installed into `MacroTrafficPoliceSystem`, `TrafficMaterializationSystem`, `TrafficLocalAssignmentPolicy` or visible vehicle movement.
+
+M2.3 is next: build a pure compatibility projection from these local route agents back into legacy macro load/count diagnostics. That projection is output-only; macro geometry/phases must not influence route selection.
+
+---
+
+## 2026-08-22 — M2.3 through M6 canonical reconciliation
+
+The machine-readable status had advanced correctly while this append-only narrative log lagged behind M2.2. No history above was rewritten; this entry records the already-validated milestone boundaries now present on PR #73.
+
+- M2.3 compatibility projection — complete; GitHub Tests #2101 / run `32489771083` passed.
+- M3 shadow macro continuity bridge — complete; GitHub Tests #2109 / run `32490920999` passed.
+- M4 isolated continuous traversal harness — complete; GitHub Tests #2113 / run `32491786219` passed.
+- M5 route-aware lifecycle/materialization retention substrate — complete; GitHub Tests #2125 / run `32492853271` passed.
+- M6 controlled browser route activation — complete on implementation head `b23dfc0eb1eb07ad3fd85fe89399c7fb5e40c5c0`; GitHub Tests #2135 / run `32495071190` passed unit, browser boot, browser campaign and all three browser-system shards.
+
+M6 preserved the fixed materialization pool and stable token/slot through controlled straight/right/left compiler routes, reported zero visible teleports, survived camera movement during connector crossing and kept default civilian `laneAuthority` on `authored-local-lanes`.
+
+---
+
+## 2026-08-22 — M7.1 deterministic junction reservation completed
+
+### Implemented
+
+Added `phaser/src/streaming/TrafficJunctionReservationRegistry.js` and integrated it only with controlled compiler-route activation.
+
+The M7 contract now provides:
+
+- deterministic conservative ownership keyed by compiler junction authority;
+- reservation before connector entry;
+- conflict denial that leaves the waiting route agent on the incoming lane endpoint;
+- same-token refresh while ownership is retained;
+- no voluntary stop or re-request while already inside a connector;
+- release on connector exit;
+- release on controlled stop/forced teardown;
+- bounded stale-reservation expiry so a vanished token cannot deadlock the junction forever;
+- reservation/yield diagnostics without introducing world-space steering or a traffic-light simulator.
+
+`TrafficRouteCursor` now accepts pure connector-entry/exit hooks. A denied entry reports a blocked/yield reason while preserving the route agent at lane progress `1`; once the owner exits and releases, the waiting agent may enter on its next deterministic advance.
+
+`TrafficControlledRouteActivationPolicy` shares the registry, refreshes an owned reservation during connector traversal, releases ownership on stop and keeps legacy behavior/steering from overwriting a route-active slot.
+
+### Focused coverage
+
+`tests/traffic-route-junction-reservation.test.js` covers:
+
+- grant, same-token refresh and deterministic conflict denial;
+- stale expiry/recovery;
+- two conflicting route agents where the second waits before entry;
+- release on connector exit followed by successful waiter entry;
+- uninterrupted movement for a token already inside its connector;
+- forced cleanup of all reservations owned by a route token.
+
+`tests/traffic-controlled-route-activation.test.js` verifies controlled visible waiting/entry while preserving assignment and slot identity.
+
+`tests/traffic-controlled-route-pool-baseline.test.js` additionally guards fixed-pool baseline capture after asynchronous materializer configuration and detects accidental pool growth.
+
+The browser controlled-route scenario continues to prove straight/right/left crossings, reservation visibility, stable token/slot, camera retention, zero teleports and default authored-local-lane authority.
+
+### CI evidence
+
+Implementation head: `dcb08288ea797e7016bcdb3858299a85549a7259`.
+
+GitHub Tests #2153 / run `32549761928` — full workflow success:
+
+- unit-tests — success;
+- browser-boot — success;
+- browser-campaign — success;
+- browser-systems 1/3 — success;
+- browser-systems 2/3 — success;
+- browser-systems 3/3 — success.
+
+### Result
+
+M7 is complete. Conflicting controlled compiler-route tokens cannot enter the same conservative junction authority simultaneously; yielding occurs before connector entry, inside tokens normally clear the junction and stale/forced ownership is recoverable.
+
+Default civilian traffic is still intentionally `authored-local-lanes`. M7 does not flip normal production movement.
+
+---
+
+## 2026-08-22 — M8.1 boundary opened
+
+The next bounded task is `M8.1-multi-agent-route-runtime-substrate` as recorded in `traffic-lane-junction-topology-status.json` version 9.
+
+M8.1 must generalize the proven route/materialization/lifecycle/reservation contracts to multiple civilian route agents while remaining explicitly non-default. It may reuse deterministic macro-population provenance to seed stable local route agents, but ongoing x/y and route continuation remain compiler-lane/connector owned.
+
+Production default movement must not flip until a later M8 activation task has dedicated population, pool, browser-soak, illegal-road-exit, teleport and police/vehicle-regression evidence.
+
+---
+
+## 2026-08-22 — M8.1 multi-agent route runtime substrate completed
+
+### Implemented
+
+Added `TrafficRoutePopulationSeed.js` as the canonical deterministic bootstrap from aggregate macro population provenance into stable local route agents. Macro edge/phase information is consumed only to choose the initial compiler lane/progress; after seeding, local movement authority is entirely compiler lane/connector geometry. Shadow mode now reuses the same seeding rule instead of maintaining a divergent copy.
+
+Added `TrafficMultiAgentRouteRuntimePolicy.js` with:
+
+- stable production-compatible token IDs (`edgeId#tokenIndex`);
+- deterministic token-ordered advancement through `TrafficRouteCursor`;
+- one shared M7 junction reservation registry for all route agents;
+- explicit wait-at-lane-end behaviour on reservation conflict;
+- route materialization tokens sampled only from compiler geometry;
+- output-only macro compatibility projection diagnostics;
+- no mutation authority over live macro traffic flows;
+- teardown that releases route reservations/state;
+- explicit `start/step/stop` activation API and browser debug hook;
+- default-off installation in `TrafficLocalAssignmentPolicy`.
+
+While explicitly enabled, legacy local behavior and steering presentation are guarded from overwriting `routeActive` x/y. The policy records the activation pool baseline and does not grow the materialization pool to preserve continuity.
+
+### Focused coverage
+
+Added `tests/traffic-multi-agent-route-runtime.test.js` proving:
+
+- seeded plus explicit unseeded records conserve macro population;
+- macro district centres are never used as local driving coordinates;
+- two conflicting agents cannot enter the same conservative junction simultaneously;
+- the waiter remains exactly at the incoming lane endpoint while the owner clears the connector;
+- ownership transfers deterministically after connector exit;
+- repeated runs with the same population/topology produce identical route state;
+- live macro flow state is unchanged;
+- destroy releases all reservations;
+- installed M8 policy is default-off;
+- fixed pool identity/size survives opt-in route stepping;
+- route-active pose cannot be overwritten by legacy behavior/steering;
+- stopping M8 restores legacy token metadata cleanly.
+
+The first M8.1 CI attempt exposed only a historical source-contract assertion in the M5/M6 dormancy test. The implementation still preserved the dormant semantics; the snapshot expression was adjusted to keep the historical `Boolean(controlled.enabled)` contract while OR-ing the new opt-in M8 state.
+
+### CI evidence
+
+Implementation head: `9173732803b2b92b28cf26a784e2382169eacc63`.
+
+GitHub Tests #2166 / run `32551128095` — full workflow success:
+
+- unit-tests — success (786 tests);
+- browser-boot — success;
+- browser-campaign — success;
+- browser-systems 1/3 — success;
+- browser-systems 2/3 — success;
+- browser-systems 3/3 — success.
+
+### Result
+
+M8.1 is complete. The branch now has a deterministic multi-agent compiler-route runtime substrate with stable identity, bounded pool semantics, shared junction reservations and legacy-pose guards, but it remains explicitly opt-in.
+
+Production civilian traffic still starts and runs on `authored-local-lanes`; live macro traffic remains population/load/compatibility state only.
+
+The next bounded task is `M8.2-opt-in-multi-agent-browser-soak`: exercise this substrate against production browser data, camera movement and lifecycle conditions before any later M8 task is allowed to make compiler-route traffic the default.
+
+---
+
+## 2026-08-22 — M8.2 production multi-agent browser soak completed
+
+### Browser evidence
+
+Added `tests/browser/city-streaming-traffic-route-multi-agent.spec.js` and registered it in the official `test:browser:systems` suite.
+
+The production `urban-explore` scenario now proves, under explicit M8 activation only:
+
+- normal startup remains default-off with `laneAuthority: authored-local-lanes`;
+- seeded plus explicit unseeded records conserve the production macro population;
+- stable route token IDs survive a bounded 180 × 0.05s soak;
+- one real materialized route token retains the same pool slot while camera/city streaming follows it;
+- every active route pose lies on its exact compiler-owned lane or activation-safe connector geometry;
+- connector samples remain activation-safe and no non-compiler stage is accepted;
+- per-tick route displacement stays within the configured physical movement budget, rejecting visible teleports;
+- route progression reaches connector and outgoing-lane hops on production data;
+- junction reservation telemetry remains bound to real compiler junction/connector authority and releases completely on stop;
+- route-active behavior/steering guards prevent legacy x/y overwrite;
+- materialization pool object identity, slot identity and size remain fixed;
+- live macro flow map/object/phase values remain unchanged by M8 during the isolated soak;
+- stopping M8 clears route metadata/reservations/guards and restores authored-local traffic.
+
+The macro system normally advances phases from the Phaser frame loop, so the browser harness pauses only `MacroTrafficPoliceSystem.update` while capturing the M8 mutation proof. This isolates whether the route runtime mutates live macro state without changing production code or inventing a fake traffic controller.
+
+### Validation correction
+
+The first test commit (`a2d91344bdd32aa6405dd45fa5fb8cd005d90c00`) triggered Tests #2172, but `test:browser:systems` enumerates specs explicitly. The new soak therefore was not yet part of that run and #2172 was not accepted as evidence.
+
+`package.json` was updated so the soak is part of the official browser-system command. Concurrency cancelled #2172 and the first valid M8.2 run is the following one.
+
+### CI evidence
+
+Validated implementation/evidence head: `e9593957fff711e5b606253049321475376cccf8`.
+
+GitHub Tests #2173 / run `32552262883` — full workflow success:
+
+- unit-tests — success;
+- browser-boot — success;
+- browser-campaign — success;
+- browser-systems 1/3 — success;
+- browser-systems 2/3 — success;
+- browser-systems 3/3 — success.
+
+### Result
+
+M8.2 is complete. The production-shaped multi-agent compiler-route runtime survives a real browser soak with fixed pool/token/slot continuity, compiler geometry authority, bounded movement, reservation cleanup, presentation guards and zero M8 mutation of isolated macro flow state.
+
+Production startup is still intentionally `authored-local-lanes`. No default activation changed in M8.2.
+
+The next bounded gate is `M8.3-default-compiler-route-activation-and-macro-accounting-migration`. It must not flip normal traffic unless production seeding coverage is complete and macro accounting can migrate conservatively without reintroducing macro coordinates/phases as local movement authority.
+
+---
+
+## 2026-08-22 — M8.3 default compiler-route activation and macro accounting migration completed
+
+### Production authority migration
+
+M8.3 promotes the validated multi-agent compiler-route runtime to normal civilian traffic authority.
+
+`TrafficMultiAgentRouteRuntimePolicy` now:
+
+- defaults to compiler-route activation;
+- fail-closes rather than partially activating if production seeding is incomplete;
+- requires zero unseeded production tokens, population conservation and valid district projection before the default flip;
+- advances route agents from normal Phaser frame delta through `GameplayRuntime`;
+- exposes `laneAuthority: compiler-route-lanes` during normal traffic;
+- preserves stable token IDs, materialization slot identity, fixed pool semantics and route reservation cleanup;
+- retains explicit stop/manual controlled modes only as regression/debug harnesses, not production authority.
+
+`MacroTrafficPoliceSystem` now separates civilian and police roles:
+
+- legacy civilian `trafficFlows` remain bootstrap/compatibility population records;
+- while compiler routes are active, legacy civilian phase advancement is disabled;
+- aggregate civilian district/load accounting comes from `TrafficRouteCompatibilityProjection`;
+- invalid/lossy projection does not silently fall back or guess ownership;
+- macro police travel continues independently on its existing macro graph.
+
+### Route-safe behavior correction
+
+The first browser migration attempt exposed a real regression: the M8 route-active x/y guards correctly prevented legacy steering from owning pose, but also bypassed legacy braking behavior. Restoring legacy steering would have violated the core compiler-geometry contract.
+
+Added `TrafficRouteBehaviorPolicy.js` instead. It:
+
+- detects same-lane traffic, parked vehicles, player vehicle and player-on-foot against the current compiler lane polyline;
+- modulates only a scalar route speed factor;
+- never writes x/y/angle or lateral offset;
+- keeps connector occupants moving so cars already inside normally clear the junction;
+- allows speed recovery after blockers clear.
+
+The legacy steering presentation guard remains active for route cars and forces zero lateral steering. Focused unit/browser tests prove braking works without leaving compiler geometry.
+
+### Validation history
+
+M8.3 CI was intentionally treated as an architecture audit rather than patched blindly:
+
+- Tests #2189 exposed three obsolete historical source assertions that still required normal traffic to remain authored-local. They were updated while retaining the real prohibitions against macro/free-form/nearest-junction authority.
+- Tests #2192 exposed an accidental test-file reconstruction/import error during that update. The full original M4 traversal coverage was restored and only its final authority expectation changed.
+- Tests #2193 passed unit, boot, campaign and shards 2/3 + 3/3, but shard 1 found the real braking regression described above.
+- Tests #2198 proved the new route behavior braking and recovery, but one parked-car assertion measured a mutable slot reference after later recovery movement. Trace evidence showed `steeringOffset=0`, `steeringAngle=0` and route-safe braking were correct. The test was fixed to snapshot immutable pose immediately around the steering call.
+
+### Final CI evidence
+
+Validated implementation head: `0c25c8c7d324b027bd4fd0363483884e8da2f937`.
+
+GitHub Tests #2199 / run `32554733530` — full workflow success:
+
+- unit-tests — success;
+- browser-boot — success;
+- browser-campaign — success;
+- browser-systems 1/3 — success;
+- browser-systems 2/3 — success;
+- browser-systems 3/3 — success.
+
+### Result
+
+M8 is complete. Normal civilian traffic now uses compiler-owned route geometry by default with zero unseeded production population, stable fixed-pool identity, deterministic junction reservations, route-safe braking and conservative projection-based accounting. Legacy civilian phase advancement no longer competes for physical continuity, and macro police travel remains independent.
+
+The next bounded task is `M9.1-legacy-cleanup-audit-and-final-validation-prep`. M9 may remove only code proven superseded after classifying remaining compatibility/regression responsibilities. After final green cleanup validation, autonomous work must stop at `final-validation-pending` for explicit user gameplay approval; PR #73 must not auto-merge.
+
+---
+
+## 2026-08-22 — M9.1 legacy cleanup audit and final validation preparation completed
+
+### Ownership classification
+
+The remaining traffic continuity code was audited before deletion.
+
+Production-required compatibility retained:
+
+- legacy macro `trafficFlows` as population bootstrap/accounting compatibility only;
+- `TrafficRoutePopulationSeed` and `TrafficRouteCompatibilityProjection`;
+- independent macro police graph travel;
+- route-aware lifecycle/materialization and forced hijack/layer/teardown release semantics.
+
+Regression/historical evidence retained:
+
+- `TrafficControlledRouteActivationPolicy` for controlled straight/right/left compiler-route proof;
+- `TrafficRouteTraversalHarness` for isolated `lane -> connector -> lane` continuity proof;
+- `TrafficShadowRoutePolicy` source/test as isolated M3 historical evidence;
+- isolated legacy `MacroTrafficRouteContinuityPolicy` and `TrafficIntentDrivingPolicy` evidence.
+
+The proven superseded **live production** path was the Shadow installation in `TrafficLocalAssignmentPolicy`. It wrapped `macro.simulateTick` and maintained a second route-agent population after the real M8 runtime had already become authority. That installation and its live diagnostics/destroy path were removed; the historical Shadow harness itself remains isolated for regression evidence.
+
+`tests/traffic-lifecycle-integration.test.js` now recursively scans `phaser/src/**/*.js` and rejects any production reference that could re-activate Shadow, `MacroTrafficRouteContinuityPolicy` or `TrafficIntentDrivingPolicy` outside their isolated legacy modules. Legacy nearest-junction inference remains disabled and compiler lanes/connectors remain final civilian pose authority.
+
+### Semantic CI integration correction
+
+PR #75 reorganized browser CI into semantic families while PR #73 was in flight. After merging current `main`, the first M9 validation exposed that `browser-world` no longer prepared the generated streaming topology that M8 default activation needs.
+
+Running full `city:topology` fixed that prerequisite but also regenerated road/sidewalk geometry, which invalidated the world geometry baseline being tested. The correct prerequisite is therefore the same narrow compile the old CI effectively depended on: `npm run city:streaming` before `browser-world` Playwright.
+
+This refreshes generated `localTopology`/streaming packs without rewriting the road/sidewalk geometry under world validation. `browser-traffic` continues to run full `city:topology`.
+
+`docs/BROWSER_TEST_FAMILIES.md` now records both compiler-route browser specs under Traffic and documents the distinct world/traffic prerequisites.
+
+### Final automated evidence
+
+Validated implementation head: `763d6a12824d3d83d3fea92f549c56d1b1a04202`.
+
+GitHub Tests #2220 / run `32577687431` — full semantic workflow success:
+
+- unit-tests — success;
+- browser-boot — success;
+- browser-campaign — success;
+- browser-world — success;
+- browser-traffic — success;
+- browser-police — success;
+- browser-gameplay — success;
+- browser-performance — success;
+- browser-building-review — skipped by design.
+
+### Result
+
+M9.1 is complete. There is no remaining known live production path that competes with compiler-route civilian geometry. Required bootstrap/accounting/police compatibility remains, controlled/historical regression evidence remains isolated, and the semantic CI matrix validates the final authority stack.
+
+Canonical state is now `final-validation-pending`. Autonomous implementation stops at `M9.2-explicit-user-gameplay-validation`. PR #73 remains draft and must not be merged or marked ready without explicit user gameplay approval.
+
+
+---
+
+## 2026-09-07 — Per-agent rear-contact correction and handoff reconciliation
+
+Live baseline: `b023411be75f4f6c1ffbb66220dde04d10dac685`, main
+`19900bdb28d7d26c4008aae4e10bfe207070fdfb`. Tests #2468 / run
+`34093466042` failed because the one-time radio diagnostic remained in the
+workflow inventory. The diagnostic is removed and the guard remains unchanged.
+
+The machine-readable state had not caught up with subsequent corrective work:
+production now has 32 fixed slots, junction admission and exit clearance, a
+bounded bypass FSM, rigid-body contact resolution and the per-agent authority
+installed after lane initialization (`6405160`). Those are existing changes,
+not newly implemented in this checkpoint.
+
+### Reproduced defect and fix
+
+Physical lead detection treated any same-lane body contact as a forward obstacle,
+including contact from behind. Both leader and follower therefore received
+synthetic holds, overriding the pre-route physical priority that should let the
+leader leave a queue. The new regression failed on the baseline with
+`the clear leader must advance`. Lead detection now ignores same-lane bodies
+strictly behind the actual vehicle projection. Native impact/displacement locks
+are still evaluated first. Cross-route blockers and the follower's stop remain
+protected. No route coordinates, junction rules, police or radio code changed.
+
+### Validation and remaining gate
+
+- Six focused authority tests pass, including the before/after reproduction and
+  protection of an actual impact hold on the leader.
+- `npm run check:fast` passes: 865 unit tests, 41 browser specs across 8 suites.
+- The affected plan selects the full release-candidate suite for the whole PR.
+- Local dependency installation was rejected by the environment; browser
+  validation must be completed by the existing GitHub CI.
+- Cloud browser access to the Netlify preview was rejected. This is not gameplay
+  evidence and does not resolve the previously reported hosting/radio problem.
+- State is `implementation-validation`; CI evidence must be recorded before
+  returning to `final-validation-pending`. The user's gameplay approval and
+  merge approval remain outstanding.
+
+### Published implementation and integrated physical recovery
+
+Implementation `e3e4d6c239e003cbfce053ebc3f8cce5723fb0d7` is published on the
+existing PR branch. Its remote Git tree exactly matches the locally validated
+tree. Tests #2469 / run `34096775416` is executing the full release-candidate
+suite with the repository's exact dependencies and Chromium.
+
+A local integration diagnostic composed the real route runtime, junction
+controller, physical consequences, rigid-body solver and per-agent authority
+using the existing junction fixture. After an 18-unit rear-impact displacement,
+300 steps of 0.05 seconds let both stable tokens cross to the outgoing lane.
+Both physical offsets returned to zero and neither agent remained physically
+locked. This checks recovery across the actual policy boundaries; it does not
+replace browser or user gameplay validation.
+
+### Full release-candidate validation passed
+
+Tests #2469 / run `34096775416`, job `101662078673`, completed successfully
+on implementation `e3e4d6c239e003cbfce053ebc3f8cce5723fb0d7`:
+
+- unit: 865 passed, zero failures;
+- browser boot: 12 passed;
+- browser world: 14 passed;
+- browser traffic: 20 passed;
+- browser police: 6 passed;
+- browser gameplay: 6 passed;
+- browser performance: 1 passed;
+- browser campaign: 1 passed.
+
+All 60 browser cases passed; no flaky/retried case was reported in the final
+family summaries. The later documentation checkpoint changes no runtime,
+tests, dependencies or generated content. The PR records its current CI status
+separately so that the implementation evidence is not confused with a newer
+documentation-triggered run.
+
+State returns to `final-validation-pending`. PR #73 remains draft. The remaining
+acceptance is the user's gameplay pass, particularly dense queues, the reported
+junction pile, visibility/streaming continuity and hijacking/police behavior.
+Cloud preview access was rejected by automatic permission review; no visual
+approval or resolution of the previously reported hosting/radio issue is claimed.
+
+## 2026-09-07 — user-authorized GitHub Pages validation
+
+The user reports exhausted Netlify quota and requests testing the PR branch on
+Pages. Deployment `34098911361` successfully serves `95e344b` at
+https://franperezsevilla.github.io/vampire-district/ . That head's Tests #2470
+(`34098917526`) also completed successfully.
+
+Normal title/audio startup and New Night work on Pages. Civilian cars move at
+the first junction east of spawn. However, the authored compact-car label covers
+much of the road at roughly three times its intended size. Phaser 3.90's Canvas
+renderer uses `frame.source.resolution`, copied at Text construction; the old
+readable-text factory changed only the style resolution afterwards. Initialize
+resolution in the construction style so both rendering paths share logical size.
+
+The bounded correction touches the existing text factory and render-quality
+browser coverage. The new production-boot regression disables WebGL to exercise
+Canvas, checks actual texture render dimensions, and holds a movement key after
+New Night. Interactive cloud key taps have not yet moved the player; that alone
+does not prove an input regression. No input or traffic authority is changed.
+
+State is `implementation-validation` for this correction. Corrected Pages/CI
+results will be recorded in the PR. The draft/user gameplay gate remains intact.
+
+
+## 2026-09-07 — M9.4 sustained traffic correction after rejected Pages playthrough
+
+The user rejected general traffic flow, repeated block circuits, junction queues,
+car-to-car collisions and motion quality. The previous isolated-turn observation
+and green tests were insufficient; implementation was reopened explicitly.
+
+A native generated-network cohort with production spawn separation and archetype
+selection reproduces 29/32 cars stopped for over ten seconds on `be60ec6` at
+120 simulated seconds. The worst stop is 118.15 seconds, despite zero contacts.
+The initial exploratory cohort had omitted spawn separation, so its collision
+counts were discarded from this comparison.
+
+Corrections remain in the existing route/behavior/junction/physical authorities:
+read-only continuation lookahead across compiler seams, 16-lane journey memory,
+whole-body stop lines, combined reservations across too-short junction links,
+swept-body occupancy, release after direct handoffs, safe physical offset return,
+speed-aware following, anticipatory braking/turn speed and forward-driven bypass.
+No generated geometry, pool population or token identity is replaced to hide jams.
+
+The durable three-minute regression requires every one of 32 cars to complete at
+least 30 decisions, visit 25 lane segments, stay below a 15-second stop, and avoid
+all normal contacts/overlaps and slot replacements. A separate native gunfire and
+side-impact exercise verifies reaction, frozen logical movement during impact,
+physical recovery and resumed travel by the same car. Focused seam/stop-line/
+route-history/curvature tests cover the concrete failure boundaries.
+
+Validation before publication: `check:fast` passes **873/873 unit tests** and the
+41-spec/8-suite ownership guard. The reviewed affected plan selects the full RC
+because of the cumulative PR infrastructure diff. Its 873 unit tests pass locally;
+browser boot cannot start because Playwright is unavailable. Existing GitHub CI
+will run browser validation. Pages remains the user-authorized deployment target;
+Netlify has no quota. No merge or user gameplay approval is claimed.
+
+
+## 2026-09-08 — M10: destinations and physical drivers
+
+The user explicitly rejected the rail/offset system and requested a rebuild in
+PR 73. The baseline is bb832e2. Its Tests #2473 run failed the native soft-push
+assertion in `city-streaming-traffic-physics.spec.js:157`; the failing job was
+inspected before replacing movement authority. M10 supersedes M9.4 movement and
+recovery, while preserving compiler geometry, the single gameplay update,
+fixed proxy pool, native consequences and separate player/police ownership.
+
+Production now selects `TrafficDriverRuntime`. `TrafficJourneyPlanner` commits
+a complete shortest itinerary to a distant mid-block destination, without
+repeated directed lanes. Through traffic avoids purposeless cul-de-sac visits;
+a car seeded at a dead end may use its legal U-turn to leave.
+`TrafficDriverController` controls the same `VehicleModel.stepVehicleKinematics`
+as the player. Route geometry is steering guidance and progress measurement,
+never a source of authoritative x/y/heading for a spawned car. Emergency search
+records reachable throttle/steer/reverse controls. A tight initial bumper gap
+uses actual body clearance while reversing to create the preferred margin.
+
+Junction permissions reserve buffered movement paths and downstream space.
+Stop lines account for the widest road at a node, so short compiler links do
+not place a waiting car inside another movement. Compound crossings retain
+clearance across direct handoffs. Arrival priority is local to the current
+crossing; compatible paths can move together. Dormant tokens spawn only on
+clear approaches, outside the camera and any reserved crossing.
+
+Native impacts become the driver's actual starting pose once. The old lateral
+offset decay and presentation catch-up are bypassed for physical drivers.
+Collision/damage systems retain their ownership, and theft retires the original
+materialization token. The old cursor runtime remains an explicit
+`driving: false` controlled fixture, never a second production mover.
+
+Validation:
+
+- Fast check: 881/881 unit tests pass; 41 browser specs belong to the 8 canonical suites.
+- Three-minute real-network test: all 32 cars retain their slots, complete at
+  least 30 junction decisions and visit at least 25 distinct lanes; no normal
+  contacts, overlaps or stops lasting 15 seconds. Each reaches a destination.
+- Production obstacle bypass runs at 20 and 60 Hz, retaining the destination
+  and identity without lateral translation. Direct tests exercise required
+  reversing and a completely sealed corridor.
+- Native gunfire/side-impact test proves reaction and adoption of the impact
+  pose before the same driver resumes. Clear road kinematics match the player
+  model exactly at 60 Hz.
+- Two native cars near a western dead end ran for 50 seconds and completed 14
+  handoffs each without contact, overlap or a rejected movement step.
+- The cumulative affected plan selects the full release-candidate suite.
+  Its 881 unit tests and suite ownership pass locally; browser boot cannot start
+  because Playwright is unavailable (exit 127). The earlier automatic rejection
+  of dependency installation was not retried or bypassed.
+- Browser regressions now check physical driving, journey identity/accounting,
+  native soft pushes and impact adoption instead of exact rail sampling and
+  lateral return-to-base recovery. Browser syntax checks pass; execution is
+  pending GitHub Actions on the new commit.
+
+Publish to the existing branch, inspect its GitHub Pages deployment, and fix
+concrete CI failures. No Netlify deployment and no automatic merge. Updated
+architecture: `docs/TECHNICAL_ARCHITECTURE.md` section 13; task:
+`docs/agent-tasks/2026-09-08-physical-traffic-drivers.md`.
+
+
+## M11 — recovery in crossings and broad circuits — 2026-09-08
+
+The user authorized manoeuvres in crossings, reversing away from an existing contact, partial reverse/reassessment when a complete bypass cannot be planned, and repeating broad city circuits. Browser tests are explicitly excluded.
+
+The existing physical driver now reserves its emergency swept path through `TrafficDriverJunctions`. Moving traffic retains priority; stalled future paths can yield to recovery. Cars already clearing a crossing precede new arrivals, cleared portions of compound paths are released progressively, and later arrivals cannot repeatedly leapfrog a conflicting waiting approach. Queue decisions follow stopped leaders and permission dependencies. Waiting time belongs to the current stop.
+
+Existing penetration can only decrease while driving away. Full manoeuvres and partial reverse use shared player controls at the bounded runtime integration interval. Partial recovery fits the available rear gap, stops, and reassesses, with a 48-unit cumulative retreat budget per obstruction. Wrecks remain disabled and new overlaps are rejected.
+
+The journey planner joins distant outbound and non-repeating return paths into a predefined circuit. Any entry leg is traversed once. The mid-block seam wraps only measured progress, preserving the exact physical pose, itinerary and slot. A disconnected finite road stops without inventing a small circular fallback.
+
+Validation: **888/888 units pass**, plus static ownership of 41 browser specs across 8 suites. **17/17 focused driver/recovery/network tests pass**. Generated crossing cases at 20 and 60 Hz cover an overlapping lead car reversing and two following cars using clear opposing pavement around the obstruction. Separate cases cover decreasing contact, no new collision, a blocked rear, partial reverse and later reassessment, normal right of way, and an exact circuit seam. The 32-car native simulation runs for 180 seconds with zero contacts/overlaps/replacements, no stop reaching 15 seconds, and at least one completed circuit and 30 handoffs per car. Broad-route coverage is measured by source roads and spatial extent, consistent with the clarified repeating-route requirement. All 434 generated starting lanes produce a broad circuit in the planner audit (minimum 2340.99 world units).
+
+The affected plan selects cumulative release-candidate coverage. Its browser execution is excluded by the user's instruction. PR 73 alone runs native `check:fast` in CI and skips Chromium; other PRs and main retain their existing validation. No browser tests or browser playtest were run for M11. Publish on the existing branch and report exact head, native CI and Pages status in the live PR handoff. No automatic merge.
+
+
+## M12 — road-capacity population and circuit distribution — 2026-09-08
+
+After the user observed sparse traffic, a read-only audit found 58 global cars, an underfilled local pool, 363/434 recurring directed lanes and substantial district imbalance. The user authorized increasing population and improving distribution, preserving broad repeating routes and excluding browser tests.
+
+`MacroTrafficPoliceSystem` now derives civilian flow sizes from road length in both directions and adjoining district density (223 current-city drivers). `TrafficPopulationPolicy` compares eight broad circuit candidates per driver against source-road and district capacity. Four candidates can begin in underserved districts. It spreads initial phases along clear lane interiors before first appearance. Circuits, identity and physical poses remain under the existing driver after bootstrap. Compact route records avoid deep-cloning every itinerary and input frame during materialization/accounting. The local pool remains 32; camera margins, active/resident chunks, clearance, manoeuvres and police owners are unchanged.
+
+The selected recurring routes cover **414/434 directed lanes**, **138 source roads**, and all **14 districts**. Independent 256-point circuit sampling reduces aggregate district occupancy-fraction error from **0.42175 to 0.08636** (about 80%). North Harbor remains under its planned share: 2.41 cars versus a capacity target of 5.58. Planned length-weighted occupancy is not live camera density.
+
+Native comparisons run the production chunk stream, camera guards, materializer, physical drivers, macro accounting and contact system; only file transport and rendering are substituted. The player stands on a sidewalk at each viewpoint. Results over 90 seconds, excluding the first ten seconds while cars enter from off camera:
+
+| Viewpoint | Visible mean before → after | Nearby materialized mean before → after | Distinct cars seen before → after | Longest new stop |
+| --- | --- | --- | --- | --- |
+| Old Quarter (1754, 1515) | 1.17 → 2.05 | 9.04 → 22.10 | 10 → 17 | 11.55 s |
+| Blackwater (2280, 3280) | 1.28 → 12.01 | 5.23 → 25.89 | 10 → 52 | 12.50 s |
+| North Harbor (4440, 900) | 0.81 → 6.80 | 2.11 → 11.85 | 8 → 32 | 8.50 s |
+
+All six comparisons have zero traffic contacts, overlaps and guarded-camera spawns; local assignments never exceed 32. Permanent 60-second comparisons assert increased visible traffic, fewer empty frames, circuit identity and deterministic initial placement. **890/890 units pass**, including the two new population/density tests and the existing 17 driver/recovery/network regressions. Static ownership of 41 browser specs across 8 suites passes. The 32-car / 180-second circulation regression remains green.
+
+On this native runner the full traffic pipeline measures **4.98–6.65 ms mean**, **6.33–8.81 ms p95**, and **2.67–2.88 s setup** for the new population. These are bounded native measurements, not a browser frame-rate claim. No camera eligibility relaxation or second gameplay loop was needed. The affected plan selects cumulative release-candidate coverage; browser execution remains excluded by the user. Publish the reviewed tree on PR 73, report exact head and actual native CI/Pages status in the live PR, and keep it draft without automatic merge.
+
+
+## M13 — many more visible cars — 2026-09-08
+
+The user likes the M12 traffic and requests many more cars. Road-capacity spacing changes from 240 to 120 world units, producing **437 global drivers instead of 223**, while the existing local pool increases from **32 to 64 before activation**. The predefined broad circuit selection, initial-phase policy, physical controls, junction rules and camera/streaming/clearance guards retain their M12 behavior. Of the initial population, 436 cars are placed on their recurring loops and one retains its one-time entry leg; diagnostics now distinguish those two valid cases. All 437 initial poses remain separated.
+
+The higher load exposed significant repeated computation. Materialization now copies just its consumed pose/navigation fields; full gearbox and vehicle internals remain in driver state. Physical drivers already publish committed slot poses, so the generic local policy skips its duplicate full-city pose pass. Navigation projection uses binary search to find the nearby segment range. Bootstrap planning caches immutable lane lengths and skips destination selection when a return destination is already prescribed.
+
+The native density comparison now uses the immediately preceding **M12 223-driver / 32-slot** configuration, not the older 58-token fixture. Both sides run the production chunk stream, camera guards, materializer, driver controls, macro accounting and physical contacts. Only rendering and file transport are substituted. Equal 60-second comparisons exclude the first ten seconds of camera entry:
+
+| Viewpoint | Visible mean before → after | Nearby materialized mean before → after | Increase in visible mean |
+| --- | --- | --- | --- |
+| Old Quarter | 1.45 → 5.22 | 20.52 → 55.11 | 3.60× |
+| Blackwater | 11.63 → 20.50 | 24.95 → 54.77 | 1.76× |
+| North Harbor | 6.31 → 11.68 | 11.74 → 22.95 | 1.85× |
+
+The larger population continues to **90 seconds**: visible means are 5.73, 21.62 and 13.28 respectively. All five observed stops exceeding 15 seconds then advance at least 100 world units; the longest stop is **20.3 seconds**. There are **zero traffic contacts, overlaps or guarded-camera spawns**, and no capacity overrun. Longer legitimate queues are expected with more cars; the test verifies real recovery rather than requiring the old sparse-traffic stop limit.
+
+Recurring coverage grows from **414 to 428 of 434 directed lanes**, across **145 source roads and all 14 districts**. Independent circuit sampling reports aggregate district-share error **0.08636 → 0.08137**, preserving the balanced distribution. North Harbor remains below its planned road-capacity share; live visible counts are separately measured above.
+
+The final isolated native density test measures **6.34–10.39 ms mean / 9.36–14.32 ms p95** for the traffic pipeline. This is not browser FPS evidence. The two density tests and the existing 17 driver/recovery/network regressions pass. **890/890 native units pass**, plus static ownership of 41 browser specs across 8 suites. The affected plan selects cumulative release-candidate coverage; browser execution is excluded by the user. Three existing browser pool assertions were aligned to 64 and syntax-checked, without execution. Publish in the existing PR/Pages branch; no automatic merge.
+
+
+## M14 — four-lane avenues and public transport — 2026-09-08
+
+The user approved M13 and requested two lanes in each direction on wide avenues, 1,000 cars across the city, and three usable bus lines. The compiler now emits **660 directed lanes** and **1,177 safe connectors**. Parallel lanes retain their index through turns and straight crossings; capacity changes use compiler connectors. Short fragments beside chunk seams allocate trim to their actual junctions, preventing backwards curb turns. Impossible forward right turns are excluded.
+
+There are **exactly 1,000 civilian car identities plus six buses**, with the existing 64 local slots and camera/chunk/clearance guards. Broad car circuits cover **567/574 eligible through lanes** and all **14 districts**; independent district-share error is **0.04267**. Cul-de-sacs cannot become civilian lane-switch shortcuts. Initial car bodies are separate and independent of camera position.
+
+The lines are **C Circular (20 stops)**, **N Norte–Sur return (10)** and **E Este–Oeste return (14)**, with two buses per line. Buses share VehicleModel controls and the traffic driver. TransitSystem owns stop scheduling and passenger state; NpcSystem moves actual commuters to/from the doors. Enter opens the existing chooser for **Subir como pasajero** or **Robar autobús**. Riding follows the bus with on-foot controls/body disabled; Enter requests a safe exit. Theft transfers the actual bus into VehicleSystem and evacuates the actual passengers. Visible NPCs cannot board invisible dormant buses, and displaced/missed stops cannot hold a bus at zero speed indefinitely.
+
+Extended density tests exposed and corrected real reservation failures: blocked exits holding priority, incomplete denial dependencies, rear cars reserving over their own queue leaders, and starvation in the bounded manoeuvre search budget. Ordinary circulation is measured from asserted sidewalk observer positions; deliberate player obstructions keep separate 20/60 Hz physical recovery cases. Recovery is tracked on the same driver after its proxy leaves the view, not only while materialized.
+
+The final native production pipeline runs **180 seconds per viewpoint with all 1,006 vehicles**, excluding the first ten seconds from visible means:
+
+| Viewpoint | Visible mean | Distinct vehicles seen | Longest stop | Long stops recovered by end |
+| --- | --- | --- | --- | --- |
+| old-quarter | 8.01 | 75 | 24.75 s | 9/10 |
+| blackwater | 27.80 | 143 | 25.90 s | 21/21 |
+| north-harbor | 22.75 | 179 | 7.05 s | 0/0 |
+
+Every viewpoint records **zero contacts, overlaps and guarded-camera spawns**, no local capacity overrun and no old unresolved stop. Recent queues may still be waiting at the sample boundary. These are native simulation measurements, not browser FPS or visual-playtest evidence.
+
+**897/897 native tests pass**, plus static ownership of 41 browser specs across 8 suites. A 300-second service test verifies repeated stops and real boarding/alighting, chooser/rider/theft boundaries and conservation. The 32-car three-minute cohort completes broad circuits with stable identities and at least 30 handoffs each. Its changed four-lane congestion bound is 30 seconds; the observed 20.3-second queue clears. A 56-driver obstruction case verifies fair access to bounded recovery searches.
+
+City validation reports **0 errors / 0 warnings, 87.9/A** and the committed lane pack exactly matches compiler output. The cumulative affected plan selects release-candidate coverage; browser execution remains excluded by the user. Publish the reviewed tree on PR 73, report the exact source commit and bounded CI/Pages observations in the live PR, and keep the PR draft without merging.
+
+## M15 — lower traffic load and measured performance plan — 2026-09-08
+
+The user accepted reducing excessive traffic to **600 civilian cars** and asked how to cut runtime cost substantially. The single population authority now applies that count; the six service buses, two lanes per direction on avenues, broad circuits and 64-slot local capacity remain. No generated geometry or driver behaviour changed.
+
+Sequential native CPU comparisons at the same Blackwater viewpoint measured **24.67 → 17.29 ms mean** and **35.83 → 25.96 ms p95**, around 30% less mean cost. Setup decreased from 11.09 to 7.60 seconds. These are single paired traffic-pipeline measurements with Node inspector, not browser FPS or complete gameplay. Repeated token/diagnostic reconstruction, all-city physical integration and local path/body checks are the principal follow-up areas identified in the profile. The implementation sequence and continuity requirements are documented in `docs/agent-tasks/2026-09-08-traffic-load-and-performance.md`; none of that proposed optimization architecture is implemented in M15.
+
+Validation: **897/897 native tests pass**, plus static ownership of 41 browser specs across eight suites. City validation passes with zero errors/warnings and 87.9/A. The population audit retains 567/574 eligible directed lanes and all fourteen districts, with district share error 0.04748.
+
+| Three-minute viewpoint | Visible mean | Distinct vehicles | Longest stop |
+| --- | ---: | ---: | ---: |
+| Old Quarter | 3.08 | 49 | 25.45 s |
+| Blackwater | 29.01 | 108 | 35.70 s |
+| North Harbor | 12.33 | 128 | 7.05 s |
+
+Every fixture has zero contacts, overlaps, guarded-camera spawns and old unresolved queues. Blackwater still concentrates traffic and can wait longer than the previous cohort: fewer global cars do not guarantee lower local density. These native cases do not resolve or disprove the user's interactive-blockage report.
+
+The cumulative affected plan selects release-candidate coverage; native/static and city checks run, with browser execution excluded by user instruction. Publish the existing PR branch and report exact head plus bounded CI/Pages observations in the live PR. Keep draft; no automatic merge.
+
+## M16 — traffic performance implementation — 2026-09-08
+
+The user authorized implementing the performance suggestions. The population remains 600 civilian cars plus six buses. `TrafficDriverRuntime` now reuses internal token records and incremental route accounting, and the gameplay frame avoids implicit diagnostics. Materialization keeps immediate retention/clearance checks while skipping full-pool allocation and sorting only catchment candidates. Public reads remain detached.
+
+Distant unmaterialized civilians advance their existing compiler journey at staggered 2 Hz inside that same runtime. Wake/sleep radii are 780/940 units; assigned bodies, buses, emergencies and finite routes remain under shared physical integration. Camera promotion retains identity and cannot create a car inside the protected view. Clear predictions can be reused for at most 0.1 seconds with unchanged obstacles, away from junction approach/recovery; exact movement clearance remains per-step. Dynamic spatial candidates, cached junction/body geometry and convex-road containment reduce repeated collision work.
+
+The isolated matched Blackwater benchmark reduces mean traffic CPU **16.75 → 6.64 ms (60.4%)** and p95 **25.51 → 9.59 ms (62.4%)** at 20 Hz. An additional 60 Hz workload measures **5.51 ms mean / 7.74 ms p95**, with no baseline at that rate. Both retain 606 identities and zero observed contacts, overlaps or guarded-camera spawns. These are native traffic-pipeline measurements with rendering/file transport substituted, not full-game browser FPS. Setup remains about seven seconds and dense traffic remains above the proposed 2–3 ms budget.
+
+Validation: **903/903 native tests pass**, plus static ownership of 41 browser specs across eight suites; city validation reports zero errors/warnings and 87.9/A. Six new regressions cover incremental/detached accounting, contact-cache equivalence, immediate obstacle invalidation, spatial membership/order, 4,440 rotated-bus footprints and distant-to-physical camera continuity. Existing physical recovery, fair manoeuvre planning and 300-second six-bus/real-commuter service checks pass. The source frame-order guard was updated for the diagnostics argument without changing its ordering assertion.
+
+The three-minute views retain 567/574 eligible directed lanes and all fourteen districts. Visible means are 5.20 / 29.05 / 13.34 and longest stops 20.65 / 32.50 / 7.05 seconds in Old Quarter / Blackwater / North Harbor. Every view has zero contacts, overlaps, guarded-camera appearances and old unresolved queues; recovery/density thresholds are unchanged. Approximate distant travel can change arrival times, and these native fixtures do not prove every interactive blockage resolved.
+
+Reproducible command and detailed boundaries: `docs/agent-tasks/2026-09-08-traffic-performance-implementation.md`, `tools/dev/profile-traffic.js`. The cumulative affected plan selects release-candidate coverage; native/static and city checks ran, with browser execution excluded by user instruction. Publish one reviewed commit on PR 73, report exact source and bounded CI/Pages state, keep draft and do not merge.

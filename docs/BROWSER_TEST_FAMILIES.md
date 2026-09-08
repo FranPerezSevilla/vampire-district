@@ -58,14 +58,18 @@ If no existing family describes the primary contract, do not create a catch-all 
 - `territory-runtime.spec.js` — persistent territory/district world state.
 - `city-streaming.spec.js` — chunk activation, prefetch and deltas.
 - `city-streaming-resources.spec.js` — streamed resource packs and dormant resource behavior.
-- `city-streaming-macro.spec.js` — macro/dormant world streaming.
+- `city-streaming-macro.spec.js` — macro/dormant world streaming plus normal compiler-route civilian advancement/accounting while the player remains on foot.
 - `entity-streaming.spec.js` — active/dormant entity streaming.
+
+World integration consumes generated streaming packs. Its npm command runs `npm run city:streaming` before Playwright. Deliberately do **not** replace this prerequisite with the broader `city:topology`: regenerating roads would also rewrite road/sidewalk geometry while `browser-world` is validating that geometry. The narrower streaming compile refreshes `localTopology` and chunk packs without changing the geometry under test.
 
 ### browser-traffic
 
 - `vehicle-core.spec.js`
 - `vehicle-maintenance.spec.js`
 - `city-streaming-traffic.spec.js`
+- `city-streaming-traffic-route-controlled.spec.js` — default-off controlled straight/right/left compiler-route regression proof.
+- `city-streaming-traffic-route-multi-agent.spec.js` — production-shaped multi-agent compiler-route continuity, fixed pool/token/slot, reservations, camera/stream retention and bounded-motion soak.
 - `city-streaming-traffic-behavior.spec.js`
 - `city-streaming-traffic-physics.spec.js`
 - `city-streaming-traffic-impact.spec.js`

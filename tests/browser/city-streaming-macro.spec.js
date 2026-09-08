@@ -8,12 +8,13 @@ async function waitForMacroCity(page) {
     && window.NBD_ENTITY_STREAM_READY
     && window.NBD_MACRO_CITY_READY
     && window.NBD_MACRO_CITY
+    && window.NBD_TRAFFIC_ROUTE_MULTI_AGENT?.snapshot?.().enabled
   ));
 }
 
 test.describe.configure({ timeout: 90_000 });
 
-test("abstract traffic advances and dormant police wake onto topology-local pedestrian patrol authority", async ({ page }) => {
+test("compiler-route civilian accounting freezes legacy phases while dormant macro police keep travelling", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
@@ -68,7 +69,14 @@ test("abstract traffic advances and dormant police wake onto topology-local pede
   expect(macro.afterSnapshot.abstractTrafficTokens).toBeGreaterThan(0);
   expect(macro.afterSnapshot.lastAdvancedPoliceIds).toContain("police_patrol_2");
   expect(macro.afterSnapshot.travellingPolice.some(item => item.npcId === "police_patrol_2")).toBe(true);
-  expect(macro.afterSnapshot.flows[0].phases).not.toEqual(macro.beforeSnapshot.flows[0].phases);
+
+  expect(macro.beforeSnapshot.civilianAccountingMode).toBe("compiler-route-projection");
+  expect(macro.afterSnapshot.civilianAccountingMode).toBe("compiler-route-projection");
+  expect(macro.afterSnapshot.legacyCivilianPhaseAdvancementActive).toBe(false);
+  expect(macro.afterSnapshot.civilianRouteAccounting.populationConserved).toBe(true);
+  expect(macro.afterSnapshot.civilianRouteAccounting.unseededAgentCount).toBe(0);
+  expect(macro.afterSnapshot.civilianRouteAccounting.districtPopulationConserved).toBe(true);
+  expect(macro.afterSnapshot.flows[0].phases).toEqual(macro.beforeSnapshot.flows[0].phases);
 
   const wake = await page.evaluate(async () => {
     const district = await import("/phaser/src/data/district.js");
@@ -102,8 +110,6 @@ test("abstract traffic advances and dormant police wake onto topology-local pede
     expect(wake.target.districtPatrol).toBe(true);
     expect(wake.targetDistrict).toBe(wake.district);
   } else {
-    // Macro simulation may wake a patrol off pedestrian geometry. The current
-    // product contract requires a pedestrian-return before ordinary patrol resumes.
     expect(wake.target.kind).toBe("pedestrian-return");
     expect(wake.target.pedestrianReturn).toBe(true);
     expect(wake.target.resumeKind).toBe("patrol");

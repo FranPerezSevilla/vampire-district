@@ -1,3 +1,4 @@
+import { TransitSystem } from "../systems/TransitSystem.js";
 import { installMotorizedPoliceAggressionPolicy } from "../police/MotorizedPoliceAggressionPolicy.js";
 import { installMotorizedPoliceContainmentPolicy } from "../police/MotorizedPoliceContainmentPolicy.js";
 import { installMotorizedPoliceLocalPolicy } from "../police/MotorizedPoliceLocalPolicy.js";
@@ -43,6 +44,11 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.diagnostics.claim("DistrictPackSystem.update", "DistrictPackSystem");
     this.diagnostics.claim("EntityStreamSystem.update", "EntityStreamSystem");
     this.diagnostics.claim("DistantSimulationSystem.update", "DistantSimulationSystem");
+    this.diagnostics.claim("TrafficMultiAgentRouteRuntimePolicy.update", "TrafficMultiAgentRouteRuntimePolicy");
+    this.diagnostics.claim(
+      "TrafficPhysicalConsequencesSystem.prepareRouteFrame",
+      "TrafficPhysicalConsequencesSystem"
+    );
     this.diagnostics.claim("MacroTrafficPoliceSystem.update", "MacroTrafficPoliceSystem");
     this.diagnostics.claim("TrafficMaterializationSystem.update", "TrafficMaterializationSystem");
     this.diagnostics.claim("TrafficOccupantWitnessSystem.update", "TrafficOccupantWitnessSystem");
@@ -62,6 +68,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.diagnostics.registerSystem("DistrictPackSystem");
     this.diagnostics.registerSystem("EntityStreamSystem");
     this.diagnostics.registerSystem("DistantSimulationSystem");
+    this.diagnostics.registerSystem("TrafficMultiAgentRouteRuntimePolicy");
     this.diagnostics.registerSystem("MacroTrafficPoliceSystem");
     this.diagnostics.registerSystem("TrafficMaterializationSystem");
     this.diagnostics.registerSystem("TrafficOccupantWitnessSystem");
@@ -102,12 +109,12 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.witnessPerceptionPolicy = new WitnessPerceptionPolicy(scene);
     scene.witnessReactionPolicy = new WitnessReactionPolicy(scene);
     scene.witnessMarkerPolicy = new WitnessMarkerPolicy(scene);
+    scene.transitSystem = new TransitSystem(scene);
     scene.trafficLocalAssignmentPolicy = installTrafficLocalAssignmentPolicy(scene);
     scene.trafficLocalBehaviorSystem = new TrafficLocalBehaviorSystem(scene);
     scene.trafficSteeringPresentationSystem = new TrafficSteeringPresentationSystem(scene);
-    // Keep civilian movement on authored lane geometry. The experimental intent
-    // driver is intentionally not installed until junctions have lane-level
-    // connectivity and collision-safe turn paths.
+    // M8.3 promotes compiler-owned directed lanes/connectors to normal civilian
+    // continuity. Legacy intent/world-space steering remains intentionally absent.
     scene.trafficPhysicalConsequencesSystem = new TrafficPhysicalConsequencesSystem(scene);
     scene.trafficMassCollisionPolicy = installTrafficMassCollisionPolicy(scene.trafficPhysicalConsequencesSystem);
     scene.trafficImpactConsequencesSystem = new TrafficImpactConsequencesSystem(scene);
@@ -128,6 +135,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     const frame = typeof beginFrame === "function" ? beginFrame.call(input) : null;
     if (!frame) return frame;
     enrichVehicleInputFrame(frame, input?.keys?.space?.isDown);
+    if (this.scene.transitSystem?.isRiding?.()) return this.scene.transitSystem.filterInput(frame);
     const vehicle = this.scene.vehicleSystem;
     return vehicle?.isDriving?.() ? vehicle.filterInputFrame(frame) : frame;
   }
@@ -160,6 +168,14 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     diagnostics.endSystem("StreamingPipeline", profileMark);
 
     profileMark = diagnostics.beginSystem("TrafficPipeline");
+    // Gate unresolved route-to-route contacts before advancing compiler-route
+    // state. This prevents a car body pinned in a junction from rotating or
+    // tunnelling through route stages underneath the physical pile.
+    scene.trafficPhysicalConsequencesSystem?.prepareRouteFrame?.(dt);
+    // Civilian route state advances after the physical gate. Macro traffic then
+    // consumes only the conservative route projection for accounting while
+    // retaining its independent macro police simulation.
+    scene.trafficLocalAssignmentPolicy?.multiAgentRoutePolicy?.update?.(dt, { diagnostics: false });
     scene.macroTrafficPoliceSystem?.update?.(dt);
     scene.trafficMaterializationSystem?.update?.(dt);
     scene.trafficOccupantWitnessSystem?.update?.(dt);
@@ -167,6 +183,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.trafficSteeringPresentationSystem?.update?.(dt);
     scene.trafficPhysicalConsequencesSystem?.update?.(dt);
     scene.trafficImpactConsequencesSystem?.update?.(dt);
+    scene.transitSystem?.update?.(dt);
     diagnostics.endSystem("TrafficPipeline", profileMark);
 
     profileMark = diagnostics.beginSystem("MotorizedPoliceSystem");
@@ -232,6 +249,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.scene.trafficSteeringPresentationSystem = null;
     this.scene.trafficLocalBehaviorSystem?.destroy?.();
     this.scene.trafficLocalBehaviorSystem = null;
+    this.scene.transitSystem?.destroy?.();
+    this.scene.transitSystem = null;
     this.scene.trafficLocalAssignmentPolicy?.destroy?.();
     this.scene.trafficLocalAssignmentPolicy = null;
     this.scene.witnessMarkerPolicy?.destroy?.();

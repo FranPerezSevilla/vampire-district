@@ -23,7 +23,7 @@ Make the locked nine-track ViceBlood radio seed behave as a usable in-car radio:
   - missing private masters fail silently without gameplay failure;
   - the nine private MP3 masters can be staged into a gitignored served directory using a deterministic script;
   - normal local/packaged/production runtime uses the private staged masters;
-  - automatic Netlify Deploy Preview hosts (`deploy-preview-*--vampire-district.netlify.app`) may fetch the exact official Pixabay CDN copies pinned in the radio catalogue so reviewers can test radio without local staging;
+  - automatic Netlify Deploy Preview hosts (`deploy-preview-*--vampire-district.netlify.app`) and the ViceBlood GitHub Pages project (`franperezsevilla.github.io/vampire-district/`) may fetch the exact official Pixabay CDN copies pinned in the radio catalogue so reviewers can test radio without local staging;
   - every pinned preview URL must be byte-identical to the acquired master (SHA-256) and CORS-readable before it is accepted.
 
 ## Out of scope
@@ -31,7 +31,7 @@ Make the locked nine-track ViceBlood radio seed behave as a usable in-car radio:
 - DJ voice, station IDs, advertisements, stingers or crossfades.
 - Persisting the selected receiver station in campaign saves.
 - Per-car remembered station.
-- Generic runtime download from Pixabay/FMA/CDN URLs outside the explicit automatic Netlify Deploy Preview exception.
+- Generic runtime download from Pixabay/FMA/CDN URLs outside the explicit Netlify Deploy Preview and ViceBlood Pages exceptions.
 - Build-time scraping or recurring source discovery from Pixabay.
 - Publishing substantially unchanged third-party masters in public Git.
 - Changing the locked nine-track seed or searching for replacement music.
@@ -52,7 +52,7 @@ NPC civilian-car diegetic radio ambience remains part of the overall PR scope bu
 - [ ] Private runtime masters are gitignored and stageable without public source-control publication.
 - [ ] Missing assets produce an unavailable playback state rather than an exception or game failure.
 - [ ] Automatic Netlify Deploy Preview resolves the nine tracks from verified official CDN copies without requiring the reviewer to stage or deploy audio manually.
-- [ ] Production/local hosts do not switch to the preview CDN path.
+- [ ] Local builds, production Netlify and unrelated Pages projects do not switch to the preview CDN path.
 
 ## Validation
 
@@ -81,6 +81,12 @@ Manual player-radio scenario in the automatic PR Deploy Preview:
 The preview-only CDN URLs were recovered from each Pixabay page's published `AudioObject.contentUrl`, then downloaded and checked against the already acquired masters. All nine matched their locked SHA-256 values and returned `audio/mpeg` with `Access-Control-Allow-Origin: *`. No discovery/scraping workflow remains in the branch after verification.
 
 The existing manual `radio:deploy-netlify` tooling may remain as a fallback/debug path, but it is not the normal reviewer workflow.
+
+### GitHub Pages continuation — 2026-09-08, PR 73
+
+The user moved review to GitHub Pages after exhausting Netlify quota. Pages serves the source tree without the private MP3 directory; a direct request confirmed HTTP 404 for the previously selected local master. `RadioCatalog` now recognizes the exact ViceBlood Pages host and project path, selecting the same nine pinned official sources. Root and nested game entry points are covered, as are unrelated-host/project exclusions and actual document-location catalogue initialization. Native radio tests retain entry/re-entry, station switching, shared output, preload/cache and traffic ambience coverage.
+
+Fresh automated requests to the official CDN were rejected with HTTP 403 (Cloudflare code 1010). The original hash/CORS verification above is historical evidence, not a fresh successful download. This source-resolution fix does not establish audible playback or ongoing CDN availability. Browser tests and listening checks remain excluded by the user's instruction. See [the bounded Pages task](2026-09-08-pages-radio.md).
 
 ## Delivery
 

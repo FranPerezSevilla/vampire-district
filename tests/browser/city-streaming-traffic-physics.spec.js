@@ -31,8 +31,12 @@ test("the driven car softly pushes local traffic without damage, heat or slot re
     window.NBD_TRAFFIC_PHYSICS.step(0.05);
 
     const trafficBefore = window.NBD_TRAFFIC.snapshot();
-    const selected = trafficBefore.materialized.find(item => Math.abs(Math.sin(item.angle)) < 0.25)
-      || trafficBefore.materialized[0];
+    const selected = trafficBefore.materialized.find(item => {
+      const slot = scene.trafficMaterializationSystem.pool[item.slotIndex];
+      return slot?.driverActive && scene.trafficPhysicalConsequencesSystem.proxyWorldSafe(
+        slot, slot.x + Math.cos(slot.angle) * 18, slot.y + Math.sin(slot.angle) * 18
+      );
+    });
     if (!selected) return { missing: true, trafficBefore };
 
     const slot = scene.trafficMaterializationSystem.pool[selected.slotIndex];
@@ -102,7 +106,8 @@ test("the driven car softly pushes local traffic without damage, heat or slot re
     scene.player.setPosition(vehicle.x, vehicle.y);
     const offsetBeforeRecovery = contactAfterImpact?.offsetDistance || 0;
     for (let index = 0; index < 36; index++) {
-      scene.trafficLocalBehaviorSystem.update(0.05, { force: true });
+      scene.trafficLocalAssignmentPolicy.multiAgentRoutePolicy.update(0.05);
+      scene.trafficMaterializationSystem.update(0.05);
       scene.trafficPhysicalConsequencesSystem.update(0.05, { force: true });
     }
     const physicsRecovered = window.NBD_TRAFFIC_PHYSICS.snapshot();
@@ -152,7 +157,7 @@ test("the driven car softly pushes local traffic without damage, heat or slot re
   });
 
   expect(result.missing).toBe(false);
-  expect(result.poolSize).toBe(10);
+  expect(result.poolSize).toBe(64);
   expect(result.physicsAfterImpact.totalContacts).toBeGreaterThan(0);
   expect(result.physicsAfterImpact.totalPushes).toBeGreaterThan(0);
   expect(result.physicsAfterImpact.totalBlocks).toBe(0);

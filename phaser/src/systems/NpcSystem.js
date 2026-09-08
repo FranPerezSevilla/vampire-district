@@ -51,6 +51,7 @@ export class NpcSystem extends NpcSystemCore {
   }
 
   updateNpc(npc, dt) {
+    if (this.scene.transitSystem?.updateNpc?.(npc, dt, this)) return;
     const panickingFromDriving = Boolean(
       npc
       && [NPC_TYPES.CIVILIAN, NPC_TYPES.TARGET].includes(npc.type)

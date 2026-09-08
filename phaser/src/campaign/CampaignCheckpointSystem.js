@@ -3,7 +3,7 @@ import { CampaignCheckpointSystem as CampaignCheckpointSystemCore } from "./Camp
 export class CampaignCheckpointSystem extends CampaignCheckpointSystemCore {
   safetySnapshot() {
     const snapshot = super.safetySnapshot();
-    if (!this.scene.vehicleSystem?.isDriving?.()) return snapshot;
+    if (!this.scene.vehicleSystem?.isDriving?.() && !this.scene.transitSystem?.isRiding?.()) return snapshot;
     return {
       ...snapshot,
       // Vehicle occupancy remains an unsafe transition until the checkpoint

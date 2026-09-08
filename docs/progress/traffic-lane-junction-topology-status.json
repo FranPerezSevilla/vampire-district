@@ -1,0 +1,1265 @@
+{
+  "initiative": "traffic-lane-junction-topology",
+  "version": 25,
+  "updatedAt": "2026-09-08",
+  "pullRequest": 73,
+  "branch": "codex/traffic-junction-topology",
+  "state": "local-validated-publish-pending",
+  "currentMilestone": "M16",
+  "currentTask": "M16-traffic-performance",
+  "lastValidatedImplementationHead": "91dcf2392a21875b607b3ae1a191a760876fe6e9",
+  "baseAtBootstrap": "805ea5d107dcddcef4cd564294569455093af4b0",
+  "canonicalDocs": {
+    "roadmap": "docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md",
+    "agentContract": "docs/agents/TRAFFIC_LANE_JUNCTION_TOPOLOGY_AGENT.md",
+    "taskBoundary": "docs/agent-tasks/2026-08-21-traffic-lane-junction-topology.md",
+    "m1CompilerContract": "docs/agent-tasks/2026-08-21-traffic-lane-junction-m1-compiler-contract.md",
+    "progressLog": "docs/progress/TRAFFIC_LANE_JUNCTION_TOPOLOGY_PROGRESS.md",
+    "physicalQueueCorrection": "docs/agent-tasks/2026-09-07-traffic-physical-queue-clearance.md",
+    "pagesValidation": "docs/agent-tasks/2026-09-07-pages-traffic-validation.md",
+    "sustainedTraffic": "docs/agent-tasks/2026-09-07-sustained-arcade-traffic.md",
+    "physicalDrivers": "docs/agent-tasks/2026-09-08-physical-traffic-drivers.md",
+    "recoveryCircuits": "docs/agent-tasks/2026-09-08-traffic-recovery-circuits.md",
+    "densityDistribution": "docs/agent-tasks/2026-09-08-traffic-density-distribution.md",
+    "moreTraffic": "docs/agent-tasks/2026-09-08-more-traffic.md",
+    "avenuesAndBuses": "docs/agent-tasks/2026-09-08-avenues-and-buses.md",
+    "loadAndPerformance": "docs/agent-tasks/2026-09-08-traffic-load-and-performance.md",
+    "trafficPerformance": "docs/agent-tasks/2026-09-08-traffic-performance-implementation.md"
+  },
+  "authority": {
+    "localTopologyCompiler": "tools/city-compiler/traffic-lane-topology.js",
+    "connectorCompiler": "tools/city-compiler/traffic-junction-connectors.js",
+    "pureRouteCursor": "TrafficRouteCursor; explicit controlled regression fixtures and topology lookup only",
+    "populationSeed": "phaser/src/streaming/TrafficRoutePopulationSeed.js; macro provenance is bootstrap compatibility only",
+    "compatibilityProjection": "phaser/src/streaming/TrafficRouteCompatibilityProjection.js; live civilian aggregate accounting source",
+    "routeBehavior": "TrafficDriverController; throttle, brake, steering and reverse through shared VehicleModel",
+    "routeMaterializationSubstrate": "phaser/src/streaming/TrafficRouteMaterializationPolicy.js plus route-aware TrafficLifecyclePolicy",
+    "controlledRouteActivation": "phaser/src/streaming/TrafficControlledRouteActivationPolicy.js; default-off regression harness only",
+    "multiAgentRouteRuntime": "TrafficMultiAgentRouteRuntimePolicy selects TrafficDriverRuntime by default; driving:false is a controlled cursor fixture",
+    "junctionReservation": "TrafficDriverJunctions; buffered path permissions, whole-body intersection boundaries and downstream clearance",
+    "gridlockRecovery": "TrafficDriverController executes bypass or bounded reverse/reassessment. The one-search frame budget fairly selects the least recently attempted eligible driver.",
+    "visibleDensity": "TrafficPopulationPolicy apportions exactly 600 civilian cars across road/district capacity; TransitSystem adds six service buses. TrafficLocalAssignmentPolicy retains the fixed 64 local slots and camera/chunk/clearance guards.",
+    "defaultMovementAuthority": "shared-vehicle-kinematics for all materialized bodies; distant compiler-journey scheduling remains inside TrafficDriverRuntime",
+    "macroRole": "bootstrap population plus conservative route-projection accounting and independent police travel; never civilian local geometry",
+    "legacyCivilianPhaseRole": "bootstrap/fallback compatibility only; phase advancement is disabled while normal compiler-route authority is active",
+    "physicalAgentAuthority": "TrafficDriverRuntime adopts native impacts into actual poses; no route-offset recovery authority in production",
+    "junctionFlow": "TrafficDriverJunctions; whole-body path permits, clear physical approaches and downstream exits, explicit denial dependencies, inside-first clearance. Queued rear cars cannot reserve over their leaders.",
+    "journeyPlanner": "TrafficJourneyPlanner; broad repeating circuits with continuous seams. Civilian through routes exclude cul-de-sacs; prescribed bus terminal itineraries may use them.",
+    "circuitAllocation": "TrafficPopulationPolicy; deterministic bootstrap allocation against source-road and district capacity, without changing routes or physical poses after startup",
+    "publicTransport": "TransitRoutes selects compiler curb lanes and prescribed itineraries. TransitSystem owns stops, passenger state and service braking; TrafficDriverRuntime/VehicleModel move buses, NpcSystem moves commuters, InteractionSystem owns the chooser.",
+    "performance": "TrafficDriverRuntime schedules distant unmaterialized civilians at staggered 2 Hz and keeps assigned cars, buses and emergencies under shared physical integration. Incremental route accounting and lazy diagnostics are read-only projections; body geometry and spatial candidates do not own movement."
+  },
+  "cleanupAudit": {
+    "productionRequiredCompatibility": [
+      "legacy macro trafficFlows as population bootstrap/accounting compatibility only",
+      "TrafficRoutePopulationSeed",
+      "TrafficRouteCompatibilityProjection",
+      "MacroTrafficPoliceSystem macro graph travel for police",
+      "route-aware lifecycle/materialization forced release and hijack semantics"
+    ],
+    "regressionHarnessesRetained": [
+      "TrafficControlledRouteActivationPolicy for controlled straight/right/left crossing proof",
+      "TrafficRouteTraversalHarness for isolated continuity regression proof",
+      "TrafficShadowRoutePolicy source/test as isolated historical M3 evidence only",
+      "MacroTrafficRouteContinuityPolicy and TrafficIntentDrivingPolicy as isolated legacy evidence only; neither has live production references"
+    ],
+    "supersededProductionPathRemoved": [
+      "TrafficLocalAssignmentPolicy no longer installs TrafficShadowRoutePolicy or wraps macro.simulateTick with a duplicate shadow civilian population"
+    ],
+    "productionGuards": [
+      "tests/traffic-lifecycle-integration.test.js recursively rejects live production references to TrafficShadowRoutePolicy, MacroTrafficRouteContinuityPolicy and TrafficIntentDrivingPolicy",
+      "legacy nearest-junction inference remains disabled",
+      "compiler-route lanes/connectors remain the sole civilian local pose authority"
+    ]
+  },
+  "hardInvariants": [
+    "compiler lanes and safe connectors define navigation; emergency controls may use physically clear pavement across lanes",
+    "macro graph centres never become civilian local driving coordinates",
+    "stable tokenId and materialization slot survive visible route stage changes",
+    "no coordinate teleport across lane/connector/lane",
+    "normal crossing release is protected; forced hijack/layer/teardown exits remain legal",
+    "visible route-active slots remain retained through connector and chunk-boundary crossings while still inside the camera/follow retention envelope",
+    "legacy local behavior and steering never overwrite routeActive x/y",
+    "driver-active pose is integrated by shared VehicleModel controls; a native impact is adopted into that physical state once",
+    "driver controls throttle, brake, steering and reverse; no independent lateral translation or route snapping",
+    "junction conflicts delay connector entry while cars already inside normally clear",
+    "reservation ownership releases on exit/forced teardown and stale owners recover",
+    "gridlock recovery reserves a physically driven bypass or reverses a bounded distance and reassesses; no teleport, snap or new overlap",
+    "the civilian materialization pool baseline is established before route activation and remains fixed during runtime continuity",
+    "compatibility projection never drops population or guesses ambiguous macro ownership",
+    "MacroTrafficRouteContinuityPolicy and TrafficIntentDrivingPolicy have no live production activation path",
+    "generated topology is fixed in compiler sources, never hand-edited as a runtime workaround",
+    "wrecks remain disabled; an existing body contact may decrease while driving away, without creating a new contact",
+    "predefined city circuits repeat with a continuous physical pose; no short one-block fallback"
+  ],
+  "completedTasks": [
+    "M0-foundation",
+    "M1-compiler-owned-topology-and-safety",
+    "M2.1-pure-route-cursor",
+    "M2.2-deterministic-preferred-continuation",
+    "M2.3-compatibility-projection",
+    "M3.1-shadow-route-agent-seeding",
+    "M3.2-shadow-route-advance-and-projection",
+    "M3.3-shadow-runtime-diagnostics",
+    "M4.1-isolated-continuous-traversal-harness",
+    "M5.1-route-aware-lifecycle-retention-substrate",
+    "M6.1-controlled-browser-route-activation",
+    "M7.1-deterministic-junction-reservation",
+    "M8.1-multi-agent-route-runtime-substrate",
+    "M8.2-opt-in-multi-agent-browser-soak",
+    "M8.3-default-compiler-route-activation-and-macro-accounting-migration",
+    "M9.1-legacy-cleanup-audit-and-final-validation-prep",
+    "M9.3-physical-queue-clearance-validation",
+    "M14-avenues-and-buses",
+    "M15-traffic-load-and-performance",
+    "M16-traffic-performance"
+  ],
+  "milestones": {
+    "M0": {
+      "title": "Read-only lane/junction topology foundation",
+      "state": "complete"
+    },
+    "M1": {
+      "title": "Production topology audit and compiler-owned hard safety contract",
+      "state": "complete"
+    },
+    "M2": {
+      "title": "Stable route-agent state model (pure data)",
+      "state": "complete"
+    },
+    "M3": {
+      "title": "Shadow macro continuity bridge",
+      "state": "complete"
+    },
+    "M4": {
+      "title": "Local continuous traversal harness",
+      "state": "complete"
+    },
+    "M5": {
+      "title": "Lifecycle/materialization/pool-retention integration",
+      "state": "complete"
+    },
+    "M6": {
+      "title": "Opt-in browser activation at controlled junctions",
+      "state": "complete"
+    },
+    "M7": {
+      "title": "Junction occupancy, yielding and conflict handling",
+      "state": "complete"
+    },
+    "M8": {
+      "title": "Default runtime activation and macro migration",
+      "state": "complete"
+    },
+    "M9": {
+      "title": "Legacy cleanup, documentation and user validation gate",
+      "state": "final-validation-pending"
+    },
+    "M10": {
+      "title": "Physical vehicle driver rebuild",
+      "state": "implemented; extended by M11"
+    },
+    "M11": {
+      "title": "Junction recovery and broad circular itineraries",
+      "state": "published and deployed at e660253; extended by M12"
+    },
+    "M12": {
+      "title": "Road-capacity population and broad circuit distribution",
+      "state": "published and deployed at 65f81bf; user approved the traffic and requested greater density"
+    },
+    "M13": {
+      "title": "More visible traffic with bounded local capacity",
+      "state": "published and deployed at 2a4924a; user approved and requested four-lane avenues, 1,000 cars and bus service"
+    },
+    "M14": {
+      "title": "Four-lane avenues, 1,000 civilian cars and usable bus lines",
+      "state": "published"
+    },
+    "M15": {
+      "title": "600-car traffic load and measured performance plan",
+      "state": "published"
+    },
+    "M16": {
+      "title": "Traffic CPU: incremental records, distant scheduling and cached geometry",
+      "state": "local-validated-publish-pending"
+    }
+  },
+  "validation": {
+    "m1Final": {
+      "state": "passed",
+      "runNumber": 2083,
+      "runId": 32485801858
+    },
+    "m2RouteCursor": {
+      "state": "passed",
+      "runNumber": 2087,
+      "runId": 32486691651
+    },
+    "m2Projection": {
+      "state": "passed",
+      "runNumber": 2101,
+      "runId": 32489771083
+    },
+    "m3Shadow": {
+      "state": "passed",
+      "runNumber": 2109,
+      "runId": 32490920999
+    },
+    "m4Traversal": {
+      "state": "passed",
+      "runNumber": 2113,
+      "runId": 32491786219
+    },
+    "m5Retention": {
+      "state": "passed",
+      "runNumber": 2125,
+      "runId": 32492853271
+    },
+    "m6ControlledActivation": {
+      "state": "passed",
+      "runNumber": 2135,
+      "runId": 32495071190
+    },
+    "m7JunctionReservation": {
+      "state": "passed",
+      "runNumber": 2153,
+      "runId": 32549761928
+    },
+    "m8MultiAgentRuntime": {
+      "state": "passed",
+      "runNumber": 2166,
+      "runId": 32551128095
+    },
+    "m8BrowserSoak": {
+      "state": "passed",
+      "runNumber": 2173,
+      "runId": 32552262883
+    },
+    "m8DefaultActivationAndAccountingMigration": {
+      "state": "passed",
+      "workflow": "Tests",
+      "runNumber": 2199,
+      "runId": 32554733530,
+      "head": "0c25c8c7d324b027bd4fd0363483884e8da2f937"
+    },
+    "m9CleanupAndSemanticCi": {
+      "state": "passed",
+      "workflow": "Tests",
+      "runNumber": 2220,
+      "runId": 32577687431,
+      "head": "763d6a12824d3d83d3fea92f549c56d1b1a04202",
+      "jobs": {
+        "unit-tests": "success",
+        "browser-boot": "success",
+        "browser-campaign": "success",
+        "browser-world": "success",
+        "browser-traffic": "success",
+        "browser-police": "success",
+        "browser-gameplay": "success",
+        "browser-performance": "success",
+        "browser-building-review": "skipped-by-design"
+      },
+      "notes": "After the semantic CI split from main, browser-world now regenerates city:streaming before Playwright. This restores the M8 compiler-route prerequisite without regenerating road/sidewalk geometry under the world-geometry tests."
+    },
+    "m9ManualGameplayFeedbackFixCycle": {
+      "state": "passed",
+      "workflow": "Tests",
+      "runNumber": 2273,
+      "runId": 32699969927,
+      "head": "3f6082a650ed6e865ab9a8dce709959cac077023",
+      "jobs": {
+        "unit-tests": "success",
+        "browser-boot": "success",
+        "browser-campaign": "success",
+        "browser-world": "success",
+        "browser-traffic": "success",
+        "browser-police": "success",
+        "browser-gameplay": "success",
+        "browser-performance": "success",
+        "browser-building-review": "skipped-by-design"
+      },
+      "feedbackAddressed": [
+        "route-active visible pose is synchronized every frame so internal route progress cannot leave a visually frozen/bobbing car",
+        "prolonged vehicle gridlock gains deterministic latched initiative and bounded physical traffic-to-traffic shove recovery",
+        "player vehicle continues to physically displace civilian traffic",
+        "route-active materialized slots are retained through connector/chunk crossing while inside the retention envelope to prevent junction disappearances",
+        "civilian materialization baseline increased from 10 to 16 and is established before route activation so the pool remains fixed"
+      ],
+      "notes": "The first feedback implementation exposed a one-frame initiative oscillation and a post-activation 10-to-16 pool growth. Both were corrected: initiative now remains latched to the blocker until resolved, and density is configured before any route policy captures its fixed-pool baseline."
+    },
+    "m9PhysicalQueueClearance": {
+      "state": "passed",
+      "baselineHead": "b023411be75f4f6c1ffbb66220dde04d10dac685",
+      "baselineCi": {
+        "workflow": "Tests",
+        "runNumber": 2468,
+        "runId": 34093466042,
+        "state": "failure",
+        "cause": "one-time radio diagnostic violates the existing branding-cleanup workflow inventory guard"
+      },
+      "reproduction": "New rear-contact regression failed before the fix: the clear leader could not advance. All 6 authority tests pass after the forward-only same-lane contact correction.",
+      "localFast": {
+        "state": "passed",
+        "unitTests": 865,
+        "browserSuiteOwnership": "41 specs across 8 canonical suites"
+      },
+      "releaseCandidate": {
+        "state": "passed",
+        "localLimitation": "Dependency installation was rejected by the environment; local affected validation cannot start Playwright.",
+        "workflow": "Tests",
+        "runNumber": 2469,
+        "runId": 34096775416,
+        "head": "e3e4d6c239e003cbfce053ebc3f8cce5723fb0d7",
+        "unitTests": 865,
+        "browserTests": 60,
+        "browserFamilies": {
+          "boot": 12,
+          "world": 14,
+          "traffic": 20,
+          "police": 6,
+          "gameplay": 6,
+          "performance": 1,
+          "campaign": 1
+        },
+        "conclusion": "success",
+        "jobId": 101662078673
+      },
+      "preview": {
+        "state": "not-validated",
+        "reason": "Cloud browser access to the Netlify preview was rejected by the environment."
+      },
+      "manualGameplay": "pending-explicit-user-approval",
+      "implementationHead": "e3e4d6c239e003cbfce053ebc3f8cce5723fb0d7",
+      "physicalQueueIntegration": {
+        "state": "passed",
+        "scenario": "Two production-seeded route agents on one approach; 18-unit rear impact displacement; native route, junction, physical and rigid-body policies stepped for 300 frames of 0.05 seconds.",
+        "result": "Both stable tokens reached the outgoing lane; both physical offsets recovered to zero; no permanent physical-authority lock remained.",
+        "scope": "Local isolated integration diagnostic; not a replacement for browser or user gameplay approval."
+      },
+      "handoff": "This documentation checkpoint changes no runtime, test, dependency or generated content; the complete suite above validates the unchanged implementation. Any new CI triggered by this documentation commit is recorded separately in the PR."
+    },
+    "m9PhysicalAuthorityInstallation": {
+      "state": "passed",
+      "head": "6405160415e5c17fc48a955da1c70befcd4f3a61",
+      "workflow": "Tests",
+      "runNumber": 2461,
+      "runId": 33595263124
+    },
+    "m9PagesValidation": {
+      "state": "ci-passed-user-rejected-traffic",
+      "url": "https://franperezsevilla.github.io/vampire-district/",
+      "baselineHead": "95e344b082ecdf0eff8adf8691d138baa048e824",
+      "pagesRunId": 34098911361,
+      "baselineCi": {
+        "runId": 34098917526,
+        "runNumber": 2470,
+        "conclusion": "success"
+      },
+      "observed": "Normal title/audio and New Night load. Civilian vehicles move at the first junction east of spawn. An oversized authored-car label obscures the roadway.",
+      "correction": "Initialize readable text resolution before constructing its Phaser texture source; preserve logical Canvas dimensions.",
+      "regression": "Production Canvas fallback checks actual label render dimensions and movement using held input after New Night.",
+      "remaining": "Tests #2472 passed on be60ec6. User rejected the wider traffic behavior; M9.4 reopens implementation and supersedes the isolated-turn observation."
+    },
+    "m9SustainedTraffic": {
+      "state": "superseded-by-user-requested-rebuild",
+      "baselineHead": "be60ec65b0ad2ecc2893d6f2daac94f6b296c8be",
+      "baseline": {
+        "seconds": 120,
+        "cars": 32,
+        "stoppedOverTenSeconds": 29,
+        "worstStopSeconds": 118.15,
+        "contacts": 0
+      },
+      "regression": "tests/traffic-network-flow.test.js",
+      "durationSeconds": 180,
+      "coverage": [
+        "per-car sustained progress and route variety",
+        "no normal traffic contacts or slot replacement",
+        "native gunfire and physical impact recovery",
+        "short junction approaches, adjacent junction continuation and direct handoffs",
+        "following and braking across compiler seams"
+      ],
+      "browserValidation": "Tests #2473 on bb832e2 failed native soft-push assertion (job 101865674742); inspected before replacing movement authority.",
+      "local": {
+        "fast": "873/873 unit tests pass; 41 browser specs assigned to 8 canonical suites",
+        "affected": "Full release-candidate plan selected; 873 unit tests pass, local browser boot stops at missing Playwright",
+        "network": "All 32 cars satisfy three-minute per-car progress, stop, collision and identity assertions",
+        "reactions": "Native gunfire and side impact: route holds, physical offset recovers, same car resumes"
+      }
+    },
+    "m10PhysicalDrivers": {
+      "state": "local-passed-browser-ci-pending",
+      "baselineHead": "bb832e225147bbcdf7c95b335e105da6702048af",
+      "task": "docs/agent-tasks/2026-09-08-physical-traffic-drivers.md",
+      "localFast": "881/881 unit tests pass; 41 browser specs assigned to 8 canonical suites",
+      "localAffected": "881/881 unit tests pass and suite ownership passes; browser boot stops at playwright: not found (exit 127). Dependency installation was previously rejected by automatic review; no retry or bypass.",
+      "coverage": [
+        "Deterministic complete journeys with no repeated lanes and mid-block destinations",
+        "Shared player kinematics at 60 Hz, including no lateral position authority",
+        "Emergency bypass/reverse and blocked-corridor behavior",
+        "Production emergency driving at 20 and 60 Hz, original destination and slot retained",
+        "32 cars for 180 seconds: no contacts, overlaps, 15-second stops or identity replacements; at least 30 junction decisions and 25 distinct lanes per car",
+        "Native gunfire and side impact adoption; no offset decay back to a rail",
+        "Theft retires the driver materialization token"
+      ],
+      "browser": "Updated production boot/accounting, driver behavior, native soft push and impact adoption specs; CI pending",
+      "pages": "Publish and inspect the updated GitHub Pages deployment; no Netlify",
+      "deadEndCheck": "Two native cars seeded near the western dead end run for 50 seconds, each completing 14 lane handoffs with no rejected step, contact or overlap."
+    },
+    "m11RecoveryCircuits": {
+      "state": "local-passed",
+      "baselineHead": "1d8d7e3edcf594f5c1db6a2a0aa6d1b395542652",
+      "task": "docs/agent-tasks/2026-09-08-traffic-recovery-circuits.md",
+      "localFast": "888/888 unit tests pass; static suite ownership passes (41 specs, 8 suites)",
+      "focused": "17/17 focused driver, recovery and network tests pass",
+      "network": "32 native cars for 180 seconds: no contacts, overlaps or slot replacement; no stop reaches 15 seconds; each completes at least 30 handoffs and one circuit. Circuits cover at least 7 source roads and span at least 1000 world units.",
+      "recovery": "Real generated crossing at 20 and 60 Hz: an overlapping lead car reverses and two followers bypass via clear opposing pavement; no new contacts, increasing penetration or lateral translations.",
+      "partialReverse": "Bounded reverse and stop without a complete escape; reassessment and resumption when a full-width obstruction clears; blocked rear cannot be traversed.",
+      "circuitAudit": {
+        "startingLanes": 434,
+        "circularRoutesFound": 434,
+        "minimumCircuitLength": 2340.9875711310524
+      },
+      "affectedPlan": "Cumulative PR selects release-candidate coverage; browser execution explicitly excluded by the user. Native units/simulations and static ownership executed instead.",
+      "browser": "Not run and not an acceptance gate, by explicit user instruction. PR 73 CI skips Chromium and runs check:fast; other PRs and main keep their validation.",
+      "deployment": "Push to the existing Pages branch; report actual deployment status in the live PR handoff. No browser playtest."
+    },
+    "m12DensityDistribution": {
+      "state": "local-passed",
+      "baselineHead": "e6602530a0ecf0fe718ff7d5386400f820df650b",
+      "localFast": "890/890 units pass plus static ownership of 41 browser specs / 8 suites; no browser execution",
+      "focused": "17/17 driving/recovery/network regressions plus 2/2 population/density tests pass",
+      "population": {
+        "before": 58,
+        "after": 223,
+        "physicalPool": 32
+      },
+      "circuitCoverage": {
+        "before": 363,
+        "after": 414,
+        "totalDirectedLanes": 434,
+        "coveredSourceRoads": 138
+      },
+      "sampledDistrictDistributionError": {
+        "before": 0.42175402447835586,
+        "after": 0.08635863089270648,
+        "meaning": "Sum of absolute circuit-length occupancy fraction errors against district road-capacity shares; independent 256-point circuit sampling, not observed camera occupancy."
+      },
+      "cameraSimulation": {
+        "durationSeconds": 90,
+        "integrationHz": 20,
+        "warmupExcludedSeconds": 10,
+        "transportAndRendering": "Node file transport and render objects; production chunk residency, camera guards, materializer, driving, macro accounting and physical contacts",
+        "results": [
+          {
+            "center": {
+              "x": 1754,
+              "y": 1515
+            },
+            "historicalPopulation": true,
+            "bootMs": 263.45964200000003,
+            "population": 58,
+            "seconds": 90,
+            "visibleAverage": 1.16875,
+            "nearbyAverage": 9.035625,
+            "emptyFraction": 0.3275,
+            "seen": 10,
+            "maxNearby": 13,
+            "spawns": 43,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 5.699999999999988,
+            "frameP95Ms": 2.8904029999998784,
+            "frameMeanMs": 1.879101473333336
+          },
+          {
+            "center": {
+              "x": 1754,
+              "y": 1515
+            },
+            "historicalPopulation": false,
+            "bootMs": 2716.9582440000004,
+            "population": 223,
+            "seconds": 90,
+            "visibleAverage": 2.0475,
+            "nearbyAverage": 22.095625,
+            "emptyFraction": 0.1625,
+            "seen": 17,
+            "maxNearby": 32,
+            "spawns": 110,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 11.55000000000003,
+            "frameP95Ms": 8.814365000001999,
+            "frameMeanMs": 6.624333429444426
+          },
+          {
+            "center": {
+              "x": 2280,
+              "y": 3280
+            },
+            "historicalPopulation": true,
+            "bootMs": 211.3425320000024,
+            "population": 58,
+            "seconds": 90,
+            "visibleAverage": 1.276875,
+            "nearbyAverage": 5.23125,
+            "emptyFraction": 0.1425,
+            "seen": 10,
+            "maxNearby": 8,
+            "spawns": 32,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 3.099999999999997,
+            "frameP95Ms": 2.0330080000021553,
+            "frameMeanMs": 1.3629561977777565
+          },
+          {
+            "center": {
+              "x": 2280,
+              "y": 3280
+            },
+            "historicalPopulation": false,
+            "bootMs": 2884.6531140000006,
+            "population": 223,
+            "seconds": 90,
+            "visibleAverage": 12.01125,
+            "nearbyAverage": 25.889375,
+            "emptyFraction": 0,
+            "seen": 52,
+            "maxNearby": 32,
+            "spawns": 107,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 12.500000000000043,
+            "frameP95Ms": 8.760772999994515,
+            "frameMeanMs": 6.6538324022221405
+          },
+          {
+            "center": {
+              "x": 4440,
+              "y": 900
+            },
+            "historicalPopulation": true,
+            "bootMs": 199.52352300000348,
+            "population": 58,
+            "seconds": 90,
+            "visibleAverage": 0.813125,
+            "nearbyAverage": 2.110625,
+            "emptyFraction": 0.401875,
+            "seen": 8,
+            "maxNearby": 5,
+            "spawns": 14,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 0,
+            "frameP95Ms": 1.5965660000001662,
+            "frameMeanMs": 1.1035598694444222
+          },
+          {
+            "center": {
+              "x": 4440,
+              "y": 900
+            },
+            "historicalPopulation": false,
+            "bootMs": 2670.0600570000024,
+            "population": 223,
+            "seconds": 90,
+            "visibleAverage": 6.801875,
+            "nearbyAverage": 11.8525,
+            "emptyFraction": 0,
+            "seen": 32,
+            "maxNearby": 16,
+            "spawns": 64,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 8.499999999999986,
+            "frameP95Ms": 6.33049800000299,
+            "frameMeanMs": 4.977201358333417
+          }
+        ]
+      },
+      "limits": [
+        "North Harbor planned occupancy remains 2.41 cars against a 5.58 capacity target; broad circuits spend much of their length outside the district.",
+        "Native full traffic pipeline costs 4.98-6.65 ms mean, 6.33-8.81 ms p95 in the 90-second checks; setup is 2.67-2.88 seconds on this runner. These are not browser frame rates.",
+        "32 slots cap materialized local cars; no guaranteed count on screen. Existing off-screen appearance and theft retirement rules remain."
+      ],
+      "affectedPlan": "Cumulative release-candidate selection reviewed; browser execution excluded by explicit user instruction. Native checks and static ownership executed instead.",
+      "deployment": "Publish existing PR branch, report exact commit and bounded CI/Pages observations in the live PR body; no automatic merge."
+    },
+    "m13MoreTraffic": {
+      "state": "local-passed",
+      "baselineHead": "65f81bf5a6a390a6e2f4b0d289d9aceff833059e",
+      "focused": "17 driver/recovery/network regressions and 2 population/density tests pass; three browser pool assertions updated and syntax-checked only.",
+      "population": {
+        "before": 223,
+        "after": 437,
+        "localPoolBefore": 32,
+        "localPoolAfter": 64
+      },
+      "recurringCoverage": {
+        "before": 414,
+        "after": 428,
+        "totalDirectedLanes": 434,
+        "sourceRoads": 145,
+        "districts": 14
+      },
+      "initialPlacement": "436 drivers receive a recurring-loop phase; one retains its predefined one-time entry leg. All 437 initial poses are deterministic and separated, and all circuits remain predefined.",
+      "comparison": "Same three production streamed viewpoints at 20 Hz, same 60-second measurement and ten-second warmup exclusion for M12 and the new density. Follow the larger population to 90 seconds to verify queues recover.",
+      "results": [
+        {
+          "district": "old-quarter",
+          "recovery": {
+            "population": 437,
+            "seconds": 90,
+            "visibleAverage": 5.728125,
+            "nearbyAverage": 58.076875,
+            "emptyFraction": 0,
+            "seen": 23,
+            "maxNearby": 64,
+            "spawns": 180,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 18.150000000000123,
+            "longStops": 1,
+            "recoveredLongStops": 1,
+            "unresolvedLongStops": 0,
+            "frameP95Ms": 14.315387000002374,
+            "frameMeanMs": 10.391661974999987
+          }
+        },
+        {
+          "coverageBefore": 414,
+          "coverageAfter": 428,
+          "districtDeviationBefore": 0.08635863089270648,
+          "districtDeviationAfter": 0.0813728853819635
+        },
+        {
+          "district": "old-quarter",
+          "before": {
+            "population": 223,
+            "seconds": 60,
+            "visibleAverage": 1.451,
+            "nearbyAverage": 20.523,
+            "emptyFraction": 0.26,
+            "seen": 10,
+            "maxNearby": 29,
+            "spawns": 73,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 11.55000000000003,
+            "longStops": 0,
+            "recoveredLongStops": 0,
+            "unresolvedLongStops": 0,
+            "frameP95Ms": 5.299256000000241,
+            "frameMeanMs": 3.8216934425000137
+          },
+          "after": {
+            "population": 437,
+            "seconds": 60,
+            "visibleAverage": 5.223,
+            "nearbyAverage": 55.108,
+            "emptyFraction": 0,
+            "seen": 18,
+            "maxNearby": 64,
+            "spawns": 137,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 12.250000000000039,
+            "longStops": 0,
+            "recoveredLongStops": 0,
+            "unresolvedLongStops": 0,
+            "frameP95Ms": 13.221937000002072,
+            "frameMeanMs": 9.529398165000002
+          }
+        },
+        {
+          "district": "blackwater",
+          "recovery": {
+            "population": 437,
+            "seconds": 90,
+            "visibleAverage": 21.6225,
+            "nearbyAverage": 57.26625,
+            "emptyFraction": 0,
+            "seen": 60,
+            "maxNearby": 64,
+            "spawns": 190,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 20.300000000000153,
+            "longStops": 3,
+            "recoveredLongStops": 3,
+            "unresolvedLongStops": 0,
+            "frameP95Ms": 14.283258999996178,
+            "frameMeanMs": 10.075721476111102
+          }
+        },
+        {
+          "district": "blackwater",
+          "before": {
+            "population": 223,
+            "seconds": 60,
+            "visibleAverage": 11.63,
+            "nearbyAverage": 24.947,
+            "emptyFraction": 0,
+            "seen": 41,
+            "maxNearby": 32,
+            "spawns": 80,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 12.500000000000043,
+            "longStops": 0,
+            "recoveredLongStops": 0,
+            "unresolvedLongStops": 0,
+            "frameP95Ms": 5.200542000005953,
+            "frameMeanMs": 3.7130702899999717
+          },
+          "after": {
+            "population": 437,
+            "seconds": 60,
+            "visibleAverage": 20.499,
+            "nearbyAverage": 54.767,
+            "emptyFraction": 0,
+            "seen": 48,
+            "maxNearby": 64,
+            "spawns": 145,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 17.800000000000118,
+            "longStops": 2,
+            "recoveredLongStops": 2,
+            "unresolvedLongStops": 0,
+            "frameP95Ms": 12.744789000003948,
+            "frameMeanMs": 9.37835260999993
+          }
+        },
+        {
+          "district": "north-harbor",
+          "recovery": {
+            "population": 437,
+            "seconds": 90,
+            "visibleAverage": 13.276875,
+            "nearbyAverage": 25.915,
+            "emptyFraction": 0,
+            "seen": 48,
+            "maxNearby": 35,
+            "spawns": 118,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 15.050000000000079,
+            "longStops": 1,
+            "recoveredLongStops": 1,
+            "unresolvedLongStops": 0,
+            "frameP95Ms": 9.361538000011933,
+            "frameMeanMs": 6.341679367778028
+          }
+        },
+        {
+          "district": "north-harbor",
+          "before": {
+            "population": 223,
+            "seconds": 60,
+            "visibleAverage": 6.307,
+            "nearbyAverage": 11.742,
+            "emptyFraction": 0,
+            "seen": 29,
+            "maxNearby": 15,
+            "spawns": 49,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 4.099999999999993,
+            "longStops": 0,
+            "recoveredLongStops": 0,
+            "unresolvedLongStops": 0,
+            "frameP95Ms": 4.149219999992056,
+            "frameMeanMs": 2.754675588333242
+          },
+          "after": {
+            "population": 437,
+            "seconds": 60,
+            "visibleAverage": 11.676,
+            "nearbyAverage": 22.954,
+            "emptyFraction": 0,
+            "seen": 36,
+            "maxNearby": 29,
+            "spawns": 84,
+            "visibleSpawns": 0,
+            "overlaps": 0,
+            "contacts": 0,
+            "maxStop": 11.800000000000033,
+            "longStops": 0,
+            "recoveredLongStops": 0,
+            "unresolvedLongStops": 0,
+            "frameP95Ms": 9.343281000008574,
+            "frameMeanMs": 6.244008310833645
+          }
+        }
+      ],
+      "queueRecovery": "All five observed stops exceeding 15 seconds move at least 100 world units before the 90-second run ends; maximum stop 20.3 seconds. Zero contacts, overlaps or guarded-camera spawns.",
+      "runtimeCost": "Native traffic pipeline 6.34–10.39 ms mean / 9.36–14.32 ms p95 on the isolated final density test. Not a browser FPS measurement.",
+      "optimizations": [
+        "Compact materialization tokens preserve consumed pose/navigation fields without copying internal vehicle state.",
+        "Physical drivers already publish assigned slot poses, so the local policy skips a duplicate full-city presentation pass.",
+        "Project navigation progress by binary-searching the eligible segment range.",
+        "Cache immutable lane lengths and skip unused destination selection on prescribed return legs."
+      ],
+      "boundaries": "Capacity and bootstrap density changed; circular route choice, initial-phase policy, junction rules, physical controls and camera/streaming guards remain the published M12 behavior. No post-activation pool growth or route relocation.",
+      "affectedPlan": "Cumulative release-candidate coverage selected; browser execution excluded by explicit user instruction.",
+      "deployment": "Publish once, update PR 73 promptly, observe native CI and Pages with bounded checks. Keep draft; no automatic merge.",
+      "localFast": "890/890 native unit tests pass; static ownership of 41 browser specs across 8 suites passes. No browser execution."
+    },
+    "m14AvenuesAndBuses": {
+      "state": "published",
+      "sourceParent": "2a4924a380ac9a63cbf0a6196a6cb066164cfb7d",
+      "localFast": "897/897 native tests pass; static ownership of 41 browser specs across 8 suites passes.",
+      "compiler": "660 directed lanes, 2,428 transitions, 1,177 activation-safe connectors; exact compiler/committed-pack parity. City validation: 0 errors, 0 warnings, score 87.9/A.",
+      "population": {
+        "civilianCars": 1000,
+        "buses": 6,
+        "localCapacity": 64,
+        "districts": 14,
+        "recurringLaneCoverage": 567,
+        "eligibleThroughLanes": 574,
+        "districtShareError": 0.04267394214583528,
+        "initialBodyOverlaps": 0
+      },
+      "busLines": [
+        {
+          "id": "C",
+          "name": "Circular",
+          "buses": 2,
+          "stops": 20
+        },
+        {
+          "id": "N",
+          "name": "Norte–Sur return",
+          "buses": 2,
+          "stops": 10
+        },
+        {
+          "id": "E",
+          "name": "Este–Oeste return",
+          "buses": 2,
+          "stops": 14
+        }
+      ],
+      "nativeDensity": [
+        {
+          "district": "old-quarter",
+          "population": 1006,
+          "seconds": 180,
+          "visibleAverage": 8.010294117647058,
+          "nearbyAverage": 63.99852941176471,
+          "emptyFraction": 0,
+          "seen": 75,
+          "maxNearby": 64,
+          "spawns": 399,
+          "visibleSpawns": 0,
+          "overlaps": 0,
+          "contacts": 0,
+          "maxStop": 24.750000000000217,
+          "longStops": 10,
+          "recoveredLongStops": 9,
+          "unresolvedLongStops": 0,
+          "frameP95Ms": 35.77767500000118,
+          "frameMeanMs": 25.878655408888775
+        },
+        {
+          "district": "blackwater",
+          "population": 1006,
+          "seconds": 180,
+          "visibleAverage": 27.79735294117647,
+          "nearbyAverage": 63.999117647058824,
+          "emptyFraction": 0,
+          "seen": 143,
+          "maxNearby": 64,
+          "spawns": 535,
+          "visibleSpawns": 0,
+          "overlaps": 0,
+          "contacts": 0,
+          "maxStop": 25.900000000000233,
+          "longStops": 21,
+          "recoveredLongStops": 21,
+          "unresolvedLongStops": 0,
+          "frameP95Ms": 31.04941500001587,
+          "frameMeanMs": 22.157706454166618
+        },
+        {
+          "district": "north-harbor",
+          "population": 1006,
+          "seconds": 180,
+          "visibleAverage": 22.75029411764706,
+          "nearbyAverage": 59.56852941176471,
+          "emptyFraction": 0,
+          "seen": 179,
+          "maxNearby": 64,
+          "spawns": 447,
+          "visibleSpawns": 0,
+          "overlaps": 0,
+          "contacts": 0,
+          "maxStop": 7.049999999999983,
+          "longStops": 0,
+          "recoveredLongStops": 0,
+          "unresolvedLongStops": 0,
+          "frameP95Ms": 37.71309200004907,
+          "frameMeanMs": 23.991011821944184
+        }
+      ],
+      "nativeService": "300 seconds with the six physical buses and actual NpcSystem walking: repeated stops, real boarding/alighting identities and conservation. Existing chooser, rider input/follow/exit, real materializer hijack and evacuation pass. Dormant visible transfers and displaced/missed-stop recovery are covered.",
+      "nativeRecovery": "20/60 Hz collision and queue escape regressions pass. The 32-car/180-second cohort retains all identities, completes broad circuits and at least 30 handoffs each; its congestion bound is now 30 seconds. A 56-driver obstruction test verifies fair bounded search access.",
+      "fixtureCorrections": "Sidewalk observer positions are asserted outside compiler road surfaces. Queue recovery follows the same physical driver after local proxy release, avoiding false unresolved stops. Deliberate player obstructions retain separate physical regressions.",
+      "affectedPlan": "Cumulative release-candidate coverage selected. Native, static and city checks run; browser execution excluded by explicit user instruction.",
+      "deployment": "Publish once on PR 73 and report exact source commit, native CI and Pages status in the live PR. Keep draft; no automatic merge.",
+      "publishedHead": "261d227da0456b83504d096b83aed621e65913ca",
+      "pages": "Deployment #697 succeeded on the published head."
+    },
+    "m15LoadAndPerformance": {
+      "state": "published",
+      "sourceParent": "261d227da0456b83504d096b83aed621e65913ca",
+      "implemented": "Reduce the single civilian population authority to 600; preserve six buses and 64 local slots. Update density expectations for the approved reduced load.",
+      "scopeLimit": "The performance architecture is a measured proposal; no LOD, caching or scheduling rewrite is implemented in M15. Interactive deadlocks are not claimed solved.",
+      "profileMethod": "Sequential runs of the same Blackwater production traffic helper at (2265,3280), transit enabled, 200 warmup and 1200 sampled 0.05-second steps. Node inspector sampling at 1000 microseconds. Mean/p95 cover all 1400 pipeline updates; profile covers the last 1200. Rendering/file transport substituted.",
+      "profileBefore": {
+        "label": "before",
+        "setupMs": 11085.287789,
+        "population": 1006,
+        "seconds": 70,
+        "visibleAverage": 28.33,
+        "nearbyAverage": 64,
+        "emptyFraction": 0,
+        "seen": 72,
+        "maxNearby": 64,
+        "spawns": 232,
+        "visibleSpawns": 0,
+        "overlaps": 0,
+        "contacts": 0,
+        "maxStop": 25.900000000000233,
+        "longStops": 18,
+        "recoveredLongStops": 15,
+        "unresolvedLongStops": 0,
+        "frameP95Ms": 35.82967700000154,
+        "frameMeanMs": 24.669422997142952
+      },
+      "profileAfter": {
+        "label": "after",
+        "setupMs": 7602.9972259999995,
+        "population": 606,
+        "seconds": 70,
+        "visibleAverage": 24.979166666666668,
+        "nearbyAverage": 60.37166666666667,
+        "emptyFraction": 0,
+        "seen": 65,
+        "maxNearby": 64,
+        "spawns": 195,
+        "visibleSpawns": 0,
+        "overlaps": 0,
+        "contacts": 0,
+        "maxStop": 24.500000000000213,
+        "longStops": 8,
+        "recoveredLongStops": 4,
+        "unresolvedLongStops": 0,
+        "frameP95Ms": 25.962908000001335,
+        "frameMeanMs": 17.285992705714325
+      },
+      "profileLimits": "One paired native CPU sample, not browser FPS or full gameplay. Test overlap assertions are outside pipeline timing but inside the profile. The 70-second sample does not establish long-stop recovery.",
+      "priorities": [
+        "Stable token storage and cheap counts, incremental accounting, lazy diagnostics and spatial reconciliation with immediate correctness invalidation.",
+        "Distance-dependent scheduling in the existing driver authority; continuous off-camera promotion, identity and bus-service conservation.",
+        "Lower-cadence expensive prediction with immediate safety events, spatial obstacle candidates and cached static junction geometry.",
+        "Profile setup separately before further shared immutable route precomputation."
+      ],
+      "compiler": "City validation passes with 0 errors, 0 warnings, score 87.9/A. Generated geometry unchanged.",
+      "affectedPlan": "Cumulative release-candidate selection reviewed. Native/static and city checks executed; browser execution excluded by explicit user instruction.",
+      "deployment": "Publish once to PR 73; report exact source commit and bounded native CI/Pages observations in the live PR. Keep draft; no automatic merge.",
+      "localFast": "897/897 native tests pass; static ownership of 41 browser specs across 8 suites passes. No browser execution.",
+      "nativeDensity": [
+        {
+          "district": "old-quarter",
+          "population": 606,
+          "seconds": 180,
+          "visibleAverage": 3.0755882352941177,
+          "nearbyAverage": 63.648823529411764,
+          "emptyFraction": 0.002352941176470588,
+          "seen": 49,
+          "maxNearby": 64,
+          "spawns": 386,
+          "visibleSpawns": 0,
+          "overlaps": 0,
+          "contacts": 0,
+          "maxStop": 25.450000000000227,
+          "longStops": 6,
+          "recoveredLongStops": 5,
+          "unresolvedLongStops": 0,
+          "frameP95Ms": 27.707445999996708,
+          "frameMeanMs": 18.780147279999955
+        },
+        {
+          "district": "blackwater",
+          "population": 606,
+          "seconds": 180,
+          "visibleAverage": 29.00764705882353,
+          "nearbyAverage": 62.709117647058825,
+          "emptyFraction": 0,
+          "seen": 108,
+          "maxNearby": 64,
+          "spawns": 428,
+          "visibleSpawns": 0,
+          "overlaps": 0,
+          "contacts": 0,
+          "maxStop": 35.70000000000011,
+          "longStops": 27,
+          "recoveredLongStops": 24,
+          "unresolvedLongStops": 0,
+          "frameP95Ms": 23.6255669999955,
+          "frameMeanMs": 16.47033488138883
+        },
+        {
+          "district": "north-harbor",
+          "population": 606,
+          "seconds": 180,
+          "visibleAverage": 12.332058823529412,
+          "nearbyAverage": 34.09647058823529,
+          "emptyFraction": 0,
+          "seen": 128,
+          "maxNearby": 44,
+          "spawns": 298,
+          "visibleSpawns": 0,
+          "overlaps": 0,
+          "contacts": 0,
+          "maxStop": 7.049999999999983,
+          "longStops": 0,
+          "recoveredLongStops": 0,
+          "unresolvedLongStops": 0,
+          "frameP95Ms": 16.705291000020225,
+          "frameMeanMs": 11.06592218861114
+        }
+      ],
+      "coverage": {
+        "recurringDirectedLanes": 567,
+        "eligibleThroughLanes": 574,
+        "districtShareError": 0.04747604244122769,
+        "districts": 14
+      },
+      "densityLimit": "Lower global population does not guarantee lower density or shorter queues at every junction. Blackwater mean visible count is 29.01 and the longest stop is 35.70 seconds. No old unresolved queue occurs in these three-minute fixtures, which do not establish that all interactive blockages are fixed.",
+      "publishedHead": "91dcf2392a21875b607b3ae1a191a760876fe6e9",
+      "pages": "Deployment #698 succeeded on the published head."
+    },
+    "m16TrafficPerformance": {
+      "state": "local-validated-publish-pending",
+      "sourceParent": "91dcf2392a21875b607b3ae1a191a760876fe6e9",
+      "population": {
+        "civilianCars": 600,
+        "serviceBuses": 6,
+        "localCapacity": 64,
+        "recurringDirectedLanes": 567,
+        "eligibleThroughLanes": 574,
+        "districts": 14
+      },
+      "implemented": [
+        "Borrowed stable internal tokens, incremental route accounting and detached public diagnostics. Gameplay update avoids implicit full snapshots; materialization skips full-pool allocation and filters candidates before sorting.",
+        "Staggered 2 Hz distant civilian updates in the same runtime. Wake at materialization radius +160; sleep another 160 units beyond. Assigned bodies, buses, panic/recovery and finite routes retain physical integration.",
+        "At most 0.1-second reuse of clear predictions only while nearby obstacles, heading and journey remain compatible; new obstacles invalidate immediately and exact movement clearance runs every step.",
+        "Dynamic spatial obstacle candidates preserve order and update after each committed movement. Cached junction/OBB geometry invalidates on motion/dimensions; convex road containment retains the full-footprint fallback."
+      ],
+      "before20Hz": {
+        "label": "m16-before",
+        "setupMs": 6872.311372,
+        "population": 606,
+        "seconds": 70,
+        "visibleAverage": 24.979166666666668,
+        "nearbyAverage": 60.37166666666667,
+        "emptyFraction": 0,
+        "seen": 65,
+        "maxNearby": 64,
+        "spawns": 195,
+        "visibleSpawns": 0,
+        "overlaps": 0,
+        "contacts": 0,
+        "maxStop": 24.500000000000213,
+        "longStops": 8,
+        "recoveredLongStops": 4,
+        "unresolvedLongStops": 0,
+        "frameP95Ms": 25.509447000000364,
+        "frameMeanMs": 16.753680953571475
+      },
+      "after20Hz": {
+        "hz": 20,
+        "warmup": 10,
+        "sampledSeconds": 60,
+        "setupMs": 6939.3310630000005,
+        "population": 606,
+        "seconds": 69.99999999999817,
+        "visibleAverage": 24.903333333333332,
+        "nearbyAverage": 60.395833333333336,
+        "emptyFraction": 0,
+        "seen": 71,
+        "maxNearby": 64,
+        "spawns": 204,
+        "visibleSpawns": 0,
+        "overlaps": 0,
+        "contacts": 0,
+        "maxStop": 18.55000000000013,
+        "longStops": 4,
+        "recoveredLongStops": 4,
+        "unresolvedLongStops": 0,
+        "frameP95Ms": 9.589461999999912,
+        "frameMeanMs": 6.635020496428588,
+        "driverWork": {
+          "physicalSteps": 142683,
+          "distantSteps": 70619,
+          "predictionBuilds": 78007,
+          "predictionReuses": 524,
+          "physicalDrivers": 113,
+          "distantDrivers": 493
+        }
+      },
+      "after60Hz": {
+        "hz": 60,
+        "warmup": 10,
+        "sampledSeconds": 60,
+        "setupMs": 6725.894563999999,
+        "population": 606,
+        "seconds": 69.99999999999731,
+        "visibleAverage": 25.455555555555556,
+        "nearbyAverage": 60.93666666666667,
+        "emptyFraction": 0,
+        "seen": 68,
+        "maxNearby": 64,
+        "spawns": 197,
+        "visibleSpawns": 0,
+        "overlaps": 0,
+        "contacts": 0,
+        "maxStop": 24.53333333333322,
+        "longStops": 8,
+        "recoveredLongStops": 4,
+        "unresolvedLongStops": 0,
+        "frameP95Ms": 7.7433060000003024,
+        "frameMeanMs": 5.505175150238081,
+        "driverWork": {
+          "physicalSteps": 427756,
+          "distantSteps": 70692,
+          "predictionBuilds": 234478,
+          "predictionReuses": 3117,
+          "physicalDrivers": 114,
+          "distantDrivers": 492
+        }
+      },
+      "measurement": "Sequential same-runner Blackwater traffic helper, 600 cars +6 buses, 10-second warmup and 60-second CPU profile at 1 ms sampling. Mean/p95 cover all 70 seconds; rendering/file transport substituted. 20 Hz before/after are comparable; 60 Hz is an additional after-only workload. Not browser FPS or full-game performance.",
+      "limits": [
+        "Dense-view traffic CPU remains above the proposed 2–3 ms target.",
+        "Bootstrap remains around 6.9 seconds; a bootstrap grid experiment was dropped because it did not demonstrate a stable setup gain.",
+        "Clear-prediction reuse is deliberately conservative in moving queues; immediate physical reactions take precedence.",
+        "Distant travel is approximate; identities, routes and local continuity are retained. Native fixtures do not prove every interactive blockage is resolved."
+      ],
+      "nativeRegression": "Six new tests cover cached contact equivalence and detached results, independent accounting, immediate obstacle invalidation, dynamic spatial order, 4,440 rotated bus road-footprint probes, and 20/60 Hz distant-to-physical camera transitions. Existing recovery, density and six-bus service regressions remain.",
+      "bootstrapAudit": "Initial measured agents have unchanged SHA-256 5b680d25e016eb1d960c197bd0bbad15ae698cf4ceac60c7d16cb35ad4e0c64e; population policy and generated packs remain unchanged.",
+      "compiler": "0 errors, 0 warnings, score 87.9/A; no generated changes.",
+      "affectedPlan": "Cumulative release-candidate plan reviewed; native/static and city checks executed. Browser tests/playtests excluded by explicit user instruction.",
+      "deployment": "Publish one reviewed change on draft PR 73; report exact source commit and bounded CI/Pages status in live PR. No merge.",
+      "localFast": "903/903 native tests pass; static ownership of 41 browser specs across 8 suites passes. No browser execution.",
+      "nativeDensity": [
+        {
+          "district": "old-quarter",
+          "population": 606,
+          "seconds": 180.00000000000668,
+          "visibleAverage": 5.203823529411765,
+          "nearbyAverage": 63.724117647058826,
+          "emptyFraction": 0,
+          "seen": 53,
+          "maxNearby": 64,
+          "spawns": 379,
+          "visibleSpawns": 0,
+          "overlaps": 0,
+          "contacts": 0,
+          "maxStop": 20.65000000000016,
+          "longStops": 7,
+          "recoveredLongStops": 7,
+          "unresolvedLongStops": 0,
+          "frameP95Ms": 11.73903000000064,
+          "frameMeanMs": 7.592335434999984
+        },
+        {
+          "district": "blackwater",
+          "population": 606,
+          "seconds": 180.00000000000668,
+          "visibleAverage": 29.05323529411765,
+          "nearbyAverage": 62.709411764705884,
+          "emptyFraction": 0,
+          "seen": 118,
+          "maxNearby": 64,
+          "spawns": 446,
+          "visibleSpawns": 0,
+          "overlaps": 0,
+          "contacts": 0,
+          "maxStop": 32.50000000000029,
+          "longStops": 27,
+          "recoveredLongStops": 25,
+          "unresolvedLongStops": 0,
+          "frameP95Ms": 9.20866599999863,
+          "frameMeanMs": 6.363210822222178
+        },
+        {
+          "district": "north-harbor",
+          "population": 606,
+          "seconds": 180.00000000000668,
+          "visibleAverage": 13.342058823529412,
+          "nearbyAverage": 35.17411764705882,
+          "emptyFraction": 0,
+          "seen": 131,
+          "maxNearby": 43,
+          "spawns": 304,
+          "visibleSpawns": 0,
+          "overlaps": 0,
+          "contacts": 0,
+          "maxStop": 7.049999999999983,
+          "longStops": 0,
+          "recoveredLongStops": 0,
+          "unresolvedLongStops": 0,
+          "frameP95Ms": 4.840043999996851,
+          "frameMeanMs": 3.435799578333382
+        }
+      ],
+      "nativeDensityTimingLimit": "Density timing fields were collected during the full native gate. Use the isolated before20Hz/after20Hz pair for CPU comparisons.",
+      "validationCorrection": "The frame-order source guard now recognizes update(dt, options), still asserting physical contact preflight precedes route advance. A focused dynamic-index test isolates building queries; production building checks remain active in density/recovery tests."
+    }
+  },
+  "nextTask": {
+    "id": "M16-publish-and-gameplay-feedback",
+    "milestone": "M16",
+    "goal": "Publish and hand off measured traffic performance with unchanged physical interaction boundaries.",
+    "actions": [
+      "All local gates pass; publish the reviewed tree once and synchronize the local branch.",
+      "Report exact source commit and bounded native CI / Pages observations.",
+      "Keep draft, no browser execution or automatic merge; handle concrete user feedback."
+    ],
+    "acceptance": [
+      "600 civilian identities and six service buses remain; native flow/recovery/service tests pass.",
+      "Measured runtime CPU savings and remaining limits are explicit.",
+      "Published source commit and deployment status are reported."
+    ],
+    "readFirst": [
+      "docs/agent-tasks/2026-09-08-traffic-performance-implementation.md",
+      "docs/TECHNICAL_ARCHITECTURE.md"
+    ]
+  },
+  "finalGate": {
+    "requiresUserGameplayApproval": true,
+    "autonomousWorkStopsAt": "final-validation-pending",
+    "autoMergeAllowed": false,
+    "browserTestsRequired": false
+  }
+}

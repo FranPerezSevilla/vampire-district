@@ -116,8 +116,10 @@ function patchReadableCanvasText() {
     if (fontSize && fontSize < 12) nextStyle.fontSize = "12px";
     if (!nextStyle.fontFamily || nextStyle.fontFamily === "monospace") nextStyle.fontFamily = "Arial, Helvetica, sans-serif";
     nextStyle.fontStyle ||= "700";
+    // Phaser 3.90 captures the Canvas texture-source resolution at construction.
+    // Setting it afterwards enlarges text threefold in the Canvas fallback.
+    nextStyle.resolution = 3;
     const textObject = originalText.call(this, x, y, value, nextStyle);
-    textObject.setResolution?.(3);
     textObject.setStroke?.("#05060b", 3);
     return textObject;
   };

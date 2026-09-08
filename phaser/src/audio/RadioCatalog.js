@@ -1,15 +1,28 @@
 const NETLIFY_DEPLOY_PREVIEW_HOST = /^deploy-preview-\d+--vampire-district\.netlify\.app$/i;
+const GITHUB_PAGES_HOST = "franperezsevilla.github.io";
+const GITHUB_PAGES_PROJECT_PATH = "/vampire-district";
 
 export function isRadioDeployPreviewHostname(hostname) {
   return NETLIFY_DEPLOY_PREVIEW_HOST.test(String(hostname || ""));
 }
 
+function isRadioPagesLocation(hostname, pathname) {
+  const path = String(pathname || "");
+  return String(hostname || "").toLowerCase() === GITHUB_PAGES_HOST
+    && (path === GITHUB_PAGES_PROJECT_PATH || path.startsWith(`${GITHUB_PAGES_PROJECT_PATH}/`));
+}
+
 export function resolveRadioTrackSrc(
   filename,
   previewSrc = null,
-  hostname = globalThis.location?.hostname || ""
+  hostname = globalThis.location?.hostname || "",
+  pathname = globalThis.location?.pathname || ""
 ) {
-  if (previewSrc && isRadioDeployPreviewHostname(hostname)) return previewSrc;
+  // Both review deployments omit the private masters. Use the same pinned
+  // official copies on the game's Pages path; other projects remain local.
+  if (previewSrc && (isRadioDeployPreviewHostname(hostname) || isRadioPagesLocation(hostname, pathname))) {
+    return previewSrc;
+  }
   return new URL(`../../assets/audio/radio-private/${filename}`, import.meta.url).href;
 }
 

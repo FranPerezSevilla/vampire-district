@@ -287,7 +287,7 @@ export class TrafficLocalBehaviorSystem {
       const reason = vehicle.id === currentVehicleId ? "player-vehicle" : "parked-vehicle";
       if (!best || result.gap < best.gap) best = { gap: result.gap, reason, blockerId: vehicle.id, junctionId: null };
     }
-    if (!this.vehicleSystem.isDriving?.() && this.scene.player) {
+    if (!this.vehicleSystem.isDriving?.() && !this.scene.transitSystem?.isRiding?.() && this.scene.player) {
       const result = this.directLaneGap(state, lane, this.scene.player.x, this.scene.player.y, slot.radius + 22);
       if (result && result.gap <= this.playerLookAhead && (!best || result.gap < best.gap)) {
         best = { gap: result.gap, reason: "player-on-foot", blockerId: "player", junctionId: null };
@@ -470,7 +470,7 @@ export class TrafficLocalBehaviorSystem {
   }
 
   processPlayerImpact(slot, state) {
-  if (this.scene.currentLayer !== LAYERS.STREET || this.vehicleSystem.isDriving?.()) return false;
+  if (this.scene.currentLayer !== LAYERS.STREET || this.vehicleSystem.isDriving?.() || this.scene.transitSystem?.isRiding?.()) return false;
   const player = this.scene.player;
   if (!player || this.scene.playerDamageSystem?.isDead?.()) return false;
   const now = finite(this.scene.time?.now);

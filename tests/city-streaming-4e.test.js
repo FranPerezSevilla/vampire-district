@@ -236,7 +236,6 @@ test("a clear traffic contact pushes the proxy, preserves health and damps the d
   assert.equal(slotAfter.slotIndex, slotBefore.slotIndex);
   assert.equal(vehicle.health, healthBefore);
   assert.ok(Math.abs(vehicle.speed) < Math.abs(predicted.speed));
-  assert.match(scene.lastActionText, /pushed aside/i);
 
   behavior.update(0.05, { force: true });
   physics.update(0.05, { force: true });
@@ -281,7 +280,6 @@ test("an outward contact blocks both vehicles without damage or world-collision 
   assert.equal(vehicle.y, before.y);
   assert.equal(vehicle.speed, 0);
   assert.equal(vehicle.health, before.health);
-  assert.match(scene.lastActionText, /both vehicles are blocked/i);
 
   behavior.update(0.05, { force: true });
   physics.update(0.05, { force: true });

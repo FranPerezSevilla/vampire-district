@@ -426,7 +426,7 @@ export class NpcSystem {
   }
 
   isVisible(npc) {
-    if (npc.hiddenBody || npc.whisperPassengerBoarded) return false;
+    if (npc.hiddenBody || npc.whisperPassengerBoarded || npc.transitBoarded) return false;
     if (npc.inactive && npc.type !== NPC_TYPES.RAT && !npc.intercepted) return false;
     return npc.layer === this.scene.currentLayer;
   }

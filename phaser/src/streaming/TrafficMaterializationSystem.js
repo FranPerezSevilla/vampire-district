@@ -1,7 +1,7 @@
 import { AI_STATES } from "../data/ai.js";
 import { LAYERS } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
-import { VEHICLE_OWNERSHIP, trafficVehicleArchetype } from "../data/vehicles.js";
+import { VEHICLE_OWNERSHIP, trafficVehicleArchetype, vehicleArchetype } from "../data/vehicles.js";
 import { paintVehicle } from "../vehicles/VehicleView.js";
 
 const TRAFFIC_ENTER_RADIUS = 30;
@@ -251,11 +251,16 @@ export class TrafficMaterializationSystem {
   }
 
   configureSlotArchetype(slot, token) {
-    const archetype = trafficVehicleArchetype(token?.tokenId);
+    const archetype = token?.archetypeId ? vehicleArchetype(token.archetypeId) : trafficVehicleArchetype(token?.tokenId);
+    if (slot) {
+      slot.transitLineId = token?.transitLineId || null;
+      slot.visual?.routeBadge?.setText?.(slot.transitLineId || "BUS");
+    }
     if (!slot || !archetype || slot.archetypeId === archetype.id) return slot;
     slot.container.removeAll?.(true);
     const definition = {
       id: `traffic:${String(token?.tokenId || slot.slotIndex)}`,
+      transitLineId: token?.transitLineId,
       name: "City traffic",
       archetypeId: archetype.id,
       angle: finite(token?.angle)
@@ -321,7 +326,7 @@ export class TrafficMaterializationSystem {
       }
     }
     const player = this.scene.player;
-    if (!allowPlayer && !this.scene.vehicleSystem?.isDriving?.() && player
+    if (!allowPlayer && !this.scene.vehicleSystem?.isDriving?.() && !this.scene.transitSystem?.isRiding?.() && player
       && Math.hypot(finite(player.x) - token.x, finite(player.y) - token.y) < radius + 24) {
       return false;
     }
@@ -329,6 +334,9 @@ export class TrafficMaterializationSystem {
   }
 
   safeFromTraffic(token, radius, ignoreTokenId = null) {
+    // Dormant drivers have no local junction permit. They may become visible
+    // only on a clear approach, never inside another car's reserved crossing.
+    if (token?.driverActive && token.driverSpawnAllowed === false) return false;
     for (const slot of this.pool) {
       if (!slot.tokenId || slot.tokenId === ignoreTokenId) continue;
       if (Math.hypot(slot.x - token.x, slot.y - token.y) < radius + slot.radius + 6) return false;
@@ -353,7 +361,7 @@ export class TrafficMaterializationSystem {
     if (distanceSquared(token, focus) > this.materializeRadius * this.materializeRadius) return false;
     if (pointInsideCamera(token, camera, SPAWN_CAMERA_MARGIN)) return false;
     if (!this.pointReady(token, false)) return false;
-    const radius = slot?.radius || 16;
+    const radius = slot?.radius || (token.archetypeId ? vehicleRadius(vehicleArchetype(token.archetypeId)) : 16);
     return this.safeFromPersistentVehicles(token, radius)
       && this.safeFromTraffic(token, radius, token.tokenId);
   }
@@ -402,10 +410,16 @@ export class TrafficMaterializationSystem {
     return slot;
   }
 
+  driverRuntime() {
+    const policy = this.__nbdTrafficMultiAgentRouteRuntimePolicy;
+    return policy?.driving ? policy.runtime() : null;
+  }
+
   reconcile(force = false) {
     if (this.destroyed || !this.ready) return false;
-    const tokens = this.trafficTokens();
-    const byId = new Map(tokens.map(token => [token.tokenId, token]));
+    const runtime = this.driverRuntime();
+    const tokens = runtime ? null : this.trafficTokens();
+    const byId = runtime ? { get: id => runtime.tokenFor(id) } : new Map(tokens.map(token => [token.tokenId, token]));
     let changed = false;
 
     for (const slot of this.pool) {
@@ -414,24 +428,25 @@ export class TrafficMaterializationSystem {
       if (!token || !this.eligible(token, true)) changed = this.release(slot) || changed;
     }
 
-    const focus = this.focus();
-    const candidates = tokens
-      .filter(token => !this.assignments.has(token.tokenId))
-      .map(token => ({ token, distance: distanceSquared(token, focus) }))
-      .sort((left, right) => left.distance - right.distance || left.token.tokenId.localeCompare(right.token.tokenId));
-
-    this.lastCandidateCount = candidates.length;
+    this.lastCandidateCount = (runtime?.tokenCount() ?? tokens.length) - this.assignments.size;
     this.lastBlockedCandidateCount = 0;
-    for (const candidate of candidates) {
-      if (this.assignments.size >= this.maxActiveVehicles) break;
-      if (!this.eligible(candidate.token, false)) {
-        this.lastBlockedCandidateCount++;
-        continue;
+    // A full pool still checks retention every frame, but has no allocation
+    // work to do. Filter the physical catchment before sorting free candidates.
+    if (this.assignments.size < this.maxActiveVehicles) {
+      const focus = this.focus(), radiusSquared = this.materializeRadius ** 2;
+      const candidates = (runtime?.materializationTokens() || tokens)
+        .filter(token => !this.assignments.has(token.tokenId) && (!runtime || distanceSquared(token, focus) <= radiusSquared))
+        .map(token => ({ token, distance: distanceSquared(token, focus) }))
+        .sort((left, right) => Number(Boolean(right.token.transitLineId)) - Number(Boolean(left.token.transitLineId))
+          || left.distance - right.distance || left.token.tokenId.localeCompare(right.token.tokenId));
+      for (const candidate of candidates) {
+        if (this.assignments.size >= this.maxActiveVehicles) break;
+        if (!this.eligible(candidate.token, false)) { this.lastBlockedCandidateCount++; continue; }
+        const free = this.pool.find(slot => !slot.tokenId);
+        if (!free) break;
+        this.assign(free, candidate.token);
+        changed = true;
       }
-      const free = this.pool.find(slot => !slot.tokenId);
-      if (!free) break;
-      this.assign(free, candidate.token);
-      changed = true;
     }
 
     for (const [tokenId, slot] of this.assignments) {
@@ -456,18 +471,18 @@ export class TrafficMaterializationSystem {
     for (const slot of this.pool) {
       if (!slot.tokenId) continue;
       const distance = Math.hypot(slot.x - player.x, slot.y - player.y);
-      if (distance > TRAFFIC_ENTER_RADIUS) continue;
+      if (distance > (slot.transitLineId ? 48 : TRAFFIC_ENTER_RADIUS)) continue;
       options.push({
         id: `steal_${slot.tokenId}`,
         type: "vehicleEnter",
-        label: `Steal ${slot.archetype.label}`,
+        label: slot.transitLineId ? `Autobús ${slot.transitLineId}` : `Steal ${slot.archetype.label}`,
         detail: "ENTER · civilian traffic · occupants aboard",
         priority: 112,
         distance,
         x: slot.x,
         y: slot.y,
         target: slot,
-        run: () => this.hijack(slot.tokenId)
+        run: () => slot.transitLineId ? this.scene.transitSystem.openMenu(slot.tokenId) : this.hijack(slot.tokenId)
       });
     }
     return options;
@@ -551,7 +566,7 @@ export class TrafficMaterializationSystem {
     const slot = this.assignments.get(String(tokenId));
     if (!slot || this.scene.vehicleSystem?.isDriving?.()) return false;
     const distance = Math.hypot(slot.x - finite(this.scene.player?.x), slot.y - finite(this.scene.player?.y));
-    if (distance > TRAFFIC_ENTER_RADIUS + 3) return false;
+    if (distance > (slot.transitLineId ? 48 : TRAFFIC_ENTER_RADIUS + 3)) return false;
 
     const captured = {
       tokenId: slot.tokenId,
@@ -590,7 +605,8 @@ export class TrafficMaterializationSystem {
       return false;
     }
 
-    const occupants = this.spawnOccupants(captured, vehicle.id);
+    const occupants = [...this.spawnOccupants(captured, vehicle.id),
+      ...(this.scene.transitSystem?.evacuate?.(captured.tokenId, captured) || [])];
     this.scene.vehicleSystem.pruneTransientVehicles(MAX_TRANSIENT_TRAFFIC_VEHICLES);
     this.scene.lastActionText += ` ${occupants.length === 1 ? "The occupant jumps out" : `${occupants.length} occupants jump out`} in WTF mode.`;
     this.scene.events?.emit?.("traffic:vehicle-hijacked", {
@@ -640,7 +656,7 @@ export class TrafficMaterializationSystem {
         width: round(camera.width),
         height: round(camera.height)
       } : null,
-      tokenCount: this.trafficTokens().length,
+      tokenCount: this.driverRuntime()?.tokenCount() ?? this.trafficTokens().length,
       candidateCount: this.lastCandidateCount,
       blockedCandidateCount: this.lastBlockedCandidateCount,
       materializedCount: this.assignments.size,
@@ -667,17 +683,14 @@ export class TrafficMaterializationSystem {
   }
 
   publish(force = false) {
-    const snapshot = this.snapshot();
-    const key = JSON.stringify([
-      snapshot.ready,
-      snapshot.poolSize,
-      snapshot.materialized.map(item => item.tokenId),
-      snapshot.transientVehicleCount,
-      snapshot.transientOccupantCount,
-      snapshot.initializationError
-    ]);
-    if (!force && key === this.lastPublishedKey) return snapshot;
+    // Membership determines publication. Do not construct route/lifecycle and
+    // diagnostic snapshots merely to discover that this key did not change.
+    const key = JSON.stringify([this.ready, this.pool.length, this.pool.filter(slot => slot.tokenId).map(slot => slot.tokenId),
+      this.scene.vehicleSystem?.vehicles?.filter?.(vehicle => vehicle.transient).length || 0,
+      this.spawnedOccupants.length, this.initializationError ? String(this.initializationError.message || this.initializationError) : null]);
+    if (!force && key === this.lastPublishedKey) return null;
     this.lastPublishedKey = key;
+    const snapshot = this.snapshot();
     this.scene.statePublisher?.setMany?.({
       trafficMaterializationText: `Local traffic ${snapshot.materializedCount}/${snapshot.poolSize} · stolen ${snapshot.transientVehicleCount}`,
       trafficMaterializationState: snapshot
@@ -691,7 +704,7 @@ export class TrafficMaterializationSystem {
     window.NBD_TRAFFIC = Object.freeze({
       snapshot: () => this.snapshot(),
       resync: () => this.reconcile(true),
-      tokens: () => this.trafficTokens().map(token => ({ ...token })),
+      tokens: () => structuredClone(this.trafficTokens()),
       blocks: (x, y, radius = 0) => this.blocksVehicle(x, y, radius),
       steal: tokenId => this.hijack(tokenId)
     });

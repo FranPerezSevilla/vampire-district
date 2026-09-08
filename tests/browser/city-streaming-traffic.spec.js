@@ -8,12 +8,13 @@ async function waitForTraffic(page) {
     && window.NBD_MACRO_CITY_READY
     && window.NBD_TRAFFIC_READY
     && window.NBD_TRAFFIC
+    && window.NBD_TRAFFIC_ROUTE_MULTI_AGENT?.snapshot?.().enabled
   ));
 }
 
 test.describe.configure({ timeout: 75_000 });
 
-test("macro traffic materializes into a fixed local pool and dematerializes off street", async ({ page }) => {
+test("default compiler-route traffic materializes into a fixed local pool and dematerializes off street", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/?testScenario=urban-explore", { waitUntil: "domcontentloaded" });
@@ -21,7 +22,7 @@ test("macro traffic materializes into a fixed local pool and dematerializes off 
 
   const local = await page.evaluate(async () => {
     const scene = window.NBD_PHASER_GAME.scene.getScene("GameScene");
-    scene.switchLayer(0, { x: 1140, y: 960 }, "Local traffic materialization test.");
+    scene.switchLayer(0, { x: 1140, y: 960 }, "Local compiler-route traffic materialization test.");
     await window.NBD_CITY_STREAM.forceFocus(1140, 960);
     window.NBD_TRAFFIC.resync();
 
@@ -30,19 +31,35 @@ test("macro traffic materializes into a fixed local pool and dematerializes off 
     if (!seed) return { before, missing: true };
 
     const nearbyFocus = { x: seed.x, y: seed.y + 80 };
-    scene.switchLayer(0, nearbyFocus, "Focus near a materialized traffic token.");
+    scene.switchLayer(0, nearbyFocus, "Focus near a materialized compiler-route traffic token.");
     await window.NBD_CITY_STREAM.forceFocus(nearbyFocus.x, nearbyFocus.y);
     window.NBD_TRAFFIC.resync();
     before = window.NBD_TRAFFIC.snapshot();
     const focused = before.materialized.find(item => item.tokenId === seed.tokenId) || before.materialized[0];
     const slotBefore = scene.trafficMaterializationSystem.pool[focused.slotIndex];
     const containerBefore = { x: slotBefore.container.x, y: slotBefore.container.y };
+    const beforeById = new Map(before.materialized.map(item => [item.tokenId, item]));
+    const routeClockBefore = Number(window.NBD_TRAFFIC_ROUTE_MULTI_AGENT.snapshot().clockSeconds || 0);
 
-    window.NBD_MACRO_CITY.forceTick(0.25);
+    await new Promise(resolve => {
+      let frames = 0;
+      const next = () => {
+        frames++;
+        if (frames >= 12) resolve();
+        else requestAnimationFrame(next);
+      };
+      requestAnimationFrame(next);
+    });
     window.NBD_TRAFFIC.resync();
+
+    const routeClockAfter = Number(window.NBD_TRAFFIC_ROUTE_MULTI_AGENT.snapshot().clockSeconds || 0);
     const after = window.NBD_TRAFFIC.snapshot();
     const advanced = after.materialized.find(item => item.tokenId === focused.tokenId);
-    const collisionPoint = advanced || focused;
+    const movedToken = after.materialized.find(item => {
+      const prior = beforeById.get(item.tokenId);
+      return prior && (item.x !== prior.x || item.y !== prior.y);
+    }) || null;
+    const collisionPoint = movedToken || advanced || focused;
     const persistentVehicle = scene.vehicleSystem.vehicles[0];
 
     return {
@@ -51,13 +68,16 @@ test("macro traffic materializes into a fixed local pool and dematerializes off 
       after,
       focused,
       advanced,
+      movedToken,
+      routeClockAdvanced: routeClockAfter > routeClockBefore,
       poolLength: scene.trafficMaterializationSystem.pool.length,
       sameSlot: Boolean(advanced && advanced.slotIndex === focused.slotIndex),
-      moved: Boolean(advanced && (advanced.x !== focused.x || advanced.y !== focused.y)),
+      moved: Boolean(movedToken),
       containerMoved: Boolean(advanced && (
         scene.trafficMaterializationSystem.pool[advanced.slotIndex].container.x !== containerBefore.x
         || scene.trafficMaterializationSystem.pool[advanced.slotIndex].container.y !== containerBefore.y
       )),
+      laneAuthority: after.laneAuthority,
       blocksAtToken: window.NBD_TRAFFIC.blocks(collisionPoint.x, collisionPoint.y, 1),
       vehicleCanOccupyToken: scene.vehicleSystem.canOccupy(
         persistentVehicle,
@@ -73,8 +93,10 @@ test("macro traffic materializes into a fixed local pool and dematerializes off 
   expect(local.before.materializedCount).toBeLessThanOrEqual(local.before.maxActiveVehicles);
   expect(local.poolLength).toBe(local.before.maxActiveVehicles);
   expect(local.sameSlot).toBe(true);
+  expect(local.routeClockAdvanced).toBe(true);
   expect(local.moved).toBe(true);
   expect(local.containerMoved).toBe(true);
+  expect(local.laneAuthority).toBe("compiler-route-lanes");
   expect(local.blocksAtToken).toBe(true);
   expect(local.vehicleCanOccupyToken).toBe(false);
 
@@ -104,6 +126,7 @@ test("macro traffic materializes into a fixed local pool and dematerializes off 
   expect(layers.roof.poolSize).toBe(layers.poolSize);
   expect(layers.street.materializedCount).toBeGreaterThan(0);
   expect(layers.street.poolSize).toBe(layers.poolSize);
+  expect(layers.street.laneAuthority).toBe("compiler-route-lanes");
   expect(layers.activeContainers).toBe(layers.street.materializedCount);
   expect(pageErrors).toEqual([]);
 });

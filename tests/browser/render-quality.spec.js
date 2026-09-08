@@ -7,6 +7,64 @@ const CASES = [
 
 test.describe.configure({ timeout: 75_000 });
 
+test("production Canvas fallback keeps vehicle labels at logical size and restores movement after New Night", async ({ page }) => {
+  const pageErrors = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
+  await page.addInitScript(() => {
+    // Exercise the supported Phaser.AUTO fallback used by the Pages playthrough.
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (kind, ...args) {
+      if (["webgl", "webgl2", "experimental-webgl"].includes(kind)) return null;
+      return originalGetContext.call(this, kind, ...args);
+    };
+  });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => window.NBD_TITLE_AUDIO_GATE_STATE === "waiting");
+  await page.keyboard.press("Space");
+  await page.getByRole("button", { name: /New Night/ }).click();
+  await page.waitForFunction(() => {
+    const game = window.NBD_PHASER_GAME;
+    const scene = game?.scene.getScene("GameScene");
+    return window.NBD_TITLE_SCREEN_STATE?.state === "world"
+      && scene?.inputSystem?.worldEnabled
+      && !scene.registry.get("uiPaused")
+      && game.scene.isActive("GameScene");
+  });
+
+  const labels = await page.evaluate(() => {
+    const game = window.NBD_PHASER_GAME;
+    const scene = game.scene.getScene("GameScene");
+    return {
+      canvasRenderer: game.renderer.type === Phaser.CANVAS,
+      labels: scene.vehicleSystem.vehicles.map(vehicle => {
+        const label = vehicle.visual.label;
+        return {
+          width: label.width,
+          height: label.height,
+          renderedWidth: label.frame.cutWidth / label.frame.source.resolution,
+          renderedHeight: label.frame.cutHeight / label.frame.source.resolution
+        };
+      })
+    };
+  });
+  expect(labels.canvasRenderer).toBe(true);
+  expect(labels.labels.length).toBeGreaterThan(0);
+  for (const label of labels.labels) {
+    expect(Math.abs(label.renderedWidth - label.width)).toBeLessThan(1);
+    expect(Math.abs(label.renderedHeight - label.height)).toBeLessThan(1);
+  }
+
+  const playerX = () => page.evaluate(() => window.NBD_PHASER_GAME.scene.getScene("GameScene").player.x);
+  const startX = await playerX();
+  await page.keyboard.down("d");
+  try {
+    await expect.poll(playerX).toBeGreaterThan(startX + 30);
+  } finally {
+    await page.keyboard.up("d");
+  }
+  expect(pageErrors).toEqual([]);
+});
+
 for (const entry of CASES) {
   test(`${entry.preset} render quality boots and survives resize on ${entry.route}`, async ({ page }) => {
     await page.addInitScript(preset => {

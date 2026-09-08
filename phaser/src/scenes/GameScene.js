@@ -81,7 +81,7 @@ export class GameScene extends GameSceneCore {
     const previous = this.playerPresentationPosition || { x: this.player.x, y: this.player.y };
     const dx = this.player.x - previous.x;
     const dy = this.player.y - previous.y;
-    const moving = !this.vehicleSystem?.isDriving?.() && Math.hypot(dx, dy) > 0.05;
+    const moving = !this.vehicleSystem?.isDriving?.() && !this.transitSystem?.isRiding?.() && Math.hypot(dx, dy) > 0.05;
     if (moving) this.playerMovementDirection = { x: dx, y: dy };
 
     const frame = this.currentInputFrame || {};
@@ -108,6 +108,7 @@ export class GameScene extends GameSceneCore {
   }
 
   collectInteractions() {
+    if (this.transitSystem?.isRiding?.()) return this.transitSystem.collectInteractions();
     if (this.vehicleSystem?.isDriving?.()) return this.vehicleSystem.collectInteractions();
     const options = super.collectInteractions();
     if (!this.feedingSystem?.isActive?.()) {
@@ -119,6 +120,7 @@ export class GameScene extends GameSceneCore {
   }
 
   updatePlayerMovement(dt, frame = this.currentInputFrame) {
+    if (this.transitSystem?.isRiding?.()) { this.transitSystem.syncPlayer(); return; }
     if (this.vehicleSystem?.isDriving?.()) { this.vehicleSystem.updateDriving(dt, frame); return; }
     super.updatePlayerMovement(dt, frame);
   }
@@ -129,6 +131,7 @@ export class GameScene extends GameSceneCore {
   }
 
   switchLayer(layer, position, status) {
+    this.transitSystem?.leave?.({ force: true });
     if (this.vehicleSystem?.isDriving?.()) this.vehicleSystem.exitVehicle({ force: true });
     this.cityStreamSystem?.updateFocus?.(position.x, position.y, { force: true });
     super.switchLayer(layer, position, status);
