@@ -1085,6 +1085,28 @@ h1 {
 }
 
 .interaction-menu.open { display: block; }
+.interaction-menu { max-height: calc(100% - 48px); overflow-y: auto; }
+
+.vampire-hud {
+  position: absolute;
+  left: 16px;
+  top: 94px;
+  width: min(310px, calc(100% - 32px));
+  padding: 9px 11px;
+  background: rgba(8, 11, 18, .9);
+  border-left: 2px solid var(--accent);
+  color: var(--text, #dfffee);
+  font-size: 11px;
+  pointer-events: none;
+}
+.vampire-hud[hidden] { display: none; }
+.vampire-hud[data-frenzy="true"] { border-color: #ff5378; }
+.vampire-guide { margin: 6px 0; line-height: 1.45; }
+.vampire-actions { display: flex; gap: 6px; }
+.vampire-actions button { pointer-events: auto; font-size: 10px; padding: 5px 8px; }
+.vampire-actions button:disabled { opacity: .5; }
+.vampire-notice { margin-top: 7px; line-height: 1.45; color: #dfffee; }
+@media (max-height: 500px) { .vampire-hud { top: 68px; width: 250px; font-size: 10px; } }
 
 .interaction-menu h3 {
   margin: 0 0 5px;

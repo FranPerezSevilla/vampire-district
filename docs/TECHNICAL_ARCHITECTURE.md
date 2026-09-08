@@ -56,6 +56,8 @@ GameScene.update
 
 `GameScene` owns scene objects and delegates frame coordination. `GameplayRuntime` owns deterministic specialist order and temporary foot/vehicle input adaptation.
 
+The vampire-city-power feature adds `CampaignSystem.vampire` for network agreements and businesses in schema 6. `VampireRuntime` places contacts at semantic building frontages and projects actions/feedback. Its `FrenzyController` filters the existing frame before actions and reconciles a power crossing Hunger 100 before movement, without ticking twice. Existing movement, vehicle braking/exits, feeding, damage, wallet, reputation and hunting-law systems retain their authorities. The legacy hunter update is disabled by the new product direction. See [`VAMPIRE_CITY_POWER.md`](VAMPIRE_CITY_POWER.md).
+
 No feature may add a second world frame loop or parallel gameplay authority.
 
 ## 3. Production boot composition

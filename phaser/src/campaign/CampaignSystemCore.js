@@ -7,6 +7,7 @@ import { ReputationSystem } from "./ReputationSystem.js";
 import { WalletSystem } from "./WalletSystem.js";
 import { TerritorySystem } from "../factions/TerritorySystem.js";
 import { HuntingLawSystem } from "../factions/HuntingLawSystem.js";
+import { VampireSystem } from "../vampire/VampireSystem.js";
 import { CAMPAIGN_EVENT_TYPES } from "./constants.js";
 import { cleanTheSceneMission } from "./missions/cleanTheScene.js";
 import { silenceTheJournalistMission } from "./missions/silenceTheJournalist.js";
@@ -55,6 +56,7 @@ export class CampaignSystem {
       territory: this.territory,
       now: this.now
     });
+    this.vampire = new VampireSystem(this);
     this.missions = new MissionRunner(this.state, {
       definitions: this.definitions,
       events: this.events,

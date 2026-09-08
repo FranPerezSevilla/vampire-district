@@ -228,8 +228,8 @@ test("version-three saves gain hunting-law and attention state without losing ca
     world: { ownedVehicles: ["refuge_compact"], flags: { retained: true } }
   }, { now: 9000 });
 
-  assert.equal(CAMPAIGN_SCHEMA_VERSION, 5);
-  assert.equal(migrated.version, 5);
+  assert.equal(CAMPAIGN_SCHEMA_VERSION, 6);
+  assert.equal(migrated.version, 6);
   assert.equal(migrated.player.cash, 725);
   assert.equal(migrated.reputation.factions.first_estate, 19);
   assert.equal(migrated.territory.districts["old-quarter"].ownerId, CAMPAIGN_FACTIONS.FIRST_ESTATE);

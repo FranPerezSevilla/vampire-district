@@ -4,6 +4,8 @@ _Last updated: 2026-07-29_
 
 **Status: ✅ Delivered in PR #46.**
 
+**Superseding player decision, 2026-09-08:** [Vampire city power](VAMPIRE_CITY_POWER.md) adds compulsory frenzy at Hunger 100, distinct from voluntary Give In, and changes the Sense/Come here/Forget this costs to 1/6/6. The voluntary-only limits in this historical milestone no longer describe current feature behavior. Ordinary input remains available below the threshold; pause, death and bounded recovery remain explicit.
+
 ## Goal
 
 Turn the existing three prototype powers into one coherent predator toolkit:

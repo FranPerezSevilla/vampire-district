@@ -499,6 +499,8 @@ export class UIScene extends Phaser.Scene {
     const text = String(powersText || "");
     const beastState = text.match(/BeastState\s+([A-Z]+)/i)?.[1]?.toUpperCase() || "CONTROLLED";
     const beastActive = Number.parseFloat(text.match(/GiveIn\s+([0-9.]+)/i)?.[1] || "0") || 0;
+    const frenzy = Boolean(this.registry?.get?.("vampireFrenzy"));
+    const exhausted = Boolean(this.registry?.get?.("vampireExhausted"));
     for (const [id, config] of Object.entries(POWER_CONFIG)) {
       const node = this.dom.powers[id];
       if (!node) continue;
@@ -508,10 +510,12 @@ export class UIScene extends Phaser.Scene {
       const remaining = this.cooldownFor(text, config.label);
       const active = id === "beast" && beastActive > 0;
       node.classList.toggle("active", active);
-      node.classList.toggle("cooldown", remaining > 0 && !active);
+      node.classList.toggle("cooldown", frenzy || exhausted || (remaining > 0 && !active));
       const state = node.querySelector(".power-state");
       if (!state) continue;
-      if (active) state.textContent = `ACTIVE ${beastActive.toFixed(1)}s`;
+      if (frenzy) state.textContent = id === "beast" ? "FRENZY" : "LOCKED";
+      else if (exhausted) state.textContent = "EXHAUSTED";
+      else if (active) state.textContent = `ACTIVE ${beastActive.toFixed(1)}s`;
       else if (remaining > 0) state.textContent = `${remaining.toFixed(1)}s`;
       else state.textContent = id === "beast" ? beastState : "Ready";
       if (id === "beast") node.dataset.beastState = beastState.toLowerCase();
@@ -559,7 +563,8 @@ export class UIScene extends Phaser.Scene {
       return `<div class="interaction-row${selected}"><span>${index + 1}. ${this.escapeHtml(option.label)}</span><small>${this.escapeHtml(detail)}</small></div>`;
     }).join("");
     const markup = `
-      <h3>Choose interaction</h3>
+      <h3>${this.escapeHtml(menu.title || "Choose interaction")}</h3>
+      ${menu.detail ? `<p>${this.escapeHtml(menu.detail)}</p>` : ""}
       <p>W/S or arrows · E/Enter confirm · Esc cancel · 1-9 quick select</p>
       ${rows}
     `;

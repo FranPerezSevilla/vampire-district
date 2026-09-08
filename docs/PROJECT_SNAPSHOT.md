@@ -2,6 +2,8 @@
 
 _Last updated: 2026-09-08 — user-accepted PR #73 / #82 foundation_
 
+**Feature under review:** `codex/vampire-city-power` adds the playable survival-to-Prince progression. It includes four contacts, two donors, deliveries/debts, three businesses, blood supplies, operating policies, recognition, visible network guidance and involuntary frenzy at Hunger 100. Campaign schema is now 6. The previous hunter priority is withdrawn by the user; its legacy runtime update is disabled. See [`VAMPIRE_CITY_POWER.md`](VAMPIRE_CITY_POWER.md) for actual rules and review scope. The traffic acceptance below remains the historical foundation, not acceptance of this new feature.
+
 Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) first for the canonical project-wide map. This snapshot summarizes the current playable state, persistence boundaries and immediate priority.
 
 ## Product vision

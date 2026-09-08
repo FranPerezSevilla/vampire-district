@@ -31,7 +31,7 @@ export const CAMERA = Object.freeze({
 
 export const HUNGER = Object.freeze({
   start: 48,
-  passivePerSecond: 0.12,
+  passivePerSecond: 0.04,
   targetRelief: 60,
   civilianRelief: 40,
   ratRelief: 12,
@@ -40,7 +40,7 @@ export const HUNGER = Object.freeze({
   ratFeedSeconds: 1.0,
   dashCost: 12,
   whisperCost: 16,
-  senseCost: 3,
+  senseCost: 1,
   dashCooldown: 3.0,
   whisperCooldown: 4.8,
   senseCooldown: 4.0,
