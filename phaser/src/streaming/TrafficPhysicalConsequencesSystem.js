@@ -531,7 +531,7 @@ export class TrafficPhysicalConsequencesSystem {
     if (this.destroyed || !this.ready || this.scene.registry?.get?.("uiPaused")) return false;
     const seconds = clamp(dt, 0, 0.05);
     const slots = this.activeSlots()
-      .filter(slot => slot.routeActive === true)
+      .filter(slot => slot.routeActive === true && !slot.driverActive)
       .sort((left, right) => String(left.tokenId).localeCompare(String(right.tokenId)));
     const permits = this.activeRoutePermits();
     const yieldByToken = new Map();
@@ -714,7 +714,7 @@ export class TrafficPhysicalConsequencesSystem {
       const state = this.stateFor(slot);
       activeIds.add(slot.tokenId);
       state.holdSeconds = Math.max(0, state.holdSeconds - seconds);
-      if (state.holdSeconds <= 0 && Math.hypot(state.offsetX, state.offsetY) > 0.001) {
+      if (!slot.driverActive && state.holdSeconds <= 0 && Math.hypot(state.offsetX, state.offsetY) > 0.001) {
         const decayed = decayTrafficOffset(state.offsetX, state.offsetY, this.offsetRecoveryRate * seconds);
         const candidateX = state.baseX + decayed.x;
         const candidateY = state.baseY + decayed.y;

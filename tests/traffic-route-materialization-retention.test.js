@@ -307,5 +307,5 @@ test("M5/M6 route substrate stays controlled while M8.3 owns the separate defaul
   assert.equal(controlledSource.includes("defaultEnabled: false"), true);
   assert.equal(controlledSource.includes('defaultTrafficAuthority: "authored-local-lanes"'), true);
   assert.equal(multiSource.includes("defaultEnabled = true"), true);
-  assert.equal(multiSource.includes('defaultTrafficAuthority: defaultEnabled ? "multi-agent-compiler-route" : "authored-local-lanes"'), true);
+  assert.equal(multiSource.includes('defaultTrafficAuthority: defaultEnabled ? (driving ? "destination-vehicle-drivers" : "multi-agent-compiler-route") : "authored-local-lanes"'), true);
 });

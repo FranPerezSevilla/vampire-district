@@ -1,15 +1,16 @@
 # Traffic lane / junction topology agent contract
 
-## Current continuation — 2026-09-07
+## Current continuation — 2026-09-08
 
-The user rejected sustained traffic behavior after the Pages playthrough and
-explicitly reopened implementation. Follow
-`docs/agent-tasks/2026-09-07-sustained-arcade-traffic.md` and the live machine
-status. The August narrative below is historical. M9.4 adds route lookahead,
-whole-body stop lines, combined short-link reservations, varied journeys and
-native sustained network/reaction regressions. Explicit gameplay approval is
-the ready/merge gate; it does not prevent fixing newly reported traffic defects.
-No automatic merge.
+The user explicitly requested rebuilding traffic around destinations and physical
+controls. Follow `docs/agent-tasks/2026-09-08-physical-traffic-drivers.md` and the
+live machine status. M10 supersedes the rail cursor and offset-recovery movement
+contract below. Production now selects `TrafficDriverRuntime`: compiler topology
+is navigation, `VehicleModel.stepVehicleKinematics` owns locomotion,
+`TrafficDriverJunctions` grants clearance, and physical impacts become actual
+poses. The old cursor runtime is available only through explicit controlled
+`driving: false` fixtures. Continue fixing concrete validation failures; no
+automatic merge.
 
 Operational handoff contract for PR #73 (`codex/traffic-junction-topology`).
 
@@ -25,7 +26,7 @@ A fresh agent/session must:
 
 Do not ask the user to reconstruct chat history when the repository contract answers the question.
 
-## Architecture now in production
+## Historical architecture through M9
 
 Civilian physical continuity is:
 

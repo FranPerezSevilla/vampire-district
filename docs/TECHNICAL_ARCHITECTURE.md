@@ -411,27 +411,47 @@ After maintenance, `syncFromCampaign()` updates position, velocity/drift, hull, 
 
 ## 13. Civilian traffic architecture
 
-Civilian proxies are not authored vehicles:
+`TrafficDriverRuntime` is the production civilian locomotion owner, selected by
+`TrafficMultiAgentRouteRuntimePolicy` in the existing `GameplayRuntime` update.
+Each stable token owns a physical vehicle state and a complete journey to a
+reachable destination. `TrafficJourneyPlanner` uses compiler directed lanes and
+safe connectors to plan a shortest itinerary without repeated directed lanes;
+destinations lie mid-block, away from junction clearance. A preferred U-turn is
+allowed at a dead end.
 
-- absent from `VehicleSystem.vehicles`;
-- fixed pool of ten;
-- not enterable, searchable, repairable or persistent;
-- no ownership, trunk or hull.
+`TrafficDriverController` issues throttle, brake, reverse and steering controls to
+`VehicleModel.stepVehicleKinematics`, the same pure model used by the player's
+car. Route samples guide steering and measure progress; they never overwrite a
+spawned car's position or heading. Emergency manoeuvres search reachable poses
+using the same controls and validate the whole body against pavement, buildings,
+vehicles and the player. Blocked steps stop without axis-aligned slides or
+rotation in place. Normal queues yield; road width can be used when a safe
+emergency manoeuvre exists.
 
-Streaming/macro:
+`TrafficDriverJunctions` grants movement permission and downstream clearance.
+Whole-body stop lines account for the widest adjoining road, including short
+compiler links whose endpoints lie inside the conflict area. Reservations span
+compound crossings until the rear has cleared. Compatible movements may proceed together when their buffered paths do not
+intersect; priority uses arrival at the current crossing, without carrying
+waiting credit from previous junctions.
 
-- `ChunkStreamSystem`: async load, activation budget, LRU, queries/deltas;
-- `DistrictPackSystem`: district resources and road-aware prefetch;
-- `EntityStreamSystem`: active/dormant state;
-- `DistantSimulationSystem`: low-frequency dormant progression;
-- `MacroTrafficPoliceSystem`: district graph, civilian traffic trips and dormant police travel.
+`TrafficMaterializationSystem` owns a fixed pool of 32 civilian proxies, their
+visuals, residency and conversion into a transient player vehicle on theft.
+Dormant tokens can appear only on a clear approach, outside the camera and
+reserved crossing. Theft retires the driver's materialization token. Proxies are
+not campaign vehicles and have no campaign save ownership.
 
-Local 4C–4F:
+`TrafficPhysicalConsequencesSystem` and the mass/rigid-body policies keep native
+push, collision, damage and disablement consequences. A driver consumes a real
+impact into its actual pose once. Physics does not decay that position back to a
+route, and local presentation does not interpolate a separate catch-up path.
+The previous cursor/FSM/offset policies remain explicit controlled regression
+harnesses (`driving: false`), with no production movement ownership.
 
-- `TrafficMaterializationSystem`: ten pooled containers and lane sampling;
-- `TrafficLocalBehaviorSystem`: following, queues, braking and junction priority;
-- `TrafficPhysicalConsequencesSystem`: soft push/block and lane offsets;
-- `TrafficImpactConsequencesSystem`: hard/severe damage, Heat, stalls and cooldown.
+`MacroTrafficPoliceSystem` supplies bootstrap population and receives output-only
+route accounting; legacy civilian phases do not advance while the driver owns
+traffic. Police travel, streaming, campaign vehicles and input retain their
+existing owners.
 
 ## 14. Motorized police architecture
 

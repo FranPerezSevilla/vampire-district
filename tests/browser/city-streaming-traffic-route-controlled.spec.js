@@ -156,7 +156,7 @@ test("controlled compiler routes still cross straight/right/left when default M8
 
   expect(result.defaultBefore.defaultEnabled).toBe(true);
   expect(result.defaultBefore.enabled).toBe(true);
-  expect(result.defaultBefore.defaultTrafficAuthority).toBe("multi-agent-compiler-route");
+  expect(result.defaultBefore.defaultTrafficAuthority).toBe("destination-vehicle-drivers");
   expect(result.defaultStopped.enabled).toBe(false);
   expect(result.defaultStopped.fixedPoolPreserved).toBe(true);
   expect(result.defaultStopped.manualPause).toBe(true);
@@ -320,7 +320,7 @@ test("the first junction east of spawn keeps one visible slot through west-to-ea
 
   expect(result.missingTransition).toBe(false);
   expect(result.defaultBefore.enabled).toBe(true);
-  expect(result.defaultBefore.defaultTrafficAuthority).toBe("multi-agent-compiler-route");
+  expect(result.defaultBefore.defaultTrafficAuthority).toBe("destination-vehicle-drivers");
   expect(result.junctionId).toBe("stream-node:1754:1574");
   expect(result.sameSlotThroughout).toBe(true);
   expect(result.visibleThroughout).toBe(true);

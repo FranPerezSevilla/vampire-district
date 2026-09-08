@@ -16,7 +16,11 @@ test("32 native cars sustain city-wide circulation through short links for three
       assert.ok(record.lanes.size >= 25, `${tokenId} repeatedly circled a small neighbourhood`);
       assert.equal(record.identityChanges, 0, `${tokenId} was replaced to escape a blockage`);
     }
-    assert.equal(network.materializer.__nbdTrafficAgentPhysicalAuthorityPolicy.snapshot().preventedLogicalAdvances, 0);
+    assert.equal(network.route.snapshot().movementAuthority, "shared-vehicle-kinematics");
+    for (const agent of network.route.runtime().agents()) {
+      assert.ok(agent.completedJourneys >= 1, `${agent.tokenId} must reach its destination`);
+      assert.equal(new Set(agent.journeyLaneIds).size, agent.journeyLaneIds.length);
+    }
   } finally {
     network.destroy();
   }
@@ -29,9 +33,8 @@ test("native gunfire and a side impact provoke a bounded reaction, then the same
     const topology = network.materializer.lanes.localTopology;
     const agent = network.route.runtime().agents().find(candidate => {
       const slot = network.materializer.assignments.get(candidate.tokenId);
-      const approach = network.materializer.__nbdTrafficJunctionFlowController.approachFor(candidate);
       return slot && candidate.stage === "lane" && topology.lanes[candidate.currentLaneId]
-        && (!approach || (approach.stopProgress - candidate.stageProgress) * approach.laneLength > 150)
+        && candidate.pose.speed > 50 && candidate.stageProgress < 0.7
         && [...network.materializer.assignments.values()].every(other => other === slot || Math.hypot(other.x - slot.x, other.y - slot.y) > 120);
     });
     assert.ok(agent, "a clear approach is required for the isolated side impact");
@@ -50,10 +53,15 @@ test("native gunfire and a side impact provoke a bounded reaction, then the same
     assert.equal(network.physical.pushContact(vehicle, vehicle, { slot, contact }), true);
     assert.ok(Math.hypot(slot.physicalOffsetX, slot.physicalOffsetY) > 0.35);
     const before = network.route.runtime().agents().find(item => item.tokenId === agent.tokenId);
+    const impactPose = { x: slot.x, y: slot.y, angle: slot.angle };
     network.step();
     const held = network.route.runtime().agents().find(item => item.tokenId === agent.tokenId);
     assert.equal(held.routeHop, before.routeHop);
-    assert.equal(held.stageProgress, before.stageProgress, "impact recovery cannot hide forward logical movement");
+    assert.equal(held.pose.x, impactPose.x);
+    assert.equal(held.pose.y, impactPose.y);
+    assert.equal(held.pose.angle, impactPose.angle);
+    assert.equal(held.adoptedImpacts, before.adoptedImpacts + 1);
+    assert.equal(slot.physicalOffsetX, 0, "the impact becomes actual position, not an offset to erase later");
     const position = { x: slot.x, y: slot.y };
     network.step(100);
     assert.equal(network.materializer.assignments.get(agent.tokenId), slot);

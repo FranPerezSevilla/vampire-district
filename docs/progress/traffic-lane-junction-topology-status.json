@@ -1,12 +1,12 @@
 {
   "initiative": "traffic-lane-junction-topology",
-  "version": 18,
-  "updatedAt": "2026-09-07",
+  "version": 19,
+  "updatedAt": "2026-09-08",
   "pullRequest": 73,
   "branch": "codex/traffic-junction-topology",
   "state": "implementation-validation",
-  "currentMilestone": "M9",
-  "currentTask": "M9.4-sustained-arcade-traffic",
+  "currentMilestone": "M10",
+  "currentTask": "M10-physical-destination-drivers",
   "lastValidatedImplementationHead": "be60ec65b0ad2ecc2893d6f2daac94f6b296c8be",
   "baseAtBootstrap": "805ea5d107dcddcef4cd564294569455093af4b0",
   "canonicalDocs": {
@@ -17,26 +17,28 @@
     "progressLog": "docs/progress/TRAFFIC_LANE_JUNCTION_TOPOLOGY_PROGRESS.md",
     "physicalQueueCorrection": "docs/agent-tasks/2026-09-07-traffic-physical-queue-clearance.md",
     "pagesValidation": "docs/agent-tasks/2026-09-07-pages-traffic-validation.md",
-    "sustainedTraffic": "docs/agent-tasks/2026-09-07-sustained-arcade-traffic.md"
+    "sustainedTraffic": "docs/agent-tasks/2026-09-07-sustained-arcade-traffic.md",
+    "physicalDrivers": "docs/agent-tasks/2026-09-08-physical-traffic-drivers.md"
   },
   "authority": {
     "localTopologyCompiler": "tools/city-compiler/traffic-lane-topology.js",
     "connectorCompiler": "tools/city-compiler/traffic-junction-connectors.js",
-    "pureRouteCursor": "phaser/src/streaming/TrafficRouteCursor.js",
+    "pureRouteCursor": "TrafficRouteCursor; explicit controlled regression fixtures and topology lookup only",
     "populationSeed": "phaser/src/streaming/TrafficRoutePopulationSeed.js; macro provenance is bootstrap compatibility only",
     "compatibilityProjection": "phaser/src/streaming/TrafficRouteCompatibilityProjection.js; live civilian aggregate accounting source",
-    "routeBehavior": "TrafficRouteBehaviorPolicy; cursor lookahead, speed-aware following, curvature speed, bounded bypass/rejoin and driver reactions",
+    "routeBehavior": "TrafficDriverController; throttle, brake, steering and reverse through shared VehicleModel",
     "routeMaterializationSubstrate": "phaser/src/streaming/TrafficRouteMaterializationPolicy.js plus route-aware TrafficLifecyclePolicy",
     "controlledRouteActivation": "phaser/src/streaming/TrafficControlledRouteActivationPolicy.js; default-off regression harness only",
-    "multiAgentRouteRuntime": "phaser/src/streaming/TrafficMultiAgentRouteRuntimePolicy.js; normal civilian continuity authority",
-    "junctionReservation": "phaser/src/streaming/TrafficJunctionReservationRegistry.js; deterministic compiler-junction reservation authority",
-    "gridlockRecovery": "TrafficRouteBehaviorPolicy FSM plus TrafficBypassManeuverPolicy and TrafficRecoveryActuator; bounded road-safe maneuvers, physical holds and junction approach guards",
+    "multiAgentRouteRuntime": "TrafficMultiAgentRouteRuntimePolicy selects TrafficDriverRuntime by default; driving:false is a controlled cursor fixture",
+    "junctionReservation": "TrafficDriverJunctions; buffered path permissions, whole-body intersection boundaries and downstream clearance",
+    "gridlockRecovery": "TrafficDriverController; bounded search over physically reachable forward/reverse states",
     "visibleDensity": "TrafficLocalAssignmentPolicy establishes a fixed production materialization baseline of 32 slots before route activation; no post-activation density growth is allowed",
-    "defaultMovementAuthority": "compiler-route-lanes",
+    "defaultMovementAuthority": "shared-vehicle-kinematics",
     "macroRole": "bootstrap population plus conservative route-projection accounting and independent police travel; never civilian local geometry",
     "legacyCivilianPhaseRole": "bootstrap/fallback compatibility only; phase advancement is disabled while normal compiler-route authority is active",
-    "physicalAgentAuthority": "TrafficAgentPhysicalAuthorityPolicy; gates each route agent on actual physical hold, residual displacement and forward body clearance",
-    "junctionFlow": "TrafficJunctionFlowPolicy; whole-body stop lines, swept movement admission, short-link continuation reservations and physical exit clearance"
+    "physicalAgentAuthority": "TrafficDriverRuntime adopts native impacts into actual poses; no route-offset recovery authority in production",
+    "junctionFlow": "TrafficDriverJunctions; compound crossings, clear approach spawning and per-junction arrival priority",
+    "journeyPlanner": "TrafficJourneyPlanner; deterministic shortest journeys to distant mid-block destinations, without repeated directed lanes or artificial cul-de-sac trips"
   },
   "cleanupAudit": {
     "productionRequiredCompatibility": [
@@ -318,7 +320,7 @@
       "remaining": "Tests #2472 passed on be60ec6. User rejected the wider traffic behavior; M9.4 reopens implementation and supersedes the isolated-turn observation."
     },
     "m9SustainedTraffic": {
-      "state": "local-passed-ci-pending",
+      "state": "superseded-by-user-requested-rebuild",
       "baselineHead": "be60ec65b0ad2ecc2893d6f2daac94f6b296c8be",
       "baseline": {
         "seconds": 120,
@@ -336,31 +338,51 @@
         "short junction approaches, adjacent junction continuation and direct handoffs",
         "following and braking across compiler seams"
       ],
-      "browserValidation": "Pending existing full affected CI and Pages deployment.",
+      "browserValidation": "Tests #2473 on bb832e2 failed native soft-push assertion (job 101865674742); inspected before replacing movement authority.",
       "local": {
         "fast": "873/873 unit tests pass; 41 browser specs assigned to 8 canonical suites",
         "affected": "Full release-candidate plan selected; 873 unit tests pass, local browser boot stops at missing Playwright",
         "network": "All 32 cars satisfy three-minute per-car progress, stop, collision and identity assertions",
         "reactions": "Native gunfire and side impact: route holds, physical offset recovers, same car resumes"
       }
+    },
+    "m10PhysicalDrivers": {
+      "state": "local-passed-browser-ci-pending",
+      "baselineHead": "bb832e225147bbcdf7c95b335e105da6702048af",
+      "task": "docs/agent-tasks/2026-09-08-physical-traffic-drivers.md",
+      "localFast": "881/881 unit tests pass; 41 browser specs assigned to 8 canonical suites",
+      "localAffected": "881/881 unit tests pass and suite ownership passes; browser boot stops at playwright: not found (exit 127). Dependency installation was previously rejected by automatic review; no retry or bypass.",
+      "coverage": [
+        "Deterministic complete journeys with no repeated lanes and mid-block destinations",
+        "Shared player kinematics at 60 Hz, including no lateral position authority",
+        "Emergency bypass/reverse and blocked-corridor behavior",
+        "Production emergency driving at 20 and 60 Hz, original destination and slot retained",
+        "32 cars for 180 seconds: no contacts, overlaps, 15-second stops or identity replacements; at least 30 junction decisions and 25 distinct lanes per car",
+        "Native gunfire and side impact adoption; no offset decay back to a rail",
+        "Theft retires the driver materialization token"
+      ],
+      "browser": "Updated production boot/accounting, driver behavior, native soft push and impact adoption specs; CI pending",
+      "pages": "Publish and inspect the updated GitHub Pages deployment; no Netlify",
+      "deadEndCheck": "Two native cars seeded near the western dead end run for 50 seconds, each completing 14 lane handoffs with no rejected step, contact or overlap."
     }
   },
   "nextTask": {
-    "id": "M9.4-sustained-traffic-ci-and-pages",
-    "milestone": "M9",
-    "goal": "Finish the user-authorized traffic correction in PR 73 and verify the deployed branch.",
+    "id": "M10-driver-ci-and-pages",
+    "milestone": "M10",
+    "goal": "Finish validation of the user-requested physical driver rebuild in PR 73.",
     "actions": [
-      "Run current fast and affected checks; publish the reviewed correction to the existing branch.",
-      "Inspect CI failures if any and fix concrete regressions.",
-      "Check the corrected GitHub Pages deployment and record the limits of interactive observation."
+      "Publish reviewed implementation on codex/traffic-junction-topology and update PR 73.",
+      "Inspect focused CI failures and fix concrete regressions; no automatic merge.",
+      "Verify the updated GitHub Pages build and normal boot; accurately distinguish visual observation from automated driving checks."
     ],
     "acceptance": [
-      "Sustained per-car traffic regression passes, including reactions and physical recovery.",
-      "Affected automated browser coverage passes and corrected Pages loads.",
-      "No automatic merge; explicit user approval controls the ready/merge gate."
+      "Physical driver and sustained network regressions pass.",
+      "Updated automated browser checks pass and Pages loads.",
+      "Keep PR 73 draft; no automatic merge."
     ],
     "readFirst": [
-      "docs/agent-tasks/2026-09-07-sustained-arcade-traffic.md",
+      "docs/agent-tasks/2026-09-08-physical-traffic-drivers.md",
+      "docs/TECHNICAL_ARCHITECTURE.md",
       "docs/progress/TRAFFIC_LANE_JUNCTION_TOPOLOGY_PROGRESS.md"
     ]
   },

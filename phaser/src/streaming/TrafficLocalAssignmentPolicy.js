@@ -147,6 +147,9 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   }
 
   function continuitySafeToken(slot, token, seconds) {
+    // The driver already integrated a physical pose. Interpolating world x/y
+    // here would introduce a second locomotion authority and lateral sliding.
+    if (token.driverActive) return token;
     const dt = Math.min(0.05, Math.max(0.001, finite(seconds, 0.05)));
     const previous = routePresentationPoses.get(token.tokenId);
     if (!slot.routePresentationInitialized || !previous) {
@@ -248,7 +251,7 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       routePoseContinuityCorrections,
       lastRoutePoseAnomaly,
       routePoseMaximumPresentationSpeed: PRODUCTION_ROUTE_SPEED * ROUTE_POSE_SPEED_MULTIPLIER,
-      routePhysicalBaseAuthority: "explicit-route-base-pose",
+      routePhysicalBaseAuthority: multiAgent.driving ? "driver-integrated-pose" : "explicit-route-base-pose",
       macroRouteContinuityActive: false,
       legacyEndpointJunctionInferenceActive: false,
       laneAuthority: multiAgent.enabled ? "compiler-route-lanes" : "authored-local-lanes",
@@ -259,7 +262,7 @@ export function installTrafficLocalAssignmentPolicy(scene) {
       densityTuned,
       gridlockRecovery: {
         active: false,
-        authority: "absorbed-by-route-behavior-fsm"
+        authority: multiAgent.driving ? "driver-steering-maneuvers" : "absorbed-by-route-behavior-fsm"
       },
       controlledRouteActivation: controlled,
       multiAgentRouteRuntime: multiAgent,

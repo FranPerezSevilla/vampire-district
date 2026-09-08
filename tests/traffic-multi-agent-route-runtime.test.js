@@ -342,6 +342,7 @@ test("M8 manual regression mode remains opt-in, keeps a fixed pool and guards ro
   const metadata = installTrafficRouteMaterializationMetadataPolicy(materializer);
   const policy = installTrafficMultiAgentRouteRuntimePolicy(materializer, {
     speed: 100,
+    driving: false,
     defaultEnabled: false
   });
   const poolRef = materializer.pool;
@@ -405,7 +406,7 @@ test("M8.3 default policy activates from frame update only after a complete cons
   const before = policy.snapshot();
   assert.equal(before.enabled, false);
   assert.equal(before.defaultEnabled, true);
-  assert.equal(before.defaultTrafficAuthority, "multi-agent-compiler-route");
+  assert.equal(before.defaultTrafficAuthority, "destination-vehicle-drivers");
   assert.equal(before.defaultActivationReady, true);
 
   let snapshot = policy.update(0.05);

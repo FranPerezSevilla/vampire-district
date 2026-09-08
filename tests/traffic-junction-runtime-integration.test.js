@@ -185,7 +185,7 @@ function installedPolicyFixture() {
 
 test('physical contact hold pauses compiler-route progression instead of letting the route base tunnel through a pile', () => {
   const {materialized, slot} = installedPolicyFixture();
-  const policy = installTrafficMultiAgentRouteRuntimePolicy(materialized, {speed:100, defaultEnabled:false});
+  const policy = installTrafficMultiAgentRouteRuntimePolicy(materialized, {speed:100, defaultEnabled:false, driving:false});
   policy.start();
   const before = policy.runtime().agents()[0].stageProgress;
   slot.physicalHoldSeconds = 0.5;

@@ -130,7 +130,7 @@ test("normal static boot activates compiler-route traffic at the first junction 
   expect(state.laneAuthority).toBe("compiler-route-lanes");
   expect(state.topologyReady).toBe(true);
   expect(state.routeEnabled).toBe(true);
-  expect(state.defaultTrafficAuthority).toBe("multi-agent-compiler-route");
+  expect(state.defaultTrafficAuthority).toBe("destination-vehicle-drivers");
   expect(state.fixedPoolPreserved).toBe(true);
   expect(state.poolSize).toBe(state.targetActiveTraffic);
   expect(state.poolSize).toBe(32);

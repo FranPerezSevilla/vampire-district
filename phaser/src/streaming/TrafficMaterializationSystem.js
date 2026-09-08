@@ -329,6 +329,9 @@ export class TrafficMaterializationSystem {
   }
 
   safeFromTraffic(token, radius, ignoreTokenId = null) {
+    // Dormant drivers have no local junction permit. They may become visible
+    // only on a clear approach, never inside another car's reserved crossing.
+    if (token?.driverActive && token.driverSpawnAllowed === false) return false;
     for (const slot of this.pool) {
       if (!slot.tokenId || slot.tokenId === ignoreTokenId) continue;
       if (Math.hypot(slot.x - token.x, slot.y - token.y) < radius + slot.radius + 6) return false;

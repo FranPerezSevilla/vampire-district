@@ -340,9 +340,11 @@ Own:
 
 ### Civilian traffic proxies
 
-- fixed pool of ten;
-- macro token plus local presentation/behaviour state;
-- no entry, theft, ownership, hull, trunk, repair or save data.
+- Fixed pool of 32, each with a stable token, physical vehicle state and planned destination.
+- Drivers follow compiler navigation with the player's acceleration, braking, steering and reverse model.
+- Whole-body junction clearance, normal following and physically driven emergency manoeuvres.
+- Native collisions, damage, disablement and theft into a transient vehicle; no campaign save ownership for ambient proxies.
+- Macro traffic supplies population and receives accounting, without positioning local cars.
 
 ### Motorized police cruisers
 

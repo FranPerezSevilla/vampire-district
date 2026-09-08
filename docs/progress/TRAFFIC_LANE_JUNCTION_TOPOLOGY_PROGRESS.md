@@ -803,3 +803,64 @@ because of the cumulative PR infrastructure diff. Its 873 unit tests pass locall
 browser boot cannot start because Playwright is unavailable. Existing GitHub CI
 will run browser validation. Pages remains the user-authorized deployment target;
 Netlify has no quota. No merge or user gameplay approval is claimed.
+
+
+## 2026-09-08 — M10: destinations and physical drivers
+
+The user explicitly rejected the rail/offset system and requested a rebuild in
+PR 73. The baseline is bb832e2. Its Tests #2473 run failed the native soft-push
+assertion in `city-streaming-traffic-physics.spec.js:157`; the failing job was
+inspected before replacing movement authority. M10 supersedes M9.4 movement and
+recovery, while preserving compiler geometry, the single gameplay update,
+fixed proxy pool, native consequences and separate player/police ownership.
+
+Production now selects `TrafficDriverRuntime`. `TrafficJourneyPlanner` commits
+a complete shortest itinerary to a distant mid-block destination, without
+repeated directed lanes. Through traffic avoids purposeless cul-de-sac visits;
+a car seeded at a dead end may use its legal U-turn to leave.
+`TrafficDriverController` controls the same `VehicleModel.stepVehicleKinematics`
+as the player. Route geometry is steering guidance and progress measurement,
+never a source of authoritative x/y/heading for a spawned car. Emergency search
+records reachable throttle/steer/reverse controls. A tight initial bumper gap
+uses actual body clearance while reversing to create the preferred margin.
+
+Junction permissions reserve buffered movement paths and downstream space.
+Stop lines account for the widest road at a node, so short compiler links do
+not place a waiting car inside another movement. Compound crossings retain
+clearance across direct handoffs. Arrival priority is local to the current
+crossing; compatible paths can move together. Dormant tokens spawn only on
+clear approaches, outside the camera and any reserved crossing.
+
+Native impacts become the driver's actual starting pose once. The old lateral
+offset decay and presentation catch-up are bypassed for physical drivers.
+Collision/damage systems retain their ownership, and theft retires the original
+materialization token. The old cursor runtime remains an explicit
+`driving: false` controlled fixture, never a second production mover.
+
+Validation:
+
+- Fast check: 881/881 unit tests pass; 41 browser specs belong to the 8 canonical suites.
+- Three-minute real-network test: all 32 cars retain their slots, complete at
+  least 30 junction decisions and visit at least 25 distinct lanes; no normal
+  contacts, overlaps or stops lasting 15 seconds. Each reaches a destination.
+- Production obstacle bypass runs at 20 and 60 Hz, retaining the destination
+  and identity without lateral translation. Direct tests exercise required
+  reversing and a completely sealed corridor.
+- Native gunfire/side-impact test proves reaction and adoption of the impact
+  pose before the same driver resumes. Clear road kinematics match the player
+  model exactly at 60 Hz.
+- Two native cars near a western dead end ran for 50 seconds and completed 14
+  handoffs each without contact, overlap or a rejected movement step.
+- The cumulative affected plan selects the full release-candidate suite.
+  Its 881 unit tests and suite ownership pass locally; browser boot cannot start
+  because Playwright is unavailable (exit 127). The earlier automatic rejection
+  of dependency installation was not retried or bypassed.
+- Browser regressions now check physical driving, journey identity/accounting,
+  native soft pushes and impact adoption instead of exact rail sampling and
+  lateral return-to-base recovery. Browser syntax checks pass; execution is
+  pending GitHub Actions on the new commit.
+
+Publish to the existing branch, inspect its GitHub Pages deployment, and fix
+concrete CI failures. No Netlify deployment and no automatic merge. Updated
+architecture: `docs/TECHNICAL_ARCHITECTURE.md` section 13; task:
+`docs/agent-tasks/2026-09-08-physical-traffic-drivers.md`.

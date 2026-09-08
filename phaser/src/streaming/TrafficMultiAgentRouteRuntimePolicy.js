@@ -8,6 +8,7 @@ import {
 import { createTrafficRouteBehaviorController } from "./TrafficRouteBehaviorPolicy.js";
 import { trafficRouteAgentMaterializationToken } from "./TrafficRouteMaterializationPolicy.js";
 import { seedTrafficRouteAgentsFromMacroPopulation } from "./TrafficRoutePopulationSeed.js";
+import { createTrafficDriverRuntime } from "./TrafficDriverRuntime.js";
 
 const EPSILON = 0.000001;
 const DEFAULT_ROUTE_SPEED = 112;
@@ -383,7 +384,8 @@ export function createTrafficMultiAgentRouteRuntime({
 export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
   speed = DEFAULT_ROUTE_SPEED,
   reservationStaleAfterSeconds = 3,
-  defaultEnabled = true
+  defaultEnabled = true,
+  driving = true
 } = {}) {
   if (!materializer?.trafficTokens || !materializer?.reconcile || !materializer?.pool || !materializer?.assignments) {
     throw new TypeError("Traffic multi-agent route runtime policy requires TrafficMaterializationSystem.");
@@ -484,6 +486,10 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
 
   function buildRuntime() {
     if (!ready()) return null;
+    if (driving) return createTrafficDriverRuntime({
+      trafficFlows: materializer.macro.trafficFlows, macroGraph: materializer.macro.graph,
+      topology: topology(), speed, materializer
+    });
     return createTrafficMultiAgentRouteRuntime({
       trafficFlows: materializer.macro.trafficFlows,
       macroGraph: materializer.macro.graph,
@@ -543,7 +549,7 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
     runtime?.destroy?.("runtime-restart");
     routeBehavior?.clear?.();
     runtime = candidate;
-    routeBehavior = createTrafficRouteBehaviorController(materializer, {
+    routeBehavior = driving ? null : createTrafficRouteBehaviorController(materializer, {
       topology: topology(),
       baseSpeed: speed
     });
@@ -555,7 +561,7 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
 
     if (defaultEnabled && !attachMacroAccounting()) {
       enabled = false;
-      routeBehavior.clear();
+      routeBehavior?.clear?.();
       routeBehavior = null;
       runtime.destroy("missing-macro-accounting-provider");
       runtime = null;
@@ -649,7 +655,8 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
       defaultActivationReady: defaultActivationReady(),
       presentationReady: presentationReady(),
       movementAuthority: enabled ? "multi-agent-compiler-route" : "authored-local-lanes",
-      defaultTrafficAuthority: defaultEnabled ? "multi-agent-compiler-route" : "authored-local-lanes",
+      defaultTrafficAuthority: defaultEnabled ? (driving ? "destination-vehicle-drivers" : "multi-agent-compiler-route") : "authored-local-lanes",
+      driving,
       speedAuthority: enabled
         ? "route-behavior-fsm-plus-physical-hold-and-junction-admission"
         : "authored-local-behavior",
@@ -712,6 +719,7 @@ export function installTrafficMultiAgentRouteRuntimePolicy(materializer, {
 
   const policy = {
     active: true,
+    driving,
     start,
     update,
     step,

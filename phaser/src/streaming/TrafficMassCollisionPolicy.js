@@ -73,6 +73,25 @@ export function installTrafficMassCollisionPolicy(physicalSystem) {
     // materializer.lanes is intentionally null during construction.
     if (!materializer?.assignments || !materializer?.pool || !materializer?.lanes) return null;
     try {
+      const routePolicy = materializer.__nbdTrafficMultiAgentRouteRuntimePolicy;
+      if (routePolicy?.driving) {
+        agentPhysicalAuthority = {
+          snapshot: () => ({ active: true, architecture: "destination-vehicle-driver",
+            movementAuthority: "shared-vehicle-kinematics", routeProgressAuthority: "measured-physical-pose",
+            junctionAuthority: "permission-only", ...routePolicy.runtime()?.behaviorSnapshot?.() }),
+          destroy() {
+            if (typeof window !== "undefined") {
+              delete window.NBD_TRAFFIC_AGENT_AUTHORITY;
+              delete window.NBD_TRAFFIC_AGENT_AUTHORITY_READY;
+            }
+          }
+        };
+        if (typeof window !== "undefined") {
+          window.NBD_TRAFFIC_AGENT_AUTHORITY = agentPhysicalAuthority;
+          window.NBD_TRAFFIC_AGENT_AUTHORITY_READY = true;
+        }
+        return agentPhysicalAuthority;
+      }
       agentPhysicalAuthority = installTrafficAgentPhysicalAuthorityPolicy(physicalSystem);
       agentPhysicalAuthorityError = null;
       return agentPhysicalAuthority;

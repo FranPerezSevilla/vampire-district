@@ -10,6 +10,9 @@ function finite(value, fallback = 0) {
 export function clearTrafficRouteSlotMetadata(slot) {
   if (!slot) return slot;
   slot.routeActive = false;
+  slot.driverActive = false;
+  slot.driverControls = null;
+  slot.driverDestination = null;
   slot.routeStage = null;
   slot.routeLaneId = null;
   slot.routeConnectorId = null;
@@ -27,6 +30,16 @@ export function applyTrafficRouteSlotMetadata(slot, token) {
   if (!slot) return slot;
   if (token?.routeActive !== true) return clearTrafficRouteSlotMetadata(slot);
   slot.routeActive = true;
+  slot.driverActive = Boolean(token.driverActive);
+  if (slot.driverActive) {
+    slot.speed = token.speed;
+    slot.driverControls = token.driverControls;
+    slot.driverDestination = token.driverDestination;
+    slot.driverReason = token.driverReason;
+    slot.routeBaseX = token.x;
+    slot.routeBaseY = token.y;
+    slot.routeBaseAngle = token.angle;
+  }
   slot.routeStage = token.routeStage || null;
   slot.routeLaneId = token.routeLaneId || null;
   slot.routeConnectorId = token.routeConnectorId || null;
