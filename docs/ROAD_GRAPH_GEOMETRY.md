@@ -1,10 +1,10 @@
 # Road graph geometry — intersections, transitions and post-layout furniture
 
-_Last updated: 2026-07-24_
+_Last updated: 2026-09-08_
 
 ## Status
 
-**Geometry v1 was introduced in PR #34, junction ownership was polished in PR #35, and geometry v4 now guarantees continuous road-edge bands and usable road-block depth.**
+**Geometry v5 extends the v4 road-edge and block-depth guarantees with wider carriageways, matching traffic lanes and reserved building/roof clearance.**
 
 This pass replaces the City Topology V2 road rectangles as runtime authority with an explicit axis-aligned centreline graph. Rectangles remain an output format for straight road pieces and chunk bounds, not the city input model.
 
@@ -15,6 +15,20 @@ The change addresses visual failures found during playtesting:
 - several close road endpoints created duplicated centre surfaces;
 - crosswalks could occupy the same visual area as an intersection;
 - streetlights were generated before final road, sidewalk and building clearances existed.
+
+## Accepted geometry v5 dimensions
+
+| Class | Width | Lanes per direction |
+| --- | ---: | ---: |
+| Major avenue | 150 | 2 |
+| Local street | 96 | 1 |
+| Service / alley | 88 | 1 |
+
+The unchanged world and 107-node / 148-edge graph produce 144 clipped segments, 103 junctions, 772 sidewalk surfaces (288 edge bands plus 484 junction-owned), 141 crossings and 660 directed traffic lanes. Post-layout data contains 86 light records and 28 dumpsters; streetlight rendering/stealth remains retired.
+
+`road-clearance.js` reserves 22 sidewalk units plus four façade-clearance units before final pedestrian generation. It adjusts affected rectangular buildings around their original centres, maps attached roofs/access points, preserves all 93 building identities and rejects a parcel that cannot fit. The hall west approach moves from x=2480 to x=2504 to preserve block depth. Final pedestrian loops follow their actual sidewalk surfaces and keep all fourteen districts covered.
+
+Avenue lane centres use width/8 and 3×width/8; single lanes use width/4. Junction approach trims scale with half the adjoining road width, capped at 96. Repeated `city:topology` generation preserves all generated output bytes. See [the accepted widening task](agent-tasks/2026-09-08-wider-city-roads.md) for native traffic and remaining queue evidence.
 
 ## Decision
 
@@ -32,10 +46,10 @@ road graph
 → one authority surface per node/near-node cluster
 → clipped straight segments
 → width-transition polygons
+→ reserved sidewalk space and fitted building/roof clearance
 → segment sidewalks and junction-owned closures/corner pads
 → crosswalks outside junction authority
 → explicit prop-exclusion envelopes and approach zones
-→ buildings/clearances
 → post-layout kerb lights and service furniture
 → pedestrian routes and navigation points
 → 80 streamed chunks

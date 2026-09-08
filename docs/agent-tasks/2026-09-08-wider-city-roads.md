@@ -42,7 +42,7 @@ All three native density viewpoints report zero contacts, overlaps, guarded visi
 ## Final validation
 
 - `npm run check:fast`: 911/911 native tests pass; static ownership check covers 41 browser specifications without executing them.
-- `npm run city:topology`: valid city, zero errors/warnings, score 87/A; 660 directed lanes, 176 nodes and 2,424 transitions.
+- `npm run city:topology`: valid city, zero errors/warnings, score 87.8/A; 660 directed lanes, 176 nodes and 2,424 transitions.
 - Repeated full generation leaves all 99 city/chunk/pack files byte-identical. Generated city SHA-256: `939335ab73f48935c96971c1fe9e93354bc3cb2cfbb17d19f8e7a9201d579268`.
 - `check:affected:plan -- --base=origin/main` selects native tests, city validation and 18 browser specifications. The first two are completed; browser execution is excluded under the user's instruction.
 - Static compiler map reviewed. In-game driving feel remains for review on Pages.

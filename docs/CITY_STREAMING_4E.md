@@ -1,10 +1,12 @@
 # City Streaming 4E — local traffic physical consequences
 
+> Historical stage record (2026-07). Its macro interpolation, pool sizes and route-offset recovery describe the implementation at that time. Production was superseded by the PR #73 physical driver and PR #82 geometry. Use [Technical architecture §13](TECHNICAL_ARCHITECTURE.md#13-civilian-traffic-architecture) for current authority, density, transit and recovery.
+
 _Last updated: 2026-07-22_
 
 ## Status
 
-**Accepted and implemented.**
+**Accepted historical stage; subsequently superseded.**
 
 City Streaming 4E adds bounded physical consequences when the player-driven vehicle reaches a pooled ambient traffic proxy. It extends the materialization and local-behaviour stages introduced in 4C and 4D without converting ambient traffic into persistent campaign vehicles.
 

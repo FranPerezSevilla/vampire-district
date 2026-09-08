@@ -29,7 +29,7 @@ Do not scan or rewrite the whole repository to understand one subsystem.
 | frame order or cross-system coordination | `GameScene`, `GameplayRuntime` | the single `GameplayRuntime.update` chain | browser boot + affected systems |
 | campaign, save, wallet or missions | `CampaignState`, `CampaignSystem`, `MissionRunner` | campaign services and explicit definitions | unit + campaign |
 | authored vehicles or maintenance | `VehicleSystem`, `VehicleModel`, `VehicleDriving`, `VehicleMaintenanceService` | authored vehicle/campaign state boundary | vehicle core + maintenance |
-| civilian traffic | `TrafficMaterializationSystem`, local traffic policies | fixed proxy pool; never campaign vehicles | traffic browser group |
+| civilian traffic / buses | `TrafficDriverRuntime`, `TrafficDriverController`, `TrafficDriverJunctions`, `TransitSystem` | shared vehicle kinematics; compiler navigation; fixed 64-slot materializer; stop/passenger authority stays in transit | native flow, recovery, density, transit and performance tests; traffic browser group when permitted |
 | police, witnesses, Heat or Exposure | `PoliceSystem`, `HeatSystem`, `ExposureSystem`, `EvidenceSystem` | separate police and supernatural-proof authorities | police/evidence browser group |
 | factions, territory or hunting law | `TerritorySystem`, `TerritoryRuntimeSystem` and hunting-law services | persistent campaign authority plus read-only runtime projection | territory/hunting browser group |
 | streaming or dormant simulation | `ChunkStreamSystem`, `EntityStreamSystem`, `DistantSimulationSystem` | resident resources before local queries | streaming browser group |
@@ -39,7 +39,7 @@ If a symbol has moved, use `rg` to find it. Do not create a second authority bec
 
 ## Validation ladder
 
-Fast safety net, expected to stay below one minute on a normal development machine:
+Fast safety net (includes native citywide traffic simulations, so duration depends on hardware):
 
 ```bash
 npm run check:fast
@@ -66,6 +66,12 @@ npm run test:rc
 ```
 
 The selector is a conservative aid, not a replacement for judgment. Add a focused test manually when the change crosses a boundary that its filenames cannot reveal.
+
+## Current traffic review exception
+
+The user explicitly requested no browser tests for PR #73 and its road/traffic continuation. `.github/workflows/tests.yml` keeps the native/static gate for `codex/traffic-junction-topology`; the affected plan may still list browser specs. Run city validation when required and report the browser exclusion instead of claiming those specs passed. The existing release suites remain available for other explicitly scoped validation.
+
+Pages currently serves this review branch. Do not delete or repoint it as incidental PR cleanup. PR #73 is merged; PR #82 was user accepted with explicit merge authorization on 2026-09-08. The traffic status file records completion, not an instruction to restart an old publish or user-validation gate.
 
 ## Small-PR protocol
 

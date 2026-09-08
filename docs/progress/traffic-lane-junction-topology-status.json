@@ -1,13 +1,13 @@
 {
   "initiative": "traffic-lane-junction-topology",
-  "version": 25,
+  "version": 26,
   "updatedAt": "2026-09-08",
-  "pullRequest": 73,
+  "pullRequest": 82,
   "branch": "codex/traffic-junction-topology",
-  "state": "local-validated-publish-pending",
-  "currentMilestone": "M16",
-  "currentTask": "M16-traffic-performance",
-  "lastValidatedImplementationHead": "91dcf2392a21875b607b3ae1a191a760876fe6e9",
+  "state": "complete-user-approved",
+  "currentMilestone": "M18",
+  "currentTask": null,
+  "lastValidatedImplementationHead": "163e870bf44bfd9bc9ed6e5984c14c54d417199d",
   "baseAtBootstrap": "805ea5d107dcddcef4cd564294569455093af4b0",
   "canonicalDocs": {
     "roadmap": "docs/roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md",
@@ -24,7 +24,11 @@
     "moreTraffic": "docs/agent-tasks/2026-09-08-more-traffic.md",
     "avenuesAndBuses": "docs/agent-tasks/2026-09-08-avenues-and-buses.md",
     "loadAndPerformance": "docs/agent-tasks/2026-09-08-traffic-load-and-performance.md",
-    "trafficPerformance": "docs/agent-tasks/2026-09-08-traffic-performance-implementation.md"
+    "trafficPerformance": "docs/agent-tasks/2026-09-08-traffic-performance-implementation.md",
+    "pagesRadio": "docs/agent-tasks/2026-09-08-pages-radio.md",
+    "widerRoads": "docs/agent-tasks/2026-09-08-wider-city-roads.md",
+    "documentationClosure": "docs/agent-tasks/2026-09-08-documentation-and-merge.md",
+    "currentArchitecture": "docs/TECHNICAL_ARCHITECTURE.md"
   },
   "authority": {
     "localTopologyCompiler": "tools/city-compiler/traffic-lane-topology.js",
@@ -47,7 +51,8 @@
     "journeyPlanner": "TrafficJourneyPlanner; broad repeating circuits with continuous seams. Civilian through routes exclude cul-de-sacs; prescribed bus terminal itineraries may use them.",
     "circuitAllocation": "TrafficPopulationPolicy; deterministic bootstrap allocation against source-road and district capacity, without changing routes or physical poses after startup",
     "publicTransport": "TransitRoutes selects compiler curb lanes and prescribed itineraries. TransitSystem owns stops, passenger state and service braking; TrafficDriverRuntime/VehicleModel move buses, NpcSystem moves commuters, InteractionSystem owns the chooser.",
-    "performance": "TrafficDriverRuntime schedules distant unmaterialized civilians at staggered 2 Hz and keeps assigned cars, buses and emergencies under shared physical integration. Incremental route accounting and lazy diagnostics are read-only projections; body geometry and spatial candidates do not own movement."
+    "performance": "TrafficDriverRuntime schedules distant unmaterialized civilians at staggered 2 Hz and keeps assigned cars, buses and emergencies under shared physical integration. Incremental route accounting and lazy diagnostics are read-only projections; body geometry and spatial candidates do not own movement.",
+    "roadGeometry": "Geometry v5: 150-unit major, 96-unit local, 88-unit service roads. Compiler reserves sidewalk/building/roof clearance and regenerates lanes and city packs atomically."
   },
   "cleanupAudit": {
     "productionRequiredCompatibility": [
@@ -69,7 +74,7 @@
     "productionGuards": [
       "tests/traffic-lifecycle-integration.test.js recursively rejects live production references to TrafficShadowRoutePolicy, MacroTrafficRouteContinuityPolicy and TrafficIntentDrivingPolicy",
       "legacy nearest-junction inference remains disabled",
-      "compiler-route lanes/connectors remain the sole civilian local pose authority"
+      "compiler lanes/connectors remain navigation authority; shared VehicleModel controls integrate driver-active physical poses"
     ]
   },
   "hardInvariants": [
@@ -112,7 +117,10 @@
     "M9.3-physical-queue-clearance-validation",
     "M14-avenues-and-buses",
     "M15-traffic-load-and-performance",
-    "M16-traffic-performance"
+    "M16-traffic-performance",
+    "M17-pages-radio",
+    "M18-wider-city-roads",
+    "documentation-reconciliation-and-user-acceptance"
   ],
   "milestones": {
     "M0": {
@@ -181,7 +189,17 @@
     },
     "M16": {
       "title": "Traffic CPU: incremental records, distant scheduling and cached geometry",
-      "state": "local-validated-publish-pending"
+      "state": "complete; integrated through PR 73"
+    },
+    "M17": {
+      "title": "Existing radio sources on the ViceBlood Pages project",
+      "state": "complete; integrated through PR 73"
+    },
+    "M18": {
+      "title": "Wider roads and matching traffic/pedestrian/building geometry",
+      "state": "complete-user-approved",
+      "pullRequest": 82,
+      "implementationHead": "163e870bf44bfd9bc9ed6e5984c14c54d417199d"
     }
   },
   "validation": {
@@ -1235,31 +1253,84 @@
       ],
       "nativeDensityTimingLimit": "Density timing fields were collected during the full native gate. Use the isolated before20Hz/after20Hz pair for CPU comparisons.",
       "validationCorrection": "The frame-order source guard now recognizes update(dt, options), still asserting physical contact preflight precedes route advance. A focused dynamic-index test isolates building queries; production building checks remain active in density/recovery tests."
+    },
+    "m17PagesRadio": {
+      "implementationHead": "0abdf79bf0e3e380c2921ca8a22164dfd77059b9",
+      "state": "passed",
+      "focusedRadioTests": 19,
+      "nativeTests": 906,
+      "record": "docs/agent-tasks/2026-09-08-pages-radio.md",
+      "limitation": "Pinned sources select correctly; historical hash/CORS proof is not ongoing CDN availability or a fresh automated listening check."
+    },
+    "m18WiderRoads": {
+      "state": "passed-user-approved",
+      "implementationHead": "163e870bf44bfd9bc9ed6e5984c14c54d417199d",
+      "nativeTests": 911,
+      "browserExecution": "excluded-by-user",
+      "staticBrowserSuiteOwnership": "41 specs across 8 suites",
+      "city": {
+        "errors": 0,
+        "warnings": 0,
+        "score": 87.8,
+        "grade": "A",
+        "identicalRegeneratedFiles": 99
+      },
+      "ci": {
+        "runId": 34251606191,
+        "conclusion": "success"
+      },
+      "pages": {
+        "runId": 34251585714,
+        "conclusion": "success",
+        "url": "https://franperezsevilla.github.io/vampire-district/"
+      },
+      "traffic": {
+        "civilianCars": 600,
+        "buses": 6,
+        "localPool": 64,
+        "coveredEligibleLanes": 567,
+        "eligibleLanes": 574,
+        "maxObservedStopSeconds": {
+          "old-quarter": 22.4,
+          "blackwater": 49.95,
+          "north-harbor": 7.05
+        },
+        "contacts": 0,
+        "overlaps": 0,
+        "guardedVisibleSpawns": 0,
+        "oldUnresolvedQueues": 0
+      },
+      "limitations": [
+        "Recent queues remain; arbitrary player-created blockages are not proven absent.",
+        "Blackwater observer moved to the new sidewalk; earlier CPU timings are not a matched geometry-v5 comparison."
+      ]
     }
   },
-  "nextTask": {
-    "id": "M16-publish-and-gameplay-feedback",
-    "milestone": "M16",
-    "goal": "Publish and hand off measured traffic performance with unchanged physical interaction boundaries.",
-    "actions": [
-      "All local gates pass; publish the reviewed tree once and synchronize the local branch.",
-      "Report exact source commit and bounded native CI / Pages observations.",
-      "Keep draft, no browser execution or automatic merge; handle concrete user feedback."
-    ],
-    "acceptance": [
-      "600 civilian identities and six service buses remain; native flow/recovery/service tests pass.",
-      "Measured runtime CPU savings and remaining limits are explicit.",
-      "Published source commit and deployment status are reported."
-    ],
-    "readFirst": [
-      "docs/agent-tasks/2026-09-08-traffic-performance-implementation.md",
-      "docs/TECHNICAL_ARCHITECTURE.md"
-    ]
-  },
+  "nextTask": null,
   "finalGate": {
     "requiresUserGameplayApproval": true,
-    "autonomousWorkStopsAt": "final-validation-pending",
+    "autonomousWorkStopsAt": "complete-user-approved",
     "autoMergeAllowed": false,
-    "browserTestsRequired": false
+    "browserTestsRequired": false,
+    "userGameplayApproval": "granted-2026-09-08",
+    "explicitMergeAuthorization": {
+      "pullRequest": 82,
+      "date": "2026-09-08",
+      "scope": "User approved the wider roads and requested merging with reconciled documentation."
+    }
+  },
+  "originPullRequest": 73,
+  "integration": {
+    "pr73": {
+      "state": "merged",
+      "mergeCommit": "7ee3af6e35459ff938972eea9f41a5efb16f9878"
+    },
+    "pr82": {
+      "authorization": "explicit-user-approval",
+      "url": "https://github.com/FranPerezSevilla/vampire-district/pull/82",
+      "liveMergeStateAuthority": "GitHub pull request metadata"
+    },
+    "pagesBranch": "codex/traffic-junction-topology",
+    "nextImplementationTask": null
   }
 }

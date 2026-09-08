@@ -1,6 +1,6 @@
 # Project snapshot
 
-_Last updated: 2026-07-29_
+_Last updated: 2026-09-08 — user-accepted PR #73 / #82 foundation_
 
 Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) first for the canonical project-wide map. This snapshot summarizes the current playable state, persistence boundaries and immediate priority.
 
@@ -44,17 +44,17 @@ The current foundation provides:
 - `4800 × 3600` City Topology V2 with fourteen unprotected districts;
 - a 107-node / 148-edge road graph compiled into 144 clipped segments and 103 junction authorities;
 - zero road-piece or building/road overlap;
-- 776 sidewalk surfaces: 309 continuous road-edge bands from 288 sources plus 467 junction-owned surfaces, 137 valid crossings, 128 post-layout lights, 28 post-layout dumpsters and 11 regenerated pedestrian loops;
+- 772 sidewalk surfaces: 288 continuous road-edge bands plus 484 junction-owned surfaces, 141 valid crossings, 86 post-layout light records, 28 dumpsters and 11 generated pedestrian loops, complemented by authored neighbourhood loops;
 - `10 × 8` asynchronous chunk streaming, district packs and dormant simulation;
-- macro traffic and ten pooled civilian traffic proxies;
+- 600 civilian cars, six scheduled buses and a fixed pool of 64 local traffic proxies;
 - motorized police pursuit, partial roadblock and crew transfer to foot AI;
-- 322 passing unit tests with territory, hunting law, feeding depth, Heat/Exposure and predator-power coverage, plus browser boot/systems/campaign domains.
+- 911 passing native tests, zero city-validation errors/warnings and byte-identical regeneration of the 99 city/chunk/pack files; no browser execution for this review.
 
 Production remains persistent missionless free roam. Archived mission definitions are explicit framework fixtures only.
 
 ## Current playable mode
 
-Normal boot opens persistent free roam directly on the street.
+The title screen opens persistent street free roam through New Night / Continue. The retired campaign-entry modal and authored mission tutorial remain disabled.
 
 Available systems include:
 
@@ -64,7 +64,9 @@ Available systems include:
 - a paused Night Ledger that explains factions, Heat and concrete evidence;
 - rooftop/sewer traversal;
 - vehicles, trunks and maintenance;
-- civilian traffic and pedestrians;
+- physical civilian drivers and pedestrians;
+- C Circular, N Norte–Sur and E Este–Oeste bus lines, two buses per line, stops and passenger/theft interaction;
+- Vice FM, Night Shift and Pulse 94.6 radio, three tracks each, plus quiet nearby-car ambience;
 - foot and motorized police;
 - witnesses, physical evidence, district Heat and Veil Exposure;
 - campaign wallet, reputation and save state;
@@ -103,20 +105,21 @@ The cleaned state is saved immediately in persistent normal mode.
 ```text
 WASD / arrows   run or control vehicle
 Shift           quiet movement on foot
-Enter           vehicle enter / exit only
+Enter           vehicle enter / exit; bus passenger / theft chooser
 Space           traversal on foot; handbrake while driving
 E               interaction, trunk or refuge garage
 Mouse           aim and face
 Left mouse      equipped attack
 Right mouse     hold to feed; release at Quick Bite / Full Feed or continue to Drain
-Wheel           cycle owned weapons
+Wheel           weapons on foot; radio station / OFF while driving
 Q               Dash
 R               Whisper
 F               Blood Sense
 B               Give In to the Beast
 M               mission panel (empty without a contract)
 L               paused Night Ledger: factions, Heat, evidence and hunting law
-H               pause/help/accessibility
+H               vehicle horn
+Escape / Menu   pause/help/accessibility
 ```
 
 `InputSystem.beginFrame()` remains authoritative. Features do not read raw world-action keys independently.
@@ -187,11 +190,11 @@ viewport             960 × 640
 world                4800 × 3600
 area                 17,280,000 units²
 road graph           107 nodes / 148 edges
-road output          147 segments / 104 junction authorities
+road output          144 segments / 103 junction authorities
 road overlaps        0
-sidewalks            776 (309 edge bands / 467 junction-owned)
-crosswalks           137
-post-layout lights   126
+sidewalks            772 (288 edge bands / 484 junction-owned)
+crosswalks           141
+post-layout lights   86 records (streetlight rendering/stealth retired)
 chunks               10 × 8 / 80
 ```
 
@@ -211,7 +214,7 @@ Implemented and locked:
 - landmarks remain site-first;
 - missions reference semantic sites rather than protecting raw coordinates.
 
-Road geometry v4 is axis-aligned. Arbitrary-angle/curved offsets and polygonal ordinary parcels remain later extensions.
+Road geometry v5 is axis-aligned. Avenues are 150 units wide (two lanes per direction), local streets 96 and service streets 88. The compiler fits buildings, roofs and pedestrian surfaces to reserve that space. Arbitrary-angle/curved offsets and polygonal ordinary parcels remain later extensions.
 
 ## Vehicles and traffic boundaries
 
@@ -225,9 +228,12 @@ Road geometry v4 is axis-aligned. Arbitrary-angle/curved offsets and polygonal o
 
 ### Civilian traffic proxies
 
-- fixed pool of ten;
-- no entry, theft, ownership, trunk, hull, repair or save data;
-- temporary macro/local traffic state only.
+- 600 stable civilian identities plus six bus service identities, with 64 fixed local slots;
+- broad repeating routes use compiler navigation and the same throttle/brake/steering/reverse model as the player;
+- whole-body junction admission, obstacle bypass and bounded reverse/reassessment;
+- collisions and disablement have physical consequences; theft transfers a proxy into a separately capped transient vehicle;
+- ambient proxies and stolen traffic vehicles have no campaign save ownership;
+- distant unmaterialized civilians advance at staggered 2 Hz; assigned bodies, buses and emergencies retain physical integration.
 
 ### Motorized police cruisers
 
@@ -268,33 +274,34 @@ GameScene.update
 Large-city pre-frame:
 
 ```text
-ChunkStreamSystem
-DistrictPackSystem
-EntityStreamSystem
-DistantSimulationSystem
-MacroTrafficPoliceSystem
-TrafficMaterializationSystem
-TrafficLocalBehaviorSystem
-TrafficPhysicalConsequencesSystem
-TrafficImpactConsequencesSystem
-MotorizedPoliceSystem
-PedestrianSystem
+ChunkStreamSystem.update
+DistrictPackSystem.update
+EntityStreamSystem.update
+DistantSimulationSystem.update
+TrafficPhysicalConsequencesSystem.prepareRouteFrame
+TrafficMultiAgentRouteRuntimePolicy.update → TrafficDriverRuntime
+MacroTrafficPoliceSystem.update
+TrafficMaterializationSystem.update
+TrafficOccupantWitnessSystem.update
+TrafficLocalBehaviorSystem.update
+TrafficSteeringPresentationSystem.update
+TrafficPhysicalConsequencesSystem.update
+TrafficImpactConsequencesSystem.update
+TransitSystem.update
+MotorizedPoliceSystem.update
+PedestrianSystem.update
 normal gameplay frame
-TerritoryRuntimeSystem
+TerritoryRuntimeSystem.update
+RadioSystem.update (GameScene, after GameplayRuntime)
 ```
 
 Vehicle maintenance and campaign transactions remain event-driven outside the frame loop. `TerritoryRuntimeSystem` observes the final player position after the gameplay frame and publishes district-entry feedback without owning movement.
 
 ## Testing state
 
-PR domains:
+PRs use `pr-fast` with the affected-test selector. Main pushes and scheduled/manual runs retain the broader native, city-analysis and semantic browser jobs. For PR #73 and continuations on its Pages branch, CI runs the native/static fast gate under the user's no-browser instruction.
 
-```text
-unit-tests
-browser-boot
-browser-systems
-browser-campaign
-```
+The accepted implementation `163e870` passed GitHub Tests [34251606191](https://github.com/FranPerezSevilla/vampire-district/actions/runs/34251606191) and Pages deployment [34251585714](https://github.com/FranPerezSevilla/vampire-district/actions/runs/34251585714). These are dated implementation results, not a claim about future heads.
 
 The reset adds coverage for:
 
@@ -340,11 +347,14 @@ Mission-specific browser golden paths are removed because those contracts are no
 3. Future polygonal ordinary parcels need collision and streaming support beyond rectangular bounds.
 4. Landmark campuses must remain dense and urban rather than empty.
 5. The playable build has no authored narrative content while faction territory consumers are being connected.
-6. Browser-system regression time is increasing.
-7. Commercial-facing names still require trademark clearance.
+6. Native traffic fixtures still observe waits of up to about 50 seconds at the widened Blackwater junction; target-hardware frame rate and arbitrary interactive blockages are not proved by these tests.
+7. Radio on Pages depends on the pinned external CDN; packaged builds need private masters.
+8. Commercial-facing names still require trademark clearance.
 
 ## Immediate priority
 
-Implement **Milestone 15.8 persistent hunter investigation**: create one named hunter whose testimony, recovered evidence, recognised vehicles and repeated player habits produce traceable escalation rather than generic combat waves.
+The user accepted the traffic/radio foundation in PR #73 and the wider roads in PR #82, and authorized integration. Review uses [GitHub Pages](https://franperezsevilla.github.io/vampire-district/), sourced from `codex/traffic-junction-topology`; keep that branch while it serves Pages.
+
+The next planned gameplay milestone remains **15.8 persistent hunter investigation**. It has not been started by this documentation/merge task. Follow concrete user feedback for further driving polish; traffic acceptance does not assert that all junction queues are eliminated.
 
 Future geometry work may add arbitrary-angle curves and polygonal ordinary parcels, but must preserve graph IDs, landmark sites, traffic/police integration and the hard no-overlap contracts.

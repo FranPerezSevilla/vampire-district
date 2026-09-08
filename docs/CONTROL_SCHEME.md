@@ -15,17 +15,24 @@ The implemented scheme keeps GTA2-style immediacy and contextual city traversal 
 | Mouse | Aim and face. |
 | Left mouse | Use equipped weapon. During dialogue, advances the bubble instead. |
 | Right mouse | Hold on a valid target; release for Quick Bite or Full Feed, or continue to Drain. |
-| Wheel | Previous/next owned weapon. |
+| Wheel | Previous/next owned weapon on foot; previous/next radio station or OFF while driving. |
 | Space | On foot: execute one contextual traversal route. In a vehicle: hold the handbrake to initiate or sustain a drift. |
-| Enter | Enter or exit a nearby/current vehicle. |
+| Enter | Enter/exit a vehicle; near a bus, choose **Subir como pasajero** or **Robar autobús**. While riding, request a safe exit when stopped. |
 | E | Talk, collect, inspect and use non-traversal interactions. |
 | Q | Shadow Dash. |
 | R | Vampiric Whisper. |
 | F | Blood Sense. |
 | B | Give In to the Beast; voluntary short predator burst with Hunger and evidence risk. |
 | M | Mission panel. |
-| H | Pause/help and accessibility settings. |
-| Escape | Close UI or act as dialogue keyboard fallback. |
+| H | Horn while driving. |
+| L | Paused Night Ledger. |
+| Escape / Menu | Open pause/help/accessibility, or close the active UI/dialogue. |
+
+## Bus and radio interaction
+
+Bus boarding requires a stopped materialized bus and available passenger capacity. The existing chooser owns selection and confirmation; passenger mode suppresses walking, weapons and powers while the player follows the real bus. Theft uses the existing transient vehicle transfer.
+
+The driving wheel cycles OFF → Vice FM → Night Shift → Pulse 94.6. Entering/re-entering a driven vehicle joins the selected station's current broadcast song/offset. Leaving stops that receiver while the station timeline continues. Nearby civilian cars provide quiet ambient radio from the shared clocks.
 
 ## Dialogue priority
 
@@ -102,7 +109,7 @@ The wheel owns a discrete `weaponStep` action.
 - The HUD displays equipped weapon and ammunition.
 - The pistol has eight rounds and no reload action in the current slice.
 
-After the police informant leaves and full control returns, a compact `WHEEL` prompt remains until the first successful weapon change. It does not pause the world and consumes the existing `weapon:changed` event rather than raw wheel input. The first change produces a brief `LMB` confirmation.
+The historical mission tutorial showed a compact `WHEEL` prompt after the police informant left; that authored tutorial is disabled in normal production. That historical prompt consumed the existing `weapon:changed` event and showed a brief `LMB` confirmation; it is not a normal-production teaching gate.
 
 The browser page does not scroll while the pointer is over the playable canvas because `WeaponSystem` owns wheel capture. Normal browser scrolling remains available outside the canvas.
 
@@ -188,6 +195,7 @@ E does not:
 
 Implemented:
 
+- remappable gameplay bindings through the existing pause UI and `input/bindings.js`, persisted locally;
 - Pause Menu button for `High-contrast aim: On / Off`.
 - The high-contrast reticle uses black outline, white core, larger ring and cross mark rather than weapon colour alone.
 - The preference is stored locally under `nbd-aim-high-contrast`.
@@ -198,7 +206,6 @@ Implemented:
 
 Planned or deferred:
 
-- remappable bindings;
 - keyboard-only aim fallback;
 - optional click-to-toggle drain;
 - reduced camera shake;
@@ -214,7 +221,7 @@ Implemented in code, browser validation still pending unless noted:
 - [ ] Dialogue click advances exactly one bubble and never becomes an attack.
 - [ ] Left mouse attacks once per valid cadence.
 - [ ] Three punches down a civilian; four down a police officer.
-- [ ] One aimed attack breaks a baseline streetlight; a miss does not.
+- [ ] Retired streetlight damage/stealth does not become a gameplay action.
 - [ ] E never exposes streetlight destruction.
 - [ ] Right-click cannot front-drain an alert standing target.
 - [ ] Right-click never opens the browser menu over the game.
@@ -229,7 +236,7 @@ Implemented in code, browser validation still pending unless noted:
 - [ ] E never selects a traversal route.
 - [ ] Two nearby traversal points resolve deterministically.
 - [ ] Wheel changes one owned weapon step without scrolling the page.
-- [ ] First-use wheel guidance appears only after full tutorial control.
+- [ ] Driving wheel input changes radio without cycling weapons; on-foot wheel input changes weapons.
 - [ ] Pistol ammo decrements once and never becomes negative.
 - [ ] Buildings and nearer entities block farther pistol targets.
 - [ ] High-contrast aim remains aligned and keyboard-operable.

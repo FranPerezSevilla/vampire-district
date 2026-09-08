@@ -1,4 +1,4 @@
-# Car radio runtime — first slice
+# Car radio runtime — implementation record
 
 ## Goal
 
@@ -39,7 +39,7 @@ Make the locked nine-track ViceBlood radio seed behave as a usable in-car radio:
 
 The broadcast timeline intentionally uses wall-clock time rather than a frozen per-car cursor. Reloading or being away from a receiver therefore does not imply that the station itself stopped broadcasting.
 
-NPC civilian-car diegetic radio ambience remains part of the overall PR scope but is a later bounded runtime layer after the player-radio manual gate. It should consume the same station timeline rather than invent a second playlist clock.
+NPC civilian-car ambience is now implemented by `TrafficRadioAmbienceSystem`, sharing the player radio's station clocks and decoded-buffer cache. The initial first-slice staging above is retained as implementation history.
 
 ## Acceptance criteria
 
@@ -88,9 +88,6 @@ The user moved review to GitHub Pages after exhausting Netlify quota. Pages serv
 
 Fresh automated requests to the official CDN were rejected with HTTP 403 (Cloudflare code 1010). The original hash/CORS verification above is historical evidence, not a fresh successful download. This source-resolution fix does not establish audible playback or ongoing CDN availability. Browser tests and listening checks remain excluded by the user's instruction. See [the bounded Pages task](2026-09-08-pages-radio.md).
 
-## Delivery
+## Current delivery — 2026-09-08
 
-- Draft PR #78 targeting `main`.
-- Private-master boundary preserved for production/local packaged runtime.
-- Automatic Git-connected Netlify Deploy Preview is directly testable with the verified nine-track radio seed.
-- No automatic merge.
+The initial PR #78 workflow above is historical. The radio continuation was included in PR #73, merged with user approval at `7ee3af6`. Review uses the ViceBlood Pages branch because Netlify quota was exhausted. Private staged masters remain required for other local/packaged hosts. User acceptance of the playable result is separate from automated CDN availability or listening verification. [Technical architecture](../TECHNICAL_ARCHITECTURE.md#radio-ownership-and-deployment) records current ownership.

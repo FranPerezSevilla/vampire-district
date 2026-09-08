@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-09-08 — Wider roads and documentation reconciliation (PR #82)
+
+- Widened avenues from 120 to 150 units, local streets from 72–84 to 96, and service streets from 60–68 to 88.
+- Rebuilt lane centres, junction approaches, sidewalks and streamed city packs from geometry v5; retained two lanes per avenue direction.
+- Reserved sidewalk/façade space, adjusted 66 buildings and attached roofs/access points, and retained all 93 building identities.
+- Kept 600 civilian cars and six buses; native geometry/flow/transit/performance checks pass, with some junction waits still present.
+- Reconciled the snapshot, blueprint, roadmap, controls, architecture, index and traffic closure state; distinguished historical records from current contracts.
+- User approved the widened Pages build and authorized integration. Validated gameplay implementation: `163e870`, 911 native tests, city 87.8/A with zero errors/warnings. Browser tests were excluded by user instruction.
+
+## 2026-09-08 — Physical city traffic, buses, CPU and Pages radio (PR #73)
+
+- Rebuilt civilian driving around shared player-vehicle kinematics and broad repeating city circuits.
+- Added whole-body junction permissions, safe bypass/reverse/reassessment and fair recovery attempts.
+- Introduced four-lane avenues and three two-bus services with stops, real passenger transfers, and passenger/theft selection through the existing interaction menu.
+- Settled density at 600 civilian cars after the 1,000-car experiment; retained a fixed 64-slot materializer.
+- Reduced CPU work with incremental route accounting, staggered distant simulation, lazy diagnostics and cached spatial/body geometry.
+- Enabled the existing nine radio sources on the exact ViceBlood Pages project, with continuous three-station broadcasts and shared nearby-car ambience.
+- Merged with explicit user approval at `7ee3af6`.
+
 ## 2026-07-29 — Predator powers and the Beast
 
 - Expanded Blood Sense into heartbeat, wound, feeding-trace, drained-body, blood-trail and heartbeat-absence readings through cover.

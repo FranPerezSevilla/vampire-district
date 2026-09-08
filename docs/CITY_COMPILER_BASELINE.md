@@ -1,8 +1,10 @@
-# City Compiler — Current city baseline
+# City Compiler — Historical July baseline
 
 _Generated from seed `viceblood-current-city-v1` on 2026-07-21._
 
-## Result
+> This is the 2026-07-21 eight-district control candidate, not the current city or a list of current exceptions. Geometry v5 has fourteen districts, score 87.8/A and zero validation errors/warnings. See [Project snapshot](PROJECT_SNAPSHOT.md#city-and-topology-status) and [road geometry](ROAD_GRAPH_GEOMETRY.md).
+
+## Historical result
 
 ```text
 Overall score              82.7 / 100

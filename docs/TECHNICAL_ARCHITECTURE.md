@@ -1,6 +1,6 @@
 # Technical architecture
 
-_Last updated: 2026-07-24_
+_Last updated: 2026-09-08 — city, traffic, transit, audio and frame-order reconciliation_
 
 Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) for the project-wide map. This document defines runtime ownership, boot composition, campaign/mission registration, persistence boundaries, city-topology policy and testing contracts.
 
@@ -158,6 +158,8 @@ Campaign-entry and mission-board source modules remain available for future expl
 - `MacroTrafficPoliceSystem`
 - `TrafficMaterializationSystem`
 - `TrafficLocalAssignmentPolicy`
+- `TrafficDriverRuntime`, `TrafficDriverController`, `TrafficDriverJunctions`
+- `TransitSystem` and `TransitRoutes`
 - `TrafficLocalBehaviorSystem`
 - `TrafficPhysicalConsequencesSystem`
 - `TrafficImpactConsequencesSystem`
@@ -182,15 +184,21 @@ ChunkStreamSystem.update
 DistrictPackSystem.update
 EntityStreamSystem.update
 DistantSimulationSystem.update
+TrafficPhysicalConsequencesSystem.prepareRouteFrame
+TrafficMultiAgentRouteRuntimePolicy.update → TrafficDriverRuntime
 MacroTrafficPoliceSystem.update
 TrafficMaterializationSystem.update
+TrafficOccupantWitnessSystem.update
 TrafficLocalBehaviorSystem.update
+TrafficSteeringPresentationSystem.update
 TrafficPhysicalConsequencesSystem.update
 TrafficImpactConsequencesSystem.update
+TransitSystem.update
 MotorizedPoliceSystem.update
 PedestrianSystem.update
 normal gameplay frame
 TerritoryRuntimeSystem.update
+RadioSystem.update (GameScene, after GameplayRuntime)
 ```
 
 Normal gameplay frame:
@@ -248,6 +256,8 @@ Important frame fields:
   vehicleActionPressed,
   handbrakeHeld,
   weaponStep,
+  radioStep,
+  hornPressed,
   dashPressed,
   whisperPressed,
   bloodSensePressed
@@ -468,7 +478,7 @@ The previous cursor/FSM/offset policies remain explicit controlled regression
 harnesses (`driving: false`), with no production movement ownership.
 
 The compiler emits **two lanes per direction on avenues at least 100 units wide**
-(120 in this city), and one per direction on narrower roads: **660 directed
+(150 in this city), and one per direction on narrower roads: **660 directed
 lanes**. Through traffic and turns retain their lane index; actual capacity
 changes split or merge through validated compiler connectors. A fragment beside
 a chunk seam allocates its available trim to the adjacent junction, preventing
@@ -544,8 +554,7 @@ invalidate on position, heading or dimension changes. Single-road convex
 containment avoids allocating footprint samples; junction unions retain the
 original full footprint check.
 
-The 600-car population and bootstrap routes/poses are unchanged from M15. Native
-measurement and the remaining performance limits are documented in
+The M16 performance change preserved the M15 population and bootstrap routes/poses. Geometry v5 subsequently regenerated the network and journeys while retaining 600 cars. Historical native CPU measurements and their limits are documented in
 `docs/agent-tasks/2026-09-08-traffic-performance-implementation.md`.
 
 Macro traffic receives output-only route accounting; legacy civilian phases
@@ -577,6 +586,14 @@ player and camera follow the real bus. Enter requests a safe exit when stopped.
 On-foot impact/crowd/noise paths exclude the rider, checkpoints defer while
 occupied, and hospital recovery or layer changes release the passenger state.
 There is no new input reader, gameplay loop or campaign persistence owner.
+
+### Radio ownership and deployment
+
+`GameScene` creates one `RadioSystem` and updates it after `GameplayRuntime`. `RadioTimeline` owns the continuous wall-clock station schedules; `RadioBroadcastPlayback` / `RadioPlayback` own receivers, source loading and bounded decoded-buffer caching through the existing `RawAudio` AudioContext/master output. `TrafficRadioAmbienceSystem` shares those station clocks and buffers for quiet nearby civilian-car ambience.
+
+The current catalogue is **Vice FM, Night Shift and Pulse 94.6**, three tracks each, plus OFF. Vehicle entry joins the live song/offset; exit stops the player receiver while station time continues. The mouse wheel becomes `radioStep` while driving and remains weapon selection on foot. Receiver selection lasts for the page session; it is not campaign or per-car save state.
+
+`RadioCatalog` selects the nine existing pinned official CDN sources only on the named Netlify Deploy Preview hosts and `franperezsevilla.github.io/vampire-district/`. Other hosts and packaged builds require the private staged masters. Pages is the current review deployment because Netlify quota was exhausted. Source selection is tested; ongoing third-party CDN availability is not guaranteed by native tests. The private-master staging and attribution boundary remains unchanged. See [the radio runtime record](agent-tasks/2026-08-24-car-radio-runtime.md) and [Pages continuation](agent-tasks/2026-09-08-pages-radio.md).
 
 ## 14. Motorized police architecture
 

@@ -104,21 +104,15 @@ Run on every commit and own pure rules:
 
 Archived journalist/`Clean the Scene` definitions remain valid fixture data but are never assumed as production defaults.
 
-### Pull-request browser checks
+### Current CI selection and browser scope
 
-Three independent jobs run after unit tests.
+Pull requests use one `pr-fast` job. It checks suite ownership, plans affected validation against the base branch, installs Chromium only when needed, then executes the plan. Main pushes and scheduled/manual runs retain the broader native, city-analysis and semantic browser jobs. The 41 browser specifications are owned by eight canonical npm suites.
 
-```text
-browser-boot
-  runtime composition, normal free-roam boot, routes, render quality, accessibility,
-  isolated playtest start/objectives/result/feedback
+For PR #73 and its continuation branch `codex/traffic-junction-topology`, the author explicitly excluded browser execution. CI therefore runs `check:fast` without installing Chromium; local city changes also run `city:validate` / `city:topology`. The affected plan still lists browser coverage transparently. A static suite-ownership check is not execution of those browser tests.
 
-browser-systems
-  vehicles, city/streaming, traffic, maintenance, evidence, perception, police, input locks
+At gameplay implementation `163e870` (2026-09-08), 911 native tests pass. The wider-city geometry is valid with zero errors/warnings and all 99 generated city/chunk/pack files reproduce byte-for-byte. Native flow, recovery, 600-car/six-bus density, transit and performance contracts pass; the user separately approved the Pages driving result. This is not a new browser/FPS measurement.
 
-browser-campaign
-  legacy mission-save pruning, cash preservation and persistent missionless free roam
-```
+For documentation-only changes, run the affected plan against the preceding implementation to establish the documentation scope, and retain the implementation validation evidence. Follow the repository's required fast gate before publishing.
 
 ### Golden paths
 

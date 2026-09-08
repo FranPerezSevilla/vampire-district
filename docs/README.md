@@ -11,6 +11,18 @@ This directory is the project source of truth for design, implementation and pla
 - [Roadmap](ROADMAP.md) — completed, active and planned milestones ordered by dependency.
 - [Playtest Slice 0.1](PLAYTEST_SLICE_0_1.md) — isolated 10–15 minute Hunt, Feed, Escape build, acceptance gate and feedback contract.
 
+## Accepted city/traffic baseline — 2026-09-08
+
+Start with the snapshot and blueprint above: 600 civilian cars, six buses on three lines, a fixed 64-slot local pool, physical driving/recovery, three radio stations, and road geometry v5 (150/96/88 units). PR #73 merged the traffic/radio work; the user accepted PR #82's wider roads and authorized integration.
+
+- [Traffic roadmap and closure](roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md), [machine-readable status](progress/traffic-lane-junction-topology-status.json) and [append-only progress](progress/TRAFFIC_LANE_JUNCTION_TOPOLOGY_PROGRESS.md).
+- [Wider roads and validation](agent-tasks/2026-09-08-wider-city-roads.md).
+- [Traffic performance evidence](agent-tasks/2026-09-08-traffic-performance-implementation.md) — native CPU comparison for its original layout/viewpoint, not an FPS promise for later geometry.
+- [Radio runtime record](agent-tasks/2026-08-24-car-radio-runtime.md) and [Pages source selection](agent-tasks/2026-09-08-pages-radio.md).
+- [Playable Pages build](https://franperezsevilla.github.io/vampire-district/) — currently sourced from `codex/traffic-junction-topology`; Netlify review is paused for quota.
+
+Task records and milestone reports preserve historical counts and validation outcomes. They do not override the current snapshot, detailed architecture or live PR state.
+
 ## Product and campaign
 
 - [Visual art bible](VISUAL_ART_BIBLE.md) — classic urban gothic-punk direction, palette, lighting and art-test criteria.
@@ -30,20 +42,20 @@ This directory is the project source of truth for design, implementation and pla
 - [Milestone 12 status](MILESTONE_12_STATUS.md) — vehicle runtime, expanded district, pedestrians, destructible street furniture and evidence integration.
 - [Vehicle maintenance](VEHICLE_MAINTENANCE.md) — costed refuge-garage repair, atomic wallet/condition updates and owned-wreck recovery.
 - [Motorized police](MOTORIZED_POLICE.md) — wanted-level cruiser routing, partial roadblocks, officer reservation and foot-AI transfer.
-- [Testing strategy](TESTING_STRATEGY.md) — normal/explore/scenario profiles, focused browser loops and parallel PR checks.
+- [Testing strategy](TESTING_STRATEGY.md) — boot profiles, native simulations, affected CI selection and the explicit browser exclusion for the traffic review.
 - [City Topology V2](CITY_TOPOLOGY_V2.md) — five-times-area site-first city, hospital campus, new road graph and 80 streamed chunks.
 - [Road graph geometry](ROAD_GRAPH_GEOMETRY.md) — graph authority, clipped segments, junctions, transitions, crosswalks and post-layout lights.
 - [City Compiler](CITY_COMPILER.md) — deterministic city blueprints, district recipes, validation and scoring.
-- [City Compiler baseline](CITY_COMPILER_BASELINE.md) — current-city score and legacy geometry debt.
+- [Historical City Compiler baseline](CITY_COMPILER_BASELINE.md) — July control candidate and its then-existing geometry debt; not current exceptions.
 - [Foundry pilot](CITY_COMPILER_FOUNDRY_PILOT.md) — seeded Foundry generation and candidate review.
 - [Foundry selection](CITY_COMPILER_FOUNDRY_SELECTION.md) — selected `foundry-pilot-04` record.
 - [City streaming](CITY_STREAMING.md) — asynchronous chunks, entity dormancy, spatial queries, LRU retention and deltas.
 - [City Streaming 4A](CITY_STREAMING_4A.md) — district resource profiles, road-aware prefetch and dormant pedestrians.
 - [City Streaming 4B](CITY_STREAMING_4B.md) — macro graph, abstract traffic, dormant police travel and patrol recovery.
-- [City Streaming 4C](CITY_STREAMING_4C.md) — pooled traffic materialization and explicit lane polylines.
-- [City Streaming 4D](CITY_STREAMING_4D.md) — following, braking, catch-up and junction priority.
-- [City Streaming 4E](CITY_STREAMING_4E.md) — soft physical contact, blocked vehicles and lane recovery.
-- [City Streaming 4F](CITY_STREAMING_4F.md) — graduated impact damage, alerts, cooldown and severe stalls.
+- [Historical City Streaming 4C](CITY_STREAMING_4C.md) — pooled traffic materialization and explicit lane polylines.
+- [Historical City Streaming 4D](CITY_STREAMING_4D.md) — following, braking, catch-up and junction priority.
+- [Historical City Streaming 4E](CITY_STREAMING_4E.md) — soft physical contact, blocked vehicles and lane recovery.
+- [Historical City Streaming 4F](CITY_STREAMING_4F.md) — graduated impact damage, alerts, cooldown and severe stalls.
 
 ## Gameplay systems
 

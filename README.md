@@ -6,11 +6,11 @@ The long-term structure is intentionally GTA2-like: readable districts, vehicles
 
 The current public build is a **persistent free-roam systems sandbox** running City Topology V2: a `4800 × 3600` world with exactly five times the previous area.
 
-Open `index.html` through a local/static web server, or use the published GitHub Pages build. ES modules will not work reliably through every browser's `file://` mode.
+Open `index.html` through a local/static web server, or use the [published GitHub Pages build](https://franperezsevilla.github.io/vampire-district/). ES modules will not work reliably through every browser's `file://` mode.
 
 ## Current playable state
 
-Normal boot starts directly on the street with no active contract.
+The normal title screen opens the persistent street sandbox through New Night / Continue, with no active contract. The retired campaign-entry modal and authored mission tutorial remain disabled.
 
 Available systems:
 
@@ -27,7 +27,11 @@ Available systems:
 - dumpsters that favour alleys, building gaps and industrial/service frontage;
 - authored vehicles with arcade driving, handbrake drift, hull and trunks;
 - any non-police authored vehicle can be stolen;
-- civilian traffic materializes outside the camera, remains while followed and uses a fixed local pool;
+- 600 civilian cars follow broad repeating city circuits, with physical steering, braking, reverse and obstruction recovery;
+- a fixed 64-slot local traffic pool materializes outside the camera and retains vehicles while followed;
+- six buses serve three lines with stops and real boarding/alighting NPCs; the player can ride or steal a bus;
+- three continuous radio stations with three tracks each, in-car wheel selection and quiet nearby-car ambience;
+- distant civilian scheduling, incremental accounting and cached collision geometry reduce traffic CPU work;
 - civilian traffic vehicles can be hijacked, converting them into capped transient drivable cars;
 - one or more civilian occupants jump out with a visible `WTF` reaction when a traffic car is stolen;
 - refuge-garage repair and owned-wreck recovery;
@@ -56,7 +60,9 @@ Archived mission definitions remain source-controlled framework examples, but th
 
 The current city uses:
 
-- one authoritative 107-node / 148-edge road graph;
+- one authoritative 107-node / 148-edge road graph, geometry v5;
+- 150-unit avenues with two lanes per direction, 96-unit local streets and 88-unit service streets;
+- 660 directed traffic lanes, with sidewalks, building setbacks and roofs fitted to the wider roads;
 - clipped road segments and one unique authority surface per intersection;
 - explicit carriageway, curb and connected sidewalk bands;
 - valid pedestrian crossings outside junction centres;
@@ -85,9 +91,9 @@ The First Estate and The Gutter Crown are the accepted design names. Commercial 
 - Hold Shift: move quietly on foot.
 - Mouse: aim and face.
 - Left mouse: use the equipped weapon.
-- Mouse wheel: previous/next owned weapon.
+- Mouse wheel: previous/next owned weapon on foot; radio station / OFF while driving.
 - Right mouse: hold on a valid target; release for Quick Bite or Full Feed, or continue to Drain.
-- Enter: enter, steal or exit non-police vehicles.
+- Enter: enter, steal or exit non-police vehicles; near a bus choose passenger boarding or theft.
 - Space: contextual traversal on foot; handbrake while driving.
 - E: interactions, trunks and garage.
 - Q: Shadow Dash.
@@ -96,16 +102,17 @@ The First Estate and The Gutter Crown are the accepted design names. Commercial 
 - B: Give In to the Beast for a short speed, feeding and melee burst at Hunger/evidence cost.
 - M: mission panel; currently reports no active contract.
 - L: open the paused Night Ledger for faction and police consequences.
-- H: pause/help/accessibility settings.
-- Escape: UI/dialog fallback.
+- H: horn while driving.
+- Escape / Menu: pause/help/accessibility settings or close the active UI/dialogue.
 
 ## Traffic lifecycle
 
 Civilian traffic uses two bounded layers:
 
 ```text
-macro traffic tokens
-→ maximum ten local visual proxies
+600 civilian identities + 6 scheduled buses
+→ compiler journeys + shared vehicle kinematics
+→ maximum 64 local visual proxies
 → off-camera materialization
 → generous camera/follow retention
 → ordinary proxy despawn only when far and off-camera
@@ -130,10 +137,12 @@ See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Tests
 
-Unit tests:
+The accepted 2026-09-08 implementation passes **911 native tests**, city validation with zero errors/warnings, and deterministic regeneration of all 99 city/chunk/pack files. Automated browser execution is excluded for this traffic/road review at the user's request. In PR CI, the exception follows `codex/traffic-junction-topology`; the repository retains its browser suites for other validation contexts.
+
+Fast checks:
 
 ```bash
-npm test
+npm run check:fast
 ```
 
 Chromium tests:
