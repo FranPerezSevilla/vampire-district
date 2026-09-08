@@ -1,6 +1,6 @@
 # Input system
 
-_Status: implemented; browser regression remains required before Milestone 1 is marked fully complete._
+_Current input/vehicle reconciliation: 2026-09-08. Browser evidence is recorded per implementation; the current traffic review explicitly excludes browser execution._
 
 ## Purpose
 
@@ -12,10 +12,13 @@ _Status: implemented; browser regression remains required before Milestone 1 is 
 
 - `phaser/src/input/actions.js` — action names, control modes and frame gating.
 - `phaser/src/input/InputSystem.js` — raw Phaser/browser collection and pointer conversion.
-- `phaser/src/input/movement-input-adapter.js` — Milestone 5 migration from Space sprint to Shift quiet movement.
-- `phaser/src/input/input-runtime.js` — world dispatch to movement, traversal, interaction, powers, weapons and combat.
-- `phaser/src/input/tutorial-input-adapter.js` — tutorial control modes.
+- `phaser/src/input/bindings.js` — defaults, remapping, conflicts and local persistence.
+- `phaser/src/runtime/VehicleRuntimeAdapter.js` — vehicle entry/handbrake/radio enrichment using the existing frame.
+- `phaser/src/runtime/GameplayRuntime.js` and `GameplayRuntimeCore.js` — vehicle/passenger filtering and world dispatch.
+- `phaser/src/scenes/UIScene.js` — UI-only navigation and pause/ledger ownership.
 - `phaser/src/utils/geometry.js` — pure vector and viewport/camera conversion helpers.
+
+While driving, wheel input becomes `radioStep` and weapon cycling is suppressed. On foot it remains weapon selection. H is the default horn binding; Escape owns pause/close through UI. Enter opens the existing bus passenger/theft chooser, and `TransitSystem` filters passenger controls. These paths do not add raw input readers. See [Control scheme](CONTROL_SCHEME.md).
 
 ## Frame contract
 

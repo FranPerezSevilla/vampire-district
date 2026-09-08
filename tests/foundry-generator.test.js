@@ -76,6 +76,12 @@ test("generated Foundry candidates satisfy hard and gameplay contracts", () => {
     assert.equal(result.foundryScore.acceptance.hidingSockets, true);
     assert.equal(result.foundryScore.acceptance.parkedVehicle, true);
     assert.equal(result.foundryScore.acceptance.templateFit, true);
+    for (const building of result.blueprint.runtime.buildings.filter(item => item.templateId)) {
+      const parcel = currentCityBlueprint.runtime.buildings.find(item => item.id === building.id);
+      assert.ok(building.x >= parcel.x && building.y >= parcel.y, building.id);
+      assert.ok(building.x + building.w <= parcel.x + parcel.w, building.id);
+      assert.ok(building.y + building.h <= parcel.y + parcel.h, building.id);
+    }
   }
   assert.ok(results.filter(result => result.foundryScore.accepted).length >= 3);
 });

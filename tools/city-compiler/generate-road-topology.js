@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import * as current from "../../phaser/src/data/generated/city-topology-v2.js";
 import { buildRoadEdgeSidewalkInfill } from "../../phaser/src/rendering/SidewalkSurfaceCompletion.js";
 import { cityRoadGraph, CITY_ROAD_GRAPH_VERSION } from "./city-road-graph-v1.js";
+import { fitCityRoadClearance } from "./road-clearance.js";
 import {
   buildPedestrianRoutesFromSidewalks,
   compileAxisAlignedRoadGraph,
@@ -15,9 +16,13 @@ import {
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const outputPath = path.join(root, "phaser/src/data/generated/city-topology-v2.js");
+// Reserve the wider carriageways and their sidewalks before placing façades,
+// then regenerate junction sidewalks and furniture against the final buildings.
+const roadLayout = compileAxisAlignedRoadGraph(cityRoadGraph, { world: current.CITY_WORLD });
+const fittedCity = fitCityRoadClearance(current, roadLayout.roads);
 const compiled = compileAxisAlignedRoadGraph(cityRoadGraph, {
   world: current.CITY_WORLD,
-  buildings: current.buildings,
+  buildings: fittedCity.buildings,
   sidewalkWidth: 22,
   crosswalkThickness: 14,
   crosswalkInset: 8,
@@ -74,12 +79,17 @@ if (authoritativeRoadEdgeBands.length !== expectedRoadEdgeBandCount) {
   );
 }
 
-const dumpsters = placePostLayoutDumpsters(current.dumpsters, {
+const dumpsterAnchors = current.dumpsters.map(dumpster => ({
+  ...dumpster,
+  x: dumpster.sourceAnchor?.x ?? dumpster.x,
+  y: dumpster.sourceAnchor?.y ?? dumpster.y
+}));
+const dumpsters = placePostLayoutDumpsters(dumpsterAnchors, {
   roads: compiled.roads,
   sidewalks: compiled.sidewalks,
   crosswalks: compiled.crosswalks,
   propExclusionZones: compiled.propExclusionZones,
-  buildings: current.buildings,
+  buildings: fittedCity.buildings,
   lights: compiled.lights,
   world: current.CITY_WORLD
 });
@@ -140,7 +150,7 @@ const collections = [
   ["CITY_WORLD", current.CITY_WORLD],
   ["CITY_TOPOLOGY_STATS", topologyStats],
   ["CITY_ANCHORS", cityAnchors],
-  ["landmarkSites", current.landmarkSites],
+  ["landmarkSites", fittedCity.landmarkSites],
   ["roadGraphNodes", compiled.graph.nodes],
   ["roadGraphEdges", compiled.graph.edges],
   ["roadCorridors", cityRoadGraph.corridors],
@@ -152,11 +162,11 @@ const collections = [
   ["junctionSidewalks", compiled.junctionSidewalks],
   ["crosswalks", compiled.crosswalks],
   ["propExclusionZones", compiled.propExclusionZones],
-  ["buildings", current.buildings],
-  ["roofAreas", current.roofAreas],
-  ["rooftopRoutes", current.rooftopRoutes],
-  ["roofDrops", current.roofDrops],
-  ["fireEscapes", current.fireEscapes],
+  ["buildings", fittedCity.buildings],
+  ["roofAreas", fittedCity.roofAreas],
+  ["rooftopRoutes", fittedCity.rooftopRoutes],
+  ["roofDrops", fittedCity.roofDrops],
+  ["fireEscapes", fittedCity.fireEscapes],
   ["sewerTunnels", current.sewerTunnels],
   ["sewerAccesses", current.sewerAccesses],
   ["lights", compiled.lights],

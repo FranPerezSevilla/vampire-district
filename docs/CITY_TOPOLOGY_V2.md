@@ -1,10 +1,10 @@
 # City Topology V2 — five-times-area site-first city
 
-_Last updated: 2026-07-24_
+_Last updated: 2026-09-08 — geometry v5 / traffic reconciliation_
 
 ## Status
 
-**Implemented on the City Topology V2 branch.**
+**Implemented city foundation; geometry v5 widening accepted in PR #82.**
 
 This pass replaces the complete playable urban geometry after the production mission registry was emptied. The former `2400 × 1440` layout is not preserved as a protected core.
 
@@ -98,13 +98,13 @@ Generated topology includes:
 
 - 93 buildings;
 - 7 reserved landmark sites;
-- 114 authoritative road nodes and 158 edges;
-- 147 clipped road segments and 104 junction authority pieces;
-- 778 final sidewalk surfaces: 309 continuous road-edge bands plus 469 owned by junctions;
-- 137 crosswalk pieces outside junction centres;
+- 107 authoritative road nodes and 148 edges;
+- 144 clipped road segments and 103 junction authority pieces;
+- 772 final sidewalk surfaces: 288 continuous road-edge bands plus 484 owned by junctions;
+- 141 crosswalk pieces outside junction centres;
 - 11 regenerated pedestrian loops;
-- 126 post-layout streetlights;
-- 28 body-hiding dumpsters snapped after layout outside 557 junction/crosswalk exclusion zones;
+- 86 post-layout light records (runtime streetlight rendering/stealth is retired);
+- 28 body-hiding dumpsters snapped after layout outside 540 junction/crosswalk exclusion zones;
 - 30 playable roofs;
 - 5 rooftop links;
 - 9 fire escapes;
@@ -126,9 +126,9 @@ Hard validation requires:
 
 ## Traffic and police
 
-The macro graph expands from 8 to 14 nodes and 22 edges.
+The current macro graph contains 14 district nodes and 24 edges. It supplies population/accounting and police travel, not local civilian poses.
 
-Civilian traffic keeps the same fixed pool of ten local proxies. Traffic lanes now follow the new cross-city spines and boulevards. Motorized police uses the same new graph/lane assets but retains separate authority.
+Production now allocates 600 civilian cars plus six buses and uses a fixed pool of 64 local proxies. The 660 directed lanes follow geometry v5: 150-unit avenues with two lanes per direction, 96-unit local streets and 88-unit service streets. Shared physical vehicle kinematics own local movement; macro traffic receives conservative accounting. Motorized police retains separate authority. See [Technical architecture](TECHNICAL_ARCHITECTURE.md#13-civilian-traffic-architecture).
 
 Police route/spawn data is exported by the topology rather than treating the former police-station coordinates as a global constant.
 

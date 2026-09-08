@@ -1,6 +1,6 @@
 # Technical architecture
 
-_Last updated: 2026-07-24_
+_Last updated: 2026-09-08 — city, traffic, transit, audio and frame-order reconciliation_
 
 Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) for the project-wide map. This document defines runtime ownership, boot composition, campaign/mission registration, persistence boundaries, city-topology policy and testing contracts.
 
@@ -18,7 +18,13 @@ Logical viewport: `960 × 640`. Current world: `4800 × 3600`. The game does not
 
 ## 1.1 City Topology V2 and road geometry
 
-`city-road-graph-v1.js` is the authoritative road input. `generate-road-topology.js` compiles its 114 nodes and 158 edges into clipped straight segments, unique junction/transition surfaces, sidewalks, crosswalks, post-layout lights, pedestrian routes and navigation points.
+`city-road-graph-v1.js` is the authoritative road input. `generate-road-topology.js` compiles its 107 nodes and 148 edges into clipped straight segments, unique junction/transition surfaces, sidewalks, crosswalks, post-layout lights, pedestrian routes and navigation points.
+
+Road geometry v5 uses 150-unit avenues (two lanes per direction), 96-unit local streets and 88-unit service/alley streets (one lane per direction). Street lane centres use a quarter of the road width; avenue lanes use the eighth and three-eighth offsets. Junction trims scale to half the adjoining road width, capped at 96 units. The hall's west approach is shifted 24 units east to retain the minimum block depth beside Civic Avenue.
+
+The generator reserves 22-unit sidewalks plus four units of façade clearance around road surfaces before rebuilding pedestrian geometry and furniture. `road-clearance.js` fits affected rectangular buildings around their existing centres, retaining all 93 identities, updates attached roof bounds and roof traversal endpoints, and rejects a footprint that cannot fit. Landmark reservations remain outside roads. Authored pedestrian loops retain their IDs and neighbourhood spans while their referenced final sidewalks own lateral placement. Re-running the fit is idempotent.
+
+Foundry candidate templates are selected against the remaining parcel size and may shrink within it to meet their maximum footprint dimensions. They cannot expand buildings back into the road reservation; template dimensions and candidate acceptance gates remain authoritative.
 
 `city-topology-v2.js` remains the generated runtime dataset for world dimensions, semantic anchors, landmark sites, road graph/output geometry, buildings, roofs, sewers, district zones and police topology. `ROAD_GEOMETRY_VERSION` versions the road compiler independently from campaign topology migration.
 
@@ -30,10 +36,10 @@ Generation order:
 road graph
 → junction authority
 → clipped segments/transitions
+→ reserved sidewalks and building/roof clearance
 → segment and junction-owned sidewalks
 → crosswalks
 → prop-exclusion zones
-→ building clearance
 → kerb lights and service furniture
 → pedestrian routes/navigation
 → chunks
@@ -152,6 +158,8 @@ Campaign-entry and mission-board source modules remain available for future expl
 - `MacroTrafficPoliceSystem`
 - `TrafficMaterializationSystem`
 - `TrafficLocalAssignmentPolicy`
+- `TrafficDriverRuntime`, `TrafficDriverController`, `TrafficDriverJunctions`
+- `TransitSystem` and `TransitRoutes`
 - `TrafficLocalBehaviorSystem`
 - `TrafficPhysicalConsequencesSystem`
 - `TrafficImpactConsequencesSystem`
@@ -176,15 +184,21 @@ ChunkStreamSystem.update
 DistrictPackSystem.update
 EntityStreamSystem.update
 DistantSimulationSystem.update
+TrafficPhysicalConsequencesSystem.prepareRouteFrame
+TrafficMultiAgentRouteRuntimePolicy.update → TrafficDriverRuntime
 MacroTrafficPoliceSystem.update
 TrafficMaterializationSystem.update
+TrafficOccupantWitnessSystem.update
 TrafficLocalBehaviorSystem.update
+TrafficSteeringPresentationSystem.update
 TrafficPhysicalConsequencesSystem.update
 TrafficImpactConsequencesSystem.update
+TransitSystem.update
 MotorizedPoliceSystem.update
 PedestrianSystem.update
 normal gameplay frame
 TerritoryRuntimeSystem.update
+RadioSystem.update (GameScene, after GameplayRuntime)
 ```
 
 Normal gameplay frame:
@@ -242,6 +256,8 @@ Important frame fields:
   vehicleActionPressed,
   handbrakeHeld,
   weaponStep,
+  radioStep,
+  hornPressed,
   dashPressed,
   whisperPressed,
   bloodSensePressed
@@ -462,7 +478,7 @@ The previous cursor/FSM/offset policies remain explicit controlled regression
 harnesses (`driving: false`), with no production movement ownership.
 
 The compiler emits **two lanes per direction on avenues at least 100 units wide**
-(120 in this city), and one per direction on narrower roads: **660 directed
+(150 in this city), and one per direction on narrower roads: **660 directed
 lanes**. Through traffic and turns retain their lane index; actual capacity
 changes split or merge through validated compiler connectors. A fragment beside
 a chunk seam allocates its available trim to the adjacent junction, preventing
@@ -538,8 +554,7 @@ invalidate on position, heading or dimension changes. Single-road convex
 containment avoids allocating footprint samples; junction unions retain the
 original full footprint check.
 
-The 600-car population and bootstrap routes/poses are unchanged from M15. Native
-measurement and the remaining performance limits are documented in
+The M16 performance change preserved the M15 population and bootstrap routes/poses. Geometry v5 subsequently regenerated the network and journeys while retaining 600 cars. Historical native CPU measurements and their limits are documented in
 `docs/agent-tasks/2026-09-08-traffic-performance-implementation.md`.
 
 Macro traffic receives output-only route accounting; legacy civilian phases
@@ -572,6 +587,14 @@ On-foot impact/crowd/noise paths exclude the rider, checkpoints defer while
 occupied, and hospital recovery or layer changes release the passenger state.
 There is no new input reader, gameplay loop or campaign persistence owner.
 
+### Radio ownership and deployment
+
+`GameScene` creates one `RadioSystem` and updates it after `GameplayRuntime`. `RadioTimeline` owns the continuous wall-clock station schedules; `RadioBroadcastPlayback` / `RadioPlayback` own receivers, source loading and bounded decoded-buffer caching through the existing `RawAudio` AudioContext/master output. `TrafficRadioAmbienceSystem` shares those station clocks and buffers for quiet nearby civilian-car ambience.
+
+The current catalogue is **Vice FM, Night Shift and Pulse 94.6**, three tracks each, plus OFF. Vehicle entry joins the live song/offset; exit stops the player receiver while station time continues. The mouse wheel becomes `radioStep` while driving and remains weapon selection on foot. Receiver selection lasts for the page session; it is not campaign or per-car save state.
+
+`RadioCatalog` selects the nine existing pinned official CDN sources only on the named Netlify Deploy Preview hosts and `franperezsevilla.github.io/vampire-district/`. Other hosts and packaged builds require the private staged masters. Pages is the current review deployment because Netlify quota was exhausted. Source selection is tested; ongoing third-party CDN availability is not guaranteed by native tests. The private-master staging and attribution boundary remains unchanged. See [the radio runtime record](agent-tasks/2026-08-24-car-radio-runtime.md) and [Pages continuation](agent-tasks/2026-09-08-pages-radio.md).
+
 ## 14. Motorized police architecture
 
 Wanted response:
@@ -593,8 +616,8 @@ The current city is generated and hard-valid:
 
 ```text
 protectedZones        []
-road graph nodes      114
-road graph edges      158
+road graph nodes      107
+road graph edges      148
 road piece overlaps     0
 building/road overlaps  0
 validation warnings     0
@@ -618,7 +641,7 @@ Lights are post-layout objects generated only after road, pedestrian and buildin
 
 ### Remaining geometry extension
 
-Geometry v4 is axis-aligned. A future version may add arbitrary polyline offsets, rounded joins and polygonal ordinary parcels while retaining stable graph/site identities.
+Geometry v5 is axis-aligned. A future version may add arbitrary polyline offsets, rounded joins and polygonal ordinary parcels while retaining stable graph/site identities.
 
 ## 17. Authority table
 
@@ -676,7 +699,7 @@ Mission-specific Chromium golden paths were deleted because the contracts are no
 
 Current constraints:
 
-- geometry v4 accepts axis-aligned edges only;
+- geometry v5 accepts axis-aligned edges only;
 - arbitrary curved offsets and rounded carriageway joins are not implemented;
 - ordinary parcel/building bounds remain rectangular at runtime;
 - graph changes require atomic regeneration of pedestrian routes and chunks;

@@ -1,8 +1,8 @@
 # Roadmap
 
-_Last updated: 2026-07-29_
+_Last updated: 2026-09-08_
 
-This roadmap is ordered by dependency, not calendar date. A milestone is complete only when implementation, automated coverage, browser regression and documentation agree.
+This roadmap is ordered by dependency, not calendar date. A milestone is complete when implementation, applicable automated coverage, explicit user acceptance where required, and documentation agree. Record browser exclusions explicitly; native tests do not imply browser or hardware performance validation.
 
 Read `PROJECT_BLUEPRINT.md` for the canonical architecture and production sequence.
 
@@ -234,9 +234,9 @@ Reference: `VEHICLE_MAINTENANCE.md`.
 
 ### 13.3 Local traffic materialization — ✅
 
-- fixed pool of ten traffic containers;
-- explicit lane polylines;
-- smooth macro interpolation;
+- fixed pool of 64 traffic containers for 600 civilian cars and six service buses;
+- compiler-owned directed lanes and safe junction connectors;
+- physical driver state and shared player-vehicle kinematics;
 - stable token-to-slot identity;
 - eligibility/hysteresis.
 
@@ -244,12 +244,13 @@ Reference: `VEHICLE_MAINTENANCE.md`.
 
 - following/queues;
 - braking for player/authored vehicles;
-- bounded catch-up;
-- deterministic junction priority.
+- whole-body junction permits and downstream clearance;
+- broad repeating city circuits, physically steered bypasses and bounded reverse/reassessment;
+- fair recovery attempts and priority for cars clearing a crossing.
 
 ### 13.5 Contact and impact consequences — ✅
 
-- soft push/block and lane recovery;
+- physical impact adoption, soft push/block and control-based recovery;
 - hard/severe hull damage, exposure and heat;
 - severe temporary stalls;
 - contact cooldown.
@@ -271,9 +272,9 @@ Detailed records: `CITY_STREAMING.md` and `CITY_STREAMING_4A.md` through `CITY_S
 
 Reference: `MOTORIZED_POLICE.md`.
 
-### 13.7 Narrative constraint retirement — 🔵 Implementation candidate
+### 13.7 Narrative constraint retirement — ✅ Complete
 
-PR #32 scope:
+Delivered through the earlier city reset:
 
 - production mission registry becomes empty;
 - normal boot becomes persistent street free roam;
@@ -298,13 +299,21 @@ Acceptance:
 
 Reference: `CITY_TOPOLOGY_RESET.md`.
 
+### 13.8 Physical traffic, public transport and radio — ✅ User accepted
+
+PR #73 merged at `7ee3af6` after the user's gameplay approval. The work replaced cursor-driven production traffic with the shared physical driver, introduced three two-bus lines and real passenger transfers, increased and then settled density at 600 cars, optimized distant scheduling/accounting/geometry, and enabled the nine existing radio sources on the Pages project.
+
+PR #82's wider streets are also user accepted. Its implementation `163e870` passes 911 native tests, city validation with zero errors/warnings, and GitHub Tests / Pages deployment. The same review branch remains the Pages source. The user explicitly excludes browser tests for this work.
+
+Some junction waits remain: the widened Blackwater native fixture observes a maximum stop near 50 seconds. The completed traffic initiative has no automatic next task; follow new user feedback rather than reopening old milestone gates. See [traffic roadmap and closure](roadmaps/TRAFFIC_LANE_JUNCTION_TOPOLOGY_ROADMAP.md).
+
 ## Milestone 14 — City topology and readability
 
 **Status: ✅ Complete — City Topology V2**
 
-Delivered baseline: `4800 × 3600`, 14 districts, 80 chunks, site-first hospital/police/city-hall/cathedral/university sites and topology-aware vehicle migration. Road geometry v4 keeps the 107-node / 148-edge graph, compiles 147 clipped segments and 104 non-overlapping junction authorities, absorbs one remaining micro-approach and emits continuous obstacle-clipped road-edge bands.
+Delivered baseline: `4800 × 3600`, 14 districts, 80 chunks, site-first hospital/police/city-hall/cathedral/university sites and topology-aware vehicle migration. Road geometry v5 keeps the 107-node / 148-edge graph, compiles 144 clipped segments and 103 non-overlapping junction authorities, and emits 772 sidewalk surfaces and 141 crossings. Avenues are 150 units wide, local streets 96 and service streets 88; their traffic lanes, junction approaches and building/roof clearances use that geometry.
 
-### 14.1 Road/intersection authority — ✅ geometry v4
+### 14.1 Road/intersection authority — ✅ geometry v5
 
 - one explicit road graph;
 - stable edges with width/class semantics;
@@ -326,13 +335,12 @@ Arbitrary-angle/curved offsets remain a later geometry version.
 - street furniture anchored clear of roads, crossings and buildings;
 - runtime/compiler renderers share polygon-aware road surfaces.
 
-### 14.3 Parcels and site-first landmarks
+### 14.3 Parcels and site-first landmarks — 🟡 Rectangular runtime complete
 
-- polygonal ordinary parcels;
-- road/intersection/building setbacks;
-- compound/polygonal building footprints;
-- large landmark sites reserved before local roads/ordinary blocks;
-- police station, hospital, church, plant and similar campuses may shape curved roads.
+- implemented: road/sidewalk/building setbacks and site-first landmark reservations;
+- geometry v5 adjusts 66 footprints, roofs and access points while retaining all 93 building IDs;
+- ordinary runtime building bounds remain rectangular;
+- planned: polygonal ordinary parcels, compound building collision and true curved-road offsets.
 
 ### 14.4 Regeneration and integration — ✅
 
@@ -352,7 +360,7 @@ Acceptance:
 - road/curb/sidewalk are readable at a glance;
 - the entire old core can change;
 - large landmarks are not restricted to rectangular leftovers;
-- curved roads are supported;
+- curve-ready corridor metadata is retained; true curved-road geometry remains planned;
 - unit, boot, systems and city validation remain green.
 
 ## Milestone 15 — Original factions, territory and hunting law
@@ -547,7 +555,7 @@ The game does not seize input without a readable cause. The Beast offers useful 
 
 ## Milestone 15.8 — Persistent hunter investigation
 
-**Status: 🔵 Active next phase**
+**Status: ⬜ Next planned gameplay phase; implementation not started by the traffic integration**
 
 Viceblood uses one named, persistent hunter before considering generic hunter populations.
 

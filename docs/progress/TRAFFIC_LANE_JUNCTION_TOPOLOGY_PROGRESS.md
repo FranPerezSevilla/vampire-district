@@ -978,3 +978,14 @@ Validation: **903/903 native tests pass**, plus static ownership of 41 browser s
 The three-minute views retain 567/574 eligible directed lanes and all fourteen districts. Visible means are 5.20 / 29.05 / 13.34 and longest stops 20.65 / 32.50 / 7.05 seconds in Old Quarter / Blackwater / North Harbor. Every view has zero contacts, overlaps, guarded-camera appearances and old unresolved queues; recovery/density thresholds are unchanged. Approximate distant travel can change arrival times, and these native fixtures do not prove every interactive blockage resolved.
 
 Reproducible command and detailed boundaries: `docs/agent-tasks/2026-09-08-traffic-performance-implementation.md`, `tools/dev/profile-traffic.js`. The cumulative affected plan selects release-candidate coverage; native/static and city checks ran, with browser execution excluded by user instruction. Publish one reviewed commit on PR 73, report exact source and bounded CI/Pages state, keep draft and do not merge.
+
+
+## 2026-09-08 — User acceptance, wider roads and documentation closure
+
+PR #73 merged with explicit user approval at `7ee3af6e35459ff938972eea9f41a5efb16f9878`, including physical traffic, three bus lines, the 600-car density/performance continuation and Pages radio source selection. Earlier publication-pending entries above are historical.
+
+PR #82 implementation `163e870bf44bfd9bc9ed6e5984c14c54d417199d` widens roads to 150/96/88 units and regenerates lane, junction, sidewalk, building and roof clearance. It preserves 600 cars, six buses, 64 fixed local proxies, 93 building IDs and 14 districts. `check:fast` passes 911 native tests; city validation reports zero errors/warnings and 87.8/A; all 99 generated city/chunk/pack files reproduce byte-for-byte. Tests run `34251606191` and Pages run `34251585714` both succeeded. No browser execution was performed under the user's instruction.
+
+The user described the widened build as perfect and explicitly requested merging and updating the documentation. The snapshot, blueprint, roadmap, architecture, controls, validation strategy, radio delivery and documentation index now describe the accepted implementation. Historical stage records are labelled accordingly; current traffic execution state is complete-user-approved with no automatic next task. PR #82's live merge result is owned by GitHub, avoiding an invented pre-merge commit SHA in this record.
+
+Queues are not eliminated: the widened Blackwater native fixture observed a 49.95-second maximum stop, with no old unresolved queue in that fixture. The observer was moved to its new sidewalk; historical performance timings remain tied to their original geometry/viewpoint. Pages still uses the review branch, which must be retained.

@@ -1,10 +1,12 @@
 # City Streaming 4F — graduated traffic impact consequences
 
+> Historical stage record (2026-07). Its macro interpolation, pool sizes and route-offset recovery describe the implementation at that time. Production was superseded by the PR #73 physical driver and PR #82 geometry. Use [Technical architecture §13](TECHNICAL_ARCHITECTURE.md#13-civilian-traffic-architecture) for current authority, density, transit and recovery.
+
 _Last updated: 2026-07-29_
 
 ## Status
 
-**Accepted and implemented.**
+**Accepted historical stage; subsequently superseded.**
 
 City Streaming 4F separates ordinary soft traffic contact from genuinely dangerous high-speed impacts. It observes the contact already resolved by 4E and applies damage, noise and police Heat only when configured impact-speed thresholds are exceeded.
 

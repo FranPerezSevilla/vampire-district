@@ -1,6 +1,6 @@
 # Viceblood — project blueprint
 
-_Last updated: 2026-07-24_
+_Last updated: 2026-09-08 — accepted city, traffic, transit and radio foundation_
 
 ## Purpose
 
@@ -44,9 +44,10 @@ The accepted City Topology V2 foundation contains:
 - a 107-node / 148-edge authoritative road graph;
 - 144 clipped straight road pieces and 103 junction authorities with zero overlap;
 - generated sidewalks, crossings, post-layout lights and pedestrian loops;
-- asynchronous `10 × 8` chunks, dormancy, macro traffic and ten pooled civilian traffic proxies;
+- asynchronous `10 × 8` chunks, 600 civilian cars, six scheduled buses and 64 fixed local traffic proxies;
 - motorized police pursuit, one partial roadblock and officer transfer to foot AI;
-- unit, browser boot, systems and campaign validation.
+- broad physical driving circuits, junction recovery, public transport and continuous three-station radio;
+- native, city and static suite validation; automated browser execution is excluded for this traffic/road review at the user's request.
 
 The production mission registry remains empty so missions cannot regain authority over city geometry.
 
@@ -102,6 +103,7 @@ terrain / district constraints
 → authoritative road graph
 → unique junction/transition geometry
 → clipped carriageway segments
+→ reserved sidewalk space and building/roof clearance
 → segment and junction-owned sidewalks
 → crosswalks and prop-exclusion zones
 → post-layout kerb lights and service furniture
@@ -113,7 +115,9 @@ terrain / district constraints
 
 `tools/city-compiler/city-road-graph-v1.js` owns road connectivity and widths. Every graph node owns exactly one junction or transition surface. Straight segments stop at those surfaces instead of being overdrawn through them.
 
-Current geometry v4 supports ends, straight continuations, corners, T junctions, crossroads, complex clusters and collinear width-transition polygons. It is axis-aligned; true arbitrary-angle/curved offset geometry remains a future version.
+Current geometry v5 supports ends, straight continuations, corners, T junctions, crossroads, complex clusters and collinear width-transition polygons. It is axis-aligned; true arbitrary-angle/curved offset geometry remains a future version.
+
+Geometry v5 uses 150-unit avenues with two lanes per direction, 96-unit local streets and 88-unit service streets. The generated network contains 660 directed lanes. The compiler reserves 22-unit sidewalks plus four units of façade clearance, fitting 66 affected buildings and their attached roofs while retaining all 93 building identities. The hall's west approach shifts 24 units east to preserve usable block depth. Generated city and packs must be regenerated together.
 
 ### Pedestrian authority
 
@@ -202,19 +206,21 @@ accept explicitly registered contract
 ```text
 WASD / arrows   movement or vehicle control
 Shift           quiet movement on foot
-Enter           vehicle enter / exit only
+Enter           vehicle enter / exit; bus passenger / theft chooser
 Space           traversal on foot; handbrake while driving
 E               non-traversal interaction, trunk or garage
 Mouse           aim and facing
 Left mouse      equipped attack
 Right mouse     hold to feed; release at Quick Bite / Full Feed or continue to Drain
-Wheel           cycle owned weapons
+Wheel           weapons on foot; radio station / OFF while driving
 Q               Dash
 R               Whisper
 F               Blood Sense
 B               Give In to the Beast
 M               mission panel (empty when no contract)
-H               pause/help/accessibility
+H               vehicle horn
+L               paused Night Ledger
+Escape / Menu   pause/help/accessibility
 ```
 
 `InputSystem.beginFrame()` is the only authoritative browser/world input boundary.
@@ -288,6 +294,8 @@ Production does not instantiate campaign-entry or mission-board systems while th
 - `MacroTrafficPoliceSystem`
 - `TrafficMaterializationSystem`
 - `TrafficLocalAssignmentPolicy`
+- `TrafficDriverRuntime`, `TrafficDriverController`, `TrafficDriverJunctions`
+- `TransitSystem` and `TransitRoutes`
 - `TrafficLocalBehaviorSystem`
 - `TrafficPhysicalConsequencesSystem`
 - `TrafficImpactConsequencesSystem`
@@ -295,18 +303,25 @@ Production does not instantiate campaign-entry or mission-board systems while th
 ## Authoritative frame order
 
 ```text
-ChunkStreamSystem
-DistrictPackSystem
-EntityStreamSystem
-DistantSimulationSystem
-MacroTrafficPoliceSystem
-TrafficMaterializationSystem
-TrafficLocalBehaviorSystem
-TrafficPhysicalConsequencesSystem
-TrafficImpactConsequencesSystem
-MotorizedPoliceSystem
-PedestrianSystem
-normal GameplayRuntime frame
+ChunkStreamSystem.update
+DistrictPackSystem.update
+EntityStreamSystem.update
+DistantSimulationSystem.update
+TrafficPhysicalConsequencesSystem.prepareRouteFrame
+TrafficMultiAgentRouteRuntimePolicy.update → TrafficDriverRuntime
+MacroTrafficPoliceSystem.update
+TrafficMaterializationSystem.update
+TrafficOccupantWitnessSystem.update
+TrafficLocalBehaviorSystem.update
+TrafficSteeringPresentationSystem.update
+TrafficPhysicalConsequencesSystem.update
+TrafficImpactConsequencesSystem.update
+TransitSystem.update
+MotorizedPoliceSystem.update
+PedestrianSystem.update
+normal gameplay frame
+TerritoryRuntimeSystem.update
+RadioSystem.update (GameScene, after GameplayRuntime)
 ```
 
 Motorized police samples current macro/local road state, then any dismounted officers enter the existing normal NPC/police frame.
@@ -340,12 +355,20 @@ Own:
 
 ### Civilian traffic proxies
 
-- Road-capacity population (437 global drivers in the current city), with a fixed pool of 64 local proxies. Drivers keep stable identities, physical vehicle states and predefined broad city circuits that repeat continuously.
+- Exactly 600 civilian drivers allocated by road/district capacity, plus six service buses, with a fixed pool of 64 local proxies. Drivers keep stable identities, physical vehicle states and predefined broad city circuits that repeat continuously.
 - Circuits and initial phases are allocated across road/district demand at bootstrap; actual appearances retain off-camera, streaming and clearance guards.
 - Drivers follow compiler navigation with the player's acceleration, braking, steering and reverse model.
 - Whole-body junction clearance, normal following and physically driven emergency manoeuvres, including crossing recovery and bounded reverse/reassessment when a complete bypass is unavailable.
 - Native collisions, damage, disablement and theft into a transient vehicle; no campaign save ownership for ambient proxies.
 - Macro traffic supplies population and receives accounting, without positioning local cars.
+
+### Public transport, radio and traffic performance
+
+C Circular, N Norte–Sur and E Este–Oeste each operate two buses. `TransitSystem` owns stops, seven-second dwell, 24-passenger capacity and boarding/alighting; `TrafficDriverRuntime` and the shared vehicle model drive them. Enter uses the existing interaction chooser for passenger boarding or theft. Passenger mode follows the real bus and allows a safe exit when stopped; theft transfers the bus to transient vehicle authority.
+
+`RadioSystem` joins the continuous Vice FM / Night Shift / Pulse 94.6 broadcasts on vehicle entry. Each station has three tracks; the driving wheel selects stations/OFF, and quiet ambient receivers share the same clocks/cache. The current Pages project resolves the nine pinned official sources; other packaged/local hosts require the private masters. See the [radio architecture](TECHNICAL_ARCHITECTURE.md#radio-ownership-and-deployment).
+
+Distant unmaterialized civilian tokens use staggered 2 Hz scheduling. Assigned bodies, buses and emergencies keep physical integration; camera/clearance guards still own appearances. Incremental accounting, lazy diagnostics and cached body/spatial geometry reduce CPU work without adding movement authority. Historical measured CPU savings are not an FPS guarantee or a matched comparison with geometry v5. Native queues remain possible, including a roughly 50-second maximum observed wait in Blackwater.
 
 ### Motorized police cruisers
 
@@ -374,14 +397,7 @@ The garage uses the semantic City Topology V2 garage anchor and can move with a 
 
 ## Testing strategy
 
-PR validation domains:
-
-```text
-unit-tests
-browser-boot
-browser-systems
-browser-campaign
-```
+PR validation uses the `pr-fast` affected-test plan. Main/scheduled/manual CI retains native, city-analysis and semantic browser jobs. PR #73 and the same Pages review branch use native/static validation without browser execution by user instruction. The accepted road implementation passes 911 native tests and city validation with zero errors/warnings; see [Testing strategy](TESTING_STRATEGY.md) for commands and scope.
 
 Current coverage includes:
 
@@ -439,7 +455,7 @@ Mission-specific browser golden paths were removed because the contracts are no 
 - old-save pruning;
 - no protected district or mission-coordinate landmark authority.
 
-### Complete: City Topology V2 and road geometry v4
+### Complete: City Topology V2 and road geometry v5
 
 - `4800 × 3600`, fourteen districts and 80 chunks;
 - site-first civic/landmark campuses;
@@ -451,15 +467,20 @@ Mission-specific browser golden paths were removed because the contracts are no 
 - post-layout kerb lights and service dumpsters;
 - compiler/browser regression coverage.
 
-### Active: Milestone 15.1 faction territory foundation
+### Complete: Milestone 15.1 faction territory foundation
 
 - canonical First Estate and Gutter Crown data;
 - fourteen persistent district influence/ownership records;
 - reputation-derived territory relationship policy;
 - semantic district-entry feedback and events.
 
-### Next
+### Accepted city continuation — 2026-09-08
 
+PR #73 completed the physical traffic, transit, density, CPU and Pages radio work and merged at `7ee3af6`. The user accepted PR #82's wider roads and authorized merging it with reconciled documentation. The deployed gameplay implementation is `163e870`; subsequent documentation updates do not change its runtime.
+
+### Next planned gameplay work
+
+- Milestone 15.8 persistent hunter investigation (planned, not started by this integration);
 - connect faction sites, patrols and suppliers to the territory authority;
 - safehouses, stash and ammunition economy;
 - Retainers;

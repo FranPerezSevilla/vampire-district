@@ -1,5 +1,7 @@
 # 90s radio music production roadmap
 
+> Scope note, 2026-09-08: this remains the separate MIDI composition roadmap. The playable radio already uses a curated three-station / nine-track catalogue and shared receivers, integrated through PR #73. Its runtime status is in [Technical architecture](../TECHNICAL_ARCHITECTURE.md#radio-ownership-and-deployment); the composition milestones below are not automatically completed by that integration.
+
 ## Mission
 
 Build an editable, legally traceable MIDI catalogue for ViceBlood car radios using public-domain source compositions re-arranged into convincing 1990s genres.

@@ -105,20 +105,33 @@ function paletteFor(family) {
 
 function chooseBuildingVariants(runtime, rng) {
   const templateChoices = {
-    "foundry:block-01:machine-shop": ["loading-bay-a", "row-housing-a", "market-passage-a"],
+    "foundry:block-01:machine-shop": ["machine-shop-row-a", "loading-bay-a", "row-housing-a", "market-passage-a"],
     "foundry:block-02:west-works": ["row-housing-a", "tenement-courtyard-a", "market-passage-a", "civic-landmark-a"],
     "foundry:block-03:east-loading": ["row-housing-a", "market-passage-a", "civic-landmark-a"],
-    "foundry:block-04:west-yard": ["row-housing-a", "market-passage-a", "civic-landmark-a"],
-    "foundry:block-05:east-works": ["row-housing-a", "market-passage-a", "civic-landmark-a"]
+    "foundry:block-04:west-yard": ["machine-shop-row-a", "loading-bay-a", "row-housing-a", "market-passage-a", "civic-landmark-a"],
+    "foundry:block-05:east-works": ["machine-shop-row-a", "loading-bay-a", "row-housing-a", "market-passage-a", "civic-landmark-a"]
   };
 
   return PILOT_BUILDING_IDS.map(id => {
     const baseline = byId(runtime.buildings, id);
-    const templateId = rng.pick(templateChoices[id]);
+    // Road reservations define the available parcel. A variant may occupy less
+    // of it, but cannot grow back across the widened street or its sidewalk.
+    const choices = templateChoices[id].filter(templateId => {
+      const { minWidth, minHeight } = blockTemplateById[templateId].footprint;
+      return baseline.w >= minWidth && baseline.h >= minHeight;
+    });
+    if (!choices.length) throw new Error(`No Foundry template fits ${id} (${baseline.w} x ${baseline.h}).`);
+    const templateId = rng.pick(choices);
     const template = blockTemplateById[templateId];
+    const w = Math.min(baseline.w, template.footprint.maxWidth);
+    const h = Math.min(baseline.h, template.footprint.maxHeight);
     const palette = paletteFor(template.family);
     return {
       ...baseline,
+      x: baseline.x + (baseline.w - w) / 2,
+      y: baseline.y + (baseline.h - h) / 2,
+      w,
+      h,
       templateId,
       family: template.family,
       color: palette.color,

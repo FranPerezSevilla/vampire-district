@@ -1,10 +1,12 @@
 # City Streaming 4C — local traffic materialization
 
+> Historical stage record (2026-07). Its macro interpolation, pool sizes and route-offset recovery describe the implementation at that time. Production was superseded by the PR #73 physical driver and PR #82 geometry. Use [Technical architecture §13](TECHNICAL_ARCHITECTURE.md#13-civilian-traffic-architecture) for current authority, density, transit and recovery.
+
 _Last updated: 2026-07-22_
 
 ## Status
 
-**Accepted and implemented.**
+**Accepted historical stage; subsequently superseded.**
 
 City Streaming 4C converts a bounded subset of the abstract traffic tokens introduced in 4B into pooled Phaser vehicles near the player. The macro simulation remains the authority for traffic quantity and progress; the local system owns only presentation and nearby collision occupancy.
 

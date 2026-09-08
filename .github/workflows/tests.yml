@@ -45,12 +45,13 @@ jobs:
             echo "browser=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Install Chromium for affected browser coverage
-        if: steps.affected-plan.outputs.browser == 'true' && github.event.pull_request.number != 73
+        if: steps.affected-plan.outputs.browser == 'true' && github.event.pull_request.number != 73 && github.head_ref != 'codex/traffic-junction-topology'
         run: npx playwright install --with-deps chromium
       - name: Run affected validation plan
-        # PR 73's author explicitly requested native simulations and no browser tests.
+        # The author requests native simulations without browser execution for
+        # PR 73 and its city/traffic continuations on the same Pages review branch.
         env:
-          TRAFFIC_UNIT_ONLY: ${{ github.event.pull_request.number == 73 }}
+          TRAFFIC_UNIT_ONLY: ${{ github.event.pull_request.number == 73 || github.head_ref == 'codex/traffic-junction-topology' }}
         shell: bash
         run: |
           set -o pipefail

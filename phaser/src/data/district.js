@@ -59,9 +59,24 @@ export const LAYER_NAMES = Object.freeze({
 export const SELECTED_CITY_CANDIDATE = CITY_TOPOLOGY_SEED;
 
 function freezePedestrianRoute(route) {
+  // Authored route IDs retain their neighbourhood, but their sidewalk owns the
+  // lateral position and available span when the road layout changes.
+  const sidewalk = sidewalks.find(surface => surface.id === route.sidewalkId);
+  if (!sidewalk) throw new Error(`Missing sidewalk for pedestrian route ${route.id}.`);
+  const horizontal = sidewalk.w >= sidewalk.h;
+  const across = horizontal ? "y" : "x", along = horizontal ? "x" : "y";
+  const size = horizontal ? "h" : "w", length = horizontal ? "w" : "h";
+  const coordinates = route.points.map(point => point[across]);
+  const middle = (Math.min(...coordinates) + Math.max(...coordinates)) / 2;
+  const halfSpan = Math.max(1, (Math.max(...coordinates) - Math.min(...coordinates)) / 2);
+  const scale = Math.min(1, Math.max(0, sidewalk[size] / 2 - 4) / halfSpan);
+  const points = route.points.map(point => ({ ...point,
+    [across]: sidewalk[across] + sidewalk[size] / 2 + (point[across] - middle) * scale,
+    [along]: Math.max(sidewalk[along] + 4, Math.min(sidewalk[along] + sidewalk[length] - 4, point[along]))
+  }));
   return Object.freeze({
     ...route,
-    points: Object.freeze(route.points.map(point => Object.freeze({ ...point })))
+    points: Object.freeze(points.map(point => Object.freeze(point)))
   });
 }
 
@@ -131,7 +146,7 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
       { x: 513, y: 1500 },
       { x: 503, y: 1500 }
     ],
-    sidewalkId: "sidewalk:road-edge:v:554:1192:554:1920:west:fragment:01",
+    sidewalkId: "sidewalk:road-edge:v:554:1192:554:1920:west",
     graphEdgeId: "road-edge:v:554:1192:554:1920",
     routeKind: "sidewalk-patrol",
     generated: false
@@ -145,7 +160,7 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
       { x: 513, y: 1380 },
       { x: 503, y: 1380 }
     ],
-    sidewalkId: "sidewalk:road-edge:v:554:1192:554:1920:west:fragment:01",
+    sidewalkId: "sidewalk:road-edge:v:554:1192:554:1920:west",
     graphEdgeId: "road-edge:v:554:1192:554:1920",
     routeKind: "nightlife-circulation",
     generated: false
@@ -159,7 +174,7 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
       { x: 513, y: 1480 },
       { x: 503, y: 1480 }
     ],
-    sidewalkId: "sidewalk:road-edge:v:554:1192:554:1920:west:fragment:01",
+    sidewalkId: "sidewalk:road-edge:v:554:1192:554:1920:west",
     graphEdgeId: "road-edge:v:554:1192:554:1920",
     routeKind: "nightlife-circulation",
     generated: false

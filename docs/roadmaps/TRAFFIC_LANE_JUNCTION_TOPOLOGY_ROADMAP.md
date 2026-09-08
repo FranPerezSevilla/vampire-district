@@ -1,20 +1,30 @@
 # Traffic lane / junction topology roadmap
 
-## Current continuation — 2026-09-07
+## Current status — 2026-09-08
 
-The user has reopened corrective work. Follow the live
-`docs/progress/traffic-lane-junction-topology-status.json` and
-`docs/agent-tasks/2026-09-07-traffic-physical-queue-clearance.md`.
-The August milestone narrative below is historical: production now uses 32
-fixed slots, body-safe admission/exit clearance, bounded road-safe bypass and
-per-agent physical locks. Tests #2469 passed the full suite on `e3e4d6c`: 865 unit tests and 60 browser
-tests. The current gate is explicit user gameplay validation; the prohibition
-on automatic merge remains in force.
+**Implementation complete and user accepted.** PR #73 merged at `7ee3af6` after explicit approval. The user also accepted PR #82's wider roads and explicitly requested merging with updated documentation. The accepted gameplay implementation is `163e870`; its Tests and Pages deployment both passed. GitHub owns the live merge result for PR #82.
 
+Production uses 600 civilian cars, six buses on three lines and a fixed 64-slot materializer. `TrafficDriverRuntime` / `TrafficDriverController` use shared player-vehicle kinematics; compiler lanes/connectors define navigation. Junction recovery may steer through safe opposing pavement or reverse and reassess. Geometry v5 widens avenues/local/service roads to 150/96/88 units. Radio and distant-simulation optimizations are integrated.
 
-Canonical phase roadmap for PR #73 (`codex/traffic-junction-topology`).
+Read the [current technical architecture](../TECHNICAL_ARCHITECTURE.md#13-civilian-traffic-architecture), [machine-readable completion state](../progress/traffic-lane-junction-topology-status.json), and [widening record](../agent-tasks/2026-09-08-wider-city-roads.md). `nextTask` is null: do not restart an old publication gate or launch an unrequested milestone. Future work starts from fresh user feedback and live repository state.
 
-> **Live execution state:** read `docs/progress/traffic-lane-junction-topology-status.json` first. It owns the exact task, validated implementation head and continuation gate.
+The accepted road build passes 911 native tests and city validation with zero errors/warnings. Native queue waits are not eliminated (about 50 seconds maximum in the widened Blackwater fixture). No automated browser execution was performed for this continuation, as requested by the user. Pages remains sourced from `codex/traffic-junction-topology`; preserve that branch.
+
+### Delivered continuation after M9
+
+| Stage | Delivered change | Current interpretation |
+| --- | --- | --- |
+| M10–M11 | Physical driving, junction recovery, broad repeating circuits | Production movement authority |
+| M12–M13 | Road-capacity distribution and higher visible density | Extended by later population tuning |
+| M14 | Four-lane avenues, 1,000-car experiment, three bus lines | Bus service retained; car count superseded by M15 |
+| M15 | 600 civilian cars and a measured performance plan | Current population |
+| M16 | Distant scheduling, incremental accounting and cached geometry | Integrated; historical CPU timings retain their original layout/viewpoint |
+| M17 | Existing radio sources enabled on the Pages project | Integrated through PR #73 |
+| M18 | Wider roads, matched lanes, pedestrian/building clearance | User-accepted PR #82 implementation |
+
+## Historical M0–M9 phase record
+
+The August narrative below records the cursor-based implementation and its validation at the time. Its scalar route-speed pose authority, older pool sizes, browser evidence and pending user gates were superseded by the physical-driver continuation above. Historical evidence remains intact; it is not a current execution instruction.
 
 ## Mission
 
@@ -24,7 +34,7 @@ Civilian traffic uses:
 
 with stable vehicle identity, stable materialized slot, right-hand lane discipline, deterministic junction yielding and no coordinate snap/free-form cross-block steering.
 
-## Final authority stack after M8
+## Historical authority stack after M8
 
 1. `district-streaming.js` — physical road/network authority.
 2. `traffic-lane-topology.js` — compiler-owned directed right-hand lanes/transitions.
@@ -39,7 +49,7 @@ with stable vehicle identity, stable materialized slot, right-hand lane discipli
 11. `TrafficRouteCompatibilityProjection.js` — conservative aggregate civilian accounting.
 12. macro system — bootstrap population records + independent police travel; never civilian local geometry.
 
-## Non-negotiable invariants
+## Historical M8 invariants (current invariants live in status/architecture)
 
 - Macro graph/district centres are never civilian local driving coordinates.
 - Legacy `edgeId + phase` is not normal physical route identity.
@@ -133,7 +143,7 @@ Final evidence: implementation `0c25c8c7d324b027bd4fd0363483884e8da2f937`, GitHu
 
 ## M9 — Legacy cleanup, documentation and user validation gate
 
-**Final validation pending.** Autonomous implementation is complete and stopped at the explicit user gate.
+**Historical gate, subsequently superseded.** Later user feedback led to M10–M18; the user has now accepted the resulting gameplay and authorized integration.
 
 ### M9.1 — Legacy cleanup audit + final validation preparation
 
@@ -161,7 +171,7 @@ Final cleanup/semantic-CI evidence: implementation head `763d6a12824d3d83d3fea92
 
 ### M9.2 — Explicit user gameplay validation
 
-**Current gate. No autonomous implementation may advance past this point.**
+**Historical validation checklist.** The current user-acceptance result is recorded at the top of this document and in the status file.
 
 The user validates normal gameplay for:
 
@@ -176,7 +186,7 @@ The user validates normal gameplay for:
 
 ---
 
-## Milestone execution rule
+## Historical milestone execution rule
 
 At every bounded task/milestone boundary:
 

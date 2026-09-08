@@ -1,5 +1,7 @@
 # Functional specification
 
+_Current city/vehicle/control reconciliation: 2026-09-08. The snapshot and technical architecture own current tuning; retired mission and streetlight sections below are explicitly historical._
+
 ## 1. Experience goals
 
 The game should feel immediate, readable and systemic:
@@ -14,14 +16,15 @@ The game should feel immediate, readable and systemic:
 
 ## 2. Core gameplay loop
 
-1. Receive an order from the sire.
-2. Navigate streets, rooftops and sewers.
+1. Enter the persistent missionless street sandbox from the title screen.
+2. Navigate on foot, drive or use public transport.
 3. Read NPC vision, hearing, AI role and alert state.
-4. Avoid, distract, strike, shoot, knock down or drain targets.
-5. Use darkness and routes to control encounters.
-6. Control Hunger and protect the veil.
-7. Manage evidence, reports and police pressure.
-8. Complete the objective and return to report.
+4. Hunt, distract, fight or feed to manage Hunger.
+5. Use cover and escape routes to control encounters.
+6. Protect the Veil and manage witnesses, evidence and police pressure.
+7. Return to safety, maintain vehicles and preserve campaign state.
+
+Future authored contracts use the existing campaign framework; the old sire/journalist mission is not registered in production.
 
 ## 3. Current control scheme
 
@@ -31,16 +34,19 @@ The game should feel immediate, readable and systemic:
 | Quiet movement | Hold Shift | Slower movement and much smaller footstep hearing radius. |
 | Aim / face | Mouse | Player faces the cursor's world position. |
 | Primary attack | Left mouse | Use equipped weapon in the aimed direction. |
-| Weapon selection | Mouse wheel | Previous/next owned weapon. |
+| Weapon / radio selection | Mouse wheel | Weapons on foot; station or OFF while driving. |
 | Feed | Hold right mouse | Release for Quick Bite or Full Feed, or continue to lethal Drain. |
-| Traverse | Space | Jump, climb, descend or enter/exit a sewer. No speed effect. |
+| Traverse / handbrake | Space | Contextual traversal on foot; handbrake while driving. |
+| Vehicle / bus | Enter | Enter/exit a vehicle; passenger/theft chooser near a bus. |
 | Interact | E | Talk, collect, inspect and use non-traversal objects. |
 | Dash | Q | Shadow Dash. |
 | Whisper | R | Vampiric Whisper. |
 | Blood Sense | F | Read heartbeats, wounds, feeding traces, drained bodies and learned marks through cover. |
 | Give In | B | Voluntary short Beast burst: faster movement/feeding and stronger melee at Hunger/evidence cost. |
 | Mission | M | Toggle mission information. |
-| Menu | H | Toggle menu/help. |
+| Horn | H | Sound the horn while driving. |
+| Menu | Escape / Menu button | Pause/help or close the active UI. |
+| Night Ledger | L | Open the paused faction, Heat and evidence view. |
 | Dialogue | Left click / Escape | Advance one dialogue bubble. |
 
 The tutorial control modes suppress weapon cycling until full gameplay control is restored.
@@ -351,15 +357,7 @@ Invulnerability prevents overlapping enemies from instantly filling Hunger. Feed
 
 ## 17. World props
 
-Streetlights are damageable props rather than E interactions.
-
-- durability: one point;
-- unarmed and pipe use the same melee arc as NPC combat;
-- pistol uses the same ordered hitscan ray as NPC targets;
-- misses do nothing;
-- broken state removes light and creates a persistent shadow patch;
-- glass feedback and prop/noise events fire once;
-- E never exposes destruction.
+Streetlight rendering, damage, darkness patches and their stealth effects are retired. Generated light records remain compiler data; they do not create a player destruction action. Current street furniture and vehicle impacts use their existing bounded physical owners. E remains a contextual interaction, not a generic destruction command.
 
 ## 18. Perception
 
@@ -389,9 +387,9 @@ quiet footsteps < punch < pipe impact < broken streetlight < gunshot
 
 A gunshot emits even when it misses. Melee impact noise requires a confirmed hit.
 
-## 19. Mission completion
+## 19. Historical mission completion
 
-Handling the journalist is not mission completion.
+The following is the retired journalist fixture, available only when explicitly supplied to the campaign framework. Production has zero registered missions. In that fixture, handling the journalist is not mission completion.
 
 ```text
 journalist handled
@@ -439,8 +437,19 @@ The report never appears before the return objective and never precedes the sire
 - Taking damage raises Hunger.
 - WASD runs without a modifier.
 - Shift is measurably slower and quieter.
-- Space performs traversal only.
+- Space performs traversal on foot and handbrake control while driving.
 - E never performs traversal, draining or streetlight destruction.
 - Nearby traversal conflicts resolve deterministically.
 - Hearing alone never automatically pursues or reports.
 - Handling the journalist still requires returning to the refuge.
+
+
+## 22. Current driving, traffic, transit and radio
+
+Civilian cars follow broad repeating city circuits, use both avenue lanes per direction and drive through the same acceleration, braking, reverse and steering model as the player. They seek physical clearance around obstructions, including safe opposing pavement; a blocked car may reverse a bounded distance and reassess without needing a complete bypass first. Junction permissions protect whole bodies and downstream exits. No lateral position snapping or teleport is allowed.
+
+The current city has 600 civilian cars and six buses, with at most 64 local materialized traffic proxies. Avenues/local/service roads are 150/96/88 units wide. C Circular, N Norte–Sur and E Este–Oeste each have two buses, stops and real NPC boarding/alighting. The player can board a stopped bus through the existing chooser or steal it; passenger mode follows the bus until a safe stopped exit.
+
+Driving enables Vice FM, Night Shift or Pulse 94.6 (three tracks each), plus OFF. Each station has a continuous timeline; entering joins the current song rather than restarting a playlist. Nearby civilian cars provide quiet radio ambience. Pages uses the nine pinned official sources; other packaged hosts require staged masters.
+
+Distant scheduling and cached/incremental traffic work reduce CPU cost while preserving physical local interactions. This does not guarantee every jam is eliminated or a particular hardware FPS: native testing still observes some junction waits, up to roughly 50 seconds at the widened Blackwater fixture.

@@ -40,7 +40,8 @@ function census(system) {
 
 const viewpoints = [
   { name: "old-quarter", center: { x: 1800, y: 1515 } },
-  { name: "blackwater", center: { x: 2265, y: 3280 } },
+  // Follow the expanded corner's sidewalk so the observer does not obstruct traffic.
+  { name: "blackwater", center: { x: 2250, y: 3250 } },
   { name: "north-harbor", center: { x: 4420, y: 880 } }
 ];
 
