@@ -340,7 +340,7 @@ Own:
 
 ### Civilian traffic proxies
 
-- Road-capacity population (223 global drivers in the current city), with a fixed pool of 32 local proxies. Drivers keep stable identities, physical vehicle states and predefined broad city circuits that repeat continuously.
+- Road-capacity population (437 global drivers in the current city), with a fixed pool of 64 local proxies. Drivers keep stable identities, physical vehicle states and predefined broad city circuits that repeat continuously.
 - Circuits and initial phases are allocated across road/district demand at bootstrap; actual appearances retain off-camera, streaming and clearance guards.
 - Drivers follow compiler navigation with the player's acceleration, braking, steering and reverse model.
 - Whole-body junction clearance, normal following and physically driven emergency manoeuvres, including crossing recovery and bounded reverse/reassessment when a complete bypass is unavailable.

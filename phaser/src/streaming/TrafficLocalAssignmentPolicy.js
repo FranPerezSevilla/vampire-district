@@ -7,7 +7,7 @@ import { installTrafficRouteMaterializationMetadataPolicy } from "./TrafficRoute
 
 const CAMERA_RETENTION_MARGIN = 420;
 const VIEWPORT_GUARD_MARGIN = 140;
-const TARGET_ACTIVE_TRAFFIC = 32;
+const TARGET_ACTIVE_TRAFFIC = 64;
 const PRODUCTION_ROUTE_SPEED = 112;
 const ROUTE_POSE_SPEED_MULTIPLIER = 1.7;
 const ROUTE_POSE_SLACK = 2.5;
@@ -200,6 +200,10 @@ export function installTrafficLocalAssignmentPolicy(scene) {
   }
 
   function syncRouteActivePoses(seconds = 0.05) {
+    // Physical drivers already publish each committed pose and route base to
+    // their assigned slot. Rebuilding all dormant tokens and republishing the
+    // same poses here adds a second full-city pass without advancing a car.
+    if (multiAgentRoutePolicy?.driving) return 0;
     if (!multiAgentRoutePolicy?.snapshot?.().enabled) return 0;
     const tokens = new Map((materializer.trafficTokens?.() || []).map(token => [token.tokenId, token]));
     let synced = 0;

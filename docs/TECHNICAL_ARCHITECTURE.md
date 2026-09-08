@@ -448,7 +448,7 @@ precede new arrivals. Cleared portions of a compound crossing are released as
 the buffered rear moves past. Manoeuvre controls are planned at the current
 bounded integration interval and each executed movement is rechecked.
 
-`TrafficMaterializationSystem` owns a fixed pool of 32 civilian proxies, their
+`TrafficMaterializationSystem` owns a fixed pool of 64 civilian proxies, their
 visuals, residency and conversion into a transient player vehicle on theft.
 Dormant tokens can appear only on a clear approach, outside the camera and
 reserved crossing. Theft retires the driver's materialization token. Proxies are
@@ -463,20 +463,29 @@ harnesses (`driving: false`), with no production movement ownership.
 
 `MacroTrafficPoliceSystem` sizes bootstrap civilian flows from compiler road
 length in both directions and the adjoining districts' traffic density: one car
-per 240 world units at full density, rounded per macro connection. The current
-city yields 223 global drivers. The 32 physical slots are a local capacity, not
+per 120 world units at full density, rounded per macro connection. The current
+city yields 437 global drivers. The 64 physical slots are a local capacity, not
 a target number of cars on camera.
 
 `TrafficPopulationPolicy` allocates their broad circuits once at bootstrap.
 Eight deterministic alternatives per driver compete against road and district
 capacity; alternatives can originate in underserved districts. Initial phases
-spread cars along clear lane interiors with body separation. Compiler geometry,
+spread cars along clear lane interiors with body separation. A driver can
+retain its one-time entry leg if its circuit has no free initial sample; this
+is counted separately from placements on the recurring loop. Compiler geometry,
 the original off-camera spawn guard, active/resident chunks and local clearance
 still determine physical appearances. No running car is relocated, no circuit
 is replaced, and manual legacy populations retain their supplied bootstrap.
 Diagnostics distinguish circuit-length-weighted planned occupancy from actual
 camera counts. North Harbor remains below its capacity target because the
 chosen broad circuits spend much of their length in other districts.
+
+Materialization copies the pose/navigation fields it consumes; gearbox and
+other physical internals stay in driver state. Physical drivers publish their
+committed slot pose directly, avoiding a duplicate full-city presentation pass.
+Route projection searches only the nearby ordered segment range, and bootstrap
+return legs skip unused destination selection. These optimizations preserve
+driving and itinerary decisions as local capacity increases.
 
 Macro traffic receives output-only route accounting; legacy civilian phases
 do not advance while the driver owns traffic. Police travel, streaming,

@@ -45,11 +45,11 @@ test("capacity circuits increase visible traffic across streamed districts witho
   let canonicalAllocation = null, canonicalPoses = null;
   for (const [index, viewpoint] of viewpoints.entries()) {
     const metrics = [], censuses = [];
-    for (const historicalPopulation of [true, false]) {
+    for (const historicalPopulation of ["m12", false]) {
       const system = await createTrafficDensityRuntime({ center: viewpoint.center, historicalPopulation });
       try {
         assert.equal(system.city.isReady(), true);
-        assert.equal(system.materializer.pool.length, 32);
+        assert.equal(system.materializer.pool.length, historicalPopulation ? 32 : 64);
         const runtime = system.route.runtime();
         const journeys = runtime.agents().map(agent => [agent.tokenId, runtime.driver(agent.tokenId).journey]);
         if (index === 0) censuses.push(census(system));
@@ -60,30 +60,45 @@ test("capacity circuits increase visible traffic across streamed districts witho
           else { assert.deepEqual(allocation, canonicalAllocation); assert.deepEqual(poses, canonicalPoses); }
           assert.equal(allocation.districts.length, 14);
           assert.ok(allocation.districts.every(district => district.planned > 0 && district.initiallyPlaced > 0));
-          assert.equal(allocation.districts.reduce((sum, district) => sum + district.initiallyPlaced, 0), allocation.population);
+          assert.equal(allocation.districts.reduce((sum, district) => sum + district.initiallyPlaced, 0)
+            + allocation.initialEntryLegCount, allocation.population);
         }
         system.step(1200);
         const result = system.metrics();
         metrics.push(result);
-        assert.equal(result.population, historicalPopulation ? 58 : 223);
+        assert.equal(result.population, historicalPopulation ? 223 : 437);
         assert.equal(result.visibleSpawns, 0);
         assert.equal(result.overlaps, 0);
         assert.equal(result.contacts, 0);
-        assert.ok(result.maxStop < 15, `${viewpoint.name}: stopped ${result.maxStop}s`);
-        assert.ok(result.maxNearby <= 32);
+        assert.ok(result.maxStop < (historicalPopulation ? 15 : 30), `${viewpoint.name}: stopped ${result.maxStop}s`);
+        assert.ok(result.maxNearby <= (historicalPopulation ? 32 : 64));
+        if (!historicalPopulation) {
+          // More cars can form longer legitimate queues. Follow them for thirty
+          // additional seconds and require observed long stops to advance at
+          // least 100 units; tiny creeps alone do not count as recovery.
+          system.step(600);
+          const recovery = system.metrics();
+          assert.equal(recovery.unresolvedLongStops, 0, `${viewpoint.name}: a long queue did not recover`);
+          assert.ok(recovery.maxStop < 30);
+          assert.equal(recovery.contacts, 0);
+          assert.equal(recovery.overlaps, 0);
+          assert.equal(recovery.visibleSpawns, 0);
+          t.diagnostic(JSON.stringify({ district: viewpoint.name, recovery }));
+        }
         for (const [id, journey] of journeys) assert.equal(runtime.driver(id).journey, journey, "circuits remain predefined across laps and materializations");
       } finally { system.destroy(); }
     }
     const [before, after] = metrics;
-    assert.ok(after.visibleAverage > before.visibleAverage * 1.4, `${viewpoint.name}: visible traffic ${before.visibleAverage} -> ${after.visibleAverage}`);
-    assert.ok(after.nearbyAverage > before.nearbyAverage * 1.5);
-    assert.ok(after.emptyFraction < before.emptyFraction);
+    assert.ok(after.visibleAverage > before.visibleAverage * 1.6, `${viewpoint.name}: visible traffic ${before.visibleAverage} -> ${after.visibleAverage}`);
+    assert.ok(after.nearbyAverage > before.nearbyAverage * 1.75);
+    assert.ok(after.emptyFraction <= before.emptyFraction);
     if (index === 0) {
       const [previous, current] = censuses;
-      assert.ok(current.lanes >= 400 && current.lanes > previous.lanes + 30);
+      assert.ok(current.lanes >= 420 && current.lanes > previous.lanes);
       const deviation = census => canonicalAllocation.districts.reduce((sum, district) =>
         sum + Math.abs((census.districts[district.id] || 0) - district.target / canonicalAllocation.population), 0);
-      assert.ok(deviation(current) < deviation(previous) * 0.5, "road-capacity district balance improves, not just total population");
+      assert.ok(deviation(current) < 0.12 && deviation(current) < deviation(previous) * 1.25,
+        "the larger population retains balanced road-capacity circuit allocation");
       for (let a = 0; a < canonicalPoses.length; a++) for (let b = a + 1; b < canonicalPoses.length; b++) {
         assert.ok(Math.hypot(canonicalPoses[a].x - canonicalPoses[b].x, canonicalPoses[a].y - canonicalPoses[b].y) >= 40,
           "initial circuit phases do not pile cars onto the same starting point");

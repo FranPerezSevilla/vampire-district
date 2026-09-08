@@ -2,9 +2,9 @@
 
 ## Current continuation — 2026-09-08
 
-The user authorized increasing civilian population and balancing broad circuits
-across districts after the M11 driving/recovery changes.
-Follow `docs/agent-tasks/2026-09-08-traffic-density-distribution.md` and the live
+The user liked M12 and requested many more cars. M13 increases the road-capacity
+population and fixed local pool while retaining physical driving and broad circuits.
+Follow `docs/agent-tasks/2026-09-08-more-traffic.md` and the live
 machine status. Do not run browser tests or use them as an acceptance gate;
 the user explicitly excluded them. M12 adds capacity-based bootstrap allocation;
 M11 extends M10, which supersedes the rail cursor and offset-recovery movement

@@ -36,6 +36,11 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
       distanceTravelled: 0, completedJourneys: 0, adoptedImpacts: 0, rejectedSteps: 0, routeHop: 0 };
   });
   const populationAllocation = allocation?.snapshot() || null;
+  if (populationAllocation) {
+    // A crowded circuit can retain its supplied one-time entry phase. Count
+    // that placement separately from phases allocated on the recurring loop.
+    populationAllocation.initialEntryLegCount = drivers.filter(driver => driver.journey.circular && driver.progress < driver.journey.loopStartProgress).length;
+  }
   const byId = new Map(drivers.map(driver => [driver.tokenId, driver]));
   const hijacked = new Set();
   let clock = 0, ticks = 0, destroyed = false;
@@ -69,19 +74,23 @@ export function createTrafficDriverRuntime({ trafficFlows, macroGraph, topology,
       distanceTravelled: driver.distanceTravelled, adoptedImpacts: driver.adoptedImpacts, rejectedSteps: driver.rejectedSteps };
   }
   function token(driver, index) {
-    const agent = routeAgent(driver);
-    const lane = topology.lanes[agent.currentLaneId];
     const stage = journeyPoint(driver.journey, driver.progress).segment.stage;
+    const lane = topology.lanes[stage.laneId], laneIndex = stage.laneIndex;
     const spawnMargin = driver.archetype.width * 0.5 + 35;
-    return { tokenId: agent.tokenId, tokenIndex: driver.trafficMetadata?.macroCompatibility?.tokenIndex ?? index,
+    // A materialization token needs the current pose and navigation metadata.
+    // Keep gearbox/health/input internals in the driver's physical state; copying
+    // that changing object shape for every candidate dominates dense traffic.
+    return { tokenId: driver.tokenId, tokenIndex: driver.trafficMetadata?.macroCompatibility?.tokenIndex ?? index,
       edgeId: driver.trafficMetadata?.macroCompatibility?.edgeId || null, direction: lane.direction,
-      ...driver.pose, tokenId: agent.tokenId, routeActive: true, driverActive: true,
+      x: driver.pose.x, y: driver.pose.y, angle: driver.pose.angle, speed: driver.pose.speed,
+      velocityX: driver.pose.velocityX, velocityY: driver.pose.velocityY, routeActive: true, driverActive: true,
       driverSpawnAllowed: stage.kind === "lane" && driver.progress - stage.start > spawnMargin
         && stage.end - driver.progress > spawnMargin && junctions.stopDistance(driver) > 35,
-      routeStage: agent.stage, routeLaneId: agent.currentLaneId, routeConnectorId: agent.connectorId,
-      routeNextLaneId: agent.nextLaneId, routePreviousLaneId: agent.previousLaneId,
-      routeRecentLaneIds: agent.recentLaneIds, routeHop: agent.routeHop, routeStageProgress: agent.stageProgress,
-      routeGeometryId: agent.connectorId || agent.currentLaneId, routeSourceRoadEdgeId: lane.sourceRoadEdgeId,
+      routeStage: stage.kind, routeLaneId: stage.laneId, routeConnectorId: stage.connectorId || null,
+      routeNextLaneId: stage.nextLaneId || null, routePreviousLaneId: driver.journey.laneIds[laneIndex - 1] || null,
+      routeRecentLaneIds: driver.journey.laneIds.slice(Math.max(0, laneIndex - 16), laneIndex), routeHop: driver.routeHop + laneIndex,
+      routeStageProgress: Math.max(0, Math.min(1, (driver.progress - stage.start) / Math.max(0.001, stage.end - stage.start))),
+      routeGeometryId: stage.connectorId || stage.laneId, routeSourceRoadEdgeId: lane.sourceRoadEdgeId,
       driverDestination: driver.journey.destination, driverReason: driver.reason, driverControls: driver.controls };
   }
   function adoptContact(driver, slot) {

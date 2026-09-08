@@ -900,3 +900,24 @@ Native comparisons run the production chunk stream, camera guards, materializer,
 All six comparisons have zero traffic contacts, overlaps and guarded-camera spawns; local assignments never exceed 32. Permanent 60-second comparisons assert increased visible traffic, fewer empty frames, circuit identity and deterministic initial placement. **890/890 units pass**, including the two new population/density tests and the existing 17 driver/recovery/network regressions. Static ownership of 41 browser specs across 8 suites passes. The 32-car / 180-second circulation regression remains green.
 
 On this native runner the full traffic pipeline measures **4.98–6.65 ms mean**, **6.33–8.81 ms p95**, and **2.67–2.88 s setup** for the new population. These are bounded native measurements, not a browser frame-rate claim. No camera eligibility relaxation or second gameplay loop was needed. The affected plan selects cumulative release-candidate coverage; browser execution remains excluded by the user. Publish the reviewed tree on PR 73, report exact head and actual native CI/Pages status in the live PR, and keep it draft without automatic merge.
+
+
+## M13 — many more visible cars — 2026-09-08
+
+The user likes the M12 traffic and requests many more cars. Road-capacity spacing changes from 240 to 120 world units, producing **437 global drivers instead of 223**, while the existing local pool increases from **32 to 64 before activation**. The predefined broad circuit selection, initial-phase policy, physical controls, junction rules and camera/streaming/clearance guards retain their M12 behavior. Of the initial population, 436 cars are placed on their recurring loops and one retains its one-time entry leg; diagnostics now distinguish those two valid cases. All 437 initial poses remain separated.
+
+The higher load exposed significant repeated computation. Materialization now copies just its consumed pose/navigation fields; full gearbox and vehicle internals remain in driver state. Physical drivers already publish committed slot poses, so the generic local policy skips its duplicate full-city pose pass. Navigation projection uses binary search to find the nearby segment range. Bootstrap planning caches immutable lane lengths and skips destination selection when a return destination is already prescribed.
+
+The native density comparison now uses the immediately preceding **M12 223-driver / 32-slot** configuration, not the older 58-token fixture. Both sides run the production chunk stream, camera guards, materializer, driver controls, macro accounting and physical contacts. Only rendering and file transport are substituted. Equal 60-second comparisons exclude the first ten seconds of camera entry:
+
+| Viewpoint | Visible mean before → after | Nearby materialized mean before → after | Increase in visible mean |
+| --- | --- | --- | --- |
+| Old Quarter | 1.45 → 5.22 | 20.52 → 55.11 | 3.60× |
+| Blackwater | 11.63 → 20.50 | 24.95 → 54.77 | 1.76× |
+| North Harbor | 6.31 → 11.68 | 11.74 → 22.95 | 1.85× |
+
+The larger population continues to **90 seconds**: visible means are 5.73, 21.62 and 13.28 respectively. All five observed stops exceeding 15 seconds then advance at least 100 world units; the longest stop is **20.3 seconds**. There are **zero traffic contacts, overlaps or guarded-camera spawns**, and no capacity overrun. Longer legitimate queues are expected with more cars; the test verifies real recovery rather than requiring the old sparse-traffic stop limit.
+
+Recurring coverage grows from **414 to 428 of 434 directed lanes**, across **145 source roads and all 14 districts**. Independent circuit sampling reports aggregate district-share error **0.08636 → 0.08137**, preserving the balanced distribution. North Harbor remains below its planned road-capacity share; live visible counts are separately measured above.
+
+The final isolated native density test measures **6.34–10.39 ms mean / 9.36–14.32 ms p95** for the traffic pipeline. This is not browser FPS evidence. The two density tests and the existing 17 driver/recovery/network regressions pass. **890/890 native units pass**, plus static ownership of 41 browser specs across 8 suites. The affected plan selects cumulative release-candidate coverage; browser execution is excluded by the user. Three existing browser pool assertions were aligned to 64 and syntax-checked, without execution. Publish in the existing PR/Pages branch; no automatic merge.

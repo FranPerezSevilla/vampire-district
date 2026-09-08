@@ -45,16 +45,19 @@ export async function createTrafficDensityRuntime({ center, historicalPopulation
   const macro = scene.macroTrafficPoliceSystem = new MacroTrafficPoliceSystem(scene, { fetchImpl });
   await macro.initialization;
   if (historicalPopulation) {
-    // Exact previous 58-token bootstrap, retained only as the comparison fixture.
+    // Historical population is a comparison fixture only. M12 used the same
+    // circuit allocator with 240-unit capacity spacing and 32 local slots.
     for (const flow of macro.trafficFlows.values()) {
       const edge = macro.graph.edges[flow.edgeId];
-      flow.tokenCount = Math.max(1, Math.round((macro.graph.nodes[edge.a].trafficDensity + macro.graph.nodes[edge.b].trafficDensity) * 2));
+      const densitySum = macro.graph.nodes[edge.a].trafficDensity + macro.graph.nodes[edge.b].trafficDensity;
+      flow.tokenCount = Math.max(1, Math.round(historicalPopulation === "m12" ? edge.length * densitySum / 240 : densitySum * 2));
       flow.phases.length = flow.tokenCount;
-      delete flow.populationPolicy;
+      if (historicalPopulation !== "m12") delete flow.populationPolicy;
     }
   }
   const materializer = scene.trafficMaterializationSystem = new TrafficMaterializationSystem(scene, { fetchImpl });
   const policy = scene.trafficLocalAssignmentPolicy = installTrafficLocalAssignmentPolicy(scene);
+  if (historicalPopulation) materializer.maxActiveVehicles = 32;
   let visibleSpawns = 0, spawns = 0;
   const assign = materializer.assign;
   materializer.assign = function(slot, token) {
@@ -68,7 +71,7 @@ export async function createTrafficDensityRuntime({ center, historicalPopulation
   const mass = installTrafficMassCollisionPolicy(physical);
   const route = policy.multiAgentRoutePolicy;
   let frames = 0, visibleSum = 0, nearbySum = 0, maxNearby = 0, overlaps = 0, emptyFrames = 0;
-  const frameTimes = [], seen = new Set(), records = new Map();
+  const frameTimes = [], seen = new Set(), records = new Map(), longStops = [];
   function step(count = 1) {
     for (let i = 0; i < count; i++) {
       const start = performance.now();
@@ -87,6 +90,8 @@ export async function createTrafficDensityRuntime({ center, historicalPopulation
         if (shown) { visible++; seen.add(slot.tokenId); }
         const previous = records.get(slot.tokenId);
         const stopped = previous && Math.hypot(slot.x - previous.x, slot.y - previous.y) < 0.01 ? previous.stopped + 0.05 : 0;
+        if (stopped >= 15 && previous.stopped < 15) longStops.push({ tokenId: slot.tokenId, x: slot.x, y: slot.y, observedAt: frames * 0.05, recovered: false });
+        for (const episode of longStops) if (episode.tokenId === slot.tokenId && Math.hypot(slot.x - episode.x, slot.y - episode.y) >= 100) episode.recovered = true;
         records.set(slot.tokenId, { x: slot.x, y: slot.y, stopped, maxStop: Math.max(previous?.maxStop || 0, stopped) });
       }
       for (let a = 0; a < slots.length; a++) for (let b = a + 1; b < slots.length; b++) if (orientedVehicleContact(slots[a], slots[b])) overlaps++;
@@ -102,6 +107,8 @@ export async function createTrafficDensityRuntime({ center, historicalPopulation
         visibleAverage: visibleSum / samples, nearbyAverage: nearbySum / samples, emptyFraction: emptyFrames / samples,
         seen: seen.size, maxNearby, spawns, visibleSpawns, overlaps, contacts: physical.totalTrafficContacts,
         maxStop: Math.max(0, ...[...records.values()].map(record => record.maxStop)),
+        longStops: longStops.length, recoveredLongStops: longStops.filter(episode => episode.recovered).length,
+        unresolvedLongStops: longStops.filter(episode => !episode.recovered && episode.observedAt <= frames * 0.05 - 15).length,
         frameP95Ms: times[Math.floor(times.length * 0.95)], frameMeanMs: times.reduce((sum, t) => sum + t, 0) / times.length };
     },
     destroy() { mass.destroy(); physical.destroy(); policy.destroy(); materializer.destroy(); macro.destroy(); city.destroy(); }

@@ -27,8 +27,15 @@ export function journeyPoint(journey, distance) {
 
 export function projectJourney(journey, pose, previous = 0, window = 160) {
   let best = { distance: Infinity, progress: previous };
-  for (const segment of journey.segments) {
-    if (segment.end < previous - 70) continue;
+  const segments = journey.segments;
+  let low = 0, high = segments.length;
+  while (low < high) {
+    const mid = (low + high) >> 1;
+    if (segments[mid].end < previous - 70) low = mid + 1;
+    else high = mid;
+  }
+  for (let index = low; index < segments.length; index++) {
+    const segment = segments[index];
     if (segment.start > previous + window) break;
     const t = Math.max(0, Math.min(1, ((pose.x - segment.a.x) * segment.dx + (pose.y - segment.a.y) * segment.dy) / segment.length ** 2));
     const distance = Math.hypot(pose.x - segment.a.x - segment.dx * t, pose.y - segment.a.y - segment.dy * t);
@@ -39,6 +46,7 @@ export function projectJourney(journey, pose, previous = 0, window = 160) {
 
 export function createTrafficJourneyPlanner(topology) {
   const direct = new Set(topology.junctionConnectors?.directHandoffTransitionIds || []);
+  const laneLengths = new Map(Object.values(topology.lanes).map(lane => [lane.id, pathLength(lane.points)]));
   const edges = new Map();
   const deadEndRoads = new Set(Object.values(topology.transitions)
     .filter(transition => transition.preferred && transition.uTurn)
@@ -64,7 +72,7 @@ export function createTrafficJourneyPlanner(topology) {
       for (const edge of edges.get(current) || []) {
         const next = edge.transition.outgoingLaneId;
         if (forbidden?.has(next)) continue;
-        const cost = distances.get(current) + pathLength(topology.lanes[next].points)
+        const cost = distances.get(current) + laneLengths.get(next)
           + (edge.connector?.length || 0) + (edge.transition.turnType === "straight" ? 0 : 28) + 1;
         if (cost >= (distances.get(next) ?? Infinity)) continue;
         distances.set(next, cost); parents.set(next, { from: current, edge }); pending.add(next);
@@ -76,16 +84,21 @@ export function createTrafficJourneyPlanner(topology) {
   }
   function planLeg(start, tokenId, trip = 0, destination = null, forbidden = null) {
     const { distances, parents } = shortestPaths(start, forbidden);
-    const reachable = [...distances].filter(([id]) => id !== start && edges.has(id)).sort((a, b) => a[0].localeCompare(b[0]));
-    // Ambient through traffic should not deliberately visit a cul-de-sac merely
-    // to turn around. Drivers seeded there can leave via its legal U-turn.
-    const destinations = reachable.filter(([id]) => pathLength(topology.lanes[id].points) >= 120
-      && !deadEndRoads.has(topology.lanes[id].sourceRoadEdgeId));
-    const maximum = Math.max(0, ...reachable.map(([, distance]) => distance));
-    const eligible = destinations.length ? destinations : reachable;
-    const distant = eligible.filter(([, distance]) => distance >= Math.min(1200, maximum * 0.6));
-    const candidates = distant.length ? distant : eligible;
-    const target = destination || candidates[trafficJourneyHash(`${tokenId}:${trip}`) % candidates.length]?.[0] || start;
+    let target = destination;
+    // The return leg already has its destination. Do not sort/filter the entire
+    // city again merely to discard those candidates during circuit allocation.
+    if (!target) {
+      const reachable = [...distances].filter(([id]) => id !== start && edges.has(id)).sort((a, b) => a[0].localeCompare(b[0]));
+      // Ambient through traffic should not deliberately visit a cul-de-sac merely
+      // to turn around. Drivers seeded there can leave via its legal U-turn.
+      const destinations = reachable.filter(([id]) => laneLengths.get(id) >= 120
+        && !deadEndRoads.has(topology.lanes[id].sourceRoadEdgeId));
+      const maximum = Math.max(0, ...reachable.map(([, distance]) => distance));
+      const eligible = destinations.length ? destinations : reachable;
+      const distant = eligible.filter(([, distance]) => distance >= Math.min(1200, maximum * 0.6));
+      const candidates = distant.length ? distant : eligible;
+      target = candidates[trafficJourneyHash(`${tokenId}:${trip}`) % candidates.length]?.[0] || start;
+    }
     if (target !== start && !parents.has(target)) return null;
     const route = [], laneIds = [target];
     for (let cursor = target; cursor !== start;) {
@@ -122,7 +135,7 @@ export function createTrafficJourneyPlanner(topology) {
     for (let attempt = 0; attempt < 64; attempt++) {
       const outward = planLeg(start, tokenId, trip + attempt);
       const possibleReturns = shortestPaths(outward.destination).distances;
-      for (const loopLane of outward.laneIds.filter(id => pathLength(topology.lanes[id].points) >= 120
+      for (const loopLane of outward.laneIds.filter(id => laneLengths.get(id) >= 120
         && !deadEndRoads.has(topology.lanes[id].sourceRoadEdgeId) && possibleReturns.has(id) && id !== outward.destination)) {
         const forbidden = new Set(outward.laneIds.filter(id => id !== loopLane && id !== outward.destination));
         const back = planLeg(outward.destination, tokenId, trip, loopLane, forbidden);

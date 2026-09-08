@@ -62,7 +62,7 @@ test("normal boot uses destination drivers, a fixed pool and output-only macro a
   expect(result.final.macroAccountingInstalled).toBe(true);
   expect(result.final.macroCoordinateAuthority).toBe(false);
   expect(result.final.ticks).toBeGreaterThan(result.initial.ticks);
-  expect(result.traffic.poolSize).toBe(32);
+  expect(result.traffic.poolSize).toBe(64);
   expect(result.poolPreserved).toBe(true);
   expect(result.identityChanges).toBe(0);
   expect(result.duplicateLanes).toBe(0);

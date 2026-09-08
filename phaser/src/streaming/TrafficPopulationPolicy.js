@@ -2,7 +2,7 @@ import { journeyPoint, pathLength, trafficJourneyHash } from "./TrafficJourneyPl
 
 export const TRAFFIC_POPULATION_POLICY = "road-capacity-circuits-v1";
 // World units per car at full district density, across both road directions.
-const CAPACITY_SPACING = 240;
+const CAPACITY_SPACING = 120;
 
 export function trafficFlowPopulation(graph, edge) {
   const density = ((graph.nodes[edge.a]?.trafficDensity || 0) + (graph.nodes[edge.b]?.trafficDensity || 0)) / 2;
