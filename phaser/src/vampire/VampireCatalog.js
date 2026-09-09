@@ -28,6 +28,25 @@ export const contactById = id => VAMPIRE_CONTACTS.find(contact => contact.id ===
 export const assetById = id => VAMPIRE_ASSETS.find(asset => asset.id === id);
 export const donorById = id => VAMPIRE_DONORS.find(donor => donor.id === id);
 
+export const CONTACT_INTRODUCTIONS = Object.freeze({
+  sire: [],
+  vesper: [{ kind: "jobs", id: "sire", value: 1, text: "Complete a delivery for the Sire", target: "contact:sire" }, { kind: "debt", id: "sire", text: "Settle your debt to the Sire", target: "contact:sire" }],
+  rook: [{ kind: "jobs", id: "vesper", value: 1, text: "Complete a delivery for Vesper", target: "contact:vesper" }, { kind: "asset", id: "club", value: 1, text: "Invest in the club feeding rooms", target: "asset:club" }],
+  mara: [{ kind: "jobs", id: "rook", value: 1, text: "Complete a delivery for Rook", target: "contact:rook" }, { kind: "asset", id: "depot", value: 1, text: "Invest in the canal depot", target: "asset:depot" }]
+});
+
+export const CONTACT_BENEFITS = Object.freeze({
+  sire: "Startup blood and cash on credit, paid work, refuge recovery and the city compact.",
+  vesper: "Iris joins your permitted herd at trust 15. Old Quarter hunting access and the club business.",
+  rook: "Canal West hunting access, a second refuge and a depot that stores blood and earns income.",
+  mara: "Eli joins your permitted herd at trust 15. Blood purchases, hospital hunting access and supply production."
+});
+
+export function knownDestination(target) {
+  const [kind, id] = String(target || "").split(":");
+  return kind === "contact" ? Boolean(contactById(id)) : kind === "donor" ? Boolean(donorById(id)) : kind === "asset" ? Boolean(assetById(id)) : kind === "site" && VAMPIRE_CONTACTS.some(def => [def.buildingId, def.pickup, def.delivery].includes(id));
+}
+
 export function powerStage(state) {
   if (state.prince) return "Prince of the city";
   const assets = Object.values(state.assets || {});

@@ -5,6 +5,8 @@ import { VAMPIRE_CONTACTS, VAMPIRE_ASSETS, VAMPIRE_DONORS, VAMPIRE_RULES as R, c
 import { createVampireSites, directionTo } from "./VampireWorldSites.js";
 import { FrenzyController } from "./FrenzyController.js";
 import { VampireHud } from "./VampireHud.js";
+import { VampireDomainPanel, DOMAIN_TABS } from "./VampireDomainPanel.js";
+import { clampMapPoint, domainDestination, errandModel } from "./VampireDomainModel.js";
 
 export class VampireRuntime {
   constructor(scene) {
@@ -23,6 +25,10 @@ export class VampireRuntime {
       notify: text => this.notice(text)
     });
     this.hud = new VampireHud(this);
+    this.domain = new VampireDomainPanel(this);
+    this.destinationLabel = scene.add?.text?.(0, 0, "", { fontFamily: "Arial, Helvetica, sans-serif", fontSize: "12px", color: "#ffdc93", backgroundColor: "#10151d", padding: { x: 5, y: 3 } });
+    this.destinationLabel?.setOrigin?.(0.5, 1)?.setDepth?.(74);
+    this.destinationLabel?.setVisible?.(false);
     this.feedListener = event => {
       const id = event.targetId;
       if (donorById(id)) this.service?.harmDonor(id, { depth: event.depth, dead: !event.victimAlive });
@@ -50,18 +56,22 @@ export class VampireRuntime {
   get service() { return this.campaign?.vampire; }
   bind() {
     if (!this.service || this.service === this.boundService) return;
+    if (this.boundService && this.scene.interactionSystem?.isOpen) this.scene.interactionSystem.close("Campaign reloaded.");
     this.disposeNotice?.();
     this.boundService = this.service;
     this.disposeNotice = this.service.events.on("vampire:changed", event => this.notice(event.payload.text));
     this.frenzy.reset();
     this.restored = false;
     this.saveElapsed = 0;
+    this.domain?.invalidate();
     this.createPeople();
   }
   notice(text) {
     if (!text) return;
     this.scene.lastActionText = text;
     this.refreshAt = 0;
+    this.domain?.invalidate();
+    if (this.domain) this.domain.feedback = text;
     if (/^(FRENZY|HUNGER|Control returns)/.test(text)) {
       this.currentNotice = text;
       this.noticeUntil = (this.service?.state.elapsed || 0) + 8;
@@ -156,7 +166,7 @@ export class VampireRuntime {
       for (const def of VAMPIRE_DONORS) this.syncDonor(def.id, true);
       if (!this.service.state.started) {
         this.service.state.started = true;
-        this.notice("Build your network and become Prince. Meet your Sire at the refuge frontage. CONTACTS gives directions; BLOOD consumes a reserve bag.");
+        this.notice("Build your network and become Prince. Meet your Sire at the refuge frontage. DOMAIN shows objectives and resources; MAP saves destinations; BLOOD uses a reserve bag.");
       }
     }
     this.service.tick(dt);
@@ -212,31 +222,41 @@ export class VampireRuntime {
     return true;
   }
   track(id) {
+    if (!domainDestination(this, id)) { this.notice("That destination is no longer available."); return false; }
     this.service.state.guide = id;
     const target = this.guideTarget();
     this.notice(`Tracking ${target?.label || "your network"}. Follow the direction in the vampire panel.`);
     this.outcome({ ok: true });
+    return true;
+  }
+  saveMarker(target, point = null) {
+    const destination = target === "player" ? { ...this.scene.player, label: "My marked position" } : target ? domainDestination(this, target) : null;
+    const position = clampMapPoint(point || destination);
+    if (!position) return this.outcome({ ok: false, text: "Choose a valid destination on the map." });
+    return this.outcome(this.service.saveMarker({ ...position, label: destination?.label, target: target === "player" || target === "delivery" ? null : target }));
+  }
+  openDomain(tab = "overview", target = null) {
+    if (!this.available() || this.scene.feedingSystem?.isActive?.()) return false;
+    this.domain.show(tab, target);
+    const options = DOMAIN_TABS.map(label => this.option(`domain:${label.toLowerCase()}`, label, "Open this section", () => this.openDomain(label.toLowerCase())));
+    options.push(this.option("domain:close", "Return to city", "Resume play", () => {}));
+    this.scene.interactionSystem.open(options, { title: "Your vampire domain", view: "vampire-domain" });
+    this.scene.interactionSystem.menu.index = DOMAIN_TABS.findIndex(label => label.toLowerCase() === this.domain.tab);
+    this.scene.interactionSystem.publish();
+    this.domain.render(this.scene.interactionSystem.menu);
+    return true;
+  }
+  acceptDelivery(id) {
+    const result = this.outcome(this.service.acceptDelivery(id));
+    if (result.ok) this.openDomain("errand");
+    return result;
   }
   openNetwork() {
     if (this.scene.interactionSystem?.isOpen || !this.available()) return false;
-    const options = VAMPIRE_CONTACTS.map(def => this.option(`track:${def.id}`, `Find ${def.name}`, `${def.role} · ${directionTo(this.scene.player, this.sites[def.buildingId])}`, () => this.track(`contact:${def.id}`)));
-    if (this.service.state.job) options.push(this.option("track:delivery", "Track current delivery", "Follow the agreed handoff", () => this.track("delivery")));
-    options.push(this.option("network:accounts", "Agreements and businesses", "Debts, trust, ownership and production", () => this.openAccounts()));
-    options.push(this.option("network:prince", "Path to Prince", "Requirements and recognition", () => this.openPrince()));
-    if (this.service.state.job) options.push(this.option("network:abandon", "Abandon delivery", "Lose 10 trust with the issuer", () => this.outcome(this.service.abandonDelivery())));
-    options.push(this.option("network:mend", "Mend with blood", "Vitality +30 · Hunger +12 · 100 triggers frenzy", () => this.mendBlood()));
-    return this.open("Your vampire network", "Visit contacts to negotiate. Your network grows through work, investment and keeping agreements.", options);
+    return this.openDomain();
   }
   openAccounts() {
-    const options = VAMPIRE_CONTACTS.map(def => {
-      const person = this.service.contact(def.id);
-      return this.option(`account:${def.id}`, def.name, `${person.met ? `Trust ${this.service.trust(def.id)}` : "Not met"} · Debt $${person.debt}${person.suspended ? " · SUSPENDED" : person.endorsed ? " · SUPPORTS YOU" : ""}`, () => { this.notice(this.service.contactSummary(def.id)); this.track(`contact:${def.id}`); });
-    });
-    for (const def of VAMPIRE_ASSETS) {
-      const asset = this.service.state.assets[def.id];
-      options.push(this.option(`asset:${def.id}`, def.name, `${["No investment", "Investor", "Controlled"][asset.level]} · ${asset.reserve} bags · ${asset.policy}`, () => this.track(`contact:${def.contactId}`)));
-    }
-    return this.open("Agreements and businesses", "Production runs while you play. Suspended agreements stop the associated business; repair them through work or compensation.", options);
+    return this.openDomain("resources");
   }
   openPrince() {
     const requirements = this.service.princeRequirements();
@@ -246,9 +266,12 @@ export class VampireRuntime {
   openContact(id) {
     if (!this.available()) return false;
     const def = contactById(id);
-    this.outcome(this.service.meet(id));
+    const meeting = this.outcome(this.service.meet(id));
+    if (!meeting.ok) return this.open(`${def.name} · Introduction needed`, meeting.text, [this.option(`introduction:${id}`, "View introduction objectives", "Contacts and the next useful step", () => this.openDomain("contacts"))]);
     const person = this.service.contact(id);
-    const options = [this.option(`work:${id}`, "Accept a supply delivery", `$${def.reward} · earns trust · repayments deducted`, () => this.outcome(this.service.acceptDelivery(id)))];
+    const options = this.service.state.job
+      ? [this.option("work:active", "View your current errand", "Finish or abandon it before accepting another", () => this.openDomain("errand"))]
+      : [this.option(`work:${id}`, "Accept a supply delivery", `$${def.reward} · earns trust · repayments deducted`, () => this.acceptDelivery(id))];
     if (["sire", "mara"].includes(id)) options.push(this.option(`blood:${id}`, "Buy one blood bag", `$${this.service.trust(id) >= 40 ? 60 : R.bagPrice} · Hunger -35`, () => this.outcome(this.service.buyBlood(id))));
     if (id === "sire") {
       options.push(this.option("sire:advance", "Ask for blood and startup cash", "2 bags + $150 · owe $200", () => this.outcome(this.service.borrow())));
@@ -285,7 +308,7 @@ export class VampireRuntime {
       const distance = Math.hypot(npc.x - this.scene.player.x, npc.y - this.scene.player.y);
       if (distance > 46) continue;
       const donor = donorById(def.id);
-      options.push({ ...this.option(`talk:${def.id}`, donor ? `Ask ${def.name} for a donation` : `Talk to ${def.name}`, donor ? this.service.donorAvailable(def.id) || "Voluntary donation · Hunger -28 · recovery 4 min" : def.role, () => {
+      options.push({ ...this.option(`talk:${def.id}`, donor ? `Ask ${def.name} for a donation` : `Talk to ${def.name}`, donor ? this.service.donorAvailable(def.id) || "Voluntary donation · Hunger -28 · recovery 4 min" : this.service.contactAccess(def.id).available ? def.role : "Introduction needed · view objectives", () => {
         if (donor) {
           const result = this.service.donate(def.id, this.scene.feedingSystem.hunger);
           if (result.ok) { this.scene.feedingSystem.relieveHunger(result.relief, "consensual_donation"); npc.feedingDepth = "quick_bite"; }
@@ -301,13 +324,11 @@ export class VampireRuntime {
     return options;
   }
   guideTarget() {
-    const guide = this.service.state.guide;
-    if (guide === "delivery" && this.service.state.job) return { ...this.sites[this.service.deliverySite()], label: this.service.state.job.stage === "accepted" ? "Collect supplies" : "Deliver supplies" };
-    const def = contactById(guide.replace("contact:", "")) || contactById("sire");
-    return { ...this.sites[def.buildingId], label: def.name };
+    return domainDestination(this, this.service.state.guide) || domainDestination(this, "contact:sire");
   }
   present(frame) {
     if (!this.service) return;
+    this.domain.render(this.scene.interactionSystem?.menu, !frame?.worldEnabled || Boolean(this.scene.registry?.get?.("uiPaused")));
     const now = this.service.state.elapsed;
     if (now >= this.noticeUntil) this.nextNotice();
     const target = this.guideTarget();
@@ -317,6 +338,7 @@ export class VampireRuntime {
     this.lastVisible = visible;
     this.hud.render({ visible, stage: powerStage(this.service.state), cash: this.service.wallet.balance(), bags: this.service.state.bloodBags,
       guide: `${target.label} · ${directionTo(this.scene.player, target)}${this.scene.currentLayer !== LAYERS.STREET ? " · meet at street level" : ""}`,
+      errand: this.service.state.job ? errandModel(this).summary : "No active errand",
       notice: this.currentNotice, locked: this.frenzy.active || Boolean(this.scene.interactionSystem?.isOpen), frenzy: this.frenzy.active });
     for (const [id, label] of this.labels) {
       const npc = this.people.get(id);
@@ -324,6 +346,10 @@ export class VampireRuntime {
       label?.setPosition?.(npc.x, npc.y - 22);
       label?.setVisible?.(visible && near && !npc.dead && this.scene.currentLayer === LAYERS.STREET);
     }
+    const targetNear = Math.hypot(target.x - this.scene.player.x, target.y - this.scene.player.y) < 350;
+    this.destinationLabel?.setText?.(`◆ ${target.label}`);
+    this.destinationLabel?.setPosition?.(target.x, target.y - 42);
+    this.destinationLabel?.setVisible?.(visible && targetNear && this.scene.currentLayer === LAYERS.STREET && !this.scene.interactionSystem?.isOpen);
     const stage = powerStage(this.service.state);
     if (this.scene.registry?.get?.("vampireStage") !== stage) this.scene.registry?.set?.("vampireStage", stage);
     if (this.scene.registry?.get?.("vampireFrenzy") !== this.frenzy.active) this.scene.registry?.set?.("vampireFrenzy", this.frenzy.active);
@@ -336,6 +362,8 @@ export class VampireRuntime {
     this.disposeNotice?.();
     this.frenzy.destroy();
     this.hud.destroy();
+    this.domain.destroy();
+    this.destinationLabel?.destroy?.();
     for (const label of this.labels.values()) label?.destroy?.();
     this.scene.events?.off?.("feeding:resolved", this.feedListener);
     this.scene.events?.off?.("combat:hit", this.hitListener);

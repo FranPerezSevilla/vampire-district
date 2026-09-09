@@ -5,6 +5,12 @@ import { sanitizeCampaignState } from "../phaser/src/campaign/CampaignState.js";
 import { VAMPIRE_ASSETS, VAMPIRE_RULES as R } from "../phaser/src/vampire/VampireCatalog.js";
 
 function campaign() { return new CampaignSystem({ autoLoad: false, autoSave: false, now: () => 1000 }); }
+function establishedContact(service, id) {
+  // Supply/consequence fixtures start with an already earned introduction.
+  // The full ascent above and domain tests exercise earning it through play.
+  service.contact(id).introduced = true;
+  assert.equal(service.meet(id).ok, true);
+}
 function delivery(service, id) {
   assert.equal(service.acceptDelivery(id).ok, true);
   assert.equal(service.handoff(service.deliverySite()).ok, true);
@@ -80,7 +86,7 @@ test("deliveries pay only at the agreed handoff and once; save/load preserves ca
 
 test("blood supply respects capacity, hunger and available money", () => {
   const c = campaign(), v = c.vampire;
-  v.meet("mara");
+  establishedContact(v, "mara");
   assert.equal(v.buyBlood("mara").ok, false);
   delivery(v, "mara");
   assert.equal(v.buyBlood("mara").ok, true);
@@ -93,7 +99,7 @@ test("blood supply respects capacity, hunger and available money", () => {
 
 test("hunting breaches require discovery, suspend actual services, and remain repairable without cash", () => {
   const c = campaign(), v = c.vampire;
-  v.meet("mara");
+  establishedContact(v, "mara");
   delivery(v, "mara");
   assert.equal(v.grantAccess("mara").ok, true);
   const assessment = c.huntingLaw.assessFeed({ districtId: "hospital-district", victim: { id: "hidden-victim", type: "civilian" }, feedingDepth: "drain", victimOutcome: "dead", victimAlive: false, bodyEvidence: true, biteEvidence: true });
@@ -114,7 +120,7 @@ test("hunting breaches require discovery, suspend actual services, and remain re
 
 test("donors recover during play, retain refusal and death, and never become infinite blood", () => {
   const c = campaign(), v = c.vampire;
-  v.meet("vesper"); delivery(v, "vesper");
+  establishedContact(v, "vesper"); delivery(v, "vesper");
   assert.equal(v.donate("donor_iris", 70).ok, true);
   assert.equal(v.donate("donor_iris", 70).ok, false);
   const saved = c.export();
@@ -136,7 +142,7 @@ test("donors recover during play, retain refusal and death, and never become inf
 
 test("business control changes production and income; suspension interrupts both", () => {
   const c = campaign(), v = c.vampire;
-  v.meet("mara");
+  establishedContact(v, "mara");
   for (let i = 0; i < 7; i++) delivery(v, "mara");
   assert.equal(v.invest("supply").ok, true);
   assert.equal(v.setPolicy("supply", "open").ok, false);

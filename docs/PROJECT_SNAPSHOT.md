@@ -4,6 +4,8 @@ _Last updated: 2026-09-08 — user-accepted PR #73 / #82 foundation_
 
 **Feature under review:** `codex/vampire-city-power` adds the playable survival-to-Prince progression. It includes four contacts, two donors, deliveries/debts, three businesses, blood supplies, operating policies, recognition, visible network guidance and involuntary frenzy at Hunger 100. Campaign schema is now 6. The previous hunter priority is withdrawn by the user; its legacy runtime update is disabled. See [`VAMPIRE_CITY_POWER.md`](VAMPIRE_CITY_POWER.md) for actual rules and review scope. The traffic acceptance below remains the historical foundation, not acceptance of this new feature.
 
+**2026-09-09 iteration:** PR #83 now organizes the network into Overview, Contacts, Herd, Resources, Errand and Map. Contact introductions require concrete work/investment objectives, while existing met contacts are retained. The map projects real hunting permissions, donor access and live destinations with eight persistent markers. Only one errand can be accepted; its panel explains both handoffs and rewards, and the M shortcut opens it. Native validation: 950 passed; no browser execution.
+
 Read [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) first for the canonical project-wide map. This snapshot summarizes the current playable state, persistence boundaries and immediate priority.
 
 ## Product vision

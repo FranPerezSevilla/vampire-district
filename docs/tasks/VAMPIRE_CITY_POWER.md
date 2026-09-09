@@ -24,3 +24,14 @@ Deliver a playable, persistent progression from dependent predator to Prince of 
 ## Delivery
 
 One feature PR for the integrated vampire progression and its required documentation, migration and native validation. Do not merge or repoint the existing Pages branch as incidental cleanup.
+
+## Iteration authorized 2026-09-09: a readable domain
+
+Goal: make the network a staged, navigable progression instead of a flat list of transactions.
+
+- Authority: `CampaignSystem.vampire` owns permanent introductions, one active errand and saved map markers; `HuntingLawSystem` remains the source of hunting permissions. `VampireRuntime` projects the city and the existing interaction-menu owner handles input/pause.
+- Files: vampire service/state/catalog/runtime/HUD, new domain panel/map projections, interaction menu metadata, existing InputSystem/UIScene confirmation and pause handlers, minimal CSS, focused native tests and these feature docs.
+- Acceptance: fresh characters earn Vesper through Sire work/debt repayment, Rook through Vesper work/club investment, and Mara through Rook work/depot investment. Existing met contacts remain accessible. Every lock explains its actual requirements and offers directions.
+- Acceptance: separate overview, contacts, herd, resources, errand and map views show locations, benefits, recovery, permissions, progress and the next action. Named destinations and up to eight custom/saved markers persist; map selection never grants remote transactions or moves the player.
+- Acceptance: only one errand may exist; no second offer while carrying one. Its panel explains pickup/delivery steps, cargo, payment, debt deduction and consequences, with objective tracking and deliberate abandonment.
+- Non-goals: city generation, assets, traffic changes, rival AI, new gameplay/input loops, offline simulation or browser tests. Continue PR #83 and deliberately publish its validated revision to the existing Pages review branch.

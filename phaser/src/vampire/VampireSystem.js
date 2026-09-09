@@ -1,4 +1,4 @@
-import { VAMPIRE_ASSETS, VAMPIRE_CONTACTS, VAMPIRE_DONORS, VAMPIRE_RULES as R, assetById, contactById, donorById, powerStage } from "./VampireCatalog.js";
+import { VAMPIRE_ASSETS, VAMPIRE_CONTACTS, VAMPIRE_DONORS, VAMPIRE_RULES as R, CONTACT_INTRODUCTIONS, assetById, contactById, donorById, powerStage, knownDestination } from "./VampireCatalog.js";
 
 // All transactions run through the existing campaign authorities. This service
 // owns agreements/business operations, not the campaign mission registry.
@@ -19,10 +19,26 @@ export class VampireSystem {
   get wallet() { return this.campaign.wallet; }
   trust(id) { return this.campaign.reputation.contact(id); }
   contact(id) { return this.state.contacts[id]; }
+  contactAccess(id) {
+    const person = this.contact(id);
+    const requirements = (CONTACT_INTRODUCTIONS[id] || []).map(rule => ({ ...rule, met: rule.kind === "jobs" ? this.contact(rule.id).jobs >= rule.value : rule.kind === "asset" ? this.state.assets[rule.id].level >= rule.value : this.contact(rule.id).debt === 0 }));
+    return { available: Boolean(person && (person.met || person.introduced || requirements.every(rule => rule.met))), requirements };
+  }
+  refreshIntroductions() {
+    const messages = [];
+    for (const def of VAMPIRE_CONTACTS) {
+      if (this.contact(def.id).introduced || !this.contactAccess(def.id).available) continue;
+      this.contact(def.id).introduced = true;
+      if (def.id !== "sire" && !this.contact(def.id).met) messages.push(`INTRODUCTION · ${def.name} will now receive you. Open DOMAIN → Contacts to see their services and mark the meeting place.`);
+    }
+    return messages;
+  }
   notify(text) {
-    this.state.notices.push({ text, at: this.state.elapsed });
-    this.state.notices = this.state.notices.slice(-15);
-    this.events.emit("vampire:changed", { text, stage: powerStage(this.state) });
+    for (const message of [text, ...this.refreshIntroductions()]) {
+      this.state.notices.push({ text: message, at: this.state.elapsed });
+      this.state.notices = this.state.notices.slice(-15);
+      this.events.emit("vampire:changed", { text: message, stage: powerStage(this.state) });
+    }
     return { ok: true, text };
   }
   reject(text) { return { ok: false, text }; }
@@ -40,6 +56,8 @@ export class VampireSystem {
   meet(id) {
     const def = contactById(id), person = this.contact(id);
     if (!def || !person) return this.reject("Unknown contact.");
+    const access = this.contactAccess(id);
+    if (!access.available) return this.reject(`${def.name} requires an introduction: ${access.requirements.filter(rule => !rule.met).map(rule => rule.text).join("; ")}.`);
     if (!person.met) {
       person.met = true;
       this.changeTrust(id, 5);
@@ -80,8 +98,8 @@ export class VampireSystem {
   }
   acceptDelivery(id) {
     const person = this.contact(id), def = contactById(id);
-    if (!person?.met || !def) return this.reject("Meet this contact first.");
     if (this.state.job) return this.reject("Finish or abandon the current delivery before accepting another.");
+    if (!person?.met || !def || !this.contactAccess(id).available) return this.reject("Meet this contact first.");
     this.state.job = { issuer: id, stage: "accepted", sequence: ++this.state.sequence };
     this.state.guide = "delivery";
     return this.notify(`${def.name}: Collect at ${this.siteLabel(def.pickup)}, then deliver to ${this.siteLabel(def.delivery)}. Payment $${def.reward}; debt is deducted first. Keep the cargo intact.`);
@@ -241,6 +259,23 @@ export class VampireSystem {
     if (this.contact(def.contactId).suspended) return this.reject("Repair this agreement before changing policy.");
     asset.policy = policy;
     return this.notify(`${def.name}: ${policy === "open" ? "Sell access to other vampires: 50% more income; blood production falls by one bag per cycle." : "Reserve capacity for your network: normal income and full blood production."}`);
+  }
+  saveMarker({ x, y, label, target = null } = {}) {
+    if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > 1e6 || y > 1e6 || (target && !knownDestination(target))) return this.reject("Choose a valid place on the map.");
+    const existing = target && this.state.markers.find(marker => marker.target === target);
+    if (existing) { this.state.guide = existing.id; return this.notify(`Tracking ${existing.label}.`); }
+    if (this.state.markers.length >= 8) return this.reject("Eight markers are already saved. Remove one in the map before adding another.");
+    const number = Math.max(0, ...this.state.markers.map(marker => Number(marker.id.split(":")[1]) || 0)) + 1;
+    const marker = { id: `marker:${number}`, x, y, label: String(label || `Waypoint ${number}`).slice(0, 60), target };
+    this.state.markers.push(marker);
+    this.state.guide = marker.id;
+    return { ...this.notify(`Marker saved: ${marker.label}. Follow it in the HUD or map.`), marker };
+  }
+  removeMarker(id) {
+    if (!this.state.markers.some(marker => marker.id === id)) return this.reject("This marker no longer exists.");
+    this.state.markers = this.state.markers.filter(marker => marker.id !== id);
+    if (this.state.guide === id) this.state.guide = this.state.job ? "delivery" : "contact:sire";
+    return this.notify("Map marker removed.");
   }
   endorse(id) {
     const person = this.contact(id), def = contactById(id);

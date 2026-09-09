@@ -379,7 +379,12 @@ export class UIScene extends Phaser.Scene {
         handled = true;
       }
     } else if (code === "Escape") {
-      if (this.ledgerOpen) {
+      const domainScene = this.scene.get("GameScene");
+      if (!this.modalBlocksInput() && domainScene?.interactionSystem?.menu?.view === "vampire-domain") {
+        domainScene.interactionSystem.close("Back to the city.");
+        domainScene.vampireRuntime?.domain?.render?.(null);
+        handled = true;
+      } else if (this.ledgerOpen) {
         this.closeNightLedger();
         handled = true;
       } else if (this.resultOpen && this.resultType === "success") {
@@ -438,7 +443,9 @@ export class UIScene extends Phaser.Scene {
       this.dom.ledgerButton.classList.toggle("signal", (this.time?.now || 0) < this.ledgerSignalUntil);
     }
     this.setText(this.dom.ledgerBadge, ledger?.alertCount > 99 ? "99+" : ledger?.alertCount || "");
-    this.setText(this.dom.missionStep, this.missionProgressLabel(data.mission, data.campaignMission));
+    const vampire = this.scene.get("GameScene")?.vampireRuntime?.service;
+    this.setText(this.dom.missionButton?.querySelector?.("span"), vampire ? "ERRAND" : "MISSION");
+    this.setText(this.dom.missionStep, vampire ? (vampire.state.job ? vampire.state.job.stage === "collected" ? "2/2" : "1/2" : "NONE") : this.missionProgressLabel(data.mission, data.campaignMission));
 
     const weapon = data.weapon || {};
     this.setText(this.dom.weaponName, weapon.name || "Unarmed");
@@ -546,7 +553,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   renderInteractionMenu(menu) {
-    const open = !this.modalBlocksInput() && Boolean(menu?.options?.length);
+    const open = !this.modalBlocksInput() && menu?.view !== "vampire-domain" && Boolean(menu?.options?.length);
     if (!this.dom.interactionMenu) return;
     this.dom.interactionMenu.classList.toggle("open", open);
     if (!open) {
@@ -746,6 +753,12 @@ export class UIScene extends Phaser.Scene {
 
   toggleMissionDrawer() {
     if (this.modalBlocksInput() || this.registry.get("taskRevealActive")) return;
+    const gameScene = this.scene.get("GameScene"), vampire = gameScene?.vampireRuntime;
+    if (vampire) {
+      if (gameScene.interactionSystem?.menu?.view === "vampire-domain" && vampire.domain.tab === "errand") gameScene.interactionSystem.close("Back to the city.");
+      else vampire.openDomain("errand");
+      return;
+    }
     this.missionOpen = !this.missionOpen;
   }
 
@@ -762,6 +775,8 @@ export class UIScene extends Phaser.Scene {
     if (paused === this.lastUiPaused) return;
     this.lastUiPaused = paused;
     this.registry.set("uiPaused", paused);
+    const gameScene = this.scene.get("GameScene");
+    gameScene?.vampireRuntime?.domain?.render?.(gameScene.interactionSystem?.menu, paused);
     if (paused) this.scene.pause("GameScene");
     else this.scene.resume("GameScene");
   }
