@@ -75,15 +75,19 @@ export function buildDomainModel(runtime) {
   });
   const errand = errandModel(runtime);
   let next;
-  const unmet = contacts.find(contact => !contact.met);
-  if (unmet) {
-    const rule = unmet.requirements.find(rule => !rule.met);
-    next = unmet.available ? { text: `Meet ${unmet.name}`, target: `contact:${unmet.id}`, why: unmet.benefits } : { text: rule.text, target: rule.target, why: `Earn an introduction to ${unmet.name}. ${unmet.benefits}` };
+  if (errand) {
+    next = { text: errand.current.title, target: "delivery", why: `${errand.issuer} · ${errand.summary}. ${errand.current.description}` };
   } else {
-    const asset = assets.find(asset => asset.level < 2);
-    const supporter = contacts.find(contact => contact.id !== "sire" && !contact.endorsed);
-    const debt = contacts.find(contact => contact.debt > 0);
-    next = asset ? { text: `Buy control: ${asset.name}`, target: `asset:${asset.id}`, why: asset.requirement } : supporter ? { text: `Secure ${supporter.name}'s support`, target: `contact:${supporter.id}`, why: `Trust ${supporter.trust}/40 · controlled business · intact agreement · no debt` } : debt ? { text: `Settle ${debt.name}'s debt`, target: `contact:${debt.id}`, why: `$${debt.debt} outstanding` } : { text: state.prince ? "Manage your city" : "Fund and claim the city compact", target: "contact:sire", why: state.prince ? "Maintain supply, agreements and the permitted herd." : `$${v.wallet.balance()}/${R.princeCost} · visit the Sire to claim Prince` };
+    const unmet = contacts.find(contact => !contact.met);
+    if (unmet) {
+      const rule = unmet.requirements.find(rule => !rule.met);
+      next = unmet.available ? { text: `Meet ${unmet.name}`, target: `contact:${unmet.id}`, why: unmet.benefits } : { text: rule.text, target: rule.target, why: `Earn an introduction to ${unmet.name}. ${unmet.benefits}` };
+    } else {
+      const asset = assets.find(asset => asset.level < 2);
+      const supporter = contacts.find(contact => contact.id !== "sire" && !contact.endorsed);
+      const debt = contacts.find(contact => contact.debt > 0);
+      next = asset ? { text: `Buy control: ${asset.name}`, target: `asset:${asset.id}`, why: asset.requirement } : supporter ? { text: `Secure ${supporter.name}'s support`, target: `contact:${supporter.id}`, why: `Trust ${supporter.trust}/40 · controlled business · intact agreement · no debt` } : debt ? { text: `Settle ${debt.name}'s debt`, target: `contact:${debt.id}`, why: `$${debt.debt} outstanding` } : { text: state.prince ? "Manage your city" : "Fund and claim the city compact", target: "contact:sire", why: state.prince ? "Maintain supply, agreements and the permitted herd." : `$${v.wallet.balance()}/${R.princeCost} · visit the Sire to claim Prince` };
+    }
   }
   return { stage: powerStage(state), cash: v.wallet.balance(), bags: state.bloodBags, hunger: Math.round(runtime.scene.feedingSystem.hunger), vitality: Math.round(runtime.scene.playerDamageSystem?.state?.vitality ?? 100),
     contacts, herd, assets, districts, errand, next, prince: state.prince, requirements: v.princeRequirements(),
