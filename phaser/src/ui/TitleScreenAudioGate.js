@@ -1,7 +1,6 @@
 const THEME_FADE_MS = 430;
 const THEME_CREDIT = "MUSIC\n“Gnossienne No. 1” — Erik Satie (1890).\nArranged for ViceBlood.";
 const START_COPY = "PRESS ANY KEY TO START";
-const RETRY_COPY = "CLICK OR PRESS A KEY TO ENABLE AUDIO";
 
 export class TitleScreenAudioGate {
   constructor({ documentRef = document, windowRef = window } = {}) {
@@ -31,8 +30,7 @@ export class TitleScreenAudioGate {
         0%,100% { opacity:.42; transform:translateY(0); }
         50% { opacity:1; transform:translateY(-2px); }
       }
-      .viceblood-title-boot-message[data-audio-gate="waiting"],
-      .viceblood-title-boot-message[data-audio-gate="blocked"] {
+      .viceblood-title-boot-message[data-audio-gate="waiting"] {
         color: rgba(241,237,230,.9) !important;
         animation: viceblood-title-audio-pulse 1.55s ease-in-out infinite;
       }
@@ -103,23 +101,22 @@ export class TitleScreenAudioGate {
     this.unlock(event);
   }
 
-  async unlock(event) {
+  unlock(event) {
     if (!this.waitPromise || this.window.NBD_TITLE_AUDIO_GATE_STATE === "unlocking") return;
     event?.preventDefault?.();
     event?.stopPropagation?.();
     this.window.NBD_TITLE_AUDIO_GATE_STATE = "unlocking";
 
-    const started = await this.theme?.start?.();
-    if (!started) {
+    // The user gesture must initiate play, but audio readiness must never gate UI.
+    // The parser-preloaded media normally starts immediately; cold/slow media may
+    // finish asynchronously while the already-created title menu is presented.
+    const startAttempt = this.theme?.start?.();
+    Promise.resolve(startAttempt).then(started => {
+      this.window.NBD_TITLE_AUDIO_GATE_STATE = started ? "playing" : "blocked";
+    }).catch(() => {
       this.window.NBD_TITLE_AUDIO_GATE_STATE = "blocked";
-      if (this.bootMessage) {
-        this.bootMessage.textContent = RETRY_COPY;
-        this.bootMessage.dataset.audioGate = "blocked";
-      }
-      return;
-    }
+    });
 
-    this.window.NBD_TITLE_AUDIO_GATE_STATE = "playing";
     if (this.bootMessage) {
       this.bootMessage.textContent = "The city never sleeps";
       delete this.bootMessage.dataset.audioGate;
