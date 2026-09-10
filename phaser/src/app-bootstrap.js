@@ -152,10 +152,12 @@ try {
   await import("./campaign/preload.js");
   await import("./police/VehicleIncidentPoliceWitnessPolicy.js");
 
-  if (bootProfile.mode === BOOT_MODES.PLAYTEST) {
-    const { UIScene } = await import("./scenes/UIScene.js");
-    installPlaytestIntroPolicy(UIScene);
-  }
+  const [{ UIScene }, { installDomainUiBridge }] = await Promise.all([
+    import("./scenes/UIScene.js"),
+    import("./vampire/DomainUiBridge.js")
+  ]);
+  installDomainUiBridge(UIScene);
+  if (bootProfile.mode === BOOT_MODES.PLAYTEST) installPlaytestIntroPolicy(UIScene);
 
   await import("./main.js");
   await import("./ui/AccessibilityKeyboardBridge.js");
