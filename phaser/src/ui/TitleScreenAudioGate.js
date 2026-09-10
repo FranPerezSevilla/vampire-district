@@ -3,7 +3,7 @@ const THEME_CREDIT = "MUSIC\n“Gnossienne No. 1” — Erik Satie (1890).\nArra
 const START_COPY = "PRESS ANY KEY TO START";
 
 export class TitleScreenAudioGate {
-  constructor({ documentRef = document, windowRef = window } = {}) {
+  constructor({ documentRef = globalThis.document, windowRef = globalThis.window } = {}) {
     this.document = documentRef;
     this.window = windowRef;
     this.root = null;
@@ -18,11 +18,11 @@ export class TitleScreenAudioGate {
   }
 
   get theme() {
-    return this.window.NBD_MAIN_MENU_THEME || null;
+    return this.window?.NBD_MAIN_MENU_THEME || null;
   }
 
   installPulseStyle() {
-    if (this.document.getElementById("viceblood-title-audio-style")) return;
+    if (!this.document || this.document.getElementById("viceblood-title-audio-style")) return;
     const style = this.document.createElement("style");
     style.id = "viceblood-title-audio-style";
     style.textContent = `
@@ -39,7 +39,7 @@ export class TitleScreenAudioGate {
   }
 
   installCreditsObserver(root) {
-    if (this.creditsObserver || typeof this.window.MutationObserver !== "function") return;
+    if (this.creditsObserver || typeof this.window?.MutationObserver !== "function") return;
     this.creditsObserver = new this.window.MutationObserver(() => {
       if (root.dataset.panel === "credits") this.refreshCredits();
     });
@@ -47,8 +47,8 @@ export class TitleScreenAudioGate {
   }
 
   refreshCredits() {
-    this.window.setTimeout(() => {
-      const body = this.document.querySelector("[data-title-drawer-body]");
+    this.window?.setTimeout?.(() => {
+      const body = this.document?.querySelector?.("[data-title-drawer-body]");
       if (!body || body.textContent.includes("Gnossienne No. 1")) return;
       body.textContent = `${body.textContent}\n\n${THEME_CREDIT}`;
     }, 0);
@@ -56,6 +56,7 @@ export class TitleScreenAudioGate {
 
   waitForStart() {
     if (this.waitPromise) return this.waitPromise;
+    if (!this.document || !this.window) return Promise.resolve(false);
 
     this.root = this.document.getElementById("viceblood-title-screen");
     this.bootMessage = this.root?.querySelector("[data-title-boot-message]") || null;
@@ -80,7 +81,7 @@ export class TitleScreenAudioGate {
   }
 
   bindUnlockListeners() {
-    if (this.listenersBound || !this.root) return;
+    if (this.listenersBound || !this.root || !this.window) return;
     this.listenersBound = true;
     this.window.addEventListener("keydown", this.boundKeydown, true);
     this.root.addEventListener("pointerdown", this.boundPointer, true);
@@ -90,7 +91,7 @@ export class TitleScreenAudioGate {
   unbindUnlockListeners() {
     if (!this.listenersBound) return;
     this.listenersBound = false;
-    this.window.removeEventListener("keydown", this.boundKeydown, true);
+    this.window?.removeEventListener?.("keydown", this.boundKeydown, true);
     this.root?.removeEventListener("pointerdown", this.boundPointer, true);
     this.root?.removeEventListener("touchstart", this.boundTouch, true);
   }
@@ -102,7 +103,7 @@ export class TitleScreenAudioGate {
   }
 
   unlock(event) {
-    if (!this.waitPromise || this.window.NBD_TITLE_AUDIO_GATE_STATE === "unlocking") return;
+    if (!this.waitPromise || this.window?.NBD_TITLE_AUDIO_GATE_STATE === "unlocking") return;
     event?.preventDefault?.();
     event?.stopPropagation?.();
     this.window.NBD_TITLE_AUDIO_GATE_STATE = "unlocking";
