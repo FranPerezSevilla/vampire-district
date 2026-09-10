@@ -41,7 +41,6 @@ function phaserScriptSources() {
 
 let playtestBootCover = null;
 
-// Automation/direct-game boot bypasses the production title surface completely.
 if (bootProfile.enableHarness) titleScreenController.disableForHarness();
 
 function publishPhaserSource({ kind, src = null, version = PHASER_VERSION }) {
@@ -152,11 +151,13 @@ try {
   await import("./campaign/preload.js");
   await import("./police/VehicleIncidentPoliceWitnessPolicy.js");
 
-  const [{ UIScene }, { installDomainUiBridge }] = await Promise.all([
+  const [{ UIScene }, { installDomainUiBridge }, { installDomainViewportPortal }] = await Promise.all([
     import("./scenes/UIScene.js"),
-    import("./vampire/DomainUiBridge.js")
+    import("./vampire/DomainUiBridge.js"),
+    import("./vampire/DomainViewportPortal.js")
   ]);
   installDomainUiBridge(UIScene);
+  installDomainViewportPortal(UIScene);
   if (bootProfile.mode === BOOT_MODES.PLAYTEST) installPlaytestIntroPolicy(UIScene);
 
   await import("./main.js");
@@ -164,8 +165,6 @@ try {
   await import("./responsive-layout.js");
   await import("./campaign/bootstrap.js");
   await import("./tutorial/bootstrap.js");
-  // Campaign entry and the refuge mission board are intentionally not booted
-  // while the production mission registry is empty.
   await import("./vehicles/maintenance-bootstrap.js");
 
   if (bootProfile.mode === BOOT_MODES.PLAYTEST) {
