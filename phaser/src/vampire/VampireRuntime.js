@@ -185,6 +185,9 @@ export class VampireRuntime {
   available() {
     return Boolean(this.service && this.scene.currentInputFrame?.worldEnabled && !this.scene.registry?.get?.("uiPaused") && !this.scene.transitionSystem?.active && !this.scene.playerDamageSystem?.isDead?.() && !this.frenzy.active);
   }
+  domainAvailable() {
+    return Boolean(this.service && !this.scene.registry?.get?.("uiPaused") && !this.scene.transitionSystem?.active && !this.scene.playerDamageSystem?.isDead?.() && !this.frenzy.active);
+  }
   outcome(result) { if (result && !result.ok) this.notice(result.text); this.persistBody(); if (this.campaign.autoSave) this.campaign.save(); return result; }
   useBlood() {
     if (!this.available() || this.scene.feedingSystem?.isActive?.()) return false;
@@ -236,7 +239,7 @@ export class VampireRuntime {
     return this.outcome(this.service.saveMarker({ ...position, label: destination?.label, target: target === "player" || target === "delivery" ? null : target }));
   }
   openDomain(tab = "overview", target = null) {
-    if (!this.available() || this.scene.feedingSystem?.isActive?.()) return false;
+    if (!this.domainAvailable() || this.scene.feedingSystem?.isActive?.()) return false;
     this.domain.show(tab, target);
     const options = DOMAIN_TABS.map(label => this.option(`domain:${label.toLowerCase()}`, label, "Open this section", () => this.openDomain(label.toLowerCase())));
     options.push(this.option("domain:close", "Return to city", "Resume play", () => {}));
