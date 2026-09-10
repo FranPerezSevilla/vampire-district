@@ -8,14 +8,17 @@ test("main menu theme asset is committed and owned by the title-screen flow", ()
   const main = source("phaser/src/main.js");
   const menuScene = source("phaser/src/scenes/MainMenuScene.js");
   const gate = source("phaser/src/ui/TitleScreenAudioGate.js");
+  const preloader = source("phaser/src/ui/TitleAssetPreloader.js");
 
   assert.ok(existsSync(new URL("../phaser/assets/audio/music/main-menu-theme-01.mp3", import.meta.url)));
   assert.match(main, /main-menu-theme-01\.mp3/);
   assert.match(main, /audio\.loop = true/);
   assert.match(main, /MAIN_MENU_THEME_VOLUME = 0\.28/);
-  assert.match(menuScene, /titleScreenAudioGate\.waitForStart\(\)[\s\S]*titleScreenController\.present/);
-  assert.match(menuScene, /awaiting-audio-start/);
-  assert.match(menuScene, /titleScreenAudioGate\.fadeOut\(430\)/);
+  assert.match(menuScene, /preloadTitleExperience\(\)/);
+  assert.match(menuScene, /waiting-for-title-assets/);
+  assert.match(menuScene, /Promise\.resolve\(this\.assetsReady\)[\s\S]*awaiting-user-gesture[\s\S]*titleScreenAudioGate\.waitForStart\(\)[\s\S]*titleScreenController\.present/);
+  assert.match(preloader, /Promise\.all\(jobs\)/);
+  assert.match(menuScene, /titleScreenAudioGate\.fadeOut\(MENU_TO_GAME_MS\)/);
   assert.match(gate, /PRESS ANY KEY TO START/);
 });
 
