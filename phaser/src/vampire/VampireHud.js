@@ -1,5 +1,12 @@
 // A projection of the gameplay service. No game state, timers or key reader live
 // here; the runtime owns refresh and the existing interaction menu owns choices.
+export function objectiveBearing(player, target) {
+  if (!player || !target || !Number.isFinite(player.x) || !Number.isFinite(player.y) || !Number.isFinite(target.x) || !Number.isFinite(target.y)) return null;
+  const dx = target.x - player.x, dy = target.y - player.y;
+  const distance = Math.hypot(dx, dy);
+  return { distance, angle: Math.atan2(dy, dx) * 180 / Math.PI + 90 };
+}
+
 export class VampireHud {
   constructor(runtime, document = globalThis.document) {
     this.runtime = runtime;
@@ -82,16 +89,13 @@ export class VampireHud {
     this.root.dataset.frenzy = model.frenzy ? "true" : "false";
 
     const target = this.runtime.guideTarget?.();
-    const player = this.runtime.scene?.player;
-    if (this.objective && target && player && !model.locked) {
-      const dx = target.x - player.x, dy = target.y - player.y;
-      const distance = Math.hypot(dx, dy);
-      const angle = Math.atan2(dy, dx) * 180 / Math.PI + 90;
-      const show = Number.isFinite(distance) && distance > 72;
+    const bearing = objectiveBearing(this.runtime.scene?.player, target);
+    if (this.objective && bearing && !model.locked) {
+      const show = bearing.distance > 72;
       this.objective.style.display = show ? "flex" : "none";
       if (show) {
-        this.objectiveArrow.style.transform = `rotate(${angle}deg)`;
-        this.set(this.objectiveText, `${target.label} · ${Math.round(distance)}`);
+        this.objectiveArrow.style.transform = `rotate(${bearing.angle}deg)`;
+        this.set(this.objectiveText, `${target.label} · ${Math.round(bearing.distance)}`);
       }
     } else if (this.objective) this.objective.style.display = "none";
   }
