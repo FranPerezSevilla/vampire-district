@@ -22,25 +22,33 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-      - name: Prepare rewrite dependencies
-        run: npm install --save-exact --ignore-scripts --no-audit --no-fund react@19 react-dom@19 @radix-ui/react-dialog @radix-ui/react-tabs esbuild jsdom
+          node-version: 22.16.0
+      - name: Prepare compatible rewrite dependencies
+        run: npm install --save-exact --legacy-peer-deps --ignore-scripts --no-audit --no-fund react@19.2.0 react-dom@19.2.0 @radix-ui/react-dialog@1.1.15 @radix-ui/react-tabs@1.1.13 esbuild@0.25.5 jsdom@26.1.0
+      - name: Prepare offline development capsule
+        if: always()
+        run: |
+          git bundle create /tmp/source.bundle --all
+          tar --exclude=.git --exclude=.artifacts --exclude=test-results --exclude=playwright-report -czf /tmp/ui-workspace.tar.gz .
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-rewrite-workspace
+          path: |
+            /tmp/ui-workspace.tar.gz
+            /tmp/source.bundle
+          retention-days: 2
       - name: Native validation (no browsers)
         shell: bash
         run: |
           set -o pipefail
           npm run check:fast 2>&1 | tee /tmp/ui-native.log
           npm run check:affected:plan -- --base=origin/main > /tmp/ui-affected-plan.log
-      - name: Prepare offline development capsule
-        run: |
-          git bundle create /tmp/source.bundle --all
-          tar --exclude=.git --exclude=.artifacts --exclude=test-results --exclude=playwright-report -czf /tmp/ui-workspace.tar.gz .
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: ui-rewrite-workspace
+          name: ui-rewrite-diagnostics
           path: |
-            /tmp/ui-workspace.tar.gz
-            /tmp/source.bundle
             /tmp/ui-native.log
             /tmp/ui-affected-plan.log
           retention-days: 2
