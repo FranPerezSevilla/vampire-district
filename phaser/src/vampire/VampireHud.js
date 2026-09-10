@@ -41,13 +41,35 @@ export class VampireHud {
     actions.append(this.network, this.map, this.job, this.blood);
     this.root.append(this.stage, this.guide, this.errand, actions, this.notice);
     host.append(this.root);
+
+    this.objective = document.createElement("div");
+    this.objective.setAttribute("aria-hidden", "true");
+    Object.assign(this.objective.style, {
+      position: "absolute", left: "50%", bottom: "84px", transform: "translateX(-50%)",
+      display: "none", alignItems: "center", gap: "8px", padding: "6px 10px",
+      background: "rgba(8,11,18,.88)", border: "1px solid rgba(255,220,147,.55)",
+      boxShadow: "0 8px 24px rgba(0,0,0,.35)", color: "#ffdc93", font: "700 11px/1.2 Arial, Helvetica, sans-serif",
+      pointerEvents: "none", zIndex: "24"
+    });
+    this.objectiveArrow = document.createElement("span");
+    this.objectiveArrow.textContent = "▲";
+    Object.assign(this.objectiveArrow.style, {
+      display: "inline-block", fontSize: "20px", lineHeight: "20px", transformOrigin: "50% 50%",
+      textShadow: "0 0 8px rgba(255,220,147,.55)"
+    });
+    this.objectiveText = document.createElement("span");
+    this.objective.append(this.objectiveArrow, this.objectiveText);
+    host.append(this.objective);
     this.root.hidden = true;
   }
   set(node, text) { if (node && node.textContent !== text) node.textContent = text; }
   render(model) {
     if (!this.root) return;
     this.root.hidden = !model.visible;
-    if (!model.visible) return;
+    if (!model.visible) {
+      if (this.objective) this.objective.style.display = "none";
+      return;
+    }
     this.set(this.stage, `${model.stage.toUpperCase()} · $${Math.floor(model.cash)}`);
     this.set(this.guide, model.guide);
     this.set(this.errand, model.errand);
@@ -58,6 +80,20 @@ export class VampireHud {
     this.job.disabled = model.locked;
     this.set(this.notice, model.notice);
     this.root.dataset.frenzy = model.frenzy ? "true" : "false";
+
+    const target = this.runtime.guideTarget?.();
+    const player = this.runtime.scene?.player;
+    if (this.objective && target && player && !model.locked) {
+      const dx = target.x - player.x, dy = target.y - player.y;
+      const distance = Math.hypot(dx, dy);
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+      const show = Number.isFinite(distance) && distance > 72;
+      this.objective.style.display = show ? "flex" : "none";
+      if (show) {
+        this.objectiveArrow.style.transform = `rotate(${angle}deg)`;
+        this.set(this.objectiveText, `${target.label} · ${Math.round(distance)}`);
+      }
+    } else if (this.objective) this.objective.style.display = "none";
   }
-  destroy() { this.root?.remove?.(); }
+  destroy() { this.root?.remove?.(); this.objective?.remove?.(); }
 }
