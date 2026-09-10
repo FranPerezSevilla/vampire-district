@@ -337,7 +337,7 @@ ExposureSystem  reported supernatural evidence → Veil pressure / hunter intere
 EvidenceSystem  physical scene facts and cleanup interactions
 ```
 
-Heat and Exposure may diverge. Physical cleanup can resolve latent proof, but cannot erase a report already retained by an institution. Campaign schema v5 and checkpoint v3 persist both authorities.
+Heat and Exposure may diverge. Physical cleanup can resolve latent proof, but cannot erase a report already retained by an institution. Campaign schema v6 and checkpoint v3 preserve both authorities alongside the vampire network.
 
 ## Vehicle and traffic boundaries
 
@@ -480,8 +480,10 @@ PR #73 completed the physical traffic, transit, density, CPU and Pages radio wor
 
 ### Next planned gameplay work
 
-- Milestone 15.8 persistent hunter investigation (planned, not started by this integration);
-- connect faction sites, patrols and suppliers to the territory authority;
+- Review the implemented [vampire city power](VAMPIRE_CITY_POWER.md) progression: contacts, favours, supply, investments and Prince recognition. The user withdrew hunter investigation from the active direction.
+- `CampaignSystem.vampire` owns network operations inside schema 6; wallet, reputation and hunting-law ownership remain unchanged.
+- `VampireRuntime` projects world contacts and interaction choices. `FrenzyController` filters the existing frame at Hunger 100; GameplayRuntime still owns movement and feeding order.
+- Expand faction sites and patrols after player review of the integrated progression;
 - safehouses, stash and ammunition economy;
 - Retainers;
 - expanded arsenal and vehicle combat;

@@ -28,6 +28,7 @@ import { RawAudio } from "../systems/RawAudioSystem.js";
 import { installVehicleCollisionSofteningPolicy } from "../vehicles/VehicleCollisionSofteningPolicy.js";
 import { VehicleSystem } from "../vehicles/VehicleSystem.js";
 import { GameplayRuntime as GameplayRuntimeCore } from "./GameplayRuntimeCore.js";
+import { VampireRuntime } from "../vampire/VampireRuntime.js";
 import { installPublishStateInstrumentation } from "./PublishStateInstrumentation.js";
 import { enrichVehicleInputFrame, filterVehicleAwareInteractions } from "./VehicleRuntimeAdapter.js";
 
@@ -125,6 +126,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.motorizedPoliceContainmentPolicy = installMotorizedPoliceContainmentPolicy(scene.motorizedPoliceSystem);
     scene.territoryRuntimeSystem = new TerritoryRuntimeSystem(scene);
     scene.huntingLawRuntimeSystem = new HuntingLawRuntimeSystem(scene);
+    scene.vampireRuntime = new VampireRuntime(scene);
     scene.npcSystem?.refreshVisibility?.();
     scene.vehicleSystem?.refreshVisibility?.();
   }
@@ -222,6 +224,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
   }
 
   destroy() {
+    this.scene.vampireRuntime?.destroy?.();
+    this.scene.vampireRuntime = null;
     this.removePublishStateInstrumentation?.();
     this.removePublishStateInstrumentation = null;
     RawAudio.stopAllVehicleEngines();

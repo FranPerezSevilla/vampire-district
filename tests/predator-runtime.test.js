@@ -35,7 +35,7 @@ test("Give In remains available during hit stun but is suppressed while driving"
   assert.equal(driving.bloodSensePressed, false);
 });
 
-test("100 Hunger remains Beast pressure rather than automatic death or frenzy failure", () => {
+test("100 Hunger does not make the damage authority kill the player or fail a mission", () => {
   globalThis.Phaser = {
     Scenes: { Events: { SHUTDOWN: "shutdown" } }
   };

@@ -228,3 +228,23 @@ test("InputSystem clears held pointer and keyboard state on reset", () => {
   assert.equal(keys.w.isDown, false);
   input.destroy();
 });
+
+test("domain buttons own Enter activation while E and menu navigation still use the existing frame", () => {
+  const { scene, keys } = makeScene();
+  const input = new InputSystem(scene, { keys });
+  try {
+    documentTarget.activeElement = { closest: selector => selector === ".vampire-domain button" ? {} : null };
+    keys.enter._justDown = true;
+    assert.equal(input.beginFrame().menuConfirmPressed, false);
+    keys.interact._justDown = true;
+    assert.equal(input.beginFrame().menuConfirmPressed, true);
+    keys.five._justDown = true;
+    assert.equal(input.beginFrame().menuDigitPressed, 5);
+    documentTarget.activeElement = null;
+    keys.enter._justDown = true;
+    assert.equal(input.beginFrame().menuConfirmPressed, true);
+  } finally {
+    documentTarget.activeElement = null;
+    input.destroy();
+  }
+});

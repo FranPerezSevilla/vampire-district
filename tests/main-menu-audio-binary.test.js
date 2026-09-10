@@ -33,6 +33,8 @@ test("theme warms during boot while splash remains the interaction gate", () => 
   assert.match(main, /audio\.preload = "auto"/);
   assert.match(scene, /titleScreenAudioGate\.waitForStart\(\)[\s\S]*titleScreenController\.present/);
   assert.match(gate, /PRESS ANY KEY TO START/);
-  assert.match(gate, /const started = await this\.theme\?\.start\?\.\(\)/);
-  assert.match(gate, /if \(!started\)/);
+  assert.match(gate, /const startAttempt = this\.theme\?\.start\?\.\(\)/);
+  assert.match(gate, /Promise\.resolve\(startAttempt\)/);
+  assert.match(gate, /resolve\?\.\(true\)/);
+  assert.doesNotMatch(gate, /await this\.theme\?\.start/);
 });

@@ -19,10 +19,10 @@ export const WHISPER_COMMANDS = Object.freeze({
 });
 
 export const WHISPER_COMMAND_CONFIG = Object.freeze({
-  [WHISPER_COMMANDS.COME_HERE]: Object.freeze({ label: "Come here", cost: 8, difficulty: 0, duration: 7.0 }),
+  [WHISPER_COMMANDS.COME_HERE]: Object.freeze({ label: "Come here", cost: 6, difficulty: 0, duration: 7.0 }),
   [WHISPER_COMMANDS.WALK_AWAY]: Object.freeze({ label: "Walk away", cost: 7, difficulty: 0, duration: 8.0 }),
   [WHISPER_COMMANDS.STAY_CALM]: Object.freeze({ label: "Stay calm", cost: 10, difficulty: 1, duration: 6.0 }),
-  [WHISPER_COMMANDS.FORGET_THIS]: Object.freeze({ label: "Forget this", cost: 16, difficulty: 2, duration: 0 }),
+  [WHISPER_COMMANDS.FORGET_THIS]: Object.freeze({ label: "Forget this", cost: 6, difficulty: 2, duration: 0 }),
   [WHISPER_COMMANDS.OPEN_IT]: Object.freeze({ label: "Open it", cost: 12, difficulty: 1, duration: 0 }),
   [WHISPER_COMMANDS.GET_IN]: Object.freeze({ label: "Get in", cost: 10, difficulty: 1, duration: 10.0 }),
   [WHISPER_COMMANDS.CALL_THEM_OFF]: Object.freeze({ label: "Call them off", cost: 22, difficulty: 3, duration: 0 })

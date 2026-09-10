@@ -1,10 +1,9 @@
 const THEME_FADE_MS = 430;
 const THEME_CREDIT = "MUSIC\n“Gnossienne No. 1” — Erik Satie (1890).\nArranged for ViceBlood.";
 const START_COPY = "PRESS ANY KEY TO START";
-const RETRY_COPY = "CLICK OR PRESS A KEY TO ENABLE AUDIO";
 
 export class TitleScreenAudioGate {
-  constructor({ documentRef = document, windowRef = window } = {}) {
+  constructor({ documentRef = globalThis.document, windowRef = globalThis.window } = {}) {
     this.document = documentRef;
     this.window = windowRef;
     this.root = null;
@@ -19,11 +18,11 @@ export class TitleScreenAudioGate {
   }
 
   get theme() {
-    return this.window.NBD_MAIN_MENU_THEME || null;
+    return this.window?.NBD_MAIN_MENU_THEME || null;
   }
 
   installPulseStyle() {
-    if (this.document.getElementById("viceblood-title-audio-style")) return;
+    if (!this.document || this.document.getElementById("viceblood-title-audio-style")) return;
     const style = this.document.createElement("style");
     style.id = "viceblood-title-audio-style";
     style.textContent = `
@@ -31,8 +30,7 @@ export class TitleScreenAudioGate {
         0%,100% { opacity:.42; transform:translateY(0); }
         50% { opacity:1; transform:translateY(-2px); }
       }
-      .viceblood-title-boot-message[data-audio-gate="waiting"],
-      .viceblood-title-boot-message[data-audio-gate="blocked"] {
+      .viceblood-title-boot-message[data-audio-gate="waiting"] {
         color: rgba(241,237,230,.9) !important;
         animation: viceblood-title-audio-pulse 1.55s ease-in-out infinite;
       }
@@ -41,7 +39,7 @@ export class TitleScreenAudioGate {
   }
 
   installCreditsObserver(root) {
-    if (this.creditsObserver || typeof this.window.MutationObserver !== "function") return;
+    if (this.creditsObserver || typeof this.window?.MutationObserver !== "function") return;
     this.creditsObserver = new this.window.MutationObserver(() => {
       if (root.dataset.panel === "credits") this.refreshCredits();
     });
@@ -49,8 +47,8 @@ export class TitleScreenAudioGate {
   }
 
   refreshCredits() {
-    this.window.setTimeout(() => {
-      const body = this.document.querySelector("[data-title-drawer-body]");
+    this.window?.setTimeout?.(() => {
+      const body = this.document?.querySelector?.("[data-title-drawer-body]");
       if (!body || body.textContent.includes("Gnossienne No. 1")) return;
       body.textContent = `${body.textContent}\n\n${THEME_CREDIT}`;
     }, 0);
@@ -58,6 +56,7 @@ export class TitleScreenAudioGate {
 
   waitForStart() {
     if (this.waitPromise) return this.waitPromise;
+    if (!this.document || !this.window) return Promise.resolve(false);
 
     this.root = this.document.getElementById("viceblood-title-screen");
     this.bootMessage = this.root?.querySelector("[data-title-boot-message]") || null;
@@ -82,7 +81,7 @@ export class TitleScreenAudioGate {
   }
 
   bindUnlockListeners() {
-    if (this.listenersBound || !this.root) return;
+    if (this.listenersBound || !this.root || !this.window) return;
     this.listenersBound = true;
     this.window.addEventListener("keydown", this.boundKeydown, true);
     this.root.addEventListener("pointerdown", this.boundPointer, true);
@@ -92,7 +91,7 @@ export class TitleScreenAudioGate {
   unbindUnlockListeners() {
     if (!this.listenersBound) return;
     this.listenersBound = false;
-    this.window.removeEventListener("keydown", this.boundKeydown, true);
+    this.window?.removeEventListener?.("keydown", this.boundKeydown, true);
     this.root?.removeEventListener("pointerdown", this.boundPointer, true);
     this.root?.removeEventListener("touchstart", this.boundTouch, true);
   }
@@ -103,23 +102,22 @@ export class TitleScreenAudioGate {
     this.unlock(event);
   }
 
-  async unlock(event) {
-    if (!this.waitPromise || this.window.NBD_TITLE_AUDIO_GATE_STATE === "unlocking") return;
+  unlock(event) {
+    if (!this.waitPromise || this.window?.NBD_TITLE_AUDIO_GATE_STATE === "unlocking") return;
     event?.preventDefault?.();
     event?.stopPropagation?.();
     this.window.NBD_TITLE_AUDIO_GATE_STATE = "unlocking";
 
-    const started = await this.theme?.start?.();
-    if (!started) {
+    // The user gesture must initiate play, but audio readiness must never gate UI.
+    // The parser-preloaded media normally starts immediately; cold/slow media may
+    // finish asynchronously while the already-created title menu is presented.
+    const startAttempt = this.theme?.start?.();
+    Promise.resolve(startAttempt).then(started => {
+      this.window.NBD_TITLE_AUDIO_GATE_STATE = started ? "playing" : "blocked";
+    }).catch(() => {
       this.window.NBD_TITLE_AUDIO_GATE_STATE = "blocked";
-      if (this.bootMessage) {
-        this.bootMessage.textContent = RETRY_COPY;
-        this.bootMessage.dataset.audioGate = "blocked";
-      }
-      return;
-    }
+    });
 
-    this.window.NBD_TITLE_AUDIO_GATE_STATE = "playing";
     if (this.bootMessage) {
       this.bootMessage.textContent = "The city never sleeps";
       delete this.bootMessage.dataset.audioGate;

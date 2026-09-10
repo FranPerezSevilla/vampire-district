@@ -379,7 +379,12 @@ export class UIScene extends Phaser.Scene {
         handled = true;
       }
     } else if (code === "Escape") {
-      if (this.ledgerOpen) {
+      const domainScene = this.scene.get("GameScene");
+      if (!this.modalBlocksInput() && domainScene?.interactionSystem?.menu?.view === "vampire-domain") {
+        domainScene.interactionSystem.close("Back to the city.");
+        domainScene.vampireRuntime?.domain?.render?.(null);
+        handled = true;
+      } else if (this.ledgerOpen) {
         this.closeNightLedger();
         handled = true;
       } else if (this.resultOpen && this.resultType === "success") {
@@ -438,7 +443,9 @@ export class UIScene extends Phaser.Scene {
       this.dom.ledgerButton.classList.toggle("signal", (this.time?.now || 0) < this.ledgerSignalUntil);
     }
     this.setText(this.dom.ledgerBadge, ledger?.alertCount > 99 ? "99+" : ledger?.alertCount || "");
-    this.setText(this.dom.missionStep, this.missionProgressLabel(data.mission, data.campaignMission));
+    const vampire = this.scene.get("GameScene")?.vampireRuntime?.service;
+    this.setText(this.dom.missionButton?.querySelector?.("span"), vampire ? "ERRAND" : "MISSION");
+    this.setText(this.dom.missionStep, vampire ? (vampire.state.job ? vampire.state.job.stage === "collected" ? "2/2" : "1/2" : "NONE") : this.missionProgressLabel(data.mission, data.campaignMission));
 
     const weapon = data.weapon || {};
     this.setText(this.dom.weaponName, weapon.name || "Unarmed");
@@ -499,6 +506,8 @@ export class UIScene extends Phaser.Scene {
     const text = String(powersText || "");
     const beastState = text.match(/BeastState\s+([A-Z]+)/i)?.[1]?.toUpperCase() || "CONTROLLED";
     const beastActive = Number.parseFloat(text.match(/GiveIn\s+([0-9.]+)/i)?.[1] || "0") || 0;
+    const frenzy = Boolean(this.registry?.get?.("vampireFrenzy"));
+    const exhausted = Boolean(this.registry?.get?.("vampireExhausted"));
     for (const [id, config] of Object.entries(POWER_CONFIG)) {
       const node = this.dom.powers[id];
       if (!node) continue;
@@ -508,10 +517,12 @@ export class UIScene extends Phaser.Scene {
       const remaining = this.cooldownFor(text, config.label);
       const active = id === "beast" && beastActive > 0;
       node.classList.toggle("active", active);
-      node.classList.toggle("cooldown", remaining > 0 && !active);
+      node.classList.toggle("cooldown", frenzy || exhausted || (remaining > 0 && !active));
       const state = node.querySelector(".power-state");
       if (!state) continue;
-      if (active) state.textContent = `ACTIVE ${beastActive.toFixed(1)}s`;
+      if (frenzy) state.textContent = id === "beast" ? "FRENZY" : "LOCKED";
+      else if (exhausted) state.textContent = "EXHAUSTED";
+      else if (active) state.textContent = `ACTIVE ${beastActive.toFixed(1)}s`;
       else if (remaining > 0) state.textContent = `${remaining.toFixed(1)}s`;
       else state.textContent = id === "beast" ? beastState : "Ready";
       if (id === "beast") node.dataset.beastState = beastState.toLowerCase();
@@ -542,7 +553,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   renderInteractionMenu(menu) {
-    const open = !this.modalBlocksInput() && Boolean(menu?.options?.length);
+    const open = !this.modalBlocksInput() && menu?.view !== "vampire-domain" && Boolean(menu?.options?.length);
     if (!this.dom.interactionMenu) return;
     this.dom.interactionMenu.classList.toggle("open", open);
     if (!open) {
@@ -559,7 +570,8 @@ export class UIScene extends Phaser.Scene {
       return `<div class="interaction-row${selected}"><span>${index + 1}. ${this.escapeHtml(option.label)}</span><small>${this.escapeHtml(detail)}</small></div>`;
     }).join("");
     const markup = `
-      <h3>Choose interaction</h3>
+      <h3>${this.escapeHtml(menu.title || "Choose interaction")}</h3>
+      ${menu.detail ? `<p>${this.escapeHtml(menu.detail)}</p>` : ""}
       <p>W/S or arrows · E/Enter confirm · Esc cancel · 1-9 quick select</p>
       ${rows}
     `;
@@ -741,6 +753,12 @@ export class UIScene extends Phaser.Scene {
 
   toggleMissionDrawer() {
     if (this.modalBlocksInput() || this.registry.get("taskRevealActive")) return;
+    const gameScene = this.scene.get("GameScene"), vampire = gameScene?.vampireRuntime;
+    if (vampire) {
+      if (gameScene.interactionSystem?.menu?.view === "vampire-domain" && vampire.domain.tab === "errand") gameScene.interactionSystem.close("Back to the city.");
+      else vampire.openDomain("errand");
+      return;
+    }
     this.missionOpen = !this.missionOpen;
   }
 
@@ -757,6 +775,8 @@ export class UIScene extends Phaser.Scene {
     if (paused === this.lastUiPaused) return;
     this.lastUiPaused = paused;
     this.registry.set("uiPaused", paused);
+    const gameScene = this.scene.get("GameScene");
+    gameScene?.vampireRuntime?.domain?.render?.(gameScene.interactionSystem?.menu, paused);
     if (paused) this.scene.pause("GameScene");
     else this.scene.resume("GameScene");
   }

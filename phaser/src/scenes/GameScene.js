@@ -115,6 +115,7 @@ export class GameScene extends GameSceneCore {
       options.push(...(this.vehicleSystem?.collectInteractions?.() || []));
       options.push(...(this.trafficMaterializationSystem?.collectInteractions?.() || []));
       options.push(...(this.deathRecoverySystem?.collectInteractions?.() || []));
+      options.push(...(this.vampireRuntime?.collectInteractions?.() || []));
     }
     return options;
   }

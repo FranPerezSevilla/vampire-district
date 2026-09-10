@@ -4,6 +4,8 @@
 
 The long-term structure is intentionally GTA2-like: readable districts, vehicles, traffic, weapons, factions, territory, cash and systemic police chaos. The original vampire setting adds Hunger, feeding, powers, rooftops, sewers, Retainers, safehouses and political consequences.
 
+Vampire progression now runs from survival to **Prince of the city**: earn contact introductions, complete supply deliveries, repay favours, obtain blood and hunting access, invest in businesses, buy control and earn political support. **DOMAIN** organizes objectives, contacts, herd, resources, the single active errand and a city map with saved markers. See [Vampire city power](docs/VAMPIRE_CITY_POWER.md) for the playable sequence and exact rules. PR #83 is published for player review through the existing Pages review branch.
+
 The current public build is a **persistent free-roam systems sandbox** running City Topology V2: a `4800 × 3600` world with exactly five times the previous area.
 
 Open `index.html` through a local/static web server, or use the [published GitHub Pages build](https://franperezsevilla.github.io/vampire-district/). ES modules will not work reliably through every browser's `file://` mode.
@@ -17,6 +19,10 @@ Available systems:
 - responsive Phaser presentation and selectable internal render quality;
 - street, rooftop and sewer traversal;
 - Hunger, feeding and vampire powers;
+- involuntary feeding frenzy at Hunger 100, with warnings at 85/95 and bounded exhaustion;
+- four named vampire contacts, two persistent human donors and three businesses with production and operating policies;
+- DOMAIN/MAP/ERRAND/BLOOD HUD actions, earned introductions, permitted herd and hunting grounds, eight saved markers and explicit agreement/debt feedback;
+- an earned Prince compact granting hunting access across all fourteen districts;
 - separate NPC sight/hearing reactions;
 - witnesses, evidence and exposure;
 - foot-police escalation, containment, arrest and helicopter pressure;
