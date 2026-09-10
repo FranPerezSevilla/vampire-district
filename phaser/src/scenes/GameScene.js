@@ -127,6 +127,7 @@ export class GameScene extends GameSceneCore {
   }
 
   updateCameraForLayer() {
+    if (this.registry?.get?.("mainMenuActive")) return;
     if (this.vehicleSystem?.isDriving?.() && this.vehicleSystem.updateCamera()) return;
     super.updateCameraForLayer();
   }

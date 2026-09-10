@@ -1,6 +1,5 @@
 import { BOOT_MODES, bootProfile } from "./boot/BootProfile.js";
 import { titleScreenController } from "./ui/TitleScreenController.js";
-import "./vampire/DomainUiHardening.js";
 
 const PHASER_VERSION = "3.90.0";
 const PLAYTEST_ASSET_VERSION = "2026-08-03-vehicle-incidents-1";
@@ -106,29 +105,6 @@ async function preparePlaytestEntry() {
   playtestBootCover.showPlaytestBootCover();
 }
 
-function installPlaytestIntroPolicy(UIScene) {
-  const prototype = UIScene?.prototype;
-  if (!prototype || prototype.__nbdPlaytestIntroPolicy) return;
-  const originalOpenModal = prototype.openModal;
-  if (typeof originalOpenModal !== "function") return;
-
-  prototype.openModal = function playtestAwareOpenModal(type) {
-    if (type === "intro" && bootProfile.playtestSession) {
-      this.introOpen = false;
-      this.pauseOpen = false;
-      this.resultOpen = false;
-      this.ledgerOpen = false;
-      return false;
-    }
-    return originalOpenModal.call(this, type);
-  };
-
-  Object.defineProperty(prototype, "__nbdPlaytestIntroPolicy", {
-    value: true,
-    configurable: true
-  });
-}
-
 function renderBootFailure(error) {
   console.error("Viceblood failed to boot", error);
   if (titleScreenController.showFailure(error)) return;
@@ -151,18 +127,12 @@ try {
   await import("./campaign/preload.js");
   await import("./police/VehicleIncidentPoliceWitnessPolicy.js");
 
-  const [{ UIScene }, { installDomainUiBridge }, { installDomainViewportPortal }] = await Promise.all([
-    import("./scenes/UIScene.js"),
-    import("./vampire/DomainUiBridge.js"),
-    import("./vampire/DomainViewportPortal.js")
-  ]);
-  installDomainUiBridge(UIScene);
-  installDomainViewportPortal(UIScene);
-  if (bootProfile.mode === BOOT_MODES.PLAYTEST) installPlaytestIntroPolicy(UIScene);
-
-  await import("./main.js");
-  await import("./ui/AccessibilityKeyboardBridge.js");
+  // Load the compiled presentation before any scene is created. It contains
+  // React/Radix only, never another copy of Phaser or campaign services.
+  const interfaceView = await import("../ui-dist/interface.js");
+  window.NBD_INTERFACE_VIEW = interfaceView;
   await import("./responsive-layout.js");
+  await import("./main.js");
   await import("./campaign/bootstrap.js");
   await import("./tutorial/bootstrap.js");
   await import("./vehicles/maintenance-bootstrap.js");

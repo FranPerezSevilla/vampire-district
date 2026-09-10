@@ -1,17 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
-const source = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
-
-test("domain UI hardening is installed before gameplay boot", () => {
-  const bootstrap = source("phaser/src/app-bootstrap.js");
-  const hardening = source("phaser/src/vampire/DomainUiHardening.js");
-
-  assert.match(bootstrap, /import "\.\/vampire\/DomainUiHardening\.js"/);
-  assert.match(hardening, /proto\.show = function hardenedShow/);
-  assert.match(hardening, /root\.hidden = false/);
-  assert.match(hardening, /VICEBLOOD · YOUR DOMAIN/);
-  assert.match(hardening, /DOMAIN UI error/);
-  assert.match(hardening, /originalRender\.call\(this, menu, blocked\)/);
+test("one compiled view loads before the game without retired render bridges", () => {
+  const source = readFileSync(new URL("../phaser/src/app-bootstrap.js", import.meta.url), "utf8");
+  assert.ok(source.indexOf('import("../ui-dist/interface.js")') < source.indexOf('await import("./main.js")'));
+  for (const name of ["DomainUiBridge", "DomainUiHardening", "DomainViewportPortal", "VampireDomainPanel", "VampireHud"]) {
+    assert.equal(existsSync(new URL(`../phaser/src/vampire/${name}.js`, import.meta.url)), false);
+    assert.doesNotMatch(source, new RegExp(name));
+  }
 });

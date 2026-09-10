@@ -41,8 +41,8 @@ test("H is a remappable horn edge in the central input frame", () => {
 
 test("Escape owns the pause menu while H remains dedicated to the horn binding", () => {
   const ui = source("phaser/src/scenes/UIScene.js");
-  assert.match(ui, /else if \(code === "Escape"\)/);
-  assert.match(ui, /handled = this\.togglePause\(\)/);
+  assert.match(ui, /if \(event\.code === "Escape"\)/);
+  assert.match(ui, /if \(mode\) this\.closeActive\(\); else this\.togglePause\(\)/);
   assert.doesNotMatch(ui, /code === "KeyH"/);
   assert.doesNotMatch(ui, /uiOwnsH|hornOwnsH/);
 });

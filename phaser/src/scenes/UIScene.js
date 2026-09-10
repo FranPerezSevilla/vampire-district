@@ -1,892 +1,338 @@
+import { createUiStore } from "../ui/UiStore.js";
+import { gameUiReadMethods } from "../ui/GameUiReadModel.js";
+import { cityMapGeometry, projectGameUi } from "../ui/GameUiProjection.js";
+import { buildControlReference } from "../ui/ControlReference.js";
 import { UX_STORAGE_KEYS, normalizeBooleanPreference } from "../data/ux-guidance.js";
-import { bindingLabel } from "../input/bindings.js";
-import { installUxStyle } from "../systems/UxGuidanceSystem.js";
-import { buildNightLedgerModel } from "../ui/NightLedgerModel.js";
-import { renderNightLedgerMarkup } from "../ui/NightLedgerView.js";
+import { domainDestination } from "../vampire/VampireDomainModel.js";
+import { DOMAIN_TABS } from "../vampire/DomainNavigation.js";
 
-const POWER_CONFIG = Object.freeze({
-  dash: { label: "Dash", max: 3.0, binding: "dash" },
-  whisper: { label: "Whisper", max: 4.8, binding: "whisper" },
-  sense: { label: "Sense", max: 4.0, binding: "sense" },
-  beast: { label: "Beast", max: 18.0, binding: "beast" }
-});
+const textEntry = node => /^(INPUT|SELECT|TEXTAREA)$/.test(node?.tagName || "") || node?.isContentEditable;
+const activatable = node => Boolean(node?.closest?.("button,a,input,select,textarea,[role=tab],[role=button]"));
 
-const WANTED_LABELS = Object.freeze({
-  0: "CLEAR",
-  1: "SEARCH",
-  2: "PURSUIT",
-  3: "AIR SUPPORT"
-});
-
-function storedAimContrast() {
-  try {
-    return normalizeBooleanPreference(window.localStorage.getItem(UX_STORAGE_KEYS.AIM_HIGH_CONTRAST), false);
-  } catch {
-    return false;
-  }
-}
-
-function storeAimContrast(enabled) {
-  try {
-    window.localStorage.setItem(UX_STORAGE_KEYS.AIM_HIGH_CONTRAST, enabled ? "true" : "false");
-  } catch {
-    // The setting remains valid for the current page when storage is unavailable.
-  }
-}
-
-function isTextEntryTarget(target) {
-  const tag = String(target?.tagName || "").toUpperCase();
-  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || Boolean(target?.isContentEditable);
-}
-
-function isActivatableTarget(target) {
-  const tag = String(target?.tagName || "").toUpperCase();
-  return tag === "BUTTON" || tag === "A" || tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA";
-}
-
+/** Phaser lifecycle/input facade; React alone renders the in-game interface. */
 export class UIScene extends Phaser.Scene {
   constructor() {
     super("UIScene");
-    this.introOpen = true;
+    this.store = createUiStore();
+    this.introOpen = false;
     this.pauseOpen = false;
     this.resultOpen = false;
     this.resultType = null;
     this.resultDismissed = false;
-    this.missionOpen = false;
     this.ledgerOpen = false;
-    this.ledgerModel = null;
+    this.missionOpen = false;
+    this.external = null;
+    this.pendingAction = null;
+    this.uiError = null;
+    this.confirmation = null;
+    this.ownsPause = false;
+    this.nextRefresh = 0;
+    this.notice = "";
+    this.feedback = "";
+    this.lastAction = "";
+    this.noticeUntil = 0;
     this.ledgerRefreshAt = 0;
-    this.ledgerSignalValue = null;
-    this.ledgerSignalUntil = 0;
-    this.lastLedgerMarkup = "";
-    this.lastToastText = "";
-    this.toastUntil = 0;
-    this.lastUiPaused = null;
-    this.lastMissionMarkup = "";
-    this.lastInteractionMarkup = "";
-    this.lastModalBodyHtml = "";
-    this.pauseSnapshot = null;
-    this.onDomKeyDown = null;
+    this.renderUi = null;
   }
-
   create() {
-    this.bindDom();
-    this.openModal("intro");
-    this.updateUiPause();
-  }
-
-  bindDom() {
-    installUxStyle();
-    const $ = id => document.getElementById(id);
-    this.dom = {
-      root: $("game-ui"),
-      vitals: document.querySelector(".hud-vitals"),
-      hungerValue: $("hud-hunger-value"),
-      hungerFill: $("hud-hunger-fill"),
-      wanted: $("hud-wanted"),
-      wantedState: $("hud-wanted-state"),
-      wantedPips: [...document.querySelectorAll("[data-wanted-pip]")],
-      missionButton: $("hud-mission-button"),
-      missionStep: $("hud-mission-step"),
-      ledgerButton: $("hud-ledger-button"),
-      ledgerBadge: $("hud-ledger-badge"),
-      menuButton: $("hud-menu-button"),
-      missionDrawer: $("mission-drawer"),
-      missionCurrent: $("mission-current"),
-      missionChecklist: $("mission-checklist"),
-      missionLast: $("mission-last"),
-      ledger: $("night-ledger"),
-      ledgerContent: $("night-ledger-content"),
-      ledgerClose: $("night-ledger-close"),
-      ledgerScrim: $("night-ledger-scrim"),
-      prompt: $("hud-prompt"),
-      promptKey: document.querySelector("#hud-prompt kbd"),
-      promptText: $("hud-prompt-text"),
-      toast: $("hud-toast"),
-      toastText: $("hud-toast-text"),
-      interactionMenu: $("interaction-menu"),
-      modal: $("ui-modal"),
-      modalTitle: $("ui-modal-title"),
-      modalBody: $("ui-modal-body"),
-      modalAction: $("ui-modal-action"),
-      powers: {
-        dash: document.querySelector('[data-power="dash"]'),
-        whisper: document.querySelector('[data-power="whisper"]'),
-        sense: document.querySelector('[data-power="sense"]'),
-        beast: document.querySelector('[data-power="beast"]')
-      }
-    };
-
-    let weapon = this.dom.root?.querySelector?.(".weapon-hud");
-    if (!weapon && this.dom.root) {
-      weapon = document.createElement("div");
-      weapon.className = "weapon-hud";
-      weapon.innerHTML = `
-        <small>WEAPON</small>
-        <strong>Unarmed</strong>
-        <span>∞</span>
-        <kbd>WHEEL</kbd>
-      `;
-      this.dom.root.appendChild(weapon);
-    }
-    this.dom.weapon = weapon;
-    this.dom.weaponName = weapon?.querySelector("strong") || null;
-    this.dom.weaponAmmo = weapon?.querySelector("span") || null;
-
-    if (typeof this.registry.get("aimHighContrast") !== "boolean") {
-      this.registry.set("aimHighContrast", storedAimContrast());
-    }
-
-    this.setAttributeIfChanged(this.dom.vitals, "role", "progressbar");
-    this.setAttributeIfChanged(this.dom.vitals, "aria-valuemin", "0");
-    this.setAttributeIfChanged(this.dom.vitals, "aria-valuemax", "100");
-    this.setAttributeIfChanged(this.dom.wanted, "role", "status");
-    this.setAttributeIfChanged(this.dom.wanted, "aria-live", "polite");
-    this.setAttributeIfChanged(this.dom.prompt, "role", "status");
-    this.setAttributeIfChanged(this.dom.prompt, "aria-live", "polite");
-    this.setAttributeIfChanged(this.dom.toast, "role", "status");
-    this.setAttributeIfChanged(this.dom.toast, "aria-live", "polite");
-    this.setAttributeIfChanged(this.dom.weapon, "role", "status");
-    this.setAttributeIfChanged(this.dom.weapon, "aria-live", "polite");
-    this.setAttributeIfChanged(this.dom.ledgerButton, "aria-expanded", "false");
-    this.setAttributeIfChanged(this.dom.ledger, "aria-hidden", "true");
-
-    const modalPanel = this.dom.modal?.querySelector?.(".ui-modal-panel");
-    if (modalPanel) {
-      modalPanel.style.maxHeight = "calc(100% - 32px)";
-      modalPanel.style.overflowY = "auto";
-    }
-
-    this.dom.missionButton?.addEventListener("pointerdown", event => {
-      event.preventDefault();
-      this.toggleMissionDrawer();
-    });
-    this.dom.ledgerButton?.addEventListener("pointerdown", event => {
-      event.preventDefault();
-      this.toggleNightLedger();
-    });
-    this.dom.ledgerClose?.addEventListener("pointerdown", event => {
-      event.preventDefault();
-      this.closeNightLedger();
-    });
-    this.dom.ledgerScrim?.addEventListener("pointerdown", event => {
-      event.preventDefault();
-      this.closeNightLedger();
-    });
-    this.dom.menuButton?.addEventListener("pointerdown", event => {
-      event.preventDefault();
-      this.togglePause();
-    });
-    this.dom.modalAction?.addEventListener("pointerdown", event => {
-      event.preventDefault();
-      this.handleModalAction();
-    });
-    this.dom.root?.addEventListener("click", event => {
-      const button = event.target?.closest?.("[data-aim-contrast-toggle]");
-      if (!button) return;
-      event.preventDefault();
-      event.stopPropagation();
-      const enabled = !Boolean(this.registry.get("aimHighContrast"));
-      this.registry.set("aimHighContrast", enabled);
-      storeAimContrast(enabled);
-      this.setAttributeIfChanged(button, "aria-pressed", enabled ? "true" : "false");
-      button.textContent = `High-contrast aim: ${enabled ? "On" : "Off"}`;
-    });
-
-    this.onDomKeyDown = event => this.handleDomKeyDown(event);
-    window.addEventListener("keydown", this.onDomKeyDown);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      if (this.onDomKeyDown) window.removeEventListener("keydown", this.onDomKeyDown);
-      this.onDomKeyDown = null;
-    });
-  }
-
-  update() {
-    const data = this.readState();
-    const ledger = this.readNightLedgerState();
-    this.updateMissionResult(data);
-    this.renderHud(data, ledger);
-    this.renderMission(data);
-    this.renderPowers(data.powersText, data.inputBindings);
-    this.renderPrompt(data);
-    this.renderInteractionMenu(data.menu);
-    this.renderNightLedger(ledger);
-    this.renderModal(data);
-    this.updateUiPause();
-  }
-
-  readState() {
-    const get = (key, fallback = "") => this.registry.get(key) ?? fallback;
-    const result = this.registry.get("missionResult") || null;
-    return {
-      mission: get("missionText", "Objective unavailable"),
-      campaignMission: this.registry.get("campaignMission") || result?.mission || null,
-      visibility: get("visibilityText", "Visibility unknown"),
-      exposureText: get("exposureText", "Exposure unavailable"),
-      heatText: get("heatText", "Heat unavailable"),
-      wantedLevel: Math.max(0, Math.min(3, Number(get("wantedLevel", 0)) || 0)),
-      policeText: get("policeText", "Police unavailable"),
-      witnessText: get("witnessText", "Witnesses unavailable"),
-      hunterText: get("hunterText", "Hunters dormant"),
-      evidenceText: get("evidenceText", "Evidence unavailable"),
-      npcText: get("npcText", "NPCs unavailable"),
-      propText: get("propText", "Props unavailable"),
-      aiText: get("aiText", "AI unavailable"),
-      runtimeText: get("runtimeText", "Runtime unavailable"),
-      performanceText: get("performanceText", "Performance unavailable"),
-      hungerText: get("hungerText", "Hunger unavailable"),
-      powersText: get("powersText", "Powers unavailable"),
-      xy: get("playerXY", "0, 0"),
-      prompt: get("interactionPrompt", ""),
-      lastAction: get("lastActionText", ""),
-      menu: this.registry.get("interactionMenu") || null,
-      result,
-      weapon: this.registry.get("weaponState") || {
-        id: "unarmed",
-        name: "Unarmed",
-        ammoText: "∞",
-        empty: false,
-        inventory: ["unarmed"]
-      },
-      inputBindings: this.registry.get("inputBindings") || null
-    };
-  }
-
-  readNightLedgerState(force = false) {
-    const now = this.time?.now || 0;
-    if (!force && this.ledgerModel && now < this.ledgerRefreshAt) return this.ledgerModel;
-    this.ledgerRefreshAt = now + (this.ledgerOpen ? 120 : 360);
-
-    const gameScene = this.scene.get("GameScene");
-    const campaign = gameScene?.campaignSystem || globalThis.NBD_CAMPAIGN_SYSTEM || null;
-    let campaignSnapshot = null;
+    const root = document.getElementById("interface-root");
+    const overlay = document.getElementById("ui-overlay-host");
+    if (!root || !overlay || !globalThis.NBD_INTERFACE_VIEW?.mount) throw new Error("ViceBlood interface bundle was not prepared before gameplay.");
+    this.dom = { root: document.getElementById("game-ui") };
     try {
-      campaignSnapshot = campaign?.snapshot?.() || null;
-    } catch {
-      campaignSnapshot = null;
-    }
-    const currentDistrict = gameScene?.territoryRuntimeSystem?.current?.()
-      || gameScene?.territoryRuntimeSystem?.districtAt?.(gameScene?.player?.x, gameScene?.player?.y)
-      || null;
-    this.ledgerModel = buildNightLedgerModel({
-      campaignSnapshot,
-      currentDistrict,
-      policeState: this.collectPoliceLedgerState(gameScene),
-      now: Date.now()
+      this.registry.set("aimHighContrast", normalizeBooleanPreference(localStorage.getItem(UX_STORAGE_KEYS.AIM_HIGH_CONTRAST), false));
+    } catch { this.registry.set("aimHighContrast", false); }
+    this.renderUi = globalThis.NBD_INTERFACE_VIEW.mount(root, {
+      store: this.store, geometry: cityMapGeometry, overlay,
+      command: (type, payload) => this.command(type, payload),
+      controls: buildControlReference(this.registry.get("inputBindings")?.bindings || {})
     });
-    this.updateLedgerSignal(this.ledgerModel);
-    return this.ledgerModel;
+    this.onDomKeyDown = event => this.handleDomKeyDown(event);
+    window.addEventListener("keydown", this.onDomKeyDown, true);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup());
+    this.refresh();
   }
-
-  collectPoliceLedgerState(gameScene) {
-    if (!gameScene) return {};
-    const heatSystem = gameScene.heatSystem;
-    const exposureSystem = gameScene.exposureSystem;
-    const police = gameScene.policeSystem;
-    const witnesses = gameScene.witnessSystem;
-    const evidence = gameScene.evidenceSystem;
-    const officers = police?.police?.() || [];
-    const chasing = officers.filter(officer => officer.chasingPlayer).length;
-    const level = Math.max(0, Math.min(3, Number(heatSystem?.level?.()) || 0));
-    const hottest = heatSystem?.hottestZone?.() || police?.hottestZone?.() || null;
-    const hottestHeat = hottest
-      ? Number(heatSystem?.valueFor?.(hottest.id) ?? police?.localHeat?.[hottest.id]) || 0
-      : 0;
-    const heatSnapshot = heatSystem?.snapshot?.() || {};
-    const exposureSnapshot = exposureSystem?.snapshot?.() || {};
-    const exposureRecords = exposureSystem?.activeEvidence?.() || Object.values(exposureSnapshot.records || {});
-    const motorized = gameScene.motorizedPoliceSystem?.snapshot?.() || {};
-    const fleeing = witnesses?.alarmedWitnesses?.() || [];
-    return {
-      level,
-      heat: {
-        ...heatSnapshot,
-        level,
-        value: Number(heatSystem?.maximum?.()) || 0,
-        max: 100,
-        hottestZoneName: hottest?.name || "No hot zone",
-        hottestZoneHeat: hottestHeat,
-        incidents: heatSystem?.recent?.(10) || heatSnapshot.incidents || []
-      },
-      exposure: {
-        ...exposureSnapshot,
-        level: Math.max(0, Number(exposureSystem?.level?.()) || 0),
-        value: Number(exposureSystem?.value) || 0,
-        max: 125,
-        records: exposureRecords,
-        lastReason: exposureSystem?.lastReason || exposureSnapshot.lastReason || "No supernatural evidence is known."
-      },
-      lastReason: heatSnapshot.lastReason || "No active police escalation.",
-      summary: police?.summary?.() || "Police status unavailable",
-      footOfficers: officers.length,
-      chasingOfficers: chasing,
-      searchingOfficers: level >= 1 ? Math.max(0, officers.length - chasing) : 0,
-      motorizedUnits: Number(motorized.activeUnits) || 0,
-      desiredMotorizedUnits: Number(motorized.desiredUnits) || 0,
-      fleeingWitnesses: fleeing.length,
-      veilRiskWitnesses: fleeing.filter(witness => witness.masqueradeRisk).length,
-      witnessReports: Number(witnesses?.reports) || 0,
-      bodiesDiscovered: Number(evidence?.stats?.bodiesDiscovered) || 0,
-      bodiesHidden: Number(evidence?.stats?.bodiesHidden) || 0,
-      bloodEvidence: Array.isArray(evidence?.bloodStains) ? evidence.bloodStains.length : 0,
-      hottestZoneName: hottest?.name || "No hot zone",
-      hottestZoneHeat: hottestHeat,
-      hunterSummary: gameScene.hunterSystem?.summary?.() || "Hunters dormant"
-    };
+  game() { return this.scene.get("GameScene"); }
+  activeMode() {
+    if (this.uiError) return "error";
+    if (this.external) return this.external.id;
+    if (this.introOpen) return "intro";
+    if (this.resultOpen) return "result";
+    if (this.pauseOpen) return "pause";
+    if (this.ledgerOpen) return "ledger";
+    const menu = this.game()?.interactionSystem?.menu;
+    return menu ? menu.view === "vampire-domain" ? "domain" : "interaction" : null;
   }
-
-  updateLedgerSignal(model) {
-    if (!model?.ready) return;
-    const value = model.knownViolationCount * 10
-      + model.latentViolationCount * 3
-      + model.police.level * 4
-      + model.police.witnessReports
-      + model.exposure.knownCount * 5
-      + model.exposure.latentCount
-      + model.exposure.bodiesDiscovered;
-    if (this.ledgerSignalValue != null && value > this.ledgerSignalValue) {
-      this.ledgerSignalUntil = (this.time?.now || 0) + 1900;
-    }
-    this.ledgerSignalValue = value;
-  }
-
-  handleDomKeyDown(event) {
-    if (event.repeat || isTextEntryTarget(event.target)) return;
-    const code = event.code;
-    if (event.defaultPrevented && code !== "Escape") return;
-
-    // Let the browser activate focused buttons and links with Enter/Space. The
-    // corresponding click handler owns those controls and must not be pre-empted.
-    if ((code === "Enter" || code === "Space") && isActivatableTarget(event.target)) return;
-
-    let handled = false;
-    if (code === "Enter") {
-      if (this.introOpen) {
-        this.closeIntro();
-        handled = true;
-      } else if (this.resultOpen && this.resultType === "success") {
-        this.closeResult();
-        handled = true;
-      }
-    } else if (code === "KeyM") {
-      if (!this.modalBlocksInput() && !this.registry.get("taskRevealActive")) {
-        this.toggleMissionDrawer();
-        handled = true;
-      }
-    } else if (code === "KeyL") {
-      if (this.ledgerOpen || (!this.modalBlocksInput() && !this.registry.get("taskRevealActive"))) {
-        this.toggleNightLedger();
-        handled = true;
-      }
-    } else if (code === "Escape") {
-      const domainScene = this.scene.get("GameScene");
-      if (!this.modalBlocksInput() && domainScene?.interactionSystem?.menu?.view === "vampire-domain") {
-        domainScene.interactionSystem.close("Back to the city.");
-        domainScene.vampireRuntime?.domain?.render?.(null);
-        handled = true;
-      } else if (this.ledgerOpen) {
-        this.closeNightLedger();
-        handled = true;
-      } else if (this.resultOpen && this.resultType === "success") {
-        this.closeResult();
-        handled = true;
-      } else if (this.pauseOpen) {
-        this.closePause();
-        handled = true;
-      } else if (this.missionOpen) {
-        this.closeMissionDrawer();
-        handled = true;
-      } else if (this.introOpen) {
-        this.closeIntro();
-        handled = true;
-      } else if (!this.resultOpen && !this.registry.get("taskRevealActive")) {
-        handled = this.togglePause();
-      }
-    }
-
-    if (!handled) return;
-    event.preventDefault();
-    event.stopPropagation();
-  }
-
-  renderHud(data, ledger = null) {
-    const hunger = this.hungerPercent(data.hungerText);
-    this.setText(this.dom.hungerValue, `${Math.round(hunger)}%`);
-    if (this.dom.hungerFill) this.dom.hungerFill.style.width = `${Phaser.Math.Clamp(hunger, 0, 100)}%`;
-
-    const hungerState = hunger >= 78 ? "critical" : hunger >= 52 ? "warning" : "safe";
-    if (this.dom.vitals) this.dom.vitals.dataset.hungerState = hungerState;
-
-    const wantedLevel = Number.isFinite(data.wantedLevel)
-      ? Phaser.Math.Clamp(data.wantedLevel, 0, 3)
-      : this.wantedLevel(data.heatText);
-    if (this.dom.wanted) {
-      this.dom.wanted.classList.remove("level-0", "level-1", "level-2", "level-3");
-      this.dom.wanted.classList.add(`level-${wantedLevel}`);
-    }
-    this.setText(this.dom.wantedState, WANTED_LABELS[wantedLevel]);
-    for (const pip of this.dom.wantedPips) {
-      const pipLevel = Number(pip.dataset.wantedPip || 0);
-      pip.classList.toggle("active", pipLevel <= wantedLevel);
-    }
-
-    this.dom.root?.classList.toggle("hunger-critical", hungerState === "critical");
-    this.dom.root?.classList.toggle("wanted-high", wantedLevel >= 2);
-    this.dom.root?.classList.toggle("wanted-air", wantedLevel >= 3);
-    this.dom.missionButton?.classList.toggle("active", this.missionOpen);
-    this.dom.menuButton?.classList.toggle("active", this.pauseOpen);
-    if (this.dom.ledgerButton) {
-      this.dom.ledgerButton.classList.remove("stable", "warning", "danger");
-      this.dom.ledgerButton.classList.add(ledger?.severity || "stable");
-      this.dom.ledgerButton.classList.toggle("active", this.ledgerOpen);
-      this.dom.ledgerButton.classList.toggle("has-alert", Boolean(ledger?.alertCount));
-      this.dom.ledgerButton.classList.toggle("signal", (this.time?.now || 0) < this.ledgerSignalUntil);
-    }
-    this.setText(this.dom.ledgerBadge, ledger?.alertCount > 99 ? "99+" : ledger?.alertCount || "");
-    const vampire = this.scene.get("GameScene")?.vampireRuntime?.service;
-    this.setText(this.dom.missionButton?.querySelector?.("span"), vampire ? "ERRAND" : "MISSION");
-    this.setText(this.dom.missionStep, vampire ? (vampire.state.job ? vampire.state.job.stage === "collected" ? "2/2" : "1/2" : "NONE") : this.missionProgressLabel(data.mission, data.campaignMission));
-
-    const weapon = data.weapon || {};
-    this.setText(this.dom.weaponName, weapon.name || "Unarmed");
-    this.setText(this.dom.weaponAmmo, weapon.ammoText || "∞");
-    this.dom.weapon?.classList.toggle("empty", Boolean(weapon.empty));
-
-    const inventory = Array.isArray(weapon.inventory) ? weapon.inventory : [];
-    const slot = Math.max(1, inventory.indexOf(weapon.id) + 1);
-    const slotText = inventory.length ? `, slot ${slot} of ${inventory.length}` : "";
-    this.setAttributeIfChanged(this.dom.vitals, "aria-valuenow", Math.round(hunger));
-    this.setAttributeIfChanged(this.dom.vitals, "aria-label", `Vampire Hunger ${Math.round(hunger)} percent`);
-    this.setAttributeIfChanged(this.dom.wanted, "aria-label", `Police alert level ${wantedLevel}: ${WANTED_LABELS[wantedLevel]}`);
-    this.setAttributeIfChanged(this.dom.missionButton, "aria-expanded", this.missionOpen ? "true" : "false");
-    this.setAttributeIfChanged(this.dom.ledgerButton, "aria-expanded", this.ledgerOpen ? "true" : "false");
-    this.setAttributeIfChanged(
-      this.dom.ledgerButton,
-      "aria-label",
-      ledger?.alertCount
-        ? `Open Night Ledger, ${ledger.alertCount} active pressure item${ledger.alertCount === 1 ? "" : "s"}`
-        : "Open Night Ledger"
-    );
-    this.setAttributeIfChanged(this.dom.menuButton, "aria-expanded", this.pauseOpen ? "true" : "false");
-    this.setAttributeIfChanged(
-      this.dom.weapon,
-      "aria-label",
-      `Equipped weapon ${weapon.name || "Unarmed"}, ammunition ${weapon.ammoText || "unlimited"}${slotText}`
-    );
-  }
-
-  renderMission(data) {
-    this.dom.missionDrawer?.classList.toggle("open", this.missionOpen && !this.modalBlocksInput());
-    this.setText(this.dom.missionCurrent, data.mission);
-    this.setText(this.dom.missionLast, data.lastAction && data.lastAction !== data.mission ? `Last: ${data.lastAction}` : "");
-
-    if (!this.dom.missionChecklist) return;
-    const markup = this.missionChecklist(data.mission, data.lastAction, data.campaignMission)
-      .map(item => `<li class="${item.state}">${this.escapeHtml(item.icon)} ${this.escapeHtml(item.text)}</li>`)
-      .join("");
-    if (markup !== this.lastMissionMarkup) {
-      this.lastMissionMarkup = markup;
-      this.dom.missionChecklist.innerHTML = markup;
-    }
-  }
-
-  renderNightLedger(model) {
-    const open = Boolean(this.ledgerOpen);
-    this.dom.ledger?.classList.toggle("open", open);
-    this.setAttributeIfChanged(this.dom.ledger, "aria-hidden", open ? "false" : "true");
-    if (!open || !this.dom.ledgerContent) return;
-    const markup = renderNightLedgerMarkup(model);
-    if (markup !== this.lastLedgerMarkup) {
-      this.lastLedgerMarkup = markup;
-      this.dom.ledgerContent.innerHTML = markup;
-    }
-  }
-
-  renderPowers(powersText, inputBindings = null) {
-    const text = String(powersText || "");
-    const beastState = text.match(/BeastState\s+([A-Z]+)/i)?.[1]?.toUpperCase() || "CONTROLLED";
-    const beastActive = Number.parseFloat(text.match(/GiveIn\s+([0-9.]+)/i)?.[1] || "0") || 0;
-    const frenzy = Boolean(this.registry?.get?.("vampireFrenzy"));
-    const exhausted = Boolean(this.registry?.get?.("vampireExhausted"));
-    for (const [id, config] of Object.entries(POWER_CONFIG)) {
-      const node = this.dom.powers[id];
-      if (!node) continue;
-      const key = node.querySelector("span");
-      const code = inputBindings?.bindings?.[config.binding || id];
-      if (key && code) key.textContent = bindingLabel(code);
-      const remaining = this.cooldownFor(text, config.label);
-      const active = id === "beast" && beastActive > 0;
-      node.classList.toggle("active", active);
-      node.classList.toggle("cooldown", frenzy || exhausted || (remaining > 0 && !active));
-      const state = node.querySelector(".power-state");
-      if (!state) continue;
-      if (frenzy) state.textContent = id === "beast" ? "FRENZY" : "LOCKED";
-      else if (exhausted) state.textContent = "EXHAUSTED";
-      else if (active) state.textContent = `ACTIVE ${beastActive.toFixed(1)}s`;
-      else if (remaining > 0) state.textContent = `${remaining.toFixed(1)}s`;
-      else state.textContent = id === "beast" ? beastState : "Ready";
-      if (id === "beast") node.dataset.beastState = beastState.toLowerCase();
-    }
-  }
-
-  renderPrompt(data) {
-    const hasMenu = Boolean(data.menu && data.menu.options?.length);
-    const prompt = !this.modalBlocksInput() && !hasMenu ? String(data.prompt || "") : "";
-    const movementPrompt = /^SPACE:\s*/i.test(prompt);
-    const cleanPrompt = prompt.replace(/^(?:SPACE|E):\s*/i, "");
-
-    this.setText(this.dom.promptKey, movementPrompt ? "SPACE" : "E");
-    this.setText(this.dom.promptText, cleanPrompt);
-    this.dom.prompt?.classList.toggle("visible", Boolean(cleanPrompt));
-    this.dom.prompt?.classList.toggle("movement", Boolean(cleanPrompt && movementPrompt));
-
-    const toast = !this.modalBlocksInput() && data.lastAction ? data.lastAction : "";
-    if (toast && toast !== this.lastToastText) {
-      this.lastToastText = toast;
-      this.toastUntil = this.time.now + 2800;
-      this.setText(this.dom.toastText, toast);
-    }
-    const toastVisible = !this.modalBlocksInput()
-      && Boolean(this.dom.toastText?.textContent)
-      && this.time.now < this.toastUntil;
-    this.dom.toast?.classList.toggle("visible", toastVisible);
-  }
-
-  renderInteractionMenu(menu) {
-    const open = !this.modalBlocksInput() && menu?.view !== "vampire-domain" && Boolean(menu?.options?.length);
-    if (!this.dom.interactionMenu) return;
-    this.dom.interactionMenu.classList.toggle("open", open);
-    if (!open) {
-      if (this.lastInteractionMarkup) {
-        this.lastInteractionMarkup = "";
-        this.dom.interactionMenu.innerHTML = "";
-      }
-      return;
-    }
-
-    const rows = menu.options.slice(0, 9).map((option, index) => {
-      const selected = index === menu.index ? " selected" : "";
-      const detail = option.detail || option.type || "action";
-      return `<div class="interaction-row${selected}"><span>${index + 1}. ${this.escapeHtml(option.label)}</span><small>${this.escapeHtml(detail)}</small></div>`;
-    }).join("");
-    const markup = `
-      <h3>${this.escapeHtml(menu.title || "Choose interaction")}</h3>
-      ${menu.detail ? `<p>${this.escapeHtml(menu.detail)}</p>` : ""}
-      <p>W/S or arrows · E/Enter confirm · Esc cancel · 1-9 quick select</p>
-      ${rows}
-    `;
-    if (markup !== this.lastInteractionMarkup) {
-      this.lastInteractionMarkup = markup;
-      this.dom.interactionMenu.innerHTML = markup;
-    }
-  }
-
-  renderModal(data) {
-    const modalOpen = this.introOpen || this.pauseOpen || this.resultOpen;
-    this.dom.modal?.classList.toggle("open", modalOpen);
-    if (!modalOpen) return;
-
-    if (this.introOpen) {
-      this.setModal(
-        "Viceblood",
-        `<p>You were turned several decades ago. Among vampires, you are still little more than a clumsy fledgling with much to learn.</p>
-         <p>You spend your nights running errands and being sent from one place to another. You feel trapped in an unlife that promised to be far more exciting than it truly is.</p>`,
-        "Begin the night · Enter"
-      );
-      return;
-    }
-
-    if (this.resultOpen) {
-      const failure = this.resultType === "failure";
-      const title = failure ? (data.result?.title || "MISSION FAILED") : (data.result?.title || "REPORT ACCEPTED");
-      const intro = failure
-        ? (data.result?.subtitle || "The run is over and control is locked.")
-        : (data.result?.subtitle || "Your sire accepts the night's work.");
-      const reportHeading = data.result?.reportHeading || (failure ? "Run report" : "Night report");
-      const actionLabel = data.result?.actionLabel
-        || (failure ? "Reload page to restart" : "Continue free roam · Enter/Esc");
-      this.setModal(
-        title,
-        `<p>${this.escapeHtml(intro)}</p><p><strong>${this.escapeHtml(reportHeading)}</strong></p><pre>${this.escapeHtml(this.statsText(data))}</pre>`,
-        actionLabel
-      );
-      return;
-    }
-
-    if (this.pauseOpen) {
-      const pauseData = this.pauseSnapshot || data;
-      const bindings = pauseData.inputBindings?.bindings || {};
-      const key = (action, fallback) => bindingLabel(bindings[action] || fallback);
-      this.setModal(
-        "Pause Menu",
-        `<p><strong>Controls</strong><br>
-           Movement: ${key("w", "W")}/${key("a", "A")}/${key("s", "S")}/${key("d", "D")} or arrows run by default · hold ${key("quiet", "SHIFT")} for quiet movement<br>
-           Combat: mouse aims · left-click uses equipped weapon · mouse wheel changes weapon · hold right-click to feed · release at a threshold or continue to Drain<br>
-           Traversal: ${key("traverse", "SPACE")} near a route · Interact: ${key("interact", "E")} for dialogue, clues and evidence<br>
-           Powers: ${key("dash", "Q")} Dash · ${key("whisper", "R")} Whisper · ${key("sense", "F")} Blood Sense · ${key("beast", "B")} Give In · M Mission · L Night Ledger</p>
-         <p><strong>Stats</strong></p><pre>${this.escapeHtml(this.statsText(pauseData))}</pre>
-         ${this.accessibilityMarkup()}`,
-        "Close · Esc"
-      );
-    }
-  }
-
-  accessibilityMarkup() {
-    const enabled = Boolean(this.registry.get("aimHighContrast"));
-    return `
-      <section class="nbd-accessibility" aria-label="Accessibility settings">
-        <h3>Accessibility</h3>
-        <button class="nbd-accessibility-toggle" type="button" data-aim-contrast-toggle aria-pressed="${enabled ? "true" : "false"}">
-          High-contrast aim: ${enabled ? "On" : "Off"}
-        </button>
-        <p>Uses a larger black-and-white reticle that does not rely on weapon colour. This setting is saved on this device.</p>
-      </section>
-    `;
-  }
-
-  setModal(title, bodyHtml, actionLabel) {
-    const visibleTitle = title || "Viceblood";
-    const body = String(bodyHtml || "");
-    this.setText(this.dom.modalTitle, visibleTitle);
-    if (this.dom.modalBody && this.lastModalBodyHtml !== body) {
-      this.lastModalBodyHtml = body;
-      this.dom.modalBody.innerHTML = body;
-    }
-    this.setText(this.dom.modalAction, actionLabel);
-  }
-
-  handleModalAction() {
-    if (this.introOpen) this.closeIntro();
-    else if (this.pauseOpen) this.closePause();
-    else if (this.resultOpen && this.resultType === "success") this.closeResult();
-  }
-
-  updateMissionResult(data) {
-    const result = data.result;
-    const mission = String(data.mission || "");
-    if (data.campaignMission?.status === "active" && !result) this.resultDismissed = false;
-    if (result?.status === "failed" || mission.startsWith("FAILED")) {
-      if (!this.resultOpen || this.resultType !== "failure") this.openResult("failure");
-      return;
-    }
-    if ((result?.status === "complete" || mission.startsWith("COMPLETE")) && !this.resultDismissed) {
-      if (!this.resultOpen || this.resultType !== "success") this.openResult("success");
-    }
-  }
-
-  openModal(type) {
-    this.introOpen = type === "intro";
-    this.pauseOpen = type === "pause";
-    this.resultOpen = type === "result";
-    this.ledgerOpen = false;
-  }
-
-  closeIntro() {
-    this.introOpen = false;
+  update() {
     this.updateUiPause();
+    const now = this.time?.now || 0;
+    if (now < this.nextRefresh) return;
+    this.nextRefresh = now + 100;
+    this.refresh();
   }
-
-  togglePause() {
-    if (this.ledgerOpen || this.introOpen || this.resultOpen || this.registry.get("taskRevealActive")) return false;
-    this.pauseOpen = !this.pauseOpen;
-    if (this.pauseOpen) {
-      this.pauseSnapshot = this.readState();
-      this.closeMissionDrawer();
-    } else {
-      this.pauseSnapshot = null;
+  refresh() {
+    const game = this.game();
+    const action = game?.lastActionText || this.registry.get("lastActionText") || "";
+    const now = this.time?.now || 0;
+    if (action && action !== this.lastAction) {
+      this.lastAction = action;
+      this.notice = action;
+      this.noticeUntil = now + 3600;
+    } else if (now >= this.noticeUntil) this.notice = "";
+    this.updateMissionResult(this.readState());
+    this.updateUiPause();
+    try { this.store.publish(projectGameUi(this)); }
+    catch (error) {
+      console.error("ViceBlood UI projection failed", error);
+      this.store.publish({ ready: true, visible: true, mode: "error", error: String(error.message || error) });
+      this.pauseOpen = true;
+      this.updateUiPause();
     }
-    this.updateUiPause();
-    return true;
   }
-
-  toggleNightLedger() {
-    return this.ledgerOpen ? this.closeNightLedger() : this.openNightLedger();
-  }
-
-  openNightLedger() {
-    if (this.introOpen || this.pauseOpen || this.resultOpen || this.registry.get("taskRevealActive")) return false;
-    this.ledgerOpen = true;
-    this.closeMissionDrawer();
-    this.ledgerRefreshAt = 0;
-    this.readNightLedgerState(true);
-    this.updateUiPause();
-    window.requestAnimationFrame?.(() => this.dom.ledgerClose?.focus?.());
-    return true;
-  }
-
-  closeNightLedger() {
-    if (!this.ledgerOpen) return false;
-    this.ledgerOpen = false;
-    this.updateUiPause();
-    window.requestAnimationFrame?.(() => this.dom.ledgerButton?.focus?.());
-    return true;
-  }
-
-  closePause() {
-    if (!this.pauseOpen) return false;
-    this.pauseOpen = false;
-    this.pauseSnapshot = null;
-    this.updateUiPause();
-    return true;
-  }
-
-  openResult(type) {
-    this.resultOpen = true;
-    this.resultType = type;
-    this.pauseOpen = false;
-    this.pauseSnapshot = null;
-    this.ledgerOpen = false;
-    this.missionOpen = false;
-    if (type === "failure") this.resultDismissed = false;
-    this.updateUiPause();
-  }
-
-  closeResult() {
-    if (this.resultType === "failure") return;
-    const result = this.registry.get("missionResult") || null;
-    this.resultOpen = false;
-    this.resultType = null;
-    this.resultDismissed = true;
-    this.updateUiPause();
-    this.events.emit("ui:mission-result-dismissed", result || {});
-  }
-
-  toggleMissionDrawer() {
-    if (this.modalBlocksInput() || this.registry.get("taskRevealActive")) return;
-    const gameScene = this.scene.get("GameScene"), vampire = gameScene?.vampireRuntime;
-    if (vampire) {
-      if (gameScene.interactionSystem?.menu?.view === "vampire-domain" && vampire.domain.tab === "errand") gameScene.interactionSystem.close("Back to the city.");
-      else vampire.openDomain("errand");
-      return;
-    }
-    this.missionOpen = !this.missionOpen;
-  }
-
-  closeMissionDrawer() {
-    this.missionOpen = false;
-  }
-
-  modalBlocksInput() {
-    return this.introOpen || this.pauseOpen || this.resultOpen || this.ledgerOpen;
-  }
-
+  resetEdges() { this.game()?.inputSystem?.resetWorldEdges?.(); }
   updateUiPause() {
-    const paused = this.introOpen || this.pauseOpen || this.resultOpen || this.ledgerOpen;
-    if (paused === this.lastUiPaused) return;
-    this.lastUiPaused = paused;
-    this.registry.set("uiPaused", paused);
-    const gameScene = this.scene.get("GameScene");
-    gameScene?.vampireRuntime?.domain?.render?.(gameScene.interactionSystem?.menu, paused);
-    if (paused) this.scene.pause("GameScene");
-    else this.scene.resume("GameScene");
-  }
-
-  hungerPercent(text) {
-    const match = String(text).match(/Hunger\s+([0-9.]+)%/i);
-    return Phaser.Math.Clamp(Number.parseFloat(match?.[1] || "0") || 0, 0, 100);
-  }
-
-  wantedLevel(text) {
-    const match = String(text).match(/Heat\s+Lv\s*([0-9]+)/i);
-    return Phaser.Math.Clamp(Number.parseInt(match?.[1] || "0", 10) || 0, 0, 3);
-  }
-
-  missionProgressLabel(text, campaignMission = null) {
-    if (campaignMission?.id === "clean_the_scene") {
-      const total = Math.max(1, campaignMission.objectives?.length || 1);
-      if (campaignMission.status === "completed") return "DONE";
-      if (campaignMission.status === "failed") return "FAIL";
-      return `${Math.min(total, Math.max(1, Number(campaignMission.objectiveIndex) + 1))}/${total}`;
+    const game = this.game();
+    if (!game) return;
+    const mode = this.activeMode();
+    const blocked = Boolean(mode);
+    // A domain menu pauses the scene but remains navigable. The service's
+    // domainAvailable contract intentionally distinguishes it from a pause modal.
+    const modal = blocked && !["domain", "interaction"].includes(mode);
+    if (this.registry.get("uiPaused") !== modal) this.registry.set("uiPaused", modal);
+    if (this.registry.get("uiKeyboardOwned") !== blocked) {
+      this.registry.set("uiKeyboardOwned", blocked);
+      this.resetEdges();
     }
-    const value = String(text || "");
-    const match = value.match(/^(\d\/4)/);
-    if (match) return match[1];
-    if (value.startsWith("COMPLETE")) return "DONE";
-    if (value.startsWith("FAILED")) return "FAIL";
-    if (value.startsWith("No active contract")) return "BOARD";
-    return "1/4";
-  }
-
-  cooldownFor(text, label) {
-    const match = String(text).match(new RegExp(`${label}\\s+(ready|[0-9.]+)`, "i"));
-    if (!match || match[1].toLowerCase() === "ready") return 0;
-    return Number.parseFloat(match[1]) || 0;
-  }
-
-  missionChecklist(missionText, lastAction, campaignMission = null) {
-    if (campaignMission?.id === "clean_the_scene" && Array.isArray(campaignMission.objectives)) {
-      return campaignMission.objectives.map(objective => {
-        const status = objective.state?.status;
-        const state = status === "completed" ? "done" : status === "active" ? "active" : "todo";
-        return {
-          text: objective.label,
-          state,
-          icon: state === "done" ? "✓" : state === "active" ? "▸" : "○"
-        };
-      });
+    if (blocked && !this.ownsPause && !this.scene.isPaused("GameScene")) {
+      this.scene.pause("GameScene");
+      this.ownsPause = true;
+    } else if (!blocked && this.ownsPause) {
+      // Do not release another cinematic/external lock that is still active.
+      const externalLock = ["campaignEntryOpen", "vehicleMaintenanceOpen"].some(key => this.registry.get(key));
+      if (!externalLock) { this.scene.resume("GameScene"); this.ownsPause = false; this.resetEdges(); }
     }
-
-    const text = String(missionText || "");
-    if (text.startsWith("No active contract")) {
-      return [{ text: "Open the rooftop refuge contract board", state: "active", icon: "▸" }];
+  }
+  cancelPendingAction() {
+    if (!this.pendingAction) return;
+    this.game()?.events?.off?.(Phaser.Scenes.Events.POST_UPDATE || "postupdate", this.pendingAction);
+    this.pendingAction = null;
+  }
+  queueGameplayAction(action) {
+    if (this.pendingAction || typeof action !== "function") return false;
+    const game = this.game();
+    // Execute after the existing authoritative frame has resumed, never fake a
+    // worldEnabled flag just to satisfy a service guard while its scene is paused.
+    const run = () => {
+      if (this.pendingAction !== run) return;
+      this.pendingAction = null;
+      if (this.activeMode() || !game.currentInputFrame?.worldEnabled || game.inputSystem?.sceneBlocked?.()) return;
+      try { action(); } catch (error) { this.feedback = String(error.message || error); }
+      this.resetEdges(); this.refresh();
+    };
+    this.pendingAction = run;
+    this.resetEdges();
+    game.events.once(Phaser.Scenes.Events.POST_UPDATE || "postupdate", run);
+    return true;
+  }
+  allowedToOpen() {
+    const game = this.game();
+    return Boolean(game?.player && !this.registry.get("mainMenuActive") && !this.registry.get("taskRevealActive")
+      && !game.transitionSystem?.active && !game.playerDamageSystem?.isDead?.() && !this.external && !this.pendingAction);
+  }
+  openDomain(tab = "city", target = null) {
+    if (!this.allowedToOpen() || this.resultOpen || this.introOpen) return false;
+    this.pauseOpen = false;
+    this.ledgerOpen = false;
+    this.updateUiPause();
+    const result = this.game().vampireRuntime?.openDomain(tab, target);
+    this.resetEdges();
+    this.refresh();
+    return Boolean(result);
+  }
+  closeInteraction() {
+    if (this.game()?.interactionSystem?.isOpen) this.game().interactionSystem.close("Back to the city.");
+    this.confirmation = null;
+    this.feedback = "";
+    this.resetEdges();
+    this.refresh();
+    return true;
+  }
+  closeActive() {
+    this.cancelPendingAction();
+    if (this.confirmation) { this.confirmation = null; this.refresh(); return true; }
+    if (this.external) return this.external.close?.() ?? false;
+    if (this.pauseOpen) return this.closePause();
+    if (this.ledgerOpen) return this.closeNightLedger();
+    if (this.introOpen) { this.closeIntro(); return true; }
+    if (this.resultOpen) return this.closeResult();
+    return this.closeInteraction();
+  }
+  command(type, payload = {}) {
+    const game = this.game(), runtime = game?.vampireRuntime;
+    try {
+      if (type === "ui-error") { this.uiError = String(payload.message || "Interface interrupted"); this.cancelPendingAction(); this.refresh(); return false; }
+      if (this.pendingAction && type !== "pause" && type !== "close") return false;
+      if (type === "close") return this.closeActive();
+      if (type === "open") return this.openDomain(payload.tab, payload.target);
+      if (type === "pause") return this.togglePause();
+      if (type === "ledger") return this.toggleNightLedger();
+      if (type === "contrast") {
+        const value = !Boolean(this.registry.get("aimHighContrast"));
+        this.registry.set("aimHighContrast", value);
+        try { localStorage.setItem(UX_STORAGE_KEYS.AIM_HIGH_CONTRAST, String(value)); } catch {}
+      } else if (type === "choose" && this.activeMode() === "interaction") {
+        const menu = game.interactionSystem.menu;
+        const option = menu.options.find(item => item.id === payload.id);
+        if (!option || option.disabled) return false;
+        // Resume through the existing frame so in-person service guards see a
+        // genuine current frame, not the last locked frame from the menu.
+        this.closeInteraction();
+        return this.queueGameplayAction(() => game.interactionSystem.runOption(option));
+      } else if (type === "tab" && this.activeMode() === "domain") {
+        runtime.domain.navigate(payload.tab);
+        this.confirmation = null;
+      } else if (type === "select" && this.activeMode() === "domain") {
+        runtime.domain.selection = payload.target;
+      } else if (type === "locate" && this.activeMode() === "domain") {
+        if (!domainDestination(runtime, payload.target)) return false;
+        runtime.domain.navigate("city", payload.target);
+      } else if (type === "go" && this.activeMode() === "domain") {
+        if (!runtime.track(payload.target)) return false;
+        this.closeInteraction();
+      } else if (type === "save-marker" && this.activeMode() === "domain") {
+        this.feedback = runtime.saveMarker(payload.target || null, payload.point || null)?.text || "Location saved.";
+        runtime.domain.invalidate();
+      } else if (type === "remove-marker" && this.activeMode() === "domain") {
+        runtime.outcome(runtime.service.removeMarker(payload.id));
+        runtime.domain.invalidate();
+      } else if (type === "abandon" && this.activeMode() === "domain") {
+        if (!runtime.service.state.job) return false;
+        // Capture identity/stage: a confirmation must not abandon a replacement job.
+        this.confirmation = { kind: "abandon", job: JSON.stringify(runtime.service.state.job) };
+      } else if (type === "confirm-abandon" && this.confirmation?.kind === "abandon") {
+        if (this.confirmation.job !== JSON.stringify(runtime.service.state.job)) return false;
+        runtime.outcome(runtime.service.abandonDelivery());
+        this.confirmation = null;
+      } else if (type === "cancel-confirm") {
+        this.confirmation = null;
+      } else if (type === "blood" || type === "mend") {
+        if (![null, "domain"].includes(this.activeMode())) return false;
+        if (this.activeMode() === "domain") this.closeInteraction();
+        // These remain guarded by VampireRuntime, including frenzy and feeding.
+        return this.queueGameplayAction(() => type === "blood" ? runtime.useBlood() : runtime.mendBlood());
+      } else if (type === "external") {
+        return this.external?.command?.(payload);
+      }
+      this.resetEdges();
+      this.refresh();
+      return true;
+    } catch (error) {
+      this.feedback = String(error.message || error);
+      this.refresh();
+      return false;
     }
-    const last = String(lastAction || "");
-    const step = this.missionStep(text);
-    return [
-      { text: "Cross rooftops toward the police station", state: step > 0 ? "done" : "active" },
-      { text: "Neutralize the rooftop blocker", state: step > 0 || /thug neutralized|blocker neutralized|jump path open/i.test(last) ? "done" : "active" },
-      { text: "Collect the informant tip", state: step > 0 ? "done" : "todo" },
-      { text: "Find the journalist near the nightclub", state: step > 1 ? "done" : step === 1 ? "active" : "todo" },
-      { text: "Neutralize the journalist without breaking the veil", state: step > 2 ? "done" : step === 2 ? "active" : "todo" },
-      { text: "Return to the rooftop refuge", state: step > 3 ? "done" : step === 3 ? "active" : "todo" }
-    ].map(item => ({ ...item, icon: item.state === "done" ? "✓" : item.state === "active" ? "▸" : "○" }));
   }
-
-  missionStep(text) {
-    const match = String(text).match(/^(\d)\/4/);
-    if (match) return Math.max(0, Number(match[1]) - 1);
-    if (text.startsWith("COMPLETE") || text.startsWith("FAILED")) return 4;
-    return 0;
+  handleDomKeyDown(event) {
+    if (event.repeat || event.defaultPrevented || textEntry(event.target) || this.registry.get("mainMenuActive")) return;
+    const mode = this.activeMode();
+    const finish = () => { event.preventDefault(); event.stopImmediatePropagation?.(); this.resetEdges(); };
+    if (event.code === "Escape") {
+      finish();
+      if (mode) this.closeActive(); else this.togglePause();
+      return;
+    }
+    // Native controls (including Radix tabs) own Enter/Space/arrow keys.
+    if (activatable(event.target) && ["Enter", "Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)) return;
+    if (mode === "interaction") {
+      const interaction = this.game().interactionSystem, menu = interaction.menu;
+      const digit = Number(event.code?.match(/^Digit([1-9])$/)?.[1]);
+      if (digit && menu.options[digit - 1]) { finish(); this.command("choose", { id: menu.options[digit - 1].id }); }
+      else if (["KeyE", "Enter"].includes(event.code)) { finish(); this.command("choose", { id: menu.options[menu.index]?.id }); }
+      else if (["KeyW", "ArrowUp", "KeyS", "ArrowDown"].includes(event.code)) {
+        finish();
+        const direction = ["KeyW", "ArrowUp"].includes(event.code) ? -1 : 1;
+        menu.index = (menu.index + direction + menu.options.length) % menu.options.length;
+        interaction.publish(); this.refresh();
+      }
+      return;
+    }
+    if (mode === "domain") {
+      const digit = Number(event.code?.match(/^Digit([1-6])$/)?.[1]);
+      if (digit) { finish(); this.command("tab", { tab: DOMAIN_TABS[digit - 1].toLowerCase() }); return; }
+    }
+    if (!mode || mode === "domain" || mode === "ledger") {
+      if (event.code === "KeyM") { finish(); this.toggleMissionDrawer(); }
+      else if (event.code === "KeyL") { finish(); this.toggleNightLedger(); }
+    }
   }
-
-  statsText(data) {
-    const weapon = data.weapon || {};
-    return `Objective: ${data.mission}\n`
-      + `Visibility: ${data.visibility}\n`
-      + `${data.hungerText}\n`
-      + `${data.heatText}\n`
-      + `${data.exposureText}\n`
-      + `${data.powersText}\n`
-      + `Weapon: ${weapon.name || "Unarmed"} · ammo ${weapon.ammoText || "∞"}\n`
-      + `${data.policeText}\n`
-      + `${data.hunterText}\n`
-      + `${data.witnessText}\n`
-      + `${data.evidenceText}\n`
-      + `${data.propText}\n`
-      + `${data.aiText}\n`
-      + `${data.runtimeText}\n`
-      + `${data.performanceText}\n`
-      + `NPCs: ${data.npcText}\n`
-      + `Position: ${data.xy}\n`
-      + `Last: ${data.lastAction || "--"}`;
+  modalBlocksInput() { return this.introOpen || this.pauseOpen || this.resultOpen || this.ledgerOpen || Boolean(this.external); }
+  openModal(type) { if (type === "intro") return false; this.pauseOpen = type === "pause"; this.resultOpen = type === "result"; this.refresh(); return true; }
+  closeIntro() { this.introOpen = false; this.refresh(); }
+  togglePause() {
+    this.cancelPendingAction();
+    if (!this.allowedToOpen() || this.introOpen || this.resultOpen || this.external) return false;
+    if (this.activeMode() === "domain" || this.activeMode() === "interaction") return this.closeInteraction();
+    this.pauseOpen = !this.pauseOpen; this.ledgerOpen = false; this.refresh(); return true;
   }
-
-  setAttributeIfChanged(node, name, value) {
-    if (!node) return;
-    const text = String(value);
-    if (node.getAttribute?.(name) !== text) node.setAttribute?.(name, text);
+  closePause() { this.pauseOpen = false; this.refresh(); return true; }
+  toggleNightLedger() { return this.ledgerOpen ? this.closeNightLedger() : this.openNightLedger(); }
+  openNightLedger() {
+    if (!this.allowedToOpen() || this.resultOpen || this.introOpen) return false;
+    if (this.game()?.interactionSystem?.isOpen) this.game().interactionSystem.close("Inspecting the city ledger.");
+    this.pauseOpen = false; this.ledgerOpen = true; this.refresh(); return true;
   }
-
-  setText(node, text) {
-    if (node && node.textContent !== String(text || "")) node.textContent = String(text || "");
+  closeNightLedger() { this.ledgerOpen = false; this.refresh(); return true; }
+  toggleMissionDrawer() {
+    if (this.activeMode() === "domain" && this.game()?.vampireRuntime?.domain.tab === "errand") return this.closeInteraction();
+    return this.openDomain("errand");
   }
-
-  escapeHtml(value) {
-    return String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+  closeMissionDrawer() { this.missionOpen = false; }
+  updateMissionResult(data) {
+    if (data.campaignMission?.status === "active" && !data.result) this.resultDismissed = false;
+    if (data.result?.status === "failed") { this.resultOpen = true; this.resultType = "failure"; }
+    else if (data.result?.status === "complete" && !this.resultDismissed) { this.resultOpen = true; this.resultType = "success"; }
+  }
+  openResult(type) { this.resultOpen = true; this.resultType = type; this.pauseOpen = false; this.ledgerOpen = false; this.refresh(); }
+  closeResult() {
+    if (this.resultType === "failure") return false;
+    this.resultOpen = false; this.resultDismissed = true;
+    this.events?.emit?.("ui:mission-result-dismissed", this.registry.get("missionResult") || {});
+    this.refresh(); return true;
+  }
+  handleModalAction() { return this.closeActive(); }
+  presentDialogue(payload) {
+    this.hideDialogue();
+    return new Promise(resolve => {
+      const notBefore = performance.now() + 240;
+      const finish = (force = false) => {
+        if (!force && performance.now() < notBefore) return false;
+        this.dialogueResolve = null;
+        this.closeExternal("dialogue");
+        this.resetEdges();
+        resolve();
+        return true;
+      };
+      this.dialogueResolve = () => finish(true);
+      if (!this.openExternal({ id: "dialogue", read: () => payload, close: () => finish(), command: () => finish() })) {
+        this.dialogueResolve = null;
+        resolve();
+      }
+    });
+  }
+  hideDialogue() { this.dialogueResolve?.(); }
+  openExternal(panel) {
+    if (!panel?.id || this.external || this.pauseOpen || this.resultOpen || this.introOpen) return false;
+    this.external = panel; this.refresh(); return true;
+  }
+  closeExternal(id) { if (this.external?.id !== id) return false; this.external = null; this.refresh(); return true; }
+  cleanup() {
+    this.cancelPendingAction();
+    if (this.onDomKeyDown) window.removeEventListener("keydown", this.onDomKeyDown, true);
+    this.hideDialogue();
+    this.renderUi?.unmount?.(); this.store.destroy();
+    this.registry.set("uiKeyboardOwned", false); this.registry.set("uiPaused", false);
+    if (this.ownsPause) this.scene.resume("GameScene");
+    this.ownsPause = false; this.resetEdges();
   }
 }
+Object.assign(UIScene.prototype, gameUiReadMethods);

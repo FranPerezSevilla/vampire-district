@@ -140,7 +140,10 @@ export class MainMenuScene extends Phaser.Scene {
     const maxY = Math.max(0, Number(camera.getBounds?.().height || camera._bounds?.height || 0) - viewHeight);
     const centeredX = clamp(player.x - viewWidth / 2, 0, maxX);
     const centeredY = clamp(player.y - viewHeight / 2, 0, maxY);
-    const menuX = clamp(centeredX - viewWidth * MENU_CAMERA_HORIZONTAL_BIAS, 0, maxX);
+    const canvasRect = gameScene.game?.canvas?.getBoundingClientRect?.();
+    const hostRect = globalThis.document?.getElementById?.("game-root")?.getBoundingClientRect?.();
+    const visibleFraction = canvasRect?.width > 0 && hostRect?.width > 0 ? Math.min(1, hostRect.width / canvasRect.width) : 1;
+    const menuX = clamp(centeredX - viewWidth * visibleFraction * MENU_CAMERA_HORIZONTAL_BIAS, 0, maxX);
     return { camera, player, centeredX, centeredY, menuX };
   }
 

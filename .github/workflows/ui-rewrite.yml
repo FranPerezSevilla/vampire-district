@@ -1,105 +1,50 @@
-name: Import reviewed UI source
+name: UI rewrite
 
 on:
   push:
     branches: [codex/ui-rewrite]
-    paths: [.github/workflows/ui-rewrite.yml]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: ui-rewrite-import-${{ github.ref }}
-  cancel-in-progress: false
+  group: ui-rewrite-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  import-reviewed-tree:
-    if: github.repository == 'FranPerezSevilla/vampire-district' && github.ref == 'refs/heads/codex/ui-rewrite'
+  native-and-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Verify and import the prepared source without updating refs
-        uses: actions/github-script@v7
+      - uses: actions/setup-node@v4
         with:
-          script: |
-            const { execFileSync } = require('node:child_process');
-            const { createHash } = require('node:crypto');
-            const { brotliDecompressSync } = require('node:zlib');
-            const { join } = require('node:path');
-            const { owner, repo } = context.repo;
-            if (`${owner}/${repo}` !== 'FranPerezSevilla/vampire-district' || context.ref !== 'refs/heads/codex/ui-rewrite') throw new Error('Unexpected target');
-            const base = 'a0b4e1189e365257d5c11e48a5bd8d8f87cd9037';
-            const baseTree = 'c4fe4f2f81489fcfcab3cb4870f540ba840130ce';
-            const targetTree = '9113d5f9cbe9adac56af3bac884e73e1657f124d';
-            const parts = ['25fbc97cc4ffd0dc656a3b9583f959e56b03159b', '142784f0bbdc0fe4dc2992c9f5a54881ab91a889', '0eead8e7b344973728c3a5d3fb4c24bb4fa02b25', 'f9ba15de4d4cf3078f38cd48c17309394773f296', '83e74530fd63e9c549a5ab6c2c2948801ca6ebc7', 'cb83d1fb4f063a914acfa851aad46976b8ee9ddb'];
-            const hash = (data, algorithm = 'sha256') => createHash(algorithm).update(data).digest('hex');
-            const blobHash = data => hash(Buffer.concat([Buffer.from(`blob ${data.length}\0`), data]), 'sha1');
-            const packed = [];
-            for (const sha of parts) {
-              const { data } = await github.rest.git.getBlob({ owner, repo, file_sha: sha });
-              if (data.encoding !== 'base64') throw new Error('Unexpected encoding');
-              const bytes = Buffer.from(data.content, 'base64');
-              if (blobHash(bytes) !== sha) throw new Error('Transport hash mismatch');
-              packed.push(bytes);
-            }
-            const archive = Buffer.concat(packed);
-            if (archive.length !== 47056 || hash(archive) !== '62fc6deca597d8582bf30f5b36cddcbb9dbe1b3d5a8d40a7fdfb4dbb209e68a8') throw new Error('Archive mismatch');
-            const raw = brotliDecompressSync(archive, { maxOutputLength: 1048576 });
-            if (hash(raw) !== '1f8c5efe8da0207995b3f4cb01dc0b4f5b4c1d7a37b8e3cf408cf24dbbb3fbfa') throw new Error('Payload mismatch');
-            const entries = JSON.parse(raw.toString('utf8'));
-            if (!Array.isArray(entries) || entries.length !== 66) throw new Error('Unexpected change set');
-            const env = { ...process.env, GIT_INDEX_FILE: join(process.env.RUNNER_TEMP, 'viceblood-reviewed.index') };
-            const git = (args, input) => execFileSync('git', args, { env, input, maxBuffer: 8 * 1024 * 1024 });
-            const gitText = args => git(args).toString('utf8').trim();
-            if (gitText(['rev-parse', `${base}^{tree}`]) !== baseTree) throw new Error('Wrong base');
-            git(['read-tree', base]);
-            const changes = [], names = new Set();
-            for (const entry of entries) {
-              const path = entry.p;
-              if (typeof path !== 'string' || !/^[A-Za-z0-9_.\/-]+$/.test(path) || path.startsWith('/') || path.split('/').some(p => !p || p === '..' || p === '.' || p === '.git') || names.has(path)) throw new Error('Unsafe/duplicate path');
-              names.add(path);
-              const previous = gitText(['ls-tree', base, '--', path]);
-              if (entry.d) {
-                if (!previous) throw new Error(`Missing deletion: ${path}`);
-                git(['update-index', '--force-remove', '--', path]);
-                changes.push({ path, mode: '100644', type: 'blob', sha: null });
-                continue;
-              }
-              const old = previous ? git(['show', `${base}:${path}`]) : Buffer.alloc(0);
-              if (!Array.isArray(entry.e) || !/^[a-f0-9]{40}$/.test(entry.s)) throw new Error('Invalid edits');
-              let cursor = 0;
-              const chunks = [];
-              for (const edit of entry.e) {
-                const [start, end, text] = edit;
-                if (!Number.isInteger(start) || !Number.isInteger(end) || start < cursor || end < start || end > old.length || typeof text !== 'string') throw new Error(`Invalid range: ${path}`);
-                chunks.push(old.subarray(cursor, start), Buffer.from(text, 'utf8'));
-                cursor = end;
-              }
-              chunks.push(old.subarray(cursor));
-              const content = Buffer.concat(chunks);
-              if (blobHash(content) !== entry.s) throw new Error(`File mismatch: ${path}`);
-              const localSha = git(['hash-object', '-w', '--stdin'], content).toString('utf8').trim();
-              if (localSha !== entry.s) throw new Error('Local object mismatch');
-              git(['update-index', '--add', '--cacheinfo', `100644,${entry.s},${path}`]);
-              changes.push({ path, mode: '100644', type: 'blob', sha: entry.s, content });
-            }
-            if (gitText(['write-tree']) !== targetTree) throw new Error('Reconstructed tree mismatch');
-            const writes = changes.filter(change => change.content !== undefined);
-            if (writes.length !== 57) throw new Error('Write count mismatch');
-            // Import only the exact reviewed data objects. No ref, deployment,
-            // gameplay or persistence changes are executed by this workflow.
-            for (const change of writes) {
-              const { data } = await github.rest.git.createBlob({ owner, repo, content: change.content.toString('base64'), encoding: 'base64' });
-              if (data.sha !== change.sha) throw new Error(`Uploaded mismatch: ${change.path}`);
-              core.info(`Verified ${change.path} ${data.sha}`);
-              await new Promise(resolve => setTimeout(resolve, 850));
-            }
-            const tree = changes.map(({ content, ...entry }) => entry);
-            const { data } = await github.rest.git.createTree({ owner, repo, base_tree: baseTree, tree });
-            if (data.sha !== targetTree) throw new Error('Remote tree mismatch');
-            core.info(`IMPORTED_TREE=${data.sha}`);
-            await core.summary.addHeading('Reviewed UI source imported').addRaw(`Base: ${base}\n\nTree: ${data.sha}\n\n57 files written; 9 legacy files removed. Every blob and the complete tree verified. No branch ref or deployment changed by this job.\n`).write();
+          node-version: 22.16.0
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Record affected validation plan
+        run: npm run check:affected:plan -- --base=origin/main > ui-affected-plan.log
+      - name: Native and DOM event tests (no browsers)
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run check:fast 2>&1 | tee ui-native.log
+      - name: Build complete review package
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: viceblood-ui-review
+          path: dist/
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-validation
+          path: |
+            ui-native.log
+            ui-affected-plan.log
+          retention-days: 14

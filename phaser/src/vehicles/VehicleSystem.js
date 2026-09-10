@@ -1,7 +1,7 @@
 import { VEHICLE_OWNERSHIP, vehicleArchetype, vehicleDefinitions } from "../data/vehicles.js";
 import { RawAudio } from "../systems/RawAudioSystem.js";
 import { createVehicleState } from "./VehicleModel.js";
-import { createVehicleHud, installVehicleBrowserApi, paintVehicle, publishVehicleState, refreshVehicleVisibility, updateVehicleHud, vehicleSystemSnapshot, vehicleSystemSummary } from "./VehicleView.js";
+import { installVehicleBrowserApi, paintVehicle, publishVehicleState, refreshVehicleVisibility, vehicleSystemSnapshot, vehicleSystemSummary } from "./VehicleView.js";
 import { canVehicleOccupy, filterVehicleInputFrame, handleVehicleWorldCollision, updateVehicleCamera, updateVehicleDriving } from "./VehicleDriving.js";
 import { canEnterVehicle, collectVehicleInteractions, enterVehicle, exitVehicle, inspectVehicleTrunk, removeVehicleTrunkItem, storeVehicleTrunkItem, vehicleStatusLabel, vehicleTrunkLabel } from "./VehicleInteractions.js";
 import { VEHICLE_DESTRUCTION, explosionDamageAtDistance, vehicleDestructionTransition } from "./VehicleDestructionPolicy.js";
@@ -23,7 +23,6 @@ export class VehicleSystem {
     this.transientSequence = 0;
     this.destroyed = false;
     this.vehicles = vehicleDefinitions.map(definition => this.createVehicle(definition));
-    this.hud = createVehicleHud(scene);
     this.disposeMaintenance = campaign.events?.on?.("vehicle:maintenance-completed", event => {
       this.syncFromCampaign(event.payload.vehicleId);
     }) || null;
@@ -430,7 +429,6 @@ export class VehicleSystem {
   }
 
   updateHud() {
-    return updateVehicleHud(this);
   }
 
   snapshot() {
@@ -454,8 +452,6 @@ export class VehicleSystem {
     if (current) this.persistVehicle(current);
     for (const vehicle of this.vehicles) vehicle.container?.destroy?.();
     this.vehicles = [];
-    this.hud?.destroy?.();
-    this.hud = null;
     if (typeof window !== "undefined") {
       if (window.NBD_VEHICLES) delete window.NBD_VEHICLES;
       window.NBD_VEHICLES_READY = false;

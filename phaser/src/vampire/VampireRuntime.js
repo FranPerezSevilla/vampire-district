@@ -4,8 +4,7 @@ import { COMBAT_STATES } from "../data/combat.js";
 import { VAMPIRE_CONTACTS, VAMPIRE_ASSETS, VAMPIRE_DONORS, VAMPIRE_RULES as R, contactById, assetById, donorById, powerStage } from "./VampireCatalog.js";
 import { createVampireSites, directionTo } from "./VampireWorldSites.js";
 import { FrenzyController } from "./FrenzyController.js";
-import { VampireHud } from "./VampireHud.js";
-import { VampireDomainPanel, DOMAIN_TABS } from "./VampireDomainPanel.js";
+import { DomainNavigation, DOMAIN_TABS } from "./DomainNavigation.js";
 import { clampMapPoint, domainDestination, errandModel } from "./VampireDomainModel.js";
 
 export class VampireRuntime {
@@ -24,8 +23,7 @@ export class VampireRuntime {
       state: () => this.service.state.frenzy, now: () => this.service?.state.elapsed || 0,
       notify: text => this.notice(text)
     });
-    this.hud = new VampireHud(this);
-    this.domain = new VampireDomainPanel(this);
+    this.domain = new DomainNavigation(this);
     this.destinationLabel = scene.add?.text?.(0, 0, "", { fontFamily: "Arial, Helvetica, sans-serif", fontSize: "12px", color: "#ffdc93", backgroundColor: "#10151d", padding: { x: 5, y: 3 } });
     this.destinationLabel?.setOrigin?.(0.5, 1)?.setDepth?.(74);
     this.destinationLabel?.setVisible?.(false);
@@ -228,7 +226,7 @@ export class VampireRuntime {
     if (!domainDestination(this, id)) { this.notice("That destination is no longer available."); return false; }
     this.service.state.guide = id;
     const target = this.guideTarget();
-    this.notice(`Tracking ${target?.label || "your network"}. Follow the direction in the vampire panel.`);
+    this.notice(`Tracking ${target?.label || "your network"}. Follow the objective arrow.`);
     this.outcome({ ok: true });
     return true;
   }
@@ -238,7 +236,7 @@ export class VampireRuntime {
     if (!position) return this.outcome({ ok: false, text: "Choose a valid destination on the map." });
     return this.outcome(this.service.saveMarker({ ...position, label: destination?.label, target: target === "player" || target === "delivery" ? null : target }));
   }
-  openDomain(tab = "overview", target = null) {
+  openDomain(tab = "city", target = null) {
     if (!this.domainAvailable() || this.scene.feedingSystem?.isActive?.()) return false;
     this.domain.show(tab, target);
     const options = DOMAIN_TABS.map(label => this.option(`domain:${label.toLowerCase()}`, label, "Open this section", () => this.openDomain(label.toLowerCase())));
@@ -246,7 +244,6 @@ export class VampireRuntime {
     this.scene.interactionSystem.open(options, { title: "Your vampire domain", view: "vampire-domain" });
     this.scene.interactionSystem.menu.index = DOMAIN_TABS.findIndex(label => label.toLowerCase() === this.domain.tab);
     this.scene.interactionSystem.publish();
-    this.domain.render(this.scene.interactionSystem.menu);
     return true;
   }
   acceptDelivery(id) {
@@ -332,7 +329,6 @@ export class VampireRuntime {
   present(frame) {
     if (!this.service) return;
     const blockingUi = Boolean(this.scene.registry?.get?.("uiPaused"));
-    this.domain.render(this.scene.interactionSystem?.menu, blockingUi);
     const now = this.service.state.elapsed;
     if (now >= this.noticeUntil) this.nextNotice();
     const target = this.guideTarget();
@@ -340,15 +336,11 @@ export class VampireRuntime {
     if (now < this.refreshAt && this.lastVisible === visible) return;
     this.refreshAt = now + 0.12;
     this.lastVisible = visible;
-    this.hud.render({ visible, stage: powerStage(this.service.state), cash: this.service.wallet.balance(), bags: this.service.state.bloodBags,
-      guide: `${target.label} · ${directionTo(this.scene.player, target)}${this.scene.currentLayer !== LAYERS.STREET ? " · meet at street level" : ""}`,
-      errand: this.service.state.job ? errandModel(this).summary : "No active errand",
-      notice: this.currentNotice, locked: this.frenzy.active || Boolean(this.scene.interactionSystem?.isOpen), frenzy: this.frenzy.active });
     for (const [id, label] of this.labels) {
       const npc = this.people.get(id);
       const near = Math.hypot(npc.x - this.scene.player.x, npc.y - this.scene.player.y) < 260;
       label?.setPosition?.(npc.x, npc.y - 22);
-      label?.setVisible?.(visible && near && !npc.dead && this.scene.currentLayer === LAYERS.STREET);
+      label?.setVisible?.(visible && near && !npc.dead && target?.target !== `contact:${id}` && target?.target !== `donor:${id}` && this.scene.currentLayer === LAYERS.STREET);
     }
     const targetNear = Math.hypot(target.x - this.scene.player.x, target.y - this.scene.player.y) < 350;
     this.destinationLabel?.setText?.(`◆ ${target.label}`);
@@ -365,7 +357,6 @@ export class VampireRuntime {
     if (this.campaign?.autoSave && this.restored) this.campaign.save();
     this.disposeNotice?.();
     this.frenzy.destroy();
-    this.hud.destroy();
     this.domain.destroy();
     this.destinationLabel?.destroy?.();
     for (const label of this.labels.values()) label?.destroy?.();

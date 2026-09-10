@@ -18,56 +18,6 @@ body.viceblood-world-active {
   background: var(--viceblood-black) !important;
 }
 
-body.viceblood-title-active .shell,
-body.viceblood-world-active .shell {
-  width: 100vw !important;
-  max-width: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-body.viceblood-title-active .topbar,
-body.viceblood-world-active .topbar,
-body.viceblood-title-active .notes,
-body.viceblood-world-active .notes {
-  display: none !important;
-}
-
-body.viceblood-title-active #game-ui {
-  display: none !important;
-}
-
-body.viceblood-title-active .game-frame,
-body.viceblood-world-active .game-frame,
-body.viceblood-title-active #game-root,
-body.viceblood-world-active #game-root {
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  max-width: none !important;
-  min-height: 100vh !important;
-  aspect-ratio: auto !important;
-  margin: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  overflow: hidden !important;
-  background: var(--viceblood-black) !important;
-}
-
-body.viceblood-title-active #game-root canvas,
-body.viceblood-world-active #game-root canvas {
-  position: absolute !important;
-  left: 50% !important;
-  top: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  width: max(100vw, 150vh) !important;
-  max-width: none !important;
-  height: auto !important;
-  image-rendering: auto !important;
-}
-
 .viceblood-title-screen {
   position: fixed;
   inset: 0;
@@ -147,7 +97,7 @@ body.viceblood-world-active #game-root canvas {
 }
 
 .viceblood-title-boot-lockup {
-  width: min(72vw, 1080px);
+  width: min(82vw, 1320px);
   max-width: 100%;
   text-align: center;
   transform: translateY(-1vh);
@@ -167,7 +117,7 @@ body.viceblood-world-active #game-root canvas {
 .viceblood-title-boot-message {
   margin: clamp(10px, 1.7vh, 20px) 0 0;
   color: rgba(225, 218, 215, .50);
-  font-size: clamp(9px, .75vw, 12px);
+  font-size: clamp(12px, 1vw, 16px);
   font-weight: 800;
   line-height: 1.35;
   letter-spacing: .38em;
