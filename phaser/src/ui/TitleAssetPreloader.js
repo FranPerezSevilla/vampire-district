@@ -1,6 +1,7 @@
 import { SAMPLE_AUDIO_IDS, sampleAudioDefinition } from "../audio/SampleAudioCatalog.js";
 
 const DEFAULT_TIMEOUT_MS = 15000;
+const REPO_ROOT_URL = new URL("../../../", import.meta.url);
 
 function unique(values) {
   return [...new Set(values.filter(Boolean))];
@@ -48,13 +49,22 @@ async function fetchIntoCache(url, fetchRef = globalThis.fetch) {
   if (typeof fetchRef !== "function") throw new Error(`Cannot preload ${url}: fetch unavailable.`);
   const response = await fetchRef(url, { cache: "force-cache" });
   if (!response.ok) throw new Error(`Asset preload failed (${response.status}): ${url}`);
-  // Reading the bytes ensures the request completes and populates the HTTP cache.
   await response.arrayBuffer();
   return true;
 }
 
+function repositoryAssetUrl(path) {
+  try {
+    return new URL(path, REPO_ROOT_URL).href;
+  } catch {
+    return path;
+  }
+}
+
 export function titlePreloadUrls(documentRef = globalThis.document) {
-  const audio = SAMPLE_AUDIO_IDS.flatMap(id => sampleAudioDefinition(id)?.files || []);
+  const audio = SAMPLE_AUDIO_IDS
+    .flatMap(id => sampleAudioDefinition(id)?.files || [])
+    .map(repositoryAssetUrl);
   const images = documentRef
     ? [...documentRef.querySelectorAll?.("#viceblood-title-screen img") || []].map(node => node.currentSrc || node.src)
     : [];
