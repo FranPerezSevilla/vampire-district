@@ -1,0 +1,46 @@
+name: UI rewrite
+
+on:
+  push:
+    branches: [codex/ui-rewrite]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-rewrite-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Prepare rewrite dependencies
+        run: npm install --save-exact --ignore-scripts --no-audit --no-fund react@19 react-dom@19 @radix-ui/react-dialog @radix-ui/react-tabs esbuild jsdom
+      - name: Native validation (no browsers)
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run check:fast 2>&1 | tee /tmp/ui-native.log
+          npm run check:affected:plan -- --base=origin/main > /tmp/ui-affected-plan.log
+      - name: Prepare offline development capsule
+        run: |
+          git bundle create /tmp/source.bundle --all
+          tar --exclude=.git --exclude=.artifacts --exclude=test-results --exclude=playwright-report -czf /tmp/ui-workspace.tar.gz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui-rewrite-workspace
+          path: |
+            /tmp/ui-workspace.tar.gz
+            /tmp/source.bundle
+            /tmp/ui-native.log
+            /tmp/ui-affected-plan.log
+          retention-days: 2
