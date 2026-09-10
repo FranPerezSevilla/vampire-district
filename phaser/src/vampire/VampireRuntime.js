@@ -331,11 +331,12 @@ export class VampireRuntime {
   }
   present(frame) {
     if (!this.service) return;
-    this.domain.render(this.scene.interactionSystem?.menu, !frame?.worldEnabled || Boolean(this.scene.registry?.get?.("uiPaused")));
+    const blockingUi = Boolean(this.scene.registry?.get?.("uiPaused"));
+    this.domain.render(this.scene.interactionSystem?.menu, blockingUi);
     const now = this.service.state.elapsed;
     if (now >= this.noticeUntil) this.nextNotice();
     const target = this.guideTarget();
-    const visible = Boolean(this.service.state.started && frame?.worldEnabled && !this.scene.registry?.get?.("uiPaused"));
+    const visible = Boolean(this.service.state.started && frame?.worldEnabled && !blockingUi);
     if (now < this.refreshAt && this.lastVisible === visible) return;
     this.refreshAt = now + 0.12;
     this.lastVisible = visible;
