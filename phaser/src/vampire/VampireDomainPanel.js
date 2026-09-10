@@ -38,6 +38,15 @@ export class VampireDomainPanel {
     this.feedback = "";
     this.invalidate();
   }
+  navigate(tab, target = null) {
+    this.show(tab, target);
+    const interaction = this.runtime.scene.interactionSystem;
+    const menu = interaction?.menu;
+    if (menu?.view === "vampire-domain") {
+      menu.index = Math.max(0, DOMAIN_TABS.findIndex(label => label.toLowerCase() === this.tab));
+      interaction.publish?.();
+    }
+  }
   render(menu, blocked = false) {
     if (!this.root) return;
     const visible = menu?.view === "vampire-domain" && !blocked;
@@ -110,11 +119,12 @@ export class VampireDomainPanel {
   click(event) {
     const node = event.target.closest?.("[data-action]");
     if (node?.dataset.action === "close") { this.runtime.scene.interactionSystem.close("Back to the city."); return; }
-    if (!this.runtime.available()) return;
+    const menu = this.runtime.scene.interactionSystem?.menu;
+    if (menu?.view !== "vampire-domain" || !this.runtime.service || this.runtime.frenzy.active || this.runtime.scene.transitionSystem?.active || this.runtime.scene.playerDamageSystem?.isDead?.()) return;
     const action = node?.dataset.action, target = node?.dataset.target;
-    if (action === "tab") this.runtime.openDomain(target);
-    else if (action === "map") this.runtime.openDomain("map", target);
-    else if (action === "track") { this.runtime.track(target); this.runtime.scene.interactionSystem.close("Destination marked. Follow the HUD guide."); }
+    if (action === "tab") this.navigate(target);
+    else if (action === "map") this.navigate("map", target);
+    else if (action === "track") { this.runtime.track(target); this.runtime.scene.interactionSystem.close("Destination marked. Follow the HUD arrow."); }
     else if (action === "select") { this.selection = target; }
     else if (action === "zoom-in") this.zoom = Math.min(4, this.zoom * 2);
     else if (action === "zoom-out") this.zoom = Math.max(1, this.zoom / 2);
