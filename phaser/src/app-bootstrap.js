@@ -1,5 +1,6 @@
 import { BOOT_MODES, bootProfile } from "./boot/BootProfile.js";
 import { titleScreenController } from "./ui/TitleScreenController.js";
+import "./vampire/DomainUiHardening.js";
 
 const PHASER_VERSION = "3.90.0";
 const PLAYTEST_ASSET_VERSION = "2026-08-03-vehicle-incidents-1";
