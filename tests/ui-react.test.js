@@ -23,8 +23,11 @@ beforeEach(async()=>{
  h=await uiHarness();
  await act(async()=>{view=mount(document.getElementById('interface-root'),{store:h.ui.store,command:(t,p)=>h.ui.command(t,p),geometry:cityMapGeometry,overlay:document.getElementById('ui-overlay-host'),controls:'WASD · move'});});
 });
-afterEach(async()=>{await act(async()=>view?.unmount());h.destroy();});
+afterEach(async()=>{await act(async()=>view?.unmount());await settleFocusScope();h.destroy();});
 after(()=>dom.window.close());
+// Radix FocusScope restores focus in a zero-delay unmount timer. Flush that
+// lifecycle boundary rather than racing React's commit or leaking it into another test.
+async function settleFocusScope(){await act(async()=>{await new Promise(resolve=>setTimeout(resolve,0));});}
 const button=label=>[...document.querySelectorAll('button')].find(n=>n.textContent.trim()===label||n.getAttribute('aria-label')===label);
 async function click(node){assert.ok(node,'click target must exist');await act(async()=>node.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})));}
 async function tab(name){const n=[...document.querySelectorAll('[role="tab"]')].find(n=>n.textContent.includes(name));assert.ok(n);await act(async()=>{n.dispatchEvent(new MouseEvent('mousedown',{button:0,bubbles:true,cancelable:true}));n.focus();});}
@@ -60,7 +63,7 @@ test('notice text is escaped and does not mount executable markup',async()=>{
  assert.equal(document.querySelector('.vb-notice img'),null);assert.match(document.querySelector('.vb-notice').textContent,/<img/);
 });
 test('domain close returns focus to the game canvas without a leftover modal',async()=>{
- await click(button('City'));await click(button('Close window'));
+ await click(button('City'));await click(button('Close window'));await settleFocusScope();
  assert.equal(document.querySelector('[role="dialog"]'),null);assert.equal(document.activeElement.tagName,'CANVAS');assert.equal(h.registry.get('uiPaused'),false);
 });
 

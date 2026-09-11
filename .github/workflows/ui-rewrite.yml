@@ -2,7 +2,7 @@ name: UI rewrite
 
 on:
   push:
-    branches: [codex/ui-rewrite]
+    branches: [codex/ui-rewrite, codex/traffic-junction-topology]
 
 permissions:
   contents: read
@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   native-and-build:
+    if: github.ref == 'refs/heads/codex/ui-rewrite'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -116,4 +117,87 @@ jobs:
         with:
           name: pages-preparation
           path: pages-preparation.json
+          retention-days: 14
+
+  verify-pages:
+    if: github.repository == 'FranPerezSevilla/vampire-district' && github.ref == 'refs/heads/codex/traffic-junction-topology'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify the published revision and static runtime over HTTP (no browser)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { readFile, writeFile } = require('node:fs/promises');
+            const { createHash } = require('node:crypto');
+            const base = 'https://franperezsevilla.github.io/vampire-district/';
+            const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+            const expectedBytes = await readFile('build.json');
+            const expected = JSON.parse(expectedBytes);
+            if (expected.ui !== 'react-radix' || expected.dirty !== false || !/^[a-f0-9]{40}$/.test(expected.revision)) {
+              throw new Error('Missing clean publication provenance');
+            }
+            const paths = [
+              'index.html', 'phaser/index.html', 'phaser/viewport.css', 'phaser/title-screen.css',
+              'phaser/ui-dist/interface.js', 'phaser/ui-dist/interface.css',
+              'phaser/src/app-bootstrap.js', 'phaser/src/main.js',
+              'phaser/src/scenes/UIScene.js', 'phaser/src/scenes/MainMenuScene.js',
+              'phaser/src/ui/UiStore.js', 'phaser/src/ui/GameUiReadModel.js',
+              'phaser/src/vampire/VampireRuntime.js', 'phaser/src/data/district.js',
+              'phaser/assets/ui/viceblood-logo.svg', 'phaser/assets/audio/music/main-menu-theme-01.mp3'
+            ];
+            const local = await Promise.all(paths.map(async path => ({ path, sha256: digest(await readFile(path)) })));
+            if (local.find(file => file.path === 'phaser/ui-dist/interface.js').sha256 !== expected.interfaceSha256) {
+              throw new Error('Local published bundle does not match build.json');
+            }
+            const deadline = Date.now() + 240000;
+            const getBytes = async path => {
+              const remaining = deadline - Date.now();
+              if (remaining <= 0) throw new Error('Publication verification deadline reached');
+              const url = new URL(path, base);
+              url.searchParams.set('verify', `${context.sha}-${Date.now()}`);
+              const response = await fetch(url, {
+                signal: AbortSignal.timeout(Math.min(10000, remaining)),
+                headers: { 'Cache-Control': 'no-cache' }, redirect: 'error'
+              });
+              if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
+              return Buffer.from(await response.arrayBuffer());
+            };
+            let report = null, lastError = null;
+            for (let attempt = 1; Date.now() < deadline; attempt++) {
+              try {
+                if (digest(await getBytes('build.json')) !== digest(expectedBytes)) throw new Error('Pages still serves another revision');
+                const verified = [];
+                // Four concurrent reads at most; no browser, gameplay or save access.
+                for (let start = 0; start < local.length; start += 4) {
+                  verified.push(...await Promise.all(local.slice(start, start + 4).map(async file => {
+                    if (digest(await getBytes(file.path)) !== file.sha256) throw new Error(`Stale or mismatched asset: ${file.path}`);
+                    return { ...file, status: 200 };
+                  })));
+                }
+                report = { url: base, sourceRevision: expected.revision, deploymentRevision: context.sha,
+                  verifiedAt: new Date().toISOString(), files: verified, browserExecuted: false };
+                break;
+              } catch (error) {
+                lastError = error;
+                core.info(`Pages propagation check ${attempt}: ${error.message}`);
+                const remaining = deadline - Date.now();
+                if (remaining > 0) await new Promise(resolve => setTimeout(resolve, Math.min(10000, remaining)));
+              }
+            }
+            if (!report) throw lastError || new Error('Pages verification did not finish');
+            await writeFile('pages-http-verification.json', JSON.stringify(report, null, 2));
+            core.info(`PAGES_HTTP_VERIFIED=${JSON.stringify(report)}`);
+            await core.summary.addHeading('Public Pages files verified')
+              .addRaw(`Source: ${expected.revision}\n\nPublication: ${context.sha}\n\n16 HTTP assets match the committed bytes. No browser or visual acceptance is claimed.\n`)
+              .write();
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pages-http-verification
+          path: pages-http-verification.json
           retention-days: 14

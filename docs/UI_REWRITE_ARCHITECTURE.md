@@ -86,8 +86,21 @@ review directory at localhost enables the existing pinned local-engine boot path
 The dependency change conservatively selects `test:rc`. The user's explicit
 no-browser-execution policy remains active; the permitted native/static gate is
 run, but the RC/browser suite is not claimed as passed. `ui-rewrite.yml` validates
-and uploads a review build without deploying Pages or granting write permissions.
-The PR gate exempts this authorized branch from browser execution too.
+and uploads a review build. Its separate `prepare-pages` job receives contents-write
+permission only to create and hash-check six immutable static blobs and export a
+manifest; it never changes a ref, a Pages setting or a PR. Source branches are not
+automatically published. The PR gate excludes browser execution on this branch.
+
+After explicit publication approval, combine that exact tested source tree with
+the six manifest entries, commit on the existing Pages source branch without force
+or PR merging, and verify the Pages deployment. A branch-only `verify-pages` job
+checks the public build.json and 16 runtime/assets against committed bytes over
+HTTP, allowing up to four minutes for propagation. It does not execute a browser,
+read saved games or validate visual layout. Keep build.json's source revision: the
+publication commit necessarily differs because it also contains compiled assets.
+
+Radix FocusScope defers unmount autofocus to a zero-delay timer. The DOM tests
+flush that lifecycle on close and teardown instead of racing focus restoration.
 
 New native tests exercise stable snapshots, canvas fitting, real campaign/UI
 commands, pause restoration, deferred transaction guards and independent district
