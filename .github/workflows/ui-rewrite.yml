@@ -48,3 +48,72 @@ jobs:
             ui-native.log
             ui-affected-plan.log
           retention-days: 14
+
+  # Preparation is deliberately separate from publication. Only the connector's
+  # explicit non-force ref update publishes to the existing Pages source branch.
+  prepare-pages:
+    needs: native-and-build
+    if: github.repository == 'FranPerezSevilla/vampire-district' && github.ref == 'refs/heads/codex/ui-rewrite'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: viceblood-ui-review
+          path: review
+      - name: Prepare verified static objects for an explicit Pages publication
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { readFile, writeFile } = require('node:fs/promises');
+            const { createHash } = require('node:crypto');
+            const { owner, repo } = context.repo;
+            const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
+            const blobHash = bytes => createHash('sha1').update(Buffer.concat([
+              Buffer.from(`blob ${bytes.length}\0`), bytes
+            ])).digest('hex');
+            const metadata = JSON.parse(await readFile('review/build.json', 'utf8'));
+            if (metadata.revision !== context.sha || metadata.dirty !== false || metadata.ui !== 'react-radix') {
+              throw new Error('Build provenance does not match the validated source');
+            }
+            const paths = [
+              'phaser/ui-dist/interface.js', 'phaser/ui-dist/interface.css',
+              'node_modules/phaser/dist/phaser.min.js', 'node_modules/phaser/LICENSE.md',
+              'build.json', '.nojekyll'
+            ];
+            const objects = [];
+            for (const path of paths) {
+              // upload-artifact excludes dotfiles; recreate this empty marker.
+              const bytes = path === '.nojekyll' ? Buffer.alloc(0) : await readFile(`review/${path}`);
+              if (path === 'phaser/ui-dist/interface.js' && sha256(bytes) !== metadata.interfaceSha256) {
+                throw new Error('Compiled interface digest mismatch');
+              }
+              if (path !== '.nojekyll' && bytes.length === 0) throw new Error(`Empty asset: ${path}`);
+              objects.push({ path, bytes, sha: blobHash(bytes), sha256: sha256(bytes) });
+            }
+            const { data: commit } = await github.rest.git.getCommit({ owner, repo, commit_sha: context.sha });
+            for (const object of objects) {
+              const { data } = await github.rest.git.createBlob({
+                owner, repo, content: object.bytes.toString('base64'), encoding: 'base64'
+              });
+              if (data.sha !== object.sha) throw new Error(`Uploaded asset mismatch: ${object.path}`);
+            }
+            const manifest = {
+              revision: context.sha, sourceTree: commit.tree.sha, runId: context.runId,
+              entries: objects.map(({ path, sha, sha256, bytes }) => ({
+                path, mode: '100644', type: 'blob', sha, sha256, size: bytes.length
+              }))
+            };
+            await writeFile('pages-preparation.json', JSON.stringify(manifest, null, 2));
+            core.info(`PAGES_PREPARATION=${JSON.stringify(manifest)}`);
+            await core.summary.addHeading('Pages package prepared, not published')
+              .addRaw(`Validated source: ${context.sha}\n\nSix static objects verified. No branch ref, Pages setting or PR was changed by this job.\n`)
+              .write();
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pages-preparation
+          path: pages-preparation.json
+          retention-days: 14
