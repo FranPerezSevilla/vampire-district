@@ -14,12 +14,20 @@ export function installResponsiveLayout(documentRef = globalThis.document, windo
     const canvas = host.querySelector("canvas");
     if (!canvas) return;
     const rect = app.getBoundingClientRect();
-    const gameSize = windowRef.NBD_PHASER_GAME?.scale?.gameSize;
+    if (!(rect.width > 0 && rect.height > 0)) return;
+    const scale = windowRef.NBD_PHASER_GAME?.scale;
+    const gameSize = scale?.gameSize;
     const layout = coverSize(rect.width, rect.height, gameSize?.width || canvas.width, gameSize?.height || canvas.height);
     for (const name of ["width", "height", "left", "top"]) canvas.style[name] = `${layout[name]}px`;
     canvas.style.margin = "0";
     canvas.style.transform = "none";
-    windowRef.NBD_VIEWPORT_LAYOUT = Object.freeze({ width: rect.width, height: rect.height, canvas: layout, uiScale: 1 });
+    // CSS cover changes are outside ScaleManager.refresh. Synchronize its input
+    // conversion AFTER writing styles, without letting it restyle/center the UI.
+    scale?.updateBounds?.();
+    const inputWidth = scale?.baseSize?.width || gameSize?.width || canvas.width;
+    const inputHeight = scale?.baseSize?.height || gameSize?.height || canvas.height;
+    scale?.displayScale?.set?.(inputWidth / layout.width, inputHeight / layout.height);
+    windowRef.NBD_VIEWPORT_LAYOUT = Object.freeze({ width: rect.width, height: rect.height, canvas: layout, uiScale: 1, devicePixelRatio: windowRef.devicePixelRatio || 1, textSize: windowRef.getComputedStyle?.(app)?.fontSize || null });
   };
   const schedule = () => { if (!scheduled) scheduled = windowRef.requestAnimationFrame(resize); };
   const observer = windowRef.ResizeObserver ? new windowRef.ResizeObserver(schedule) : null;

@@ -91,6 +91,9 @@ export class MainMenuScene extends Phaser.Scene {
     }
 
     this.previewPresented = true;
+    // The normal zoom updater is suppressed while the menu owns the camera.
+    // Initialize it explicitly before composing or exposing the first preview.
+    gameScene.cameras?.main?.setZoom?.(gameScene.cameraZoomForLayer());
     gameScene?.registry?.set?.("mainMenuActive", true);
     this.scene.bringToTop("MainMenuScene");
     this.composeMenuCamera();
@@ -99,7 +102,7 @@ export class MainMenuScene extends Phaser.Scene {
     // the opaque boot surface. Only after both are ready do we offer the browser
     // gesture gate. The gesture starts music and moves directly to the menu.
     this.publishReadiness("waiting-for-title-assets");
-    Promise.resolve(this.assetsReady)
+    Promise.all([this.assetsReady, this.waitForPreviewGeometry(gameScene)])
       .then(() => {
         if (!this.sys.isActive()) return false;
         this.publishReadiness("awaiting-user-gesture");
@@ -120,6 +123,19 @@ export class MainMenuScene extends Phaser.Scene {
       });
   }
 
+  async waitForPreviewGeometry(gameScene) {
+    const stream = gameScene?.cityStreamSystem;
+    if (!stream) return;
+    await stream.initialization;
+    if (!this.sys.isActive()) return;
+    // Chunk activation remains on GameScene's existing lightweight title frame.
+    // This promise rejects on a loading error/timeout instead of revealing holes.
+    await stream.waitUntilReady();
+    if (!this.sys.isActive()) return;
+    gameScene.entityStreamSystem?.update?.(0);
+    gameScene.redrawLayer?.();
+  }
+
   detachPreviewCreateListener() {
     if (this.previewScene && this.previewCreateEvent && this.previewCreateListener) {
       this.previewScene.events.off(this.previewCreateEvent, this.previewCreateListener);
@@ -134,16 +150,15 @@ export class MainMenuScene extends Phaser.Scene {
     if (!camera || !player) return null;
     const zoom = Math.max(0.001, Number(camera.zoom) || 1);
     const viewWidth = camera.width / zoom;
-    const viewHeight = camera.height / zoom;
-    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-    const maxX = Math.max(0, Number(camera.getBounds?.().width || camera._bounds?.width || 0) - viewWidth);
-    const maxY = Math.max(0, Number(camera.getBounds?.().height || camera._bounds?.height || 0) - viewHeight);
-    const centeredX = clamp(player.x - viewWidth / 2, 0, maxX);
-    const centeredY = clamp(player.y - viewHeight / 2, 0, maxY);
+    // Phaser scroll is unzoomed. getScroll handles zoom-aware bounds; using
+    // player - worldView.width / 2 here moves the subject off-screen at high quality.
+    const centered = camera.getScroll(player.x, player.y);
+    const centeredX = centered.x, centeredY = centered.y;
     const canvasRect = gameScene.game?.canvas?.getBoundingClientRect?.();
     const hostRect = globalThis.document?.getElementById?.("game-root")?.getBoundingClientRect?.();
     const visibleFraction = canvasRect?.width > 0 && hostRect?.width > 0 ? Math.min(1, hostRect.width / canvasRect.width) : 1;
-    const menuX = clamp(centeredX - viewWidth * visibleFraction * MENU_CAMERA_HORIZONTAL_BIAS, 0, maxX);
+    const menu = camera.getScroll(player.x - viewWidth * visibleFraction * MENU_CAMERA_HORIZONTAL_BIAS, player.y);
+    const menuX = menu.x;
     return { camera, player, centeredX, centeredY, menuX };
   }
 

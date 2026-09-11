@@ -152,7 +152,7 @@ const config = {
   roundPixels: false,
   render: { antialias: true, antialiasGL: true, pixelArt: false, roundPixels: false },
   physics: { default: "arcade", arcade: { debug: false } },
-  scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.NO_CENTER },
   scene: [BootScene, MainMenuScene, GameScene, UIScene]
 };
 

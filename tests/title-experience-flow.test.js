@@ -9,14 +9,14 @@ const preloadSource = fs.readFileSync(new URL("../phaser/src/ui/TitleAssetPreloa
 
 test("title waits for asset preload before exposing the user audio gesture", () => {
   assert.match(menuSource, /this\.assetsReady = preloadTitleExperience\(\)/);
-  assert.match(menuSource, /Promise\.resolve\(this\.assetsReady\)[\s\S]*titleScreenAudioGate\.waitForStart\(\)/);
+  assert.match(menuSource, /Promise\.all\(\[this\.assetsReady, this\.waitForPreviewGeometry\(gameScene\)\]\)[\s\S]*titleScreenAudioGate\.waitForStart\(\)/);
   assert.match(preloadSource, /Promise\.all\(jobs\)/);
   assert.match(preloadSource, /SAMPLE_AUDIO_IDS/);
 });
 
 test("main menu composes the player to the right and eases back to centered gameplay", () => {
   assert.match(menuSource, /MENU_CAMERA_HORIZONTAL_BIAS = 0\.22/);
-  assert.match(menuSource, /menuX = clamp\(centeredX - viewWidth \* visibleFraction \* MENU_CAMERA_HORIZONTAL_BIAS/);
+  assert.match(menuSource, /camera\.getScroll\(player\.x - viewWidth \* visibleFraction \* MENU_CAMERA_HORIZONTAL_BIAS/);
   assert.match(menuSource, /updateCameraTransition\(\)/);
   assert.match(menuSource, /frame\.centeredX - this\.cameraTransitionFrom\.x/);
   assert.match(menuSource, /startFollow\?\.\(gameScene\.player, true, 0\.12, 0\.12\)/);
