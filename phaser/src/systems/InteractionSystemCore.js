@@ -258,7 +258,8 @@ export class InteractionSystem {
         id: option.id,
         label: option.label,
         detail: option.detail || "",
-        type: option.type || "action"
+        type: option.type || "action",
+        disabled: Boolean(option.disabled)
       }))
     };
   }

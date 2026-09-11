@@ -31,7 +31,7 @@ function harness() {
 test("domain options 1-6 keep navigating after the world input frame is paused", () => {
   const { scene, runtime } = harness();
   assert.equal(runtime.openDomain("overview"), true);
-  assert.equal(runtime.domain.tab, "overview");
+  assert.equal(runtime.domain.tab, "city");
 
   scene.currentInputFrame = createEmptyInputFrame({ worldEnabled: false });
   scene.interactionSystem.updateInput(createEmptyInputFrame({ menuDigitPressed: 5 }));

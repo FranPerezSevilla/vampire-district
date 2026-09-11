@@ -26,8 +26,14 @@ function mediaReady(media) {
   if (media.readyState >= 3) return Promise.resolve(true);
   media.load?.();
   return new Promise((resolve, reject) => {
-    const done = () => { cleanup(); resolve(true); };
-    const failed = () => { cleanup(); reject(new Error("Main-menu theme failed to preload.")); };
+    const done = () => {
+      cleanup();
+      resolve(true);
+    };
+    const failed = () => {
+      cleanup();
+      reject(new Error("Main-menu theme failed to preload."));
+    };
     const cleanup = () => {
       media.removeEventListener?.("canplaythrough", done);
       media.removeEventListener?.("canplay", done);
@@ -48,30 +54,45 @@ async function fetchIntoCache(url, fetchRef = globalThis.fetch) {
 }
 
 function repositoryAssetUrl(path) {
-  try { return new URL(path, REPO_ROOT_URL).href; }
-  catch { return path; }
+  try {
+    return new URL(path, REPO_ROOT_URL).href;
+  } catch {
+    return path;
+  }
 }
 
 export function titlePreloadUrls(documentRef = globalThis.document) {
-  const audio = SAMPLE_AUDIO_IDS.flatMap(id => sampleAudioDefinition(id)?.files || []).map(repositoryAssetUrl);
-  const images = documentRef ? [...documentRef.querySelectorAll?.("#viceblood-title-screen img") || []].map(node => node.currentSrc || node.src) : [];
+  const audio = SAMPLE_AUDIO_IDS
+    .flatMap(id => sampleAudioDefinition(id)?.files || [])
+    .map(repositoryAssetUrl);
+  const images = documentRef
+    ? [...documentRef.querySelectorAll?.("#viceblood-title-screen img") || []].map(node => node.currentSrc || node.src)
+    : [];
   return unique([...audio, ...images]);
 }
 
-export async function preloadTitleExperience({ documentRef = globalThis.document, windowRef = globalThis.window, fetchRef = globalThis.fetch, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
+export async function preloadTitleExperience({
+  documentRef = globalThis.document,
+  windowRef = globalThis.window,
+  fetchRef = globalThis.fetch,
+  timeoutMs = DEFAULT_TIMEOUT_MS
+} = {}) {
   const theme = documentRef?.getElementById?.("viceblood-main-menu-theme") || null;
   const urls = titlePreloadUrls(documentRef);
   const startedAt = Date.now();
   windowRef.NBD_TITLE_PRELOAD_STATE = Object.freeze({ state: "loading", total: urls.length + 1, ready: 0, startedAt });
+
   let ready = 0;
   const markReady = () => {
     ready += 1;
     windowRef.NBD_TITLE_PRELOAD_STATE = Object.freeze({ state: "loading", total: urls.length + 1, ready, startedAt });
   };
+
   const jobs = [
     withTimeout(mediaReady(theme).then(value => { markReady(); return value; }), timeoutMs, "Main-menu theme", windowRef),
     ...urls.map(url => withTimeout(fetchIntoCache(url, fetchRef).then(value => { markReady(); return value; }), timeoutMs, `Asset ${url}`, windowRef))
   ];
+
   await Promise.all(jobs);
   const completedAt = Date.now();
   windowRef.NBD_TITLE_PRELOAD_STATE = Object.freeze({ state: "ready", total: jobs.length, ready: jobs.length, startedAt, completedAt });

@@ -44,7 +44,11 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   publishReadiness(state, detail = null) {
-    window.NBD_MAIN_MENU_READINESS = Object.freeze({ state, detail, timestamp: Date.now() });
+    window.NBD_MAIN_MENU_READINESS = Object.freeze({
+      state,
+      detail,
+      timestamp: Date.now()
+    });
   }
 
   startWorldPreview() {
@@ -54,12 +58,15 @@ export class MainMenuScene extends Phaser.Scene {
       titleScreenController.showFailure(new Error("The city preview scene is unavailable."));
       return;
     }
+
     this.previewScene = gameScene;
+
     if (this.scene.isActive("GameScene") && gameScene.inputSystem) {
       this.publishReadiness("game-scene-already-created");
       this.activateWorldPreview(gameScene);
       return;
     }
+
     const createEvent = Phaser.Scenes?.Events?.CREATE || "create";
     this.previewCreateEvent = createEvent;
     this.previewCreateListener = () => {
@@ -68,6 +75,7 @@ export class MainMenuScene extends Phaser.Scene {
     };
     gameScene.events.once(createEvent, this.previewCreateListener);
     this.publishReadiness("waiting-for-game-scene-create");
+
     if (!this.scene.isActive("GameScene")) this.scene.launch("GameScene");
     this.scene.bringToTop("MainMenuScene");
   }
@@ -75,15 +83,21 @@ export class MainMenuScene extends Phaser.Scene {
   activateWorldPreview(gameScene = this.previewScene) {
     if (!this.sys.isActive() || this.previewPresented) return;
     this.detachPreviewCreateListener();
+
     if (!this.lockPreviewControl(gameScene)) {
       this.publishReadiness("failure", "InputSystem unavailable after GameScene CREATE");
       titleScreenController.showFailure(new Error("The city preview input authority is unavailable."));
       return;
     }
+
     this.previewPresented = true;
     gameScene?.registry?.set?.("mainMenuActive", true);
     this.scene.bringToTop("MainMenuScene");
     this.composeMenuCamera();
+
+    // The world preview and every title/gameplay sample warm in parallel behind
+    // the opaque boot surface. Only after both are ready do we offer the browser
+    // gesture gate. The gesture starts music and moves directly to the menu.
     this.publishReadiness("waiting-for-title-assets");
     Promise.resolve(this.assetsReady)
       .then(() => {
@@ -107,7 +121,9 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   detachPreviewCreateListener() {
-    if (this.previewScene && this.previewCreateEvent && this.previewCreateListener) this.previewScene.events.off(this.previewCreateEvent, this.previewCreateListener);
+    if (this.previewScene && this.previewCreateEvent && this.previewCreateListener) {
+      this.previewScene.events.off(this.previewCreateEvent, this.previewCreateListener);
+    }
     this.previewCreateEvent = null;
     this.previewCreateListener = null;
   }
@@ -124,7 +140,10 @@ export class MainMenuScene extends Phaser.Scene {
     const maxY = Math.max(0, Number(camera.getBounds?.().height || camera._bounds?.height || 0) - viewHeight);
     const centeredX = clamp(player.x - viewWidth / 2, 0, maxX);
     const centeredY = clamp(player.y - viewHeight / 2, 0, maxY);
-    const menuX = clamp(centeredX - viewWidth * MENU_CAMERA_HORIZONTAL_BIAS, 0, maxX);
+    const canvasRect = gameScene.game?.canvas?.getBoundingClientRect?.();
+    const hostRect = globalThis.document?.getElementById?.("game-root")?.getBoundingClientRect?.();
+    const visibleFraction = canvasRect?.width > 0 && hostRect?.width > 0 ? Math.min(1, hostRect.width / canvasRect.width) : 1;
+    const menuX = clamp(centeredX - viewWidth * visibleFraction * MENU_CAMERA_HORIZONTAL_BIAS, 0, maxX);
     return { camera, player, centeredX, centeredY, menuX };
   }
 
@@ -152,22 +171,26 @@ export class MainMenuScene extends Phaser.Scene {
     if (this.previewLocked) return true;
     const inputSystem = gameScene?.inputSystem;
     if (!gameScene || !inputSystem) return false;
+
     this.previewLocked = true;
     if (gameScene.input) {
       this.previewInputWasEnabled = gameScene.input.enabled;
       gameScene.input.enabled = false;
     }
+
     this.previewInputSystem = inputSystem;
     this.previewWorldInputWasEnabled = inputSystem.worldEnabled;
     this.previewPointerWorldPoint = inputSystem.pointerWorldPoint;
     inputSystem.setWorldEnabled?.(false);
     inputSystem.reset?.();
     inputSystem.pointerWorldPoint = () => inputSystem.playerFallbackPoint();
+
     const combatGraphics = gameScene.combatSystem?.graphics;
     if (combatGraphics) {
       this.previewCombatGraphicsWasVisible = combatGraphics.visible;
       combatGraphics.setVisible(false);
     }
+
     gameScene.cameras?.main?.stopFollow?.();
     this.scene.bringToTop("MainMenuScene");
     return true;
@@ -177,11 +200,13 @@ export class MainMenuScene extends Phaser.Scene {
     if (!this.previewLocked) return;
     const gameScene = this.previewScene || this.scene.get("GameScene");
     if (gameScene?.input) gameScene.input.enabled = this.previewInputWasEnabled;
+
     if (this.previewInputSystem) {
       if (this.previewPointerWorldPoint) this.previewInputSystem.pointerWorldPoint = this.previewPointerWorldPoint;
       this.previewInputSystem.setWorldEnabled?.(this.previewWorldInputWasEnabled);
       this.previewInputSystem.resetWorldEdges?.();
     }
+
     gameScene?.combatSystem?.graphics?.setVisible?.(this.previewCombatGraphicsWasVisible);
     gameScene?.cameras?.main?.startFollow?.(gameScene.player, true, 0.12, 0.12);
     this.previewLocked = false;
@@ -194,6 +219,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.cameraTransitionFrom = frame ? { x: frame.camera.scrollX, y: frame.camera.scrollY } : null;
     this.cameraTransitionStartedAt = performance.now();
     titleScreenAudioGate.fadeOut(MENU_TO_GAME_MS);
+
     try {
       await titleScreenController.exitToGame();
       const finalFrame = this.cameraFrame();
@@ -208,6 +234,7 @@ export class MainMenuScene extends Phaser.Scene {
   finishNightTransition() {
     if (!this.scene.isActive("GameScene")) this.scene.launch("GameScene");
     if (!this.scene.isActive("UIScene")) this.scene.launch("UIScene");
+
     this.restorePreviewControl();
     const gameScene = this.previewScene || this.scene.get("GameScene");
     gameScene?.registry?.set?.("mainMenuActive", false);

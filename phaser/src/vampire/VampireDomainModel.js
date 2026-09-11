@@ -71,7 +71,10 @@ export function buildDomainModel(runtime) {
   const districts = districtZones.map(zone => {
     const district = v.campaign.territory.district(zone.id);
     const permission = v.campaign.huntingLaw.activeRight({ districtId: zone.id, ownerId: district.ownerId, victimType: "civilian" });
-    return { ...zone, permitted: Boolean(permission), permissionId: permission?.id || null };
+    return { ...zone, ownerId: district?.ownerId || null,
+      ownerLabel: district?.ownerLabel || "Independent", politicalStatus: district?.status || "unknown",
+      relationship: district?.relationship || "unknown", reputation: district?.reputation ?? null,
+      influence: district?.influence || {}, permitted: Boolean(permission), permissionId: permission?.id || null };
   });
   const errand = errandModel(runtime);
   let next;

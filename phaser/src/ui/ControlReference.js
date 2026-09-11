@@ -36,6 +36,6 @@ export function buildControlReference(candidateBindings = {}) {
     `${key(bindings, "horn")}  Horn`,
     "",
     "MENUS",
-    `${key(bindings, "cancel")}  Pause / back · M  Mission · L  Night Ledger`
+    `${key(bindings, "cancel")}  Pause / back · M  Errand · L  Night Ledger`
   ].join("\n");
 }
