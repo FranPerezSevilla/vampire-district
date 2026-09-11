@@ -1,6 +1,6 @@
 {
-  "revision": "b6ed12a4c0e69c93032c34cdb74c0d006b5cd456",
+  "revision": "b97b961eb09c7947ea12acff12f8a5e4b9a3b9a1",
   "dirty": false,
-  "interfaceSha256": "2a3f53e075e314b03d3abfe93c74646cf89e747d2556e17889606fa71c6a5ba9",
+  "interfaceSha256": "2ea68e7c550eba618f3fedf65347284ce5d326ce73ec1601b1bd9319504d5036",
   "ui": "react-radix"
 }

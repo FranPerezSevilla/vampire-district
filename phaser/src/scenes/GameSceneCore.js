@@ -326,8 +326,7 @@ export class GameScene extends Phaser.Scene {
     if (prop) this.propDamageSystem.damage(prop, prop.durability || 1, 0);
   }
 
-  updateCameraForLayer() {
-    const camera = this.cameras.main;
+  cameraZoomForLayer() {
     const baseZoom = this.currentLayer === LAYERS.ROOF_HIGH
       ? CAMERA.roofHighZoom
       : this.currentLayer === LAYERS.ROOF_LOW
@@ -338,7 +337,12 @@ export class GameScene extends Phaser.Scene {
     const renderScale = typeof window !== "undefined"
       ? window.NBD_RESOLUTION_PRESET?.renderScale || 1
       : 1;
-    const targetZoom = baseZoom * renderScale;
+    return baseZoom * renderScale;
+  }
+
+  updateCameraForLayer() {
+    const camera = this.cameras.main;
+    const targetZoom = this.cameraZoomForLayer();
     camera.setZoom(Phaser.Math.Linear(camera.zoom, targetZoom, 0.08));
   }
 

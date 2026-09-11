@@ -103,8 +103,8 @@ test("main menu keeps the authoritative GameScene alive but freezes player aim",
 
 test("viewport anchoring and full-height panels belong to CSS, not canvas crop maths", () => {
   assert.match(titleCss, /\.viceblood-title-brand\s*\{/);
-  assert.match(titleCss, /top:\s*max\(clamp\(24px/);
-  assert.match(titleCss, /left:\s*max\(clamp\(26px/);
+  assert.match(titleCss, /top:\s*max\(clamp\(1\.5rem/);
+  assert.match(titleCss, /left:\s*max\(clamp\(1\.625rem/);
   assert.match(titleCss, /\.viceblood-title-drawer\s*\{[\s\S]*inset:\s*0 auto 0 0/);
   assert.doesNotMatch(titleCss, /width:\s*max\(100vw, 150vh\)/);
   const viewportCss = readFileSync(new URL("../phaser/viewport.css", import.meta.url), "utf8");
