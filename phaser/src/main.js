@@ -1,3 +1,4 @@
+import { createMenuThemePlayback } from "./audio/MenuThemePlayback.js";
 import { WORLD } from "./data/balance.js";
 import { installBloodSensePresentationPolicy } from "./policies/BloodSensePresentationPolicy.js";
 import { installCitySurfacePresentationPolicy } from "./policies/CitySurfacePresentationPolicy.js";
@@ -37,50 +38,9 @@ function createMainMenuThemeController() {
   audio.loop = true;
   audio.preload = "auto";
   audio.volume = MAIN_MENU_THEME_VOLUME;
-  let fadeRaf = 0;
-
-  const cancelFade = () => {
-    if (fadeRaf) cancelAnimationFrame(fadeRaf);
-    fadeRaf = 0;
-  };
-
-  const start = async () => {
-    cancelFade();
-    audio.loop = true;
-    audio.volume = MAIN_MENU_THEME_VOLUME;
-    if (!audio.paused) return true;
-    try {
-      await audio.play();
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  const fadeOut = (durationMs = MAIN_MENU_THEME_FADE_MS) => {
-    cancelFade();
-    if (audio.paused) {
-      audio.currentTime = 0;
-      return;
-    }
-    const from = audio.volume;
-    const startedAt = performance.now();
-    const tick = now => {
-      const t = Math.min(1, (now - startedAt) / Math.max(1, durationMs));
-      audio.volume = Math.max(0, from * (1 - t));
-      if (t >= 1) {
-        fadeRaf = 0;
-        audio.pause();
-        audio.currentTime = 0;
-        audio.volume = MAIN_MENU_THEME_VOLUME;
-        return;
-      }
-      fadeRaf = requestAnimationFrame(tick);
-    };
-    fadeRaf = requestAnimationFrame(tick);
-  };
-
-  return Object.freeze({ start, fadeOut, audio });
+  return createMenuThemePlayback(audio, {
+    volume: MAIN_MENU_THEME_VOLUME, fadeMs: MAIN_MENU_THEME_FADE_MS
+  });
 }
 
 window.NBD_MAIN_MENU_THEME = createMainMenuThemeController();

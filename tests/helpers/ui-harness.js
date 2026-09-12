@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import { EventEmitter } from 'node:events';
 import { CampaignSystem } from '../../phaser/src/campaign/CampaignSystem.js';
 import { VampireRuntime } from '../../phaser/src/vampire/VampireRuntime.js';
@@ -26,10 +27,18 @@ export async function uiHarness() {
   ui.registry = registry; ui.time = {now: 1000}; ui.events = new EventEmitter();
   ui.scene = { get: key => key === 'GameScene' ? scene : ui,
     pause() { paused=true; }, resume() { paused=false; }, isPaused: () => paused };
+  // Use Phaser's actual global injection, including its reserved `game` field.
+  const require = createRequire(import.meta.url);
+  const PluginManager = require('phaser/src/plugins/PluginManager');
+  const map = require('phaser/src/scene/InjectionMap');
+  const engine = { registry, scene: { getScene: key => ui.scene.get(key) } };
+  PluginManager.prototype.addToScene.call({ game: engine, plugins: [] },
+    { scene: ui, settings: { map } }, ['game', 'registry'], []);
+  scene.game = engine;
   scene.vampireRuntime = new VampireRuntime(scene);
   scene.vampireRuntime.update(.01,scene.currentInputFrame);
   ui.refresh();
-  return {ui, scene, runtime: scene.vampireRuntime, v: campaign.vampire, campaign, registry,
+  return {ui, scene, engine, runtime: scene.vampireRuntime, v: campaign.vampire, campaign, registry,
     paused:()=>paused, resets:()=>resets,
     step() { if(paused) return false; scene.currentInputFrame=createEmptyInputFrame({worldEnabled:!scene.inputSystem.sceneBlocked()}); scene.vampireRuntime.update(.01,scene.currentInputFrame); scene.events.emit('postupdate'); return true; },
     destroy() { ui.cancelPendingAction(); scene.vampireRuntime.destroy(); ui.store.destroy(); }

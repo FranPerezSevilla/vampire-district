@@ -16,6 +16,9 @@ const require=createRequire(import.meta.url);
 const device=require.resolve('phaser/src/device');
 require.cache[device]={id:device,filename:device,loaded:true,exports:{os:{},features:{},browser:{}}};
 const math=require('phaser/src/math');
+const PluginManager=require('phaser/src/plugins/PluginManager');
+const SceneManager=require('phaser/src/scene/SceneManager');
+const InjectionMap=require('phaser/src/scene/InjectionMap');
 const boot=JSON.parse(await readFile(resolve(projectRoot,'dist/boot-assets.json')));
 const jsPath=boot.paths.find(p=>/\/game\..*\.js$/.test(p));
 const code=await readFile(resolve(projectRoot,'dist',jsPath),'utf8');
@@ -50,6 +53,26 @@ for (const entry of ['index.html','phaser/index.html']) {
     assert.equal(typeof win.NBD_INTERFACE_VIEW?.mount,'function');
     assert.equal(requests,0);
     assert.equal(win.NBD_MAIN_MENU_THEME.audio.src,'https://example.test/vampire-district/phaser/assets/audio/music/main-menu-theme-01.mp3');
-    console.log(`${entry}: compiled module composition passed; local engine first, UI ready, asset roots preserved. No renderer/browser executed.`);
+    // Continue beyond Game construction: this boundary previously missed a
+    // helper named game() being overwritten by real Phaser Scene injection.
+    const ui=new configuration.scene[3](), app=win.NBD_PHASER_GAME;
+    app.registry=new Map();
+    const scene={player:{x:1540,y:1575},registry:app.registry,
+      vampireRuntime:{service:win.NBD_CAMPAIGN_SYSTEM.vampire,guideTarget:()=>null}};
+    ui.events=new EventEmitter();
+    ui.sys={scene:ui,settings:{map:InjectionMap,isTransition:false},events:ui.events};
+    ui.time={now:0};
+    ui.scene={get:key=>key==='GameScene'?scene:ui,isPaused:()=>false,pause(){},resume(){}};
+    PluginManager.prototype.addToScene.call({game:app,plugins:[]},ui.sys,['game','registry'],[]);
+    try {
+      SceneManager.prototype.create.call({},ui);
+      assert.equal(ui.game,app,'Phaser retains its engine field');
+      assert.equal(ui.bootError,null,String(ui.bootError?.stack||''));
+      assert.ok(ui.renderUi,'compiled UIScene must mount its real React view');
+      assert.ok(win.document.querySelector('.vb-hud'),'real initial HUD was committed');
+      ui.command('pause'); assert.equal(ui.store.getSnapshot().mode,'pause');
+      ui.command('close'); assert.equal(ui.store.getSnapshot().mode,null);
+    } finally {ui.cleanup();}
+    console.log(`${entry}: packed UI passes real Phaser injection/CREATE and mounts HUD; asset roots preserved. No renderer/browser executed.`);
   } finally {for(const observer of observers) observer.disconnect();await Promise.resolve();assert.equal(errors.length,0,String(errors[0]));dom.window.close();}
 }
