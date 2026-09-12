@@ -35,6 +35,7 @@ export class ChunkStreamSystem {
     this.pendingFocus = null;
     this.initialized = false;
     this.initializationError = null;
+    this.initialViewPreparation = null;
     this.destroyed = false;
     this.deltaStore = null;
     this.lastDesiredKey = "";
@@ -50,6 +51,7 @@ export class ChunkStreamSystem {
   }
 
   setupManifest(manifest) {
+    if (this.destroyed) throw Object.assign(new Error("City stream was destroyed."), { name: "AbortError" });
     if (!manifest?.chunks || !Array.isArray(manifest.chunkIds)) throw new TypeError("Invalid city chunk manifest.");
     this.manifest = manifest;
     this.index ||= new ChunkSpatialIndex(manifest);
@@ -159,10 +161,12 @@ export class ChunkStreamSystem {
     if (cached) { this.enqueue(key, cached); return Promise.resolve(cached); }
     this.setLoadState(key, CHUNK_LOAD_STATES.LOADING);
     const promise = this.fileStore.loadChunk(key).then(payload => {
+      if (this.destroyed) return null;
       if (desiredState(this.records.get(key)?.state)) this.enqueue(key, payload);
       else this.setLoadState(key, CHUNK_LOAD_STATES.CACHED);
       return payload;
     }).catch(error => {
+      if (this.destroyed) return null;
       if (error?.name === "AbortError") this.setLoadState(key, this.fileStore.has?.(key) ? CHUNK_LOAD_STATES.CACHED : CHUNK_LOAD_STATES.UNLOADED);
       else this.setLoadState(key, CHUNK_LOAD_STATES.ERROR, error);
       this.publish();
@@ -184,28 +188,36 @@ export class ChunkStreamSystem {
     }
   }
 
-  processActivationQueue() {
+  processActivationQueue({ ids = null, present = true } = {}) {
     const entries = [...this.activationQueue.entries()].sort(([a], [b]) => (this.activeChunkIds.has(a) ? 0 : 1) - (this.activeChunkIds.has(b) ? 0 : 1) || a.localeCompare(b));
     let activated = 0;
     for (const [id, payload] of entries) {
       if (activated >= this.activationBudget) break;
+      if (ids && !ids.has(id)) continue;
       this.activationQueue.delete(id);
       if (!desiredState(this.records.get(id)?.state)) { this.setLoadState(id, CHUNK_LOAD_STATES.CACHED); continue; }
-      this.index.hydrateChunk(id, payload.collections);
+      try {
+        this.index.hydrateChunk(id, payload.collections);
+      } catch (error) {
+        this.setLoadState(id, CHUNK_LOAD_STATES.ERROR, error);
+        throw new Error(`Failed activating city chunk ${id}: ${error.message || error}`, { cause: error });
+      }
       this.setLoadState(id, CHUNK_LOAD_STATES.RESIDENT);
       activated++;
     }
     if (activated) {
       this.trimCache();
-      this.scene.redrawLayer?.();
-      this.scene.npcSystem?.rebuildSpatialIndex?.();
+      if (present) {
+        this.scene.redrawLayer?.();
+        this.scene.npcSystem?.rebuildSpatialIndex?.();
+      }
       this.publish();
     }
     return activated;
   }
 
   update() {
-    if (!this.initialized) return false;
+    if (!this.initialized || this.destroyed || this.initialViewPreparation) return false;
     const focus = this.focus();
     const changed = this.updateFocus(focus.x, focus.y, this.velocity());
     return this.processActivationQueue() > 0 || changed;
@@ -255,6 +267,64 @@ export class ChunkStreamSystem {
       };
       poll();
     });
+  }
+
+  // One-shot resource preparation, not a gameplay/render loop. A downloaded
+  // payload is only QUEUED: the title cannot rely on scene frames to make it
+  // resident (e.g. while rendering is suspended). Reuse the same hydration and
+  // budget, yield between batches, and let MainMenuScene present the result once.
+  prepareInitialView({ timeoutMs = 8000 } = {}) {
+    if (this.initialViewPreparation) return this.initialViewPreparation.promise;
+    if (this.destroyed) return Promise.reject(Object.assign(new Error("City stream was destroyed."), { name: "AbortError" }));
+    const preparation = { promise: null, cancel: null };
+    this.initialViewPreparation = preparation;
+    const started = Date.now();
+    const limit = Math.max(0, finite(timeoutMs, 8000));
+    preparation.promise = new Promise((resolve, reject) => {
+      let timer = null, settled = false;
+      const finish = (error, snapshot) => {
+        if (settled) return;
+        settled = true;
+        if (timer !== null) clearTimeout(timer);
+        if (this.initialViewPreparation === preparation) this.initialViewPreparation = null;
+        if (error) reject(error);
+        else resolve(snapshot);
+      };
+      preparation.cancel = () => finish(Object.assign(new Error("City stream was destroyed during initial preparation."), { name: "AbortError" }));
+      const check = () => {
+        timer = null;
+        if (settled) return;
+        try {
+          if (this.destroyed) return preparation.cancel();
+          if (this.initializationError) return finish(this.initializationError);
+          if (this.initialized) {
+            const focus = this.focus();
+            this.updateFocus(focus.x, focus.y, this.velocity());
+            const required = this.activeChunkIds;
+            const failed = [...required].find(id => this.loadStateOf(id) === CHUNK_LOAD_STATES.ERROR);
+            if (failed) return finish(new Error(this.records.get(failed)?.error || `Failed loading ${failed}`));
+            // Normal frame updates yield ownership while this preparation is
+            // pending. Prefetched chunks neither block boot nor trigger redraws.
+            this.processActivationQueue({ ids: required, present: false });
+            if (this.isReady(required)) return finish(null, this.snapshot());
+          }
+          if (Date.now() - started >= limit) {
+            const missing = [...this.activeChunkIds].filter(id => !this.isChunkResident(id));
+            const detail = this.initialized
+              ? missing.map(id => `${id} (${this.loadStateOf(id)})`).join(", ")
+              : "city manifest";
+            return finish(new Error(`Timed out preparing city: ${detail}`));
+          }
+          timer = setTimeout(check, 16);
+        } catch (error) {
+          finish(error);
+        }
+      };
+      // Attach the rejection handler immediately, including a failed manifest.
+      this.initialization.catch(error => finish(error));
+      timer = setTimeout(check, 0);
+    });
+    return preparation.promise;
   }
 
   forceFocus(x, y, velocityX = 0, velocityY = 0) {
@@ -321,6 +391,7 @@ export class ChunkStreamSystem {
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.initialViewPreparation?.cancel?.();
     for (const id of this.manifest?.chunkIds || []) this.deltaStore?.captureChunk?.(id);
     this.fileStore?.destroy?.();
     this.index?.clear?.();
