@@ -2,7 +2,7 @@ import { createRequire } from 'node:module';
 import { EventEmitter } from 'node:events';
 import { CampaignSystem } from '../../phaser/src/campaign/CampaignSystem.js';
 import { VampireRuntime } from '../../phaser/src/vampire/VampireRuntime.js';
-import { InteractionSystem } from '../../phaser/src/systems/InteractionSystemCore.js';
+import { InteractionSystem } from '../../phaser/src/systems/InteractionSystem.js';
 import { createEmptyInputFrame } from '../../phaser/src/input/actions.js';
 import { buildings, CITY_WORLD } from '../../phaser/src/data/district.js';
 
