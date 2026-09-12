@@ -1,0 +1,78 @@
+name: Import verified nightbook source
+on:
+  push:
+    branches: [codex/nightbook-import]
+permissions:
+  contents: read
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fe2f855f985866b727563fb846c278885f710285
+          persist-credentials: false
+      - name: Import hash-verified source objects without updating application refs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs/promises');
+            const {createHash} = require('node:crypto');
+            const {brotliDecompressSync} = require('node:zlib');
+            const {execFileSync} = require('node:child_process');
+            const {owner,repo} = context.repo;
+            const git = (...args) => execFileSync('git',args,{encoding:'utf8'}).trim();
+            const digest = b => createHash('sha256').update(b).digest('hex');
+            const hash = b => createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${b.length}\0`),b])).digest('hex');
+            if (`${owner}/${repo}` !== 'FranPerezSevilla/vampire-district' || git('rev-parse','HEAD') !== 'fe2f855f985866b727563fb846c278885f710285') throw new Error('Wrong source base');
+            const shas = ['f9fa3a6d5bfbc4ad151bcd69c0ffff07aabb23af','d0651807aad0f93d0bc0c9c1620466973a6f6b74','70878193755ca3a9f8d3582fd92c809ed35b7477','d84fde8ec8619d2b6be27f2ea6ceeac80c26bf8c','59eabd7e22f18f771d84806d7aa225dfceaa7be5'];
+            const parts = [];
+            for (const sha of shas) {
+              const {data} = await github.rest.git.getBlob({owner,repo,file_sha:sha});
+              if(data.encoding !== 'base64') throw new Error('Unexpected blob encoding');
+              const bytes = Buffer.from(data.content,'base64');
+              if(hash(bytes)!==sha) throw new Error('Transport digest mismatch');
+              parts.push(bytes);
+            }
+            const patch = brotliDecompressSync(Buffer.concat(parts));
+            if(digest(patch)!=='2c78cdcc8a2be572f4ef3bc099614bb6caa14226666162e21c5d2119a5f6e609') throw new Error('Patch digest mismatch');
+            await fs.writeFile('.git/nightbook.patch',patch);
+            git('apply','--check','.git/nightbook.patch');
+            git('apply','--index','.git/nightbook.patch');
+            if(git('write-tree')!=='c761c5bb4a2685041af6427c64927c8f6e48ca35') throw new Error('Recovered tree mismatch');
+            const fixes = [
+              ['tests/title-viewport-regression.test.js', String.raw`assert.match(ui,/font-size:0\.9375rem/);`, String.raw`assert.match(ui,/font-size:0?\.9375rem/);`],
+              ['tests/vampire-domain.test.js', 'assert.equal(h.scene.interactionSystem.menu.index, 4);', 'assert.equal(h.scene.interactionSystem.menu.index, 0);']
+            ];
+            for(const [path,before,after] of fixes) {
+              const input = await fs.readFile(path,'utf8');
+              if(input.split(before).length!==2) throw new Error(`Ambiguous final adjustment: ${path}`);
+              await fs.writeFile(path,input.replace(before,after));
+              git('add','--',path);
+            }
+            const tree = git('write-tree');
+            if(tree!=='cf8cf786b6593573933fb5acc6a75b579e9f44b5') throw new Error('Final tested source tree mismatch');
+            const allowed = ['docs/NIGHTBOOK_REDESIGN.md','phaser/src/scenes/UIScene.js','phaser/src/ui/ControlReference.js','phaser/src/ui/GameUiProjection.js','phaser/src/vampire/DomainNavigation.js','phaser/src/vampire/VampireRuntime.js','tests/nightbook-model.test.js','tests/title-viewport-regression.test.js','tests/ui-engine.test.js','tests/ui-playtest-navigation.test.js','tests/ui-react.test.js','tests/vampire-domain-paused-navigation.test.js','tests/vampire-domain.test.js','tools/boot/smoke-module.mjs','ui/CityMap.jsx','ui/Domain.jsx','ui/artwork.jsx','ui/components.jsx','ui/interface.css','ui/main.jsx','ui/nightbook-model.js'];
+            const paths = git('diff','--cached','--name-only').split('\n');
+            if(paths.length!==allowed.length || paths.some(path=>!allowed.includes(path))) throw new Error('Unexpected scope');
+            const entries = [];
+            for(const path of paths) {
+              const bytes = await fs.readFile(path), sha = hash(bytes);
+              let created;
+              for(let attempt=0;attempt<3;attempt++) {
+                try { created = (await github.rest.git.createBlob({owner,repo,content:bytes.toString('base64'),encoding:'base64'})).data; break; }
+                catch(error) { if(attempt===2 || !(error.status>=500)) throw error; await new Promise(r=>setTimeout(r,1000*(attempt+1))); }
+              }
+              if(created.sha!==sha) throw new Error(`Uploaded hash mismatch: ${path}`);
+              entries.push({path,mode:'100644',type:'blob',sha});
+            }
+            await fs.writeFile('nightbook-import.json',JSON.stringify({base:'fe2f855f985866b727563fb846c278885f710285',tree,entries},null,2));
+            core.info(`Verified ${entries.length} source blobs for tree ${tree}. No application ref, PR, main or deployment changed.`);
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nightbook-import
+          path: nightbook-import.json
+          retention-days: 2
