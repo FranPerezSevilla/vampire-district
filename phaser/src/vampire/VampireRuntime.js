@@ -164,7 +164,7 @@ export class VampireRuntime {
       for (const def of VAMPIRE_DONORS) this.syncDonor(def.id, true);
       if (!this.service.state.started) {
         this.service.state.started = true;
-        this.notice("Build your network and become Prince. Meet your Sire at the refuge frontage. DOMAIN shows objectives and resources; MAP saves destinations; BLOOD uses a reserve bag.");
+        this.notice("Meet your Sire at the refuge frontage. M opens your Black Book: tonight's work, people and blood. Build your network, then claim the city.");
       }
     }
     this.service.tick(dt);
@@ -236,7 +236,7 @@ export class VampireRuntime {
     if (!position) return this.outcome({ ok: false, text: "Choose a valid destination on the map." });
     return this.outcome(this.service.saveMarker({ ...position, label: destination?.label, target: target === "player" || target === "delivery" ? null : target }));
   }
-  openDomain(tab = "city", target = null) {
+  openDomain(tab = "tonight", target = null) {
     if (!this.domainAvailable() || this.scene.feedingSystem?.isActive?.()) return false;
     this.domain.show(tab, target);
     const options = DOMAIN_TABS.map(label => this.option(`domain:${label.toLowerCase()}`, label, "Open this section", () => this.openDomain(label.toLowerCase())));

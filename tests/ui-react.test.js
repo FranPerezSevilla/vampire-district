@@ -32,11 +32,11 @@ const button=label=>[...document.querySelectorAll('button')].find(n=>n.textConte
 async function click(node){assert.ok(node,'click target must exist');await act(async()=>node.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})));}
 async function tab(name){const n=[...document.querySelectorAll('[role="tab"]')].find(n=>n.textContent.includes(name));assert.ok(n);await act(async()=>{n.dispatchEvent(new MouseEvent('mousedown',{button:0,bubbles:true,cancelable:true}));n.focus();});}
 
-test('HUD opens a real domain dialog with the compiled city map and all six native tabs',async()=>{
+test('HUD opens a real domain dialog with the compiled city map and all five native chapters',async()=>{
  assert.ok(document.querySelector('.vb-hud')); await click(button('City'));
- assert.equal(h.paused(),true); assert.ok(document.querySelector('[role="dialog"]')); assert.equal(document.querySelectorAll('[role="tab"]').length,6);
+ assert.equal(h.paused(),true); assert.ok(document.querySelector('[role="dialog"]')); assert.equal(document.querySelectorAll('[role="tab"]').length,5);
  assert.equal(document.querySelectorAll('.vb-map-district').length,14); assert.equal(document.querySelector('.vb-hud'),null);
- for(const label of ['Contacts','Herd','Resources','Errand','Your power','City']){await tab(label);assert.equal(document.querySelector('[role="tab"][aria-selected="true"]').textContent.includes(label),true);}
+ for(const label of ['Tonight','Network','Feeding','Ledger','City']){await tab(label);assert.equal(document.querySelector('[role="tab"][aria-selected="true"]').textContent.includes(label),true);}
  assert.doesNotMatch(document.body.textContent,/undefined|NaN|\[object Object\]/);
 });
 test('map inspection preserves the objective; Go here uses the real runtime and closes',async()=>{
@@ -47,15 +47,15 @@ test('map inspection preserves the objective; Go here uses the real runtime and 
  assert.match(document.querySelector('.vb-objective').textContent,/Rook Mercer/);
 });
 test('Radix tab keyboard navigation changes real sections once and keeps native focus',async()=>{
- await click(button('City')); const first=document.querySelector('[role="tab"]');
+ await click(button('City')); const first=document.querySelector('[role="tab"][aria-selected="true"]');
  await act(async()=>{first.focus();first.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',code:'ArrowRight',bubbles:true}));await new Promise(r=>setTimeout(r,20));});
- assert.equal(h.runtime.domain.tab,'contacts'); assert.equal(document.activeElement.getAttribute('role'),'tab');
+ assert.equal(h.runtime.domain.tab,'network'); assert.equal(document.activeElement.getAttribute('role'),'tab');
 });
 test('errand locates the actual handoff and abandonment uses visible confirmation',async()=>{
  await act(async()=>{h.v.meet('sire');h.runtime.acceptDelivery('sire');h.ui.refresh();});
  assert.match(document.querySelector('.vb-errand').textContent,/Collect the sealed supplies/);
  await click(button('Locate')); assert.equal(h.runtime.domain.tab,'city'); assert.match(document.querySelector('.vb-city-detail').textContent,/Collect the sealed supplies/);
- await tab('Errand'); await click(button('Abandon errand…')); assert.ok(h.v.state.job); assert.ok(button('Keep working'));
+ await tab('Tonight'); await click(button('Abandon errand…')); assert.ok(h.v.state.job); assert.ok(button('Keep working'));
  await click(button('Keep working')); assert.ok(h.v.state.job); await click(button('Abandon errand…'));await click(button('Abandon errand'));assert.equal(h.v.state.job,null);
 });
 test('notice text is escaped and does not mount executable markup',async()=>{
@@ -84,4 +84,13 @@ test('Sire dialogue remains present above a dead player and releases only its ow
  assert.equal(document.querySelector('.vb-hud'),null);assert.match(document.querySelector('.vb-narrative').textContent,/Get up/);assert.equal(h.paused(),true);
  await click(button('Continue'));assert.equal(ended,false,'opening click must not skip dialogue');
  await new Promise(resolve=>setTimeout(resolve,260));await click(button('Continue'));assert.equal(ended,true);assert.equal(h.paused(),false);
+});
+
+test('where enabled, the incident file returns to Tonight without a leftover pause lock',async()=>{
+ await click(button('Black Book M'));await click(button('Read incident file'));
+ assert.equal(h.ui.activeMode(),'ledger');assert.equal(h.registry.get('uiPaused'),true);
+ await click(button('Back to Black Book'));
+ assert.equal(h.runtime.domain.tab,'tonight');assert.equal(h.ui.activeMode(),'domain');
+ await click(button('Return to the streets'));await settleFocusScope();
+ assert.equal(h.paused(),false);assert.equal(h.registry.get('uiPaused'),false);assert.equal(h.registry.get('uiKeyboardOwned'),false);
 });

@@ -28,21 +28,21 @@ function harness() {
   return { scene, runtime };
 }
 
-test("domain options 1-6 keep navigating after the world input frame is paused", () => {
+test("nightbook options 1-5 keep navigating after the world input frame is paused", () => {
   const { scene, runtime } = harness();
   assert.equal(runtime.openDomain("overview"), true);
-  assert.equal(runtime.domain.tab, "city");
+  assert.equal(runtime.domain.tab, "tonight");
 
   scene.currentInputFrame = createEmptyInputFrame({ worldEnabled: false });
   scene.interactionSystem.updateInput(createEmptyInputFrame({ menuDigitPressed: 5 }));
 
-  assert.equal(runtime.domain.tab, "errand");
+  assert.equal(runtime.domain.tab, "ledger");
   assert.equal(scene.interactionSystem.menu?.view, "vampire-domain");
   assert.equal(scene.interactionSystem.menu?.index, 4);
 
-  scene.interactionSystem.updateInput(createEmptyInputFrame({ menuDigitPressed: 2 }));
-  assert.equal(runtime.domain.tab, "contacts");
+  scene.interactionSystem.updateInput(createEmptyInputFrame({ menuDigitPressed: 3 }));
+  assert.equal(runtime.domain.tab, "network");
   assert.equal(scene.interactionSystem.menu?.view, "vampire-domain");
-  assert.equal(scene.interactionSystem.menu?.index, 1);
+  assert.equal(scene.interactionSystem.menu?.index, 2);
   runtime.destroy();
 });

@@ -4,7 +4,7 @@ import { uiHarness, keyEvent } from './helpers/ui-harness.js';
 import { DOMAIN_TABS } from '../phaser/src/vampire/DomainNavigation.js';
 import { buildDomainModel } from '../phaser/src/vampire/VampireDomainModel.js';
 
-test('all six sections stay live while the actual scene pause is owned by the UI', async()=>{
+test('all five chapters stay live while the actual scene pause is owned by the UI', async()=>{
  const h=await uiHarness(); assert.equal(h.ui.openDomain(),true); assert.equal(h.paused(),true);
  assert.equal(h.registry.get('uiPaused'),false); assert.equal(h.registry.get('uiKeyboardOwned'),true);
  h.scene.currentInputFrame.worldEnabled=false;
@@ -20,7 +20,7 @@ test('Locate changes inspection only; Go here sets the live target and resumes',
 test('one keyboard press closes a domain rather than opening pause underneath',async()=>{
  const h=await uiHarness(); h.ui.openDomain(); const e=keyEvent('Escape'); h.ui.handleDomKeyDown(e);
  assert.ok(e.stopped); assert.equal(h.ui.activeMode(),null); assert.equal(h.paused(),false);
- h.ui.handleDomKeyDown(keyEvent('KeyM')); assert.equal(h.runtime.domain.tab,'errand');
+ h.ui.handleDomKeyDown(keyEvent('KeyM')); assert.equal(h.runtime.domain.tab,'tonight');
  h.ui.handleDomKeyDown(keyEvent('KeyM')); assert.equal(h.ui.activeMode(),null);
  h.ui.handleDomKeyDown(keyEvent('KeyL')); assert.equal(h.ui.activeMode(),'ledger'); h.ui.handleDomKeyDown(keyEvent('Escape')); assert.equal(h.ui.activeMode(),null); h.destroy();
 });
@@ -28,7 +28,7 @@ test('interaction transaction executes once on the resumed frame, not a stale lo
  const h=await uiHarness(); h.runtime.openContact('sire'); h.ui.refresh(); h.scene.currentInputFrame.worldEnabled=false;
  const id='work:sire'; assert.equal(h.ui.command('choose',{id}),true); assert.equal(h.v.state.job,null);
  assert.equal(h.ui.command('choose',{id}),false); assert.equal(h.paused(),false);
- h.step(); assert.equal(h.v.state.job.issuer,'sire'); assert.equal(h.ui.activeMode(),'domain'); assert.equal(h.runtime.domain.tab,'errand'); assert.equal(h.paused(),true);
+ h.step(); assert.equal(h.v.state.job.issuer,'sire'); assert.equal(h.ui.activeMode(),'domain'); assert.equal(h.runtime.domain.tab,'tonight'); assert.equal(h.paused(),true);
  h.destroy();
 });
 test('carried blood waits for the real unlocked frame and cannot be double-spent',async()=>{

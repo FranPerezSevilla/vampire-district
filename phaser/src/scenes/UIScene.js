@@ -52,7 +52,7 @@ export class UIScene extends Phaser.Scene {
       this.renderUi = globalThis.NBD_INTERFACE_VIEW.mount(root, {
         store: this.store, geometry: cityMapGeometry, overlay,
         command: (type, payload) => this.command(type, payload),
-        controls: buildControlReference(this.registry.get("inputBindings")?.bindings || {})
+        controls: buildControlReference(this.registry.get("inputBindings")?.bindings || {}, { simplified: Boolean(this.__nbdSimplifiedSurfacePolicy), book: true })
       });
       if (this.uiError) throw new Error(this.uiError);
       this.onDomKeyDown = event => this.handleDomKeyDown(event);
@@ -153,7 +153,7 @@ export class UIScene extends Phaser.Scene {
     return Boolean(game?.player && !this.registry.get("mainMenuActive") && !this.registry.get("taskRevealActive")
       && !game.transitionSystem?.active && !game.playerDamageSystem?.isDead?.() && !this.external && !this.pendingAction);
   }
-  openDomain(tab = "city", target = null) {
+  openDomain(tab = "tonight", target = null) {
     if (!this.allowedToOpen() || this.resultOpen || this.introOpen) return false;
     this.pauseOpen = false;
     this.ledgerOpen = false;
@@ -203,7 +203,7 @@ export class UIScene extends Phaser.Scene {
         this.closeInteraction();
         return this.queueGameplayAction(() => game.interactionSystem.runOption(option));
       } else if (type === "tab" && this.activeMode() === "domain") {
-        runtime.domain.navigate(payload.tab);
+        runtime.domain.navigate(payload.tab, payload.target);
         this.confirmation = null;
       } else if (type === "select" && this.activeMode() === "domain") {
         runtime.domain.selection = payload.target;
@@ -271,7 +271,7 @@ export class UIScene extends Phaser.Scene {
       return;
     }
     if (mode === "domain") {
-      const digit = Number(event.code?.match(/^Digit([1-6])$/)?.[1]);
+      const digit = Number(event.code?.match(/^Digit([1-5])$/)?.[1]);
       if (digit) { finish(); this.command("tab", { tab: DOMAIN_TABS[digit - 1].toLowerCase() }); return; }
     }
     if (!mode || mode === "domain" || mode === "ledger") {
@@ -297,7 +297,7 @@ export class UIScene extends Phaser.Scene {
   }
   closeNightLedger() { this.ledgerOpen = false; this.refresh(); return true; }
   toggleMissionDrawer() {
-    if (this.activeMode() === "domain" && this.gameplayScene()?.vampireRuntime?.domain.tab === "errand") return this.closeInteraction();
+    if (this.activeMode() === "domain" && this.gameplayScene()?.vampireRuntime?.domain.tab === "tonight") return this.closeInteraction();
     return this.openDomain("errand");
   }
   closeMissionDrawer() { this.missionOpen = false; }

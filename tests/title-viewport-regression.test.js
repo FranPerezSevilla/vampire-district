@@ -122,7 +122,7 @@ test('title and HUD typography follow viewport-relative CSS without the old fixe
   const viewport=source('phaser/viewport.css'),title=source('phaser/title-screen.css'),ui=source('ui/interface.css');
   assert.match(viewport,/html\{font-size:max\(100%,min\(1vw,1\.8vh\)\)\}/);
   assert.match(title,/width: min\(32vw, 38rem\)/);
-  assert.match(ui,/font-size:0\.9375rem/);
+  assert.match(ui,/font-size:0?\.9375rem/);
   for (const css of [title,ui]) assert.doesNotMatch(css,/font(?:-size)?\s*:[^;{}]*\dpx/);
   assert.doesNotMatch(viewport,/transform:.*scale|zoom:/);
   // A 4x CSS viewport (e.g. zoomed-out tab) does not retain a 430 CSS-pixel cap.

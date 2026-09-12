@@ -56,13 +56,18 @@ for (const entry of ['index.html','phaser/index.html']) {
     // Continue beyond Game construction: this boundary previously missed a
     // helper named game() being overwritten by real Phaser Scene injection.
     const ui=new configuration.scene[3](), app=win.NBD_PHASER_GAME;
-    app.registry=new Map();
-    const scene={player:{x:1540,y:1575},registry:app.registry,
-      vampireRuntime:{service:win.NBD_CAMPAIGN_SYSTEM.vampire,guideTarget:()=>null}};
+    // Use the current source's real campaign/runtime and interaction system
+    // behind the actual compiled UI, not invented DTOs for the five chapters.
+    globalThis.Phaser=engine;
+    const {uiHarness}=await import('../../tests/helpers/ui-harness.js');
+    const h=await uiHarness();
+    app.registry=h.registry;
+    const scene=h.scene; scene.game=app;
     ui.events=new EventEmitter();
     ui.sys={scene:ui,settings:{map:InjectionMap,isTransition:false},events:ui.events};
     ui.time={now:0};
-    ui.scene={get:key=>key==='GameScene'?scene:ui,isPaused:()=>false,pause(){},resume(){}};
+    let paused=false;
+    ui.scene={get:key=>key==='GameScene'?scene:ui,isPaused:()=>paused,pause(){paused=true;},resume(){paused=false;}};
     PluginManager.prototype.addToScene.call({game:app,plugins:[]},ui.sys,['game','registry'],[]);
     try {
       SceneManager.prototype.create.call({},ui);
@@ -72,7 +77,24 @@ for (const entry of ['index.html','phaser/index.html']) {
       assert.ok(win.document.querySelector('.vb-hud'),'real initial HUD was committed');
       ui.command('pause'); assert.equal(ui.store.getSnapshot().mode,'pause');
       ui.command('close'); assert.equal(ui.store.getSnapshot().mode,null);
-    } finally {ui.cleanup();}
-    console.log(`${entry}: packed UI passes real Phaser injection/CREATE and mounts HUD; asset roots preserved. No renderer/browser executed.`);
+      const settle=async predicate=>{
+        for(let i=0;i<20;i++) {if(predicate())return;await new Promise(resolve=>setImmediate(resolve));}
+        assert.ok(predicate(),'compiled React state must reach the real DOM');
+      };
+      ui.command('open',{tab:'tonight'});
+      await settle(()=>win.document.querySelectorAll('[role=tab]').length===5);
+      assert.ok(win.document.querySelector('.nb-task'),'Tonight must have one dominant task');
+      const before=h.v.state.guide;
+      for(const [label,chapter,selector] of [['City','city','.vb-city-map'],['Network','network','.nb-person-head'],['Feeding','feeding','.nb-donor-grid'],['Ledger','ledger','.nb-receipt-grid'],['Tonight','tonight','.nb-task']]) {
+        const tab=win.document.querySelector(`[role=tab][aria-label="${label}"]`);
+        tab.dispatchEvent(new win.MouseEvent('mousedown',{button:0,bubbles:true,cancelable:true}));
+        await settle(()=>ui.store.getSnapshot().tab===chapter && win.document.querySelector(selector));
+        assert.equal(paused,true);assert.equal(h.v.state.guide,before);
+        assert.equal(win.document.querySelector('.vb-choices'),null);
+      }
+      ui.command('close');await settle(()=>Boolean(win.document.querySelector('.vb-hud')));
+      assert.equal(paused,false);assert.equal(app.registry.get('uiKeyboardOwned'),false);
+    } finally {ui.cleanup();h.destroy();}
+    console.log(`${entry}: packed UI passes real Phaser injection/CREATE and mounts HUD/five Black Book chapters with real campaign data; asset roots preserved. No renderer/browser executed.`);
   } finally {for(const observer of observers) observer.disconnect();await Promise.resolve();assert.equal(errors.length,0,String(errors[0]));dom.window.close();}
 }
