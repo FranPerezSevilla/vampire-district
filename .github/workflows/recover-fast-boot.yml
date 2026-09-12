@@ -1,0 +1,40 @@
+name: Recover pending fast boot source
+on:
+  push:
+    branches: [codex/fast-boot-recovery]
+permissions:
+  contents: read
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dc7be9c648a95094bd162157b2d3e65cfd88f450
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Recover exact pending data objects
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs/promises');
+            const crypto = require('node:crypto');
+            await fs.mkdir('recovered', {recursive:true});
+            const parts = ['020d3355431d5a72244d6cab7c27be114953f923','8c77b398de1f28715b9f8c286a593cfce2248cc5','982a52e0443a09ea0376d712bf1edde25d0ea3c8'];
+            for (const sha of parts) {
+              const {data} = await github.rest.git.getBlob({...context.repo, file_sha:sha});
+              if(data.encoding !== 'base64') throw new Error('Unexpected encoding');
+              const bytes = Buffer.from(data.content,'base64');
+              const actual = crypto.createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${bytes.length}\0`),bytes])).digest('hex');
+              if(actual !== sha) throw new Error('Object hash mismatch');
+              await fs.writeFile(`recovered/${sha}.bin`,bytes);
+              core.info(`${sha}: ${bytes.length} bytes recovered`);
+            }
+      - name: Export current source for offline validation
+        run: git bundle create recovered/current-source.bundle --all
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fast-boot-recovery
+          path: recovered/
+          retention-days: 2
