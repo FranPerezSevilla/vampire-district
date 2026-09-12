@@ -24,4 +24,8 @@ if (process.argv.includes("--package")) {
   await writeFile("dist/build.json", JSON.stringify({ revision, dirty, interfaceSha256: digest, ui: "react-radix" }, null, 2));
   await writeFile("dist/README.txt", `ViceBlood UI rewrite — review build\n\nServe this folder with: python -m http.server 4173\nThen open http://localhost:4173/\nDo not open index.html as a file: the engine loads modules and streamed city data.\n\nRevision: ${revision}${dirty ? " (uncommitted changes present)" : ""}\nNative and DOM tests are not visual validation.\nThe existing radio policy uses remote tracks on the public Pages host; private\nradio masters are not included in this local package. No gameplay save reset is required.\n\nSuggested review: loading > press any key > main menu > New Night > City.\nCheck landscape, narrow and ultrawide layouts, contact and errand Locate/Go here,\nEsc and M, blood use, a real contact transaction, garage, and death dialogue.\n`);
 }
-console.log("ViceBlood interface built. Gameplay modules remain external and have a single owner.");
+if (process.argv.includes("--package")) {
+  const { buildPackedBoot } = await import("../boot/build.mjs");
+  await buildPackedBoot();
+}
+console.log("ViceBlood build complete. Production packs the existing module graph; gameplay retains a single owner.");

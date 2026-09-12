@@ -3,10 +3,8 @@ name: UI rewrite
 on:
   push:
     branches: [codex/ui-rewrite, codex/traffic-junction-topology]
-
 permissions:
   contents: read
-
 concurrency:
   group: ui-rewrite-${{ github.ref }}
   cancel-in-progress: true
@@ -29,13 +27,16 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Record affected validation plan
         run: npm run check:affected:plan -- --base=origin/main > ui-affected-plan.log
-      - name: Native and DOM event tests (no browsers)
+      - name: Native and DOM tests (no browsers)
         shell: bash
         run: |
           set -o pipefail
           npm run check:fast 2>&1 | tee ui-native.log
-      - name: Build complete review package
-        run: npm run build
+      - name: Build and verify the actual production package (no browser)
+        run: |
+          npm run build
+          node tools/boot/verify-package.mjs
+          node tools/boot/smoke-module.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: viceblood-ui-review
@@ -50,8 +51,6 @@ jobs:
             ui-affected-plan.log
           retention-days: 14
 
-  # Preparation is deliberately separate from publication. Only the connector's
-  # explicit non-force ref update publishes to the existing Pages source branch.
   prepare-pages:
     needs: native-and-build
     if: github.repository == 'FranPerezSevilla/vampire-district' && github.ref == 'refs/heads/codex/ui-rewrite'
@@ -65,54 +64,36 @@ jobs:
         with:
           name: viceblood-ui-review
           path: review
-      - name: Prepare verified static objects for an explicit Pages publication
+      - name: Prepare verified static objects (no ref or deployment writes)
         uses: actions/github-script@v7
         with:
           script: |
             const { readFile, writeFile } = require('node:fs/promises');
             const { createHash } = require('node:crypto');
             const { owner, repo } = context.repo;
-            const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-            const blobHash = bytes => createHash('sha1').update(Buffer.concat([
-              Buffer.from(`blob ${bytes.length}\0`), bytes
-            ])).digest('hex');
+            const digest = b => createHash('sha256').update(b).digest('hex');
             const metadata = JSON.parse(await readFile('review/build.json', 'utf8'));
-            if (metadata.revision !== context.sha || metadata.dirty !== false || metadata.ui !== 'react-radix') {
-              throw new Error('Build provenance does not match the validated source');
+            const boot = JSON.parse(await readFile('review/boot-assets.json', 'utf8'));
+            if (metadata.revision !== context.sha || metadata.dirty !== false || metadata.ui !== 'react-radix' || metadata.boot !== 'packed-v1') throw new Error('Build provenance mismatch');
+            const paths = new Set(['phaser/ui-dist/interface.js', 'phaser/ui-dist/interface.css', 'node_modules/phaser/dist/phaser.min.js', 'node_modules/phaser/LICENSE.md', 'build.json', '.nojekyll', 'boot-assets.json']);
+            for (const path of boot.paths) {
+              if (!['index.html', 'phaser/index.html'].includes(path) && !/^phaser\/runtime-dist\/[a-zA-Z0-9_.-]+$/.test(path)) throw new Error('Unsafe output path');
+              paths.add(path);
             }
-            const paths = [
-              'phaser/ui-dist/interface.js', 'phaser/ui-dist/interface.css',
-              'node_modules/phaser/dist/phaser.min.js', 'node_modules/phaser/LICENSE.md',
-              'build.json', '.nojekyll'
-            ];
-            const objects = [];
+            const entries = [];
             for (const path of paths) {
-              // upload-artifact excludes dotfiles; recreate this empty marker.
               const bytes = path === '.nojekyll' ? Buffer.alloc(0) : await readFile(`review/${path}`);
-              if (path === 'phaser/ui-dist/interface.js' && sha256(bytes) !== metadata.interfaceSha256) {
-                throw new Error('Compiled interface digest mismatch');
-              }
-              if (path !== '.nojekyll' && bytes.length === 0) throw new Error(`Empty asset: ${path}`);
-              objects.push({ path, bytes, sha: blobHash(bytes), sha256: sha256(bytes) });
+              if (boot.hashes[path] && digest(bytes) !== boot.hashes[path]) throw new Error(`Output mismatch: ${path}`);
+              if (path === 'phaser/ui-dist/interface.js' && digest(bytes) !== metadata.interfaceSha256) throw new Error('Interface mismatch');
+              const sha = createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${bytes.length}\0`), bytes])).digest('hex');
+              const { data } = await github.rest.git.createBlob({ owner, repo, content: bytes.toString('base64'), encoding: 'base64' });
+              if (sha !== data.sha) throw new Error(`Uploaded mismatch: ${path}`);
+              entries.push({ path, mode: '100644', type: 'blob', sha, sha256: digest(bytes), size: bytes.length });
             }
             const { data: commit } = await github.rest.git.getCommit({ owner, repo, commit_sha: context.sha });
-            for (const object of objects) {
-              const { data } = await github.rest.git.createBlob({
-                owner, repo, content: object.bytes.toString('base64'), encoding: 'base64'
-              });
-              if (data.sha !== object.sha) throw new Error(`Uploaded asset mismatch: ${object.path}`);
-            }
-            const manifest = {
-              revision: context.sha, sourceTree: commit.tree.sha, runId: context.runId,
-              entries: objects.map(({ path, sha, sha256, bytes }) => ({
-                path, mode: '100644', type: 'blob', sha, sha256, size: bytes.length
-              }))
-            };
+            const manifest = { revision: context.sha, sourceTree: commit.tree.sha, runId: context.runId, entries, metrics: boot.metrics };
             await writeFile('pages-preparation.json', JSON.stringify(manifest, null, 2));
             core.info(`PAGES_PREPARATION=${JSON.stringify(manifest)}`);
-            await core.summary.addHeading('Pages package prepared, not published')
-              .addRaw(`Validated source: ${context.sha}\n\nSix static objects verified. No branch ref, Pages setting or PR was changed by this job.\n`)
-              .write();
       - uses: actions/upload-artifact@v4
         with:
           name: pages-preparation
@@ -129,89 +110,52 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Verify the published revision and static runtime over HTTP (no browser)
+      - name: Verify public entry points, packed boot, audio, manifest and every city chunk
         uses: actions/github-script@v7
         with:
           script: |
             const { readFile, writeFile } = require('node:fs/promises');
             const { createHash } = require('node:crypto');
             const base = 'https://franperezsevilla.github.io/vampire-district/';
-            const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+            const digest = b => createHash('sha256').update(b).digest('hex');
             const expectedBytes = await readFile('build.json');
             const expected = JSON.parse(expectedBytes);
-            if (expected.ui !== 'react-radix' || expected.dirty !== false || !/^[a-f0-9]{40}$/.test(expected.revision)) {
-              throw new Error('Missing clean publication provenance');
-            }
-            const paths = [
-              'index.html', 'phaser/index.html', 'phaser/viewport.css', 'phaser/title-screen.css',
-              'phaser/ui-dist/interface.js', 'phaser/ui-dist/interface.css',
-              'phaser/src/app-bootstrap.js', 'phaser/src/main.js',
-              'phaser/src/scenes/UIScene.js', 'phaser/src/scenes/MainMenuScene.js',
-              'phaser/src/ui/UiStore.js', 'phaser/src/ui/GameUiReadModel.js',
-              'phaser/src/vampire/VampireRuntime.js', 'phaser/src/data/district.js',
-              'phaser/assets/ui/viceblood-logo.svg', 'phaser/assets/audio/music/main-menu-theme-01.mp3'
-            ];
-            // Entry-point checks alone miss streamed city failures. Verify every
-            // compiler-owned chunk at its deployed subpath, not a fabricated URL.
-            const cityRoot = 'phaser/assets/city/current/';
-            const manifestPath = `${cityRoot}manifest.json`;
-            const city = JSON.parse(await readFile(manifestPath, 'utf8'));
-            if (!Array.isArray(city.chunkIds) || !city.chunkIds.length) throw new Error('Invalid city manifest');
-            paths.push('phaser/src/scenes/GameScene.js',
-              'phaser/src/streaming/ChunkStreamSystem.js', 'phaser/src/streaming/ChunkFileStore.js', manifestPath);
+            const boot = JSON.parse(await readFile('boot-assets.json', 'utf8'));
+            if (expected.boot !== 'packed-v1' || expected.dirty !== false || !/^[a-f0-9]{40}$/.test(expected.revision)) throw new Error('Missing provenance');
+            const paths = new Set(['boot-assets.json', ...boot.paths, 'phaser/viewport.css', 'phaser/title-screen.css', 'node_modules/phaser/dist/phaser.min.js', 'phaser/src/streaming/ChunkFileStore.js', 'phaser/src/streaming/ChunkStreamSystem.js', 'phaser/assets/audio/music/main-menu-theme-01.mp3', 'phaser/assets/ui/viceblood-logo.svg']);
+            const root = 'phaser/assets/city/current/';
+            const city = JSON.parse(await readFile(root + 'manifest.json', 'utf8'));
+            paths.add(root + 'manifest.json');
             for (const id of city.chunkIds) {
               const file = city.chunks[id]?.file;
-              if (!/^chunks\/[0-9]+-[0-9]+\.json$/.test(file || '')) throw new Error(`Invalid chunk path: ${id}`);
-              const path = `${cityRoot}${file}`;
-              const payload = JSON.parse(await readFile(path, 'utf8'));
-              if (payload.id !== id || !payload.collections) throw new Error(`Invalid chunk payload: ${id}`);
-              paths.push(path);
+              if (!/^chunks\/[0-9]+-[0-9]+\.json$/.test(file || '')) throw new Error('Invalid chunk path');
+              paths.add(root + file);
             }
-            const local = await Promise.all(paths.map(async path => ({ path, sha256: digest(await readFile(path)) })));
-            if (local.find(file => file.path === 'phaser/ui-dist/interface.js').sha256 !== expected.interfaceSha256) {
-              throw new Error('Local published bundle does not match build.json');
-            }
+            const local = await Promise.all([...paths].map(async path => ({ path, sha256: digest(await readFile(path)) })));
             const deadline = Date.now() + 240000;
-            const getBytes = async path => {
-              const remaining = deadline - Date.now();
-              if (remaining <= 0) throw new Error('Publication verification deadline reached');
-              const url = new URL(path, base);
-              url.searchParams.set('verify', `${context.sha}-${Date.now()}`);
-              const response = await fetch(url, {
-                signal: AbortSignal.timeout(Math.min(10000, remaining)),
-                headers: { 'Cache-Control': 'no-cache' }, redirect: 'error'
-              });
-              if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
-              return Buffer.from(await response.arrayBuffer());
+            const get = async path => {
+              const left = deadline - Date.now(); if (left <= 0) throw new Error('Verification deadline');
+              const url = new URL(path, base); url.searchParams.set('verify', `${context.sha}-${Date.now()}`);
+              const r = await fetch(url, { signal: AbortSignal.timeout(Math.min(10000, left)), headers: { 'Cache-Control': 'no-cache' }, redirect: 'error' });
+              if (!r.ok) throw new Error(`${path}: HTTP ${r.status}`);
+              return Buffer.from(await r.arrayBuffer());
             };
-            let report = null, lastError = null;
-            for (let attempt = 1; Date.now() < deadline; attempt++) {
+            let report, lastError;
+            while (Date.now() < deadline) {
               try {
-                if (digest(await getBytes('build.json')) !== digest(expectedBytes)) throw new Error('Pages still serves another revision');
-                const verified = [];
-                // Four concurrent reads at most; no browser, gameplay or save access.
-                for (let start = 0; start < local.length; start += 4) {
-                  verified.push(...await Promise.all(local.slice(start, start + 4).map(async file => {
-                    if (digest(await getBytes(file.path)) !== file.sha256) throw new Error(`Stale or mismatched asset: ${file.path}`);
-                    return { ...file, status: 200 };
-                  })));
-                }
-                report = { url: base, sourceRevision: expected.revision, deploymentRevision: context.sha,
-                  verifiedAt: new Date().toISOString(), files: verified, browserExecuted: false };
-                break;
+                if (digest(await get('build.json')) !== digest(expectedBytes)) throw new Error('Propagation pending');
+                for (let start = 0; start < local.length; start += 4) await Promise.all(local.slice(start, start + 4).map(async f => {
+                  if (digest(await get(f.path)) !== f.sha256) throw new Error(`Mismatch: ${f.path}`);
+                }));
+                report = { url: base, sourceRevision: expected.revision, deploymentRevision: context.sha, verifiedAt: new Date().toISOString(), files: local, metrics: boot.metrics, browserExecuted: false }; break;
               } catch (error) {
-                lastError = error;
-                core.info(`Pages propagation check ${attempt}: ${error.message}`);
-                const remaining = deadline - Date.now();
-                if (remaining > 0) await new Promise(resolve => setTimeout(resolve, Math.min(10000, remaining)));
+                lastError = error; core.info(error.message);
+                await new Promise(r => setTimeout(r, Math.max(0, Math.min(10000, deadline - Date.now()))));
               }
             }
-            if (!report) throw lastError || new Error('Pages verification did not finish');
+            if (!report) throw lastError;
             await writeFile('pages-http-verification.json', JSON.stringify(report, null, 2));
             core.info(`PAGES_HTTP_VERIFIED=${JSON.stringify(report)}`);
-            await core.summary.addHeading('Public Pages files verified')
-              .addRaw(`Source: ${expected.revision}\n\nPublication: ${context.sha}\n\n${local.length} HTTP assets (including the city manifest and all chunks) match the committed bytes. No browser or visual acceptance is claimed.\n`)
-              .write();
       - uses: actions/upload-artifact@v4
         with:
           name: pages-http-verification

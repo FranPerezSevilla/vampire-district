@@ -1,3 +1,4 @@
+import { bootAssets } from "../boot/BootAssets.js";
 function finite(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
@@ -42,7 +43,10 @@ export class ChunkFileStore {
     fetchImpl = globalThis.fetch?.bind?.(globalThis),
     maxRetries = 2,
     retryDelayMs = 40,
-    cacheLimit = 12
+    cacheLimit = 12,
+    maxConcurrent = 4,
+    requestTimeoutMs = 4000,
+    seed = bootAssets?.city
   } = {}) {
     if (typeof fetchImpl !== "function") throw new TypeError("ChunkFileStore requires fetch().");
     this.manifestUrl = resolveUrl(manifestUrl);
@@ -50,10 +54,21 @@ export class ChunkFileStore {
     this.maxRetries = Math.max(0, Math.floor(finite(maxRetries, 2)));
     this.retryDelayMs = Math.max(0, finite(retryDelayMs, 40));
     this.cacheLimit = Math.max(1, Math.floor(finite(cacheLimit, 12)));
-    this.manifest = null;
+    this.requestTimeoutMs = Math.max(1, finite(requestTimeoutMs, 4000));
+    this.maxConcurrent = Math.max(1, Math.floor(finite(maxConcurrent, 4)));
+    this.pendingRequests = [];
+    this.activeRequests = 0;
+    this.destroyed = false;
+    this.manifestPromise = null;
+    this.seed = this.manifestUrl === DEFAULT_CITY_MANIFEST_URL ? seed : null;
+    this.manifest = this.seed?.manifest || null;
     this.cache = new Map();
     this.inFlight = new Map();
     this.evicted = [];
+    for (const [id, payload] of Object.entries(this.seed?.chunks || {})) {
+      if (!this.manifest?.chunks?.[id] || payload.id !== id || !payload.collections) throw new Error(`Invalid initial city seed: ${id}`);
+      this.cache.set(id, payload);
+    }
     this.stats = {
       manifestRequests: 0,
       chunkRequests: 0,
@@ -70,9 +85,7 @@ export class ChunkFileStore {
     for (let attempt = 0; attempt < Math.max(1, attempts); attempt++) {
       if (signal?.aborted) throw abortError();
       try {
-        const response = await this.fetchImpl(url, { signal, cache: "no-store" });
-        if (!response?.ok) throw new Error(`HTTP ${response?.status || 0} while loading ${url}`);
-        return await response.json();
+        return await this.fetchJson(url, signal);
       } catch (error) {
         if (signal?.aborted || error?.name === "AbortError") throw error;
         lastError = error;
@@ -85,21 +98,71 @@ export class ChunkFileStore {
     throw lastError || new Error(`Unable to load ${url}`);
   }
 
-  async loadManifest() {
-    if (this.manifest) return this.manifest;
-    this.stats.manifestRequests++;
-    const manifest = await this.requestJson(this.manifestUrl);
-    if (!manifest?.chunks || !Array.isArray(manifest.chunkIds)) {
-      throw new TypeError("City chunk manifest is malformed.");
+  fetchJson(url, signal) {
+    return new Promise((resolve, reject) => {
+      const item = { url, signal, resolve, reject, started: false };
+      const cancel = () => {
+        if (item.started) return;
+        this.pendingRequests = this.pendingRequests.filter(value => value !== item);
+        reject(abortError());
+      };
+      item.cleanup = () => signal?.removeEventListener?.("abort", cancel);
+      if (this.destroyed || signal?.aborted) { reject(abortError()); return; }
+      signal?.addEventListener?.("abort", cancel, { once: true });
+      this.pendingRequests.push(item);
+      this.pumpRequests();
+    });
+  }
+
+  pumpRequests() {
+    while (this.activeRequests < this.maxConcurrent && this.pendingRequests.length) {
+      const item = this.pendingRequests.shift();
+      item.cleanup();
+      if (this.destroyed || item.signal?.aborted) { item.reject(abortError()); continue; }
+      item.started = true;
+      this.activeRequests++;
+      const controller = new AbortController();
+      let timer, abort;
+      const interrupted = new Promise((_, reject) => {
+        abort = () => { controller.abort(); reject(abortError()); };
+        item.signal?.addEventListener?.("abort", abort, { once: true });
+        timer = setTimeout(() => { controller.abort(); reject(new Error(`City request timed out: ${item.url}`)); }, this.requestTimeoutMs);
+      });
+      const request = (async () => {
+        const response = await this.fetchImpl(item.url, { signal: controller.signal, cache: "default" });
+        if (!response?.ok) throw new Error(`HTTP ${response?.status || 0} while loading ${item.url}`);
+        return response.json();
+      })();
+      Promise.race([request, interrupted]).then(item.resolve, item.reject).finally(() => {
+        clearTimeout(timer);
+        item.signal?.removeEventListener?.("abort", abort);
+        this.activeRequests--;
+        this.pumpRequests();
+      });
     }
-    this.manifest = manifest;
-    return manifest;
+  }
+
+  loadManifest() {
+    if (this.destroyed) return Promise.reject(abortError());
+    if (this.manifest) return Promise.resolve(this.manifest);
+    if (this.manifestPromise) return this.manifestPromise;
+    this.stats.manifestRequests++;
+    this.manifestController = new AbortController();
+    this.manifestPromise = this.requestJson(this.manifestUrl, { signal: this.manifestController.signal }).then(manifest => {
+      if (this.destroyed) throw abortError();
+      if (!manifest?.chunks || !Array.isArray(manifest.chunkIds)) throw new TypeError("City chunk manifest is malformed.");
+      this.manifest = manifest;
+      return manifest;
+    }).catch(error => { this.manifestPromise = null; throw error; });
+    return this.manifestPromise;
   }
 
   chunkUrl(id) {
     const record = this.manifest?.chunks?.[String(id)];
     if (!record?.file) throw new Error(`Manifest has no file for chunk ${id}.`);
-    return resolveUrl(record.file, this.manifestUrl);
+    const url = new URL(resolveUrl(record.file, this.manifestUrl));
+    if (this.seed?.version) url.searchParams.set("v", this.seed.version);
+    return url.href;
   }
 
   touch(id, payload) {
@@ -118,6 +181,7 @@ export class ChunkFileStore {
   }
 
   loadChunk(id) {
+    if (this.destroyed) return Promise.reject(abortError());
     const key = String(id);
     const cached = this.cache.get(key);
     if (cached) {
@@ -136,6 +200,7 @@ export class ChunkFileStore {
         if (String(payload?.id) !== key || !payload?.collections) {
           throw new TypeError(`Chunk payload ${key} is malformed.`);
         }
+        if (this.destroyed || controller.signal.aborted) throw abortError();
         return this.touch(key, payload);
       })
       .finally(() => {
@@ -191,11 +256,15 @@ export class ChunkFileStore {
       cacheLimit: this.cacheLimit,
       cached: [...this.cache.keys()],
       inFlight: [...this.inFlight.keys()],
+      seeded: Object.keys(this.seed?.chunks || {}).length,
+      activeRequests: this.activeRequests, queuedRequests: this.pendingRequests.length,
       stats: { ...this.stats }
     };
   }
 
   destroy() {
+    this.destroyed = true;
+    this.manifestController?.abort();
     for (const id of [...this.inFlight.keys()]) this.cancel(id);
     this.cache.clear();
     this.manifest = null;

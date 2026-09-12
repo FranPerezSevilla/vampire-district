@@ -22,20 +22,10 @@ const CDN_PHASER_SOURCES = Object.freeze([
   })
 ]);
 
-function localPhaserAllowed() {
-  const protocol = window.location?.protocol || "";
-  const hostname = window.location?.hostname || "";
-  return protocol === "file:"
-    || hostname === "localhost"
-    || hostname === "127.0.0.1"
-    || hostname === "::1"
-    || hostname === "[::1]";
-}
-
 function phaserScriptSources() {
-  return localPhaserAllowed()
-    ? [LOCAL_PHASER_SOURCE, ...CDN_PHASER_SOURCES]
-    : CDN_PHASER_SOURCES;
+  // The pinned engine is published with the game. Do not block boot on a
+  // third-party CDN when the same-origin copy is already available.
+  return [LOCAL_PHASER_SOURCE, ...CDN_PHASER_SOURCES];
 }
 
 let playtestBootCover = null;
@@ -63,11 +53,15 @@ function loadScript(source) {
     }
 
     const script = document.createElement("script");
+    const timer = window.setTimeout(() => {
+      script.remove();
+      reject(new Error(`Engine download timed out: ${source.src}`));
+    }, 8000);
     script.src = source.src;
     script.async = false;
     script.dataset.nbdPhaser = source.kind;
-    script.addEventListener("load", () => resolve(source), { once: true });
-    script.addEventListener("error", () => reject(new Error(`Unable to load ${source.src}`)), { once: true });
+    script.addEventListener("load", () => { window.clearTimeout(timer); resolve(source); }, { once: true });
+    script.addEventListener("error", () => { window.clearTimeout(timer); reject(new Error(`Unable to load ${source.src}`)); }, { once: true });
     document.head.appendChild(script);
   });
 }
@@ -122,8 +116,10 @@ function renderBootFailure(error) {
 }
 
 try {
+  window.NBD_BOOT_STARTED_AT = performance.now();
   await preparePlaytestEntry();
   const phaser = await ensurePhaser();
+  window.NBD_ENGINE_READY_AT = performance.now();
   await import("./campaign/preload.js");
   await import("./police/VehicleIncidentPoliceWitnessPolicy.js");
 
@@ -144,6 +140,7 @@ try {
   if (bootProfile.mode === BOOT_MODES.SCENARIO) await import("./testing/scenario-bootstrap.js");
 
   window.NBD_APP_READY = true;
+  window.NBD_APP_READY_AT = performance.now();
   window.dispatchEvent(new CustomEvent("nbd:app-ready", {
     detail: {
       phaser,

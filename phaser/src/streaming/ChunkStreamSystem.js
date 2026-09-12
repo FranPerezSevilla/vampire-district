@@ -148,7 +148,11 @@ export class ChunkStreamSystem {
   scheduleLoads() {
     const desired = this.desiredChunkIds();
     this.fileStore.cancelExcept?.(desired);
-    for (const id of [...this.activeChunkIds, ...this.prefetchedChunkIds]) this.requestChunk(id);
+    // The production seed already contains the required starting view. Keep
+    // optional city requests out of the menu/audio critical path.
+    this.prefetchDeferred = Boolean(this.fileStore.seed && this.scene.registry?.get?.("mainMenuActive"));
+    const ids = this.prefetchDeferred ? this.activeChunkIds : desired;
+    for (const id of ids) this.requestChunk(id);
     this.trimCache(desired);
   }
 
@@ -218,6 +222,7 @@ export class ChunkStreamSystem {
 
   update() {
     if (!this.initialized || this.destroyed || this.initialViewPreparation) return false;
+    if (this.prefetchDeferred && !this.scene.registry?.get?.("mainMenuActive")) this.scheduleLoads();
     const focus = this.focus();
     const changed = this.updateFocus(focus.x, focus.y, this.velocity());
     return this.processActivationQueue() > 0 || changed;

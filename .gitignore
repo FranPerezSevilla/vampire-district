@@ -36,3 +36,5 @@ dist/
 .artifacts/
 ui-native.log
 ui-affected-plan.log
+
+phaser/runtime-dist/
