@@ -1,0 +1,23 @@
+name: Export exact menu source
+on:
+  push:
+    branches: [codex/fast-boot-recovery]
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 653ddcb9e42419a2acceab5ecdcf81346d5b2ef3
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Export pinned source for native regression validation
+        run: git bundle create menu-source.bundle --all
+      - uses: actions/upload-artifact@v4
+        with:
+          name: menu-source
+          path: menu-source.bundle
+          retention-days: 2
