@@ -1,0 +1,22 @@
+name: Export exact handoff source
+on:
+  push:
+    branches: [codex/fast-boot-recovery]
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 880431fbe9373832ca896cf66884cf23bdeed059
+          fetch-depth: 0
+          persist-credentials: false
+      - run: git bundle create handoff-source.bundle --all
+      - uses: actions/upload-artifact@v4
+        with:
+          name: handoff-source
+          path: handoff-source.bundle
+          retention-days: 2
