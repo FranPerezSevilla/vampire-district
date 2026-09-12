@@ -1,6 +1,8 @@
 {
-  "revision": "dc7be9c648a95094bd162157b2d3e65cfd88f450",
+  "revision": "880431fbe9373832ca896cf66884cf23bdeed059",
   "dirty": false,
   "interfaceSha256": "2ea68e7c550eba618f3fedf65347284ce5d326ce73ec1601b1bd9319504d5036",
-  "ui": "react-radix"
+  "ui": "react-radix",
+  "boot": "packed-v1",
+  "runtimeSha256": "8293530dbc63cb3077a41f42bc14bdcb94a01adb571ba4c2116ebd82041939c0"
 }
