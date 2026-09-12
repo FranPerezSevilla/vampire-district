@@ -5,36 +5,52 @@ on:
 permissions:
   contents: read
 jobs:
-  recover:
+  import-reviewed-objects:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
           ref: dc7be9c648a95094bd162157b2d3e65cfd88f450
-          fetch-depth: 0
           persist-credentials: false
-      - name: Recover exact pending data objects
+      - name: Import hash-verified recovered source objects without updating refs
         uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('node:fs/promises');
-            const crypto = require('node:crypto');
-            await fs.mkdir('recovered', {recursive:true});
-            const parts = ['020d3355431d5a72244d6cab7c27be114953f923','8c77b398de1f28715b9f8c286a593cfce2248cc5','982a52e0443a09ea0376d712bf1edde25d0ea3c8'];
-            for (const sha of parts) {
-              const {data} = await github.rest.git.getBlob({...context.repo, file_sha:sha});
-              if(data.encoding !== 'base64') throw new Error('Unexpected encoding');
-              const bytes = Buffer.from(data.content,'base64');
-              const actual = crypto.createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${bytes.length}\0`),bytes])).digest('hex');
-              if(actual !== sha) throw new Error('Object hash mismatch');
-              await fs.writeFile(`recovered/${sha}.bin`,bytes);
-              core.info(`${sha}: ${bytes.length} bytes recovered`);
+            const {brotliDecompressSync,constants} = require('node:zlib');
+            const {createHash} = require('node:crypto');
+            const {execFileSync} = require('node:child_process');
+            const {owner,repo}=context.repo;
+            if(`${owner}/${repo}` !== 'FranPerezSevilla/vampire-district') throw new Error('Wrong repository');
+            const hash=b=>createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${b.length}\0`),b])).digest('hex');
+            const parts=['020d3355431d5a72244d6cab7c27be114953f923','8c77b398de1f28715b9f8c286a593cfce2248cc5','982a52e0443a09ea0376d712bf1edde25d0ea3c8'];
+            const packed=[];
+            for(const sha of parts){const {data}=await github.rest.git.getBlob({owner,repo,file_sha:sha});const b=Buffer.from(data.content,'base64');if(hash(b)!==sha)throw new Error('Transport mismatch');packed.push(b);}
+            const raw=brotliDecompressSync(Buffer.concat(packed),{finishFlush:constants.BROTLI_OPERATION_FLUSH}).toString('utf8');
+            const entries=[];let cursor=1;
+            for(;;){const next=raw.indexOf('},{"path":',cursor);if(next<0)break;entries.push(JSON.parse(raw.slice(cursor,next+1)));cursor=next+2;}
+            if(entries.length!==8)throw new Error('Expected eight complete recovered files');
+            const last=raw.slice(cursor),marker='"content":';
+            const prefix=JSON.parse(last.slice(last.indexOf(marker)+marker.length)+'"');
+            const path='phaser/src/streaming/ChunkStreamSystem.js';
+            const old=execFileSync('git',['show',`HEAD:${path}`],{encoding:'utf8'});
+            const tail=prefix.slice(-160),at=old.indexOf(tail);
+            if(at<0||old.indexOf(tail,at+1)>=0)throw new Error('Ambiguous unchanged suffix');
+            entries.push({path,old:'2e88fd5860c3a4fc5e91701f7428fd560de5d156',sha:'ba8593aab95839be918178ead353db9c453b5c93',content:prefix+old.slice(at+tail.length)});
+            const allowed=['.github/workflows/ui-rewrite.yml','.gitignore','docs/FAST_BOOT_TASK.md','phaser/src/boot/BootAssets.js','phaser/src/audio/SampleByteCache.js','phaser/src/app-bootstrap.js','phaser/src/systems/RawAudioSystem.js','phaser/src/streaming/ChunkFileStore.js',path];
+            for(const e of entries){
+              if(!allowed.includes(e.path)||hash(Buffer.from(e.content))!==e.sha)throw new Error('Recovered source mismatch');
+              if(e.old && execFileSync('git',['rev-parse',`HEAD:${e.path}`],{encoding:'utf8'}).trim()!==e.old)throw new Error('Wrong base');
+              if(e.path==='phaser/src/app-bootstrap.js'){
+                const a=e.content.indexOf('function localPhaserAllowed()'),b=e.content.indexOf('function phaserScriptSources()',a);
+                if(a<0||b<a)throw new Error('Missing dead helper');
+                e.content=e.content.slice(0,a)+e.content.slice(b);e.sha='debacbcb44f2148f135663484522f32aefb34591';
+                if(hash(Buffer.from(e.content))!==e.sha)throw new Error('Final helper removal mismatch');
+              }
+              const {data}=await github.rest.git.createBlob({owner,repo,content:e.content,encoding:'utf-8'});
+              if(data.sha!==e.sha)throw new Error('Uploaded object mismatch');
+              core.info(`${e.path} ${data.sha}`);
             }
-      - name: Export current source for offline validation
-        run: git bundle create recovered/current-source.bundle --all
-      - uses: actions/upload-artifact@v4
-        with:
-          name: fast-boot-recovery
-          path: recovered/
-          retention-days: 2
+            core.info('Nine source objects imported and verified. No branch, tree, PR or deployment updated.');
