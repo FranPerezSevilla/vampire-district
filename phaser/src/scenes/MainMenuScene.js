@@ -23,6 +23,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.assetsReady = null;
     this.cameraTransitionStartedAt = 0;
     this.cameraTransitionFrom = null;
+    this.cancelUiPreparation = null;
   }
 
   create() {
@@ -225,37 +226,88 @@ export class MainMenuScene extends Phaser.Scene {
     this.previewLocked = false;
   }
 
+  prepareGameplayInterface(timeoutMs = 5000) {
+    const ui = this.scene.get("UIScene");
+    if (!ui) return Promise.reject(new Error("The gameplay interface scene is unavailable."));
+    const validate = () => {
+      if (ui.bootError) throw ui.bootError;
+      if (!ui.renderUi || !ui.store?.getSnapshot?.().ready) throw new Error("The gameplay interface did not become ready.");
+      if (ui.uiError) throw new Error(ui.uiError);
+      return ui;
+    };
+    if (this.scene.isActive("UIScene") && ui.renderUi) {
+      try { return Promise.resolve(validate()); } catch (error) { return Promise.reject(error); }
+    }
+    return new Promise((resolve, reject) => {
+      const createdEvent = Phaser.Scenes.Events.CREATE || "create";
+      const shutdownEvent = Phaser.Scenes.Events.SHUTDOWN || "shutdown";
+      let timer = null, settled = false;
+      const finish = error => {
+        if (settled) return;
+        settled = true;
+        if (timer !== null) window.clearTimeout(timer);
+        ui.events.off(createdEvent, onCreated);
+        ui.events.off(shutdownEvent, onShutdown);
+        this.cancelUiPreparation = null;
+        if (error) reject(error); else resolve(ui);
+      };
+      const onCreated = () => { try { validate(); finish(); } catch (error) { finish(error); } };
+      const onShutdown = () => finish(new Error("Gameplay interface stopped during startup."));
+      this.cancelUiPreparation = () => finish(new Error("Title handoff cancelled."));
+      ui.events.once(createdEvent, onCreated);
+      ui.events.once(shutdownEvent, onShutdown);
+      timer = window.setTimeout(() => finish(new Error("Gameplay interface startup timed out.")), timeoutMs);
+      // Phaser may queue launch for the next frame: subscribe BEFORE requesting it.
+      try { this.scene.launch("UIScene"); } catch (error) { finish(error); }
+    });
+  }
+
   async beginNight() {
     if (this.transitioning) return;
     this.transitioning = true;
-    const frame = this.cameraFrame();
-    this.cameraTransitionFrom = frame ? { x: frame.camera.scrollX, y: frame.camera.scrollY } : null;
-    this.cameraTransitionStartedAt = performance.now();
-    titleScreenAudioGate.fadeOut(MENU_TO_GAME_MS);
-
     try {
+      this.publishReadiness("preparing-gameplay-interface");
+      await this.prepareGameplayInterface();
+      if (!this.sys.isActive()) return;
+      const frame = this.cameraFrame();
+      this.cameraTransitionFrom = frame ? { x: frame.camera.scrollX, y: frame.camera.scrollY } : null;
+      this.cameraTransitionStartedAt = performance.now();
+      this.publishReadiness("starting-night");
+      titleScreenAudioGate.fadeOut(MENU_TO_GAME_MS);
       await titleScreenController.exitToGame();
+      if (!this.sys.isActive()) return;
       const finalFrame = this.cameraFrame();
       finalFrame?.camera?.setScroll?.(finalFrame.centeredX, finalFrame.centeredY);
       this.finishNightTransition();
     } catch (error) {
       this.transitioning = false;
+      titleScreenAudioGate.stop();
+      if (!this.sys.isActive()) return;
+      this.publishReadiness("failure", String(error?.message || error));
       titleScreenController.showFailure(error);
     }
   }
 
   finishNightTransition() {
-    if (!this.scene.isActive("GameScene")) this.scene.launch("GameScene");
-    if (!this.scene.isActive("UIScene")) this.scene.launch("UIScene");
-
-    this.restorePreviewControl();
+    const ui = this.scene.get("UIScene");
+    if (!this.scene.isActive("GameScene") || !ui?.renderUi || ui.bootError) {
+      throw new Error("The gameplay handoff is not ready.");
+    }
     const gameScene = this.previewScene || this.scene.get("GameScene");
-    gameScene?.registry?.set?.("mainMenuActive", false);
+    // Finalize sound independently of fade frames, then release only our lock.
+    titleScreenAudioGate.stop();
+    gameScene.registry.set("mainMenuActive", false);
+    this.restorePreviewControl();
+    ui.refresh();
+    gameScene.game?.canvas?.focus?.({ preventScroll: true });
     this.handoffComplete = true;
+    this.publishReadiness("in-game");
     this.scene.stop("MainMenuScene");
   }
 
   cleanup() {
+    this.cancelUiPreparation?.();
+    titleScreenAudioGate.stop();
     this.detachPreviewCreateListener();
     titleScreenAudioGate.dispose();
     titleScreenController.detachNewNightHandler();

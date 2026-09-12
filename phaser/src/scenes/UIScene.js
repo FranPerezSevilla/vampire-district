@@ -33,26 +33,39 @@ export class UIScene extends Phaser.Scene {
     this.noticeUntil = 0;
     this.ledgerRefreshAt = 0;
     this.renderUi = null;
+    this.bootError = null;
   }
   create() {
-    const root = document.getElementById("interface-root");
-    const overlay = document.getElementById("ui-overlay-host");
-    if (!root || !overlay || !globalThis.NBD_INTERFACE_VIEW?.mount) throw new Error("ViceBlood interface bundle was not prepared before gameplay.");
-    this.dom = { root: document.getElementById("game-ui") };
-    try {
-      this.registry.set("aimHighContrast", normalizeBooleanPreference(localStorage.getItem(UX_STORAGE_KEYS.AIM_HIGH_CONTRAST), false));
-    } catch { this.registry.set("aimHighContrast", false); }
-    this.renderUi = globalThis.NBD_INTERFACE_VIEW.mount(root, {
-      store: this.store, geometry: cityMapGeometry, overlay,
-      command: (type, payload) => this.command(type, payload),
-      controls: buildControlReference(this.registry.get("inputBindings")?.bindings || {})
-    });
-    this.onDomKeyDown = event => this.handleDomKeyDown(event);
-    window.addEventListener("keydown", this.onDomKeyDown, true);
+    this.bootError = null;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup());
-    this.refresh();
+    try {
+      const root = document.getElementById("interface-root");
+      const overlay = document.getElementById("ui-overlay-host");
+      if (!root || !overlay || !globalThis.NBD_INTERFACE_VIEW?.mount) throw new Error("ViceBlood interface bundle was not prepared before gameplay.");
+      this.dom = { root: document.getElementById("game-ui") };
+      try {
+        this.registry.set("aimHighContrast", normalizeBooleanPreference(localStorage.getItem(UX_STORAGE_KEYS.AIM_HIGH_CONTRAST), false));
+      } catch { this.registry.set("aimHighContrast", false); }
+      // Build the real snapshot before the initial synchronous React mount.
+      // `game` belongs to Phaser's injection map, not to a helper method.
+      this.refresh();
+      this.renderUi = globalThis.NBD_INTERFACE_VIEW.mount(root, {
+        store: this.store, geometry: cityMapGeometry, overlay,
+        command: (type, payload) => this.command(type, payload),
+        controls: buildControlReference(this.registry.get("inputBindings")?.bindings || {})
+      });
+      if (this.uiError) throw new Error(this.uiError);
+      this.onDomKeyDown = event => this.handleDomKeyDown(event);
+      window.addEventListener("keydown", this.onDomKeyDown, true);
+    } catch (error) {
+      // A queued scene launch cannot throw back into beginNight's promise.
+      // Keep the engine loop alive; MainMenuScene checks this on Phaser CREATE.
+      this.bootError = error instanceof Error ? error : new Error(String(error));
+      this.registry.set("interfaceBootError", this.bootError.message);
+      console.error("ViceBlood interface initialization failed", this.bootError);
+    }
   }
-  game() { return this.scene.get("GameScene"); }
+  gameplayScene() { return this.scene.get("GameScene"); }
   activeMode() {
     if (this.uiError) return "error";
     if (this.external) return this.external.id;
@@ -60,10 +73,11 @@ export class UIScene extends Phaser.Scene {
     if (this.resultOpen) return "result";
     if (this.pauseOpen) return "pause";
     if (this.ledgerOpen) return "ledger";
-    const menu = this.game()?.interactionSystem?.menu;
+    const menu = this.gameplayScene()?.interactionSystem?.menu;
     return menu ? menu.view === "vampire-domain" ? "domain" : "interaction" : null;
   }
   update() {
+    if (this.bootError) return;
     this.updateUiPause();
     const now = this.time?.now || 0;
     if (now < this.nextRefresh) return;
@@ -71,7 +85,7 @@ export class UIScene extends Phaser.Scene {
     this.refresh();
   }
   refresh() {
-    const game = this.game();
+    const game = this.gameplayScene();
     const action = game?.lastActionText || this.registry.get("lastActionText") || "";
     const now = this.time?.now || 0;
     if (action && action !== this.lastAction) {
@@ -89,9 +103,9 @@ export class UIScene extends Phaser.Scene {
       this.updateUiPause();
     }
   }
-  resetEdges() { this.game()?.inputSystem?.resetWorldEdges?.(); }
+  resetEdges() { this.gameplayScene()?.inputSystem?.resetWorldEdges?.(); }
   updateUiPause() {
-    const game = this.game();
+    const game = this.gameplayScene();
     if (!game) return;
     const mode = this.activeMode();
     const blocked = Boolean(mode);
@@ -114,12 +128,12 @@ export class UIScene extends Phaser.Scene {
   }
   cancelPendingAction() {
     if (!this.pendingAction) return;
-    this.game()?.events?.off?.(Phaser.Scenes.Events.POST_UPDATE || "postupdate", this.pendingAction);
+    this.gameplayScene()?.events?.off?.(Phaser.Scenes.Events.POST_UPDATE || "postupdate", this.pendingAction);
     this.pendingAction = null;
   }
   queueGameplayAction(action) {
     if (this.pendingAction || typeof action !== "function") return false;
-    const game = this.game();
+    const game = this.gameplayScene();
     // Execute after the existing authoritative frame has resumed, never fake a
     // worldEnabled flag just to satisfy a service guard while its scene is paused.
     const run = () => {
@@ -135,7 +149,7 @@ export class UIScene extends Phaser.Scene {
     return true;
   }
   allowedToOpen() {
-    const game = this.game();
+    const game = this.gameplayScene();
     return Boolean(game?.player && !this.registry.get("mainMenuActive") && !this.registry.get("taskRevealActive")
       && !game.transitionSystem?.active && !game.playerDamageSystem?.isDead?.() && !this.external && !this.pendingAction);
   }
@@ -144,13 +158,13 @@ export class UIScene extends Phaser.Scene {
     this.pauseOpen = false;
     this.ledgerOpen = false;
     this.updateUiPause();
-    const result = this.game().vampireRuntime?.openDomain(tab, target);
+    const result = this.gameplayScene().vampireRuntime?.openDomain(tab, target);
     this.resetEdges();
     this.refresh();
     return Boolean(result);
   }
   closeInteraction() {
-    if (this.game()?.interactionSystem?.isOpen) this.game().interactionSystem.close("Back to the city.");
+    if (this.gameplayScene()?.interactionSystem?.isOpen) this.gameplayScene().interactionSystem.close("Back to the city.");
     this.confirmation = null;
     this.feedback = "";
     this.resetEdges();
@@ -168,7 +182,7 @@ export class UIScene extends Phaser.Scene {
     return this.closeInteraction();
   }
   command(type, payload = {}) {
-    const game = this.game(), runtime = game?.vampireRuntime;
+    const game = this.gameplayScene(), runtime = game?.vampireRuntime;
     try {
       if (type === "ui-error") { this.uiError = String(payload.message || "Interface interrupted"); this.cancelPendingAction(); this.refresh(); return false; }
       if (this.pendingAction && type !== "pause" && type !== "close") return false;
@@ -244,7 +258,7 @@ export class UIScene extends Phaser.Scene {
     // Native controls (including Radix tabs) own Enter/Space/arrow keys.
     if (activatable(event.target) && ["Enter", "Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)) return;
     if (mode === "interaction") {
-      const interaction = this.game().interactionSystem, menu = interaction.menu;
+      const interaction = this.gameplayScene().interactionSystem, menu = interaction.menu;
       const digit = Number(event.code?.match(/^Digit([1-9])$/)?.[1]);
       if (digit && menu.options[digit - 1]) { finish(); this.command("choose", { id: menu.options[digit - 1].id }); }
       else if (["KeyE", "Enter"].includes(event.code)) { finish(); this.command("choose", { id: menu.options[menu.index]?.id }); }
@@ -278,12 +292,12 @@ export class UIScene extends Phaser.Scene {
   toggleNightLedger() { return this.ledgerOpen ? this.closeNightLedger() : this.openNightLedger(); }
   openNightLedger() {
     if (!this.allowedToOpen() || this.resultOpen || this.introOpen) return false;
-    if (this.game()?.interactionSystem?.isOpen) this.game().interactionSystem.close("Inspecting the city ledger.");
+    if (this.gameplayScene()?.interactionSystem?.isOpen) this.gameplayScene().interactionSystem.close("Inspecting the city ledger.");
     this.pauseOpen = false; this.ledgerOpen = true; this.refresh(); return true;
   }
   closeNightLedger() { this.ledgerOpen = false; this.refresh(); return true; }
   toggleMissionDrawer() {
-    if (this.activeMode() === "domain" && this.game()?.vampireRuntime?.domain.tab === "errand") return this.closeInteraction();
+    if (this.activeMode() === "domain" && this.gameplayScene()?.vampireRuntime?.domain.tab === "errand") return this.closeInteraction();
     return this.openDomain("errand");
   }
   closeMissionDrawer() { this.missionOpen = false; }

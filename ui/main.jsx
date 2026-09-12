@@ -1,4 +1,5 @@
 import React, { useRef, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { Badge, Button, Empty, Icon, Meter, Metric, Window } from "./components.jsx";
 import { Domain } from "./Domain.jsx";
@@ -54,6 +55,8 @@ class UiErrorBoundary extends React.Component {
 }
 export function mount(node, options) {
   const root = createRoot(node);
-  root.render(<UiErrorBoundary command={options.command}><App {...options}/></UiErrorBoundary>);
+  // Commit the first tree inside the scene's CREATE boundary. Later store
+  // updates stay asynchronous; only startup needs an actual mounted interface.
+  flushSync(() => root.render(<UiErrorBoundary command={options.command}><App {...options}/></UiErrorBoundary>));
   return { unmount: () => root.unmount() };
 }
