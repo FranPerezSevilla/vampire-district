@@ -93,13 +93,13 @@ test('600 title frames hydrate chunks but never advance gameplay, traffic, chara
 test('preview readiness waits for resident geometry and surfaces a load failure instead of displaying holes', async () => {
   const menu=new MainMenuScene();menu.sys={isActive:()=>true};
   const manifest=deferred(),chunks=deferred();const calls=[];
-  const game={cityStreamSystem:{initialization:manifest.promise,waitUntilReady(){calls.push('wait');return chunks.promise;}},
+  const game={cityStreamSystem:{async prepareInitialView(){await manifest.promise;calls.push('wait');return chunks.promise;}},
     entityStreamSystem:{update(dt){assert.equal(dt,0);calls.push('entities');}},redrawLayer(){calls.push('draw');}};
   let finished=false;const ready=menu.waitForPreviewGeometry(game).then(()=>{finished=true;});
   await Promise.resolve();assert.equal(finished,false);assert.deepEqual(calls,[]);
   manifest.resolve();await Promise.resolve();assert.deepEqual(calls,['wait']);assert.equal(finished,false);
   chunks.resolve();await ready;assert.deepEqual(calls,['wait','entities','draw']);
-  await assert.rejects(menu.waitForPreviewGeometry({cityStreamSystem:{initialization:Promise.resolve(),waitUntilReady:()=>Promise.reject(new Error('chunk unavailable'))}}),/chunk unavailable/);
+  await assert.rejects(menu.waitForPreviewGeometry({cityStreamSystem:{prepareInitialView:()=>Promise.reject(new Error('chunk unavailable'))}}),/chunk unavailable/);
 });
 
 test('canvas cover resize synchronizes Phaser pointer bounds and display scale without resizing DOM UI', () => {

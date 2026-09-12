@@ -126,11 +126,9 @@ export class MainMenuScene extends Phaser.Scene {
   async waitForPreviewGeometry(gameScene) {
     const stream = gameScene?.cityStreamSystem;
     if (!stream) return;
-    await stream.initialization;
-    if (!this.sys.isActive()) return;
-    // Chunk activation remains on GameScene's existing lightweight title frame.
-    // This promise rejects on a loading error/timeout instead of revealing holes.
-    await stream.waitUntilReady();
+    // Download AND hydrate the initial view without relying on render frames.
+    // Queued payloads are not yet resident; a passive waiter could deadlock boot.
+    await stream.prepareInitialView();
     if (!this.sys.isActive()) return;
     gameScene.entityStreamSystem?.update?.(0);
     gameScene.redrawLayer?.();
