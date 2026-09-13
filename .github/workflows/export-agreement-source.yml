@@ -1,0 +1,25 @@
+name: Export agreement source
+on:
+  push:
+    branches: [codex/agreement-source-export]
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 37fcaf8af9414b98827e742378f9523135207b9e
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Export pinned source only
+        run: |
+          git branch agreement-source HEAD
+          git bundle create agreement-source.bundle agreement-source refs/remotes/origin/main
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agreement-source
+          path: agreement-source.bundle
+          retention-days: 2
