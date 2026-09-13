@@ -53,3 +53,19 @@ These are native/task/DOM and delivery checks, not a browser performance profile
 The controlled late-clock reproduction explains the false queued timeout but does
 not identify the exact source of callback latency on the user's machine. Native
 MessageChannel batches add no recurring loop, worker, asset request or UI text.
+
+## Remote concurrency check
+The source native/build gate passed; a separate PR native run exposed a timing
+assumption in an older ownership regression (25 resident versus an expected 9).
+That test waited for optional downloads, then assumed initial preparation was
+still pending. Faster task-based preparation may already have completed, so normal
+frame prefetch legitimately resumes. The test now explicitly holds required chunk
+3:3 until after the frame-ownership assertions, then releases it and verifies
+prefetch resumes. No runtime changes or relaxed assertion: both pending exclusion
+and post-completion resumption are still tested without relying on I/O ordering.
+
+The deterministic test follow-up passed all 25 focused readiness/task cases locally.
+Its attempted full local rerun hit the command execution limit before completion;
+no pass is claimed for that interrupted run. The earlier full 1,065-case local
+run and the initial remote source/build gate passed. The final remote CI must
+validate this test-only follow-up before publication.
