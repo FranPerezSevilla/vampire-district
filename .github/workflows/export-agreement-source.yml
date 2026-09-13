@@ -1,52 +1,50 @@
-name: Export pending agreement patch
+name: Transfer final agreement review
 on:
   push:
     branches: [codex/agreement-source-export]
 permissions:
   contents: read
-  actions: read
 jobs:
-  export:
+  transfer:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: 37fcaf8af9414b98827e742378f9523135207b9e
-          persist-credentials: false
-      - uses: actions/download-artifact@v4
-        with:
-          name: agreement-import
-          run-id: 34763081381
-          github-token: ${{ github.token }}
-          path: recovered
       - uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('node:fs/promises');
-            const {dirname} = require('node:path');
             const {createHash} = require('node:crypto');
-            const {execFileSync} = require('node:child_process');
-            const git = (...args) => execFileSync('git',args,{encoding:'utf8'}).trim();
-            const manifest = JSON.parse(await fs.readFile('recovered/agreement-import.json','utf8'));
-            if(manifest.base !== git('rev-parse','HEAD') || manifest.tree !== 'a736892177b445440dadc5230b5961e6d29922fd' || manifest.entries.length!==16) throw new Error('Wrong manifest');
-            for(const entry of manifest.entries) {
-              if(!/^(docs|phaser\/src|tests|tools\/boot|ui)\/[a-zA-Z0-9_./-]+$/.test(entry.path) || entry.path.includes('..')) throw new Error('Unsafe source path');
-              const {data} = await github.rest.git.getBlob({...context.repo,file_sha:entry.sha});
-              if(data.encoding !== 'base64') throw new Error('Unexpected encoding');
-              const bytes = Buffer.from(data.content,'base64');
-              const hash = createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${bytes.length}\0`),bytes])).digest('hex');
-              if(hash!==entry.sha) throw new Error('Blob mismatch');
-              await fs.mkdir(dirname(entry.path),{recursive:true});
-              await fs.writeFile(entry.path,bytes);
-              git('add','--',entry.path);
+            const hash = b => createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${b.length}\0`),b])).digest('hex');
+            const files = [
+              {sha:'1eb78f3e87a2c5f4d7cfce76d203546e1d9f2796', expected:'c7856fcbbc12be42698c691ef715e5dce50cc9fd', path:'ui/Domain.jsx'},
+              {sha:'e5b6121efc67fd2fe8f663d261e792f408e161a5', expected:'ff77a081db6b557749072fceb9f8c6dbe1364fe2', path:'tests/ui-playtest-navigation.test.js'}
+            ];
+            for(const file of files) {
+              const {data} = await github.rest.git.getBlob({...context.repo,file_sha:file.sha});
+              const bytes=Buffer.from(data.content,'base64'); if(hash(bytes)!==file.sha) throw new Error('Wrong source');
+              let content=bytes.toString('utf8');
+              if(file.path==='ui/Domain.jsx') {
+                const begin='<section className="nb-agreement" aria-label={`${person.name}\'s hunting agreement`}>';
+                const at=content.indexOf(begin), end=content.indexOf('<div className="nb-address">',at);
+                if(at<0||end<0||!content.slice(at,end).trimEnd().endsWith('</section>')) throw new Error('Missing expected section');
+                content=content.slice(0,at)+'{(person.id !== "sire" || person.agreement.active) && '+content.slice(at,end).trimEnd()+'}\n      '+content.slice(end);
+              } else {
+                content += `
+            // The Sire has introductions/credit/compact, not a normal hunting negotiation.
+            test('an unsigned Sire file does not offer an unavailable hunting negotiation', async () => {
+              await click(button('Black Book M'));
+              await act(async()=>h.ui.command('tab',{tab:'network',target:'contact:sire'}));
+              assert.match(document.querySelector('.vb-person-detail').textContent,/The Sire/);
+              assert.equal(document.querySelector('.nb-agreement'),null);
+              await act(async()=>h.ui.command('tab',{tab:'network',target:'contact:vesper'}));
+              assert.ok(document.querySelector('.nb-agreement'));
+            });
+            `;
+              }
+              if(hash(Buffer.from(content))!==file.expected) throw new Error(`Reviewed bytes mismatch: ${file.path}`);
+              const created=(await github.rest.git.createBlob({...context.repo,content,encoding:'utf-8'})).data;
+              if(created.sha!==file.expected) throw new Error('Upload mismatch');
+              core.info(`${file.path}: ${created.sha}`);
             }
-            git('diff','--cached','--check');
-            if(git('write-tree')!==manifest.tree) throw new Error('Tree mismatch');
-            await fs.writeFile('recovered/agreements.patch',execFileSync('git',['diff','--cached','--binary']));
-            core.info('Exact pending source exported as data; no source execution or ref writes.');
-      - uses: actions/upload-artifact@v4
-        with:
-          name: agreement-patch
-          path: recovered/
-          retention-days: 2
+            core.info('Two immutable objects ready. No application tree/ref or deployment changed.');
