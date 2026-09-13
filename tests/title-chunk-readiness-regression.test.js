@@ -114,16 +114,24 @@ test("a stalled optional prefetched chunk cannot hold the required starting view
 });
 
 test("the initial waiter shares one preparation and frame updates do not compete for hydration", async t => {
-  const release = deferred();
-  const h = harness(t, path => path === "manifest.json" ? release.promise.then(() => responseFor(path)) : undefined);
+  const release = deferred(), finalChunk = deferred();
+  const h = harness(t, path => {
+    if (path === "manifest.json") return release.promise.then(() => responseFor(path));
+    if (path === "chunks/3-3.json") return finalChunk.promise.then(() => responseFor(path));
+  });
   const first = h.stream.prepareInitialView();
   assert.equal(h.stream.prepareInitialView(), first);
   release.resolve(); await h.stream.initialization;
-  await Promise.all([...h.stream.loadPromises.values()]);
+  // Hold a required chunk until the ownership assertions. Optional downloads
+  // may finish before OR after the faster local preparation; neither order is
+  // a contract, and observing their completion cannot prove preparation pending.
+  await Promise.all([...h.stream.loadPromises.entries()].filter(([id]) => id !== "3:3").map(([, promise]) => promise));
+  assert.ok(h.stream.initialViewPreparation, "required final chunk still owns preparation");
+  assert.equal(h.stream.isReady(), false);
   const before = h.stream.index.residentChunkIds().length;
   for (let i = 0; i < 20; i++) h.scene.update(i * 16, 16);
   assert.equal(h.stream.index.residentChunkIds().length, before);
-  await first;
+  finalChunk.resolve(); await first;
   assert.equal(h.stream.initialViewPreparation, null);
   assert.equal(h.stream.isReady(), true);
   // Once preparation ends, the original frame-owned prefetch path resumes.

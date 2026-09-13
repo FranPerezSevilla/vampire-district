@@ -1,21 +1,21 @@
 {
   "version": 1,
   "paths": [
-    "phaser/runtime-dist/game.57f27366ba0fcf9b.js",
+    "phaser/runtime-dist/game.37a8ae259b85b4c0.js",
     "phaser/runtime-dist/samples.30078f53084e5bb9.bin",
     "index.html",
     "phaser/index.html",
     "phaser/runtime-dist/boot-data.json"
   ],
   "hashes": {
-    "phaser/runtime-dist/game.57f27366ba0fcf9b.js": "57f27366ba0fcf9b7eb1bfa63e34ee29cd60941169e10a2da11ba0de9f322f72",
+    "phaser/runtime-dist/game.37a8ae259b85b4c0.js": "37a8ae259b85b4c06fe7c7dd07a2f73c067397a6062d515fee5e6b268121a239",
     "phaser/runtime-dist/samples.30078f53084e5bb9.bin": "30078f53084e5bb9cc65d6ceaeddcf1fad46150ff4b1143ff25afbb58c20a627",
-    "index.html": "e6400de4e1956acf5e08d4ba548a3b6e7f029386a8c752fa47cbc7009393b24a",
-    "phaser/index.html": "b4c38e1cdfd11df187d5e48185031cf9740dac909e6768e13810c4f2718ecc12",
+    "index.html": "483ded75072ac4fb4ead2de84b9f7fb5d75a71f9b447722fa0dcb4ec734ec19c",
+    "phaser/index.html": "5bcafe25d5d0e3d5616db905fe8c8ff5c77f1ef3f5b018d8048e5ca5b04668f3",
     "phaser/runtime-dist/boot-data.json": "62ea534e5b8196233449c29f9fec84891ebc158ea1b12301ea8a572df411e441"
   },
   "metrics": {
-    "gameplayModules": 250,
+    "gameplayModules": 251,
     "jsRequests": 1,
     "initialCityRequests": 0,
     "initialCityChunks": 9,
@@ -24,7 +24,7 @@
     "audioFiles": 40,
     "audioRequests": 1,
     "audioBytes": 1125772,
-    "runtimeBytes": 2664134,
-    "runtimeGzipBytes": 568602
+    "runtimeBytes": 2664824,
+    "runtimeGzipBytes": 568899
   }
 }

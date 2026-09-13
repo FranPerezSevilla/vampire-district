@@ -21,7 +21,10 @@ const fileStore = new ChunkFileStore({seed:prepared.city,fetchImpl:()=>{cityRequ
 const scene = {player:{x:PLAYER.startX,y:PLAYER.startY},registry:new Map([['mainMenuActive',true]]),events:{once(){}},statePublisher:{setMany(){}},npcSystem:{npcs:[]},campaignSystem:{state:{world:{flags:{}}}}};
 const stream = new ChunkStreamSystem(scene,{fileStore});
 try {
-  const began = performance.now(); await stream.prepareInitialView();
+  const began = performance.now();
+  // Already-packaged geometry requires no transport-wait allowance. This also
+  // guards against applying a wall-clock network timeout to local activation.
+  await stream.prepareInitialView({ timeoutMs: 0 });
   assert.equal(stream.isReady(),true); assert.equal(cityRequests,0);
   assert.equal(stream.index.residentChunkIds().length,9);
   const cache = createSampleByteCache({pack:{...prepared.audio,url:prepared.audioPath},fetchRef:async()=>{
