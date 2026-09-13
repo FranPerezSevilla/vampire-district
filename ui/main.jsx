@@ -6,6 +6,7 @@ import { Domain } from "./Domain.jsx";
 import { NightSeal } from "./artwork.jsx";
 import "./interface.css";
 import "./copy-portraits.css";
+import "./contact-identity.css";
 
 const wantedLabel = ["Clear", "Search", "Pursuit", "Air support"];
 function Hud({ s, command }) {

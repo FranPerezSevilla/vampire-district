@@ -200,7 +200,7 @@ test('chapter names are concise and ordinary pages contain no tutorial subtitles
 test('contact thumbnail and dossier share a stable face across selection and refresh', async () => {
   await click(button('Black Book M')); await tab('Contacts');
   const cards=[...document.querySelectorAll('.vb-contact-list button')];
-  assert.equal(new Set(cards.map(n=>n.querySelector('[data-portrait]').dataset.portrait)).size,4);
+  assert.equal(new Set(cards.map(n=>n.querySelector('[data-portrait]').dataset.portrait)).size,6);
   const guide=h.v.state.guide;
   for(const card of cards) {
     const expected=card.querySelector('[data-portrait]').dataset.portrait; await click(card);
@@ -271,4 +271,71 @@ test('an unsigned Sire file does not offer an unavailable hunting negotiation', 
   assert.equal(document.querySelector('.nb-agreement'),null);
   await act(async()=>h.ui.command('tab',{tab:'network',target:'contact:vesper'}));
   assert.ok(document.querySelector('.nb-agreement'));
+});
+
+async function filterFiles(label, value) {
+  const select=document.querySelector(`select[aria-label="${label}"]`);assert.ok(select);
+  await act(async()=>{select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));});
+}
+const peopleCards=()=>[...document.querySelectorAll('.vb-contact-list button[data-person-target]')];
+test('all six identity cards match the real actor nature and show independent text and icons',async()=>{
+  await click(button('Black Book M'));await tab('Contacts');
+  assert.equal(peopleCards().length,6);
+  const saved=h.campaign.export();
+  for(const card of peopleCards()) {
+    const id=card.dataset.personTarget.split(':')[1], actor=h.runtime.people.get(id);
+    assert.equal(card.dataset.nature,actor.vampire?'vampire':'human');
+    assert.ok(card.querySelector('.nb-affiliation').textContent);assert.ok(card.querySelector('.nb-nature').textContent);
+    assert.equal(card.querySelectorAll('.nb-identity-line [data-identity-glyph]').length,2);
+    const {faction,nature}=card.dataset;await click(card);
+    const dossier=document.querySelector('.vb-person-detail');assert.equal(dossier.dataset.faction,faction);assert.equal(dossier.dataset.nature,nature);
+  }
+  assert.deepEqual(h.campaign.export(),saved);expectDomain('network');
+});
+test('human filters reveal real donor dossiers without enabling feeding or changing the objective',async()=>{
+  await click(button('Black Book M'));await tab('Contacts');const saved=h.campaign.export(),guide=h.v.state.guide;
+  await filterFiles('Filter by nature','human');assert.equal(peopleCards().length,2);
+  assert.ok(peopleCards().every(p=>p.dataset.nature==='human'&&p.dataset.faction==='unknown'));
+  await click(peopleCards()[1]);assert.equal(document.querySelector('.nb-photo [data-portrait]').dataset.portrait,'donor_eli');
+  assert.ok(button('Blood file'));assert.equal(h.ui.pendingAction,null);assert.equal(h.v.state.guide,guide);
+  assert.deepEqual(h.campaign.export(),saved);expectDomain('network');
+  await click(button('Blood file'));expectDomain('feeding');assert.equal(h.runtime.domain.selection,'donor:donor_eli');
+  const donor=document.querySelector('.nb-donor-card[data-selected=true]');assert.equal(donor.dataset.nature,'human');assert.equal(donor.dataset.faction,'unknown');
+});
+test('combined filters never show a stale unrelated dossier and clear restores the directory',async()=>{
+  await click(button('Black Book M'));await tab('Contacts');
+  await filterFiles('Filter by nature','human');await filterFiles('Filter by faction','first_estate');
+  assert.equal(peopleCards().length,0);assert.equal(document.querySelector('.vb-person-detail'),null);
+  assert.match(document.querySelector('.nb-filter-count').textContent,/0 \/ 6/);
+  await click(button('Clear filters'));assert.equal(peopleCards().length,6);assert.ok(document.querySelector('.vb-person-detail'));
+});
+test('faction filtering and selected-state styling retain identity after refresh and failed agreements',async()=>{
+  await click(button('Black Book M'));await tab('Contacts');const guide=h.v.state.guide;
+  await filterFiles('Filter by faction','gutter_crown');assert.equal(peopleCards().length,1);assert.equal(peopleCards()[0].dataset.personTarget,'contact:rook');
+  await act(async()=>{h.v.contact('rook').suspended=true;h.ui.refresh();});
+  const card=peopleCards()[0];assert.equal(card.dataset.faction,'gutter_crown');assert.equal(card.getAttribute('aria-pressed'),'true');
+  assert.match(card.textContent,/Agreement suspended/);assert.equal(h.v.state.guide,guide);
+});
+test('cross-file links reveal a person even after another nature was filtered',async()=>{
+  await click(button('Black Book M'));await tab('Contacts');await filterFiles('Filter by nature','human');
+  await click(button('Vesper Vale'));expectDomain('network');
+  assert.equal(document.querySelector('.vb-person-detail h2').textContent,'Vesper Vale');
+  assert.equal(document.querySelector('select[aria-label="Filter by nature"]').value,'all');
+  assert.equal(peopleCards().find(p=>p.getAttribute('aria-pressed')==='true').dataset.personTarget,'contact:vesper');
+});
+test('identity filters are keyboard-native, do not leak world controls, and Escape returns control',async()=>{
+  await click(button('Black Book M'));await tab('Contacts');
+  const select=document.querySelector('select[aria-label="Filter by nature"]');await act(async()=>select.focus());
+  await press('ArrowDown',select);await press('KeyW',select);await press('Digit4',select);expectDomain('network');
+  assert.equal(h.ui.pendingAction,null);await filterFiles('Filter by nature','human');
+  await act(async()=>button('Clear filters').focus());await press('Escape',button('Clear filters'));
+  await act(async()=>{await new Promise(resolve=>setTimeout(resolve,0));});
+  assert.equal(h.ui.activeMode(),null);assert.equal(h.paused(),false);assert.equal(document.activeElement.tagName,'CANVAS');
+});
+test('City person previews and Blood donor cards share identity without colouring business records as people',async()=>{
+  await click(button('City'));
+  await act(async()=>h.ui.command('select',{target:'contact:mara'}));
+  const identity=document.querySelector('.nb-map-file .nb-identity-line');assert.ok(identity);assert.equal(identity.dataset.faction,'independent');assert.equal(identity.dataset.nature,'vampire');
+  await act(async()=>h.ui.command('select',{target:'asset:supply'}));assert.equal(document.querySelector('.nb-map-file .nb-identity-line'),null);
+  await tab('Blood');assert.equal(document.querySelectorAll('.nb-donor-card .nb-nature').length,2);
 });

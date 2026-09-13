@@ -100,7 +100,13 @@ for (const entry of ['index.html','phaser/index.html']) {
           assert.ok(ui.store.getSnapshot().domain.districts.every(d=>d.hunting?.label));
           assert.doesNotMatch(win.document.querySelector('.vb-city-detail').textContent,/Reception|Reputation/);
         }
-        if(chapter==='network') assert.equal(win.document.querySelectorAll('.vb-contact-list [data-portrait]').length,4);
+        if(chapter==='network') {
+          assert.equal(win.document.querySelectorAll('.vb-contact-list [data-portrait]').length,6);
+          assert.equal(win.document.querySelectorAll('.vb-contact-list button[data-nature="vampire"]').length,4);
+          assert.equal(win.document.querySelectorAll('.vb-contact-list button[data-nature="human"]').length,2);
+          assert.equal(win.document.querySelectorAll('.vb-contact-list .nb-identity-line').length,6);
+          assert.ok(win.document.querySelector('select[aria-label="Filter by nature"]'));
+        }
         if(chapter==='feeding') assert.equal(win.document.querySelectorAll('.nb-donor-card [data-portrait]').length,2);
       }
       ui.command('close');await settle(()=>Boolean(win.document.querySelector('.vb-hud')));
