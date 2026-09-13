@@ -2,6 +2,7 @@ import { chunkCoordinatesAt, chunkId, chunkIdAt, chunkIdsForBounds } from "./Cit
 import { ChunkDeltaStore } from "./ChunkDeltaStore.js";
 import { ChunkFileStore, DEFAULT_CITY_MANIFEST_URL } from "./ChunkFileStore.js";
 import { ChunkSpatialIndex } from "./ChunkSpatialIndex.js";
+import { createPreparationTask } from "./PreparationTask.js";
 
 export const CHUNK_STREAM_STATES = Object.freeze({ UNLOADED: "unloaded", PREFETCHED: "prefetched", ACTIVE: "active", DORMANT: "dormant" });
 export const CHUNK_LOAD_STATES = Object.freeze({ UNLOADED: "unloaded", LOADING: "loading", QUEUED: "queued", RESIDENT: "resident", CACHED: "cached", ERROR: "error" });
@@ -278,6 +279,7 @@ export class ChunkStreamSystem {
   // payload is only QUEUED: the title cannot rely on scene frames to make it
   // resident (e.g. while rendering is suspended). Reuse the same hydration and
   // budget, yield between batches, and let MainMenuScene present the result once.
+  // timeoutMs bounds missing resources, not runnable local work already in memory.
   prepareInitialView({ timeoutMs = 8000 } = {}) {
     if (this.initialViewPreparation) return this.initialViewPreparation.promise;
     if (this.destroyed) return Promise.reject(Object.assign(new Error("City stream was destroyed."), { name: "AbortError" }));
@@ -286,18 +288,17 @@ export class ChunkStreamSystem {
     const started = Date.now();
     const limit = Math.max(0, finite(timeoutMs, 8000));
     preparation.promise = new Promise((resolve, reject) => {
-      let timer = null, settled = false;
+      let task = null, settled = false;
       const finish = (error, snapshot) => {
         if (settled) return;
         settled = true;
-        if (timer !== null) clearTimeout(timer);
+        task?.cancel();
         if (this.initialViewPreparation === preparation) this.initialViewPreparation = null;
         if (error) reject(error);
         else resolve(snapshot);
       };
       preparation.cancel = () => finish(Object.assign(new Error("City stream was destroyed during initial preparation."), { name: "AbortError" }));
       const check = () => {
-        timer = null;
         if (settled) return;
         try {
           if (this.destroyed) return preparation.cancel();
@@ -310,8 +311,21 @@ export class ChunkStreamSystem {
             if (failed) return finish(new Error(this.records.get(failed)?.error || `Failed loading ${failed}`));
             // Normal frame updates yield ownership while this preparation is
             // pending. Prefetched chunks neither block boot nor trigger redraws.
-            this.processActivationQueue({ ids: required, present: false });
+            const before = [...required].filter(id => !this.isChunkResident(id)).length;
+            const activated = this.processActivationQueue({ ids: required, present: false });
             if (this.isReady(required)) return finish(null, this.snapshot());
+            const missing = [...required].filter(id => !this.isChunkResident(id));
+            const queued = missing.filter(id => this.activationQueue.has(id));
+            if ((activated || queued.length) && missing.length >= before) {
+              return finish(new Error(`City activation made no progress: ${missing.join(", ")}`));
+            }
+            if (queued.length) {
+              // The transport deadline must not strand the last already-downloaded
+              // chunk. Continue finite, budgeted hydration even after a late task.
+              // Require real residency progress; a broken activator cannot spin.
+              task.schedule();
+              return;
+            }
           }
           if (Date.now() - started >= limit) {
             const missing = [...this.activeChunkIds].filter(id => !this.isChunkResident(id));
@@ -320,14 +334,15 @@ export class ChunkStreamSystem {
               : "city manifest";
             return finish(new Error(`Timed out preparing city: ${detail}`));
           }
-          timer = setTimeout(check, 16);
+          task.schedule(16);
         } catch (error) {
           finish(error);
         }
       };
       // Attach the rejection handler immediately, including a failed manifest.
       this.initialization.catch(error => finish(error));
-      timer = setTimeout(check, 0);
+      task = createPreparationTask(check);
+      task.schedule();
     });
     return preparation.promise;
   }
