@@ -2,7 +2,9 @@ import { memo, useEffect, useId, useRef, useState } from "react";
 import { Badge, Button, Locations, Requirements } from "./components.jsx";
 import { recommendationFile } from "./nightbook-model.js";
 
-export const OWNER_COLORS = { first_estate: "#7064a0", gutter_crown: "#bd7752", independent: "#637b7a" };
+import { FACTION_IDENTITIES } from "./contact-identity.js";
+import { IdentityLine } from "./People.jsx";
+export const OWNER_COLORS = Object.fromEntries(["first_estate", "gutter_crown", "independent"].map(id => [id, FACTION_IDENTITIES[id].ink]));
 const HUNT_COLORS = { covered: "#659079", open: "#8a9270", unclaimed: "#90868b", poaching: "#b26063" };
 const within = (p, d) => p && p.x >= d.x && p.x <= d.x + d.w && p.y >= d.y && p.y <= d.y + d.h;
 function Shape({ item, ...props }) {
@@ -87,7 +89,7 @@ export function City({ model, geometry, selection, command }) {
   const local = items => selectedDistrict ? items.filter(p => p.destination ? within(p.destination, selectedDistrict) : p.districtId === selectedDistrict.id) : [];
   return <div className="vb-city-layout"><MapCanvas geometry={geometry} model={model} selection={selection} onSelect={target => command("select", { target })} onMark={point => command("save-marker", { point })}/><aside className="vb-city-detail">
     <label className="nb-district-picker"><span className="vb-eyebrow">DISTRICT</span><select aria-label="Inspect a district" value={selectedDistrict?.id || ""} onChange={event=>command("select",{target:`district:${event.target.value}`})}>{model.districts.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></label>
-    {point ? <div className="nb-map-file"><span className="vb-eyebrow">{point.kind === "asset" ? "Business" : point.kind === "errand" ? "Errand" : point.kind}</span><h3>{point.name}</h3><p>{point.role || point.description || point.patron && `Patron: ${point.patron}` || "Saved location"}</p><Badge tone={point.suspended || point.refused ? "danger" : "neutral"}>{point.status || (point.level ? "Business interest" : "Location")}</Badge><p>{point.benefits || point.reason || point.requirement}</p>
+    {point ? <div className="nb-map-file"><span className="vb-eyebrow">{point.kind === "asset" ? "Business" : point.kind === "errand" ? "Errand" : point.kind}</span><h3>{point.name}</h3>{["contact", "donor"].includes(point.kind) && <IdentityLine person={point}/>}<p>{point.role || point.description || point.patron && `Patron: ${point.patron}` || "Saved location"}</p><Badge tone={point.suspended || point.refused ? "danger" : "neutral"}>{point.status || (point.level ? "Business interest" : "Location")}</Badge><p>{point.benefits || point.reason || point.requirement}</p>
       <Locations target={point.target} command={command} disabled={point.dead}/>{["contact","donor","asset"].includes(point.kind) && <Button onClick={()=>command("tab",recommendationFile(point.target))}>Open file</Button>}{point.kind !== "marker" && <Button onClick={() => command("save-marker", { target: point.target })}>Save location</Button>}{point.kind === "marker" && <Button danger onClick={() => command("remove-marker", { id: point.id })}>Remove marker</Button>}<hr/></div> : null}
     {selectedDistrict && <><h3>{selectedDistrict.name}</h3>
       <dl className="vb-facts"><div><dt>Authority</dt><dd>{selectedDistrict.ownerLabel}<small>{selectedDistrict.politicalStatus === "controlled" ? "Holds the district" : selectedDistrict.politicalStatus === "contested" ? "Disputed ground" : "No settled claim"}</small></dd></div></dl>

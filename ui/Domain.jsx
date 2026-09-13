@@ -2,9 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { City } from "./CityMap.jsx";
 import { Badge, Button, Empty, Icon, Locations, Meter, Metric, Requirements } from "./components.jsx";
-import { ContactPrint, NightSeal, TapeLabel } from "./artwork.jsx";
+import { NightSeal, TapeLabel } from "./artwork.jsx";
 import { BOOK_CHAPTERS, bookSummary, contactState, districtName, money, recommendationFile } from "./nightbook-model.js";
 import { VAMPIRE_RULES as RULES } from "../phaser/src/vampire/VampireCatalog.js";
+
+import { IdentityLine, PersonPortrait, PeopleFilters, DonorFile } from "./People.jsx";
+import { ALL_PEOPLE, peopleFiles, matchingPeople, personIdentity, identityAttributes } from "./contact-identity.js";
 
 function ChapterHeading({ number, title, stamp }) {
   return <header className="nb-chapter-heading"><div><span className="vb-eyebrow">{number}</span><h2>{title}</h2></div>{stamp && <span className="nb-stamp">{stamp}</span>}</header>;
@@ -45,12 +48,36 @@ function Tonight({ model, snapshot, command }) {
   </section>;
 }
 function Network({ model, selection, command }) {
-  const person = model.contacts.find(p => `contact:${p.id}` === selection) || model.contacts[0];
-  if (!person) return <Empty title="No names yet"/>;
-  const state = contactState(person), donors = model.herd.filter(p => p.contactId === person.id), assets = model.assets.filter(a => a.contactId === person.id);
+  const [filter, setFilter] = useState(ALL_PEOPLE);
+  const files = peopleFiles(model), visible = matchingPeople(files, filter);
+  // A cross-file selection must never be concealed by a previous filter.
+  useEffect(() => {
+    const selected = files.find(file => file.target === selection);
+    if (selected && !matchingPeople([selected], filter).length) setFilter(ALL_PEOPLE);
+  }, [selection]);
+  const selected = visible.find(file => file.target === selection) || visible[0];
+  const filterChanged = next => {
+    setFilter(next);
+    const matches = matchingPeople(files, next);
+    if (matches.length && !matches.some(file => file.target === selection)) command("select", { target: matches[0].target });
+  };
   return <section className="nb-network">
-    <div className="nb-file-index"><div className="nb-file-index-heading"><span className="vb-eyebrow">03</span><h2>Contacts</h2></div><div className="vb-contact-list" aria-label="Contact files">{model.contacts.map((p, i) => <button type="button" key={p.id} aria-pressed={p.id === person.id} onClick={() => command("select", { target: `contact:${p.id}` })}><ContactPrint id={p.id} small/><span><small>FILE {String(i + 1).padStart(2, "0")}</small><strong>{p.name}</strong><Badge tone={contactState(p).tone}>{contactState(p).label}</Badge></span></button>)}</div></div>
-    <article className="vb-person-detail"><div className="nb-person-head"><div className="nb-photo"><ContactPrint id={person.id}/><span>{person.factionId === "first_estate" ? "FIRST ESTATE" : person.factionId === "gutter_crown" ? "GUTTER CROWN" : "INDEPENDENT HOUSE"}</span></div><div><TapeLabel>CONFIDENTIAL</TapeLabel><span className="vb-eyebrow">{person.role}</span><h2>{person.name}</h2><Badge tone={state.tone}>{state.label}</Badge><p className="nb-quote">“{person.greeting}”</p></div></div>
+    <div className="nb-file-index"><div className="nb-file-index-heading"><span className="vb-eyebrow">03</span><h2>Contacts</h2></div>
+      <PeopleFilters files={files} value={filter} onChange={filterChanged} count={visible.length}/>
+      <div className="vb-contact-list" aria-label="Contact files">{visible.map(file => {
+        const p = file.person, identity = personIdentity(p);
+        const state = file.kind === "contact" ? contactState(p) : { label: p.status, tone: p.dead || p.refused ? "danger" : p.ready ? "good" : "neutral" };
+        return <button type="button" key={file.target} data-person-target={file.target} {...identityAttributes(p)} aria-label={`${p.name} · ${identity.label} · ${identity.natureLabel}`} aria-pressed={file.target === selected?.target} onClick={() => command("select", { target: file.target })}>
+          <PersonPortrait person={p} small/><span><small>{file.kind === "donor" ? "DONOR" : `FILE ${String(files.indexOf(file) + 1).padStart(2, "0")}`}</small><strong>{p.name}</strong><IdentityLine person={p} compact/><Badge tone={state.tone}>{state.label}</Badge></span>
+        </button>;
+      })}</div>{!visible.length && <p className="nb-no-files">No matching files.</p>}
+    </div>
+    {!selected ? <Empty title="No matching files" action={<Button onClick={() => filterChanged(ALL_PEOPLE)}>Show all contacts</Button>}/> : selected.kind === "donor" ? <DonorFile person={selected.person} model={model} command={command}/> : <ContactDossier person={selected.person} model={model} command={command}/>}
+  </section>;
+}
+function ContactDossier({ person, model, command }) {
+  const state = contactState(person), donors = model.herd.filter(p => p.contactId === person.id), assets = model.assets.filter(a => a.contactId === person.id);
+  return <article className="vb-person-detail" {...identityAttributes(person)}><div className="nb-person-head"><div className="nb-photo"><PersonPortrait person={person}/><span>PERSONAL FILE</span></div><div><TapeLabel>CONFIDENTIAL</TapeLabel><span className="vb-eyebrow">{person.role}</span><h2>{person.name}</h2><IdentityLine person={person}/><Badge tone={state.tone}>{state.label}</Badge><p className="nb-quote">“{person.greeting}”</p></div></div>
       <div className="vb-statline"><Metric label="Trust" value={person.trust}/><Metric label="You owe" value={money(person.debt)}/><Metric label="Errands done" value={person.jobs}/></div>
       <div className="nb-file-columns"><div><h3>Offers</h3><p>{person.benefits}</p></div><div><h3>{person.suspended ? "Make amends" : !person.available ? "An introduction" : person.met ? "Terms" : "First meeting"}</h3>{person.suspended ? <p className="vb-warning">{person.reason || "Settle it in person: work or compensation."}</p> : !person.available ? <Requirements items={person.requirements}/> : <p>{person.met ? "Work, debts and services. Face to face." : `Meet ${person.name} outside.`}</p>}</div></div>
       {(person.id !== "sire" || person.agreement.active) && <section className="nb-agreement" aria-label={`${person.name}'s hunting agreement`}>
@@ -61,9 +88,8 @@ function Network({ model, selection, command }) {
         <Button onClick={()=>command("tab", {tab:"city", target:`district:${person.agreement.districtId}`})}>The district</Button>
       </section>}
       <div className="nb-address"><Icon name="city"/><span>{districtName(model, person.destination?.districtId || person.districtId)}</span></div><Locations command={command} target={`contact:${person.id}`}/>
-      {(donors.length > 0 || assets.length > 0) && <section className="nb-linked-files"><h3>Connections</h3>{donors.map(d => <button type="button" key={d.id} onClick={() => command("tab", { tab: "feeding", target: `donor:${d.id}` })}><Icon name="blood"/><span><strong>{d.name} · donor</strong><small>{d.status}</small></span><Icon/></button>)}{assets.map(a => <button type="button" key={a.id} onClick={() => command("tab", { tab: "ledger", target: `asset:${a.id}` })}><Icon name="brief"/><span><strong>{a.name}</strong><small>{a.requirement}</small></span><Icon/></button>)}</section>}
-    </article>
-  </section>;
+      {(donors.length > 0 || assets.length > 0) && <section className="nb-linked-files"><h3>Connections</h3>{donors.map(d => <button type="button" key={d.id} onClick={() => command("tab", { tab: "feeding", target: `donor:${d.id}` })}><Icon name="blood"/><span><strong>{d.name} · donor</strong><IdentityLine person={d} compact/><small>{d.status}</small></span><Icon/></button>)}{assets.map(a => <button type="button" key={a.id} onClick={() => command("tab", { tab: "ledger", target: `asset:${a.id}` })}><Icon name="brief"/><span><strong>{a.name}</strong><small>{a.requirement}</small></span><Icon/></button>)}</section>}
+    </article>;
 }
 function Feeding({ model, snapshot, selection, command }) {
   const summary = bookSummary(model), selected = useRef(null);
@@ -72,7 +98,7 @@ function Feeding({ model, snapshot, selection, command }) {
   return <section className="vb-section nb-feeding"><ChapterHeading number="04" title="Blood"/>
     <div className="nb-pocket-card"><div><span className="vb-eyebrow">ON HAND</span><h3>{model.bags ? `${model.bags} ${model.bags === 1 ? "bag" : "bags"}` : "Empty pockets"}</h3><p>−{RULES.bagRelief} hunger per bag.</p></div><div className="nb-bag-rack" aria-hidden="true">{Array.from({length:RULES.carryCapacity},(_,i)=><span key={i} data-full={i<model.bags}><Icon name="blood"/></span>)}</div><div><Button primary icon="blood" disabled={!model.bags || model.hunger <= 0 || snapshot.frenzy} onClick={() => command("blood")}>Drink a bag</Button>{(!model.bags || model.hunger <= 0 || snapshot.frenzy) && <small>{snapshot.frenzy ? "The Beast has control." : !model.bags ? "No bags on hand." : "Not hungry."}</small>}</div></div>
     <div className="nb-subheading"><div><h3>Donors</h3><p>{summary.ready.length} ready · personal agreements</p></div></div>
-    <div className="nb-donor-grid">{donors.map(person => <article key={person.id} ref={selection === `donor:${person.id}` ? selected : null} className="nb-donor-card" data-selected={selection === `donor:${person.id}`}><div className="nb-donor-head"><ContactPrint id={`donor:${person.id}`} small/><div><span className="vb-eyebrow">{districtName(model, person.districtId)}</span><h3>{person.name}</h3><Badge tone={person.ready ? "good" : person.refused || person.dead ? "danger" : "neutral"}>{person.status}</Badge></div></div><dl className="vb-facts"><div><dt>Consent</dt><dd>{person.permitted ? "Agrees to donate" : "No donation agreed"}</dd></div><div><dt>Donation</dt><dd>−{person.relief} hunger</dd></div></dl><p>{person.reason || `Meet in person. Allow ${RULES.donorRecovery / 60} minutes between donations.`}</p><div className="nb-patron"><small>Introduced by</small><button type="button" onClick={() => command("tab", { tab: "network", target: `contact:${person.contactId}` })}>{person.patron} <span aria-hidden="true">↗</span></button></div>{person.dead ? <p className="vb-warning">Deceased.</p> : person.permitted ? <Locations command={command} target={`donor:${person.id}`}/> : <div className="vb-actions"><Button primary onClick={() => command("tab", { tab: "network", target: `contact:${person.contactId}` })}>Arrange an introduction</Button><Button onClick={() => command("locate", { target: `donor:${person.id}` })}>Locate</Button></div>}</article>)}</div>
+    <div className="nb-donor-grid">{donors.map(person => <article key={person.id} ref={selection === `donor:${person.id}` ? selected : null} className="nb-donor-card" {...identityAttributes(person)} data-selected={selection === `donor:${person.id}`}><div className="nb-donor-head"><PersonPortrait person={person} small/><div><span className="vb-eyebrow">{districtName(model, person.districtId)}</span><h3>{person.name}</h3><IdentityLine person={person} compact/><Badge tone={person.ready ? "good" : person.refused || person.dead ? "danger" : "neutral"}>{person.status}</Badge></div></div><dl className="vb-facts"><div><dt>Consent</dt><dd>{person.permitted ? "Agrees to donate" : "No donation agreed"}</dd></div><div><dt>Donation</dt><dd>−{person.relief} hunger</dd></div></dl><p>{person.reason || `Meet in person. Allow ${RULES.donorRecovery / 60} minutes between donations.`}</p><div className="nb-patron"><small>Introduced by</small><button type="button" onClick={() => command("tab", { tab: "network", target: `contact:${person.contactId}` })}>{person.patron} <span aria-hidden="true">↗</span></button></div>{person.dead ? <p className="vb-warning">Deceased.</p> : person.permitted ? <Locations command={command} target={`donor:${person.id}`}/> : <div className="vb-actions"><Button primary onClick={() => command("tab", { tab: "network", target: `contact:${person.contactId}` })}>Arrange an introduction</Button><Button onClick={() => command("locate", { target: `donor:${person.id}` })}>Locate</Button></div>}</article>)}</div>
     <div className="nb-supply-note"><div><span className="vb-eyebrow">RESERVES</span><h3>{summary.stored.length ? "Ready for collection" : "No blood in storage"}</h3><p>Collect reserves on site.</p></div>{summary.stored.map(asset => <div className="nb-supply-pickup" key={asset.id}><strong>{asset.name} · {asset.reserve} bags</strong><Button onClick={() => command("locate", { target: `asset:${asset.id}` })}>Locate</Button></div>)}<Button onClick={() => command("tab", { tab: "ledger" })}>Accounts</Button></div>
     <div className="nb-hunting-note"><Icon name="city"/><div><span className="vb-eyebrow">THE HUNT</span><h3>Hunting agreements</h3><p>{summary.permitted} {summary.permitted === 1 ? "district" : "districts"} covered. An agreement is not consent. Protected prey remain off limits.</p></div><Button onClick={() => command("tab", { tab: "city", target: summary.district ? `district:${summary.district.id}` : null })}>Hunting map</Button></div>
     <details className="nb-fine-print"><summary>Mending</summary><p>+30 vitality, +12 hunger. No bag consumed.</p><Button disabled={model.vitality >= 100 || snapshot.frenzy || snapshot.exhausted} onClick={() => command("mend")}>Mend</Button></details>
