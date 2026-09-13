@@ -4,12 +4,16 @@ import { readFileSync } from 'node:fs';
 import { uiHarness } from './helpers/ui-harness.js';
 import { buildDomainModel } from '../phaser/src/vampire/VampireDomainModel.js';
 import { BOOK_CHAPTERS, bookSummary, contactState, recommendationFile, distanceTo } from '../ui/nightbook-model.js';
-import { DOMAIN_TABS, domainTab } from '../phaser/src/vampire/DomainNavigation.js';
+import { DOMAIN_TABS, DOMAIN_LABELS, domainTab } from '../phaser/src/vampire/DomainNavigation.js';
 
-test('five chapters and native number shortcuts share the same order',()=>{
-  assert.deepEqual(BOOK_CHAPTERS.map(c=>c.label),DOMAIN_TABS);
+test('five chapter labels change without renaming the native routes or number shortcuts',()=>{
+  assert.deepEqual(BOOK_CHAPTERS.map(c=>c.id),DOMAIN_TABS.map(t=>t.toLowerCase()));
+  assert.deepEqual(BOOK_CHAPTERS.map(c=>c.label),['Tonight','City','Contacts','Blood','Accounts']);
+  assert.deepEqual(BOOK_CHAPTERS.map(c=>c.label),BOOK_CHAPTERS.map(c=>DOMAIN_LABELS[c.id]));
+  assert.ok(BOOK_CHAPTERS.every(c=>!('question' in c)));
   assert.equal(domainTab('invalid'),'tonight');assert.equal(domainTab('power'),'ledger');
   assert.equal(domainTab('errand'),'tonight');assert.equal(domainTab('herd'),'feeding');
+  assert.equal(domainTab('Blood'),'feeding');assert.equal(domainTab('Accounts'),'ledger');
 });
 test('editorial summaries project real facts without changing saved campaign or objective',async()=>{
   const h=await uiHarness();try{

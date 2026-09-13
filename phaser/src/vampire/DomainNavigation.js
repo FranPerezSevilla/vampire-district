@@ -1,5 +1,6 @@
 export const DOMAIN_TABS = Object.freeze(["Tonight", "City", "Network", "Feeding", "Ledger"]);
-const aliases = Object.freeze({ overview: "tonight", errand: "tonight", map: "city", contacts: "network", herd: "feeding", resources: "ledger", power: "ledger" });
+export const DOMAIN_LABELS = Object.freeze({ tonight: "Tonight", city: "City", network: "Contacts", feeding: "Blood", ledger: "Accounts" });
+const aliases = Object.freeze({ blood: "feeding", accounts: "ledger", overview: "tonight", errand: "tonight", map: "city", contacts: "network", herd: "feeding", resources: "ledger", power: "ledger" });
 export function domainTab(value) {
   const key = String(value || "").toLowerCase();
   return aliases[key] || (DOMAIN_TABS.some(tab => tab.toLowerCase() === key) ? key : "tonight");

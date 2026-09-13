@@ -85,12 +85,16 @@ for (const entry of ['index.html','phaser/index.html']) {
       await settle(()=>win.document.querySelectorAll('[role=tab]').length===5);
       assert.ok(win.document.querySelector('.nb-task'),'Tonight must have one dominant task');
       const before=h.v.state.guide;
-      for(const [label,chapter,selector] of [['City','city','.vb-city-map'],['Network','network','.nb-person-head'],['Feeding','feeding','.nb-donor-grid'],['Ledger','ledger','.nb-receipt-grid'],['Tonight','tonight','.nb-task']]) {
+      for(const [label,chapter,selector] of [['City','city','.vb-city-map'],['Contacts','network','.nb-person-head'],['Blood','feeding','.nb-donor-grid'],['Accounts','ledger','.nb-receipt-grid'],['Tonight','tonight','.nb-task']]) {
         const tab=win.document.querySelector(`[role=tab][aria-label="${label}"]`);
         tab.dispatchEvent(new win.MouseEvent('mousedown',{button:0,bubbles:true,cancelable:true}));
         await settle(()=>ui.store.getSnapshot().tab===chapter && win.document.querySelector(selector));
         assert.equal(paused,true);assert.equal(h.v.state.guide,before);
         assert.equal(win.document.querySelector('.vb-choices'),null);
+        assert.equal(win.document.querySelectorAll('.vb-domain-tab small').length,0);
+        assert.doesNotMatch(win.document.querySelector('.nb-book').textContent,/WORLD PAUSED|NO TIME LOST|active play|sets your arrow/i);
+        if(chapter==='network') assert.equal(win.document.querySelectorAll('.vb-contact-list [data-portrait]').length,4);
+        if(chapter==='feeding') assert.equal(win.document.querySelectorAll('.nb-donor-card [data-portrait]').length,2);
       }
       ui.command('close');await settle(()=>Boolean(win.document.querySelector('.vb-hud')));
       assert.equal(paused,false);assert.equal(app.registry.get('uiKeyboardOwned'),false);
