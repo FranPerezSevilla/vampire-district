@@ -1,0 +1,11 @@
+/* Compact chapter labels; decoration stays outside input/focus ownership. */
+.nb-book .vb-domain-tab { min-height: 3.25rem; }
+.nb-book .vb-domain-tab>span:nth-child(2) { align-self: center; }
+.nb-book .nb-book-footer { justify-content: flex-end; }
+.nb-chapter-heading p:empty { display: none; }
+.nb-donor-head>.nb-portrait.small { width: 4.25rem; height: auto; flex: 0 0 4.25rem; }
+.nb-portrait, .nb-seal { pointer-events: none; }
+.nb-book .nb-task-foot:has(>button:only-child) { justify-content: flex-end; }
+@media (max-width: 850px) {
+  .nb-book .vb-domain-tab { min-height: 2.75rem; }
+}

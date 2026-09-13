@@ -1,6 +1,5 @@
 import { BOOT_MODES, bootProfile } from "./boot/BootProfile.js";
 import { titleScreenController } from "./ui/TitleScreenController.js";
-import "./vampire/DomainUiHardening.js";
 
 const PHASER_VERSION = "3.90.0";
 const PLAYTEST_ASSET_VERSION = "2026-08-03-vehicle-incidents-1";
@@ -23,20 +22,10 @@ const CDN_PHASER_SOURCES = Object.freeze([
   })
 ]);
 
-function localPhaserAllowed() {
-  const protocol = window.location?.protocol || "";
-  const hostname = window.location?.hostname || "";
-  return protocol === "file:"
-    || hostname === "localhost"
-    || hostname === "127.0.0.1"
-    || hostname === "::1"
-    || hostname === "[::1]";
-}
-
 function phaserScriptSources() {
-  return localPhaserAllowed()
-    ? [LOCAL_PHASER_SOURCE, ...CDN_PHASER_SOURCES]
-    : CDN_PHASER_SOURCES;
+  // The pinned engine is published with the game. Do not block boot on a
+  // third-party CDN when the same-origin copy is already available.
+  return [LOCAL_PHASER_SOURCE, ...CDN_PHASER_SOURCES];
 }
 
 let playtestBootCover = null;
@@ -64,11 +53,15 @@ function loadScript(source) {
     }
 
     const script = document.createElement("script");
+    const timer = window.setTimeout(() => {
+      script.remove();
+      reject(new Error(`Engine download timed out: ${source.src}`));
+    }, 8000);
     script.src = source.src;
     script.async = false;
     script.dataset.nbdPhaser = source.kind;
-    script.addEventListener("load", () => resolve(source), { once: true });
-    script.addEventListener("error", () => reject(new Error(`Unable to load ${source.src}`)), { once: true });
+    script.addEventListener("load", () => { window.clearTimeout(timer); resolve(source); }, { once: true });
+    script.addEventListener("error", () => { window.clearTimeout(timer); reject(new Error(`Unable to load ${source.src}`)); }, { once: true });
     document.head.appendChild(script);
   });
 }
@@ -106,29 +99,6 @@ async function preparePlaytestEntry() {
   playtestBootCover.showPlaytestBootCover();
 }
 
-function installPlaytestIntroPolicy(UIScene) {
-  const prototype = UIScene?.prototype;
-  if (!prototype || prototype.__nbdPlaytestIntroPolicy) return;
-  const originalOpenModal = prototype.openModal;
-  if (typeof originalOpenModal !== "function") return;
-
-  prototype.openModal = function playtestAwareOpenModal(type) {
-    if (type === "intro" && bootProfile.playtestSession) {
-      this.introOpen = false;
-      this.pauseOpen = false;
-      this.resultOpen = false;
-      this.ledgerOpen = false;
-      return false;
-    }
-    return originalOpenModal.call(this, type);
-  };
-
-  Object.defineProperty(prototype, "__nbdPlaytestIntroPolicy", {
-    value: true,
-    configurable: true
-  });
-}
-
 function renderBootFailure(error) {
   console.error("Viceblood failed to boot", error);
   if (titleScreenController.showFailure(error)) return;
@@ -146,23 +116,19 @@ function renderBootFailure(error) {
 }
 
 try {
+  window.NBD_BOOT_STARTED_AT = performance.now();
   await preparePlaytestEntry();
   const phaser = await ensurePhaser();
+  window.NBD_ENGINE_READY_AT = performance.now();
   await import("./campaign/preload.js");
   await import("./police/VehicleIncidentPoliceWitnessPolicy.js");
 
-  const [{ UIScene }, { installDomainUiBridge }, { installDomainViewportPortal }] = await Promise.all([
-    import("./scenes/UIScene.js"),
-    import("./vampire/DomainUiBridge.js"),
-    import("./vampire/DomainViewportPortal.js")
-  ]);
-  installDomainUiBridge(UIScene);
-  installDomainViewportPortal(UIScene);
-  if (bootProfile.mode === BOOT_MODES.PLAYTEST) installPlaytestIntroPolicy(UIScene);
-
-  await import("./main.js");
-  await import("./ui/AccessibilityKeyboardBridge.js");
+  // Load the compiled presentation before any scene is created. It contains
+  // React/Radix only, never another copy of Phaser or campaign services.
+  const interfaceView = await import("../ui-dist/interface.js");
+  window.NBD_INTERFACE_VIEW = interfaceView;
   await import("./responsive-layout.js");
+  await import("./main.js");
   await import("./campaign/bootstrap.js");
   await import("./tutorial/bootstrap.js");
   await import("./vehicles/maintenance-bootstrap.js");
@@ -174,6 +140,7 @@ try {
   if (bootProfile.mode === BOOT_MODES.SCENARIO) await import("./testing/scenario-bootstrap.js");
 
   window.NBD_APP_READY = true;
+  window.NBD_APP_READY_AT = performance.now();
   window.dispatchEvent(new CustomEvent("nbd:app-ready", {
     detail: {
       phaser,

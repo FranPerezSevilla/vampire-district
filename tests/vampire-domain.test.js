@@ -8,7 +8,7 @@ import { buildDomainModel, domainDestination, clientToMapPoint, mapViewBox } fro
 import { InteractionSystem } from "../phaser/src/systems/InteractionSystemCore.js";
 import { createEmptyInputFrame } from "../phaser/src/input/actions.js";
 import { buildings, CITY_WORLD } from "../phaser/src/data/district.js";
-import { DOMAIN_TABS } from "../phaser/src/vampire/VampireDomainPanel.js";
+import { DOMAIN_TABS } from "../phaser/src/vampire/DomainNavigation.js";
 
 function harness() {
   const campaign = new CampaignSystem({ autoLoad: false, autoSave: false, now: () => 1000 });
@@ -26,7 +26,6 @@ function harness() {
   return { campaign, scene, runtime, v: campaign.vampire };
 }
 function delivery(v, id) { assert.ok(v.acceptDelivery(id).ok); assert.ok(v.handoff(v.deliverySite()).ok); assert.ok(v.handoff(v.deliverySite()).ok); }
-function click(panel, action, target = "") { panel.click({ target: { closest: () => ({ dataset: { action, target } }) } }); }
 function known(v, id) { v.contact(id).introduced = true; assert.ok(v.meet(id).ok); }
 
 test("fresh networks enforce introductions in the service and show the actual next objective", () => {
@@ -98,11 +97,12 @@ test("accepting an errand opens instructions and removes every other offer witho
   const h = harness(); h.runtime.openContact("sire");
   h.scene.interactionSystem.runOption(h.scene.interactionSystem.menu.options.find(o => o.id === "work:sire"));
   assert.equal(h.scene.interactionSystem.snapshot().view, "vampire-domain");
-  assert.equal(h.runtime.domain.tab, "errand");
-  assert.equal(h.scene.interactionSystem.menu.index, 4);
+  assert.equal(h.runtime.domain.tab, "tonight");
+  assert.equal(h.scene.interactionSystem.menu.index, 0);
   let e = buildDomainModel(h.runtime).errand;
   assert.equal(e.current.target, "site:hospital");
-  assert.match(e.current.description, /Press E/);
+  assert.match(e.current.description, /Collect the sealed supplies outside/);
+  assert.doesNotMatch(e.current.description, /Press E/);
   assert.equal(e.cash, 180);
   const original = { ...h.v.state.job };
   h.runtime.openContact("sire");
@@ -118,16 +118,12 @@ test("accepting an errand opens instructions and removes every other offer witho
   h.runtime.destroy();
 });
 
-test("errand debt breakdown stays truthful and abandonment requires a deliberate confirmation", () => {
+test("errand debt breakdown stays truthful and the service applies abandonment consequences", () => {
   const h = harness(); h.v.meet("sire"); h.v.borrow(); h.runtime.acceptDelivery("sire");
   const e = buildDomainModel(h.runtime).errand;
   assert.equal(e.repaid, 180); assert.equal(e.cash, 0);
   const trust = h.v.trust("sire");
-  click(h.runtime.domain, "abandon");
-  assert.ok(h.v.state.job); assert.equal(h.v.trust("sire"), trust);
-  click(h.runtime.domain, "keep");
-  assert.ok(h.v.state.job);
-  click(h.runtime.domain, "abandon"); click(h.runtime.domain, "abandon");
+  h.v.abandonDelivery();
   assert.equal(h.v.state.job, null); assert.equal(h.v.trust("sire"), trust - 10);
   h.runtime.destroy();
 });
@@ -146,7 +142,7 @@ test("saved named markers follow people, persist, remain bounded and never move 
   const saved = h.campaign.export(); h.campaign.import(saved, { persist: false }); h.runtime.update(.01, h.scene.currentInputFrame);
   assert.equal(h.runtime.service.state.markers.length, 8);
   assert.ok(h.runtime.guideTarget());
-  const guide = h.runtime.service.state.guide;
+  const guide = h.v.state.guide;
   assert.ok(h.runtime.service.removeMarker(guide).ok);
   assert.equal(h.runtime.service.state.guide, "contact:sire");
   assert.equal(h.runtime.track("invented:place"), false);
@@ -167,25 +163,22 @@ test("map coordinates honor zoom, letterboxing and compiled city boundaries", ()
   assert.equal(clientToMapPoint({ x: 0, y: 0 }, { ...rect, width: 0 }, view), null);
 });
 
-test("all domain sections project real data and map/click navigation stays in the existing menu", () => {
+test("all domain sections keep real data and headless navigation in the existing interaction authority", () => {
   const h = harness();
   for (const label of DOMAIN_TABS) {
     h.runtime.openDomain(label.toLowerCase());
-    const markup = h.runtime.domain.content(buildDomainModel(h.runtime));
-    assert.ok(markup.length > 100);
-    assert.doesNotMatch(markup, /undefined|NaN/);
-    assert.equal(h.scene.interactionSystem.menu.options.length, 7);
+    assert.ok(buildDomainModel(h.runtime).contacts.length);
+    assert.equal(h.runtime.domain.tab, label.toLowerCase());
+    assert.equal(h.scene.interactionSystem.menu.options.length, 6);
   }
-  h.v.notify('<img src=x onerror="alert(1)">');
-  h.runtime.openDomain("overview");
-  assert.doesNotMatch(h.runtime.domain.content(buildDomainModel(h.runtime)), /<img/);
-  click(h.runtime.domain, "map", "contact:rook");
-  assert.equal(h.runtime.domain.tab, "map");
+  const guide = h.v.state.guide;
+  h.runtime.domain.navigate("city", "contact:rook");
   assert.equal(h.runtime.domain.selection, "contact:rook");
+  assert.equal(h.v.state.guide, guide);
   const elapsed = h.v.state.elapsed;
   h.runtime.update(120, h.scene.currentInputFrame); assert.equal(h.v.state.elapsed, elapsed);
-  h.scene.interactionSystem.updateInput(createEmptyInputFrame({ menuDigitPressed: 5 }));
-  assert.equal(h.runtime.domain.tab, "errand");
+  h.scene.interactionSystem.updateInput(createEmptyInputFrame({ menuDigitPressed: 1 }));
+  assert.equal(h.runtime.domain.tab, "tonight");
   h.scene.interactionSystem.updateInput(createEmptyInputFrame({ menuCancelPressed: true }));
   assert.equal(h.scene.interactionSystem.isOpen, false);
   h.runtime.destroy();

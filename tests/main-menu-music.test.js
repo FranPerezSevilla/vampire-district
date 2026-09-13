@@ -16,7 +16,7 @@ test("main menu theme asset is committed and owned by the title-screen flow", ()
   assert.match(main, /MAIN_MENU_THEME_VOLUME = 0\.28/);
   assert.match(menuScene, /preloadTitleExperience\(\)/);
   assert.match(menuScene, /waiting-for-title-assets/);
-  assert.match(menuScene, /Promise\.resolve\(this\.assetsReady\)[\s\S]*awaiting-user-gesture[\s\S]*titleScreenAudioGate\.waitForStart\(\)[\s\S]*titleScreenController\.present/);
+  assert.match(menuScene, /Promise\.all\(\[this\.assetsReady, this\.waitForPreviewGeometry\(gameScene\)\]\)[\s\S]*awaiting-user-gesture[\s\S]*titleScreenAudioGate\.waitForStart\(\)[\s\S]*titleScreenController\.present/);
   assert.match(preloader, /Promise\.all\(jobs\)/);
   assert.match(menuScene, /titleScreenAudioGate\.fadeOut\(MENU_TO_GAME_MS\)/);
   assert.match(gate, /PRESS ANY KEY TO START/);

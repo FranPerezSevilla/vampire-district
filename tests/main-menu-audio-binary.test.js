@@ -27,7 +27,7 @@ test("theme warms during boot while splash remains the interaction gate", () => 
   const scene = source("phaser/src/scenes/MainMenuScene.js");
   const gate = source("phaser/src/ui/TitleScreenAudioGate.js");
 
-  assert.match(index, /rel="preload"[^>]*main-menu-theme-01\.mp3[^>]*as="audio"/);
+  assert.ok(index.indexOf('id="viceblood-main-menu-theme"') < index.indexOf('type="module"'));
   assert.match(index, /id="viceblood-main-menu-theme"[^>]*main-menu-theme-01\.mp3[^>]*preload="auto"/);
   assert.match(main, /getElementById\("viceblood-main-menu-theme"\) \|\| new Audio\(MAIN_MENU_THEME_URL\)/);
   assert.match(main, /audio\.preload = "auto"/);

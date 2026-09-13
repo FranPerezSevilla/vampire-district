@@ -1,3 +1,4 @@
+import { sampleByteCache } from "../audio/SampleByteCache.js";
 import { SAMPLE_AUDIO_IDS, sampleAudioDefinition } from "../audio/SampleAudioCatalog.js";
 
 const DEFAULT_TIMEOUT_MS = 15000;
@@ -75,20 +76,22 @@ export async function preloadTitleExperience({
   documentRef = globalThis.document,
   windowRef = globalThis.window,
   fetchRef = globalThis.fetch,
-  timeoutMs = DEFAULT_TIMEOUT_MS
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+  sampleCache = sampleByteCache
 } = {}) {
   const theme = documentRef?.getElementById?.("viceblood-main-menu-theme") || null;
-  const urls = titlePreloadUrls(documentRef);
+  const urls = unique([...(documentRef?.querySelectorAll?.("#viceblood-title-screen img") || [])].map(node => node.currentSrc || node.src));
   const startedAt = Date.now();
-  windowRef.NBD_TITLE_PRELOAD_STATE = Object.freeze({ state: "loading", total: urls.length + 1, ready: 0, startedAt });
+  windowRef.NBD_TITLE_PRELOAD_STATE = Object.freeze({ state: "loading", total: urls.length + 2, ready: 0, startedAt });
 
   let ready = 0;
   const markReady = () => {
     ready += 1;
-    windowRef.NBD_TITLE_PRELOAD_STATE = Object.freeze({ state: "loading", total: urls.length + 1, ready, startedAt });
+    windowRef.NBD_TITLE_PRELOAD_STATE = Object.freeze({ state: "loading", total: urls.length + 2, ready, startedAt });
   };
 
   const jobs = [
+    withTimeout(sampleCache.preload().then(value => { markReady(); return value; }), timeoutMs, "Sound package", windowRef),
     withTimeout(mediaReady(theme).then(value => { markReady(); return value; }), timeoutMs, "Main-menu theme", windowRef),
     ...urls.map(url => withTimeout(fetchIntoCache(url, fetchRef).then(value => { markReady(); return value; }), timeoutMs, `Asset ${url}`, windowRef))
   ];

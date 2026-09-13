@@ -6,11 +6,11 @@ const source = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf
 
 test("driving owns automatic gear state and a future-facing shift event", () => {
   const driving = source("phaser/src/vehicles/VehicleDriving.js");
-  const view = source("phaser/src/vehicles/VehicleView.js");
+  const view = source("phaser/src/ui/GameUiProjection.js");
   assert.match(driving, /vehicle\.gearShiftTimer/);
   assert.match(driving, /"vehicle:gear-shift"/);
-  assert.match(view, /gearText/);
-  assert.match(view, /G\$\{gear\}/);
+  assert.match(view, /gear: vehicle\.speed < -0\.5 \? "R"/);
+  assert.match(view, /vehicle\.gear/);
 });
 
 test("vehicle camera recenters on exit and look-ahead remains driving-only", () => {

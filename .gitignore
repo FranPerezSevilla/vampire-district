@@ -28,3 +28,13 @@ test-results/
 
 # Licence-safe runtime staging: included in private/distributable builds, never public Git
 phaser/assets/audio/radio-private/
+
+# Built React presentation and standalone review package
+phaser/ui-dist/
+dist/
+
+.artifacts/
+ui-native.log
+ui-affected-plan.log
+
+phaser/runtime-dist/

@@ -236,7 +236,6 @@ export function exitVehicle(system, { force = false } = {}) {
   system.scene.cameras.main.setFollowOffset(0, 0);
   system.scene.cameras.main.startFollow(system.scene.player, true, 0.12, 0.12);
   system.persistVehicle(vehicle);
-  system.hud.setVisible(false);
   system.scene.lastActionText = vehicle.disabled ? `You climb out of the disabled ${vehicle.name}.` : `${vehicle.name} parked. You return to street movement.`;
   RawAudio.play("vehicleDoorOpen");
   RawAudio.play("vehicleDoorClose", { delay: VEHICLE_DOOR_CLOSE_DELAY, cooldown: 0 });

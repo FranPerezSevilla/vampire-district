@@ -22,20 +22,6 @@ function vehiclePalette(definition, archetype) {
   return palettes[stableHash(definition?.id || archetype?.id) % palettes.length] || palettes[0];
 }
 
-export function createVehicleHud(scene) {
-  const hud = scene.add.text(WORLD.width / 2, WORLD.height - 18, "", {
-    fontFamily: "Arial, Helvetica, sans-serif",
-    fontSize: "13px",
-    fontStyle: "bold",
-    color: "#d7ffec",
-    backgroundColor: "rgba(5, 6, 11, .86)",
-    padding: { x: 9, y: 5 }
-  }).setOrigin(0.5, 1).setDepth(94).setScrollFactor(0).setVisible(false);
-  hud.setResolution?.(3);
-  hud.setStroke?.("#05060b", 2);
-  return hud;
-}
-
 export function paintVehicle(scene, container, definition, archetype) {
   const width = archetype.width;
   const height = archetype.height;
@@ -264,25 +250,6 @@ function plainVehicle(vehicle) {
     streamState: vehicle.streamState || "active",
     trunkCapacity: archetype.trunkCapacity
   };
-}
-
-export function updateVehicleHud(system) {
-  const vehicle = system.currentVehicle();
-  if (!vehicle) {
-    system.hud.setVisible(false);
-    return;
-  }
-  const trunk = system.campaign.vehicles.trunkSnapshot(vehicle.id, vehicle.archetype.trunkCapacity);
-  const drift = driftDegrees(vehicle);
-  const gear = Math.max(1, Math.round(Number(vehicle.gear) || 1));
-  const gearText = vehicle.speed < -0.5 ? "R" : `G${gear}/${vehicleGearCount(vehicle.archetype)}${(vehicle.gearShiftTimer || 0) > 0 ? "↑" : ""}`;
-  const driftText = drift >= 7 && Math.abs(vehicle.speed) > 24 ? ` · DRIFT ${drift}°` : "";
-  const state = vehicle.disabled
-    ? "WRECKED · ENTER exit"
-    : `${system.handbrakeActive ? "HANDBRAKE · " : ""}SPACE handbrake · ENTER exit`;
-  system.hud.setText(
-    `${vehicle.name.toUpperCase()} · ${gearText} · ${vehicleSpeedKph(vehicle.speed)} km/h${driftText} · hull ${vehicleHealthPercent(vehicle.health, vehicle.archetype.maxHealth)}% · trunk ${trunk.used}/${trunk.capacity} · ${state}`
-  ).setVisible(true);
 }
 
 export function refreshVehicleVisibility(system) {

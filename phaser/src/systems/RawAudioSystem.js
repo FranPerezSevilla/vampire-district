@@ -1,3 +1,4 @@
+import { sampleByteCache } from "../audio/SampleByteCache.js";
 import { SAMPLE_AUDIO_IDS, sampleAudioDefinition } from "../audio/SampleAudioCatalog.js";
 
 const KEY_SET = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d", "W", "A", "S", "D"]);
@@ -34,6 +35,8 @@ class RawAudioBus {
     this.stepTimer = null;
     this.lastStep = 0;
     this.listenersReady = false;
+    this.sampleDecodeQueue = [];
+    this.activeSampleDecodes = 0;
     this.sampleBuffers = new Map();
     this.sampleLoads = new Map();
     this.sampleCursor = Object.create(null);
@@ -119,6 +122,25 @@ class RawAudioBus {
     for (const id of SAMPLE_AUDIO_IDS) this.loadSampleEvent(id);
   }
 
+  decodeSample(context, encoded) {
+    return new Promise((resolve, reject) => {
+      this.sampleDecodeQueue.push({ context, encoded, resolve, reject });
+      this.pumpSampleDecodes();
+    });
+  }
+
+  pumpSampleDecodes() {
+    while (this.activeSampleDecodes < 2 && this.sampleDecodeQueue.length) {
+      const item = this.sampleDecodeQueue.shift();
+      this.activeSampleDecodes++;
+      Promise.resolve().then(() => item.context.decodeAudioData(item.encoded))
+        .then(item.resolve, item.reject).finally(() => {
+          this.activeSampleDecodes--;
+          this.pumpSampleDecodes();
+        });
+    }
+  }
+
   loadSampleEvent(name) {
     const definition = sampleAudioDefinition(name);
     if (!definition || !this.ctx || typeof fetch !== "function") return null;
@@ -127,10 +149,8 @@ class RawAudioBus {
 
     const context = this.ctx;
     const task = Promise.all(definition.files.map(async file => {
-      const response = await fetch(file);
-      if (!response.ok) throw new Error(`Audio sample failed to load: ${file}`);
-      const encoded = await response.arrayBuffer();
-      return context.decodeAudioData(encoded);
+      const encoded = await sampleByteCache.get(file);
+      return this.decodeSample(context, encoded);
     })).then(buffers => {
       if (this.ctx !== context) return [];
       this.sampleBuffers.set(name, buffers);

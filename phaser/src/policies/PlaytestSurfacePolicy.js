@@ -173,10 +173,12 @@ export function installPlaytestSurfacePolicy() {
     };
 
     const originalOpen = InteractionSystem.prototype.open;
-    InteractionSystem.prototype.open = function hiddenTraversalOpen(options = []) {
+    InteractionSystem.prototype.open = function hiddenTraversalOpen(options = [], ...presentation) {
       const visible = visibleInteractions(options);
       if (!visible.length) return false;
-      return originalOpen.call(this, visible);
+      // Filter choices only. Preserve title/detail/view so the UI can route
+      // domain navigation instead of rendering a generic interaction chooser.
+      return originalOpen.call(this, visible, ...presentation);
     };
 
     const originalRunOption = InteractionSystem.prototype.runOption;
