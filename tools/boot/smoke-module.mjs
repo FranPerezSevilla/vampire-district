@@ -93,6 +93,13 @@ for (const entry of ['index.html','phaser/index.html']) {
         assert.equal(win.document.querySelector('.vb-choices'),null);
         assert.equal(win.document.querySelectorAll('.vb-domain-tab small').length,0);
         assert.doesNotMatch(win.document.querySelector('.nb-book').textContent,/WORLD PAUSED|NO TIME LOST|active play|sets your arrow/i);
+        if(chapter==='city') {
+          const layers=[...win.document.querySelectorAll('.vb-map-tools button')].map(node=>node.textContent);
+          assert.deepEqual(layers,['Hunting','Authorities']);
+          assert.equal(win.document.querySelectorAll('.vb-map-district').length,14);
+          assert.ok(ui.store.getSnapshot().domain.districts.every(d=>d.hunting?.label));
+          assert.doesNotMatch(win.document.querySelector('.vb-city-detail').textContent,/Reception|Reputation/);
+        }
         if(chapter==='network') assert.equal(win.document.querySelectorAll('.vb-contact-list [data-portrait]').length,4);
         if(chapter==='feeding') assert.equal(win.document.querySelectorAll('.nb-donor-card [data-portrait]').length,2);
       }

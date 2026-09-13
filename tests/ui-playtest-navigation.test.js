@@ -144,9 +144,9 @@ test('a territorial permit never invents consent and Blood links to the actual p
   h.campaign.huntingLaw.grantRight({id:'book-right',districtId:'old-quarter',factionId:'first_estate'});
   await click(button('Black Book M')); await tab('Blood'); expectDomain('feeding');
   const iris=[...document.querySelectorAll('.nb-donor-card')].find(n=>n.textContent.includes('Iris'));
-  assert.match(iris.textContent,/No active agreement/);
-  assert.match(document.querySelector('.nb-hunting-note').textContent,/1 \/ 14 districts/);
-  assert.match(document.querySelector('.nb-hunting-note').textContent,/A permit is not consent.*Protected prey/);
+  assert.match(iris.textContent,/No donation agreed/);
+  assert.match(document.querySelector('.nb-hunting-note').textContent,/1 district covered/);
+  assert.match(document.querySelector('.nb-hunting-note').textContent,/An agreement is not consent.*Protected prey/);
   await click([...iris.querySelectorAll('button')].find(n=>n.textContent==='Arrange an introduction')); expectDomain('network');
   assert.match(document.querySelector('.vb-person-detail h2').textContent,/Vesper Vale/);
   assert.match(document.querySelector('.vb-person-detail').textContent,/An introduction/);
@@ -177,12 +177,12 @@ test('hidden capabilities stay hidden and instructions belong to deliberate Cont
   assert.match(help.textContent,/Black Book/); assert.match(help.textContent,/Go here/); assert.match(help.textContent,/Locate/);
   await click(button('Back to the streets')); assert.equal(h.paused(),false); assert.equal(h.registry.get('uiPaused'),false); assert.equal(h.registry.get('uiKeyboardOwned'),false);
 });
-test('district selection still reads owner, reception and hunting as separate facts', async () => {
-  await click(button('City')); expectDomain('city'); assert.equal(button('Hunting rights').getAttribute('aria-pressed'),'true');
+test('district selection shows one hunting decision and the authority, not reception', async () => {
+  await click(button('City')); expectDomain('city'); assert.equal(button('Hunting').getAttribute('aria-pressed'),'true');
   const select=document.querySelector('[aria-label="Inspect a district"]'); assert.equal(select.options.length,14);
   await act(async()=>{select.value='old-quarter';select.dispatchEvent(new Event('change',{bubbles:true}));});
-  assert.match(document.querySelector('.nb-permit').textContent,/NO HUNTING PERMIT/);
-  assert.match(document.querySelector('.vb-city-detail').textContent,/Reception/); assert.equal(h.ui.store.getSnapshot().selection,'district:old-quarter');
+  assert.match(document.querySelector('.nb-permit').textContent,/No settled claim/);
+  assert.match(document.querySelector('.vb-city-detail').textContent,/Authority/); assert.equal(button('Reception'),undefined); assert.equal(button('Control'),undefined); assert.equal(h.ui.store.getSnapshot().selection,'district:old-quarter');
 });
 
 // Editorial/portrait acceptance beyond the retained navigation regressions.
@@ -225,4 +225,50 @@ test('shorter copy retains price, refusal and irreversible errand confirmation',
   await click(button('Keep my word')); assert.ok(h.v.state.job);
   await tab('Blood'); assert.equal(button('Drink a bag').disabled,false);
   h.v.state.bloodBags=0; await act(async()=>h.ui.refresh()); assert.equal(button('Drink a bag').disabled,true); assert.match(document.querySelector('.nb-pocket-card').textContent,/No bags on hand/);
+});
+
+test('City routes to a named broker and the in-person agreement updates the actual hunting rule once', async () => {
+  h.v.contact('mara').introduced=true; h.v.meet('mara');
+  h.v.acceptDelivery('mara');h.v.handoff(h.v.deliverySite());h.v.handoff(h.v.deliverySite());
+  await click(button('City'));
+  await act(async()=>h.ui.command('select',{target:'district:hospital-district'}));
+  assert.match(document.querySelector('.nb-permit').textContent,/Hunting on your own/);
+  const objective=h.v.state.guide;
+  await click(button('Speak to Mara Voss'));expectDomain('network');
+  assert.equal(h.ui.store.getSnapshot().selection,'contact:mara');assert.equal(h.v.state.guide,objective);
+  assert.match(document.querySelector('.nb-agreement').textContent,/Agreement offered/);
+  assert.match(document.querySelector('.nb-agreement').textContent,/Leave victims alive/);
+  await click(button('Go here'));assert.equal(h.v.state.guide,'contact:mara');
+  await act(async()=>{h.step();h.runtime.openContact('mara');h.ui.refresh();});
+  const index=h.scene.interactionSystem.menu.options.findIndex(o=>o.id==='access:mara');
+  await click(document.querySelectorAll('.vb-choice')[index]);
+  assert.equal(h.v.agreement('mara').active,false);assert.ok(h.ui.pendingAction);
+  await act(async()=>h.step());assert.equal(h.v.agreement('mara').active,true);assert.equal(h.ui.pendingAction,null);
+  await click(button('City'));await act(async()=>h.ui.command('select',{target:'district:hospital-district'}));
+  assert.match(document.querySelector('.nb-permit').textContent,/Agreement held/);
+  assert.match(document.querySelector('.vb-city-detail').textContent,/Mara Voss/);
+  await click(button('The agreement'));expectDomain('network');assert.equal(h.ui.store.getSnapshot().selection,'contact:mara');
+  assert.equal(h.v.state.guide,'contact:mara');
+  await press('Escape');assert.equal(h.paused(),false);
+});
+test('City displays the public Crown rule and unclaimed ground without a hidden reputation switch', async () => {
+  h.campaign.reputation.setFaction('gutter_crown',-100);
+  await click(button('City'));await act(async()=>h.ui.command('select',{target:'district:canal-west'}));
+  assert.match(document.querySelector('.nb-permit').textContent,/Open hunt/);
+  assert.match(document.querySelector('.vb-city-detail').textContent,/police level 0 or 1/);
+  await click(button('Authorities'));assert.equal(button('Authorities').getAttribute('aria-pressed'),'true');
+  assert.equal(button('Reception'),undefined);assert.equal(button('Control'),undefined);
+  await act(async()=>h.ui.command('select',{target:'district:old-quarter'}));
+  assert.match(document.querySelector('.nb-permit').textContent,/No settled claim/);
+  assert.doesNotMatch(document.querySelector('.vb-city-detail').textContent,/NO HUNTING PERMIT|Reputation/);
+});
+
+// The Sire has introductions/credit/compact, not a normal hunting negotiation.
+test('an unsigned Sire file does not offer an unavailable hunting negotiation', async () => {
+  await click(button('Black Book M'));
+  await act(async()=>h.ui.command('tab',{tab:'network',target:'contact:sire'}));
+  assert.match(document.querySelector('.vb-person-detail').textContent,/The Sire/);
+  assert.equal(document.querySelector('.nb-agreement'),null);
+  await act(async()=>h.ui.command('tab',{tab:'network',target:'contact:vesper'}));
+  assert.ok(document.querySelector('.nb-agreement'));
 });

@@ -44,7 +44,7 @@ export class TerritoryRuntimeSystem {
     if (!district) return "";
     const pieces = [upper(district.name)];
     if (district.status === "controlled" && district.ownerLabel) {
-      pieces.push(upper(district.ownerLabel), upper(district.relationship));
+      pieces.push(upper(district.ownerLabel));
     } else {
       pieces.push(upper(district.status));
     }

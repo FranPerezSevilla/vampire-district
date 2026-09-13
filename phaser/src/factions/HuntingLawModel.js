@@ -225,15 +225,29 @@ export function protectionFromVictim(victim = {}, persisted = null) {
   });
 }
 
-function ownerTolerates(ownerId, relationship, facts) {
-  const quiet = facts.witnessCount <= 0;
-  if (ownerId === CAMPAIGN_FACTIONS.FIRST_ESTATE) {
-    return relationship === "welcome" && quiet && !facts.bodyEvidence && facts.wantedLevel === 0;
-  }
-  if (ownerId === CAMPAIGN_FACTIONS.GUTTER_CROWN) {
-    return ["tolerated", "welcome"].includes(relationship) && quiet && facts.wantedLevel <= 1;
-  }
-  return ["tolerated", "welcome"].includes(relationship) && quiet;
+// Public rules, not an invisible second permit derived from faction reputation.
+export const AGREEMENT_TERMS = "Keep feeding out of sight. Leave victims alive. Protected people are off limits.";
+export function districtHuntingRule(district) {
+  if (!district?.ownerId || district.status !== "controlled") return "unclaimed";
+  return district.ownerId === CAMPAIGN_FACTIONS.GUTTER_CROWN ? "open" : "agreement";
+}
+export function personalHuntingRight(right) {
+  return right?.source === "vampire_agreement" || String(right?.id || "").startsWith("network:");
+}
+export function describeHuntingAccess(district, right = null) {
+  const rule = districtHuntingRule(district);
+  if (right) return { status: "covered", label: "Agreement held", rule, rightId: right.id,
+    terms: personalHuntingRight(right) ? AGREEMENT_TERMS : "Protected people and the Veil remain off limits.",
+    consequence: personalHuntingRight(right) ? "A discovered breach costs your patron's services and backing." : "Hunting access does not protect you from witnesses or the police." };
+  if (rule === "unclaimed") return { status: "unclaimed", label: "No settled claim", rule, rightId: null,
+    terms: "No ruling faction requires an agreement here. Protected people are still off limits.",
+    consequence: "There is no patron covering you. Witnesses and the police still matter." };
+  if (rule === "open") return { status: "open", label: "Open hunt", rule, rightId: null,
+    terms: "The Gutter Crown allows quiet, nonlethal hunting. No witnesses, no body left behind, police level 0 or 1.",
+    consequence: "Break those terms and you are poaching. Discovery damages your standing with the Crown." };
+  return { status: "poaching", label: "Hunting on your own", rule, rightId: null,
+    terms: "An agreement is required. You can still hunt, but you are poaching.",
+    consequence: "If discovered, the ruling faction holds it against you." };
 }
 
 export function classifyHuntingFacts({
@@ -245,22 +259,25 @@ export function classifyHuntingFacts({
   bodyEvidence = false,
   biteEvidence = false,
   wantedLevel = 0,
-  factionObserver = false
+  factionObserver = false,
+  victimAlive = true
 } = {}) {
   const facts = {
     witnessCount: integer(witnessCount, 0),
     bodyEvidence: Boolean(bodyEvidence),
     biteEvidence: Boolean(biteEvidence),
     wantedLevel: integer(wantedLevel, 0),
-    factionObserver: Boolean(factionObserver)
+    factionObserver: Boolean(factionObserver),
+    victimAlive: Boolean(victimAlive)
   };
   const victimType = text(victim?.type, "unknown");
   let result = HUNTING_CLASSIFICATION.UNCLAIMED;
   if (victimType === "rat") result = HUNTING_CLASSIFICATION.EXEMPT;
   else if (protection) result = HUNTING_CLASSIFICATION.PROTECTED;
-  else if (!district?.ownerId || district.status !== "controlled") result = HUNTING_CLASSIFICATION.UNCLAIMED;
-  else if (right) result = HUNTING_CLASSIFICATION.LEGAL;
-  else if (ownerTolerates(district.ownerId, district.relationship, facts)) result = HUNTING_CLASSIFICATION.TOLERATED;
+  else if (right) result = personalHuntingRight(right) && (!facts.victimAlive || facts.witnessCount > 0)
+    ? HUNTING_CLASSIFICATION.POACHING : HUNTING_CLASSIFICATION.LEGAL;
+  else if (districtHuntingRule(district) === "unclaimed") result = HUNTING_CLASSIFICATION.UNCLAIMED;
+  else if (districtHuntingRule(district) === "open" && facts.victimAlive && !facts.bodyEvidence && facts.witnessCount === 0 && facts.wantedLevel <= 1) result = HUNTING_CLASSIFICATION.TOLERATED;
   else result = HUNTING_CLASSIFICATION.POACHING;
 
   const knownSources = [];
