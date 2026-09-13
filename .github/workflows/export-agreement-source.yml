@@ -1,80 +1,52 @@
-name: Import verified agreement source
+name: Export pending agreement patch
 on:
   push:
     branches: [codex/agreement-source-export]
 permissions:
   contents: read
+  actions: read
 jobs:
-  import:
+  export:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
           ref: 37fcaf8af9414b98827e742378f9523135207b9e
           persist-credentials: false
-      - name: Import exact reviewed blobs without changing application refs
-        uses: actions/github-script@v7
+      - uses: actions/download-artifact@v4
+        with:
+          name: agreement-import
+          run-id: 34763081381
+          github-token: ${{ github.token }}
+          path: recovered
+      - uses: actions/github-script@v7
         with:
           script: |
             const fs = require('node:fs/promises');
             const {dirname} = require('node:path');
             const {createHash} = require('node:crypto');
-            const {brotliDecompressSync} = require('node:zlib');
             const {execFileSync} = require('node:child_process');
-            const {owner,repo} = context.repo;
             const git = (...args) => execFileSync('git',args,{encoding:'utf8'}).trim();
-            const digest = b => createHash('sha256').update(b).digest('hex');
-            const hash = b => createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${b.length}\0`),b])).digest('hex');
-            const base = '37fcaf8af9414b98827e742378f9523135207b9e';
-            const expectedTree = 'a736892177b445440dadc5230b5961e6d29922fd';
-            if (`${owner}/${repo}` !== 'FranPerezSevilla/vampire-district' || git('rev-parse','HEAD') !== base) throw new Error('Wrong repository/base');
-            const parts = [];
-            for (const sha of ['061b7c0b77b69e0259b7d93aa3d5dd0980f4f22c','4d8fabf919b4ee0a0ade3a0384fc0230a720fd9c']) {
-              const {data} = await github.rest.git.getBlob({owner,repo,file_sha:sha});
+            const manifest = JSON.parse(await fs.readFile('recovered/agreement-import.json','utf8'));
+            if(manifest.base !== git('rev-parse','HEAD') || manifest.tree !== 'a736892177b445440dadc5230b5961e6d29922fd' || manifest.entries.length!==16) throw new Error('Wrong manifest');
+            for(const entry of manifest.entries) {
+              if(!/^(docs|phaser\/src|tests|tools\/boot|ui)\/[a-zA-Z0-9_./-]+$/.test(entry.path) || entry.path.includes('..')) throw new Error('Unsafe source path');
+              const {data} = await github.rest.git.getBlob({...context.repo,file_sha:entry.sha});
               if(data.encoding !== 'base64') throw new Error('Unexpected encoding');
               const bytes = Buffer.from(data.content,'base64');
-              if(hash(bytes)!==sha) throw new Error('Transport mismatch');
-              parts.push(bytes);
-            }
-            const bytes = brotliDecompressSync(Buffer.concat(parts));
-            if(digest(bytes)!=='5a1248fe7439ff6c5dd423299be669a27604a332d47f89cb2bb5d1fbef96dd65') throw new Error('Payload mismatch');
-            const payload=JSON.parse(bytes);
-            if(payload.base!==base || payload.tree!==expectedTree) throw new Error('Source identity mismatch');
-            const allowed = ['docs/HUNTING_AGREEMENTS.md','docs/VAMPIRE_CITY_POWER.md','phaser/src/factions/HuntingLawModel.js','phaser/src/factions/HuntingLawSystem.js','phaser/src/factions/TerritoryRuntimeSystem.js','phaser/src/vampire/VampireCatalog.js','phaser/src/vampire/VampireDomainModel.js','phaser/src/vampire/VampireRuntime.js','phaser/src/vampire/VampireSystem.js','tests/browser/hunting-law-runtime.spec.js','tests/hunting-agreements.test.js','tests/hunting-law.test.js','tests/ui-playtest-navigation.test.js','tools/boot/smoke-module.mjs','ui/CityMap.jsx','ui/Domain.jsx'];
-            if(payload.files.length!==allowed.length || new Set(payload.files.map(f=>f.path)).size!==allowed.length) throw new Error('Unexpected file count');
-            for(const f of payload.files) {
-              if(!allowed.includes(f.path)) throw new Error('Out-of-scope path');
-              let old=Buffer.alloc(0);
-              if(f.old) {old=await fs.readFile(f.path);if(hash(old)!==f.old)throw new Error(`Old bytes mismatch: ${f.path}`);}
-              else {try{await fs.stat(f.path);throw new Error('New path exists');}catch(error){if(error.code!=='ENOENT')throw error;}}
-              let cursor=0;const output=[];
-              for(const [start,end,insert] of f.edits) {
-                if(!Number.isInteger(start)||!Number.isInteger(end)||start<cursor||end<start||end>old.length)throw new Error('Invalid edit coordinates');
-                output.push(old.subarray(cursor,start),Buffer.from(insert,'base64'));cursor=end;
-              }
-              output.push(old.subarray(cursor));const result=Buffer.concat(output);
-              if(hash(result)!==f.sha)throw new Error(`Final bytes mismatch: ${f.path}`);
-              await fs.mkdir(dirname(f.path),{recursive:true});await fs.writeFile(f.path,result);git('add','--',f.path);
+              const hash = createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${bytes.length}\0`),bytes])).digest('hex');
+              if(hash!==entry.sha) throw new Error('Blob mismatch');
+              await fs.mkdir(dirname(entry.path),{recursive:true});
+              await fs.writeFile(entry.path,bytes);
+              git('add','--',entry.path);
             }
             git('diff','--cached','--check');
-            if(git('write-tree')!==expectedTree)throw new Error('Reconstructed tree mismatch');
-            const entries=[];
-            for(const f of payload.files) {
-              const content=await fs.readFile(f.path);let uploaded;
-              for(let attempt=0;attempt<3;attempt++) {
-                try {uploaded=(await github.rest.git.createBlob({owner,repo,content:content.toString('base64'),encoding:'base64'})).data;break;}
-                catch(error){if(attempt===2||!(error.status>=500))throw error;await new Promise(r=>setTimeout(r,1000*(attempt+1)));}
-              }
-              if(uploaded.sha!==f.sha)throw new Error('Uploaded object mismatch');
-              entries.push({path:f.path,mode:'100644',type:'blob',sha:f.sha});
-            }
-            await fs.writeFile('agreement-import.json',JSON.stringify({base,tree:expectedTree,entries},null,2));
-            core.info(`Verified ${entries.length} immutable blobs. No application refs, PR, main or deployment changed. No recovered code executed.`);
+            if(git('write-tree')!==manifest.tree) throw new Error('Tree mismatch');
+            await fs.writeFile('recovered/agreements.patch',execFileSync('git',['diff','--cached','--binary']));
+            core.info('Exact pending source exported as data; no source execution or ref writes.');
       - uses: actions/upload-artifact@v4
         with:
-          name: agreement-import
-          path: agreement-import.json
+          name: agreement-patch
+          path: recovered/
           retention-days: 2
