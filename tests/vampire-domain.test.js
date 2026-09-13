@@ -97,8 +97,8 @@ test("accepting an errand opens instructions and removes every other offer witho
   const h = harness(); h.runtime.openContact("sire");
   h.scene.interactionSystem.runOption(h.scene.interactionSystem.menu.options.find(o => o.id === "work:sire"));
   assert.equal(h.scene.interactionSystem.snapshot().view, "vampire-domain");
-  assert.equal(h.runtime.domain.tab, "errand");
-  assert.equal(h.scene.interactionSystem.menu.index, 4);
+  assert.equal(h.runtime.domain.tab, "tonight");
+  assert.equal(h.scene.interactionSystem.menu.index, 0);
   let e = buildDomainModel(h.runtime).errand;
   assert.equal(e.current.target, "site:hospital");
   assert.match(e.current.description, /Press E/);
@@ -168,7 +168,7 @@ test("all domain sections keep real data and headless navigation in the existing
     h.runtime.openDomain(label.toLowerCase());
     assert.ok(buildDomainModel(h.runtime).contacts.length);
     assert.equal(h.runtime.domain.tab, label.toLowerCase());
-    assert.equal(h.scene.interactionSystem.menu.options.length, 7);
+    assert.equal(h.scene.interactionSystem.menu.options.length, 6);
   }
   const guide = h.v.state.guide;
   h.runtime.domain.navigate("city", "contact:rook");
@@ -176,8 +176,8 @@ test("all domain sections keep real data and headless navigation in the existing
   assert.equal(h.v.state.guide, guide);
   const elapsed = h.v.state.elapsed;
   h.runtime.update(120, h.scene.currentInputFrame); assert.equal(h.v.state.elapsed, elapsed);
-  h.scene.interactionSystem.updateInput(createEmptyInputFrame({ menuDigitPressed: 5 }));
-  assert.equal(h.runtime.domain.tab, "errand");
+  h.scene.interactionSystem.updateInput(createEmptyInputFrame({ menuDigitPressed: 1 }));
+  assert.equal(h.runtime.domain.tab, "tonight");
   h.scene.interactionSystem.updateInput(createEmptyInputFrame({ menuCancelPressed: true }));
   assert.equal(h.scene.interactionSystem.isOpen, false);
   h.runtime.destroy();

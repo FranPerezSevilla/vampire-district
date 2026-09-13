@@ -20,6 +20,8 @@ export function projectGameUi(ui) {
   const game = ui.scene.get("GameScene"), vampire = game?.vampireRuntime;
   const data = ui.readState(), service = vampire?.service;
   const mode = ui.activeMode();
+  // Reflect the installed playtest policy; never advertise disabled actions.
+  const simplified = Boolean(ui.__nbdSimplifiedSurfacePolicy);
   const title = Boolean(game?.registry?.get?.("mainMenuActive"));
   let domain = null;
   if (service && mode === "domain") {
@@ -36,7 +38,8 @@ export function projectGameUi(ui) {
   const prompt = String(data.prompt || "");
   return {
     ready: Boolean(game?.player && service), visible: !title && !game?.playerDamageSystem?.isDead?.(),
-    mode, error: ui.uiError, tab: vampire?.domain?.tab || "city", selection: vampire?.domain?.selection || null,
+    capabilities: { incidentFile: !simplified },
+    mode, error: ui.uiError, tab: vampire?.domain?.tab || "tonight", chapterFocus: vampire?.domain?.focus || null, selection: vampire?.domain?.selection || null,
     domain, interaction: mode === "interaction" ? game.interactionSystem.snapshot() : null,
     external: ui.external?.read?.() || null, result: data.result, confirmation: ui.confirmation,
     hunger: bounded(game?.feedingSystem?.hunger), vitality: bounded(game?.playerDamageSystem?.state?.vitality ?? 100),
@@ -46,7 +49,7 @@ export function projectGameUi(ui) {
     exposure: { value: Math.round(game?.exposureSystem?.value || 0), level: game?.exposureSystem?.level?.() || 0 },
     guide: objectiveModel(game?.player, target), weapon: data.weapon,
     player: game?.player ? { x: game.player.x, y: game.player.y } : null,
-    powers: powers.map(power => ({ ...power, key: bindingLabel(data.inputBindings?.bindings?.[power.id] || power.key),
+    powers: powers.filter(power => !simplified || !["dash", "sense"].includes(power.id)).map(power => ({ ...power, key: bindingLabel(data.inputBindings?.bindings?.[power.id] || power.key),
       cooldown: Math.ceil(cooling(power.id, power.id === "beast" ? "Beast" : power.name) * 10) / 10,
       locked: Boolean(vehicle || vampire?.frenzy?.active || vampire?.frenzy?.exhausted?.()),
       active: power.id === "beast" && cooling("beast", "GiveIn") > 0 })),

@@ -1,22 +1,25 @@
-export const DOMAIN_TABS = Object.freeze(["City", "Contacts", "Herd", "Resources", "Errand", "Power"]);
+export const DOMAIN_TABS = Object.freeze(["Tonight", "City", "Network", "Feeding", "Ledger"]);
+const aliases = Object.freeze({ overview: "tonight", errand: "tonight", map: "city", contacts: "network", herd: "feeding", resources: "ledger", power: "ledger" });
 export function domainTab(value) {
-  if (value === "overview" || value === "map") return "city";
-  return DOMAIN_TABS.some(tab => tab.toLowerCase() === value) ? value : "city";
+  const key = String(value || "").toLowerCase();
+  return aliases[key] || (DOMAIN_TABS.some(tab => tab.toLowerCase() === key) ? key : "tonight");
 }
 
-// Presentation selection only. InteractionSystem owns the open menu and pause;
-// React owns its pixels. This object never creates, moves or renders DOM nodes.
+// Presentation selection only. Existing gameplay callers keep their legacy
+// section names; five player-facing chapters do not add a persistence owner.
 export class DomainNavigation {
   constructor(runtime) {
     this.runtime = runtime;
-    this.tab = "city";
+    this.tab = "tonight";
+    this.focus = null;
     this.selection = null;
     this.revision = 0;
     this.feedback = "";
   }
   invalidate() { this.revision++; }
-  show(tab = "city", target = null) {
+  show(tab = "tonight", target = null) {
     this.tab = domainTab(tab);
+    this.focus = tab === "power" ? "power" : null;
     if (target) this.selection = target;
     this.feedback = "";
     this.invalidate();
