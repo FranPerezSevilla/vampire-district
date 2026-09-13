@@ -101,7 +101,8 @@ test("accepting an errand opens instructions and removes every other offer witho
   assert.equal(h.scene.interactionSystem.menu.index, 0);
   let e = buildDomainModel(h.runtime).errand;
   assert.equal(e.current.target, "site:hospital");
-  assert.match(e.current.description, /Press E/);
+  assert.match(e.current.description, /Collect the sealed supplies outside/);
+  assert.doesNotMatch(e.current.description, /Press E/);
   assert.equal(e.cash, 180);
   const original = { ...h.v.state.job };
   h.runtime.openContact("sire");
@@ -141,7 +142,7 @@ test("saved named markers follow people, persist, remain bounded and never move 
   const saved = h.campaign.export(); h.campaign.import(saved, { persist: false }); h.runtime.update(.01, h.scene.currentInputFrame);
   assert.equal(h.runtime.service.state.markers.length, 8);
   assert.ok(h.runtime.guideTarget());
-  const guide = h.runtime.service.state.guide;
+  const guide = h.v.state.guide;
   assert.ok(h.runtime.service.removeMarker(guide).ok);
   assert.equal(h.runtime.service.state.guide, "contact:sire");
   assert.equal(h.runtime.track("invented:place"), false);

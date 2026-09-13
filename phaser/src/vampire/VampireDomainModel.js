@@ -34,8 +34,8 @@ export function errandModel(runtime) {
   const def = contactById(job.issuer), collected = job.stage === "collected";
   const repaid = Math.min(def.reward, service.contact(def.id).debt);
   const steps = [
-    { title: "Collect the sealed supplies", description: `Go to ${service.siteLabel(def.pickup)}, street frontage. Press E and choose Collect sealed supplies.`, target: `site:${def.pickup}`, state: collected ? "done" : "current" },
-    { title: "Deliver the cargo", description: `Go to ${service.siteLabel(def.delivery)}, street frontage. Press E and choose Deliver sealed supplies.`, target: `site:${def.delivery}`, state: collected ? "current" : "waiting" }
+    { title: "Collect the sealed supplies", description: `Collect the sealed supplies outside ${service.siteLabel(def.pickup)}.`, target: `site:${def.pickup}`, state: collected ? "done" : "current" },
+    { title: "Deliver the cargo", description: `Deliver the sealed supplies outside ${service.siteLabel(def.delivery)}.`, target: `site:${def.delivery}`, state: collected ? "current" : "waiting" }
   ].map(step => ({ ...step, destination: domainDestination(runtime, step.target) }));
   return { issuer: def.name, issuerId: def.id, collected, steps, current: steps[collected ? 1 : 0], reward: def.reward, repaid, cash: def.reward - repaid, trust: 15,
     summary: `${collected ? "2/2 · Deliver" : "1/2 · Collect"} · ${service.siteLabel(service.deliverySite())}`, cargo: collected ? "Sealed supplies carried" : "Cargo not collected yet" };

@@ -4,7 +4,7 @@ import { COMBAT_STATES } from "../data/combat.js";
 import { VAMPIRE_CONTACTS, VAMPIRE_ASSETS, VAMPIRE_DONORS, VAMPIRE_RULES as R, contactById, assetById, donorById, powerStage } from "./VampireCatalog.js";
 import { createVampireSites, directionTo } from "./VampireWorldSites.js";
 import { FrenzyController } from "./FrenzyController.js";
-import { DomainNavigation, DOMAIN_TABS } from "./DomainNavigation.js";
+import { DomainNavigation, DOMAIN_TABS, DOMAIN_LABELS } from "./DomainNavigation.js";
 import { clampMapPoint, domainDestination, errandModel } from "./VampireDomainModel.js";
 
 export class VampireRuntime {
@@ -164,7 +164,7 @@ export class VampireRuntime {
       for (const def of VAMPIRE_DONORS) this.syncDonor(def.id, true);
       if (!this.service.state.started) {
         this.service.state.started = true;
-        this.notice("Meet your Sire at the refuge frontage. M opens your Black Book: tonight's work, people and blood. Build your network, then claim the city.");
+        this.notice("The Sire is waiting outside the refuge.");
       }
     }
     this.service.tick(dt);
@@ -226,7 +226,7 @@ export class VampireRuntime {
     if (!domainDestination(this, id)) { this.notice("That destination is no longer available."); return false; }
     this.service.state.guide = id;
     const target = this.guideTarget();
-    this.notice(`Tracking ${target?.label || "your network"}. Follow the objective arrow.`);
+    this.notice(`Destination: ${target?.label || "the streets"}.`);
     this.outcome({ ok: true });
     return true;
   }
@@ -239,9 +239,9 @@ export class VampireRuntime {
   openDomain(tab = "tonight", target = null) {
     if (!this.domainAvailable() || this.scene.feedingSystem?.isActive?.()) return false;
     this.domain.show(tab, target);
-    const options = DOMAIN_TABS.map(label => this.option(`domain:${label.toLowerCase()}`, label, "Open this section", () => this.openDomain(label.toLowerCase())));
-    options.push(this.option("domain:close", "Return to city", "Resume play", () => {}));
-    this.scene.interactionSystem.open(options, { title: "Your vampire domain", view: "vampire-domain" });
+    const options = DOMAIN_TABS.map(label => this.option(`domain:${label.toLowerCase()}`, DOMAIN_LABELS[label.toLowerCase()], "", () => this.openDomain(label.toLowerCase())));
+    options.push(this.option("domain:close", "Back to the streets", "", () => {}));
+    this.scene.interactionSystem.open(options, { title: "The Black Book", view: "vampire-domain" });
     this.scene.interactionSystem.menu.index = DOMAIN_TABS.findIndex(label => label.toLowerCase() === this.domain.tab);
     this.scene.interactionSystem.publish();
     return true;
@@ -267,10 +267,10 @@ export class VampireRuntime {
     if (!this.available()) return false;
     const def = contactById(id);
     const meeting = this.outcome(this.service.meet(id));
-    if (!meeting.ok) return this.open(`${def.name} · Introduction needed`, meeting.text, [this.option(`introduction:${id}`, "View introduction objectives", "Contacts and the next useful step", () => this.openDomain("contacts"))]);
+    if (!meeting.ok) return this.open(`${def.name} · Introduction needed`, meeting.text, [this.option(`introduction:${id}`, "Arrange an introduction", "Contacts", () => this.openDomain("contacts"))]);
     const person = this.service.contact(id);
     const options = this.service.state.job
-      ? [this.option("work:active", "View your current errand", "Finish or abandon it before accepting another", () => this.openDomain("errand"))]
+      ? [this.option("work:active", "Current errand", "Finish or abandon it before accepting another", () => this.openDomain("errand"))]
       : [this.option(`work:${id}`, "Accept a supply delivery", `$${def.reward} · earns trust · repayments deducted`, () => this.acceptDelivery(id))];
     if (["sire", "mara"].includes(id)) options.push(this.option(`blood:${id}`, "Buy one blood bag", `$${this.service.trust(id) >= 40 ? 60 : R.bagPrice} · Hunger -35`, () => this.outcome(this.service.buyBlood(id))));
     if (id === "sire") {
@@ -297,7 +297,7 @@ export class VampireRuntime {
       options.push(this.option(`policy:${id}:open`, "Sell access to other vampires", "Income +50% · production -1 blood bag/cycle", () => this.outcome(this.service.setPolicy(id, "open"))));
     }
     if (id === "depot" && asset.level) options.push(this.option("depot:recover", "Recover at your depot refuge", "Spend 1 blood bag · Vitality +45 · lose the police first", () => this.refugeRecovery()));
-    return this.open(def.name, `${def.description} Production every 90s of play. ${asset.level ? "Staff handle income automatically." : "Start as an investor, then buy control."}`, options);
+    return this.open(def.name, `${def.description} Production every 90s. ${asset.level ? "Staff handle income automatically." : "Start as an investor, then buy control."}`, options);
   }
   collectInteractions() {
     if (!this.available() || this.scene.currentLayer !== LAYERS.STREET || this.scene.feedingSystem?.isActive?.()) return [];
@@ -308,7 +308,7 @@ export class VampireRuntime {
       const distance = Math.hypot(npc.x - this.scene.player.x, npc.y - this.scene.player.y);
       if (distance > 46) continue;
       const donor = donorById(def.id);
-      options.push({ ...this.option(`talk:${def.id}`, donor ? `Ask ${def.name} for a donation` : `Talk to ${def.name}`, donor ? this.service.donorAvailable(def.id) || "Voluntary donation · Hunger -28 · recovery 4 min" : this.service.contactAccess(def.id).available ? def.role : "Introduction needed · view objectives", () => {
+      options.push({ ...this.option(`talk:${def.id}`, donor ? `Ask ${def.name} for a donation` : `Talk to ${def.name}`, donor ? this.service.donorAvailable(def.id) || "Voluntary donation · Hunger -28 · recovery 4 min" : this.service.contactAccess(def.id).available ? def.role : "Introduction needed", () => {
         if (donor) {
           const result = this.service.donate(def.id, this.scene.feedingSystem.hunger);
           if (result.ok) { this.scene.feedingSystem.relieveHunger(result.relief, "consensual_donation"); npc.feedingDepth = "quick_bite"; }

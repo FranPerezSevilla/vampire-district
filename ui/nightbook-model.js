@@ -1,10 +1,11 @@
-// Read-only editorial helpers. No saved state, transactions or game rules here.
+// Read-only editorial helpers. Route IDs are intentionally stable across renames.
+import { DOMAIN_LABELS } from "../phaser/src/vampire/DomainNavigation.js";
 export const BOOK_CHAPTERS = Object.freeze([
-  { id: 'tonight', label: 'Tonight', question: 'What do I do next?', icon: 'moon' },
-  { id: 'city', label: 'City', question: 'Whose streets are these?', icon: 'city' },
-  { id: 'network', label: 'Network', question: 'Who can open doors?', icon: 'people' },
-  { id: 'feeding', label: 'Feeding', question: 'Where is my next blood?', icon: 'blood' },
-  { id: 'ledger', label: 'Ledger', question: 'What do I own & owe?', icon: 'brief' }
+  { id: 'tonight', label: DOMAIN_LABELS.tonight, icon: 'moon' },
+  { id: 'city', label: DOMAIN_LABELS.city, icon: 'city' },
+  { id: 'network', label: DOMAIN_LABELS.network, icon: 'people' },
+  { id: 'feeding', label: DOMAIN_LABELS.feeding, icon: 'blood' },
+  { id: 'ledger', label: DOMAIN_LABELS.ledger, icon: 'brief' }
 ]);
 export const money = value => `$${Math.round(Number(value) || 0).toLocaleString('en-US')}`;
 export const districtName = (model, id) => model.districts.find(d => d.id === id)?.name || 'City location';

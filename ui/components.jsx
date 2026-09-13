@@ -13,7 +13,7 @@ export function Meter({ value = 0, label, max = 100, danger = false }) {
   const percent = Math.max(0, Math.min(100, value / max * 100));
   return <div className={`vb-meter ${danger ? "danger" : ""}`} role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value}><span style={{ width: `${percent}%` }}/></div>;
 }
-export function Empty({ title, children, action }) { return <div className="vb-empty"><Icon name="brief"/><h3>{title}</h3><p>{children}</p>{action}</div>; }
+export function Empty({ title, children, action }) { return <div className="vb-empty"><Icon name="brief"/><h3>{title}</h3>{children && <p>{children}</p>}{action}</div>; }
 export function Locations({ target, command, disabled }) {
   return <div className="vb-actions"><Button primary icon="arrow" disabled={disabled} onClick={() => command("go", { target })}>Go here</Button><Button icon="eye" disabled={disabled} onClick={() => command("locate", { target })}>Locate</Button></div>;
 }
@@ -25,11 +25,12 @@ export function Window({ title, description, children, overlay, close, wide, ini
     <Dialog.Portal container={overlay}>
       <Dialog.Overlay className="vb-scrim"/>
       <Dialog.Content className={`vb-window ${wide ? "wide" : ""}`} data-viceblood-ui="dialog"
+        {...(description ? {} : { "aria-describedby": undefined })}
         onEscapeKeyDown={event => { event.preventDefault(); close(); }}
         onPointerDownOutside={event => event.preventDefault()}
         onCloseAutoFocus={event => { event.preventDefault(); document.querySelector("#game-root canvas")?.focus({ preventScroll: true }); }}
         onOpenAutoFocus={initialFocus ? event => { event.preventDefault(); initialFocus.current?.focus(); } : undefined}>
-        <header className="vb-window-head"><div><span className="vb-wordmark">VICE<span>BLOOD</span></span><Dialog.Title>{title}</Dialog.Title>{description && <Dialog.Description>{description}</Dialog.Description>}</div><Button icon="close" aria-label="Close window" onClick={close}>Back <kbd>Esc</kbd></Button></header>
+        <header className="vb-window-head"><div><span className="vb-wordmark">VICE<span>BLOOD</span></span><Dialog.Title>{title}</Dialog.Title>{description && <Dialog.Description>{description}</Dialog.Description>}</div><Button icon="close" aria-label="Close window" onClick={close}><kbd>Esc</kbd></Button></header>
         <div className="vb-window-body">{children}</div>
       </Dialog.Content>
     </Dialog.Portal>

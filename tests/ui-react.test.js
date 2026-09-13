@@ -36,7 +36,7 @@ test('HUD opens a real domain dialog with the compiled city map and all five nat
  assert.ok(document.querySelector('.vb-hud')); await click(button('City'));
  assert.equal(h.paused(),true); assert.ok(document.querySelector('[role="dialog"]')); assert.equal(document.querySelectorAll('[role="tab"]').length,5);
  assert.equal(document.querySelectorAll('.vb-map-district').length,14); assert.equal(document.querySelector('.vb-hud'),null);
- for(const label of ['Tonight','Network','Feeding','Ledger','City']){await tab(label);assert.equal(document.querySelector('[role="tab"][aria-selected="true"]').textContent.includes(label),true);}
+ for(const label of ['Tonight','Contacts','Blood','Accounts','City']){await tab(label);assert.equal(document.querySelector('[role="tab"][aria-selected="true"]').textContent.includes(label),true);}
  assert.doesNotMatch(document.body.textContent,/undefined|NaN|\[object Object\]/);
 });
 test('map inspection preserves the objective; Go here uses the real runtime and closes',async()=>{
@@ -55,8 +55,8 @@ test('errand locates the actual handoff and abandonment uses visible confirmatio
  await act(async()=>{h.v.meet('sire');h.runtime.acceptDelivery('sire');h.ui.refresh();});
  assert.match(document.querySelector('.vb-errand').textContent,/Collect the sealed supplies/);
  await click(button('Locate')); assert.equal(h.runtime.domain.tab,'city'); assert.match(document.querySelector('.vb-city-detail').textContent,/Collect the sealed supplies/);
- await tab('Tonight'); await click(button('Abandon errand…')); assert.ok(h.v.state.job); assert.ok(button('Keep working'));
- await click(button('Keep working')); assert.ok(h.v.state.job); await click(button('Abandon errand…'));await click(button('Abandon errand'));assert.equal(h.v.state.job,null);
+ await tab('Tonight'); await click(button('Abandon errand…')); assert.ok(h.v.state.job); assert.ok(button('Keep my word'));
+ await click(button('Keep my word')); assert.ok(h.v.state.job); await click(button('Abandon errand…'));await click(button('Abandon errand'));assert.equal(h.v.state.job,null);
 });
 test('notice text is escaped and does not mount executable markup',async()=>{
  await act(async()=>{h.scene.lastActionText='<img src=x onerror="bad()">';h.ui.refresh();});
@@ -87,10 +87,10 @@ test('Sire dialogue remains present above a dead player and releases only its ow
 });
 
 test('where enabled, the incident file returns to Tonight without a leftover pause lock',async()=>{
- await click(button('Black Book M'));await click(button('Read incident file'));
+ await click(button('Black Book M'));await click(button('Incident file'));
  assert.equal(h.ui.activeMode(),'ledger');assert.equal(h.registry.get('uiPaused'),true);
  await click(button('Back to Black Book'));
  assert.equal(h.runtime.domain.tab,'tonight');assert.equal(h.ui.activeMode(),'domain');
- await click(button('Return to the streets'));await settleFocusScope();
+ await click(button('Back to the streets'));await settleFocusScope();
  assert.equal(h.paused(),false);assert.equal(h.registry.get('uiPaused'),false);assert.equal(h.registry.get('uiKeyboardOwned'),false);
 });
