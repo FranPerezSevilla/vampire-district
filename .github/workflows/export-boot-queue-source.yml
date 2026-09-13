@@ -1,0 +1,25 @@
+name: Export pinned boot queue source
+on:
+  push:
+    branches: [codex/boot-queue-source]
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 555833f10082a9c039661d3ab9a9a89cf2a47345
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Export exact source for offline native regression
+        run: |
+          test "$(git rev-parse HEAD)" = 555833f10082a9c039661d3ab9a9a89cf2a47345
+          git bundle create boot-queue-source.bundle HEAD refs/remotes/origin/main
+      - uses: actions/upload-artifact@v4
+        with:
+          name: boot-queue-source
+          path: boot-queue-source.bundle
+          retention-days: 2
