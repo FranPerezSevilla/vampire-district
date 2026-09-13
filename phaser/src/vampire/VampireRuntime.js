@@ -278,7 +278,10 @@ export class VampireRuntime {
       options.push(this.option("sire:prince", "Claim the title of Prince", "3 controlled businesses · 3 supporters · debts settled · $1200", () => this.outcome(this.service.claimPrince())));
       options.push(this.option("sire:recover", "Recover at the refuge", "Spend 1 blood bag · Vitality +45 · lose the police first", () => this.refugeRecovery()));
     } else {
-      options.push(this.option(`access:${id}`, "Negotiate hunting permission", "Trust 15 · no debt · keep victims alive and feeding discreet", () => this.outcome(this.service.grantAccess(id))));
+      const agreement = this.service.agreement(id);
+      options.push({ ...this.option(`access:${id}`, agreement.active ? "Our hunting agreement" : "Agree on hunting terms",
+        agreement.active ? `${agreement.districtName} · ${agreement.terms}` : agreement.reason || `${agreement.districtName} · ${agreement.terms}`,
+        () => this.service.agreement(id).active ? this.openDomain("contacts", `contact:${id}`) : this.outcome(this.service.grantAccess(id))), disabled: !agreement.active && !agreement.available });
       const asset = VAMPIRE_ASSETS.find(value => value.contactId === id);
       if (asset) options.push(this.option(`business:${asset.id}`, "Business and investment", asset.name, () => this.openBusiness(asset.id)));
       options.push(this.option(`support:${id}`, "Ask for support as Prince", "Trust 40 · control the business · no debt", () => this.outcome(this.service.endorse(id))));
@@ -290,7 +293,7 @@ export class VampireRuntime {
   openBusiness(id) {
     const def = assetById(id), asset = this.service.state.assets[id];
     const options = [];
-    if (asset.level < 2) options.push(this.option(`invest:${id}`, asset.level ? "Buy control of this business" : "Invest in this business", `$${asset.level ? Math.round(def.price * 0.75) : def.price} · trust 15`, () => this.outcome(this.service.invest(id))));
+    if (asset.level < 2) options.push(this.option(`invest:${id}`, asset.level ? "Buy control of this business" : "Invest in this business", `$${asset.level ? Math.round(def.price * 0.75) : def.price} · trust 15 · includes our hunting agreement: discreet, no deaths`, () => this.outcome(this.service.invest(id))));
     if (asset.level) options.push(this.option(`withdraw:${id}`, "Collect blood reserves", `${asset.reserve} ready · pouch capacity 4`, () => this.outcome(this.service.withdrawBlood(id))));
     if (asset.level >= 2) {
       options.push(this.option(`policy:${id}:discreet`, "Reserve capacity for your network", "Full blood production · normal income", () => this.outcome(this.service.setPolicy(id, "discreet"))));

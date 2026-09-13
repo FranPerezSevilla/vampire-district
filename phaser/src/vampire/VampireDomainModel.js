@@ -1,3 +1,4 @@
+import { personalHuntingRight } from "../factions/HuntingLawModel.js";
 import { CITY_WORLD, districtZones } from "../data/district.js";
 import { VAMPIRE_CONTACTS, VAMPIRE_DONORS, VAMPIRE_ASSETS, CONTACT_BENEFITS, VAMPIRE_RULES as R, contactById, donorById, assetById, powerStage } from "./VampireCatalog.js";
 import { directionTo } from "./VampireWorldSites.js";
@@ -48,7 +49,7 @@ export function buildDomainModel(runtime) {
   const destination = target => domainDestination(runtime, target);
   const contacts = VAMPIRE_CONTACTS.map(def => {
     const person = v.contact(def.id), access = v.contactAccess(def.id);
-    return { ...def, ...access, ...person, trust: v.trust(def.id), benefits: CONTACT_BENEFITS[def.id], destination: destination(`contact:${def.id}`),
+    return { ...def, ...access, ...person, trust: v.trust(def.id), agreement: v.agreement(def.id), benefits: CONTACT_BENEFITS[def.id], destination: destination(`contact:${def.id}`),
       status: person.suspended ? "Agreement suspended" : person.met ? "Known contact" : access.available ? "Ready to meet" : "Introduction needed" };
   });
   const herd = VAMPIRE_DONORS.map(def => {
@@ -61,20 +62,27 @@ export function buildDomainModel(runtime) {
   });
   const assets = VAMPIRE_ASSETS.map(def => {
     const asset = state.assets[def.id], person = v.contact(def.contactId);
-    const suspended = person.suspended;
+    const suspended = person.suspended, agreement = v.agreement(def.contactId);
     return { ...def, ...asset, suspended, operator: contactById(def.contactId).name, destination: destination(`asset:${def.id}`),
       income: asset.level && !suspended ? Math.round(def.income * asset.level * (asset.policy === "open" ? 1.5 : 1)) : 0,
       production: asset.level && !suspended ? Math.max(0, def.bags + asset.level - 1 - (asset.policy === "open" ? 1 : 0)) : 0,
       nextCost: asset.level ? Math.round(def.price * .75) : def.price,
-      requirement: !v.contactAccess(def.contactId).available ? `Earn an introduction to ${contactById(def.contactId).name}` : !person.met ? `Meet ${contactById(def.contactId).name}` : suspended ? "Repair the operator's agreement" : person.debt ? `Settle $${person.debt} debt to the operator` : v.trust(def.contactId) < 15 ? `Trust ${v.trust(def.contactId)}/15 · complete work for the operator` : asset.level < 2 ? `Bring $${asset.level ? Math.round(def.price * .75) : def.price} to the operator` : "Controlled · visit the operator to change policy or collect blood" };
+      requirement: asset.level < 2 && !agreement.active && !agreement.available ? agreement.reason : !v.contactAccess(def.contactId).available ? `Earn an introduction to ${contactById(def.contactId).name}` : !person.met ? `Meet ${contactById(def.contactId).name}` : suspended ? "Repair the operator's agreement" : person.debt ? `Settle $${person.debt} debt to the operator` : v.trust(def.contactId) < 15 ? `Trust ${v.trust(def.contactId)}/15 · complete work for the operator` : asset.level < 2 ? `Bring $${asset.level ? Math.round(def.price * .75) : def.price} to the operator` : "Controlled · visit the operator to change policy or collect blood" };
   });
   const districts = districtZones.map(zone => {
     const district = v.campaign.territory.district(zone.id);
-    const permission = v.campaign.huntingLaw.activeRight({ districtId: zone.id, ownerId: district.ownerId, victimType: "civilian" });
+    const hunting = v.campaign.huntingLaw.districtAccess(zone.id);
+    const permission = hunting.right;
+    const patron = personalHuntingRight(permission) ? contactById(permission.referenceId || permission.id.replace("network:", "")) : null;
+    const broker = contacts.find(person => person.id !== "sire" && person.districtId === zone.id);
     return { ...zone, ownerId: district?.ownerId || null,
       ownerLabel: district?.ownerLabel || "Independent", politicalStatus: district?.status || "unknown",
       relationship: district?.relationship || "unknown", reputation: district?.reputation ?? null,
-      influence: district?.influence || {}, permitted: Boolean(permission), permissionId: permission?.id || null };
+      influence: district?.influence || {}, permitted: Boolean(permission), permissionId: permission?.id || null,
+      hunting: { ...hunting, patronId: patron?.id || null,
+        patronName: patron?.name || (permission?.source === "prince_compact" ? "The city compact" : null),
+        brokerId: broker?.id || null, brokerName: broker?.name || null,
+        nextStep: broker?.agreement.reason || (broker ? `Speak to ${broker.name} to agree on terms.` : "No broker in your book covers this district.") } };
   });
   const errand = errandModel(runtime);
   let next;

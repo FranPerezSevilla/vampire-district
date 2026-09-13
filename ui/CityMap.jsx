@@ -3,8 +3,7 @@ import { Badge, Button, Locations, Requirements } from "./components.jsx";
 import { recommendationFile } from "./nightbook-model.js";
 
 export const OWNER_COLORS = { first_estate: "#7064a0", gutter_crown: "#bd7752", independent: "#637b7a" };
-const RELATION_COLORS = { hostile: "#c3444b", restricted: "#b98857", watched: "#bca170", welcome: "#6caa8b", neutral: "#637b7a", tolerated: "#839974", friendly: "#6caa8b", allied: "#6caa8b" };
-const relationshipLabel = value => ({ hostile: "Hostile", restricted: "Restricted", neutral: "Neutral", watched: "Watched", tolerated: "Tolerated", welcome: "Welcome", friendly: "Welcome", allied: "Allied" }[value] || value || "Unknown");
+const HUNT_COLORS = { covered: "#659079", open: "#8a9270", unclaimed: "#90868b", poaching: "#b26063" };
 const within = (p, d) => p && p.x >= d.x && p.x <= d.x + d.w && p.y >= d.y && p.y <= d.y + d.h;
 function Shape({ item, ...props }) {
   return item.points?.length ? <polygon points={item.points.map(p => `${p.x},${p.y}`).join(" ")} {...props}/> : <rect x={item.x} y={item.y} width={item.w} height={item.h} {...props}/>;
@@ -48,9 +47,9 @@ export function MapCanvas({ geometry, model, selection, onSelect, onMark }) {
   };
   const click = (event, target) => { event.stopPropagation(); if (!didDrag.current) onSelect(target); };
   const activate = (event, target) => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); event.stopPropagation(); onSelect(target); } };
-  const color = d => layer === "owner" ? OWNER_COLORS[d.ownerId || "independent"] || OWNER_COLORS.independent : layer === "relationship" ? RELATION_COLORS[d.relationship] || "#637b7a" : d.permitted ? "#659079" : "#938075";
+  const color = d => layer === "owner" ? OWNER_COLORS[d.ownerId || "independent"] || OWNER_COLORS.independent : HUNT_COLORS[d.hunting.status];
   return <div className="vb-map-column">
-    <div className="vb-map-tools" aria-label="Map layers">{[["hunting", "Hunting rights"], ["owner", "Control"], ["relationship", "Reception"]].map(([id, label]) => <Button key={id} aria-pressed={layer === id} onClick={() => setLayer(id)}>{label}</Button>)}</div>
+    <div className="vb-map-tools" aria-label="Map layers">{[["hunting", "Hunting"], ["owner", "Authorities"]].map(([id, label]) => <Button key={id} aria-pressed={layer === id} onClick={() => setLayer(id)}>{label}</Button>)}</div>
     <div className="vb-map-frame">
       <svg ref={svg} viewBox={viewBox} preserveAspectRatio="xMidYMid meet" aria-label="City districts and locations" className="vb-city-map"
         onPointerDown={event => { if (event.button !== 0) return; didDrag.current = false; drag.current = { x: event.clientX, y: event.clientY, center: { ...center } }; }}
@@ -61,7 +60,7 @@ export function MapCanvas({ geometry, model, selection, onSelect, onMark }) {
         <rect width={geometry.world.width} height={geometry.world.height} fill="#cbbda2"/>
         <rect width={geometry.world.width} height={geometry.world.height} fill={`url(#atlas-${gridId})`}/>
 
-        {model.districts.map(d => <g key={d.id} role="button" tabIndex={0} aria-label={`${d.name}, ${layer === "owner" ? d.ownerLabel : layer === "hunting" ? d.permitted ? "Permit held" : "No general permit" : relationshipLabel(d.relationship)}`} onClick={e => click(e, `district:${d.id}`)} onKeyDown={e => activate(e, `district:${d.id}`)} className="vb-map-district">
+        {model.districts.map(d => <g key={d.id} role="button" tabIndex={0} aria-label={`${d.name}, ${layer === "owner" ? d.ownerLabel : d.hunting.label}`} onClick={e => click(e, `district:${d.id}`)} onKeyDown={e => activate(e, `district:${d.id}`)} className="vb-map-district">
           <rect x={d.x + 6} y={d.y + 6} width={Math.max(0, d.w - 12)} height={Math.max(0, d.h - 12)} fill={color(d)} fillOpacity={selection === `district:${d.id}` ? .7 : .43} stroke={selection === `district:${d.id}` ? "#8e2340" : color(d)} strokeWidth={selection === `district:${d.id}` ? 9 : 3}/>
         </g>)}
         <StreetInk geometry={geometry}/>
@@ -76,7 +75,7 @@ export function MapCanvas({ geometry, model, selection, onSelect, onMark }) {
       </svg>
       <div className="vb-map-zoom"><Button aria-label="Zoom out" disabled={zoom === 1} onClick={() => setZoom(z => Math.max(1, z / 2))}>−</Button><span>{zoom}×</span><Button aria-label="Zoom in" disabled={zoom === 4} onClick={() => setZoom(z => Math.min(4, z * 2))}>+</Button><Button onClick={() => { setCenter(model.player); setZoom(2); }}>You</Button><Button onClick={() => { setZoom(1); setCenter({ x: geometry.world.width / 2, y: geometry.world.height / 2 }); }}>Whole city</Button></div>
     </div>
-    <div className="vb-map-legend">{layer === "owner" ? <><span><i style={{ background: OWNER_COLORS.first_estate }}/>First Estate</span><span><i style={{ background: OWNER_COLORS.gutter_crown }}/>Gutter Crown</span><span><i style={{ background: OWNER_COLORS.independent }}/>Independent / contested</span></> : layer === "hunting" ? <><span><i style={{ background: "#6caa8b" }}/>General permit held</span><span>No permit ≠ hostile</span></> : <><span>Standing with the local power</span><span>Hunting rights are separate</span></>}</div><div className="nb-map-key" aria-label="Location symbols"><span><b>●</b> contact</span><span><b>♦</b> donor</span><span><b>▣</b> business</span><span><b>×</b> task / marker</span></div>
+    <div className="vb-map-legend">{layer === "owner" ? <><span><i style={{ background: OWNER_COLORS.first_estate }}/>First Estate</span><span><i style={{ background: OWNER_COLORS.gutter_crown }}/>Gutter Crown</span><span><i style={{ background: OWNER_COLORS.independent }}/>No settled claim</span></> : Object.entries({covered: "Agreement", open: "Open hunt", unclaimed: "No settled claim", poaching: "On your own"}).map(([id,label])=><span key={id}><i style={{background:HUNT_COLORS[id]}}/>{label}</span>)}</div><div className="nb-map-key" aria-label="Location symbols"><span><b>●</b> contact</span><span><b>♦</b> donor</span><span><b>▣</b> business</span><span><b>×</b> task / marker</span></div>
   </div>;
 }
 export function City({ model, geometry, selection, command }) {
@@ -90,9 +89,15 @@ export function City({ model, geometry, selection, command }) {
     <label className="nb-district-picker"><span className="vb-eyebrow">DISTRICT</span><select aria-label="Inspect a district" value={selectedDistrict?.id || ""} onChange={event=>command("select",{target:`district:${event.target.value}`})}>{model.districts.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></label>
     {point ? <div className="nb-map-file"><span className="vb-eyebrow">{point.kind === "asset" ? "Business" : point.kind === "errand" ? "Errand" : point.kind}</span><h3>{point.name}</h3><p>{point.role || point.description || point.patron && `Patron: ${point.patron}` || "Saved location"}</p><Badge tone={point.suspended || point.refused ? "danger" : "neutral"}>{point.status || (point.level ? "Business interest" : "Location")}</Badge><p>{point.benefits || point.reason || point.requirement}</p>
       <Locations target={point.target} command={command} disabled={point.dead}/>{["contact","donor","asset"].includes(point.kind) && <Button onClick={()=>command("tab",recommendationFile(point.target))}>Open file</Button>}{point.kind !== "marker" && <Button onClick={() => command("save-marker", { target: point.target })}>Save location</Button>}{point.kind === "marker" && <Button danger onClick={() => command("remove-marker", { id: point.id })}>Remove marker</Button>}<hr/></div> : null}
-    {selectedDistrict && <><h3>{selectedDistrict.name}</h3><div className="nb-permit" data-permitted={selectedDistrict.permitted}>{selectedDistrict.permitted ? "HUNTING PERMITTED" : "NO HUNTING PERMIT"}</div><p>Protected prey remain off limits. A permit is not consent.</p><dl className="vb-facts"><div><dt>Control</dt><dd>{selectedDistrict.ownerLabel}<small>{selectedDistrict.politicalStatus}</small></dd></div><div><dt>Reception</dt><dd>{relationshipLabel(selectedDistrict.relationship)}{selectedDistrict.reputation != null && <small>Reputation {selectedDistrict.reputation}</small>}</dd></div></dl>
+    {selectedDistrict && <><h3>{selectedDistrict.name}</h3>
+      <dl className="vb-facts"><div><dt>Authority</dt><dd>{selectedDistrict.ownerLabel}<small>{selectedDistrict.politicalStatus === "controlled" ? "Holds the district" : selectedDistrict.politicalStatus === "contested" ? "Disputed ground" : "No settled claim"}</small></dd></div></dl>
+      <div className="nb-permit" data-permitted={selectedDistrict.hunting.status === "covered"} data-hunting={selectedDistrict.hunting.status} style={{color:HUNT_COLORS[selectedDistrict.hunting.status],borderColor:HUNT_COLORS[selectedDistrict.hunting.status]}}>{selectedDistrict.hunting.label}</div>
+      {selectedDistrict.hunting.patronName && <p><strong>{selectedDistrict.hunting.patronName}</strong></p>}
+      <p>{selectedDistrict.hunting.terms}</p><p>{selectedDistrict.hunting.consequence}</p>
+      {selectedDistrict.hunting.patronId ? <Button onClick={()=>command("tab",{tab:"network",target:`contact:${selectedDistrict.hunting.patronId}`})}>The agreement</Button> : selectedDistrict.hunting.status === "poaching" && <><p>{selectedDistrict.hunting.nextStep}</p>{selectedDistrict.hunting.brokerId && <Button onClick={()=>command("tab",{tab:"network",target:`contact:${selectedDistrict.hunting.brokerId}`})}>Speak to {selectedDistrict.hunting.brokerName}</Button>}</>}
+      <p>Donors choose for themselves. Witnesses can still expose you.</p>
       <h4>Contacts</h4>{local(contacts).map(p => <button type="button" key={p.id} className="vb-location-row" onClick={() => command("tab", { tab:"network", target: p.target })}><strong>{p.name} ↗</strong><span>{p.status}</span></button>)}{!local(contacts).length && <p>No contacts here.</p>}
       <h4>Donors</h4>{local(herd).map(p => <button type="button" key={p.id} className="vb-location-row" onClick={() => command("tab", { tab:"feeding", target: p.target })}><strong>{p.name} ↗</strong><span>{p.status}</span></button>)}{!local(herd).length && <p>No donors here.</p>}
-      <h4>Holdings</h4>{local(assets).map(p => <button type="button" key={p.id} className="vb-location-row" onClick={() => command("tab", { tab:"ledger", target: p.target })}><strong>{p.name} ↗</strong><span>{p.suspended ? "Suspended" : ["Not owned", "Investor", "Controlled"][p.level]}</span></button>)}{!local(assets).length && <p>No holdings here.</p>}</>}
+      <h4>Local businesses</h4>{local(assets).map(p => <button type="button" key={p.id} className="vb-location-row" onClick={() => command("tab", { tab:"ledger", target: p.target })}><strong>{p.name} ↗</strong><span>{p.suspended ? "Suspended" : ["Not yours", "Your stake", "Your operation"][p.level]}</span></button>)}{!local(assets).length && <p>No businesses in your book here.</p>}</>}
   </aside></div>;
 }

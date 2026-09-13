@@ -1,5 +1,7 @@
 import { VAMPIRE_ASSETS, VAMPIRE_CONTACTS, VAMPIRE_DONORS, VAMPIRE_RULES as R, CONTACT_INTRODUCTIONS, assetById, contactById, donorById, powerStage, knownDestination } from "./VampireCatalog.js";
 
+import { AGREEMENT_TERMS, personalHuntingRight, rightMatches } from "../factions/HuntingLawModel.js";
+
 // All transactions run through the existing campaign authorities. This service
 // owns agreements/business operations, not the campaign mission registry.
 export class VampireSystem {
@@ -44,7 +46,8 @@ export class VampireSystem {
   reject(text) { return { ok: false, text }; }
   changeTrust(id, amount) {
     this.campaign.reputation.modifyContact(id, amount, { source: "vampire_network" });
-    const factionId = contactById(id)?.factionId;
+    const def = contactById(id);
+    const factionId = def?.factionId || (def && this.campaign.territory.district(def.districtId)?.ownerId);
     if (factionId) this.campaign.reputation.modifyFaction(factionId, Math.round(amount / 3), { source: "vampire_network" });
     if (this.trust(id) < R.endorsementTrust) this.contact(id).endorsed = false;
   }
@@ -127,7 +130,7 @@ export class VampireSystem {
     if (def.reward > repaid) this.wallet.credit(def.reward - repaid, { source: "vampire_delivery", reason: `Delivery for ${def.name}`, referenceId: String(job.sequence) });
     this.changeTrust(def.id, 15);
     this.restoreAgreement(def.id);
-    return this.notify(`${def.name}: Delivered. $${def.reward - repaid} paid${repaid ? `; $${repaid} debt repaid` : ""}. Trust ${this.trust(def.id)}. ${person.jobs === 1 ? "You can now negotiate hunting access and investment." : "Our agreement stands."}`);
+    return this.notify(`${def.name}: Delivered. $${def.reward - repaid} paid${repaid ? `; $${repaid} debt repaid` : ""}. Trust ${this.trust(def.id)}. ${person.jobs === 1 ? "We can agree on hunting and discuss your stake in the business." : "Our agreement stands."}`);
   }
   abandonDelivery({ death = false } = {}) {
     const job = this.state.job;
@@ -154,12 +157,36 @@ export class VampireSystem {
     const result = this.notify(`Blood bag consumed. Hunger -${Math.min(hunger, R.bagRelief)}. ${this.state.bloodBags} bag(s) remain.`);
     return { ...result, relief: R.bagRelief };
   }
-  grantAccess(id) {
+  agreement(id) {
     const def = contactById(id), person = this.contact(id);
-    if (!def || !person?.met || person.suspended || person.debt || this.trust(id) < R.investmentTrust) return this.reject("Hunting access requires trust 15, a settled debt and an intact agreement.");
+    if (!def || !person) return null;
     const district = this.campaign.territory.district(def.districtId);
-    this.campaign.huntingLaw.grantRight({ id: `network:${id}`, districtId: def.districtId, factionId: district.ownerId || def.factionId || "first_estate", source: "vampire_agreement", referenceId: id });
-    return this.notify(`${def.name}: You may hunt in ${district.name}. Victims must survive; keep feeding out of public view. Discovery of a breach suspends services.`);
+    const right = this.campaign.huntingLaw.right(`network:${id}`);
+    const issuer = district.ownerId || def.factionId || "first_estate";
+    const faction = this.campaign.reputation.faction(issuer);
+    const active = !person.suspended && rightMatches(right, { districtId: def.districtId,
+      ownerId: district.ownerId, victimType: "civilian", now: this.campaign.huntingLaw.now() });
+    const authorityChanged = Boolean(right && district.ownerId && right.factionId !== district.ownerId);
+    const authorityRefuses = Boolean(district.ownerId && def.factionId && def.factionId !== district.ownerId);
+    const reason = !person.met ? `Meet ${def.name}.` : person.suspended ? `Make amends with ${def.name}: complete an errand or pay $${R.repairCost}.`
+      : active ? "" : authorityRefuses ? `${def.name} cannot speak for ${district.ownerLabel}.`
+      : person.debt ? `Settle $${person.debt} owed to ${def.name}.`
+      : this.trust(id) < R.investmentTrust ? `Complete work for ${def.name}. Trust ${this.trust(id)}/${R.investmentTrust}.`
+      : faction <= -31 ? `The local authority refuses your protection. Work for ${def.name} to restore your standing.` : "";
+    return { contactId: id, patron: def.name, districtId: def.districtId, districtName: district.name,
+      active, available: !reason, reason, terms: AGREEMENT_TERMS,
+      status: person.suspended ? "suspended" : active ? "active" : authorityChanged ? "displaced" : reason ? "unavailable" : "offered",
+      label: person.suspended ? "Agreement suspended" : active ? "Hunting agreement" : authorityChanged ? "Authority changed" : reason ? "No agreement" : "Agreement offered",
+      rightId: right?.id || null, issuer };
+  }
+  grantAccess(id) {
+    const agreement = this.agreement(id);
+    if (!agreement) return this.reject("Unknown contact.");
+    if (agreement.active) return { ok: true, text: `${agreement.patron}: Our agreement stands in ${agreement.districtName}. ${agreement.terms}` };
+    if (!agreement.available) return this.reject(agreement.reason);
+    this.campaign.huntingLaw.grantRight({ id: `network:${id}`, districtId: agreement.districtId,
+      factionId: agreement.issuer, source: "vampire_agreement", referenceId: id });
+    return this.notify(`${agreement.patron}: I cover your hunting in ${agreement.districtName}. ${agreement.terms} If a breach is discovered, my services and backing stop.`);
   }
   suspend(id, reason) {
     const person = this.contact(id), def = contactById(id);
@@ -172,9 +199,16 @@ export class VampireSystem {
     return this.notify(`${def.name}: ${reason} Hunting access and business production are suspended. Pay $${R.repairCost} or complete a delivery to repair the agreement.`);
   }
   restoreAgreement(id) {
-    const person = this.contact(id);
+    const person = this.contact(id), wasSuspended = person.suspended;
     person.suspended = false;
     person.reason = "";
+    // Restore an existing broken promise, never create an unsigned or expired one.
+    const def = contactById(id), right = this.campaign.huntingLaw.right(`network:${id}`);
+    const district = this.campaign.territory.district(def.districtId);
+    if (wasSuspended && right?.revokedAt && (!right.expiresAt || right.expiresAt > this.campaign.huntingLaw.now())
+      && (!district.ownerId || district.ownerId === right.factionId)) {
+      this.campaign.huntingLaw.grantRight({ ...right, revokedAt: 0 });
+    }
     for (const donor of VAMPIRE_DONORS.filter(value => value.contactId === id)) {
       if (!this.state.donors[donor.id].dead) this.state.donors[donor.id].refused = false;
     }
@@ -185,7 +219,7 @@ export class VampireSystem {
     if (!this.charge(R.repairCost, "Repair a broken vampire agreement")) return this.reject("Insufficient cash. Complete a delivery for this contact to repair the agreement instead.");
     this.restoreAgreement(id);
     this.changeTrust(id, 10);
-    return this.notify(`${contactById(id).name}: Compensation accepted. Services resume; negotiate your hunting permission again.`);
+    return this.notify(`${contactById(id).name}: Compensation accepted. Services resume. Any hunting agreement still recognised by the local authority is restored.`);
   }
   reviewHunting() {
     for (const id of [...this.state.pending]) {
@@ -195,9 +229,22 @@ export class VampireSystem {
       this.state.processed.push(id);
       this.state.processed = this.state.processed.slice(-200);
       this.state.pending = this.state.pending.filter(value => value !== id);
-      const def = VAMPIRE_CONTACTS.find(person => person.id !== "sire" && person.districtId === assessment.districtId && this.contact(person.id).met);
-      if (def && (assessment.politicalViolation || !assessment.victimAlive || (assessment.evidenceSources || []).includes("direct_witness"))) {
-        this.suspend(def.id, `The feeding of ${assessment.victimId} in ${assessment.districtName} was discovered.`);
+      if (assessment.classification === "exempt") continue;
+      const faction = assessment.protectedByFactionId || assessment.ownerId;
+      if (assessment.politicalViolation && faction) {
+        this.campaign.reputation.modifyFaction(faction, assessment.classification === "protected" ? -20 : -10,
+          { source: "hunting_violation", referenceId: assessment.id });
+        this.notify(`Your hunt in ${assessment.districtName} was discovered. The local authority holds it against you; protection must be earned through work.`);
+      }
+      const right = assessment.permissionId && this.campaign.huntingLaw.right(assessment.permissionId);
+      const patronId = personalHuntingRight(right) ? right.referenceId || right.id.slice("network:".length) : null;
+      // A protected person's patron also has a concrete grievance, even if a
+      // different broker (or the city compact) supplied the territorial right.
+      for (const id of new Set([patronId, assessment.protectedByContactId].filter(Boolean))) {
+        const def = contactById(id);
+        if (def && this.contact(id).met && (assessment.politicalViolation || !assessment.victimAlive || (assessment.evidenceSources || []).includes("direct_witness"))) {
+          this.suspend(id, `Your agreement in ${assessment.districtName} was broken and the feeding was discovered.`);
+        }
       }
     }
   }
@@ -233,6 +280,8 @@ export class VampireSystem {
     if (!def || !asset || !person?.met) return this.reject("Meet the operator first.");
     if (person.suspended || person.debt || this.trust(def.contactId) < R.investmentTrust) return this.reject("Investment requires trust 15, an intact agreement and no debt to the operator.");
     if (asset.level >= 2) return this.reject("You already control this business.");
+    const agreement = this.agreement(def.contactId);
+    if (!agreement.active && !agreement.available) return this.reject(agreement.reason);
     const price = asset.level ? Math.round(def.price * 0.75) : def.price;
     if (!this.charge(price, `Invest in ${def.name}`)) return this.reject(`Need $${price}. Complete deliveries or let existing businesses produce income.`);
     asset.level++;
