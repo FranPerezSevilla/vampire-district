@@ -1,0 +1,22 @@
+name: Export pinned session workspace
+on:
+  push:
+    branches: [codex/session-source-export]
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 2e8effa03647d827a191d0a0ac32001d8c6a597b
+          fetch-depth: 0
+          persist-credentials: false
+      - run: git bundle create session-source.bundle --all
+      - uses: actions/upload-artifact@v4
+        with:
+          name: session-source
+          path: session-source.bundle
+          retention-days: 2
