@@ -1,7 +1,8 @@
 import { buildings, LAYERS } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 import { COMBAT_STATES } from "../data/combat.js";
-import { VAMPIRE_CONTACTS, VAMPIRE_ASSETS, VAMPIRE_DONORS, VAMPIRE_RULES as R, contactById, assetById, donorById, powerStage } from "./VampireCatalog.js";
+import { VAMPIRE_CONTACTS, VAMPIRE_ASSETS, VAMPIRE_DONORS, VAMPIRE_RULES as R, contactById, assetById, donorById } from "./VampireCatalog.js";
+import { demoStage, demoInvestmentBlocker } from "./DemoChapter.js";
 import { createVampireSites, directionTo } from "./VampireWorldSites.js";
 import { FrenzyController } from "./FrenzyController.js";
 import { DomainNavigation, DOMAIN_TABS, DOMAIN_LABELS } from "./DomainNavigation.js";
@@ -186,7 +187,7 @@ export class VampireRuntime {
   domainAvailable() {
     return Boolean(this.service && !this.scene.registry?.get?.("uiPaused") && !this.scene.transitionSystem?.active && !this.scene.playerDamageSystem?.isDead?.() && !this.frenzy.active);
   }
-  outcome(result) { if (result && !result.ok) this.notice(result.text); this.persistBody(); if (this.campaign.autoSave) this.campaign.save(); return result; }
+  outcome(result) { if (result && !result.ok) this.notice(result.text); this.persistBody(); if (this.campaign.autoSave) this.campaign.save(); if (result?.demoComplete) this.openDomain("tonight"); return result; }
   useBlood() {
     if (!this.available() || this.scene.feedingSystem?.isActive?.()) return false;
     const result = this.service.consumeBlood(this.scene.feedingSystem.hunger);
@@ -258,11 +259,7 @@ export class VampireRuntime {
   openAccounts() {
     return this.openDomain("resources");
   }
-  openPrince() {
-    const requirements = this.service.princeRequirements();
-    const options = requirements.map((item, index) => this.option(`requirement:${index}`, `${item.met ? "READY" : "NEEDED"} · ${item.text}`, "View your contacts and assets for the next step", () => this.openAccounts()));
-    return this.open(this.service.state.prince ? "Prince of the city" : "The city compact", "Meet the Sire at your refuge to claim the title once all requirements are met. Citywide hunting access is the reward.", options);
-  }
+  openPrince() { return this.openDomain("tonight"); }
   openContact(id) {
     if (!this.available()) return false;
     const def = contactById(id);
@@ -271,11 +268,10 @@ export class VampireRuntime {
     const person = this.service.contact(id);
     const options = this.service.state.job
       ? [this.option("work:active", "Current errand", "Finish or abandon it before accepting another", () => this.openDomain("errand"))]
-      : [this.option(`work:${id}`, "Accept a supply delivery", `$${def.reward} · earns trust · repayments deducted`, () => this.acceptDelivery(id))];
+      : [this.option(`work:${id}`, this.service.deliveryOffer(id).title || "Accept a supply delivery", `$${def.reward} · earns trust · repayments deducted`, () => this.acceptDelivery(id))];
     if (["sire", "mara"].includes(id)) options.push(this.option(`blood:${id}`, "Buy one blood bag", `$${this.service.trust(id) >= 40 ? 60 : R.bagPrice} · Hunger -35`, () => this.outcome(this.service.buyBlood(id))));
     if (id === "sire") {
       options.push(this.option("sire:advance", "Ask for blood and startup cash", "2 bags + $150 · owe $200", () => this.outcome(this.service.borrow())));
-      options.push(this.option("sire:prince", "Claim the title of Prince", "3 controlled businesses · 3 supporters · debts settled · $1200", () => this.outcome(this.service.claimPrince())));
       options.push(this.option("sire:recover", "Recover at the refuge", "Spend 1 blood bag · Vitality +45 · lose the police first", () => this.refugeRecovery()));
     } else {
       const agreement = this.service.agreement(id);
@@ -284,7 +280,6 @@ export class VampireRuntime {
         () => this.service.agreement(id).active ? this.openDomain("contacts", `contact:${id}`) : this.outcome(this.service.grantAccess(id))), disabled: !agreement.active && !agreement.available });
       const asset = VAMPIRE_ASSETS.find(value => value.contactId === id);
       if (asset) options.push(this.option(`business:${asset.id}`, "Business and investment", asset.name, () => this.openBusiness(asset.id)));
-      options.push(this.option(`support:${id}`, "Ask for support as Prince", "Trust 40 · control the business · no debt", () => this.outcome(this.service.endorse(id))));
     }
     if (person.debt) options.push(this.option(`repay:${id}`, "Repay outstanding debt", `$${person.debt}`, () => this.outcome(this.service.repay(id))));
     if (person.suspended || VAMPIRE_DONORS.some(d => d.contactId === id && this.service.state.donors[d.id].refused)) options.push(this.option(`repair:${id}`, "Repair the agreement", `$${R.repairCost} · a successful delivery also repairs it`, () => this.outcome(this.service.repair(id))));
@@ -293,7 +288,7 @@ export class VampireRuntime {
   openBusiness(id) {
     const def = assetById(id), asset = this.service.state.assets[id];
     const options = [];
-    if (asset.level < 2) options.push(this.option(`invest:${id}`, asset.level ? "Buy control of this business" : "Invest in this business", `$${asset.level ? Math.round(def.price * 0.75) : def.price} · trust 15 · includes our hunting agreement: discreet, no deaths`, () => this.outcome(this.service.invest(id))));
+    if (asset.level < 2) options.push(this.option(`invest:${id}`, asset.level ? "Buy control of this business" : "Invest in this business", `$${asset.level ? Math.round(def.price * 0.75) : def.price} · ${demoInvestmentBlocker(this.service, id) || "trust 15"} · includes our hunting agreement: discreet, no deaths`, () => this.outcome(this.service.invest(id))));
     if (asset.level) options.push(this.option(`withdraw:${id}`, "Collect blood reserves", `${asset.reserve} ready · pouch capacity 4`, () => this.outcome(this.service.withdrawBlood(id))));
     if (asset.level >= 2) {
       options.push(this.option(`policy:${id}:discreet`, "Reserve capacity for your network", "Full blood production · normal income", () => this.outcome(this.service.setPolicy(id, "discreet"))));
@@ -349,7 +344,7 @@ export class VampireRuntime {
     this.destinationLabel?.setText?.(`◆ ${target.label}`);
     this.destinationLabel?.setPosition?.(target.x, target.y - 42);
     this.destinationLabel?.setVisible?.(visible && targetNear && this.scene.currentLayer === LAYERS.STREET && !this.scene.interactionSystem?.isOpen);
-    const stage = powerStage(this.service.state);
+    const stage = demoStage(this.service.state);
     if (this.scene.registry?.get?.("vampireStage") !== stage) this.scene.registry?.set?.("vampireStage", stage);
     if (this.scene.registry?.get?.("vampireFrenzy") !== this.frenzy.active) this.scene.registry?.set?.("vampireFrenzy", this.frenzy.active);
     const exhausted = this.frenzy.exhausted() || this.frenzy.hunger() >= 100;

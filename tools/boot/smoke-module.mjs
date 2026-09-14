@@ -93,6 +93,12 @@ for (const entry of ['index.html','phaser/index.html']) {
         assert.equal(win.document.querySelector('.vb-choices'),null);
         assert.equal(win.document.querySelectorAll('.vb-domain-tab small').length,0);
         assert.doesNotMatch(win.document.querySelector('.nb-book').textContent,/WORLD PAUSED|NO TIME LOST|active play|sets your arrow/i);
+        assert.doesNotMatch(win.document.querySelector('.nb-book').textContent,/Prince|city compact|Backing your claim/i);
+        if(chapter==='tonight' || chapter==='ledger') {
+          assert.ok(win.document.querySelector('.nb-demo-goal'),'compiled first-business goal is present');
+          assert.equal(ui.store.getSnapshot().domain.demo.price,600);
+          assert.equal(ui.store.getSnapshot().domain.demo.jobsRequired,3);
+        }
         if(chapter==='city') {
           const layers=[...win.document.querySelectorAll('.vb-map-tools button')].map(node=>node.textContent);
           assert.deepEqual(layers,['Hunting','Authorities']);

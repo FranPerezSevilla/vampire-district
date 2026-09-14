@@ -29,7 +29,7 @@ test("old saves gain a vampire network without losing cash, rights, vehicles or 
   assert.equal(Object.keys(state.vampire.contacts).length, 4);
 });
 
-test("a broke newcomer can earn every step to Prince using normal agreements and deliveries", () => {
+test("retained internal late-game services still round-trip after the demo stake prerequisite", () => {
   const c = campaign(), v = c.vampire;
   assert.equal(c.wallet.balance(), 0);
   v.meet("sire");
@@ -43,6 +43,7 @@ test("a broke newcomer can earn every step to Prince using normal agreements and
   for (const def of VAMPIRE_ASSETS) {
     v.meet(def.contactId);
     delivery(v, def.contactId);
+    if (def.id === "club") while (v.contact("vesper").jobs < 3) delivery(v, "vesper");
     for (let level = 0; level < 2; level++) {
       const cost = level ? Math.round(def.price * .75) : def.price;
       let attempts = 0;

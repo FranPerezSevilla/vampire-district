@@ -7,8 +7,8 @@ export const VAMPIRE_RULES = Object.freeze({
 });
 
 export const VAMPIRE_CONTACTS = Object.freeze([
-  { id: "sire", nature: "vampire", name: "The Sire", role: "Patron", buildingId: "refugeTower", factionId: "first_estate", districtId: "old-quarter", greeting: "Start by carrying supplies. Earn access, invest in the city, and one night others will depend on you.", pickup: "hospital", delivery: "club", reward: 180 },
-  { id: "vesper", nature: "vampire", name: "Vesper Vale", role: "First Estate · hunting steward", buildingId: "club", factionId: "first_estate", districtId: "old-quarter", greeting: "My guests must survive. Keep your feeding discreet and I can open doors for you.", pickup: "hospital", delivery: "saintOrisonHotel", reward: 230 },
+  { id: "sire", nature: "vampire", name: "The Sire", role: "Patron", buildingId: "refugeTower", factionId: "first_estate", districtId: "old-quarter", greeting: "Start with a delivery. Settle what you owe me and I will introduce you to Vesper. Earn a stake in her club; give yourself something to survive for.", pickup: "hospital", delivery: "club", reward: 180 },
+  { id: "vesper", nature: "vampire", name: "Vesper Vale", role: "First Estate · hunting steward", buildingId: "club", factionId: "first_estate", districtId: "old-quarter", greeting: "My guests must survive. Deliver three favours and bring $600; I will sell you a stake in the club. Keep your feeding discreet.", pickup: "hospital", delivery: "saintOrisonHotel", reward: 230 },
   { id: "rook", nature: "vampire", name: "Rook Mercer", role: "Gutter Crown · territorial broker", buildingId: "warehouse", factionId: "gutter_crown", districtId: "canal-west", greeting: "Move our supplies, keep your word, and you can buy into our depot.", pickup: "marketBlock", delivery: "warehouse", reward: 250 },
   { id: "mara", nature: "vampire", affiliation: "independent", name: "Mara Voss", role: "Independent House · blood supplier", buildingId: "hospital", factionId: null, districtId: "hospital-district", greeting: "Blood is supply, access and bargaining power. Buy a bag today; own the supply tomorrow.", pickup: "warehouse", delivery: "hospital", reward: 270 }
 ]);
@@ -36,8 +36,8 @@ export const CONTACT_INTRODUCTIONS = Object.freeze({
 });
 
 export const CONTACT_BENEFITS = Object.freeze({
-  sire: "Startup blood and cash on credit, paid work, refuge recovery and the city compact.",
-  vesper: "Iris joins your permitted herd at trust 15. Old Quarter hunting access and the club business.",
+  sire: "Startup blood and cash on credit, paid work, refuge recovery and an introduction to Vesper.",
+  vesper: "Iris joins your permitted herd at trust 15. Hunting agreements; a club stake after three errands and $600.",
   rook: "Canal West hunting access, a second refuge and a depot that stores blood and earns income.",
   mara: "Eli joins your permitted herd at trust 15. Blood purchases, hospital hunting access and supply production."
 });

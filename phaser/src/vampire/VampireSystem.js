@@ -1,5 +1,6 @@
 import { VAMPIRE_ASSETS, VAMPIRE_CONTACTS, VAMPIRE_DONORS, VAMPIRE_RULES as R, CONTACT_INTRODUCTIONS, assetById, contactById, donorById, powerStage, knownDestination } from "./VampireCatalog.js";
 
+import { deliveryOffer, activeDelivery, demoInvestmentBlocker, demoChapter, firstBusiness } from "./DemoChapter.js";
 import { AGREEMENT_TERMS, personalHuntingRight, rightMatches } from "../factions/HuntingLawModel.js";
 
 // All transactions run through the existing campaign authorities. This service
@@ -73,7 +74,7 @@ export class VampireSystem {
     if (!def || !person) return "Unknown contact";
     if (person.suspended) return `${def.name}: ${person.reason} Repair our agreement for $${R.repairCost}, or complete a delivery for me.`;
     const debt = person.debt ? ` You owe $${person.debt}; delivery earnings repay it first.` : " No outstanding debt.";
-    const support = person.endorsed ? " You have my support for Prince." : this.trust(id) >= R.endorsementTrust ? " You have earned my trust." : " Keep your word and our relationship will grow.";
+    const support = this.trust(id) >= R.endorsementTrust ? " You have earned my trust." : " Keep your word and our relationship will grow.";
     return `${def.name} · Trust ${this.trust(id)}:${debt}${support}`;
   }
   borrow() {
@@ -100,22 +101,24 @@ export class VampireSystem {
     return this.notify(`${contactById(id).name}: Your debt is settled. We can do business again.`);
   }
   acceptDelivery(id) {
-    const person = this.contact(id), def = contactById(id);
+    const person = this.contact(id), def = this.deliveryOffer(id);
     if (this.state.job) return this.reject("Finish or abandon the current delivery before accepting another.");
     if (!person?.met || !def || !this.contactAccess(id).available) return this.reject("Meet this contact first.");
-    this.state.job = { issuer: id, stage: "accepted", sequence: ++this.state.sequence };
+    this.state.job = { issuer: id, stage: "accepted", sequence: ++this.state.sequence, ...(def.routeId ? { routeId: def.routeId } : {}) };
     this.state.guide = "delivery";
-    return this.notify(`${def.name}: Collect at ${this.siteLabel(def.pickup)}, then deliver to ${this.siteLabel(def.delivery)}. Payment $${def.reward}; debt is deducted first. Keep the cargo intact.`);
+    return this.notify(`${def.name}: ${def.title ? def.title + ". " : ""}Collect at ${this.siteLabel(def.pickup)}, then deliver to ${this.siteLabel(def.delivery)}. Payment $${def.reward}; debt is deducted first. Keep the cargo intact.`);
   }
   siteLabel(id) {
     return ({ hospital: "the hospital", club: "the club", warehouse: "the canal warehouse", marketBlock: "West Market", saintOrisonHotel: "Saint Orison Hotel" })[id] || id;
   }
+  deliveryOffer(id) { return deliveryOffer(id, this.contact(id)?.jobs || 0); }
+  activeDelivery() { return activeDelivery(this.state.job); }
   deliverySite() {
-    const job = this.state.job, def = contactById(job?.issuer);
+    const job = this.state.job, def = this.activeDelivery();
     return def ? (job.stage === "accepted" ? def.pickup : def.delivery) : null;
   }
   handoff(buildingId) {
-    const job = this.state.job, def = contactById(job?.issuer);
+    const job = this.state.job, def = this.activeDelivery();
     if (!job || !def || this.deliverySite() !== buildingId) return this.reject("This is not the agreed handoff location.");
     if (job.stage === "accepted") {
       job.stage = "collected";
@@ -130,7 +133,8 @@ export class VampireSystem {
     if (def.reward > repaid) this.wallet.credit(def.reward - repaid, { source: "vampire_delivery", reason: `Delivery for ${def.name}`, referenceId: String(job.sequence) });
     this.changeTrust(def.id, 15);
     this.restoreAgreement(def.id);
-    return this.notify(`${def.name}: Delivered. $${def.reward - repaid} paid${repaid ? `; $${repaid} debt repaid` : ""}. Trust ${this.trust(def.id)}. ${person.jobs === 1 ? "We can agree on hunting and discuss your stake in the business." : "Our agreement stands."}`);
+    this.state.guide = demoChapter(this).next.target;
+    return this.notify(`${def.name}: Delivered. $${def.reward - repaid} paid${repaid ? `; $${repaid} debt repaid` : ""}. Trust ${this.trust(def.id)}. ${def.id === "vesper" && person.jobs < 3 ? `${person.jobs}/3 favours delivered. Finish all three and bring $600 for your stake.` : def.id === "vesper" && !this.state.assets.club.level ? "You have earned a place. Bring $600 to buy your stake in the club." : def.id === "sire" ? "Settle what you owe and Vesper will receive you." : "Our agreement stands."}`);
   }
   abandonDelivery({ death = false } = {}) {
     const job = this.state.job;
@@ -278,6 +282,9 @@ export class VampireSystem {
   invest(id) {
     const def = assetById(id), asset = this.state.assets[id], person = this.contact(def?.contactId);
     if (!def || !asset || !person?.met) return this.reject("Meet the operator first.");
+    const chapterBlocker = demoInvestmentBlocker(this, id);
+    if (chapterBlocker) return this.reject(chapterBlocker);
+    const hadBusiness = Boolean(firstBusiness(this.state));
     if (person.suspended || person.debt || this.trust(def.contactId) < R.investmentTrust) return this.reject("Investment requires trust 15, an intact agreement and no debt to the operator.");
     if (asset.level >= 2) return this.reject("You already control this business.");
     const agreement = this.agreement(def.contactId);
@@ -291,6 +298,10 @@ export class VampireSystem {
       if (!refuges.includes("canal_depot_refuge")) refuges.push("canal_depot_refuge");
     }
     this.grantAccess(def.contactId);
+    if (!hadBusiness) {
+      this.state.guide = `asset:${id}`;
+      return { ...this.notify(`A FOOTHOLD · Your name is on the books at ${def.name}. A share of the takings is yours.`), demoComplete: true };
+    }
     return this.notify(`${def.name}: ${asset.level === 2 ? "You now control the operation. Its staff manage routine supply." : "Investment accepted. Income and blood reserves accumulate while you play."} ${def.description}`);
   }
   withdrawBlood(id) {
