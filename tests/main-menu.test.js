@@ -132,10 +132,10 @@ test("NEW NIGHT hands control to the same running world without blackout or rest
 });
 
 test("menu exposes the approved semantic navigation surface", () => {
-  for (const action of ["continue", "new-night", "options", "credits"]) {
+  for (const action of ["new-night", "options", "credits"]) {
     assert.match(indexHtml, new RegExp(`data-title-action="${action}"`));
   }
   assert.match(titleController, /dataset\.titleAction = "controls"/);
   assert.match(titleController, /openControls\(\)/);
-  assert.match(indexHtml, /data-title-action="continue"[^>]*disabled/);
+  assert.doesNotMatch(indexHtml, /data-title-action="continue"/);
 });

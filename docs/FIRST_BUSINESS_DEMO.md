@@ -6,6 +6,12 @@ your first stake in a business. No player-facing Prince claim or endorsement.
 Target: roughly 20–35 minutes for a new player. This is a pacing hypothesis, not
 a measured average, and there is no minimum-time gate or forced waiting.
 
+## Session policy (2026-09-14)
+Each demo entry now starts fresh without reading/writing saved progress. Earlier
+old-save compatibility checks below describe the retained framework only, not the
+public boot. Menus/death/Keep playing preserve the current run. See
+`SESSION_ONLY_DEMO.md`. Asset caching and browser settings are unchanged.
+
 ## In scope / authority
 VampireSystem remains the single owner of jobs, cash, trust and purchases. A pure
 DemoChapter projection reads those records; no extra quest/save/input owner or

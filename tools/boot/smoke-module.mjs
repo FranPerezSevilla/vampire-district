@@ -7,6 +7,8 @@ import { JSDOM } from 'jsdom';
 import { EventEmitter } from 'node:events';
 import { resolve } from 'node:path';
 import { projectRoot } from './assets.mjs';
+import { createCampaignState } from '../../phaser/src/campaign/CampaignState.js';
+import { CAMPAIGN_STORAGE_KEY, LEGACY_CAMPAIGN_STORAGE_KEYS } from '../../phaser/src/campaign/constants.js';
 
 if (!vm.SourceTextModule) {
   const result=spawnSync(process.execPath,['--experimental-vm-modules',...process.argv.slice(1)],{stdio:'inherit',timeout:30000});
@@ -25,6 +27,11 @@ const code=await readFile(resolve(projectRoot,'dist',jsPath),'utf8');
 for (const entry of ['index.html','phaser/index.html']) {
   const dom=new JSDOM(await readFile(resolve(projectRoot,'dist',entry),'utf8'),{url:`https://example.test/vampire-district/${entry}`,runScripts:'outside-only'});
   const win=dom.window, scripts=[], pending=[], observers=[], errors=[]; let configuration,requests=0;
+  const previousRun=createCampaignState({now:1000});
+  previousRun.player.cash=9000; previousRun.vampire.assets.club.level=2;
+  previousRun.vampire.contacts.vesper.met=true; previousRun.vampire.contacts.vesper.jobs=10;
+  const oldSave=JSON.stringify(previousRun), saveKeys=[CAMPAIGN_STORAGE_KEY,...LEGACY_CAMPAIGN_STORAGE_KEYS];
+  for (const key of saveKeys) win.localStorage.setItem(key,oldSave);
   const Observer=win.MutationObserver;
   win.MutationObserver=class extends Observer {constructor(fn){super(fn);observers.push(this);}};
   win.addEventListener('error',event=>errors.push(event.error));
@@ -52,6 +59,18 @@ for (const entry of ['index.html','phaser/index.html']) {
     assert.equal(configuration.scene.length,4);
     assert.equal(typeof win.NBD_INTERFACE_VIEW?.mount,'function');
     assert.equal(requests,0);
+    assert.equal(win.document.querySelector('[data-title-action="continue"]'),null);
+    const fresh=win.NBD_CAMPAIGN_SYSTEM;
+    assert.equal(win.NBD_BOOT_PROFILE.persistentCampaign,false);
+    assert.equal(fresh.autoSave,false); assert.equal(fresh.storage.available(),false);
+    assert.equal(fresh.wallet.balance(),0);
+    assert.equal(fresh.vampire.state.assets.club.level,0);
+    assert.equal(fresh.vampire.state.contacts.vesper.met,false);
+    assert.equal(fresh.vampire.state.job,null);
+    fresh.wallet.credit(123); fresh.save();
+    assert.equal(fresh.wallet.balance(),123,'live session keeps its own progress');
+    for (const key of saveKeys) assert.equal(win.localStorage.getItem(key),oldSave);
+    fresh.reset({persist:false});
     assert.equal(win.NBD_MAIN_MENU_THEME.audio.src,'https://example.test/vampire-district/phaser/assets/audio/music/main-menu-theme-01.mp3');
     // Continue beyond Game construction: this boundary previously missed a
     // helper named game() being overwritten by real Phaser Scene injection.
