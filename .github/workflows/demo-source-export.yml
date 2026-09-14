@@ -1,0 +1,22 @@
+name: Export pinned demo workspace
+on:
+  push:
+    branches: [codex/demo-source-export]
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 30b23ccd2e414e22e42dcc8ab716bab5e17dfbe2
+          fetch-depth: 0
+          persist-credentials: false
+      - run: git bundle create demo-source.bundle --all
+      - uses: actions/upload-artifact@v4
+        with:
+          name: demo-source
+          path: demo-source.bundle
+          retention-days: 2
