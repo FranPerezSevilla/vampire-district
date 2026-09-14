@@ -62,10 +62,10 @@ test("legacy registered mission records and checkpoints are pruned", () => {
   assert.equal(campaign.state.checkpoints.latest, null);
 });
 
-test("normal boot is persistent street free roam without entry or tutorial", () => {
+test("normal demo boot is session-only street free roam without entry or tutorial", () => {
   const normal = createBootProfile("");
   assert.equal(normal.mode, "normal");
-  assert.equal(normal.persistentCampaign, true);
+  assert.equal(normal.persistentCampaign, false);
   assert.equal(normal.showCampaignEntry, false);
   assert.equal(normal.autoStartOpeningMission, false);
   assert.equal(normal.skipTutorial, true);

@@ -2,12 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { BOOT_MODES, createBootProfile } from "../phaser/src/boot/BootProfile.js";
 
-test("normal boot keeps persistence but enters missionless street free roam", () => {
+test("normal demo boot starts fresh without campaign persistence", () => {
   const profile = createBootProfile("");
   assert.equal(profile.mode, BOOT_MODES.NORMAL);
-  assert.equal(profile.persistentCampaign, true);
-  assert.equal(profile.autoLoadCampaign, true);
-  assert.equal(profile.autoSaveCampaign, true);
+  assert.equal(profile.persistentCampaign, false);
+  assert.equal(profile.autoLoadCampaign, false);
+  assert.equal(profile.autoSaveCampaign, false);
   assert.equal(profile.autoStartOpeningMission, false);
   assert.equal(profile.showCampaignEntry, false);
   assert.equal(profile.skipTutorial, true);

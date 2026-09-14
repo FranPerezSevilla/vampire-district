@@ -91,7 +91,7 @@ async function waitForFreeRoam(page) {
 
 test.describe.configure({ timeout: 75_000 });
 
-test("normal boot retires legacy missions and opens persistent street free roam", async ({ page }) => {
+test("normal demo boot ignores legacy progress and opens fresh street free roam", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.addInitScript(({ key, state }) => {
@@ -99,7 +99,7 @@ test("normal boot retires legacy missions and opens persistent street free roam"
   }, { key: LEGACY_STORAGE_KEY, state: legacyMissionState() });
 
   // Browser automation bypasses the production audio-gesture title gate while
-  // preserving the normal persistent campaign boot profile under test.
+  // preserving the normal session-only campaign boot profile under test.
   await page.goto("/?rcTest=1", { waitUntil: "domcontentloaded" });
   await waitForFreeRoam(page);
 
@@ -120,7 +120,7 @@ test("normal boot retires legacy missions and opens persistent street free roam"
       completed: campaign.state.missions.completed,
       failed: campaign.state.missions.failed,
       cash: campaign.wallet.balance,
-      storedMissions: stored.missions,
+      stored,
       legacyStored,
       currentLayer: scene.currentLayer,
       player: { x: scene.player.x, y: scene.player.y },
@@ -138,7 +138,7 @@ test("normal boot retires legacy missions and opens persistent street free roam"
   }, { storageKey: STORAGE_KEY, legacyStorageKey: LEGACY_STORAGE_KEY });
 
   expect(result.boot.mode).toBe("normal");
-  expect(result.boot.persistentCampaign).toBe(true);
+  expect(result.boot.persistentCampaign).toBe(false);
   expect(result.boot.showCampaignEntry).toBe(false);
   expect(result.boot.skipTutorial).toBe(true);
   expect(result.definitions).toEqual([]);
@@ -146,10 +146,9 @@ test("normal boot retires legacy missions and opens persistent street free roam"
   expect(result.missionRecords).toEqual({});
   expect(result.completed).toEqual([]);
   expect(result.failed).toEqual([]);
-  expect(result.cash).toBe(321);
-  expect(result.storedMissions.activeMissionId).toBeNull();
-  expect(result.storedMissions.records).toEqual({});
-  expect(result.legacyStored).toBeNull();
+  expect(result.cash).toBe(0);
+  expect(result.stored).toBeNull();
+  expect(JSON.parse(result.legacyStored)).toEqual(legacyMissionState());
   expect(result.currentLayer).toBe(0);
   expect(result.player).toEqual({ x: 1540, y: 1515 });
   expect(result.taskText).toContain("No active contract");
