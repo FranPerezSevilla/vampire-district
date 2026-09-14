@@ -12,8 +12,14 @@ import { ALL_PEOPLE, peopleFiles, matchingPeople, personIdentity, identityAttrib
 function ChapterHeading({ number, title, stamp }) {
   return <header className="nb-chapter-heading"><div><span className="vb-eyebrow">{number}</span><h2>{title}</h2></div>{stamp && <span className="nb-stamp">{stamp}</span>}</header>;
 }
+function DemoGoal({ model, command }) {
+  const demo = model.demo;
+  if (!demo) return null;
+  return <aside className="nb-supply-note nb-demo-goal" aria-label="First business goal"><div><span className="vb-eyebrow">A FOOTHOLD</span><h3>{demo.completed ? "Your name is on the door." : "A stake in the club"}</h3><p>{demo.completed ? demo.assetName : `Vesper's favours ${demo.jobs}/${demo.jobsRequired} · ${money(model.cash)} / ${money(demo.price)}`}</p></div><Button onClick={() => command("tab", { tab: "ledger", target: `asset:${demo.ownedId || demo.assetId}` })}>{demo.completed ? "Your business" : "The offer"}</Button></aside>;
+}
 function Errand({ model, command, confirmation }) {
   const job = model.errand;
+  if (!job && model.demo?.completed) return <article className="nb-paper nb-task nb-demo-ending"><TapeLabel>A FOOTHOLD</TapeLabel><h3>Your first business.</h3><p className="nb-briefing">You started with nothing. Now part of this city earns for you.</p><p>{model.demo.assetName}. Your stake is yours to keep.</p><p>The first chapter is complete. The streets are still open.</p><div className="vb-actions"><Button primary onClick={() => command("close")}>Keep playing</Button><Button onClick={() => command("tab", {tab:"ledger",target:`asset:${model.demo.ownedId}`})}>Your business</Button></div></article>;
   if (!job) return <article className="nb-paper nb-task vb-errand">
     <TapeLabel>UNFINISHED BUSINESS</TapeLabel><span className="vb-eyebrow">No outstanding errand</span>
     <h3>{model.next.text}</h3><p className="nb-briefing">{model.next.why}</p>
@@ -21,8 +27,8 @@ function Errand({ model, command, confirmation }) {
     <div className="nb-task-foot"><Button onClick={() => command("tab", { tab: "network" })}>Contacts</Button></div>
   </article>;
   return <article className="nb-paper nb-task vb-errand">
-    <TapeLabel>YOUR WORD</TapeLabel><span className="vb-eyebrow">FROM {job.issuer}</span>
-    <h3>{job.current.title}</h3><p className="nb-briefing">{job.current.description}</p>
+    <TapeLabel>YOUR WORD</TapeLabel><span className="vb-eyebrow">FROM {job.issuer} · {job.title}</span>
+    <h3>{job.current.title}</h3><p className="nb-briefing">{job.current.description}</p>{job.briefing && <p>{job.briefing}</p>}
     <ol className="vb-errand-steps">{job.steps.map((step, i) => <li key={step.target} data-state={step.state}><span className="vb-step-number">{step.state === "done" ? "✓" : `0${i + 1}`}</span><span><small>{step.state === "current" ? "NEXT" : step.state === "done" ? "DONE" : "THEN"}</small><strong>{step.title}</strong></span></li>)}</ol>
     <div className="nb-payment"><Metric label="Your cut" value={money(job.cash)}/><Metric label="Trust" value={`+${job.trust}`}/>{job.repaid > 0 && <Metric label="Debt repaid" value={money(job.repaid)}/>}</div>
     <Locations command={command} target="delivery"/>
@@ -33,7 +39,7 @@ function Errand({ model, command, confirmation }) {
 function Tonight({ model, snapshot, command }) {
   const summary = bookSummary(model);
   return <section className="vb-section nb-tonight">
-    <ChapterHeading number="01" title="Tonight"/>
+    <ChapterHeading number="01" title="Tonight"/><DemoGoal model={model} command={command}/>
     <div className="nb-tonight-grid"><Errand model={model} command={command} confirmation={snapshot.confirmation}/>
       <aside className="nb-night-margin">
         <div className={`nb-condition ${model.hunger >= 85 ? "urgent" : ""}`}><div className="nb-condition-head"><Icon name="blood"/><span className="vb-eyebrow">THE BEAST</span></div><div className="nb-big-number">{model.hunger}<small>/ 100 hunger</small></div><Meter label="Tonight hunger" value={model.hunger} danger={model.hunger >= 85}/>{model.hunger >= 50 && <p>{model.hunger >= 85 ? "The Beast is close. At 100, you lose control." : "The hunger is growing."}</p>}<strong>{model.bags ? `${model.bags} ${model.bags === 1 ? "bag" : "bags"} on hand` : summary.ready.length ? `${summary.ready.length} donor ${summary.ready.length === 1 ? "is" : "are"} ready` : "No blood on hand. No donor ready."}</strong><Button icon="blood" onClick={() => command("tab", { tab: "feeding" })}>Find blood</Button></div>
@@ -104,19 +110,13 @@ function Feeding({ model, snapshot, selection, command }) {
     <details className="nb-fine-print"><summary>Mending</summary><p>+30 vitality, +12 hunger. No bag consumed.</p><Button disabled={model.vitality >= 100 || snapshot.frenzy || snapshot.exhausted} onClick={() => command("mend")}>Mend</Button></details>
   </section>;
 }
-function Power({ model, command }) {
-  const completed = model.requirements.filter(r => r.met).length;
-  return <section className="vb-power"><div className="nb-power-heading"><NightSeal/><div><span className="vb-eyebrow">STANDING</span><h3>{model.stage}</h3></div></div><div className="vb-power-path">{["Survivor", "Connected", "Investor", "Power broker", "Prince of the city"].map(stage => <span key={stage} data-current={model.stage === stage}>{stage}</span>)}</div><div className="nb-file-columns"><article><h4>Unfinished business</h4><p>{model.next.text}</p><p>{model.next.why}</p><Button onClick={() => command("tab", recommendationFile(model.next.target))}>Open file</Button></article><article><h4>The city compact</h4><p>{completed} / {model.requirements.length} conditions met</p><Meter value={completed} max={model.requirements.length || 1} label="City compact requirements"/><Requirements items={model.requirements}/><Button onClick={() => command("tab", { tab: "network", target: "contact:sire" })}>The Sire</Button></article></div></section>;
-}
 function Ledger({ model, snapshot, selection, command }) {
-  const [powerOpen, setPowerOpen] = useState(snapshot.chapterFocus === "power"), selected = useRef(null);
-  useEffect(() => { if (snapshot.chapterFocus === "power") setPowerOpen(true); }, [snapshot.chapterFocus]);
+  const selected = useRef(null);
   useEffect(() => { selected.current?.scrollIntoView?.({ block: "nearest", behavior: "auto" }); }, [selection]);
-  return <section className="vb-section nb-ledger"><ChapterHeading number="05" title="Accounts"/><div className="nb-accounts"><Metric label="Cash" value={money(model.cash)}/><Metric label={`Income / ${RULES.businessPeriod}s`} value={money(model.income)}/><Metric label="Debt" value={money(model.debt)}/>{model.assets.some(a=>a.suspended) && <span>Suspended agreements earn nothing.</span>}</div>
+  return <section className="vb-section nb-ledger"><ChapterHeading number="05" title="Accounts"/><DemoGoal model={model} command={command}/><div className="nb-accounts"><Metric label="Cash" value={money(model.cash)}/><Metric label={`Income / ${RULES.businessPeriod}s`} value={money(model.income)}/><Metric label="Debt" value={money(model.debt)}/>{model.assets.some(a=>a.suspended) && <span>Suspended agreements earn nothing.</span>}</div>
     {model.contacts.some(p=>p.debt>0) && <div className="nb-debts"><h3>Debts</h3>{model.contacts.filter(p=>p.debt>0).map(p=><button type="button" key={p.id} onClick={()=>command("tab",{tab:"network",target:`contact:${p.id}`})}><span>{p.name}</span><strong>{money(p.debt)}</strong><span aria-hidden="true">↗</span></button>)}</div>}
     <div className="nb-subheading"><div><h3>Holdings</h3></div></div>
     <div className="nb-receipt-grid">{model.assets.map((asset,i) => <article key={asset.id} ref={selection === `asset:${asset.id}` ? selected : null} className="nb-receipt" data-selected={selection === `asset:${asset.id}`}><div className="nb-receipt-number">ACCOUNT 0{i+1}<span>{asset.suspended ? "SUSPENDED" : ["NOT OWNED", "INVESTOR", "YOUR OPERATION"][asset.level]}</span></div><span className="vb-eyebrow">{districtName(model, asset.districtId)}</span><h3>{asset.name}</h3><p>{asset.description}</p><dl><div><dt>Income / {RULES.businessPeriod}s</dt><dd>{money(asset.income)}</dd></div><div><dt>Blood / {RULES.businessPeriod}s</dt><dd>{asset.production} bags</dd></div><div><dt>Stored on site</dt><dd>{asset.reserve} / 12 bags</dd></div></dl><p className="nb-receipt-rule">{asset.requirement}</p><button type="button" className="nb-operator" onClick={() => command("tab", { tab: "network", target: `contact:${asset.contactId}` })}><small>OPERATOR</small><strong>{asset.operator} ↗</strong></button><Locations command={command} target={`asset:${asset.id}`}/><small>{asset.policy} · terms agreed in person</small></article>)}</div>
-    <details className="nb-compact" open={powerOpen} onToggle={event => setPowerOpen(event.currentTarget.open)}><summary><span><small>THE LONG GAME</small><strong>Standing</strong></span><span>{model.stage} <b aria-hidden="true">+</b></span></summary><Power model={model} command={command}/></details>
     {model.notices.length>0 && <details className="nb-fine-print"><summary>Recent agreements</summary><div className="vb-history">{model.notices.map((n,i)=><p key={i}>{n.text}</p>)}</div></details>}
   </section>;
 }

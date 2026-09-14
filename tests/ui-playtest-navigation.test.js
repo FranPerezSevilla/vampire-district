@@ -122,10 +122,10 @@ test('Tonight has one next step and opening the book never replaces the destinat
   assert.match(document.querySelector('.nb-night-margin').textContent,/No blood on hand/);
   assert.equal(h.v.state.guide,guide); await press('KeyM'); assert.equal(h.ui.activeMode(),null); assert.equal(h.paused(),false);
 });
-test('old and new public names keep route IDs and the standing disclosure', async () => {
+test('old and new public names keep route IDs without advertising the long-game compact', async () => {
   for(const [alias,chapter] of [['overview','tonight'],['errand','tonight'],['map','city'],['contacts','network'],['herd','feeding'],['resources','ledger'],['power','ledger'],['blood','feeding'],['accounts','ledger']]) {
     await act(async()=>h.ui.openDomain(alias)); expectDomain(chapter);
-    if(alias==='power') assert.equal(document.querySelector('.nb-compact').open,true);
+    if(alias==='power') { assert.equal(document.querySelector('.nb-compact'),null); assert.ok(document.querySelector('.nb-demo-goal')); }
   }
   await press('Digit6'); expectDomain('ledger'); assert.equal(h.ui.bootError,null);
 });
@@ -338,4 +338,35 @@ test('City person previews and Blood donor cards share identity without colourin
   const identity=document.querySelector('.nb-map-file .nb-identity-line');assert.ok(identity);assert.equal(identity.dataset.faction,'independent');assert.equal(identity.dataset.nature,'vampire');
   await act(async()=>h.ui.command('select',{target:'asset:supply'}));assert.equal(document.querySelector('.nb-map-file .nb-identity-line'),null);
   await tab('Blood');assert.equal(document.querySelectorAll('.nb-donor-card .nb-nature').length,2);
+});
+
+test('Tonight retains the first-business goal alongside the current real errand', async () => {
+  await click(button('Black Book M'));
+  assert.match(document.querySelector('.nb-demo-goal').textContent,/A stake in the club.*0\/3.*\$600/);
+  assert.doesNotMatch(document.querySelector('.nb-book').textContent,/Prince|city compact|Backing your claim/);
+  await click(button('The offer')); expectDomain('ledger');
+  assert.match(document.querySelector('.nb-receipt[data-selected=true]').textContent,/Finish 3 errands.*0\/3/);
+  assert.equal(document.querySelector('.nb-compact'),null);
+  await press('Escape');
+  await act(async()=>{h.runtime.openContact('sire');h.ui.refresh(true);});
+  const option=h.scene.interactionSystem.menu.options.find(o=>o.id==='work:sire');
+  await act(async()=>{h.scene.interactionSystem.runOption(option);h.ui.refresh(true);});
+  expectDomain('tonight');assert.ok(document.querySelector('.nb-demo-goal'));assert.equal(document.querySelectorAll('.nb-task').length,1);
+});
+
+test('first investment completes through the real queued UI action and Keep playing returns control', async () => {
+  const work=id=>{assert.ok(h.v.acceptDelivery(id).ok);assert.ok(h.v.handoff(h.v.deliverySite()).ok);assert.ok(h.v.handoff(h.v.deliverySite()).ok);};
+  await act(async()=>{h.v.meet('sire');work('sire');h.v.meet('vesper');for(let i=0;i<3;i++)work('vesper');h.runtime.openBusiness('club');h.ui.refresh(true);});
+  const index=h.scene.interactionSystem.menu.options.findIndex(o=>o.id==='invest:club');
+  await click(document.querySelectorAll('.vb-choice')[index]);
+  assert.equal(h.v.state.assets.club.level,0,'no purchase while world paused');assert.ok(h.ui.pendingAction);
+  await act(async()=>{h.step();h.ui.refresh(true);});
+  assert.equal(h.v.state.assets.club.level,1);assert.equal(h.campaign.wallet.balance(),270);
+  expectDomain('tonight');assert.ok(document.querySelector('.nb-demo-ending'));
+  assert.match(document.querySelector('.nb-demo-ending').textContent,/first chapter is complete/);
+  assert.equal(h.v.state.notices.filter(n=>n.text.startsWith('A FOOTHOLD')).length,1);
+  await click(button('Keep playing'));assert.equal(h.paused(),false);assert.equal(h.ui.activeMode(),null);
+  await act(async()=>{h.step();h.v.tick(90);});assert.equal(h.campaign.wallet.balance(),355);
+  await click(button('Black Book M'));assert.ok(document.querySelector('.nb-demo-ending'));
+  assert.equal(h.v.state.notices.filter(n=>n.text.startsWith('A FOOTHOLD')).length,1,'inspecting the ending is not another reward');
 });

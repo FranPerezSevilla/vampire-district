@@ -1,6 +1,7 @@
 import { personalHuntingRight } from "../factions/HuntingLawModel.js";
 import { CITY_WORLD, districtZones } from "../data/district.js";
-import { VAMPIRE_CONTACTS, VAMPIRE_DONORS, VAMPIRE_ASSETS, CONTACT_BENEFITS, VAMPIRE_RULES as R, contactById, donorById, assetById, powerStage } from "./VampireCatalog.js";
+import { VAMPIRE_CONTACTS, VAMPIRE_DONORS, VAMPIRE_ASSETS, CONTACT_BENEFITS, VAMPIRE_RULES as R, contactById, donorById, assetById } from "./VampireCatalog.js";
+import { demoChapter, demoInvestmentBlocker, demoStage } from "./DemoChapter.js";
 import { directionTo } from "./VampireWorldSites.js";
 
 export function clampMapPoint(point) {
@@ -32,13 +33,13 @@ export function domainDestination(runtime, target) {
 export function errandModel(runtime) {
   const service = runtime.service, job = service.state.job;
   if (!job) return null;
-  const def = contactById(job.issuer), collected = job.stage === "collected";
+  const def = service.activeDelivery(), collected = job.stage === "collected";
   const repaid = Math.min(def.reward, service.contact(def.id).debt);
   const steps = [
     { title: "Collect the sealed supplies", description: `Collect the sealed supplies outside ${service.siteLabel(def.pickup)}.`, target: `site:${def.pickup}`, state: collected ? "done" : "current" },
     { title: "Deliver the cargo", description: `Deliver the sealed supplies outside ${service.siteLabel(def.delivery)}.`, target: `site:${def.delivery}`, state: collected ? "current" : "waiting" }
   ].map(step => ({ ...step, destination: domainDestination(runtime, step.target) }));
-  return { issuer: def.name, issuerId: def.id, collected, steps, current: steps[collected ? 1 : 0], reward: def.reward, repaid, cash: def.reward - repaid, trust: 15,
+  return { issuer: def.name, issuerId: def.id, title: def.title || "Supply delivery", briefing: def.briefing || "", collected, steps, current: steps[collected ? 1 : 0], reward: def.reward, repaid, cash: def.reward - repaid, trust: 15,
     summary: `${collected ? "2/2 · Deliver" : "1/2 · Collect"} · ${service.siteLabel(service.deliverySite())}`, cargo: collected ? "Sealed supplies carried" : "Cargo not collected yet" };
 }
 
@@ -67,7 +68,7 @@ export function buildDomainModel(runtime) {
       income: asset.level && !suspended ? Math.round(def.income * asset.level * (asset.policy === "open" ? 1.5 : 1)) : 0,
       production: asset.level && !suspended ? Math.max(0, def.bags + asset.level - 1 - (asset.policy === "open" ? 1 : 0)) : 0,
       nextCost: asset.level ? Math.round(def.price * .75) : def.price,
-      requirement: asset.level < 2 && !agreement.active && !agreement.available ? agreement.reason : !v.contactAccess(def.contactId).available ? `Earn an introduction to ${contactById(def.contactId).name}` : !person.met ? `Meet ${contactById(def.contactId).name}` : suspended ? "Repair the operator's agreement" : person.debt ? `Settle $${person.debt} debt to the operator` : v.trust(def.contactId) < 15 ? `Trust ${v.trust(def.contactId)}/15 · complete work for the operator` : asset.level < 2 ? `Bring $${asset.level ? Math.round(def.price * .75) : def.price} to the operator` : "Controlled · visit the operator to change policy or collect blood" };
+      requirement: demoInvestmentBlocker(v, def.id) || (asset.level < 2 && !agreement.active && !agreement.available ? agreement.reason : !v.contactAccess(def.contactId).available ? `Earn an introduction to ${contactById(def.contactId).name}` : !person.met ? `Meet ${contactById(def.contactId).name}` : suspended ? "Repair the operator's agreement" : person.debt ? `Settle $${person.debt} debt to the operator` : v.trust(def.contactId) < 15 ? `Trust ${v.trust(def.contactId)}/15 · complete work for the operator` : asset.level < 2 ? `Bring $${asset.level ? Math.round(def.price * .75) : def.price} to the operator` : "Controlled · visit the operator to change policy or collect blood") };
   });
   const districts = districtZones.map(zone => {
     const district = v.campaign.territory.district(zone.id);
@@ -85,23 +86,10 @@ export function buildDomainModel(runtime) {
         nextStep: broker?.agreement.reason || (broker ? `Speak to ${broker.name} to agree on terms.` : "No broker in your book covers this district.") } };
   });
   const errand = errandModel(runtime);
-  let next;
-  if (errand) {
-    next = { text: errand.current.title, target: "delivery", why: `${errand.issuer} · ${errand.summary}. ${errand.current.description}` };
-  } else {
-    const unmet = contacts.find(contact => !contact.met);
-    if (unmet) {
-      const rule = unmet.requirements.find(rule => !rule.met);
-      next = unmet.available ? { text: `Meet ${unmet.name}`, target: `contact:${unmet.id}`, why: unmet.benefits } : { text: rule.text, target: rule.target, why: `Earn an introduction to ${unmet.name}. ${unmet.benefits}` };
-    } else {
-      const asset = assets.find(asset => asset.level < 2);
-      const supporter = contacts.find(contact => contact.id !== "sire" && !contact.endorsed);
-      const debt = contacts.find(contact => contact.debt > 0);
-      next = asset ? { text: `Buy control: ${asset.name}`, target: `asset:${asset.id}`, why: asset.requirement } : supporter ? { text: `Secure ${supporter.name}'s support`, target: `contact:${supporter.id}`, why: `Trust ${supporter.trust}/40 · controlled business · intact agreement · no debt` } : debt ? { text: `Settle ${debt.name}'s debt`, target: `contact:${debt.id}`, why: `$${debt.debt} outstanding` } : { text: state.prince ? "Manage your city" : "Fund and claim the city compact", target: "contact:sire", why: state.prince ? "Maintain supply, agreements and the permitted herd." : `$${v.wallet.balance()}/${R.princeCost} · visit the Sire to claim Prince` };
-    }
-  }
-  return { stage: powerStage(state), cash: v.wallet.balance(), bags: state.bloodBags, hunger: Math.round(runtime.scene.feedingSystem.hunger), vitality: Math.round(runtime.scene.playerDamageSystem?.state?.vitality ?? 100),
-    contacts, herd, assets, districts, errand, next, prince: state.prince, requirements: v.princeRequirements(),
+  const demo = demoChapter(v);
+  const next = errand ? { text: errand.current.title, target: "delivery", why: `${errand.issuer} · ${errand.summary}. ${errand.current.description}` } : demo.next;
+  return { stage: demoStage(state), cash: v.wallet.balance(), bags: state.bloodBags, hunger: Math.round(runtime.scene.feedingSystem.hunger), vitality: Math.round(runtime.scene.playerDamageSystem?.state?.vitality ?? 100),
+    contacts, herd, assets, districts, errand, next, demo, prince: false, requirements: [],
     debt: contacts.reduce((sum, person) => sum + person.debt, 0), income: assets.reduce((sum, asset) => sum + asset.income, 0),
     markers: state.markers.map(marker => ({ ...marker, destination: destination(marker.id) })),
     guide: destination(state.guide), player: { x: runtime.scene.player.x, y: runtime.scene.player.y },

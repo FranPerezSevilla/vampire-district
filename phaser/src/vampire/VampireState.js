@@ -1,5 +1,7 @@
 import { VAMPIRE_ASSETS, VAMPIRE_CONTACTS, VAMPIRE_DONORS, VAMPIRE_RULES, knownDestination } from "./VampireCatalog.js";
 
+import { demoRoute } from "./DemoChapter.js";
+
 const record = value => value && typeof value === "object" && !Array.isArray(value) ? value : {};
 const num = (value, fallback = 0, max = Number.MAX_SAFE_INTEGER) => Number.isFinite(Number(value)) ? Math.max(0, Math.min(max, Number(value))) : fallback;
 const strings = values => Array.isArray(values) ? [...new Set(values.filter(value => typeof value === "string"))] : [];
@@ -30,7 +32,7 @@ export function sanitizeVampireState(candidate) {
   return {
     version: 2, started: Boolean(source.started), elapsed: num(source.elapsed), bloodBags: Math.floor(num(source.bloodBags, 0, VAMPIRE_RULES.carryCapacity)),
     contacts, assets, donors, prince: Boolean(source.prince), claimedAt: num(source.claimedAt), sequence: Math.floor(num(source.sequence)),
-    job: jobValid ? { issuer: job.issuer, stage: job.stage === "collected" ? "collected" : "accepted", sequence: Math.floor(num(job.sequence)) } : null,
+    job: jobValid ? { issuer: job.issuer, stage: job.stage === "collected" ? "collected" : "accepted", sequence: Math.floor(num(job.sequence)), ...(demoRoute(job.routeId, job.issuer) ? { routeId: job.routeId } : {}) } : null,
     processed: strings(source.processed).slice(-200), pending: strings(source.pending).slice(-100),
     guide, markers,
     notices: (Array.isArray(source.notices) ? source.notices : []).slice(-15).map(value => ({ text: String(value?.text || ""), at: num(value?.at) })),

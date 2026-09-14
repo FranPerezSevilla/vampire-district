@@ -24,7 +24,7 @@ export function bookSummary(model) {
 export function contactState(person) {
   if (person.suspended) return { label: 'Agreement suspended', tone: 'danger' };
   if (!person.met) return { label: person.available ? 'Ready to meet' : 'Introduction needed', tone: 'neutral' };
-  return { label: person.endorsed ? 'Backing your claim' : 'Known contact', tone: 'good' };
+  return { label: 'Known contact', tone: 'good' };
 }
 export function recommendationFile(target) {
   if (String(target).startsWith('contact:')) return { tab: 'network', target };

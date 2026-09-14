@@ -29,7 +29,7 @@ test('reception is not loyalty and a suspended deal is never presented as a usef
   assert.equal(contactState({met:true,trust:100,suspended:true}).label,'Agreement suspended');
   assert.equal(contactState({met:true,trust:100}).label,'Known contact');
   assert.equal(contactState({met:false,available:false}).label,'Introduction needed');
-  assert.equal(contactState({met:true,endorsed:true}).label,'Backing your claim');
+  assert.equal(contactState({met:true,endorsed:true}).label,'Known contact');
 });
 test('file references keep their actual IDs and distance requires a valid destination',()=>{
   assert.deepEqual(recommendationFile('donor:donor_iris'),{tab:'feeding',target:'donor:donor_iris'});
