@@ -1,6 +1,6 @@
 name: Repair approved intro shot 01
 
-# retry after all upload chunks are present
+# retry 3 after restoring the complete first base64 chunk
 on:
   push:
     branches:
