@@ -1,5 +1,6 @@
 name: Repair approved intro shot 01
 
+# retry after all upload chunks are present
 on:
   push:
     branches:
