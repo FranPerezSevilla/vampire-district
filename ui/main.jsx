@@ -9,6 +9,7 @@ import "./interface.css";
 import "./copy-portraits.css";
 import "./contact-identity.css";
 import "./hud.css";
+import "./hud-reset.css";
 
 function Ledger({ model }) {
   if (!model?.ready) return <Empty title="No incident file">Try again in a moment.</Empty>;
