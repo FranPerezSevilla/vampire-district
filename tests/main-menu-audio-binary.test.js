@@ -27,12 +27,14 @@ test("theme warms during boot while splash remains the interaction gate", () => 
   const scene = source("phaser/src/scenes/MainMenuScene.js");
   const gate = source("phaser/src/ui/TitleScreenAudioGate.js");
 
-  assert.match(index, /rel="preload"[^>]*main-menu-theme-01\.mp3[^>]*as="audio"/);
+  assert.ok(index.indexOf('id="viceblood-main-menu-theme"') < index.indexOf('type="module"'));
   assert.match(index, /id="viceblood-main-menu-theme"[^>]*main-menu-theme-01\.mp3[^>]*preload="auto"/);
   assert.match(main, /getElementById\("viceblood-main-menu-theme"\) \|\| new Audio\(MAIN_MENU_THEME_URL\)/);
   assert.match(main, /audio\.preload = "auto"/);
   assert.match(scene, /titleScreenAudioGate\.waitForStart\(\)[\s\S]*titleScreenController\.present/);
   assert.match(gate, /PRESS ANY KEY TO START/);
-  assert.match(gate, /const started = await this\.theme\?\.start\?\.\(\)/);
-  assert.match(gate, /if \(!started\)/);
+  assert.match(gate, /const startAttempt = this\.theme\?\.start\?\.\(\)/);
+  assert.match(gate, /Promise\.resolve\(startAttempt\)/);
+  assert.match(gate, /resolve\?\.\(true\)/);
+  assert.doesNotMatch(gate, /await this\.theme\?\.start/);
 });

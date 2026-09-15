@@ -70,6 +70,14 @@ export class GameScene extends GameSceneCore {
   }
 
   update(time, deltaMs) {
+    // Input locking alone does not stop the outer traffic simulation. The title
+    // is a staged view of this scene: hydrate resident geometry, but do not run
+    // the city, hunger, combat or in-world radio before the player starts.
+    if (this.registry?.get?.("mainMenuActive")) {
+      this.cityStreamSystem?.update?.();
+      this.districtPackSystem?.update?.();
+      return;
+    }
     super.update(time, deltaMs);
     this.radioSystem?.update?.(Math.min(Math.max(0, Number(deltaMs) || 0) / 1000, 0.05), this.currentInputFrame);
     this.updateCharacterPresentation(time);
@@ -115,6 +123,7 @@ export class GameScene extends GameSceneCore {
       options.push(...(this.vehicleSystem?.collectInteractions?.() || []));
       options.push(...(this.trafficMaterializationSystem?.collectInteractions?.() || []));
       options.push(...(this.deathRecoverySystem?.collectInteractions?.() || []));
+      options.push(...(this.vampireRuntime?.collectInteractions?.() || []));
     }
     return options;
   }
@@ -126,6 +135,7 @@ export class GameScene extends GameSceneCore {
   }
 
   updateCameraForLayer() {
+    if (this.registry?.get?.("mainMenuActive")) return;
     if (this.vehicleSystem?.isDriving?.() && this.vehicleSystem.updateCamera()) return;
     super.updateCameraForLayer();
   }

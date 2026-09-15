@@ -8,6 +8,7 @@ import {
   MISSION_STATUS
 } from "./constants.js";
 import { sanitizeCampaignCheckpoint } from "./CampaignCheckpoint.js";
+import { createVampireState, sanitizeVampireState } from "../vampire/VampireState.js";
 import { createTerritoryState, sanitizeTerritoryState } from "../factions/TerritoryModel.js";
 import { createHuntingLawState, sanitizeHuntingLawState } from "../factions/HuntingLawModel.js";
 import {
@@ -152,6 +153,7 @@ export function createCampaignState({ now = 0 } = {}) {
     huntingLaw: createHuntingLawState(),
     heat: createHeatState(),
     exposure: createExposureState(),
+    vampire: createVampireState(),
     inventory: {
       carried: {
         meleeWeaponId: null,
@@ -270,6 +272,7 @@ export function sanitizeCampaignState(candidate, { now = 0 } = {}) {
       )
     },
     territory: sanitizeTerritoryState(source.territory, { now: timestamp }),
+    vampire: sanitizeVampireState(source.vampire),
     huntingLaw: sanitizeHuntingLawState(source.huntingLaw, { now: timestamp }),
     heat: sanitizeHeatState(source.heat),
     exposure: sanitizeExposureState(source.exposure, {
@@ -327,7 +330,8 @@ export function migrateCampaignState(candidate, { now = 0 } = {}) {
   // rights, victim protection, assessments or discoveries. Version four used
   // police-local Heat plus a free-floating Exposure scalar. Sanitisation keeps
   // every existing campaign domain while supplying independent Heat and
-  // evidence-backed Exposure collections.
+  // evidence-backed Exposure collections. Version five did not persist the
+  // vampire network, operational agreements, businesses or frenzy recovery.
   return sanitizeCampaignState(source, { now });
 }
 

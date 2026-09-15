@@ -8,6 +8,8 @@ Read `PROJECT_BLUEPRINT.md` for the canonical architecture and production sequen
 
 ## Status legend
 
+**2026-09-08 product update:** the user authorized implementation of survival-to-Prince progression and explicitly removed hunter investigation from the active direction. [Vampire city power](VAMPIRE_CITY_POWER.md) is implemented on `codex/vampire-city-power` for review: contacts, operational favours, blood supply, businesses, recognition and involuntary frenzy at Hunger 100. Its current rules supersede the historical voluntary-only Beast and single-resource wording below. This does not mark player acceptance or complete every future service in Milestones 15.3/15.4/16.
+
 - ✅ Complete
 - 🟡 Implemented; manual tuning or a dependent extension remains
 - 🔵 Active
@@ -407,6 +409,8 @@ District hunting pressure progresses through low, medium, high and critical stat
 
 ### 15.3 Favours, blood debt and vampire services — ⬜ Planned
 
+**Playable subset implemented for review:** four contacts, advances/rescue debt, zero-cost-start deliveries, blood purchases, hunting agreements, discovered breach suspension and work/cash repair. Further forensic and institutional services below remain planned.
+
 Faction rewards and penalties extend beyond cash and generic reputation.
 
 Services may include:
@@ -423,6 +427,8 @@ Services may include:
 A faction service may create a persistent favour owed by the player. A completed contract may also make a contact or faction owe the player. Debts are concrete callable obligations with authored consequences, not only `+10/-10` reputation changes.
 
 ### 15.4 Vampire city infrastructure — ⬜ Planned
+
+**Playable subset implemented for review:** club, canal depot and hospital blood supply investments; income, blood reserves, operating policies, donor access and depot refuge recovery. Other institution types below remain future scope.
 
 Semantic businesses and institutions become part of the feeding and concealment network:
 
@@ -470,7 +476,7 @@ After feeding, context may allow:
 
 ### Hunger economy
 
-- Hunger remains the single visible resource;
+- Hunger and Vitality are separate visible resources; stored blood is a bounded consumable supply;
 - feeding lowers Hunger;
 - powers and supernatural recovery raise Hunger;
 - ordinary medicine may stabilise a situation but does not replace feeding as the vampire's recovery loop;
@@ -555,7 +561,7 @@ The game does not seize input without a readable cause. The Beast offers useful 
 
 ## Milestone 15.8 — Persistent hunter investigation
 
-**Status: ⬜ Next planned gameplay phase; implementation not started by the traffic integration**
+**Status: withdrawn from the active direction by the user on 2026-09-08. The design below is archived reference; the legacy threshold hunter update is disabled in vampire-city-power.**
 
 Viceblood uses one named, persistent hunter before considering generic hunter populations.
 

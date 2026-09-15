@@ -99,7 +99,7 @@ function checkpointFor(campaign) {
   });
 }
 
-test("schema version five preserves checkpoint, territory and attention migration", () => {
+test("schema version six preserves checkpoint, territory and attention migration", () => {
   const migrated = migrateCampaignState({
     version: 1,
     revision: 4,
@@ -108,7 +108,7 @@ test("schema version five preserves checkpoint, territory and attention migratio
   }, { now: 2000 });
 
   assert.equal(migrated.version, CAMPAIGN_SCHEMA_VERSION);
-  assert.equal(migrated.version, 5);
+  assert.equal(migrated.version, 6);
   assert.equal(migrated.player.cash, 275);
   assert.deepEqual(migrated.checkpoints, { latest: null });
   assert.equal(migrated.sequences.checkpoint, 0);
@@ -172,7 +172,7 @@ test("campaign export and import preserve checkpoint mission rollback data", () 
   });
   restored.import(serialized, { persist: false });
 
-  assert.equal(restored.state.version, 5);
+  assert.equal(restored.state.version, 6);
   assert.equal(restored.missions.currentObjective().id, "return_to_refuge");
   assert.equal(restored.checkpoint().objectiveId, "neutralize_journalist");
   assert.equal(restored.checkpoint().mission.objectiveIndex, 3);

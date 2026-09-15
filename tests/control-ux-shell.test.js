@@ -25,9 +25,9 @@ test("DOM main menu owns a dedicated controls panel backed by the canonical cont
 
 test("Escape owns pause and H is no longer an alternate help-menu shortcut", async () => {
   const ui = await readFile(uiUrl, "utf8");
-  assert.match(ui, /else if \(code === "Escape"\)/);
-  assert.match(ui, /handled = this\.togglePause\(\)/);
+  assert.match(ui, /if \(event\.code === "Escape"\)/);
+  assert.match(ui, /if \(mode\) this\.closeActive\(\); else this\.togglePause\(\)/);
   assert.doesNotMatch(ui, /uiOwnsH/);
   assert.doesNotMatch(ui, /Close · H \/ Esc/);
-  assert.match(ui, /Close · Esc/);
+  assert.doesNotMatch(ui, /code === "KeyH"/);
 });

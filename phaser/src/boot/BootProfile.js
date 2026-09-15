@@ -1,6 +1,6 @@
 import { CITY_ANCHORS } from "../data/generated/city-topology-v2.js";
 
-export const BOOT_PROFILE_VERSION = 4;
+export const BOOT_PROFILE_VERSION = 5;
 
 export const BOOT_MODES = Object.freeze({
   NORMAL: "normal",
@@ -37,7 +37,6 @@ export function createBootProfile(search = globalThis?.location?.search || "") {
       : requestedMode === BOOT_MODES.EXPLORE
         ? BOOT_MODES.EXPLORE
         : BOOT_MODES.NORMAL;
-  const isolated = mode !== BOOT_MODES.NORMAL;
   const rcTest = params.has("rcTest") || mode === BOOT_MODES.SCENARIO;
 
   return freezeProfile({
@@ -46,9 +45,11 @@ export function createBootProfile(search = globalThis?.location?.search || "") {
     scenarioId: scenarioId || null,
     rcTest,
     enableHarness: rcTest,
-    persistentCampaign: !isolated,
-    autoLoadCampaign: !isolated,
-    autoSaveCampaign: !isolated,
+    // The public demo is a fresh run, including the default URL. Asset caching
+    // and browser preferences are independent of campaign progress.
+    persistentCampaign: false,
+    autoLoadCampaign: false,
+    autoSaveCampaign: false,
     showCampaignEntry: false,
     autoStartOpeningMission: false,
     skipTutorial: true,

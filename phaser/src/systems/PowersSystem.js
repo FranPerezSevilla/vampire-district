@@ -186,6 +186,7 @@ export class PowersSystem {
   }
 
   useBloodSense() {
+    if (this.scene.vampireRuntime?.frenzy?.allowsPowers?.() === false) return false;
     if (this.cooldowns.sense > 0) {
       RawAudio.play("cancel");
       return false;
@@ -398,6 +399,7 @@ export class PowersSystem {
   }
 
   resolveWhisperCommand(npc, command) {
+    if (this.scene.vampireRuntime?.frenzy?.allowsPowers?.() === false) return false;
     if (!npc || this.cooldowns.whisper > 0) return false;
     const context = this.whisperContextFor(npc);
     const evaluation = evaluateWhisperCommand(command, npc, {
@@ -761,6 +763,7 @@ export class PowersSystem {
   }
 
   giveIn() {
+    if (this.scene.vampireRuntime?.frenzy?.allowsPowers?.() === false) return false;
     if (this.beastTimer > 0 || this.cooldowns.beast > 0) {
       RawAudio.play("cancel");
       this.scene.lastActionText = this.beastTimer > 0
@@ -802,6 +805,7 @@ export class PowersSystem {
   }
 
   useDash() {
+    if (this.scene.vampireRuntime?.frenzy?.allowsPowers?.() === false) return false;
     if (this.cooldowns.dash > 0) {
       RawAudio.play("dashFail");
       return false;

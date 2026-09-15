@@ -156,7 +156,9 @@ export class FeedingSystem {
 
     const nextDepth = nextFeedingDepth(npc.type, startingDepth);
     const nextLabel = nextDepth ? feedingDepthLabel(nextDepth) : feedingDepthLabel(FEEDING_DEPTHS.DRAIN);
-    this.scene.lastActionText = `FEEDING started: ${this.targetName(npc)}. Hold RMB for ${nextLabel}; release after a threshold to take only that much.`;
+    this.scene.lastActionText = source === "frenzy"
+      ? `FRENZY: feeding on ${this.targetName(npc)}. The Beast will stop when sated; you cannot release voluntarily.`
+      : `FEEDING started: ${this.targetName(npc)}. Hold RMB for ${nextLabel}; release after a threshold to take only that much.`;
     this.scene.events?.emit?.("feeding:started", {
       targetId: npc.id,
       source,
@@ -550,6 +552,7 @@ export class FeedingSystem {
 
   targetName(npc) {
     if (!npc) return "target";
+    if (npc.vampireContact && npc.name) return npc.name;
     if (npc.type === NPC_TYPES.TARGET) return "journalist";
     if (npc.type === NPC_TYPES.POLICE) return "police officer";
     if (npc.type === NPC_TYPES.HUNTER) return "hunter";

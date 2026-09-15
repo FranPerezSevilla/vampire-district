@@ -29,7 +29,7 @@ test("main-menu control reference covers active on-foot, combat, power, driving 
     "Horn",
     "MENUS",
     "Pause / back",
-    "M  Mission",
+    "M  Errand",
     "L  Night Ledger"
   ]) assert.match(text, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 });

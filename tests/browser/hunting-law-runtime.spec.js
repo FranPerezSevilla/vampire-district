@@ -82,8 +82,9 @@ test("a real drain is assessed as poaching and a completed witness report discov
     const crownAssessment = window.NBD_HUNTING_LAW.assessFeed({
       districtId: "blackwater",
       victim: { id: "synthetic-crown-prey", type: "civilian" },
+      victimAlive: true,
       witnessCount: 0,
-      bodyEvidence: true,
+      bodyEvidence: false,
       biteEvidence: true,
       wantedLevel: 0,
       source: "browser-policy-check"

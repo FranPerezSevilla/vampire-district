@@ -153,7 +153,8 @@ export class GameplayRuntime {
 
     const rawFrame = scene.inputSystem?.beginFrame() || createEmptyInputFrame();
     scene.playerDamageSystem?.preUpdate(rawFrame);
-    const frame = scene.playerDamageSystem?.filterFrame(rawFrame) || rawFrame;
+    let frame = scene.playerDamageSystem?.filterFrame(rawFrame) || rawFrame;
+    frame = scene.vampireRuntime?.update?.(dt, frame) || frame;
     scene.currentInputFrame = frame;
     scene.aiStateSystem?.preUpdate?.(dt, frame);
     scene.weaponSystem?.update(frame);
@@ -206,6 +207,10 @@ export class GameplayRuntime {
     coreMark = diagnostics.beginSystem("Core.Combat");
     scene.handleLayerDebugInput(frame);
     scene.powersSystem.update(dt, frame);
+    // A power can cross Hunger 100 in this very frame. Reconcile before combat
+    // and movement without ticking hunger, production or the frenzy twice.
+    frame = scene.vampireRuntime?.frenzy?.filterFrame?.(frame) || frame;
+    scene.currentInputFrame = frame;
     scene.combatSystem?.update(dt, frame);
     scene.drainSystem?.update(dt, frame);
     diagnostics.endSystem("Core.Combat", coreMark);
@@ -267,7 +272,8 @@ export class GameplayRuntime {
       scene.exposureSystem.cool(dt);
       scene.policeSystem.update(dt);
       scene.policeFirearmSystem?.update(dt, frame);
-      scene.hunterSystem.update(dt);
+      // The vampire-network direction retires the legacy threshold hunter.
+      // Evidence and human police retain their existing consequences.
       scene.npcSystem.rebuildSpatialIndex?.();
       scene.aiStateSystem?.postUpdate?.(dt, frame);
       scene.playerDamageSystem?.postUpdate(dt, frame);

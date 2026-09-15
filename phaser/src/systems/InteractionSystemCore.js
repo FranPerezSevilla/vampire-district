@@ -86,10 +86,13 @@ export class InteractionSystem {
     return true;
   }
 
-  open(options) {
+  open(options, { title = "Choose interaction", detail = "", view = null } = {}) {
     this.menu = {
       options,
-      index: 0
+      index: 0,
+      title,
+      detail,
+      view
     };
     RawAudio.play("menu");
     this.scene.lastActionText = "Choose interaction.";
@@ -248,11 +251,15 @@ export class InteractionSystem {
     if (!this.menu) return null;
     return {
       index: this.menu.index,
+      title: this.menu.title || "Choose interaction",
+      detail: this.menu.detail || "",
+      view: this.menu.view || null,
       options: this.menu.options.map(option => ({
         id: option.id,
         label: option.label,
         detail: option.detail || "",
-        type: option.type || "action"
+        type: option.type || "action",
+        disabled: Boolean(option.disabled)
       }))
     };
   }

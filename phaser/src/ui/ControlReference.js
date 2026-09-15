@@ -8,7 +8,7 @@ function key(bindings, action) {
   return bindingLabel(bindings[action] || DEFAULT_INPUT_BINDINGS[action] || "");
 }
 
-export function buildControlReference(candidateBindings = {}) {
+export function buildControlReference(candidateBindings = {}, { simplified = false, book = false } = {}) {
   const bindings = normalizeInputBindings(candidateBindings);
   const movement = `${key(bindings, "w")}/${key(bindings, "a")}/${key(bindings, "s")}/${key(bindings, "d")}`;
   const arrows = `${key(bindings, "up")}/${key(bindings, "left")}/${key(bindings, "down")}/${key(bindings, "right")}`;
@@ -18,7 +18,7 @@ export function buildControlReference(candidateBindings = {}) {
     `${movement} or ${arrows}  Move`,
     `${key(bindings, "quiet")}  Quiet movement`,
     `${key(bindings, "interact")}  Interact / dialogue / evidence`,
-    `${key(bindings, "traverse")}  Traverse available routes`,
+    ...(!simplified ? [`${key(bindings, "traverse")}  Traverse available routes`] : []),
     "",
     "COMBAT & FEEDING",
     "Mouse  Aim",
@@ -27,8 +27,9 @@ export function buildControlReference(candidateBindings = {}) {
     "Mouse wheel  Change weapon",
     "",
     "POWERS",
-    `${key(bindings, "dash")}  Dash · ${key(bindings, "whisper")}  Whisper`,
-    `${key(bindings, "sense")}  Blood Sense · ${key(bindings, "beast")}  Give In`,
+    ...(simplified ? [`${key(bindings, "whisper")}  Whisper · ${key(bindings, "beast")}  Give In`] : [
+      `${key(bindings, "dash")}  Dash · ${key(bindings, "whisper")}  Whisper`,
+      `${key(bindings, "sense")}  Blood Sense · ${key(bindings, "beast")}  Give In`]),
     "",
     "DRIVING",
     `${key(bindings, "w")}/${key(bindings, "s")}  Accelerate / brake · ${key(bindings, "a")}/${key(bindings, "d")}  Steer`,
@@ -36,6 +37,6 @@ export function buildControlReference(candidateBindings = {}) {
     `${key(bindings, "horn")}  Horn`,
     "",
     "MENUS",
-    `${key(bindings, "cancel")}  Pause / back · M  Mission · L  Night Ledger`
+    `${key(bindings, "cancel")}  Pause / back · M  ${book ? "Black Book / current errand" : "Errand"}${simplified ? "" : " · L  Night Ledger"}`
   ].join("\n");
 }

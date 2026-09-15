@@ -8,17 +8,12 @@ async function source() {
   return readFile(bootstrapUrl, "utf8");
 }
 
-test("hosted builds skip the unavailable node_modules Phaser request", async () => {
+test("hosted builds prefer their published pinned Phaser before CDN fallback", async () => {
   const bootstrap = await source();
-
-  assert.match(bootstrap, /function localPhaserAllowed\(\)/);
-  assert.match(bootstrap, /protocol === "file:"/);
-  assert.match(bootstrap, /hostname === "localhost"/);
-  assert.match(bootstrap, /hostname === "127\.0\.0\.1"/);
-  assert.match(bootstrap, /function phaserScriptSources\(\)/);
-  assert.match(bootstrap, /\? \[LOCAL_PHASER_SOURCE, \.\.\.CDN_PHASER_SOURCES\]/);
-  assert.match(bootstrap, /: CDN_PHASER_SOURCES/);
+  assert.match(bootstrap, /return \[LOCAL_PHASER_SOURCE, \.\.\.CDN_PHASER_SOURCES\]/);
   assert.match(bootstrap, /for \(const source of phaserScriptSources\(\)\)/);
+  assert.match(bootstrap, /Engine download timed out/);
+  assert.doesNotMatch(bootstrap, /function localPhaserAllowed/);
 });
 
 test("development still retains the pinned local Phaser source and CDN fallback", async () => {

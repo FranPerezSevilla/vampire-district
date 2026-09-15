@@ -1,4 +1,4 @@
-export const CAMPAIGN_SCHEMA_VERSION = 5;
+export const CAMPAIGN_SCHEMA_VERSION = 6;
 export const CAMPAIGN_STORAGE_KEY = "viceblood-campaign-v1";
 export const LEGACY_CAMPAIGN_STORAGE_KEYS = Object.freeze([
   "vampire-district-campaign-v1"

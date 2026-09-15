@@ -1,5 +1,9 @@
 import { titleScreenController } from "../ui/TitleScreenController.js";
 import { titleScreenAudioGate } from "../ui/TitleScreenAudioGate.js";
+import { preloadTitleExperience } from "../ui/TitleAssetPreloader.js";
+
+const MENU_CAMERA_HORIZONTAL_BIAS = 0.22;
+const MENU_TO_GAME_MS = 430;
 
 export class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -16,12 +20,28 @@ export class MainMenuScene extends Phaser.Scene {
     this.previewScene = null;
     this.previewCreateEvent = null;
     this.previewCreateListener = null;
+    this.assetsReady = null;
+    this.cameraTransitionStartedAt = 0;
+    this.cameraTransitionFrom = null;
+    this.cancelUiPreparation = null;
   }
 
   create() {
     this.cameras.main.setBackgroundColor("rgba(0,0,0,0)");
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup());
+    this.publishReadiness("preloading-title-assets");
+    this.assetsReady = preloadTitleExperience().catch(error => {
+      this.publishReadiness("failure", String(error?.message || error));
+      titleScreenController.showFailure(error);
+      throw error;
+    });
     this.startWorldPreview();
+  }
+
+  update() {
+    if (!this.previewPresented) return;
+    if (this.transitioning) this.updateCameraTransition();
+    else this.composeMenuCamera();
   }
 
   publishReadiness(state, detail = null) {
@@ -72,19 +92,27 @@ export class MainMenuScene extends Phaser.Scene {
     }
 
     this.previewPresented = true;
+    // The normal zoom updater is suppressed while the menu owns the camera.
+    // Initialize it explicitly before composing or exposing the first preview.
+    gameScene.cameras?.main?.setZoom?.(gameScene.cameraZoomForLayer());
     gameScene?.registry?.set?.("mainMenuActive", true);
     this.scene.bringToTop("MainMenuScene");
+    this.composeMenuCamera();
 
-    // The splash is now the intentional browser-audio gate. The world may finish
-    // loading behind it, but the DOM title controller must not reveal the main
-    // menu until a real user gesture has successfully started the theme.
-    this.publishReadiness("awaiting-audio-start");
-    titleScreenAudioGate.waitForStart()
+    // The world preview and every title/gameplay sample warm in parallel behind
+    // the opaque boot surface. Only after both are ready do we offer the browser
+    // gesture gate. The gesture starts music and moves directly to the menu.
+    this.publishReadiness("waiting-for-title-assets");
+    Promise.all([this.assetsReady, this.waitForPreviewGeometry(gameScene)])
+      .then(() => {
+        if (!this.sys.isActive()) return false;
+        this.publishReadiness("awaiting-user-gesture");
+        return titleScreenAudioGate.waitForStart();
+      })
       .then(started => {
         if (!started || !this.sys.isActive()) return false;
         this.publishReadiness("presenting-title");
-        return titleScreenController.present({ onNewNight: () => this.beginNight() })
-          .then(() => true);
+        return titleScreenController.present({ onNewNight: () => this.beginNight() }).then(() => true);
       })
       .then(presented => {
         if (presented) this.publishReadiness("title-presented");
@@ -96,12 +124,61 @@ export class MainMenuScene extends Phaser.Scene {
       });
   }
 
+  async waitForPreviewGeometry(gameScene) {
+    const stream = gameScene?.cityStreamSystem;
+    if (!stream) return;
+    // Download AND hydrate the initial view without relying on render frames.
+    // Queued payloads are not yet resident; a passive waiter could deadlock boot.
+    await stream.prepareInitialView();
+    if (!this.sys.isActive()) return;
+    gameScene.entityStreamSystem?.update?.(0);
+    gameScene.redrawLayer?.();
+  }
+
   detachPreviewCreateListener() {
     if (this.previewScene && this.previewCreateEvent && this.previewCreateListener) {
       this.previewScene.events.off(this.previewCreateEvent, this.previewCreateListener);
     }
     this.previewCreateEvent = null;
     this.previewCreateListener = null;
+  }
+
+  cameraFrame(gameScene = this.previewScene || this.scene.get("GameScene")) {
+    const camera = gameScene?.cameras?.main;
+    const player = gameScene?.player;
+    if (!camera || !player) return null;
+    const zoom = Math.max(0.001, Number(camera.zoom) || 1);
+    const viewWidth = camera.width / zoom;
+    // Phaser scroll is unzoomed. getScroll handles zoom-aware bounds; using
+    // player - worldView.width / 2 here moves the subject off-screen at high quality.
+    const centered = camera.getScroll(player.x, player.y);
+    const centeredX = centered.x, centeredY = centered.y;
+    const canvasRect = gameScene.game?.canvas?.getBoundingClientRect?.();
+    const hostRect = globalThis.document?.getElementById?.("game-root")?.getBoundingClientRect?.();
+    const visibleFraction = canvasRect?.width > 0 && hostRect?.width > 0 ? Math.min(1, hostRect.width / canvasRect.width) : 1;
+    const menu = camera.getScroll(player.x - viewWidth * visibleFraction * MENU_CAMERA_HORIZONTAL_BIAS, player.y);
+    const menuX = menu.x;
+    return { camera, player, centeredX, centeredY, menuX };
+  }
+
+  composeMenuCamera() {
+    const frame = this.cameraFrame();
+    if (!frame) return;
+    frame.camera.stopFollow?.();
+    frame.camera.setScroll?.(frame.menuX, frame.centeredY);
+  }
+
+  updateCameraTransition() {
+    const frame = this.cameraFrame();
+    if (!frame || !this.cameraTransitionFrom) return;
+    const now = performance.now();
+    const t = Math.min(1, Math.max(0, (now - this.cameraTransitionStartedAt) / MENU_TO_GAME_MS));
+    const eased = 1 - Math.pow(1 - t, 3);
+    frame.camera.stopFollow?.();
+    frame.camera.setScroll?.(
+      this.cameraTransitionFrom.x + (frame.centeredX - this.cameraTransitionFrom.x) * eased,
+      this.cameraTransitionFrom.y + (frame.centeredY - this.cameraTransitionFrom.y) * eased
+    );
   }
 
   lockPreviewControl(gameScene = this.previewScene || this.scene.get("GameScene")) {
@@ -128,6 +205,7 @@ export class MainMenuScene extends Phaser.Scene {
       combatGraphics.setVisible(false);
     }
 
+    gameScene.cameras?.main?.stopFollow?.();
     this.scene.bringToTop("MainMenuScene");
     return true;
   }
@@ -138,43 +216,98 @@ export class MainMenuScene extends Phaser.Scene {
     if (gameScene?.input) gameScene.input.enabled = this.previewInputWasEnabled;
 
     if (this.previewInputSystem) {
-      if (this.previewPointerWorldPoint) {
-        this.previewInputSystem.pointerWorldPoint = this.previewPointerWorldPoint;
-      }
+      if (this.previewPointerWorldPoint) this.previewInputSystem.pointerWorldPoint = this.previewPointerWorldPoint;
       this.previewInputSystem.setWorldEnabled?.(this.previewWorldInputWasEnabled);
       this.previewInputSystem.resetWorldEdges?.();
     }
 
     gameScene?.combatSystem?.graphics?.setVisible?.(this.previewCombatGraphicsWasVisible);
+    gameScene?.cameras?.main?.startFollow?.(gameScene.player, true, 0.12, 0.12);
     this.previewLocked = false;
+  }
+
+  prepareGameplayInterface(timeoutMs = 5000) {
+    const ui = this.scene.get("UIScene");
+    if (!ui) return Promise.reject(new Error("The gameplay interface scene is unavailable."));
+    const validate = () => {
+      if (ui.bootError) throw ui.bootError;
+      if (!ui.renderUi || !ui.store?.getSnapshot?.().ready) throw new Error("The gameplay interface did not become ready.");
+      if (ui.uiError) throw new Error(ui.uiError);
+      return ui;
+    };
+    if (this.scene.isActive("UIScene") && ui.renderUi) {
+      try { return Promise.resolve(validate()); } catch (error) { return Promise.reject(error); }
+    }
+    return new Promise((resolve, reject) => {
+      const createdEvent = Phaser.Scenes.Events.CREATE || "create";
+      const shutdownEvent = Phaser.Scenes.Events.SHUTDOWN || "shutdown";
+      let timer = null, settled = false;
+      const finish = error => {
+        if (settled) return;
+        settled = true;
+        if (timer !== null) window.clearTimeout(timer);
+        ui.events.off(createdEvent, onCreated);
+        ui.events.off(shutdownEvent, onShutdown);
+        this.cancelUiPreparation = null;
+        if (error) reject(error); else resolve(ui);
+      };
+      const onCreated = () => { try { validate(); finish(); } catch (error) { finish(error); } };
+      const onShutdown = () => finish(new Error("Gameplay interface stopped during startup."));
+      this.cancelUiPreparation = () => finish(new Error("Title handoff cancelled."));
+      ui.events.once(createdEvent, onCreated);
+      ui.events.once(shutdownEvent, onShutdown);
+      timer = window.setTimeout(() => finish(new Error("Gameplay interface startup timed out.")), timeoutMs);
+      // Phaser may queue launch for the next frame: subscribe BEFORE requesting it.
+      try { this.scene.launch("UIScene"); } catch (error) { finish(error); }
+    });
   }
 
   async beginNight() {
     if (this.transitioning) return;
     this.transitioning = true;
-    titleScreenAudioGate.fadeOut(430);
-
     try {
+      this.publishReadiness("preparing-gameplay-interface");
+      await this.prepareGameplayInterface();
+      if (!this.sys.isActive()) return;
+      const frame = this.cameraFrame();
+      this.cameraTransitionFrom = frame ? { x: frame.camera.scrollX, y: frame.camera.scrollY } : null;
+      this.cameraTransitionStartedAt = performance.now();
+      this.publishReadiness("starting-night");
+      titleScreenAudioGate.fadeOut(MENU_TO_GAME_MS);
       await titleScreenController.exitToGame();
+      if (!this.sys.isActive()) return;
+      const finalFrame = this.cameraFrame();
+      finalFrame?.camera?.setScroll?.(finalFrame.centeredX, finalFrame.centeredY);
       this.finishNightTransition();
     } catch (error) {
       this.transitioning = false;
+      titleScreenAudioGate.stop();
+      if (!this.sys.isActive()) return;
+      this.publishReadiness("failure", String(error?.message || error));
       titleScreenController.showFailure(error);
     }
   }
 
   finishNightTransition() {
-    if (!this.scene.isActive("GameScene")) this.scene.launch("GameScene");
-    if (!this.scene.isActive("UIScene")) this.scene.launch("UIScene");
-
-    this.restorePreviewControl();
+    const ui = this.scene.get("UIScene");
+    if (!this.scene.isActive("GameScene") || !ui?.renderUi || ui.bootError) {
+      throw new Error("The gameplay handoff is not ready.");
+    }
     const gameScene = this.previewScene || this.scene.get("GameScene");
-    gameScene?.registry?.set?.("mainMenuActive", false);
+    // Finalize sound independently of fade frames, then release only our lock.
+    titleScreenAudioGate.stop();
+    gameScene.registry.set("mainMenuActive", false);
+    this.restorePreviewControl();
+    ui.refresh();
+    gameScene.game?.canvas?.focus?.({ preventScroll: true });
     this.handoffComplete = true;
+    this.publishReadiness("in-game");
     this.scene.stop("MainMenuScene");
   }
 
   cleanup() {
+    this.cancelUiPreparation?.();
+    titleScreenAudioGate.stop();
     this.detachPreviewCreateListener();
     titleScreenAudioGate.dispose();
     titleScreenController.detachNewNightHandler();

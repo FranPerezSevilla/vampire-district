@@ -2,6 +2,7 @@ import { CAMPAIGN_EVENT_TYPES } from "../campaign/constants.js";
 import { factionLabel } from "./FactionCatalog.js";
 import {
   classifyHuntingFacts,
+  describeHuntingAccess,
   HUNTING_CLASSIFICATION,
   HUNTING_DISCOVERY,
   MAX_HUNTING_ASSESSMENTS,
@@ -53,6 +54,14 @@ export class HuntingLawSystem {
     return Object.values(this.state.huntingLaw.rights)
       .filter(right => rightMatches(right, { districtId, ownerId, victimId, victimType, now }))
       .sort((left, right) => right.grantedAt - left.grantedAt || left.id.localeCompare(right.id))[0] || null;
+  }
+
+  districtAccess(districtId) {
+    const district = this.territory?.district?.(districtId);
+    if (!district) return null;
+    // A person-specific grant must never paint a whole district as covered.
+    const right = this.activeRight({ districtId, ownerId: district.ownerId, victimType: "civilian" });
+    return { ...describeHuntingAccess(district, right), right: clone(right) };
   }
 
   grantRight(candidate = {}) {
@@ -169,7 +178,8 @@ export class HuntingLawSystem {
       bodyEvidence,
       biteEvidence,
       wantedLevel,
-      factionObserver
+      factionObserver,
+      victimAlive
     });
     const assessment = sanitizeHuntingAssessment({
       id: this.nextId("assessment"),
@@ -306,7 +316,7 @@ export class HuntingLawSystem {
       return `POACHING · ${upper(assessment.ownerLabel || "CLAIMED")} TERRITORY`;
     }
     if (assessment.classification === HUNTING_CLASSIFICATION.TOLERATED) {
-      return `FEEDING TOLERATED · ${upper(assessment.districtName)}`;
+      return `OPEN HUNT · ${upper(assessment.districtName)}`;
     }
     return "";
   }

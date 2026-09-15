@@ -33,12 +33,21 @@
     "city:foundry": "node tools/city-compiler/compile-foundry.js",
     "city:streaming": "node tools/city-compiler/compile-streaming.js",
     "city:topology": "npm run city:roads && npm run city:validate && npm run city:streaming",
-    "serve:test": "python3 -m http.server 4173 --bind 127.0.0.1"
+    "serve:test": "python3 -m http.server 4173 --bind 127.0.0.1",
+    "build:ui": "node tools/ui/build.mjs",
+    "build": "node tools/ui/build.mjs --package",
+    "test:ui": "node --test tests/ui-*.test.js"
   },
   "dependencies": {
-    "phaser": "3.90.0"
+    "@radix-ui/react-dialog": "1.1.15",
+    "@radix-ui/react-tabs": "1.1.13",
+    "phaser": "3.90.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
   },
   "devDependencies": {
-    "@playwright/test": "1.61.1"
+    "@playwright/test": "1.61.1",
+    "esbuild": "0.25.5",
+    "jsdom": "26.1.0"
   }
 }

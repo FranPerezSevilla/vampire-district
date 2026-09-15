@@ -239,7 +239,10 @@ export class InputSystem {
     const digitPressed = this.firstDigitPressed();
     const traversePressed = this.justDown(this.keys.space);
     const interactPressed = this.justDown(this.keys.interact);
-    const enterPressed = this.justDown(this.keys.enter);
+    // Native buttons in the domain panel own Enter activation. Consume the key
+    // edge once here so that the same press cannot also select a menu tab.
+    const domConfirmation = Boolean(globalThis.document?.activeElement?.closest?.("[data-viceblood-ui] button, [data-viceblood-ui] [role=tab]"));
+    const enterPressed = this.justDown(this.keys.enter) && !domConfirmation;
     const escapePressed = this.justDown(this.keys.escape);
     const upPressed = this.justDown(this.keys.up);
     const wPressed = this.justDown(this.keys.w);
@@ -288,6 +291,7 @@ export class InputSystem {
     const registry = this.scene.registry;
     return Boolean(
       registry?.get?.("uiPaused")
+      || registry?.get?.("uiKeyboardOwned")
       || registry?.get?.("taskRevealActive")
       || this.scene.taskRevealCinematic?.active
     );
