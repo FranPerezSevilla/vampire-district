@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: c8d44ca62a3a4e3dbdd58c9efb213650093384d7
+          ref: 1cd5560e6d2411e1fae7d11937ef202740941a0a
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -35,8 +35,8 @@ jobs:
             const { createHash } = require('node:crypto');
             const { execFileSync } = require('node:child_process');
             const { owner, repo } = context.repo;
-            const source = 'c8d44ca62a3a4e3dbdd58c9efb213650093384d7';
-            const expectedPages = 'bb7329669aed541f0dba2e11d235e8c73a5918bf';
+            const source = '1cd5560e6d2411e1fae7d11937ef202740941a0a';
+            const expectedPages = 'a9b89dd86b6315f98c466cd88e38681a57f95799';
             const pagesBranch = 'codex/traffic-junction-topology';
             const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
             const blobSha = bytes => createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${bytes.length}\0`), bytes])).digest('hex');
@@ -61,7 +61,7 @@ jobs:
             }
             if (!changes.length) throw new Error('No sprint 1 publication changes found');
             const tree = await github.rest.git.createTree({ owner, repo, base_tree: currentCommit.data.tree.sha, tree: changes });
-            const commit = await github.rest.git.createCommit({ owner, repo, message:`deploy: publish sprint 1 mockup HUD review\n\nReview build from ${source}. Objective banner, contextual prompt and survival slab only; PR #85 remains unmerged pending player acceptance.`, tree:tree.data.sha, parents:[expectedPages] });
+            const commit = await github.rest.git.createCommit({ owner, repo, message:`deploy: refine compact survival HUD review\n\nReview build from ${source}. Survival slab is smaller, scan-first and removes the decorative fang block; PR #85 remains unmerged pending player acceptance.`, tree:tree.data.sha, parents:[expectedPages] });
             await github.rest.git.updateRef({ owner, repo, ref:`heads/${pagesBranch}`, sha:commit.data.sha, force:false });
             core.notice(`Published ${commit.data.sha}: ${changes.map(e => e.path).join(', ')}`);
       - uses: actions/upload-artifact@v4
