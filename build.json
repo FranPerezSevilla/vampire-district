@@ -1,8 +1,8 @@
 {
-  "revision": "1cd5560e6d2411e1fae7d11937ef202740941a0a",
+  "revision": "2f8066f6c6f7f8dff0ec1162ec3a2b9c32f987db",
   "dirty": false,
-  "interfaceSha256": "2812f69dd5b93986e846f7a6fac631bb2bf2c2c096ff9b92e6722981c129e0a3",
+  "interfaceSha256": "4ac73eab1ff5f2b4e54370a98148aa6c3579b16c4840a750195d96971e48f58c",
   "ui": "react-radix",
   "boot": "packed-v1",
-  "runtimeSha256": "01d793a2f636b04d11ccf8c05137bcf989e738dd13fbd1d5af58d54492519cfa"
+  "runtimeSha256": "8600328b859a853846e6a23bfccbae8a140e2835aaa38963305352a554dd7d30"
 }
