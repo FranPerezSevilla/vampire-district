@@ -1,1 +1,0 @@
-Binary image upload in progress. This status file will be removed once the approved image is committed successfully.
