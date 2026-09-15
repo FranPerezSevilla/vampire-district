@@ -1,0 +1,91 @@
+/* The Black Book stylesheet still contains the retired street-HUD rules.
+   These resets intentionally sever that inheritance while keeping the old
+   class names as stable test/automation hooks. Imported after hud.css. */
+.vb-street-hud.vb-hud { text-shadow: none; }
+
+.vb-street-place.vb-hud-place {
+  display: flex;
+  border-left: 3px solid var(--vb-street-wine);
+  padding: 9px 12px 8px;
+  max-width: none;
+}
+.vb-street-place.vb-hud-place > span { font: inherit; }
+
+.vb-street-objective.vb-objective {
+  display: block;
+  gap: 0;
+  max-width: none;
+  padding: 7px 12px 9px;
+}
+.vb-street-objective.vb-objective > div { display: flex; gap: 10px; }
+.vb-street-objective.vb-objective .vb-street-objective-main > div { display: flex; }
+.vb-street-objective.vb-objective strong { font: inherit; }
+.vb-street-objective.vb-objective span { font: inherit; }
+
+.vb-street-vitals.vb-vitals {
+  width: auto;
+  padding: 0;
+  background: rgba(231,223,207,.22);
+  border-left: 0;
+}
+
+.vb-street-powers.vb-powers {
+  width: auto;
+  padding: 0;
+  background: none;
+  gap: 5px;
+}
+.vb-street-power.vb-power-slot {
+  justify-items: stretch;
+  gap: 0;
+  min-width: 88px;
+}
+.vb-street-power.vb-power-slot strong { font: inherit; }
+.vb-street-power.vb-power-slot small { font: inherit; }
+
+.vb-street-equipment.vb-equipment {
+  display: grid;
+  max-width: none;
+  padding: 9px 12px;
+  background: linear-gradient(125deg,rgba(13,10,10,.9),rgba(27,18,19,.78));
+}
+.vb-street-equipment.vb-equipment strong { font: inherit; }
+.vb-street-equipment.vb-equipment > span { font: inherit; }
+.vb-street-equipment.vb-equipment > small { font: inherit; }
+
+.vb-street-prompt.vb-prompt {
+  width: auto;
+  max-width: min(620px,70vw);
+  padding: 8px 14px 8px 9px;
+  font-size: inherit;
+  text-align: left;
+}
+
+.vb-street-notice.vb-notice {
+  top: auto;
+  left: calc(var(--hud-edge) + env(safe-area-inset-left));
+  transform: rotate(-.4deg);
+  max-width: none;
+  padding: 8px 10px;
+  background: rgba(229,219,200,.91);
+  font: inherit;
+  color: var(--vb-street-ink);
+  text-align: left;
+}
+
+@media (max-width: 900px) {
+  .vb-street-vitals.vb-vitals { width: auto; padding: 0; }
+  .vb-street-powers.vb-powers { bottom: calc(var(--hud-edge) + env(safe-area-inset-bottom)); }
+  .vb-street-prompt.vb-prompt { bottom: calc(var(--hud-edge) + 56px + env(safe-area-inset-bottom)); }
+  .vb-street-notice.vb-notice { width: min(280px,42vw); max-width: none; top: auto; }
+  .vb-street-equipment.vb-equipment { max-width: none; }
+}
+
+@media (max-width: 680px), (max-height: 520px) {
+  .vb-street-place.vb-hud-place { padding: 6px 8px; }
+  .vb-street-vitals.vb-vitals { width: auto; padding: 0; }
+  .vb-street-powers.vb-powers { bottom: calc(var(--hud-edge) + 3px + env(safe-area-inset-bottom)); }
+  .vb-street-prompt.vb-prompt { width: auto; max-width: 74vw; bottom: calc(var(--hud-edge) + 44px + env(safe-area-inset-bottom)); }
+  .vb-street-notice.vb-notice { display: none; }
+  .vb-street-equipment.vb-equipment { max-width: none; padding: 7px 8px; }
+}
