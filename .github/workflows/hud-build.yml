@@ -1,0 +1,71 @@
+name: HUD sprint 1 review build
+on:
+  push:
+    branches: [codex/hud-build]
+permissions:
+  contents: write
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: c8d44ca62a3a4e3dbdd58c9efb213650093384d7
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Native and DOM checks
+        run: npm run check:fast
+      - name: Build exact production package
+        run: |
+          npm run build
+          node tools/boot/verify-package.mjs
+          node tools/boot/smoke-module.mjs
+      - name: Publish bounded sprint 1 HUD review assets
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs/promises');
+            const { createHash } = require('node:crypto');
+            const { execFileSync } = require('node:child_process');
+            const { owner, repo } = context.repo;
+            const source = 'c8d44ca62a3a4e3dbdd58c9efb213650093384d7';
+            const expectedPages = 'bb7329669aed541f0dba2e11d235e8c73a5918bf';
+            const pagesBranch = 'codex/traffic-junction-topology';
+            const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
+            const blobSha = bytes => createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${bytes.length}\0`), bytes])).digest('hex');
+            if (git('rev-parse', 'HEAD') !== source) throw new Error('Wrong sprint 1 source checkout');
+            const build = JSON.parse(await fs.readFile('dist/build.json', 'utf8'));
+            if (build.revision !== source || build.dirty) throw new Error('Build provenance mismatch');
+            const runtimePath = `phaser/runtime-dist/game.${build.runtimeSha256.slice(0,16)}.js`;
+            const allowed = ['build.json','boot-assets.json','index.html','phaser/index.html','phaser/ui-dist/interface.js','phaser/ui-dist/interface.css',runtimePath];
+            const ref = await github.rest.git.getRef({ owner, repo, ref: `heads/${pagesBranch}` });
+            if (ref.data.object.sha !== expectedPages) throw new Error(`Pages moved: ${ref.data.object.sha}`);
+            const currentCommit = await github.rest.git.getCommit({ owner, repo, commit_sha: expectedPages });
+            const currentTree = await github.rest.git.getTree({ owner, repo, tree_sha: currentCommit.data.tree.sha, recursive: '1' });
+            const current = new Map(currentTree.data.tree.filter(e => e.type === 'blob').map(e => [e.path, e.sha]));
+            const changes = [];
+            for (const path of allowed) {
+              const bytes = await fs.readFile(`dist/${path}`);
+              const sha = blobSha(bytes);
+              if (current.get(path) === sha) continue;
+              const created = await github.rest.git.createBlob({ owner, repo, content: bytes.toString('base64'), encoding:'base64' });
+              if (created.data.sha !== sha) throw new Error(`Blob mismatch for ${path}`);
+              changes.push({ path, mode:'100644', type:'blob', sha });
+            }
+            if (!changes.length) throw new Error('No sprint 1 publication changes found');
+            const tree = await github.rest.git.createTree({ owner, repo, base_tree: currentCommit.data.tree.sha, tree: changes });
+            const commit = await github.rest.git.createCommit({ owner, repo, message:`deploy: publish sprint 1 mockup HUD review\n\nReview build from ${source}. Objective banner, contextual prompt and survival slab only; PR #85 remains unmerged pending player acceptance.`, tree:tree.data.sha, parents:[expectedPages] });
+            await github.rest.git.updateRef({ owner, repo, ref:`heads/${pagesBranch}`, sha:commit.data.sha, force:false });
+            core.notice(`Published ${commit.data.sha}: ${changes.map(e => e.path).join(', ')}`);
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hud-sprint-1-review-dist
+          path: dist/
+          retention-days: 3
