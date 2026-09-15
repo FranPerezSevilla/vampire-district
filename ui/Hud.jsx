@@ -11,26 +11,17 @@ function Resource({ label, value, suffix = "", tone = "neutral", icon = null, co
   </div>;
 }
 
-function Hunger({ value, frenzy }) {
-  const rounded = Math.round(value);
-  const tone = frenzy || rounded >= 90 ? "critical" : rounded >= 70 ? "hot" : rounded >= 45 ? "watch" : "quiet";
-  return <section className="vb-street-hunger" data-tone={tone} aria-label={`Hunger ${rounded} of 100`}>
-    <div className="vb-street-hunger-copy">
-      <span>{frenzy ? "FRENZY" : "HUNGER"}</span>
-      <strong>{rounded}</strong>
-      <small>/100</small>
-    </div>
-    <div className="vb-street-hunger-track" aria-hidden="true"><i style={{ "--hud-fill": `${rounded}%` }}/></div>
-  </section>;
-}
-
 function Objective({ guide }) {
   if (!guide) return null;
   return <section className="vb-objective vb-street-objective" aria-label={`Objective ${guide.label}, ${guide.arrived ? "nearby" : `${guide.distance} metres away`}`}>
-    <span className="vb-street-objective-kicker">Tonight</span>
-    <div className="vb-street-objective-main">
+    <div className="vb-street-objective-paper">
+      <span className="vb-street-objective-kicker">Tonight</span>
+      <strong>{guide.label}</strong>
+      <small>{guide.arrived ? "Target nearby" : `${guide.distance} m · tracked`}</small>
+    </div>
+    <div className="vb-street-objective-pointer" aria-hidden="true">
       <Icon style={{ transform: `rotate(${guide.bearing}deg)` }}/>
-      <div><strong>{guide.label}</strong><span>{guide.arrived ? "Nearby" : `${guide.distance} m`}</span></div>
+      {!guide.arrived && <span>{guide.distance} m</span>}
     </div>
   </section>;
 }
@@ -56,18 +47,38 @@ function VehiclePanel({ vehicle }) {
   </section>;
 }
 
-function Pocket({ s, command }) {
-  return <section className="vb-street-pocket" aria-label="Carried resources">
-    <Resource label="Cash" value={`$${s.cash}`} compact/>
-    <button type="button" className="vb-street-blood" disabled={!s.bags || s.frenzy} onClick={() => command("blood")} aria-label={`Use carried blood, ${s.bags} bags`}>
-      <Icon name="blood"/><span>BLOOD</span><strong>{s.bags}<small>/4</small></strong>
-    </button>
+function SurvivalPanel({ s, command }) {
+  const hunger = Math.max(0, Math.min(100, Math.round(s.hunger)));
+  const vitality = Math.max(0, Math.min(100, Math.round(s.vitality)));
+  return <section className="vb-vitals vb-street-vitals" aria-label="Survival status">
+    <div className="vb-street-vitals-mark" aria-hidden="true"><span/><span/></div>
+    <div className="vb-street-vitals-body">
+      <div className="vb-street-survival-row" data-tone={s.frenzy || hunger >= 70 ? "danger" : "normal"}>
+        <strong>{s.frenzy ? "FRENZY" : "HUNGER"}</strong>
+        <div className="vb-street-survival-track"><i style={{ width: `${hunger}%` }}/></div>
+        <b>{hunger}</b>
+      </div>
+      <div className="vb-street-survival-row vitality" data-tone={vitality < 35 ? "danger" : "normal"}>
+        <strong>VITALITY</strong>
+        <div className="vb-street-survival-track"><i style={{ width: `${vitality}%` }}/></div>
+        <b>{vitality}</b>
+      </div>
+      <div className="vb-street-survival-pocket">
+        <button type="button" className="vb-street-blood" disabled={!s.bags || s.frenzy} onClick={() => command("blood")} aria-label={`Use carried blood, ${s.bags} bags`}>
+          <Icon name="blood"/><span>BLOOD BAGS</span><strong>{s.bags}</strong>
+        </button>
+        <div className="vb-street-cash"><span aria-hidden="true">▰</span><small>CASH</small><strong>${s.cash}</strong></div>
+      </div>
+    </div>
   </section>;
 }
 
 function Prompt({ prompt }) {
   if (!prompt) return null;
-  return <div className="vb-prompt vb-street-prompt" role="status"><kbd>{prompt.key}</kbd><strong>{prompt.text}</strong></div>;
+  return <div className="vb-prompt vb-street-prompt" role="status">
+    <kbd>{prompt.key}</kbd>
+    <div><strong>{prompt.text}</strong><small>ACT NOW</small></div>
+  </div>;
 }
 
 function Notice({ guidance, notice }) {
@@ -94,12 +105,7 @@ export function Hud({ s, command }) {
 
     <Objective guide={s.guide}/>
     <Attention wanted={s.wanted} exposure={s.exposure}/>
-
-    <section className="vb-vitals vb-street-vitals" aria-label="Survival status">
-      <Hunger value={s.hunger} frenzy={s.frenzy}/>
-      <Resource label="Vitality" value={Math.round(s.vitality)} suffix="%" tone={s.vitality < 30 ? "critical" : s.vitality < 60 ? "watch" : "quiet"}/>
-      <Pocket s={s} command={command}/>
-    </section>
+    <SurvivalPanel s={s} command={command}/>
 
     {s.vehicle ? <VehiclePanel vehicle={s.vehicle}/> : <section className="vb-equipment vb-street-equipment" aria-label="Weapon">
       <span>ARMED</span><strong>{s.weapon.name}</strong><small>{s.weapon.ammoText} · AMMO</small>
