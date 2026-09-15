@@ -48,10 +48,11 @@ test("production bootstrap attaches campaign and free roam without entry or miss
   assert.equal(content.includes("campaign: true"), true);
 });
 
-test("campaign preload isolates explore and scenario storage", async () => {
+test("campaign preload uses no save storage and replaces stale campaign instances", async () => {
   const content = await source("phaser/src/campaign/preload.js");
-  assert.equal(content.includes("memoryStorage"), true);
-  assert.equal(content.includes("bootProfile.persistentCampaign"), true);
+  assert.equal(content.includes("storage: null"), true);
+  assert.equal(content.includes("existing.destroy()"), true);
+  assert.equal(content.includes("? existing"), false);
   assert.equal(content.includes("blocksAutomaticOpeningStart: true"), true);
   assert.equal(content.includes("globalThis.NBD_CAMPAIGN_ENTRY = campaignEntry"), true);
   assert.equal(content.includes("SILENCE_THE_JOURNALIST_ID"), false);

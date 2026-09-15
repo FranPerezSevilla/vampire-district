@@ -1,5 +1,7 @@
 # Project snapshot
 
+**UI rewrite review (2026-09-10):** `codex/ui-rewrite` replaces the production in-game views with React/Radix, a viewport-native shell and a single UIScene command boundary. Main-menu art direction and gameplay/save authorities are retained. See [`UI_REWRITE_ARCHITECTURE.md`](UI_REWRITE_ARCHITECTURE.md) for composition, build and validation. Native/DOM checks do not constitute visual acceptance; public deployment remains a separate gate.
+
 _Last updated: 2026-09-08 — user-accepted PR #73 / #82 foundation_
 
 **Feature under review:** `codex/vampire-city-power` adds the playable survival-to-Prince progression. It includes four contacts, two donors, deliveries/debts, three businesses, blood supplies, operating policies, recognition, visible network guidance and involuntary frenzy at Hunger 100. Campaign schema is now 6. The previous hunter priority is withdrawn by the user; its legacy runtime update is disabled. See [`VAMPIRE_CITY_POWER.md`](VAMPIRE_CITY_POWER.md) for actual rules and review scope. The traffic acceptance below remains the historical foundation, not acceptance of this new feature.

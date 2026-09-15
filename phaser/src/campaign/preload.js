@@ -5,15 +5,6 @@ import {
 } from "./CampaignEntry.js";
 import { CampaignSystem } from "./CampaignSystem.js";
 
-function memoryStorage() {
-  const values = new Map();
-  return {
-    getItem(key) { return values.has(key) ? values.get(key) : null; },
-    setItem(key, value) { values.set(String(key), String(value)); },
-    removeItem(key) { values.delete(String(key)); }
-  };
-}
-
 function consumeAutoEnter() {
   try {
     const requested = globalThis?.sessionStorage?.getItem?.(CAMPAIGN_ENTRY_SESSION_KEY) === "enter";
@@ -38,14 +29,17 @@ function hiddenFreeRoamEntry(campaign) {
   });
 }
 
+// A bootstrap starts a new run, never resumes a cached campaign singleton.
+// Other modules import this live instance for the remainder of the session.
 const existing = globalThis.NBD_CAMPAIGN_SYSTEM;
-const campaign = existing instanceof CampaignSystem
-  ? existing
-  : new CampaignSystem({
-      storage: bootProfile.persistentCampaign ? globalThis?.localStorage : memoryStorage(),
-      autoLoad: bootProfile.autoLoadCampaign,
-      autoSave: bootProfile.autoSaveCampaign
-    });
+if (existing instanceof CampaignSystem) existing.destroy();
+const campaign = new CampaignSystem({
+  // Null deliberately prevents even explicit legacy save() calls from storing
+  // progress. Do not access/clear localStorage: asset caches and settings remain.
+  storage: null,
+  autoLoad: bootProfile.autoLoadCampaign,
+  autoSave: bootProfile.autoSaveCampaign
+});
 
 // The entry descriptor remains available to checkpoint/bootstrap code, but no
 // production mission is selected or started. Explicit future definitions can

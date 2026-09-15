@@ -1,157 +1,43 @@
-const DESIGN_WIDTH = 1440;
-const DESIGN_HEIGHT = 960;
-const MIN_FRAME_WIDTH = 280;
-const MAX_FRAME_WIDTH = 1920;
-
-function installResponsiveStyles() {
-  if (document.getElementById("nbd-responsive-layout-style")) return;
-
-  const style = document.createElement("style");
-  style.id = "nbd-responsive-layout-style";
-  style.textContent = `
-    html,
-    body {
-      width: 100%;
-      min-height: 100%;
-      overflow-x: hidden;
-    }
-
-    .shell {
-      max-width: none !important;
-    }
-
-    .game-frame,
-    #game-root {
-      max-width: none !important;
-      min-height: 0 !important;
-      aspect-ratio: auto !important;
-    }
-
-    #game-root {
-      display: block !important;
-    }
-
-    #game-root canvas {
-      display: block;
-      width: 100% !important;
-      max-width: none !important;
-      height: 100% !important;
-    }
-
-    .game-ui {
-      inset: 0 auto auto 0 !important;
-      transform-origin: 0 0;
-    }
-
-    body.nbd-height-constrained .notes {
-      display: none;
-    }
-
-    @media (max-width: 720px) {
-      .shell {
-        padding-top: 8px !important;
-      }
-
-      .topbar {
-        margin-bottom: 7px !important;
-      }
-    }
-  `;
-  document.head.appendChild(style);
+// The DOM viewport is authoritative. Only the world canvas uses cover/crop.
+// Never assign a logical resolution or a scale transform to the UI tree.
+export function coverSize(width, height, renderWidth, renderHeight) {
+  const ratio = renderWidth > 0 && renderHeight > 0 ? renderWidth / renderHeight : 1.5;
+  const w = Math.max(width, height * ratio), h = w / ratio;
+  return { width: w, height: h, left: (width - w) / 2, top: (height - h) / 2 };
 }
-
-function renameQualitySelector() {
-  const label = document.querySelector(".resolution-control");
-  const select = document.getElementById("resolution-select");
-  if (!label || !select || label.dataset.responsiveCopy === "true") return;
-
-  for (const node of label.childNodes) {
-    if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
-      node.textContent = "Render quality ";
-      break;
-    }
-  }
-
-  const labels = {
-    compact: "Low",
-    large: "High",
-    qhd: "Very high",
-    ultra: "Ultra"
+export function installResponsiveLayout(documentRef = globalThis.document, windowRef = globalThis.window) {
+  const app = documentRef?.getElementById("viceblood-app"), host = documentRef?.getElementById("game-root");
+  if (!app || !host || !windowRef) return () => {};
+  let scheduled = 0;
+  const resize = () => {
+    scheduled = 0;
+    const canvas = host.querySelector("canvas");
+    if (!canvas) return;
+    const rect = app.getBoundingClientRect();
+    if (!(rect.width > 0 && rect.height > 0)) return;
+    const scale = windowRef.NBD_PHASER_GAME?.scale;
+    const gameSize = scale?.gameSize;
+    const layout = coverSize(rect.width, rect.height, gameSize?.width || canvas.width, gameSize?.height || canvas.height);
+    for (const name of ["width", "height", "left", "top"]) canvas.style[name] = `${layout[name]}px`;
+    canvas.style.margin = "0";
+    canvas.style.transform = "none";
+    // CSS cover changes are outside ScaleManager.refresh. Synchronize its input
+    // conversion AFTER writing styles, without letting it restyle/center the UI.
+    scale?.updateBounds?.();
+    const inputWidth = scale?.baseSize?.width || gameSize?.width || canvas.width;
+    const inputHeight = scale?.baseSize?.height || gameSize?.height || canvas.height;
+    scale?.displayScale?.set?.(inputWidth / layout.width, inputHeight / layout.height);
+    windowRef.NBD_VIEWPORT_LAYOUT = Object.freeze({ width: rect.width, height: rect.height, canvas: layout, uiScale: 1, devicePixelRatio: windowRef.devicePixelRatio || 1, textSize: windowRef.getComputedStyle?.(app)?.fontSize || null });
   };
-  for (const option of select.options) option.textContent = labels[option.value] || option.textContent;
-  label.dataset.responsiveCopy = "true";
+  const schedule = () => { if (!scheduled) scheduled = windowRef.requestAnimationFrame(resize); };
+  const observer = windowRef.ResizeObserver ? new windowRef.ResizeObserver(schedule) : null;
+  observer?.observe(app);
+  const mutation = windowRef.MutationObserver ? new windowRef.MutationObserver(schedule) : null;
+  mutation?.observe(host, { childList: true });
+  windowRef.addEventListener("resize", schedule);
+  windowRef.addEventListener("nbd:app-ready", schedule);
+  windowRef.visualViewport?.addEventListener("resize", schedule);
+  schedule();
+  return () => { observer?.disconnect(); mutation?.disconnect(); windowRef.removeEventListener("resize", schedule); windowRef.removeEventListener("nbd:app-ready", schedule); windowRef.visualViewport?.removeEventListener("resize", schedule); if (scheduled) windowRef.cancelAnimationFrame(scheduled); };
 }
-
-function viewportSize() {
-  const viewport = window.visualViewport;
-  return {
-    width: viewport?.width || window.innerWidth,
-    height: viewport?.height || window.innerHeight
-  };
-}
-
-function resizeGameFrame() {
-  const shell = document.querySelector(".shell");
-  const frame = document.querySelector(".game-frame");
-  const root = document.getElementById("game-root");
-  const ui = document.getElementById("game-ui");
-  if (!shell || !frame || !root || !ui) return;
-
-  const viewport = viewportSize();
-  const compactHeight = viewport.height < 760;
-  document.body.classList.toggle("nbd-height-constrained", compactHeight);
-
-  const frameTop = frame.getBoundingClientRect().top;
-  const notes = document.querySelector(".notes");
-  const notesHeight = compactHeight
-    ? 0
-    : notes && getComputedStyle(notes).display !== "none"
-      ? notes.offsetHeight + 14
-      : 0;
-  const widthAllowance = Math.max(1, viewport.width - 24);
-  const availableHeight = Math.max(180, viewport.height - frameTop - notesHeight - 12);
-  const widthFromHeight = availableHeight * (DESIGN_WIDTH / DESIGN_HEIGHT);
-  const rawWidth = Math.min(MAX_FRAME_WIDTH, widthAllowance, widthFromHeight);
-  const frameWidth = Math.max(Math.min(MIN_FRAME_WIDTH, widthAllowance), rawWidth);
-  const frameHeight = frameWidth * (DESIGN_HEIGHT / DESIGN_WIDTH);
-
-  document.documentElement.style.setProperty("--game-width", `${Math.round(frameWidth)}px`);
-  document.documentElement.style.setProperty("--game-height", `${Math.round(frameHeight)}px`);
-  document.documentElement.style.setProperty("--game-ui-scale", String(frameWidth / DESIGN_WIDTH));
-
-  shell.style.width = `${Math.round(frameWidth)}px`;
-  frame.style.width = `${Math.round(frameWidth)}px`;
-  frame.style.height = `${Math.round(frameHeight)}px`;
-  root.style.width = "100%";
-  root.style.height = "100%";
-
-  ui.style.width = `${DESIGN_WIDTH}px`;
-  ui.style.height = `${DESIGN_HEIGHT}px`;
-  ui.style.transform = `scale(${frameWidth / DESIGN_WIDTH})`;
-}
-
-function installResponsiveLayout() {
-  installResponsiveStyles();
-  renameQualitySelector();
-  resizeGameFrame();
-
-  let resizeFrame = 0;
-  const scheduleResize = () => {
-    cancelAnimationFrame(resizeFrame);
-    resizeFrame = requestAnimationFrame(resizeGameFrame);
-  };
-
-  window.addEventListener("resize", scheduleResize, { passive: true });
-  window.addEventListener("orientationchange", scheduleResize, { passive: true });
-  window.visualViewport?.addEventListener("resize", scheduleResize, { passive: true });
-
-  if (window.ResizeObserver) {
-    const observer = new ResizeObserver(scheduleResize);
-    const topbar = document.querySelector(".topbar");
-    const notes = document.querySelector(".notes");
-    if (topbar) observer.observe(topbar);
-    if (notes) observer.observe(notes);
-  }
-}
-
-installResponsiveLayout();
+if (typeof document !== "undefined") installResponsiveLayout();

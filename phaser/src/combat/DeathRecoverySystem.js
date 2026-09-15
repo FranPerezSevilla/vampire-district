@@ -63,7 +63,7 @@ export class DeathRecoverySystem {
   ensureDeathDomBackdrop() {
     if (typeof document === "undefined") return null;
     if (this.deathDomBackdrop?.isConnected) return this.deathDomBackdrop;
-    const host = document.getElementById("game-ui") || document.querySelector(".game-frame");
+    const host = document.getElementById("game-effects") || document.querySelector(".game-frame");
     if (!host) return null;
     let backdrop = document.getElementById("death-blackout-backdrop");
     if (!backdrop) {

@@ -62,7 +62,8 @@ test("hunting classification distinguishes Estate poaching from quiet Crown tole
   const crown = classifyHuntingFacts({
     district: CROWN_DISTRICT,
     victim: { id: "victim-crown", type: "civilian" },
-    bodyEvidence: true,
+    victimAlive: true,
+    bodyEvidence: false,
     biteEvidence: true
   });
   assert.equal(crown.classification, HUNTING_CLASSIFICATION.TOLERATED);

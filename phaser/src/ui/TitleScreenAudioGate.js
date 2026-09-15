@@ -12,6 +12,7 @@ export class TitleScreenAudioGate {
     this.resolveWait = null;
     this.listenersBound = false;
     this.creditsObserver = null;
+    this.playbackGeneration = 0;
     this.boundKeydown = event => this.handleKeydown(event);
     this.boundPointer = event => this.unlock(event);
     this.boundTouch = event => this.unlock(event);
@@ -111,10 +112,13 @@ export class TitleScreenAudioGate {
     // The user gesture must initiate play, but audio readiness must never gate UI.
     // The parser-preloaded media normally starts immediately; cold/slow media may
     // finish asynchronously while the already-created title menu is presented.
+    const generation = ++this.playbackGeneration;
     const startAttempt = this.theme?.start?.();
     Promise.resolve(startAttempt).then(started => {
+      if (generation !== this.playbackGeneration) return;
       this.window.NBD_TITLE_AUDIO_GATE_STATE = started ? "playing" : "blocked";
     }).catch(() => {
+      if (generation !== this.playbackGeneration) return;
       this.window.NBD_TITLE_AUDIO_GATE_STATE = "blocked";
     });
 
@@ -130,8 +134,16 @@ export class TitleScreenAudioGate {
   }
 
   fadeOut(durationMs = THEME_FADE_MS) {
+    this.playbackGeneration++;
     this.cancelWait(false);
     this.theme?.fadeOut?.(durationMs);
+  }
+
+  stop() {
+    this.playbackGeneration++;
+    this.cancelWait(false);
+    this.theme?.stop?.();
+    if (this.window) this.window.NBD_TITLE_AUDIO_GATE_STATE = "stopped";
   }
 
   cancelWait(result = false) {

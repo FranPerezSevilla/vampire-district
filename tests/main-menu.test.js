@@ -88,7 +88,7 @@ test("MainMenuScene reveals the DOM menu from the authoritative GameScene create
   assert.doesNotMatch(mainScene, /PREVIEW_READY_RETRY_MS|PREVIEW_READY_MAX_ATTEMPTS|delayedCall/);
   assert.doesNotMatch(mainScene, /this\.add\.(?:image|text|rectangle|graphics|container)/);
   assert.doesNotMatch(mainScene, /visibleViewportBounds|scheduleLayout|installFullscreenShell/);
-  assert.doesNotMatch(mainScene, /getBoundingClientRect/);
+  assert.match(mainScene, /visibleFraction/); // camera composition accounts for the visible crop only
 });
 
 test("main menu keeps the authoritative GameScene alive but freezes player aim", () => {
@@ -103,11 +103,12 @@ test("main menu keeps the authoritative GameScene alive but freezes player aim",
 
 test("viewport anchoring and full-height panels belong to CSS, not canvas crop maths", () => {
   assert.match(titleCss, /\.viceblood-title-brand\s*\{/);
-  assert.match(titleCss, /top:\s*max\(clamp\(24px/);
-  assert.match(titleCss, /left:\s*max\(clamp\(26px/);
+  assert.match(titleCss, /top:\s*max\(clamp\(1\.5rem/);
+  assert.match(titleCss, /left:\s*max\(clamp\(1\.625rem/);
   assert.match(titleCss, /\.viceblood-title-drawer\s*\{[\s\S]*inset:\s*0 auto 0 0/);
-  assert.match(titleCss, /body\.viceblood-title-active #game-root canvas/);
-  assert.match(titleCss, /width:\s*max\(100vw, 150vh\)/);
+  assert.doesNotMatch(titleCss, /width:\s*max\(100vw, 150vh\)/);
+  const viewportCss = readFileSync(new URL("../phaser/viewport.css", import.meta.url), "utf8");
+  assert.match(viewportCss, /#game-ui\{position:absolute;inset:0/);
 });
 
 test("render quality belongs to the DOM Options drawer", () => {
@@ -131,10 +132,10 @@ test("NEW NIGHT hands control to the same running world without blackout or rest
 });
 
 test("menu exposes the approved semantic navigation surface", () => {
-  for (const action of ["continue", "new-night", "options", "credits"]) {
+  for (const action of ["new-night", "options", "credits"]) {
     assert.match(indexHtml, new RegExp(`data-title-action="${action}"`));
   }
   assert.match(titleController, /dataset\.titleAction = "controls"/);
   assert.match(titleController, /openControls\(\)/);
-  assert.match(indexHtml, /data-title-action="continue"[^>]*disabled/);
+  assert.doesNotMatch(indexHtml, /data-title-action="continue"/);
 });

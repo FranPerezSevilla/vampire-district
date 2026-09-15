@@ -1,3 +1,5 @@
+> Current hunting/authority gameplay: see [Hunting agreements](HUNTING_AGREEMENTS.md).
+
 # Vampire city power
 
 Implemented feature branch: `codex/vampire-city-power`, PR #83. The player liked the initial system and requested a structured domain/progression iteration on 2026-09-09. That iteration is implemented with native verification and awaits player review. No browser testing was performed, as requested.
@@ -46,7 +48,7 @@ Use **Track & return** for immediate navigation, **Save marker** to retain a nam
 
 The domain uses the existing interaction menu's world gate and frame input. **1–6** choose sections, **W/S or arrows then E** select a section, **Enter** activates a focused DOM button, and **7/Esc** return to the city. Hunger, business production and donor recovery pause while the panel is open. No second game loop or key listener is added. The existing mission shortcut now routes to Errand in this runtime; legacy mission fixtures retain their original drawer.
 
-Hunting permissions use `HuntingLawSystem`. A discovered political violation, lethal feed or publicly witnessed feeding in a met operator's district can suspend their permission, production and endorsement. Hidden physical evidence does not automatically inform the operator. The player can repair through a delivery or $180 compensation, and renegotiate permission. Surviving assaulted donors remember their own harm and refuse further donations until the relationship is repaired; deceased donors stay dead. Other suppliers and zero-cost work remain available.
+Hunting agreements use `HuntingLawSystem`. First Estate requires a grant; Gutter Crown openly allows quiet, nonlethal hunting with no body or witnesses and police at most level 1, regardless of reputation. Disputed land has no settled territorial claim. Known poaching/protected-prey violations damage the relevant faction standing once. A discovered personal breach suspends the actual signer (or the victim's protector), not an arbitrary met operator in the district. Hidden physical evidence does not automatically inform the operator. A delivery or $180 compensation restores the existing revoked agreement when unexpired and still recognised by the local authority; no second permission click is required. Surviving assaulted donors remember their own harm and refuse further donations until the relationship is repaired; deceased donors stay dead. Other suppliers and zero-cost work remain available.
 
 ## Supply and investment
 

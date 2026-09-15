@@ -233,7 +233,7 @@ test("domain buttons own Enter activation while E and menu navigation still use 
   const { scene, keys } = makeScene();
   const input = new InputSystem(scene, { keys });
   try {
-    documentTarget.activeElement = { closest: selector => selector === ".vampire-domain button" ? {} : null };
+    documentTarget.activeElement = { closest: selector => selector.includes("[data-viceblood-ui]") ? {} : null };
     keys.enter._justDown = true;
     assert.equal(input.beginFrame().menuConfirmPressed, false);
     keys.interact._justDown = true;

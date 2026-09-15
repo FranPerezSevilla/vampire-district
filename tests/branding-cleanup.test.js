@@ -43,7 +43,7 @@ async function trackedTextFiles(directory = ROOT) {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = [];
   for (const entry of entries) {
-    if ([".git", "node_modules", "test-results", "playwright-report"].includes(entry.name)) continue;
+    if ([".git", "node_modules", "test-results", "playwright-report", ".artifacts", "dist", "ui-dist"].includes(entry.name)) continue;
     const path = join(directory, entry.name);
     if (entry.isDirectory()) files.push(...await trackedTextFiles(path));
     else if ([".js", ".mjs", ".json", ".md", ".html", ".css", ".svg", ".yml", ".yaml"].includes(extname(entry.name))) files.push(path);
@@ -60,7 +60,8 @@ test("the retired canvas prototype and one-off patch infrastructure are physical
   assert.deepEqual(workflows.sort(), [
     "build-itch-zip.yml",
     "materialize-audio-assets.yml",
-    "tests.yml"
+    "tests.yml",
+    "ui-rewrite.yml"
   ]);
 
   const rootTools = (await readdir(new URL("../tools/", import.meta.url), { withFileTypes: true }))
@@ -73,7 +74,7 @@ test("active product surfaces use Viceblood and expose no legacy-prototype link"
   for (const path of ["index.html", "phaser/index.html"]) {
     const html = await readFile(new URL(path, ROOT_URL), "utf8");
     assert.match(html, /<title>Viceblood<\/title>/);
-    assert.match(html, /<h1>Viceblood<\/h1>/);
+    assert.match(html, /aria-label="ViceBlood"/);
     assert.doesNotMatch(html, /Vampire District|Night Blood District|Bloodnight District/i);
     assert.doesNotMatch(html, /legacy prototype|href=["'][^"']*legacy\//i);
   }

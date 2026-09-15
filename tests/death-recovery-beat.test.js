@@ -96,10 +96,11 @@ test("runtime death presentation attenuates world audio and reaches black before
 
 test("conventional Sire dialogue is DOM-backed so it can remain above the canvas blackout", () => {
   const code = source("phaser/src/tutorial/TutorialDirector.js");
-  assert.match(code, /dialogue = document\.createElement\("div"\)/);
-  assert.match(code, /dialogue\.id = "tutorial-dialogue"/);
-  assert.match(code, /\.tutorial-dialogue\.thought/);
-  assert.match(code, /z-index: 95/);
+  assert.match(code, /this\.uiScene\.presentDialogue/);
+  assert.doesNotMatch(code, /dialogue = document\.createElement/);
+  const css = source("phaser/viewport.css");
+  assert.match(css, /#game-effects\{[^}]*z-index:15/);
+  assert.match(css, /#game-ui\{[^}]*z-index:20/);
 });
 
 test("GameplayRuntime composes and advances the death beat even while world input is locked", () => {

@@ -7,181 +7,6 @@ import {
 
 const RECOVERY_TYPES = new Set([NPC_TYPES.POLICE, NPC_TYPES.HUNTER]);
 
-function installUxStyle() {
-  if (typeof document === "undefined" || document.getElementById("nbd-milestone9-style")) return;
-
-  const style = document.createElement("style");
-  style.id = "nbd-milestone9-style";
-  style.textContent = `
-    .ux-guidance {
-      position: absolute;
-      left: 50%;
-      top: 88px;
-      width: min(650px, calc(100% - 40px));
-      min-height: 42px;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      gap: 11px;
-      padding: 8px 14px;
-      transform: translateX(-50%);
-      border: 1px solid rgba(120, 199, 163, .56);
-      border-left-width: 3px;
-      background: linear-gradient(90deg, rgba(5, 8, 13, .94), rgba(12, 18, 25, .96), rgba(5, 8, 13, .94));
-      box-shadow: 0 12px 34px rgba(0, 0, 0, .38);
-      color: #eafff5;
-      font-size: 13px;
-      font-weight: 800;
-      line-height: 1.25;
-      text-align: center;
-      pointer-events: none;
-      z-index: 74;
-    }
-    .ux-guidance.visible { display: flex; animation: nbd-ux-guidance-in .18s ease-out; }
-    .ux-guidance.recovery { border-color: rgba(255, 176, 46, .78); color: #fff2c5; }
-    .ux-guidance.warning { border-color: rgba(255, 64, 88, .82); color: #ffe2e7; }
-    .ux-guidance kbd {
-      flex: 0 0 auto;
-      min-width: 62px;
-      min-height: 27px;
-      display: inline-grid;
-      place-items: center;
-      padding: 4px 8px;
-      border: 1px solid currentColor;
-      background: rgba(255, 255, 255, .07);
-      color: inherit;
-      font: 900 12px/1 Inter, system-ui, sans-serif;
-      box-shadow: inset 0 -2px rgba(0, 0, 0, .34);
-    }
-    @keyframes nbd-ux-guidance-in {
-      from { opacity: 0; transform: translate(-50%, -5px); }
-      to { opacity: 1; transform: translate(-50%, 0); }
-    }
-
-    .weapon-hud {
-      left: auto !important;
-      right: 18px !important;
-      bottom: 18px !important;
-      min-width: 142px !important;
-    }
-    .weapon-hud small { font-size: 12px !important; }
-    .weapon-hud strong { font-size: 14px !important; }
-    .weapon-hud span { font-size: 13px !important; }
-    .weapon-hud kbd { font-size: 12px !important; }
-
-    .vital-heading span,
-    .wanted-copy small,
-    .drawer-kicker,
-    .hud-button small,
-    .power-orb i,
-    .interaction-menu p,
-    .interaction-row small,
-    .tutorial-dialogue__advance {
-      font-size: 12px !important;
-    }
-    .power-orb { height: 58px !important; }
-
-    .nbd-accessibility {
-      margin: 16px 0 4px;
-      padding: 13px 14px;
-      border: 1px solid rgba(215, 200, 255, .20);
-      background: rgba(255, 255, 255, .035);
-    }
-    .nbd-accessibility h3 {
-      margin: 0 0 8px;
-      color: #fff2a8;
-      font-size: 14px;
-      letter-spacing: .04em;
-    }
-    .nbd-accessibility p {
-      margin: 8px 0 0 !important;
-      color: #bdb3cd;
-      font-size: 12px;
-      line-height: 1.4;
-    }
-    .nbd-accessibility-toggle {
-      min-height: 38px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 9px;
-      padding: 8px 12px;
-      border: 1px solid rgba(241, 230, 255, .34);
-      background: rgba(5, 6, 11, .72);
-      color: #f4ecff;
-      font-size: 12px;
-      font-weight: 850;
-      cursor: pointer;
-    }
-    .nbd-accessibility-toggle[aria-pressed="true"] {
-      border-color: #fff2a8;
-      background: rgba(255, 242, 168, .11);
-      color: #fff8dc;
-    }
-    .hud-button:focus-visible,
-    .nbd-accessibility-toggle:focus-visible,
-    .resolution-control select:focus-visible {
-      outline: 3px solid #fff2a8;
-      outline-offset: 3px;
-    }
-
-    @media (max-width: 980px) {
-      .ux-guidance { top: 152px; }
-      .weapon-hud { right: 10px !important; bottom: 10px !important; }
-    }
-    @media (max-width: 720px) {
-      .ux-guidance {
-        top: 142px;
-        width: calc(100% - 20px);
-        min-height: 38px;
-        gap: 8px;
-        padding: 7px 9px;
-        font-size: 12px;
-      }
-      .ux-guidance kbd { min-width: 52px; font-size: 12px; }
-      .weapon-hud { min-width: 118px !important; }
-      .power-orb { height: 42px !important; }
-      .wanted-copy strong,
-      .hud-toast { font-size: 12px !important; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .ux-guidance.visible,
-      .hud-toast.visible,
-      .task-reveal,
-      .tutorial-dialogue {
-        animation: none !important;
-        transition: none !important;
-      }
-    }
-  `;
-  document.head.appendChild(style);
-}
-
-function ensureGuidanceDom() {
-  if (typeof document === "undefined") return null;
-  installUxStyle();
-  const host = document.getElementById("game-ui") || document.querySelector(".game-frame");
-  if (!host) return null;
-
-  let root = document.getElementById("ux-guidance");
-  if (!root) {
-    root = document.createElement("div");
-    root.id = "ux-guidance";
-    root.className = "ux-guidance";
-    root.setAttribute("role", "status");
-    root.setAttribute("aria-live", "polite");
-    root.setAttribute("aria-hidden", "true");
-    root.innerHTML = `<kbd></kbd><span></span>`;
-    host.appendChild(root);
-  }
-
-  return {
-    root,
-    key: root.querySelector("kbd"),
-    text: root.querySelector("span")
-  };
-}
-
 function storedAimPreference() {
   try {
     return normalizeBooleanPreference(window.localStorage.getItem(UX_STORAGE_KEYS.AIM_HIGH_CONTRAST), false);
@@ -193,7 +18,6 @@ function storedAimPreference() {
 export class UxGuidanceSystem {
   constructor(scene) {
     this.scene = scene;
-    this.dom = ensureGuidanceDom();
     this.recoveryTipShown = false;
     this.transient = null;
     this.labels = new Map();
@@ -298,15 +122,8 @@ export class UxGuidanceSystem {
   }
 
   renderMessage(message) {
-    if (!this.dom?.root) return;
-    const visible = Boolean(message?.text);
-    this.dom.root.classList.toggle("visible", visible);
-    this.dom.root.classList.toggle("recovery", message?.kind === "recovery");
-    this.dom.root.classList.toggle("warning", message?.kind === "warning");
-    this.dom.root.setAttribute("aria-hidden", visible ? "false" : "true");
-    if (!visible) return;
-    if (this.dom.key) this.dom.key.textContent = message.key || "TIP";
-    if (this.dom.text) this.dom.text.textContent = message.text;
+    const value = message?.text ? { key: message.key || "TIP", text: message.text, kind: message.kind } : null;
+    this.scene.statePublisher?.set?.("uiGuidance", value) || this.scene.registry?.set?.("uiGuidance", value);
   }
 
   updateRecoveryLabels() {
@@ -372,8 +189,5 @@ export class UxGuidanceSystem {
     this.scene.events?.off?.("feeding:started", this.onFeedingStarted);
     for (const label of this.labels.values()) label.destroy?.();
     this.labels.clear();
-    this.dom?.root?.remove?.();
   }
 }
-
-export { installUxStyle };
