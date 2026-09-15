@@ -30,10 +30,13 @@ test('sprint 1 uses the approved mockup hierarchy', () => {
   assert.match(source, /BLOOD BAGS/);
   assert.match(source, /vb-street-cash/);
   assert.match(source, /ACT NOW/);
+  assert.doesNotMatch(source, /vb-street-vitals-mark/);
   assert.match(css, /SPRINT 1 — objective banner/);
   assert.match(css, /font-family:Impact/);
   assert.match(css, /min-height:104px/);
-  assert.match(css, /grid-template-columns:92px minmax\(320px,470px\)/);
+  assert.match(css, /width:clamp\(340px,27vw,430px\)/);
+  assert.match(css, /grid-template-columns:86px minmax\(110px,1fr\) 30px/);
+  assert.match(css, /Compact, scan-first, no decorative mascot/);
   assert.match(css, /clip-path:polygon/);
 });
 
