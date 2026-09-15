@@ -30,3 +30,7 @@ Record every third-party audio asset here before it is merged into the game.
 - Note edits such as trimming, pitch changes, layering or normalization.
 - Keep filenames descriptive and lowercase with hyphens.
 - Do not remove attribution just because an asset was edited.
+
+## Intro video music (offline edit; no runtime event)
+EL (gothic version), Andres Rodriguez (anrocomposer), Pixabay track 136208: https://pixabay.com/es/music/rock-el-gothic-version-136208/ . Pixabay Content License, checked 2026-09-15: https://pixabay.com/service/terms/ . Used within docs/intro/video/viceblood-intro-53s-v8.mp4. Processing: excerpts, riff restarts aligned to shot boundaries, gain, brief fades and mixing with existing effects. Original track not redistributed separately. Content ID registered; official certificate not saved. See docs/intro/video/viceblood-v8-creditos.md.
+
