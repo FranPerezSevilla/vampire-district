@@ -11,7 +11,7 @@ Sprint 1 intentionally changes only the three elements that most affect moment-t
 
 1. **Objective banner:** a large torn-paper `TONIGHT` headline at the top centre. The current tracked destination is the dominant line, with distance and a separate bearing arrow beneath the paper.
 2. **Context prompt:** an oversized cream paper strip at the bottom centre with a strong keycap and all-caps action text. It should be readable without searching the screen.
-3. **Survival slab:** one coherent black panel at bottom left for Hunger, Vitality, Blood Bags and Cash. Hunger and Vitality use wide horizontal bars; the paired fang mark gives the block a recognizable ViceBlood silhouette.
+3. **Survival slab:** one compact black panel at bottom left for Hunger, Vitality, Blood Bags and Cash. Hunger and Vitality use horizontal bars; Blood and Cash share one simple secondary row. Decorative fang artwork was removed after the first in-game review because it consumed too much space and weakened scanability.
 
 Weapon/vehicle, powers, Police/Veil warnings and transient notes are deliberately retained and visually subordinated in Sprint 1 rather than redesigned again. They are candidates for later sprints after the three primary elements are accepted in real gameplay.
 
@@ -19,13 +19,13 @@ Weapon/vehicle, powers, Police/Veil warnings and transient notes are deliberatel
 - **Top left:** current district and stage, treated as a secondary clipped street card.
 - **Top center:** current Tonight destination when one exists, with bearing and distance. This is the largest top-screen element.
 - **Top right:** Police and Veil warnings only when non-zero.
-- **Bottom left:** the survival slab: Hunger, Vitality, Cash and carried Blood.
+- **Bottom left:** the compact survival slab: Hunger, Vitality, Cash and carried Blood.
 - **Bottom center:** the largest interaction affordance: contextual prompt. Powers stay quieter underneath it.
 - **Bottom right:** current weapon or vehicle telemetry, never both.
 - **Transient note:** tutorial/action feedback uses a taped-paper treatment and disappears through the existing UIScene notice lifetime.
 
 ## Visual language
-Coal/black backgrounds, aged-cream paper, wine-red danger and dirty ochre warning. Hard condensed typography, clipped/torn silhouettes, subtle photocopy grain and imperfect rules echo the Black Book and mockup without importing external art. No external fonts, images or runtime assets are introduced.
+Coal/black backgrounds, aged-cream paper, wine-red danger and dirty ochre warning. Hard condensed typography, clipped/torn silhouettes, subtle photocopy grain and imperfect rules echo the Black Book and mockup without importing external art. Ornament must not compete with status readability. No external fonts, images or runtime assets are introduced.
 
 ## Behaviour
 The HUD owns no gameplay state, input loop or timer. `GameUiProjection` remains the read model and `UIScene` remains the command boundary. Existing commands and selectors are retained: Black Book, City, pause, carried blood, objective, prompt and notice.
@@ -33,7 +33,7 @@ The HUD owns no gameplay state, input loop or timer. `GameUiProjection` remains 
 Vehicle UI replaces the weapon panel while driving. Police/Veil modules collapse when quiet. Frenzy adds only a low-cost CSS vignette; reduced-motion disables its animation.
 
 ## Responsive contract
-Primary placement uses viewport-relative clamps plus safe-area insets. Desktop/landscape preserves the large proof-of-concept proportions. At narrow or short viewports the design reduces ornament and secondary copy before shrinking the objective, prompt or survival values. Forced-colours mode gets explicit borders and Canvas colours.
+Primary placement uses viewport-relative clamps plus safe-area insets. Desktop/landscape preserves the proof-of-concept character but keeps the survival slab deliberately smaller than the objective and prompt. At narrow or short viewports the design reduces ornament and secondary copy before shrinking the objective, prompt or survival values. Forced-colours mode gets explicit borders and Canvas colours.
 
 ## Non-goals
 No Black Book redesign, economy change, gameplay rule change, save change, camera/audio change, new dependency, font, image or asset fetch. This pass does not add a minimap or duplicate City.
