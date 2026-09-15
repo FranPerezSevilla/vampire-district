@@ -51,7 +51,6 @@ function SurvivalPanel({ s, command }) {
   const hunger = Math.max(0, Math.min(100, Math.round(s.hunger)));
   const vitality = Math.max(0, Math.min(100, Math.round(s.vitality)));
   return <section className="vb-vitals vb-street-vitals" aria-label="Survival status">
-    <div className="vb-street-vitals-mark" aria-hidden="true"><span/><span/></div>
     <div className="vb-street-vitals-body">
       <div className="vb-street-survival-row" data-tone={s.frenzy || hunger >= 70 ? "danger" : "normal"}>
         <strong>{s.frenzy ? "FRENZY" : "HUNGER"}</strong>
@@ -67,7 +66,7 @@ function SurvivalPanel({ s, command }) {
         <button type="button" className="vb-street-blood" disabled={!s.bags || s.frenzy} onClick={() => command("blood")} aria-label={`Use carried blood, ${s.bags} bags`}>
           <Icon name="blood"/><span>BLOOD BAGS</span><strong>{s.bags}</strong>
         </button>
-        <div className="vb-street-cash"><span aria-hidden="true">▰</span><small>CASH</small><strong>${s.cash}</strong></div>
+        <div className="vb-street-cash"><span aria-hidden="true">$</span><small>CASH</small><strong>${s.cash}</strong></div>
       </div>
     </div>
   </section>;
