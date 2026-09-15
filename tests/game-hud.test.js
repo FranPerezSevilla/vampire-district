@@ -22,14 +22,30 @@ test('street HUD keeps the existing interaction contracts', () => {
   assert.match(source, /s\.vehicle \? <VehiclePanel/);
 });
 
+test('sprint 1 uses the approved mockup hierarchy', () => {
+  assert.match(source, /vb-street-objective-paper/);
+  assert.match(source, /vb-street-objective-pointer/);
+  assert.match(source, /function SurvivalPanel/);
+  assert.match(source, /vb-street-survival-row/);
+  assert.match(source, /BLOOD BAGS/);
+  assert.match(source, /vb-street-cash/);
+  assert.match(source, /ACT NOW/);
+  assert.match(css, /SPRINT 1 — objective banner/);
+  assert.match(css, /font-family:Impact/);
+  assert.match(css, /min-height:104px/);
+  assert.match(css, /grid-template-columns:92px minmax\(320px,470px\)/);
+  assert.match(css, /clip-path:polygon/);
+});
+
 test('street HUD is responsive and keeps browser preferences accessible', () => {
   assert.match(css, /clamp\(/);
   assert.match(css, /env\(safe-area-inset-top\)/);
   assert.match(css, /env\(safe-area-inset-bottom\)/);
-  assert.match(css, /@media \(max-width: 900px\)/);
-  assert.match(css, /@media \(max-width: 680px\), \(max-height: 520px\)/);
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
-  assert.match(css, /@media \(forced-colors: active\)/);
+  assert.match(css, /@media \(max-width:1100px\)/);
+  assert.match(css, /@media \(max-width:900px\)/);
+  assert.match(css, /@media \(max-width:680px\),\(max-height:520px\)/);
+  assert.match(css, /@media \(prefers-reduced-motion:reduce\)/);
+  assert.match(css, /@media \(forced-colors:active\)/);
 });
 
 test('street HUD uses no external artwork, font or asset request', () => {
