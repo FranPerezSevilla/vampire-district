@@ -1,28 +1,15 @@
 import React, { useRef, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
-import { Badge, Button, Empty, Icon, Meter, Metric, Window } from "./components.jsx";
+import { Badge, Button, Empty, Meter, Metric, Window } from "./components.jsx";
 import { Domain } from "./Domain.jsx";
+import { Hud } from "./Hud.jsx";
 import { NightSeal } from "./artwork.jsx";
 import "./interface.css";
 import "./copy-portraits.css";
 import "./contact-identity.css";
+import "./hud.css";
 
-const wantedLabel = ["Clear", "Search", "Pursuit", "Air support"];
-function Hud({ s, command }) {
-  if (!s.visible || s.mode) return null;
-  return <div className="vb-hud" data-viceblood-ui="hud">
-    <header className="vb-hud-place"><span>{s.district}</span><small>{s.stage}</small></header>
-    <div className="vb-hud-nav"><Button icon="moon" className="nb-book-toggle" aria-label="Black Book M" onClick={() => command("open", { tab: "tonight" })}>Black Book <kbd>M</kbd>{s.errand && <i className="vb-active-dot"/>}</Button><Button icon="city" aria-label="City" onClick={() => command("open", { tab: "city" })}>Map</Button><Button icon="menu" aria-label="Pause" onClick={() => command("pause")}/></div>
-    {s.guide && <div className="vb-objective" aria-label={`Objective ${s.guide.label}, ${s.guide.arrived ? "nearby" : `${s.guide.distance} metres away`}`}><Icon style={{ transform: `rotate(${s.guide.bearing}deg)` }}/><div><strong>{s.guide.label}</strong><span>{s.guide.arrived ? "Nearby" : `${s.guide.distance} m`}</span></div></div>}
-    <div className="vb-attention"><span data-danger={s.wanted > 0}>POLICE <strong>{wantedLabel[s.wanted]}</strong><i>{"◆".repeat(s.wanted)}{"◇".repeat(3 - s.wanted)}</i></span>{s.exposure.value > 0 && <span data-danger={s.exposure.level > 0}>VEIL <strong>{s.exposure.value}</strong></span>}</div>
-    <div className={`vb-vitals ${s.frenzy ? "frenzy" : ""}`}><div className="vb-hunger"><Icon name="blood"/><div><small>{s.frenzy ? "FRENZY" : "HUNGER"}</small><strong>{Math.round(s.hunger)}<span>/100</span></strong></div></div><Meter value={s.hunger} label="Hunger" danger={s.hunger >= 85}/><div className="vb-vitality"><small>VITALITY</small><strong>{Math.round(s.vitality)}</strong><Meter value={s.vitality} label="Vitality" danger={s.vitality < 30}/></div><div className="vb-pocket"><span>${s.cash}</span><button type="button" disabled={!s.bags || s.frenzy} onClick={() => command("blood")} aria-label={`Use carried blood, ${s.bags} bags`}><Icon name="blood"/>{s.bags}/4</button></div></div>
-    <div className="vb-powers" aria-label="Powers">{s.powers.map(power => <div key={power.id} className="vb-power-slot" data-locked={power.locked} data-active={power.active}><kbd>{power.key}</kbd><strong>{power.name}</strong><small>{power.locked ? "Locked" : power.active ? "Active" : power.cooldown ? `${power.cooldown}s` : "Ready"}</small></div>)}</div>
-    <div className="vb-equipment">{s.vehicle ? <><small>{s.vehicle.name}</small><strong>{Math.round(s.vehicle.speed)}<span>km/h</span></strong><p>Gear {s.vehicle.gear} · Hull {Math.round(s.vehicle.hull)}%</p><small>Radio · {s.vehicle.radio || "Off"}</small></> : <><strong>{s.weapon.name}</strong><span>{s.weapon.ammoText} <small>AMMO</small></span></>}</div>
-    {s.prompt && <div className="vb-prompt" role="status"><kbd>{s.prompt.key}</kbd>{s.prompt.text}</div>}
-    {(s.guidance?.text || s.notice) && <div className="vb-notice" role="status">{s.guidance?.text || s.notice}</div>}
-  </div>;
-}
 function Ledger({ model }) {
   if (!model?.ready) return <Empty title="No incident file">Try again in a moment.</Empty>;
   return <div className="vb-section"><h2>Police & the Veil</h2><div className="vb-power-grid"><article><h3>Police · {model.police.stateLabel}</h3><Meter value={model.police.heatPercent} label="Police heat" danger/><p>{model.police.lastReason}</p><div className="vb-statline"><Metric label="Foot officers" value={model.police.footOfficers}/><Metric label="Cruisers" value={model.police.motorizedUnits}/><Metric label="Reports" value={model.police.witnessReports}/></div></article><article><h3>Supernatural exposure</h3><Meter value={model.exposure.percent} label="Veil exposure" danger/><p>{model.exposure.lastReason}</p><div className="vb-statline"><Metric label="Known evidence" value={model.exposure.knownCount}/><Metric label="Latent clues" value={model.exposure.latentCount}/></div></article></div><h3>Evidence trail</h3><div className="vb-history">{model.exposure.records.map(e => <p key={e.id}><strong>{e.label}</strong> · {e.districtName} <Badge>{e.state}</Badge></p>)}{!model.exposure.records.length && <p>No active supernatural evidence.</p>}</div><h3>Recent incidents</h3>{model.incidents.slice(0, 8).map(i => <p key={i.id}><small>{i.timeLabel}</small> · <strong>{i.title}</strong> · {i.detail}</p>)}</div>;
