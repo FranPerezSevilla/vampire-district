@@ -1,0 +1,104 @@
+/* Compact survival slab refinement. Imported after hud-reset.css. */
+.vb-street-vitals.vb-vitals {
+  width: clamp(285px, 23vw, 355px);
+  min-width: 0;
+  min-height: 0;
+  border-left-width: 3px;
+  box-shadow: 0 10px 26px rgba(0,0,0,.58);
+}
+
+.vb-street-vitals .vb-street-vitals-body {
+  padding: 10px 12px 8px;
+}
+
+.vb-street-vitals .vb-street-survival-row {
+  grid-template-columns: 72px minmax(96px,1fr) 26px;
+  gap: 8px;
+  min-height: 27px;
+}
+
+.vb-street-vitals .vb-street-survival-row > strong {
+  font-size: clamp(15px, 1vw, 18px);
+  letter-spacing: .04em;
+}
+
+.vb-street-vitals .vb-street-survival-row > b {
+  font-size: 9px;
+}
+
+.vb-street-vitals .vb-street-survival-track {
+  height: 9px;
+  padding: 1px;
+}
+
+.vb-street-vitals .vb-street-survival-pocket {
+  grid-template-columns: auto auto;
+  justify-content: start;
+  gap: 18px;
+  margin-top: 5px;
+  padding-top: 6px;
+}
+
+.vb-street-vitals .vb-street-blood,
+.vb-street-vitals .vb-street-cash {
+  grid-template-columns: 18px auto auto;
+  column-gap: 6px;
+  min-height: 27px;
+  padding: 0;
+}
+
+.vb-street-vitals .vb-street-blood img {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+  image-rendering: auto;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.45));
+}
+
+.vb-street-vitals .vb-street-blood > span,
+.vb-street-vitals .vb-street-cash > small {
+  font-size: 8px;
+  letter-spacing: .08em;
+}
+
+.vb-street-vitals .vb-street-blood > strong,
+.vb-street-vitals .vb-street-cash > strong {
+  font-size: clamp(16px, 1.05vw, 19px);
+}
+
+.vb-street-vitals .vb-street-cash {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.vb-street-vitals .vb-street-cash > span {
+  width: 17px;
+  height: 17px;
+  font-size: 13px;
+}
+
+.vb-street-notice.vb-notice {
+  bottom: calc(var(--hud-edge) + 126px + env(safe-area-inset-bottom));
+}
+
+@media (max-width: 900px) {
+  .vb-street-vitals.vb-vitals { width: clamp(265px, 37vw, 320px); }
+  .vb-street-vitals .vb-street-vitals-body { padding: 8px 10px 7px; }
+  .vb-street-vitals .vb-street-survival-row { grid-template-columns: 64px minmax(86px,1fr) 22px; min-height: 24px; gap: 6px; }
+  .vb-street-vitals .vb-street-survival-row > strong { font-size: 14px; }
+  .vb-street-vitals .vb-street-survival-track { height: 8px; }
+  .vb-street-vitals .vb-street-survival-pocket { gap: 14px; margin-top: 4px; padding-top: 5px; }
+}
+
+@media (max-width: 680px), (max-height: 520px) {
+  .vb-street-vitals.vb-vitals { width: clamp(240px, 42vw, 285px); }
+  .vb-street-vitals .vb-street-vitals-body { padding: 7px 8px 6px; }
+  .vb-street-vitals .vb-street-survival-row { grid-template-columns: 56px minmax(76px,1fr) 20px; min-height: 21px; gap: 5px; }
+  .vb-street-vitals .vb-street-survival-row > strong { font-size: 12px; }
+  .vb-street-vitals .vb-street-survival-pocket { gap: 10px; }
+  .vb-street-vitals .vb-street-blood img { width: 15px; height: 15px; }
+  .vb-street-vitals .vb-street-blood > span,
+  .vb-street-vitals .vb-street-cash > small { display: none; }
+  .vb-street-vitals .vb-street-blood,
+  .vb-street-vitals .vb-street-cash { grid-template-columns: 16px auto; }
+}
