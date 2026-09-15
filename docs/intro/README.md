@@ -45,7 +45,7 @@ Humans and not-yet-converted characters must remain visibly warmer / darker so v
 5. **“Only now have I been allowed to return to my city.”** — use the protagonist silhouette against the city in contrast with the previous empty skyline.
 6. **Family / what was lost** — the framed family photo is deliberately small within a larger empty interior composition. No city should be visible through the window.
 7. **The Sire** — current composition is approved; no crown. Sire skin must follow the pale-vampire rule.
-8. **Blood / Weakness / Dependence / Punishment** — feeding/dependence image; show the four words **one at a time**, matching the opening cadence. Protagonist is pale.
+8. **Blood / Weakness / Dependence / Punishment** — exhausted pale protagonist drinking from a medical blood bag; show the four words **one at a time**, matching the opening cadence. Protagonist is pale.
 9. **Night after night** — place this subtitle over the dusk-to-night skyline sequence rather than a separate feeding shot.
 10. **Closing** — night, protagonist smoking, then `Here we go again.` The protagonist is pale. No siren.
 
