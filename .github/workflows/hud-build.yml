@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 1cd5560e6d2411e1fae7d11937ef202740941a0a
+          ref: 2f8066f6c6f7f8dff0ec1162ec3a2b9c32f987db
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -27,6 +27,7 @@ jobs:
           npm run build
           node tools/boot/verify-package.mjs
           node tools/boot/smoke-module.mjs
+          test -s dist/phaser/assets/ui/blood-bag-small.png
       - name: Publish bounded sprint 1 HUD review assets
         uses: actions/github-script@v7
         with:
@@ -35,8 +36,8 @@ jobs:
             const { createHash } = require('node:crypto');
             const { execFileSync } = require('node:child_process');
             const { owner, repo } = context.repo;
-            const source = '1cd5560e6d2411e1fae7d11937ef202740941a0a';
-            const expectedPages = 'a9b89dd86b6315f98c466cd88e38681a57f95799';
+            const source = '2f8066f6c6f7f8dff0ec1162ec3a2b9c32f987db';
+            const expectedPages = 'f70e06de0297ece40312eedb9f70714b94e7f53e';
             const pagesBranch = 'codex/traffic-junction-topology';
             const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
             const blobSha = bytes => createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${bytes.length}\0`), bytes])).digest('hex');
@@ -44,7 +45,7 @@ jobs:
             const build = JSON.parse(await fs.readFile('dist/build.json', 'utf8'));
             if (build.revision !== source || build.dirty) throw new Error('Build provenance mismatch');
             const runtimePath = `phaser/runtime-dist/game.${build.runtimeSha256.slice(0,16)}.js`;
-            const allowed = ['build.json','boot-assets.json','index.html','phaser/index.html','phaser/ui-dist/interface.js','phaser/ui-dist/interface.css',runtimePath];
+            const allowed = ['build.json','boot-assets.json','index.html','phaser/index.html','phaser/ui-dist/interface.js','phaser/ui-dist/interface.css','phaser/assets/ui/blood-bag-small.png',runtimePath];
             const ref = await github.rest.git.getRef({ owner, repo, ref: `heads/${pagesBranch}` });
             if (ref.data.object.sha !== expectedPages) throw new Error(`Pages moved: ${ref.data.object.sha}`);
             const currentCommit = await github.rest.git.getCommit({ owner, repo, commit_sha: expectedPages });
@@ -61,7 +62,7 @@ jobs:
             }
             if (!changes.length) throw new Error('No sprint 1 publication changes found');
             const tree = await github.rest.git.createTree({ owner, repo, base_tree: currentCommit.data.tree.sha, tree: changes });
-            const commit = await github.rest.git.createCommit({ owner, repo, message:`deploy: refine compact survival HUD review\n\nReview build from ${source}. Survival slab is smaller, scan-first and removes the decorative fang block; PR #85 remains unmerged pending player acceptance.`, tree:tree.data.sha, parents:[expectedPages] });
+            const commit = await github.rest.git.createCommit({ owner, repo, message:`deploy: publish tiny blood-bag HUD refinement\n\nReview build from ${source}. Survival slab is smaller again and uses a tiny local PNG blood bag instead of a large symbolic icon; PR #85 remains unmerged pending player acceptance.`, tree:tree.data.sha, parents:[expectedPages] });
             await github.rest.git.updateRef({ owner, repo, ref:`heads/${pagesBranch}`, sha:commit.data.sha, force:false });
             core.notice(`Published ${commit.data.sha}: ${changes.map(e => e.path).join(', ')}`);
       - uses: actions/upload-artifact@v4
