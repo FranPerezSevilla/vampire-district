@@ -1,0 +1,42 @@
+name: Repair approved intro shot 01
+
+on:
+  push:
+    branches:
+      - codex/viceblood-intro-art-v2
+    paths:
+      - .github/workflows/repair-intro-shot-01.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/viceblood-intro-art-v2
+          fetch-depth: 0
+
+      - name: Rebuild and verify approved image
+        shell: bash
+        run: |
+          set -euo pipefail
+          target="docs/intro/approved/01-blood-power-control-destiny.jpg"
+          cat docs/intro/approved/.upload-01/part-*.b64 | base64 --decode > "$target"
+          echo "6e2ed795da11a43bad1d61cb83aecdacf2abd79097ade8f91d50fa4bc0c6d178  $target" | sha256sum -c -
+          file "$target"
+
+      - name: Clean temporary uploader and commit exact image
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf docs/intro/approved/.upload-01
+          rm -f .github/workflows/repair-intro-shot-01.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: replace truncated approved intro image"
+          git push origin HEAD:codex/viceblood-intro-art-v2
