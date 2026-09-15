@@ -3,6 +3,7 @@ import { Button, Icon } from "./components.jsx";
 
 const wantedLabel = ["Quiet", "Search", "Pursuit", "Manhunt"];
 const wantedTone = ["quiet", "watch", "hot", "critical"];
+const bloodBagAsset = new URL("../assets/ui/blood-bag-small.png", import.meta.url).href;
 
 function Resource({ label, value, suffix = "", tone = "neutral", icon = null, compact = false }) {
   return <div className="vb-street-resource" data-tone={tone} data-compact={compact || undefined}>
@@ -64,7 +65,7 @@ function SurvivalPanel({ s, command }) {
       </div>
       <div className="vb-street-survival-pocket">
         <button type="button" className="vb-street-blood" disabled={!s.bags || s.frenzy} onClick={() => command("blood")} aria-label={`Use carried blood, ${s.bags} bags`}>
-          <Icon name="blood"/><span>BLOOD BAGS</span><strong>{s.bags}</strong>
+          <img src={bloodBagAsset} alt="" aria-hidden="true"/><span>BLOOD</span><strong>{s.bags}</strong>
         </button>
         <div className="vb-street-cash"><span aria-hidden="true">$</span><small>CASH</small><strong>${s.cash}</strong></div>
       </div>
