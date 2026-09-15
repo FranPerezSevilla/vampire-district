@@ -5,6 +5,7 @@ import {objectiveModel} from '../phaser/src/ui/GameUiProjection.js';
 
 const source = await readFile(new URL('../ui/Hud.jsx', import.meta.url), 'utf8');
 const css = await readFile(new URL('../ui/hud.css', import.meta.url), 'utf8');
+const compactCss = await readFile(new URL('../ui/hud-survival-compact.css', import.meta.url), 'utf8');
 const main = await readFile(new URL('../ui/main.jsx', import.meta.url), 'utf8');
 
 test('street HUD is the single mounted gameplay HUD', () => {
@@ -12,6 +13,7 @@ test('street HUD is the single mounted gameplay HUD', () => {
   assert.match(main, /<Hud s=\{s\} command=\{command\}\/>/);
   assert.equal((main.match(/function Hud\(/g) || []).length, 0);
   assert.match(main, /import "\.\/hud\.css"/);
+  assert.match(main, /import "\.\/hud-survival-compact\.css"/);
 });
 
 test('street HUD keeps the existing interaction contracts', () => {
@@ -27,15 +29,17 @@ test('sprint 1 uses the approved mockup hierarchy', () => {
   assert.match(source, /vb-street-objective-pointer/);
   assert.match(source, /function SurvivalPanel/);
   assert.match(source, /vb-street-survival-row/);
-  assert.match(source, /BLOOD BAGS/);
+  assert.match(source, />BLOOD</);
+  assert.match(source, /blood-bag-small\.png/);
   assert.match(source, /vb-street-cash/);
   assert.match(source, /ACT NOW/);
   assert.doesNotMatch(source, /vb-street-vitals-mark/);
   assert.match(css, /SPRINT 1 — objective banner/);
   assert.match(css, /font-family:Impact/);
   assert.match(css, /min-height:104px/);
-  assert.match(css, /width:clamp\(340px,27vw,430px\)/);
-  assert.match(css, /grid-template-columns:86px minmax\(110px,1fr\) 30px/);
+  assert.match(compactCss, /width: clamp\(285px, 23vw, 355px\)/);
+  assert.match(compactCss, /\.vb-street-blood img/);
+  assert.match(compactCss, /width: 17px/);
   assert.match(css, /Compact, scan-first, no decorative mascot/);
   assert.match(css, /clip-path:polygon/);
 });
@@ -44,17 +48,19 @@ test('street HUD is responsive and keeps browser preferences accessible', () => 
   assert.match(css, /clamp\(/);
   assert.match(css, /env\(safe-area-inset-top\)/);
   assert.match(css, /env\(safe-area-inset-bottom\)/);
-  assert.match(css, /@media \(max-width:1100px\)/);
-  assert.match(css, /@media \(max-width:900px\)/);
-  assert.match(css, /@media \(max-width:680px\),\(max-height:520px\)/);
+  assert.match(compactCss, /@media \(max-width: 900px\)/);
+  assert.match(compactCss, /@media \(max-width: 680px\), \(max-height: 520px\)/);
   assert.match(css, /@media \(prefers-reduced-motion:reduce\)/);
   assert.match(css, /@media \(forced-colors:active\)/);
 });
 
-test('street HUD uses no external artwork, font or asset request', () => {
+test('street HUD uses only local artwork and no remote font request', () => {
   assert.doesNotMatch(css, /url\s*\(/i);
+  assert.doesNotMatch(compactCss, /url\s*\(/i);
   assert.doesNotMatch(css, /@font-face/i);
-  assert.doesNotMatch(source, /<img\b/i);
+  assert.doesNotMatch(compactCss, /@font-face/i);
+  assert.match(source, /new URL\("\.\.\/assets\/ui\/blood-bag-small\.png", import\.meta\.url\)/);
+  assert.doesNotMatch(source, /https?:\/\//i);
 });
 
 test('objective projection still reports direction, distance and arrival', () => {
