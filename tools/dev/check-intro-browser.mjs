@@ -24,6 +24,7 @@ try {
   return !document.getElementById('viceblood-intro').hidden && v.currentTime>.1 && !v.paused;
  });
  assert.equal(await page.evaluate(()=>document.getElementById('viceblood-main-menu-theme').paused),true);
+ assert.equal(await page.evaluate(()=>document.elementFromPoint(innerWidth/2,innerHeight/2)?.id),'viceblood-intro-video','the playing film must be in front of the title cover');
  await page.screenshot({path:'test-results/intro/playing.png'});
  await page.keyboard.press('Escape');
  await page.waitForFunction(()=>document.getElementById('viceblood-intro').hidden && document.getElementById('viceblood-title-screen').dataset.state==='menu');
