@@ -21,6 +21,8 @@ test("production Canvas fallback keeps vehicle labels at logical size and restor
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => window.NBD_TITLE_AUDIO_GATE_STATE === "waiting");
   await page.keyboard.press("Space");
+  await expect(page.locator('#viceblood-intro')).toBeVisible();
+  await page.keyboard.press('Escape');
   await page.getByRole("button", { name: /New Night/ }).click();
   await page.waitForFunction(() => {
     const game = window.NBD_PHASER_GAME;

@@ -16,7 +16,11 @@
       <div id="ui-overlay-host"></div>
     </div>
     <div id="game-effects" aria-hidden="true"></div>
-  <audio id="viceblood-main-menu-theme" src="assets/audio/music/main-menu-theme-01.mp3" preload="auto" aria-hidden="true"></audio>
+  <audio id="viceblood-main-menu-theme" src="assets/audio/music/el-gothic-menu-loop.wav" preload="auto" aria-hidden="true"></audio>
+  <div id="viceblood-intro" hidden role="dialog" aria-label="ViceBlood opening film" style="position:fixed;inset:0;z-index:10000;background:#000">
+    <video id="viceblood-intro-video" src="assets/video/viceblood-intro.mp4" preload="metadata" playsinline style="width:100%;height:100%;object-fit:contain" aria-label="ViceBlood — Another Night"></video>
+    <button id="viceblood-intro-skip" type="button" style="position:absolute;right:24px;bottom:20px;background:#000a;color:#f0ede6;border:1px solid #777;padding:10px 16px;cursor:pointer">Skip · Esc</button>
+  </div>
   <div id="viceblood-title-screen" class="viceblood-title-screen" data-state="boot" aria-label="ViceBlood title screen">
     <div class="viceblood-title-full-cover" aria-hidden="true"></div>
     <div class="viceblood-title-menu-veil" aria-hidden="true"></div>

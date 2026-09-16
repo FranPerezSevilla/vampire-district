@@ -101,7 +101,7 @@ export class MainMenuScene extends Phaser.Scene {
 
     // The world preview and every title/gameplay sample warm in parallel behind
     // the opaque boot surface. Only after both are ready do we offer the browser
-    // gesture gate. The gesture starts music and moves directly to the menu.
+    // gesture gate. The opening film completes or is skipped before the menu.
     this.publishReadiness("waiting-for-title-assets");
     Promise.all([this.assetsReady, this.waitForPreviewGeometry(gameScene)])
       .then(() => {

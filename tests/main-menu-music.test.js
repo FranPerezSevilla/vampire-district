@@ -11,7 +11,7 @@ test("main menu theme asset is committed and owned by the title-screen flow", ()
   const preloader = source("phaser/src/ui/TitleAssetPreloader.js");
 
   assert.ok(existsSync(new URL("../phaser/assets/audio/music/main-menu-theme-01.mp3", import.meta.url)));
-  assert.match(main, /main-menu-theme-01\.mp3/);
+  assert.match(main, /el-gothic-menu-loop\.wav/);
   assert.match(main, /audio\.loop = true/);
   assert.match(main, /MAIN_MENU_THEME_VOLUME = 0\.28/);
   assert.match(menuScene, /preloadTitleExperience\(\)/);
@@ -37,12 +37,12 @@ test("splash remains the autoplay gate while audio readiness cannot block menu p
   assert.doesNotMatch(source("phaser/src/main.js"), /installMainMenuThemePolicy/);
 });
 
-test("main menu credits expose the Satie attribution", () => {
+test("main menu credits expose the licensed intro music attribution", () => {
   const gate = source("phaser/src/ui/TitleScreenAudioGate.js");
   const attribution = source("phaser/assets/audio/ATTRIBUTION.md");
-  assert.match(gate, /Gnossienne No\. 1/);
-  assert.match(gate, /Erik Satie \(1890\)/);
-  assert.match(gate, /Arranged for ViceBlood/);
+  assert.match(gate, /EL \(gothic version\)/);
+  assert.match(gate, /Andres Rodriguez/);
+  assert.match(gate, /Pixabay Content License/);
   assert.match(attribution, /Gnossienne No\. 1/);
-  assert.match(attribution, /music\/main-menu-theme-01\.mp3/);
+  assert.match(attribution, /music\/el-gothic-menu-loop\.wav/);
 });

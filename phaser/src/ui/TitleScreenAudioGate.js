@@ -1,5 +1,5 @@
 const THEME_FADE_MS = 430;
-const THEME_CREDIT = "MUSIC\n“Gnossienne No. 1” — Erik Satie (1890).\nArranged for ViceBlood.";
+const THEME_CREDIT = "MUSIC — INTRO & MAIN MENU\nEL (gothic version) — Andres Rodriguez / anrocomposer.\nPixabay Content License. Opening excerpt looped for the menu.\nhttps://pixabay.com/music/rock-el-gothic-version-136208/";
 const START_COPY = "PRESS ANY KEY TO START";
 
 export class TitleScreenAudioGate {
@@ -13,6 +13,8 @@ export class TitleScreenAudioGate {
     this.listenersBound = false;
     this.creditsObserver = null;
     this.playbackGeneration = 0;
+    this.introCleanup = null;
+    this.introActive = false;
     this.boundKeydown = event => this.handleKeydown(event);
     this.boundPointer = event => this.unlock(event);
     this.boundTouch = event => this.unlock(event);
@@ -50,7 +52,7 @@ export class TitleScreenAudioGate {
   refreshCredits() {
     this.window?.setTimeout?.(() => {
       const body = this.document?.querySelector?.("[data-title-drawer-body]");
-      if (!body || body.textContent.includes("Gnossienne No. 1")) return;
+      if (!body || body.textContent.includes("EL (gothic version)")) return;
       body.textContent = `${body.textContent}\n\n${THEME_CREDIT}`;
     }, 0);
   }
@@ -104,14 +106,51 @@ export class TitleScreenAudioGate {
   }
 
   unlock(event) {
-    if (!this.waitPromise || this.window?.NBD_TITLE_AUDIO_GATE_STATE === "unlocking") return;
+    if (!this.waitPromise || ["unlocking", "intro"].includes(this.window?.NBD_TITLE_AUDIO_GATE_STATE)) return;
     event?.preventDefault?.();
     event?.stopPropagation?.();
     this.window.NBD_TITLE_AUDIO_GATE_STATE = "unlocking";
 
-    // The user gesture must initiate play, but audio readiness must never gate UI.
-    // The parser-preloaded media normally starts immediately; cold/slow media may
-    // finish asynchronously while the already-created title menu is presented.
+    this.unbindUnlockListeners();
+    const video = this.document?.getElementById?.("viceblood-intro-video");
+    const overlay = this.document?.getElementById?.("viceblood-intro");
+    if (!video || !overlay) { this.finishIntro(); return; }
+    this.theme?.stop?.();
+    this.introActive = true;
+    this.window.NBD_TITLE_AUDIO_GATE_STATE = "intro";
+    overlay.hidden = false;
+    const skip = this.document.getElementById("viceblood-intro-skip");
+    const finish = () => { if (this.introActive) this.finishIntro(); };
+    const onKey = e => {
+      e.preventDefault(); e.stopImmediatePropagation?.();
+      if (e.key === "Escape") finish();
+    };
+    const onSkip = e => { e.preventDefault(); e.stopPropagation(); finish(); };
+    this.window.addEventListener("keydown", onKey, true);
+    video.addEventListener("ended", finish);
+    video.addEventListener("error", finish);
+    skip?.addEventListener("click", onSkip);
+    this.introCleanup = () => {
+      this.introActive = false;
+      this.window.removeEventListener("keydown", onKey, true);
+      video.removeEventListener("ended", finish);
+      video.removeEventListener("error", finish);
+      skip?.removeEventListener("click", onSkip);
+      video.pause(); overlay.hidden = true;
+    };
+    skip?.focus?.();
+    try {
+      video.currentTime = 0;
+      Promise.resolve(video.play()).catch(finish);
+    } catch { finish(); }
+  }
+
+  finishIntro() {
+    this.introCleanup?.();
+    this.introCleanup = null;
+    // Playback failure must never strand the player before the menu.
+    // Start the menu's single media owner after the film stops. Audio readiness
+    // must never delay menu presentation.
     const generation = ++this.playbackGeneration;
     const startAttempt = this.theme?.start?.();
     Promise.resolve(startAttempt).then(started => {
@@ -147,6 +186,8 @@ export class TitleScreenAudioGate {
   }
 
   cancelWait(result = false) {
+    this.introCleanup?.();
+    this.introCleanup = null;
     this.unbindUnlockListeners();
     if (this.bootMessage) delete this.bootMessage.dataset.audioGate;
     const resolve = this.resolveWait;
