@@ -1,0 +1,74 @@
+[
+  {
+    "name": "gun",
+    "prompt": "New ViceBlood storyboard shot using reference ONLY for protagonist identity and art style. Landscape 16:9. Dramatic tight frontal closeup of same adult male vampire with angular pale face black messy spiky hair black coat muted purple lapels, aiming a pistol directly toward camera, strong foreshortening pistol muzzle in center foreground, face clearly visible behind slightly left, cold determined expression. Natural readable gun grip. No shot fired no muzzle flash. Background just cropped angular alley wall planes, no skyline no moon. Rough handmade abstract cut-paper gothic punk illustration, few large flat polygons, modest detail, restrained fine paper grain. Black charcoal bone and muted burgundy palette. Not polished, not 3D, not photoreal. No text."
+  },
+  {
+    "name": "running",
+    "prompt": "New shot, reference for same adult vampire identity and abstract art style only. Strict overhead bird's eye top down view into a narrow urban alley, the black spiky haired vampire in long black coat running diagonally through center, mid stride one knee forward one leg behind, coat tails angular and trailing, pale hands. Camera high above, rooftops cropped at left/right framing a deep narrow gap, one pipe and a few angular rubbish shapes on ground. Strong diagonal graphic composition, no horizon no sky no moon. Restrained cut-paper black charcoal muted gray-purple bone with tiny burgundy accents. Handmade rough gothic punk storyboard, broad flat polygons, limited detail, subtle paper grain, no glossy rendering, no photorealism, no text. Landscape16:9."
+  },
+  {
+    "name": "case",
+    "prompt": "New ViceBlood storyboard object close-up. An OPEN black hard-sided briefcase packed with many medical blood transfusion bags, 12 visible overlapping bags of dark burgundy blood with flat bone-white blank label blocks and short tubes, clearly illicit vampire supplies. Three quarter overhead close shot, briefcase fills almost whole landscape16:9 frame, simple metal clasp and handle foreground, interior lid upper left, on charcoal table. NO person no hands no moon no skyline no text. Reference image only for flat geometric cut-paper style and recognizable blood bag design. Low-to-medium detail abstract handmade angular black charcoal bone muted-purple burgundy shapes, subtle paper grain, bold simple polygons. No glossy 3D plastic rendering, no photorealism, no tiny labels or intricate mechanical details."
+  },
+  {
+    "name": "towers",
+    "prompt": "Precise skyline evolution edit. Preserve this EXACT composition, existing buildings, central gothic cathedral, foreground rooftop railing, sky red moon clouds and colors. ADD an additional dense layer of much taller modern skyscrapers BEHIND existing buildings, with varied silhouettes and heights, some 2 to 3 times current towers, concentrated right side and far left leaving cathedral clearly visible. 8 to 12 new broad angular charcoal skyscraper silhouettes with few narrow bone window slits. Same rough flat cut-paper abstract gothic punk art. Do not move camera, do not redraw foreground, no character. New next stage of the SAME city. Landscape16:9."
+  },
+  {
+    "name": "running-small",
+    "prompt": "Edit this overhead alley image. The running vampire is currently far too large. Make his visible height ONE TENTH of his current height: a tiny distant black running silhouette, roughly 40 pixels tall in a 1672x941 image, positioned near center of the alley. The alley and tall building rooftops dominate almost the entire frame. Remove the old giant figure completely and fill its former area with continuous matching pavement. Keep strict top down camera, building shapes, pipe, muted palette, framing, texture and lighting unchanged. Tiny runner still has a black coat trailing and a small pale head, no face detail. Abstract rough angular cut-paper gothic punk. Landscape16:9."
+  },
+  {
+    "name": "clouds",
+    "prompt": "Create a transparent animation overlay containing ONLY three elongated horizontal torn-paper cloud wisps, asymmetrically arranged across a wide16:9 canvas with plenty of transparent space between them. Reference for cloud style and palette only: flat muted dark burgundy and charcoal gray angular paper strips, subtle grain, sparse geometric jagged edges. Clouds should occupy top half. Absolutely no city no buildings no moon no sky background, genuine alpha transparency everywhere outside clouds. Gothic punk abstract cut-paper, simple low detail. This layer will slide across existing city sky."
+  },
+  {
+    "name": "vesper-vale",
+    "prompt": "ViceBlood Black Book character scene, landscape16:9. VESPER VALE: adult vampire club proprietor, heart shaped face, warm tan skin #ac8872, dark wavy hair, winged eyes, broad nose, full lips, small beauty mark, long drop earrings, dark velvet outfit muted plum. Medium close side view seated in her club VIP booth left of frame, hand drawing back a heavy burgundy curtain, out-of-focus abstract black silhouettes of guests and angular bar shelves right. Calm commanding expression. Reference ONLY for established rough angular cut-paper gothic punk medium, not the reference man's identity. Very limited flat polygons, matte charcoal bone dusty plum burgundy, fine sparse paper grain, intentionally rough storyboard, not polished or photoreal. No sky no moon no clouds no text. Distinct club interior composition."
+  },
+  {
+    "name": "rook-mercer",
+    "prompt": "ViceBlood Black Book ROOK MERCER adult vampire territorial broker. Authored identity square face ochre pale skin #c1ae8d, short dark mohawk shaved sides, heavy eyes, broken nose, crooked mouth, cheek scar, black leather jacket and chunky metal rings. LOW angle medium shot inside warehouse canal depot, Rook standing right leaning forward one ringed fist resting on a large closed shipping crate in extreme left foreground, chain and massive industrial door behind. Hard cynical expression. Reference style only NOT man identity. Rough abstract handmade angular cut-paper gothic punk, large flat black charcoal bone muted burgundy shapes, subtle sparse paper grain, low-medium detail. No sky moon clouds no text no photo polish. Wide16:9."
+  },
+  {
+    "name": "mara-voss",
+    "prompt": "ViceBlood Black Book MARA VOSS adult vampire independent blood supplier. Round face tan beige skin #bda387, straight dark bob haircut, level calculating eyes behind thin angular glasses, short nose, thin lips slight mature creases, tailored charcoal blazer with desaturated cool gray lapels. High oblique medium shot inside hospital blood storage office, Mara center-left reviewing a clipboard with blank block marks, other hand on blood fridge door right, hanging bags visible inside cold cabinet. Rectangular fluorescent panel cropped overhead. Reference for art style ONLY not identity. Simplified rough angular cut-paper gothic punk matte black bone coolgray burgundy, flat large shapes subtle paper grain. No tiny detail no glossy realism no moon sky clouds no text. Landscape16:9."
+  },
+  {
+    "name": "iris",
+    "prompt": "ViceBlood Black Book IRIS adult HUMAN donor associated with club, not a vampire. Oval face warm medium brown skin #997861, tightly coiled dark hair piled up, winged eyeliner, broad nose full lips, hoop earrings and black choker. Distinct profile close shot at club dressing-room mirror, Iris right facing left adjusting hoop earring, reflected partial face on left, coat hanging from hook and one vertical warm bone light strip. Confident tired nightlife expression, normal human teeth no fangs. Reference for rough cut-paper medium only. Simple abstract angular flat shapes, black charcoal dusty plum burgundy warm brown bone, sparse paper grain, not photoreal not glossy, avoid detailed curls use broad jagged masses. No sky moon clouds no text. Landscape16:9."
+  },
+  {
+    "name": "eli",
+    "prompt": "ViceBlood Black Book ELI, adult human blood donor at hospital. Soft face pale warm skin #d8c5b0, short cropped hair, open eyes, straight nose, soft mouth, freckles, worn dark denim jacket muted bluegray seams, small bar earring. Wide off-center shot from END of empty hospital waiting corridor: Eli alone seated far left on bench, elbows on knees holding paper cup with both hands, rolled sleeve and tiny dressing at inner elbow, weary but composed. Corridor recedes diagonally right through rectangular door frames, old floor tiles in broad polygons, no other people. Reference art style ONLY. Rough abstract geometric cut-paper gothic punk, very few large shapes fine paper grain, charcoal bone dustygray burgundy accent stripe. No photorealism polish no sky moon clouds no text. Landscape16:9."
+  },
+  {
+    "name": "master",
+    "prompt": "ViceBlood Black Book THE MASTER, older adult vampire patron. Canonical appearance: gaunt long face pale parchment #d2c5ad, sharply receding widow's peak slick dark hair, deep-set eyes, aquiline nose, thin lips, age lines, aristocratic black suit burgundy cravat small metal lapel pin. Stern dismissive expression. Asymmetric extreme side-profile closeup right foreground, seated at a dark antique desk signing an account ledger, thin pale hand holding pen lower center. Tower refuge interior with just looming book spines and angular chair back left, no window. Reference for rough angular flat cut-paper gothic punk medium only, NOT youthful protagonist identity. Low-medium detail broad shapes matte charcoal burgundy bone sparse grain. No sky moon clouds no text no glossy realism. Landscape16:9."
+  },
+  {
+    "name": "vesper-simple",
+    "prompt": "Simplify IMAGE1 Vesper club scene to match IMAGE2's MUCH simpler abstract cut-paper style. Image1 is composition/identity; image2 style only. Keep Vesper waves drop earring beauty mark and club curtain, but use 3 large face planes, eyes just black wedges, hair ONE solid jagged black mass, dress ONE black shape with 2 plum triangles. Simplify guests to three black cutout silhouettes, bottles to 4 block marks, curtain two flat burgundy planes. Remove tiny facets, crumpled texture, modeled shading, elaborate folds and glamour polish. Fine restrained paper grain only. Handmade rough early storyboard. Same16:9 framing, no text no moon."
+  },
+  {
+    "name": "rook-simple",
+    "prompt": "Simplify IMAGE1 Rook warehouse scene to IMAGE2 early abstract cut-paper style. Preserve square scarred face broken nose mohawk leather rings and low viewpoint crate. Face just three broad planes, eyes two black wedges, mohawk solid jagged shape, jacket one black mass and three graypurple triangles, rings plain small gray squares. Crate three broad polygons, warehouse door two planes, chain only a few block links. Remove all small facets realistic shading scratches busy texture intricate clothes. Sparse paper grain, flat black bone burgundy. Intentionally rough angular storyboard. Same16:9 no text no moon."
+  },
+  {
+    "name": "iris-simple",
+    "prompt": "Restyle IMAGE1 Iris mirror scene into MUCH simpler early cut-paper abstract style of IMAGE2. Preserve brown skin, coiled hair silhouette, hoop earrings choker mirror gesture. Face only 3 flat planes, eyes black wedges, hair ONE angular black mass without individual curls. Hand few simple polygons natural fingers. Clothing single black mass two mutedplum accents. Mirror reflection extremely simplified, background 3 large panels. Remove photoreal textures tiny facets shading detail and folds. Sparse fine grain. Same landscape16:9, no text moon clouds."
+  },
+  {
+    "name": "eli-simple",
+    "prompt": "Simplify IMAGE1 Eli hospital corridor into IMAGE2 early rough abstract angular cut-paper style. Keep adult human Eli seated with cup and elbow dressing, freckles and cropped hair, corridor composition. Face 3 planes eyes black wedge, hair one jagged black mass, jacket one black shape with only 2 bluegray lapel pieces, no seams folds buttons. Hands simple angular readable cup grip. Corridor 5 broad flat planes and 2 ceiling light rectangles, floor plain no tiles. Remove all tiny faceting dense texture polished shading. Flat charcoal bone burgundy mutedbluegray subtle fine grain. 16:9 no text moon clouds."
+  },
+  {
+    "name": "master-simple",
+    "prompt": "Simplify IMAGE1 old master ledger scene to IMAGE2 early abstract cut-paper style. Keep gaunt aged aquiline profile receding widow hair cravat pin and signing pose. Face 3 large pale planes, deep eye a black wedge, just one age line. Hair one black silhouette, suit one black mass with two gray lapel triangles. Hands few broad shapes, ledger blank cream polygon, books 4 block spines, chair two angular planes. Remove intricate facets crumpled texture detailed wrinkles folds realistic shading. Intentionally rough handmade graphic storyboard, black bone burgundy, subtle fine grain. Same16:9 no words no moon clouds."
+  },
+  {
+    "name": "eyes-horror",
+    "prompt": "Make the manhole interior truly frightening, not a repeating cute cat-eye pattern. Preserve overhead vampire lifting lid with corrected hands, lid position, pavement and framing EXACTLY. Edit ONLY inside black opening: black oppressive depth with irregular clustered tiny bone-white pinpoint eyes deep below, some pairs partially occluded, many varying sizes and uneven spacing, NOT evenly spaced rows or decorative angry icons. One much closer barely visible emaciated angular inhuman face at bottom-left edge of opening with wide unsettling small white eyes, black hollow mouth and 3 tiny bone teeth; two thin long almost-black clawed fingers curl from darkness just INSIDE rim, suggesting creatures about to climb out. Keep mostly black negative space, restrained dark burgundy accents, simple flat angular abstract paper shapes, minimal detail. No gore no photorealistic texture. Gothic punk ominous high contrast. Same16:9."
+  }
+]

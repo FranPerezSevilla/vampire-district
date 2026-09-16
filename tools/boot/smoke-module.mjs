@@ -71,7 +71,7 @@ for (const entry of ['index.html','phaser/index.html']) {
     assert.equal(fresh.wallet.balance(),123,'live session keeps its own progress');
     for (const key of saveKeys) assert.equal(win.localStorage.getItem(key),oldSave);
     fresh.reset({persist:false});
-    assert.equal(win.NBD_MAIN_MENU_THEME.audio.src,'https://example.test/vampire-district/phaser/assets/audio/music/main-menu-theme-01.mp3');
+    assert.equal(win.NBD_MAIN_MENU_THEME.audio.src,'https://example.test/vampire-district/phaser/assets/audio/music/after-the-last-light.wav');
     // Continue beyond Game construction: this boundary previously missed a
     // helper named game() being overwritten by real Phaser Scene injection.
     const ui=new configuration.scene[3](), app=win.NBD_PHASER_GAME;
@@ -140,3 +140,4 @@ for (const entry of ['index.html','phaser/index.html']) {
     console.log(`${entry}: packed UI passes real Phaser injection/CREATE and mounts HUD/five Black Book chapters with real campaign data; asset roots preserved. No renderer/browser executed.`);
   } finally {for(const observer of observers) observer.disconnect();await Promise.resolve();assert.equal(errors.length,0,String(errors[0]));dom.window.close();}
 }
+

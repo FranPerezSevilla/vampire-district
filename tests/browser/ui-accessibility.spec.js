@@ -13,6 +13,8 @@ test("main menu exposes the canonical controls and Escape owns the in-game pause
   // The splash is the browser-audio gesture gate; a real key press lets the
   // existing title flow reveal the DOM menu without bypassing production code.
   await page.keyboard.press("Enter");
+  await expect(page.locator('#viceblood-intro')).toBeVisible();
+  await page.keyboard.press('Escape');
   await page.waitForFunction(() => window.NBD_TITLE_SCREEN_STATE?.state === "menu");
 
   const controlsAction = page.locator('[data-title-action="controls"]');
