@@ -1,0 +1,31 @@
+{
+  "method": "built-in image_gen",
+  "style": [
+    {
+      "name": "before",
+      "prompt": "Restyle IMAGE1 to visually match IMAGE2 original ViceBlood illustration. IMAGE1 is exact scene/composition; IMAGE2 is STYLE ONLY, do not copy its scene or red background. Keep standing vampire left pointing pistol at kneeling adult right in charcoal gray alley. Current image1 is too sterile flat vector. Add subtle fine printed-paper grain, slightly irregular cut-paper edges, restrained 3 to5 muted dark gray-purple angular shadow planes on black coat, 2 angular face planes and roughly cut silhouettes. Match IMAGE2 handmade bold gothic punk abstraction, NOT intricate low-poly facets, NOT smooth vector gradients. Keep black clothing dominant, limited detail. Background gray charcoal with broad angular planes, absolutely NO large red panel. Same16:9 composition."
+    },
+    {
+      "name": "shot",
+      "prompt": "Next frame same vampire storyboard. Preserve image1 EXACT background vampire left clothing style and placement. Victim right falling BACKWARDS, head and shoulders thrown toward far right, knees still near ground, arms loose, clear backward fall as image2 pose. Small bone angular muzzle flash. Image1 authoritative texture and style; image2 ONLY falling pose. Big solid black clothes with few mutedpurple cutpaper planes, rough graphic edges fine paper grain, no added facets. No wound or gore, no red background.16:9."
+    },
+    {
+      "name": "feeding",
+      "prompt": "Create third frame aftermath of this SAME fictional vampire scene. Keep exact gray charcoal alley background and wide camera, no red wall. Victim adult now lying flat on back right, fully limp black-clothed silhouette, one pale hand loose on floor. Same spiky-haired vampire crouched over shoulder feeding at neck, face turned down away from victim face, contact hidden by dark coat, tiny burgundy stain at collar only. No wound no gore. Vampire coat and victim clothes broad BLACK MASSES with only 2-3 muted purple angular planes each, bone face shapes very simple. Pistol on ground left. Match reference handmade rough angular paper style and modest fine grain, no extra details folds or glossy shading.16:9."
+    },
+    {
+      "name": "feeding-contact",
+      "prompt": "Single pose correction: lower vampire's head until his mouth is pressed against victim's neck at collar. He must visibly be feeding, bent deeply over the neck, not hovering or looking at the body. Hide the mouth contact behind black hair and shoulder, tiny dark burgundy collar mark only, no gore. Keep exact composition all other silhouettes, gray background, paper texture and abstract style unchanged.16:9."
+    }
+  ],
+  "blood": [
+    {
+      "name": "shot-blood",
+      "prompt": "Edit ONLY blood accents in this fictional stylized vampire shooting storyboard. Add a SMALL restrained dark burgundy angular blood mark on the falling adult victim's upper shirt and a few sparse burgundy droplets beside him, plus a small dark burgundy stain on ground. Blood is abstract flat paper shapes. NO visible wound NO exposed tissue NO gore. Preserve backward falling pose muzzle flash gray background and all silhouettes and texture. Keep most image black charcoal bone, no large red area.16:9."
+    },
+    {
+      "name": "feeding-blood",
+      "prompt": "Edit ONLY blood accents. In this fictional abstract vampire feeding scene add clearly visible dark burgundy blood on victim's collar near vampire mouth, a thin burgundy drip down shoulder fabric, and a small flat angular burgundy stain beneath head on pavement. No visible wound no exposed tissue no gore. Keep contact pose lifeless body, black clothing masses, gray background and restrained cut-paper style exactly unchanged. Blood should read at storyboard size but not dominate.16:9."
+    }
+  ]
+}

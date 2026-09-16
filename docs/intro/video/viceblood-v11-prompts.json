@@ -1,0 +1,65 @@
+{
+  "method": "Built-in image_gen",
+  "open": "Edit this overhead gothic punk storyboard frame to a MIDDLE level of detail, slightly more developed than this very basic cutout. Keep exact camera, pavement layout, hole location and crouched vampire lifting lid. Add 4-5 broad angular coat folds and restrained charcoal shadow planes, angular articulated pale fingers visibly gripping rim, subtle rough printed paper grain, and a simple raised ring plus 3 broad straight recessed bars on the manhole lid. Lid must read as round heavy cast iron seen tilted. Keep abstract handmade geometric cut-paper style, muted charcoal black gray-purple bone palette tiny burgundy scrap. No photorealism, no 3D, no intricate detail, no glossy light, no text. Landscape16:9.",
+  "hand": "Precise anatomical correction only. Edit the vampire hand at the LOWER CENTER of this image, gripping the bottom end of the tilted manhole lid (the awkward right-hand grip). Make it a clearly readable natural grasp of the heavy rim: wrist aligned with forearm from lower right, palm behind rim, four simple angular fingers curling together around the near edge and one opposing thumb resting on the front surface. Five digits total, no extra overlapping finger shapes, no broken wrist, no floating hand. Preserve flat angular bone-colored cut-paper style, limited shadow planes, medium-simple abstract detail. Keep the upper hand, manhole lid, its position and pattern, character, pavement, hole, framing and all other pixels as unchanged as possible. 16:9.",
+  "closed": "Precise edit: create the BEFORE shot of this exact frame. Remove the entire vampire, both hands, coat and its shadow. Close the circular manhole: place the SAME cast iron lid horizontally seated inside the existing circular rim at exactly the same center and diameter as the black opening. Its simple raised outer ring and three parallel broad raised bars are visible from directly above. Fill removed person region with continuation of the existing charcoal pavement. Keep ALL other pavement, diagonal curb at upper left, cracks at left, burgundy paper scrap, lighting, palette, texture, framing and scale unchanged. No camera movement. Same medium-detail abstract angular handmade cut-paper gothic-punk storyboard style. No additional objects or words. 16:9.",
+  "eyes": "Precise edit of reference. Keep vampire lifting manhole lid, corrected lower hand grip, lid, pavement, overhead camera, all shapes and colors unchanged. ONLY inside the dark open manhole add MANY tiny pairs of watching eyes, about thirty pairs, at varied depths, arranged irregularly throughout the black opening. Eyes are simple angular narrow pale bone and muted burgundy slits, some smaller and dimmer deep below; ominous infestation lurking underground. No bodies visible, no faces, no beams or diffuse glow. Keep darkness dominant with tiny flat graphic eyes. Same rough abstract gothic punk cut-paper style, restrained medium-low detail. Preserve exact composition landscape16:9.",
+  "earlier": [
+    {
+      "name": "vesper",
+      "prompt": "New ViceBlood storyboard shot: street entrance of VESPER, a decadent gothic punk nightclub in an old city block. Recessed black double doors, a tiny burgundy light above, worn angular facade, two anonymous black silhouettes waiting. Small simple hand-lettered sign VESPER above door, only text. Landscape16:9. Reference STYLE ONLY: crude angular cut-paper shapes, flat black charcoal burgundy muted gray-purple bone, coarse uneven handmade print grain. Sparse detail, no realistic lighting, no polished concept art, no 3D, no glossy neon. Strong graphic composition, asymmetrical doorway central right, dark empty sidewalk foreground. Match reference's rough abstraction."
+    },
+    {
+      "name": "church",
+      "prompt": "New storyboard shot ruined gothic church within a decaying modern city, roof collapsed and one spire broken, giant empty pointed arch and jagged stone slabs, simple silhouettes of apartment blocks behind, deep burgundy night sky. No people no text. Wide16:9. Reference STYLE ONLY: very simple rough angular paper cutout, flat near-black charcoal gray-purple cool cream burgundy, uneven print texture. Deliberately naive sparse shapes and severe negative space. No realism, ornate detail, dramatic 3D lighting or polished architecture. The ruin must be instantly legible."
+    },
+    {
+      "name": "chase",
+      "prompt": "New ViceBlood storyboard shot CAR CHASE at night. Two angular dark cars speeding around a tight street corner: black getaway sedan large foreground diagonal toward viewer, police car chasing further behind with small dark red rooftop beacon, graphic cream headlamps and jagged gray tire-smoke shapes. City blocks compressed around road. No people outside vehicles, no text. 16:9 widescreen. STYLE reference only: raw flat angular cut-paper collage black burgundy gray-purple cream, very simplified deliberately coarse handmade shapes and print grain. Dynamic perspective but NOT realistic, no glossy 3D car render, no detailed wheels or reflections, no motion blur effects. Bold clear two-car chase silhouette."
+    },
+    {
+      "name": "sewer",
+      "prompt": "New ViceBlood shot: the SAME spiky black-haired vampire in the reference seen FROM BEHIND, long jagged black coat with muted purple edges, entering city sewers through a large broken barred arched drain tunnel. He stoops slightly stepping from narrow ledge into pitch black opening, one pale hand touching damp stone edge. Urban retaining wall, tiny angular dark water channel below, distant city buildings visible high above to show he descends beneath city. No text no gore. Wide16:9. Reference character identity and STYLE: extremely simplified angular cut-paper collage, rough printed grain, flat nearblack burgundy charcoal gray-purple bone. Not realistic, no polished shading, no detail overload, ominous emptiness."
+    },
+    {
+      "name": "vesper-close-v2",
+      "prompt": "Replace composition entirely: CLOSE-UP street-level view of entrance to VESPER nightclub. Door fills most of frame, tall dense towering building facade rises beyond top edge, severely cropped storefront no sky visible no moon no distant skyline. Narrow crimson rectangular doorway light, heavy battered black door and angular stone jambs, partial small sign VESPER upper left, one partial cropped bouncer shoulder at far right. Claustrophobic low camera. Rough handmade flat cut-paper black burgundy muted gray-purple bone palette as reference STYLE ONLY, sparse jagged polygons printgrain, no realistic material no polished detail. Widescreen16:9. Crucial no panoramic city and no moon."
+    },
+    {
+      "name": "church-interior-v2",
+      "prompt": "Widescreen16:9 ViceBlood new shot INSIDE a ruined gothic church, medium close low view across toppled stone cross and shattered pew in foreground toward a broken pointed stained-glass window. Roof beams collapsed diagonally through frame, cropped columns continue past upper edge. Tiny slivers of towering modern skyscraper facades visible THROUGH broken window, showing old ruin squeezed inside tall city. No moon no open red sky no skyline panorama. Charcoal darkness, bone stone edges, tiny burgundy glass fragments. Style reference only: deliberately crude flat angular paper-cut collage, simple polygons rough uneven grain, no realism no polished architectural detail. Strong intimate composition distinct from street entrance, no people no text."
+    },
+    {
+      "name": "chase-low-v2",
+      "prompt": "ViceBlood action close-up CAR CHASE: camera almost at asphalt height immediately beside a fleeing black sedan's huge cropped rear wheel and angular rear bumper on right foreground, second police car chasing close behind in left centre with cream headlights and tiny crimson beacon. Vertiginously TALL narrow buildings like black walls fill background all the way beyond top edge. No sky no moon no panorama. Road rush shown by three sharp graphic diagonal pale lines, sparse jagged tire smoke. Strong graphic silhouette, deliberately simple crude flat cut-paper collage black charcoal muted purple bone burgundy, coarse printgrain. No realistic detailed cars, no photoreal render, no glossy reflections, no text. Landscape16:9. Reference style only."
+    },
+    {
+      "name": "sewer-close-v2",
+      "prompt": "ViceBlood new close shot from INSIDE sewer shaft looking UP at spiky black-haired young adult vampire climbing DOWN ladder through open manhole. His pale hand grips large foreground rung, black coat sleeve and upper torso fill right half, tired angular face partially shadowed; one boot lower on ladder clearly descending. Circular manhole upper left shows cropped towering city facades, almost no sky, NO moon NO burgundy sky panorama. Huge black negative space below. Same vampire identity reference, angular simple cut-paper black coat muted purple edges, cool bone skin, rough handmade printed paper style. Flat simple geometry, no photorealism, no fine detail. Widescreen16:9. No text."
+    },
+    {
+      "name": "cup-full-alone",
+      "prompt": "Precise edit of reference opening illustration. REMOVE entire hand and sleeve/arm, replace only removed area with matching nearly black paper background. Preserve exact glass position shape size stem base and burgundy liquid fill level, exact dark burgundy circle behind glass, exact framing and rough angular flat paper style. The filled wineglass is ALONE unsupported on black background as graphic symbolic still life. No table no new objects no text.16:9. Do not redesign glass or move anything."
+    },
+    {
+      "name": "cup-empty-hand",
+      "prompt": "Precise single change: EMPTY THE GLASS, remove all burgundy liquid inside the bowl so entire bowl is transparent showing muted dark burgundy background circle uniformly, no liquid horizontal line. Preserve EXACT original hand and black sleeve, glass outline stem position size and framing, pale hand pose, black nails, rough flat angular paper style. No other changes.16:9 landscape."
+    },
+    {
+      "name": "cup-empty-alone",
+      "prompt": "Precise single edit of this lone filled wineglass: remove the red liquid so glass is EMPTY, transparent throughout entire bowl with dark burgundy circle visible evenly behind. No horizontal fill line. Preserve exact cream polygonal outline, stem base, size position framing background circle and black texture. No hand no arm no other objects no text. Same flat rough cut-paper16:9."
+    },
+    {
+      "name": "chase-no-beams-v3",
+      "prompt": "Precise edit: REMOVE the two large triangular headlight beams projecting sideways out from chasing police car. Replace those beam triangles with matching dark street/buildings. Headlight rectangles themselves remain bright warm bone with a very small tight glow only. Preserve cars, huge foreground rear wheel, framing, tall buildings, tire smoke and white road markings. Do not remove road lane lines. No light rays or cones anywhere. Same rough flat angular paper collage."
+    },
+    {
+      "name": "sewer-overhead-v3",
+      "prompt": "Replace scene and camera: steep OVERHEAD TOP-DOWN view from above street. Same spiky black-haired vampire with long black coat and cool pale hands, crouching on asphalt, lifting a heavy round manhole cover WITH BOTH HANDS so cover tilts up and dark circular sewer opening is clearly exposed beneath. We see top of head and shoulders/back; face mostly hidden by hair. He is still OUTSIDE sewer on pavement, opening it, NOT on ladder, NOT inside shaft. Tight composition round hole left-centre, crouching character right. Dark angular curb and pavement cracks, tiny burgundy discarded paper only. No sky no moon no buildings in view. Rough flat simple cut-paper shapes black muted purple bone charcoal, grainy handprinted texture, no realism no polish no text.16:9. Reference only for character and graphic style."
+    },
+    {
+      "name": "sewer-abstract-open-v4",
+      "prompt": "Simplify reference DRASTICALLY into a crude abstract handmade paper cutout, very few large flat polygons. Same overhead composition vampire crouched right lifting manhole lid left, pale simplified hands, spiky black head with no face, broad black coat mass with just 3 muted purple angular edge shapes. Manhole lid is a plain dark polygonal disk NO concentric decorations NO tiny metal marks NO rivets NO intricate pattern. Pavement is 4 large flat charcoal shapes with just 2 cracks, a simple diagonal curb upperleft. Very subtle fine grain only, remove all mottled photographic texture and busy detail. Strong simple black bone muted gray-purple shapes, single burgundy scrap. Looks like rough storyboard sketch/cut paper, not polished professional rendering.16:9. Preserve positions of hole lid and character. No text."
+    }
+  ]
+}

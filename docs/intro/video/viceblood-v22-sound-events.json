@@ -1,0 +1,72 @@
+[
+  {
+    "file": "vehicles/vehicle-engine-loop-01.wav",
+    "start": 62,
+    "duration": 12.0
+  },
+  {
+    "file": "police/police-siren-loop-01.wav",
+    "start": 62.5,
+    "duration": 11.5
+  },
+  {
+    "file": "vehicles/vehicle-horn-02.ogg",
+    "start": 63.1,
+    "duration": 0.58
+  },
+  {
+    "file": "vehicles/vehicle-horn-03.ogg",
+    "start": 68.8,
+    "duration": 0.7771041666666667
+  },
+  {
+    "file": "vehicles/vehicle-skid-loop-01.wav",
+    "start": 64.1,
+    "duration": 1.2
+  },
+  {
+    "file": "vehicles/vehicle-skid-loop-01.wav",
+    "start": 69.4,
+    "duration": 1.25
+  },
+  {
+    "file": "combat/weapon-fire-01.ogg",
+    "start": 65.6,
+    "duration": 0.8
+  },
+  {
+    "file": "combat/weapon-fire-02.ogg",
+    "start": 65.9,
+    "duration": 0.8
+  },
+  {
+    "file": "combat/weapon-fire-03.ogg",
+    "start": 68.1,
+    "duration": 0.8
+  },
+  {
+    "file": "combat/weapon-fire-01.ogg",
+    "start": 71.3,
+    "duration": 0.8
+  },
+  {
+    "file": "civilians/civilian-scream-02.ogg",
+    "start": 64.9,
+    "duration": 1.8
+  },
+  {
+    "file": "civilians/civilian-scream-04.ogg",
+    "start": 67.1,
+    "duration": 1.8
+  },
+  {
+    "file": "civilians/civilian-scream-05.ogg",
+    "start": 70.1,
+    "duration": 1.8
+  },
+  {
+    "file": "civilians/civilian-scream-06.ogg",
+    "start": 71.7,
+    "duration": 1.8
+  }
+]

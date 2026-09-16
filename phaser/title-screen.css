@@ -4,6 +4,17 @@
   --viceblood-black: #020306;
 }
 
+#viceblood-intro-video {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(100vw, 233.333333vh);
+  height: min(42.857143vw, 100vh);
+  object-fit: cover;
+  object-position: center;
+}
+
 html,
 body {
   min-height: 100%;
@@ -395,6 +406,24 @@ body.viceblood-world-active {
 .viceblood-title-screen[data-panel] .viceblood-title-menu {
   opacity: .10;
   pointer-events: none;
+}
+
+/* The film already supplies the closing fade. Do not replay the splash fade. */
+.viceblood-title-screen[data-intro-complete="true"] .viceblood-title-boot {
+  display: none;
+}
+
+.viceblood-title-screen[data-intro-complete="true"]:is([data-state="boot"], [data-state="prepared"], [data-state="menu"]):not([data-panel]) .viceblood-title-full-cover {
+  opacity: 0;
+  transition: none;
+}
+
+.viceblood-title-screen[data-intro-complete="true"]:is([data-state="boot"], [data-state="prepared"], [data-state="menu"]):not([data-panel]) .viceblood-title-menu,
+.viceblood-title-screen[data-intro-complete="true"]:is([data-state="boot"], [data-state="prepared"], [data-state="menu"]):not([data-panel]) .viceblood-title-menu-veil {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: none;
 }
 
 .viceblood-title-screen[data-panel] .viceblood-title-drawer {

@@ -49,5 +49,5 @@ test("main menu music is parser-preloaded before the application module boots", 
   assert.ok(audioIndex > 0);
   assert.ok(bootstrapIndex > audioIndex);
   assert.match(html, /viceblood-main-menu-theme[^>]+preload="auto"/);
-  assert.match(html, /viceblood-main-menu-theme[^>]+main-menu-theme-01\.mp3/);
+  assert.match(html, /viceblood-main-menu-theme[^>]+after-the-last-light\.wav/);
 });
