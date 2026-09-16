@@ -30,6 +30,7 @@ try {
  assert.ok(framing.top>80 && Math.abs(framing.top-framing.bottom)<1,'cinematic frame has equal black letterbox bands');
  await page.screenshot({path:'test-results/intro/playing.png'});
  await page.keyboard.press('Escape');
+ assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.viceblood-title-boot')).display),'none','splash must disappear synchronously when the film is skipped');
  await page.waitForFunction(()=>document.getElementById('viceblood-intro').hidden && document.getElementById('viceblood-title-screen').dataset.state==='menu');
  await page.waitForFunction(()=>!document.getElementById('viceblood-main-menu-theme').paused);
  assert.equal(await page.evaluate(()=>document.getElementById('viceblood-main-menu-theme').loop),true);
@@ -43,6 +44,7 @@ try {
  await page.waitForFunction(()=>document.getElementById('viceblood-intro-video').currentTime>.1);
  await page.evaluate(()=>{document.getElementById('viceblood-intro-video').playbackRate=16;});
  await page.waitForFunction(()=>document.getElementById('viceblood-intro').hidden);
+ assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.viceblood-title-boot')).display),'none','natural completion must not reveal the splash');
  await page.waitForFunction(()=>!document.getElementById('viceblood-main-menu-theme').paused);
  console.log('PASS: real playback, Escape, menu loop, credits, natural ending');
 } finally { await browser.close(); }

@@ -68,6 +68,7 @@ export class TitleScreenAudioGate {
     this.installPulseStyle();
     this.installCreditsObserver(this.root);
     this.root.hidden = false;
+    delete this.root.dataset.introComplete;
     this.root.dataset.state = "boot";
     this.root.setAttribute("aria-hidden", "false");
     if (this.bootMessage) {
@@ -146,6 +147,8 @@ export class TitleScreenAudioGate {
   }
 
   finishIntro() {
+    // Prepare the direct menu presentation before uncovering the film.
+    if (this.root) this.root.dataset.introComplete = "true";
     this.introCleanup?.();
     this.introCleanup = null;
     // Playback failure must never strand the player before the menu.

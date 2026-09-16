@@ -408,6 +408,24 @@ body.viceblood-world-active {
   pointer-events: none;
 }
 
+/* The film already supplies the closing fade. Do not replay the splash fade. */
+.viceblood-title-screen[data-intro-complete="true"] .viceblood-title-boot {
+  display: none;
+}
+
+.viceblood-title-screen[data-intro-complete="true"]:is([data-state="boot"], [data-state="prepared"], [data-state="menu"]):not([data-panel]) .viceblood-title-full-cover {
+  opacity: 0;
+  transition: none;
+}
+
+.viceblood-title-screen[data-intro-complete="true"]:is([data-state="boot"], [data-state="prepared"], [data-state="menu"]):not([data-panel]) .viceblood-title-menu,
+.viceblood-title-screen[data-intro-complete="true"]:is([data-state="boot"], [data-state="prepared"], [data-state="menu"]):not([data-panel]) .viceblood-title-menu-veil {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: none;
+}
+
 .viceblood-title-screen[data-panel] .viceblood-title-drawer {
   opacity: 1;
   visibility: visible;
