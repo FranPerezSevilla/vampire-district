@@ -4,6 +4,17 @@
   --viceblood-black: #020306;
 }
 
+#viceblood-intro-video {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(100vw, 233.333333vh);
+  height: min(42.857143vw, 100vh);
+  object-fit: cover;
+  object-position: center;
+}
+
 html,
 body {
   min-height: 100%;

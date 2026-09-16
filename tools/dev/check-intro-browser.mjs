@@ -25,6 +25,9 @@ try {
  });
  assert.equal(await page.evaluate(()=>document.getElementById('viceblood-main-menu-theme').paused),true);
  assert.equal(await page.evaluate(()=>document.elementFromPoint(innerWidth/2,innerHeight/2)?.id),'viceblood-intro-video','the playing film must be in front of the title cover');
+ const framing=await page.evaluate(()=>{const r=document.getElementById('viceblood-intro-video').getBoundingClientRect();return {ratio:r.width/r.height,top:r.top,bottom:innerHeight-r.bottom};});
+ assert.ok(Math.abs(framing.ratio-21/9)<.01);
+ assert.ok(framing.top>80 && Math.abs(framing.top-framing.bottom)<1,'cinematic frame has equal black letterbox bands');
  await page.screenshot({path:'test-results/intro/playing.png'});
  await page.keyboard.press('Escape');
  await page.waitForFunction(()=>document.getElementById('viceblood-intro').hidden && document.getElementById('viceblood-title-screen').dataset.state==='menu');
