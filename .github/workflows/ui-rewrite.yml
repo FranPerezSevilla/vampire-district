@@ -2,7 +2,7 @@ name: UI rewrite
 
 on:
   push:
-    branches: [codex/ui-rewrite, codex/traffic-junction-topology]
+    branches: [codex/ui-rewrite, codex/traffic-junction-topology, codex/viceblood-intro-art-v2]
 permissions:
   contents: read
 concurrency:
@@ -10,6 +10,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  intro-pages:
+    if: github.repository == 'FranPerezSevilla/vampire-district' && github.ref == 'refs/heads/codex/viceblood-intro-art-v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate intro and menu behavior
+        run: node --test tests/title-intro.test.js tests/title-audio-startup.test.js tests/main-menu-music.test.js tests/main-menu-audio-binary.test.js tests/menu-theme-playback.test.js
+      - name: Build and verify production preview
+        run: |
+          npm run build
+          node tools/boot/verify-package.mjs
+          node tools/boot/smoke-module.mjs
+          test -s dist/phaser/assets/video/viceblood-intro.mp4
+          test -s dist/phaser/assets/audio/music/el-gothic-menu-loop.wav
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - name: Publish branch preview
+        id: deployment
+        uses: actions/deploy-pages@v4
+
   native-and-build:
     if: github.ref == 'refs/heads/codex/ui-rewrite'
     runs-on: ubuntu-latest
@@ -161,3 +201,4 @@ jobs:
           name: pages-http-verification
           path: pages-http-verification.json
           retention-days: 14
+
