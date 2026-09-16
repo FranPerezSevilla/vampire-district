@@ -1,5 +1,5 @@
 const THEME_FADE_MS = 430;
-const THEME_CREDIT = "MUSIC — INTRO & MAIN MENU\nEL (gothic version) — Andres Rodriguez / anrocomposer.\nPixabay Content License. Opening excerpt looped for the menu.\nhttps://pixabay.com/music/rock-el-gothic-version-136208/";
+const THEME_CREDIT = "INTRO MUSIC\nEL (gothic version) — Andres Rodriguez / anrocomposer.\nPixabay Content License.\nhttps://pixabay.com/music/rock-el-gothic-version-136208/\n\nMAIN MENU\nAfter the Last Light — original ambient music for ViceBlood.\nDistant engine sound: freesounds123 / Pixabay Content License.";
 const START_COPY = "PRESS ANY KEY TO START";
 
 export class TitleScreenAudioGate {

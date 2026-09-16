@@ -17,7 +17,7 @@ test("menu theme uses a complete browser runtime binary", () => {
   assert.equal(existsSync(corruptM4a), false, "the truncated M4A must be removed");
 
   const main = source("phaser/src/main.js");
-  assert.match(main, /el-gothic-menu-loop\.wav/);
+  assert.match(main, /after-the-last-light\.wav/);
   assert.doesNotMatch(main, /main-menu-theme-01\.m4a/);
 });
 
@@ -28,7 +28,7 @@ test("theme warms during boot while splash remains the interaction gate", () => 
   const gate = source("phaser/src/ui/TitleScreenAudioGate.js");
 
   assert.ok(index.indexOf('id="viceblood-main-menu-theme"') < index.indexOf('type="module"'));
-  assert.match(index, /id="viceblood-main-menu-theme"[^>]*el-gothic-menu-loop\.wav[^>]*preload="auto"/);
+  assert.match(index, /id="viceblood-main-menu-theme"[^>]*after-the-last-light\.wav[^>]*preload="auto"/);
   assert.match(main, /getElementById\("viceblood-main-menu-theme"\) \|\| new Audio\(MAIN_MENU_THEME_URL\)/);
   assert.match(main, /audio\.preload = "auto"/);
   assert.match(scene, /titleScreenAudioGate\.waitForStart\(\)[\s\S]*titleScreenController\.present/);

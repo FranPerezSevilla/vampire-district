@@ -2,7 +2,7 @@
 
 The title gesture gate owns the opening. Any accepted start key, pointer or touch starts `phaser/assets/video/viceblood-intro.mp4` (approved v27, 68 seconds). Escape or the Skip button stops it and presents the existing menu. Natural completion and media failure reach the same menu boundary. Cancellation removes all film handlers and prevents late playback failures from restarting music.
 
-The existing menu audio owner loops `phaser/assets/audio/music/el-gothic-menu-loop.wav`: the first eight-second phrase of EL (gothic version), source 0.99–8.99 seconds, with 5 ms edge fades. The film and menu never intentionally play audio simultaneously. New Night retains its existing menu fade-out.
+The existing menu audio owner now loops `phaser/assets/audio/music/after-the-last-light.wav`: an approximately 48-second original ambient piece with sparse piano-like notes, a low drone, distant metallic resonances and quiet traffic. EL remains exclusive to the film. The film and menu never intentionally play audio simultaneously. New Night retains its existing menu fade-out. The reproducible composition is in `tools/audio/create-menu-ambient.py`.
 
 Credits show Andres Rodriguez / anrocomposer, track title, Pixabay Content License and source URL. See `phaser/assets/audio/ATTRIBUTION.md` for the ledger.
 

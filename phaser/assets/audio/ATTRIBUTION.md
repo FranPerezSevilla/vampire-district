@@ -37,6 +37,8 @@ EL (gothic version), Andres Rodriguez (anrocomposer), Pixabay track 136208: http
 
 ## Production intro and menu (2026-09-16)
 
+Current main menu: `music/after-the-last-light.wav`, **After the Last Light**, original procedural ambient composition made for ViceBlood. Synthesized low drone, sparse piano-like partials, metallic resonances and reverberation; approximately 48-second stereo PCM loop. Includes a quiet filtered excerpt of `vehicles/vehicle-engine-loop-01.wav`, credited to freesounds123 under Pixabay Content License above. EL is now reserved for the opening film; its previous menu loop is retained as an unused asset.
+
 - `../video/viceblood-intro.mp4`: approved 68-second v27 opening film.
 - `music/el-gothic-menu-loop.wav`: 8-second opening phrase (source 0.99–8.99 s), PCM loop with 5 ms edge fades.
 - Music: **EL (gothic version)** by **Andres Rodriguez / anrocomposer**, [Pixabay track 136208](https://pixabay.com/music/rock-el-gothic-version-136208/), Pixabay Content License (verified 2026-09-15).

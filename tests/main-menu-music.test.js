@@ -11,7 +11,7 @@ test("main menu theme asset is committed and owned by the title-screen flow", ()
   const preloader = source("phaser/src/ui/TitleAssetPreloader.js");
 
   assert.ok(existsSync(new URL("../phaser/assets/audio/music/main-menu-theme-01.mp3", import.meta.url)));
-  assert.match(main, /el-gothic-menu-loop\.wav/);
+  assert.match(main, /after-the-last-light\.wav/);
   assert.match(main, /audio\.loop = true/);
   assert.match(main, /MAIN_MENU_THEME_VOLUME = 0\.28/);
   assert.match(menuScene, /preloadTitleExperience\(\)/);
@@ -44,5 +44,5 @@ test("main menu credits expose the licensed intro music attribution", () => {
   assert.match(gate, /Andres Rodriguez/);
   assert.match(gate, /Pixabay Content License/);
   assert.match(attribution, /Gnossienne No\. 1/);
-  assert.match(attribution, /music\/el-gothic-menu-loop\.wav/);
+  assert.match(attribution, /music\/after-the-last-light\.wav/);
 });

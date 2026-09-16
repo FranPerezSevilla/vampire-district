@@ -71,7 +71,7 @@ for (const entry of ['index.html','phaser/index.html']) {
     assert.equal(fresh.wallet.balance(),123,'live session keeps its own progress');
     for (const key of saveKeys) assert.equal(win.localStorage.getItem(key),oldSave);
     fresh.reset({persist:false});
-    assert.equal(win.NBD_MAIN_MENU_THEME.audio.src,'https://example.test/vampire-district/phaser/assets/audio/music/el-gothic-menu-loop.wav');
+    assert.equal(win.NBD_MAIN_MENU_THEME.audio.src,'https://example.test/vampire-district/phaser/assets/audio/music/after-the-last-light.wav');
     // Continue beyond Game construction: this boundary previously missed a
     // helper named game() being overwritten by real Phaser Scene injection.
     const ui=new configuration.scene[3](), app=win.NBD_PHASER_GAME;
