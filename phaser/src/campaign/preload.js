@@ -33,11 +33,12 @@ function hiddenFreeRoamEntry(campaign) {
 // Other modules import this live instance for the remainder of the session.
 const existing = globalThis.NBD_CAMPAIGN_SYSTEM;
 if (existing instanceof CampaignSystem) existing.destroy();
+let manualLoad = false;
+try { manualLoad = sessionStorage.getItem("viceblood-load-save") === "yes"; sessionStorage.removeItem("viceblood-load-save"); } catch {}
 const campaign = new CampaignSystem({
-  // Null deliberately prevents even explicit legacy save() calls from storing
-  // progress. Do not access/clear localStorage: asset caches and settings remain.
-  storage: null,
-  autoLoad: bootProfile.autoLoadCampaign,
+  // Only an explicit Load request resumes stored progress; fresh starts remain fresh.
+  storage: manualLoad ? globalThis.localStorage : null,
+  autoLoad: manualLoad || bootProfile.autoLoadCampaign,
   autoSave: bootProfile.autoSaveCampaign
 });
 

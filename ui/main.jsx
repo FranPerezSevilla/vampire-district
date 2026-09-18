@@ -3,6 +3,7 @@ import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { Badge, Button, Empty, Meter, Metric, Window } from "./components.jsx";
 import { Domain } from "./Domain.jsx";
+import { PauseMenu } from "./PauseMenu.jsx";
 import { Hud } from "./Hud.jsx";
 import { NightSeal } from "./artwork.jsx";
 import "./interface.css";
@@ -11,6 +12,7 @@ import "./contact-identity.css";
 import "./hud.css";
 import "./hud-reset.css";
 import "./hud-survival-compact.css";
+import "./hud-notebook.css";
 
 function Ledger({ model }) {
   if (!model?.ready) return <Empty title="No incident file">Try again in a moment.</Empty>;
@@ -25,10 +27,10 @@ function App({ store, command, overlay, geometry, controls }) {
   const firstChoice = useRef(null);
   if (!s.ready) return null;
   const titles = { domain: "The Black Book", pause: "Pause", interaction: s.interaction?.title || "Choose", ledger: "Incident file", garage: "Refuge garage", intro: "Welcome to the night", result: s.result?.title || "Night report", dialogue: s.external?.speaker || "Voice in the dark", error: "Interface interrupted" };
-  return <><Hud s={s} command={command}/>{s.mode && <Window title={titles[s.mode] || "ViceBlood"} description={s.mode === "interaction" ? s.interaction?.detail : undefined} overlay={overlay} wide={s.mode === "domain"} close={() => command("close")} initialFocus={s.mode === "interaction" ? firstChoice : undefined}>
+  return <><Hud s={s} command={command}/>{s.mode && s.mode !== "powers" && <Window title={titles[s.mode] || "ViceBlood"} description={s.mode === "interaction" ? s.interaction?.detail : undefined} overlay={overlay} wide={s.mode === "domain"} close={() => command("close")} initialFocus={s.mode === "interaction" ? firstChoice : undefined}>
     {s.mode === "domain" && <Domain snapshot={s} geometry={geometry} command={command}/>}
     {s.mode === "interaction" && <div className="vb-choices">{s.interaction.options.map((option, i) => <button type="button" key={option.id} ref={i === s.interaction.index ? firstChoice : null} className="vb-choice" data-selected={i === s.interaction.index} disabled={option.disabled} onClick={() => command("choose", { id: option.id })}><span className="vb-choice-index">{String(i + 1).padStart(2, "0")}</span><span><strong>{option.label}</strong><small>{option.detail}</small></span><span aria-hidden="true">↗</span></button>)}</div>}
-    {s.mode === "pause" && <section className="vb-section nb-pause"><NightSeal/><div className="vb-actions"><Button primary onClick={() => command("close")}>Back to the streets</Button><Button icon="moon" onClick={() => command("open", { tab: "tonight" })}>Black Book</Button><Button icon="city" onClick={() => command("open", { tab: "city" })}>City</Button>{s.capabilities?.incidentFile && <Button onClick={() => command("ledger")}>Police & the Veil</Button>}</div><details className="vb-controls nb-accessibility"><summary>Accessibility</summary><Button aria-pressed={s.highContrast} onClick={() => command("contrast")}>High-contrast aim · {s.highContrast ? "On" : "Off"}</Button><p>A larger black-and-white reticle.</p></details><details className="vb-controls"><summary>Controls</summary><pre>{controls}</pre><p>Black Book: 1–5 select a chapter. Go here sets the destination and closes the book; Locate inspects the map without changing the destination.</p><p>Map: drag to move, double-click to save a location.</p></details></section>}
+    {s.mode === "pause" && <PauseMenu s={s} command={command}/>}
     {s.mode === "ledger" && <><div className="nb-file-back"><Button onClick={() => command("open", { tab: "tonight" })}>Back to Black Book</Button></div><Ledger model={s.ledger}/></>}
     {s.mode === "garage" && <Garage s={s} command={command}/>}
     {s.mode === "dialogue" && <section className="vb-section vb-narrative"><p className="vb-lead">{s.external?.text}</p><Button primary onClick={() => command("external", { action: "continue" })}>Continue</Button></section>}

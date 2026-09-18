@@ -32,36 +32,34 @@ export class EntityStreamSystem {
     scene.events?.once?.(globalThis.Phaser?.Scenes?.Events?.SHUTDOWN || "shutdown", this.destroy, this);
   }
 
+  withDecisionBatch(callback) {
+    if(this.decisionBatch)return callback();
+    this.decisionBatch={chunks:new Map(),exposureLevel:this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem?.level?.() ?? 0};
+    try{return callback();}finally{this.decisionBatch=null;}
+  }
+
   chunkStateAt(x, y) {
     const city = this.scene.cityStreamSystem;
     if (!city.manifest) {
       return { id: null, active: true, prefetched: false, chunkState: "manifest-loading" };
     }
     const id = chunkIdAt(x, y, city.manifest.chunkSize);
-    return {
-      id,
-      active: city.isChunkActive(id),
-      prefetched: city.prefetchedChunkIds.has(id),
-      chunkState: city.stateOf(id)
-    };
+    const cached=this.decisionBatch?.chunks.get(id);if(cached)return cached;
+    const state={id,active:city.isChunkActive(id),prefetched:city.prefetchedChunkIds.has(id),chunkState:city.stateOf(id)};
+    this.decisionBatch?.chunks.set(id,state);return state;
   }
 
   npcDecision(npc) {
     const chunk = this.chunkStateAt(npc?.x, npc?.y);
-    return {
-      ...npcStreamDecision(npc, { ...chunk, exposureLevel: this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem?.level?.() ?? 0 }),
-      chunkId: chunk.id,
-      chunkState: chunk.chunkState
-    };
+    const decision=npcStreamDecision(npc,{active:chunk.active,prefetched:chunk.prefetched,
+      exposureLevel:this.decisionBatch?.exposureLevel ?? this.scene.heatSystem?.level?.() ?? this.scene.exposureSystem?.level?.() ?? 0});
+    return {state:decision.state,reason:decision.reason,chunkId:chunk.id,chunkState:chunk.chunkState};
   }
 
   vehicleDecision(vehicle) {
     const chunk = this.chunkStateAt(vehicle?.x, vehicle?.y);
-    return {
-      ...vehicleStreamDecision(vehicle, { ...chunk, currentVehicleId: this.scene.vehicleSystem?.currentVehicleId || null }),
-      chunkId: chunk.id,
-      chunkState: chunk.chunkState
-    };
+    const decision=vehicleStreamDecision(vehicle,{active:chunk.active,prefetched:chunk.prefetched,currentVehicleId:this.scene.vehicleSystem?.currentVehicleId||null});
+    return {state:decision.state,reason:decision.reason,chunkId:chunk.id,chunkState:chunk.chunkState};
   }
 
   transition(kind, entity, decision) {
@@ -119,6 +117,21 @@ export class EntityStreamSystem {
 
   applyNpcState(npc, dt = 0) {
     const decision = this.npcDecision(npc);
+    // Spatial queries repeat within a frame. Still evaluate live eligibility
+    // (alerts, passengers, chunk activation), but do not replay an unchanged
+    // transition and dormant timer work for a zero-time refresh.
+    const previous = this.npcRecords.get(String(npc?.id || ""));
+    if (dt === 0 && previous && previous.state === decision.state && previous.reason === decision.reason
+      && previous.chunkId === decision.chunkId && previous.chunkState === decision.chunkState
+      && npc.streamState === decision.state && npc.streamReason === decision.reason && npc.streamChunkId === decision.chunkId) {
+      const dormant = decision.state === ENTITY_STREAM_STATES.DORMANT;
+      if (npc.container?.active === dormant) npc.container.setActive?.(!dormant);
+      if (dormant) {
+        if (npc.container?.visible !== false) npc.container?.setVisible?.(false);
+        npc.__nbdWtfLabel?.setVisible?.(false);
+      }
+      return decision;
+    }
     const record = this.transition("npc", npc, decision);
     npc.streamState = decision.state;
     npc.streamReason = decision.reason;
@@ -142,8 +155,10 @@ export class EntityStreamSystem {
   update(dt = 0, { force = false } = {}) {
     if (this.destroyed) return false;
     this.tick++;
-    for (const npc of this.scene.npcSystem?.npcs || []) this.applyNpcState(npc, dt);
-    for (const vehicle of this.scene.vehicleSystem?.vehicles || []) this.applyVehicleState(vehicle);
+    this.withDecisionBatch(()=>{
+      for (const npc of this.scene.npcSystem?.npcs || []) this.applyNpcState(npc, dt);
+      for (const vehicle of this.scene.vehicleSystem?.vehicles || []) this.applyVehicleState(vehicle);
+    });
     this.publish(force);
     return true;
   }

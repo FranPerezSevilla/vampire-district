@@ -1,3 +1,7 @@
+import {installPerspectiveSlider} from '../rendering/LandmarkFrontage.js';
+import { afterCameraProjection } from '../rendering/CameraProjectionHook.js';
+import { paintLandmarkRoof } from "../rendering/BuildingIdentity.js";
+import { BuildingParallax } from "../rendering/BuildingParallax.js";
 import { COLORS, WORLD } from "../data/balance.js";
 import {
   buildings,
@@ -9,7 +13,7 @@ import {
   sewerTunnels,
   sidewalks
 } from "../data/district.js";
-import { drawBuildingPresentation } from "../rendering/BuildingPresentation.js";
+import { drawBuildingPresentation, renderBuildingPresentation } from "../rendering/BuildingPresentation.js";
 import { ModularCharacterView } from "../rendering/ModularCharacterView.js";
 import { RadioSystem } from "../systems/RadioSystem.js";
 import { installVehicleExplosionPresentation } from "../vehicles/VehicleExplosionPresentation.js";
@@ -55,6 +59,25 @@ export class GameScene extends GameSceneCore {
     this.radioSystem = null;
   }
 
+  preload() {
+    this.load.image('vesper-dormer','phaser/assets/vesper/dormer-v1.webp');
+    this.load.image('vesper-mansard','phaser/assets/vesper/mansard-v2.webp');
+    for(const part of ['facade','roof','service-door'])this.load.image('vesper-'+part,'phaser/assets/vesper/'+part+'-v1.webp');
+    for(const part of ['facade','entrance','roof'])this.load.image('police-'+part,'phaser/assets/police/'+part+'-v1.webp');
+    this.load.image('police-lamp','phaser/assets/props/lamp-clean-v2.webp');
+    this.load.image('street-bench-clean','phaser/assets/props/bench-clean-v1.webp');
+    this.load.image('vesper-grime','phaser/assets/vesper/yard-grime-v2.webp');
+    this.load.image('vesper-fence','phaser/assets/vesper/yard-fence-v1.webp');
+    this.load.image('police-fence','phaser/assets/police/fence-v1.webp');
+    for(const name of ['roof-slate','turret-slate'])this.load.image(`hospital-${name}`,`phaser/assets/hospital/${name}-v1.webp`);
+    this.load.image('hospital-parking','phaser/assets/hospital/parking-v2.webp');
+    this.load.image('paving-campus','phaser/assets/materials/paving-campus-v1.webp');
+    for(const name of ["entrance","forecourt","roof-service","wall-service"])this.load.image(`hospital-${name}`,`phaser/assets/hospital/${name}-v${name==='forecourt'?2:1}.webp`);
+    this.load.image('slate-gray','phaser/assets/materials/slate-gray-v1.webp');
+    for(const key of ['cobble-gothic','slab-gothic','asphalt-gothic','stone-gothic','lancet-dark','lancet-warm','portal-gothic','slate-gothic'])this.load.image(key,`phaser/assets/materials/${key}-v1.webp`);
+    this.load.image('masonry-gray','phaser/assets/materials/masonry-gray-v1.webp');
+  }
+
   create() {
     super.create();
     this.playerBody?.setVisible?.(false);
@@ -67,6 +90,20 @@ export class GameScene extends GameSceneCore {
     this.removeVehicleExplosionPresentation = installVehicleExplosionPresentation(this);
     this.radioSystem?.destroy?.();
     this.radioSystem = new RadioSystem(this, { vehicleSystem: this.vehicleSystem });
+    this.buildingParallax = new BuildingParallax(this, (graphic, building) => {
+      const map=this.map;
+      try { this.map=graphic; this.paintBuilding(building); }
+      finally { this.map=map; }
+    },buildings);
+    installPerspectiveSlider(this);
+    this.onBuildingParallaxRender = () => {
+      const enabled=this.currentLayer===LAYERS.STREET && !this.registry.get("mainMenuActive");
+      if (enabled !== this.parallaxStreetActive) { this.parallaxStreetActive=enabled; this.redrawLayer(); }
+      this.buildingParallax.update(enabled ? this.chunkItems("buildings", this.urbanRenderBounds, buildings, {margin:320}) : [], enabled);
+    };
+    this.removeParallaxCameraHook=afterCameraProjection(this.cameras.main,()=>{this.onBuildingParallaxRender();this.children.depthSort();});
+    this.events.once("shutdown",()=>{this.removeParallaxCameraHook?.();this.buildingParallax.destroy();this.buildingParallax=null;});
+    this.redrawLayer();
   }
 
   update(time, deltaMs) {
@@ -169,7 +206,11 @@ export class GameScene extends GameSceneCore {
   }
 
   prepareUrbanRenderWindow() {
-    this.urbanRenderSectorKey = this.renderSectorKey();
+    const key = this.renderSectorKey();
+    // Streaming redraws must not invalidate the ground texture as the player
+    // moves inside the same sector. Geometry changes retain their own cache key.
+    if (this.urbanRenderBounds && this.urbanRenderSectorKey === key) return this.urbanRenderBounds;
+    this.urbanRenderSectorKey = key;
     this.urbanRenderBounds = this.calculateUrbanRenderBounds();
     return this.urbanRenderBounds;
   }
@@ -311,13 +352,42 @@ export class GameScene extends GameSceneCore {
   drawSewerManholes() {
     for (const access of this.chunkItems("sewerAccesses", this.urbanRenderBounds, sewerAccesses, { margin: 16 })) {
       if (!access.street || !this.visiblePoint(access.street, 16)) continue;
-      this.map.fillStyle(0x0b2a22, 1).fillCircle(access.street.x, access.street.y, 8);
-      this.map.lineStyle(1, 0x78c7a3, 0.65).strokeCircle(access.street.x, access.street.y, 8);
+      const { x, y } = access.street;
+      this.map.fillStyle(0x171613, 1).fillCircle(x, y, 8);
+      this.map.lineStyle(1, 0x85755d, 0.65).strokeCircle(x, y, 8);
+      for (let offset = -4; offset <= 4; offset += 4) this.map.lineBetween(x - 5, y + offset, x + 5, y + offset);
     }
   }
 
   drawBuilding(building) {
-    const plan = drawBuildingPresentation(this.map, building, { detailLevel: "standard" });
+    if(this.buildingParallax && this.currentLayer===LAYERS.STREET && !this.registry.get("mainMenuActive")){
+      this.map.fillStyle(0x111110,1).fillRect(building.x,building.y,building.w,building.h);
+      return;
+    }
+    this.paintBuilding(building);
+  }
+
+  paintBuilding(building) {
+    if(paintLandmarkRoof(this.map,building)) return;
+    const plan = drawBuildingPresentation(null, building, { detailLevel: "standard", layoutId: "rectangle" });
+    // A roof-only drawing: world shadows and ground-level fronts belong at the base.
+    this.map.fillStyle(building.skyline ? 0x48443d : plan.palette.roof,1).fillRect(building.x,building.y,building.w,building.h);
+    if(!building.skyline) renderBuildingPresentation(this.map, {...plan,modules:plan.modules.filter(m=>!["foundation","frontage","service-strip","service-light","yard","fence"].includes(m.kind))});
+    // Roof equipment stays horizontal: seams, parapets and recessed plant courts.
+    const {x,y,w,h}=building;
+    if (building.skyline) {
+      const g=this.map;
+
+      for(let tier=0;tier<3;tier++) {
+        const inset=7+tier*6;
+        if(w<=inset*2+12||h<=inset*2+12)break;
+        g.fillStyle([0x383733,0x48443d,0x585044][tier],1).fillRect(x+inset,y+inset,w-inset*2,h-inset*2);
+        g.lineStyle(1,0xa08c6b,0.6).strokeRect(x+inset,y+inset,w-inset*2,h-inset*2);
+      }
+      g.fillStyle(0x151516,1).fillRect(x+w*.38,y+h*.3,w*.23,h*.4);
+      g.lineStyle(1,0x92816b,0.6);
+      for(let rib=12;rib<w-10;rib+=14)g.lineBetween(x+rib,y+2,x+rib,y+7);
+    }
     const focus = this.renderFocus();
     if (plan?.showLabel
       && this.currentLayer === LAYERS.STREET
@@ -354,6 +424,8 @@ export class GameScene extends GameSceneCore {
   }
 
   redrawLayer(statusText = "") {
+    this.streetSurfaceCache?.image.setVisible(false);
+    this.streetPavingTarget=null;
     this.prepareUrbanRenderWindow();
     super.redrawLayer(statusText);
     this.vehicleSystem?.refreshVisibility?.();

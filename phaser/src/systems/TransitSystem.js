@@ -55,7 +55,6 @@ export class TransitSystem {
       sign.add?.([
         this.scene.add.rectangle(0, 0, 6, 20, 0x303b48),
         this.scene.add.rectangle(0, -8, 14, 12, line.color),
-        this.scene.add.text(10, -17, `BUS ${line.id}`, { fontSize: "10px", color: "#eee8cd", backgroundColor: "#18202c" })
       ]);
       this.signs.push({ sign, stop });
     }

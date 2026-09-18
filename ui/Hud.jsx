@@ -12,19 +12,16 @@ function Resource({ label, value, suffix = "", tone = "neutral", icon = null, co
   </div>;
 }
 
-function Objective({ guide }) {
-  if (!guide) return null;
-  return <section className="vb-objective vb-street-objective" aria-label={`Objective ${guide.label}, ${guide.arrived ? "nearby" : `${guide.distance} metres away`}`}>
-    <div className="vb-street-objective-paper">
-      <span className="vb-street-objective-kicker">Tonight</span>
-      <strong>{guide.label}</strong>
-      <small>{guide.arrived ? "Target nearby" : `${guide.distance} m · tracked`}</small>
-    </div>
-    <div className="vb-street-objective-pointer" aria-hidden="true">
-      <Icon style={{ transform: `rotate(${guide.bearing}deg)` }}/>
-      {!guide.arrived && <span>{guide.distance} m</span>}
-    </div>
-  </section>;
+function Objective({ guide, playerScreen, announcement }) {
+  if (!guide && !announcement) return null;
+  return <>
+    {announcement && <section className="vb-objective vb-street-objective" aria-label={`Tonight ${announcement}`}>
+      <div className="vb-street-objective-paper"><span className="vb-street-objective-kicker">Tonight</span><strong>{announcement}</strong></div>
+    </section>}
+    {guide && playerScreen && <div className="vb-player-compass" aria-hidden="true">
+      <Icon/>
+    </div>}
+  </>;
 }
 
 function Attention({ wanted, exposure }) {
@@ -52,6 +49,7 @@ function SurvivalPanel({ s, command }) {
   const hunger = Math.max(0, Math.min(100, Math.round(s.hunger)));
   const vitality = Math.max(0, Math.min(100, Math.round(s.vitality)));
   return <section className="vb-vitals vb-street-vitals" aria-label="Survival status">
+    <time className="vb-night-clock" aria-label="Time">{s.clock}</time>
     <div className="vb-street-vitals-body">
       <div className="vb-street-survival-row" data-tone={s.frenzy || hunger >= 70 ? "danger" : "normal"}>
         <strong>{s.frenzy ? "FRENZY" : "HUNGER"}</strong>
@@ -76,8 +74,7 @@ function SurvivalPanel({ s, command }) {
 function Prompt({ prompt }) {
   if (!prompt) return null;
   return <div className="vb-prompt vb-street-prompt" role="status">
-    <kbd>{prompt.key}</kbd>
-    <div><strong>{prompt.text}</strong><small>ACT NOW</small></div>
+    <kbd>[{prompt.key}]</kbd><span>{prompt.text}</span>
   </div>;
 }
 
@@ -92,30 +89,15 @@ export function Hud({ s, command }) {
   return <div className="vb-hud vb-street-hud" data-viceblood-ui="hud" data-frenzy={s.frenzy || undefined}>
     <div className="vb-street-grain" aria-hidden="true"/>
 
-    <header className="vb-hud-place vb-street-place">
-      <div><small>DISTRICT</small><strong>{s.district}</strong></div>
-      <span>{s.stage}</span>
-    </header>
-
-    <nav className="vb-hud-nav vb-street-nav" aria-label="Game menu">
-      <Button icon="moon" className="nb-book-toggle" aria-label="Black Book M" onClick={() => command("open", { tab: "tonight" })}>Black Book <kbd>M</kbd>{s.errand && <i className="vb-active-dot"/>}</Button>
-      <Button icon="city" aria-label="City" onClick={() => command("open", { tab: "city" })}>City</Button>
-      <Button icon="menu" aria-label="Pause" onClick={() => command("pause")}/>
-    </nav>
-
-    <Objective guide={s.guide}/>
+    <Objective guide={s.guide} playerScreen={s.playerScreen} announcement={s.announcement}/>
     <Attention wanted={s.wanted} exposure={s.exposure}/>
     <SurvivalPanel s={s} command={command}/>
 
     {s.vehicle ? <VehiclePanel vehicle={s.vehicle}/> : <section className="vb-equipment vb-street-equipment" aria-label="Weapon">
-      <span>ARMED</span><strong>{s.weapon.name}</strong><small>{s.weapon.ammoText} · AMMO</small>
+      <span>WEAPON</span><strong>{s.weapon.name}</strong><small>{s.weapon.ammoText} · AMMO</small>
     </section>}
 
-    <div className="vb-powers vb-street-powers" aria-label="Powers">{s.powers.map(power => <div key={power.id} className="vb-power-slot vb-street-power" data-locked={power.locked} data-active={power.active}>
-      <kbd>{power.key}</kbd><span>{power.name}</span><small>{power.locked ? "—" : power.active ? "LIVE" : power.cooldown ? `${power.cooldown}s` : "READY"}</small>
-    </div>)}</div>
-
     <Prompt prompt={s.prompt}/>
-    <Notice guidance={s.guidance} notice={s.notice}/>
+
   </div>;
 }

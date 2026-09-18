@@ -1,3 +1,4 @@
+import {surfacePointQuery} from './SurfacePointQuery.js';
 import { fitBuildingToSidewalks } from "./BuildingSidewalkClearance.js";
 import {
   CITY_TOPOLOGY_SEED,
@@ -478,22 +479,15 @@ function pointInsideWorld(x, y) {
     : true;
 }
 
-export function pointOnRoadSurface(x, y) {
-  return roads.some(area => pointInCitySurface(x, y, area))
-    || roadSegments.some(area => pointInCitySurface(x, y, area))
-    || roadJunctions.some(area => pointInCitySurface(x, y, area))
-    || roadTransitions.some(area => pointInCitySurface(x, y, area));
-}
-
-export function pointInsideBuilding(x, y) {
-  return buildings.some(area => pointInCitySurface(x, y, area));
-}
-
-export function pointOnPedestrianSurface(x, y) {
-  if (!pointInsideWorld(x, y) || pointInsideBuilding(x, y)) return false;
-  if (crosswalks.some(area => pointInCitySurface(x, y, area))) return true;
-  if (sidewalks.some(area => pointInCitySurface(x, y, area))) return true;
-  return !pointOnRoadSurface(x, y);
+const onRoad=surfacePointQuery([...roads,...roadSegments,...roadJunctions,...roadTransitions],pointInCitySurface);
+const insideBuilding=surfacePointQuery(buildings,pointInCitySurface);
+const onCrosswalk=surfacePointQuery(crosswalks,pointInCitySurface);
+const onSidewalk=surfacePointQuery(sidewalks,pointInCitySurface);
+export function pointOnRoadSurface(x,y){return onRoad(x,y);}
+export function pointInsideBuilding(x,y){return insideBuilding(x,y);}
+export function pointOnPedestrianSurface(x,y){
+ if(!pointInsideWorld(x,y)||insideBuilding(x,y))return false;
+ return onCrosswalk(x,y)||onSidewalk(x,y)||!onRoad(x,y);
 }
 
 export function pointOnPanicEscapeSurface(x, y) {

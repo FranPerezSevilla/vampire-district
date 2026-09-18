@@ -47,7 +47,7 @@ export function journeyDrivingTarget(driver, cruiseSpeed) {
 // Hybrid search nodes are reachable vehicle poses, never lateral offsets. Each
 // edge records the exact controls consumed by VehicleModel at the integration interval.
 // Reverse is another gear/control choice and gets a cost so normal driving wins.
-export function planDriverManeuver({ pose, archetype, goal, safe, maxNodes = 600, dt = 0.05 }) {
+export function* searchDriverManeuver({ pose, archetype, goal, safe, maxNodes = 600, dt = 0.05 }) {
   const distance = state => Math.hypot(state.x - goal.x, state.y - goal.y);
   const heuristic = state => distance(state) + Math.abs(angleDelta(state.angle, goal.angle)) * 18;
   const key = state => `${Math.round(state.x / 5)},${Math.round(state.y / 5)},${Math.round(state.angle / 0.2)},${Math.sign(state.speed)}`;
@@ -72,7 +72,9 @@ export function planDriverManeuver({ pose, archetype, goal, safe, maxNodes = 600
         const throttle = signedSpeed < 27 ? direction : -direction * Math.min(1, (signedSpeed - 26) / (archetype.brake * dt));
         const frame = { move: { x: steer, y: -throttle }, handbrakeHeld: false };
         const candidate = stepVehicleKinematics(next, frame, dt, archetype);
-        if (!safe(candidate, next)) { clear = false; break; }
+        const allowed = safe(candidate, next);
+        yield;
+        if (!allowed) { clear = false; break; }
         frames.push(frame); next = candidate;
       }
       if (!clear) continue;
@@ -91,7 +93,7 @@ export function planDriverManeuver({ pose, archetype, goal, safe, maxNodes = 600
 
 // A useful reverse is an action in its own right: gain bounded room, stop,
 // then let the driver observe traffic and search again from the new pose.
-export function planDriverReverse({ pose, archetype, safe, distance = 18, dt = 0.05 }) {
+export function* searchDriverReverse({ pose, archetype, safe, distance = 18, dt = 0.05 }) {
   if (distance < 5) return null;
   let best = null;
   for (const retreat of new Set([distance, distance / 2, Math.min(5, distance)])) for (const steer of [0, -0.5, 0.5, -1, 1]) {
@@ -104,7 +106,9 @@ export function planDriverReverse({ pose, archetype, safe, distance = 18, dt = 0
       const throttle = braking ? Math.min(1, Math.abs(next.speed) / (archetype.brake * dt)) : next.speed > -20 ? -1 : 0;
       const frame = { move: { x: steer, y: -throttle }, handbrakeHeld: false };
       const candidate = stepVehicleKinematics(next, frame, dt, archetype);
-      if (!safe(candidate, next)) { clear = false; break; }
+      const allowed = safe(candidate, next);
+      yield;
+      if (!allowed) { clear = false; break; }
       frames.push(frame); next = candidate;
       if (braking && Math.abs(next.speed) < 0.01) break;
     }
@@ -115,4 +119,48 @@ export function planDriverReverse({ pose, archetype, safe, distance = 18, dt = 0
     }
   }
   return best;
+}
+
+function completeSearch(search) {
+  let result;
+  do { result = search.next(); } while (!result.done);
+  return result.value;
+}
+
+export const planDriverManeuver = request => completeSearch(searchDriverManeuver(request));
+export const planDriverReverse = request => completeSearch(searchDriverReverse(request));
+
+export function* searchDriverRecovery(request, { reverseOnly, distance, reserve }) {
+  // A hard obstruction must not leave a driver waiting seconds for the full
+  // search before trying a short, safe reverse. Keep the bypass frontier if
+  // reversing is impossible; a successful reverse creates room for reassessment.
+  let triedReverse = false;
+  if (!reverseOnly) {
+    const search = searchDriverManeuver(request);
+    let probes = 0, result;
+    while (!(result = search.next()).done) {
+      yield;
+      if (++probes === Math.ceil(4096 * 0.05 / (request.dt || 0.05)) && distance >= 5) {
+        triedReverse = true;
+        const reverse = yield* searchDriverReverse({ ...request, distance });
+        if (reverse && reserve(reverse)) return reverse;
+      }
+    }
+    if (result.value && reserve(result.value)) return result.value;
+  }
+  if (triedReverse) return null;
+  const reverse = yield* searchDriverReverse({ ...request, distance });
+  return reverse && reserve(reverse) ? reverse : null;
+}
+
+// One probe per yield keeps even a failed, crowded search out of a long frame.
+// The step bound also makes progress finite in environments without a clock.
+export function advanceDriverSearch(search, { budgetMs = 1.25, maxSteps = 512, now = () => performance.now() } = {}) {
+  const deadline = now() + budgetMs;
+  let result;
+  for (let step = 0; step < maxSteps; step++) {
+    result = search.next();
+    if (result.done || now() >= deadline) return result;
+  }
+  return result;
 }

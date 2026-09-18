@@ -66,3 +66,24 @@ test('external panel closes its own service lock before returning to play',async
 test('UI failure is a visible paused mode rather than an invisible world lock',async()=>{
  const h=await uiHarness(); h.ui.command('ui-error',{message:'render fault'}); assert.equal(h.ui.store.getSnapshot().mode,'error'); assert.equal(h.ui.store.getSnapshot().error,'render fault'); assert.equal(h.paused(),true); h.destroy();
 });
+
+test('power selection resumes the authoritative frame once and honours cooldowns',async()=>{
+ const h=await uiHarness();let calls=0;
+ h.scene.powersSystem.cooldowns={beast:2};h.scene.powersSystem.giveIn=()=>{calls++;};
+ h.ui.powerWheelOpen=true;h.ui.refresh();assert.equal(h.paused(),true);
+ assert.equal(h.ui.command('power',{id:'beast'}),false);
+ h.scene.powersSystem.cooldowns.beast=0;h.ui.refresh();
+ assert.equal(h.ui.command('power',{id:'beast'}),true);assert.equal(calls,0);assert.equal(h.paused(),false);
+ h.step();assert.equal(calls,1);h.step();assert.equal(calls,1);h.destroy();
+});
+test('Tonight expires and stays dismissed when reopening pause',async()=>{
+ const h=await uiHarness();assert.ok(h.ui.store.getSnapshot().announcement);
+ h.ui.time.now+=6100;h.ui.refresh();assert.equal(h.ui.store.getSnapshot().announcement,null);
+ h.ui.togglePause();h.ui.closePause();assert.equal(h.ui.store.getSnapshot().announcement,null);h.destroy();
+});
+
+test('alert and action feedback never replace or restart mission announcements',async()=>{
+ const h=await uiHarness();const mission=h.ui.announcement;const until=h.ui.announcementUntil;
+ h.scene.lastActionText='Police alert level 3';h.ui.refresh();assert.equal(h.ui.announcement,mission);assert.equal(h.ui.announcementUntil,until);
+ h.ui.time.now+=7000;h.scene.lastActionText='Veil exposed';h.ui.refresh();assert.equal(h.ui.store.getSnapshot().announcement,null);h.destroy();
+});

@@ -1,3 +1,8 @@
+import { compileVesperCampus } from './vesper-campus.js';
+import { compilePoliceCampus } from './police-campus.js';
+import { compileHospitalCampus } from './hospital-campus.js';
+import { compileInfill } from "./infill.js";
+import { compileSkyline } from "./skyline.js";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -19,7 +24,7 @@ const outputPath = path.join(root, "phaser/src/data/generated/city-topology-v2.j
 // Reserve the wider carriageways and their sidewalks before placing façades,
 // then regenerate junction sidewalks and furniture against the final buildings.
 const roadLayout = compileAxisAlignedRoadGraph(cityRoadGraph, { world: current.CITY_WORLD });
-const fittedCity = fitCityRoadClearance(current, roadLayout.roads);
+const fittedCity = compileVesperCampus(compilePoliceCampus(compileHospitalCampus(compileInfill(compileSkyline(fitCityRoadClearance(current, roadLayout.roads)),roadLayout.roads,current))));
 const compiled = compileAxisAlignedRoadGraph(cityRoadGraph, {
   world: current.CITY_WORLD,
   buildings: fittedCity.buildings,
@@ -81,8 +86,8 @@ if (authoritativeRoadEdgeBands.length !== expectedRoadEdgeBandCount) {
 
 const dumpsterAnchors = current.dumpsters.map(dumpster => ({
   ...dumpster,
-  x: dumpster.sourceAnchor?.x ?? dumpster.x,
-  y: dumpster.sourceAnchor?.y ?? dumpster.y
+  x: dumpster.id==='dumpsterClubRear'?1900:dumpster.id==='dumpsterPolice'?1510:dumpster.sourceAnchor?.x ?? dumpster.x,
+  y: dumpster.id==='dumpsterClubRear'?1240:dumpster.id==='dumpsterPolice'?586:dumpster.sourceAnchor?.y ?? dumpster.y
 }));
 const dumpsters = placePostLayoutDumpsters(dumpsterAnchors, {
   roads: compiled.roads,

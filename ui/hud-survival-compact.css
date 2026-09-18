@@ -23,7 +23,7 @@
 }
 
 .vb-street-vitals .vb-street-survival-row > b {
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .vb-street-vitals .vb-street-survival-track {
@@ -57,7 +57,7 @@
 
 .vb-street-vitals .vb-street-blood > span,
 .vb-street-vitals .vb-street-cash > small {
-  font-size: 8px;
+  font-size: 10px;
   letter-spacing: .08em;
 }
 

@@ -108,6 +108,32 @@ test("dynamic obstacle candidates retain exact membership and order as bodies cr
   } finally { system.destroy(); }
 });
 
+test("neighbour regions follow additions, removals, source order and distant cell changes", () => {
+  const cars = Array.from({ length: 30 }, (_, i) => ({ id: `car-${i}`, x: i * 150, y: i % 3 * 80 }));
+  const assignments = new Map(cars.slice(0, 10).map(car => [car.id, car]));
+  const scene = { vehicleSystem: { vehicles: cars.slice(10) } };
+  const world = createTrafficDriverWorld({ lanes: {} }, { assignments, scene });
+  const drivers = [400, 1800, 3500].map(x => ({ tokenId: "query", pose: { x, y: 100 } }));
+  const check = () => {
+    world.prepare();
+    for (const driver of drivers) {
+      const expected = [...assignments.values(), ...scene.vehicleSystem.vehicles].filter(car =>
+        car.container?.active !== false && Math.hypot(car.x - driver.pose.x, car.y - driver.pose.y) < 240);
+      assert.deepEqual(world.obstacles(driver), expected);
+    }
+  };
+  check(); check();
+  cars[29].x += 200; check();
+  cars[29].x = 420; check();
+  cars[2].x = 1850; world.update(cars[2]); check();
+  scene.vehicleSystem.vehicles.reverse(); check();
+  assignments.delete(cars[1].id); check();
+  scene.vehicleSystem.vehicles.push({ id: "new-body", x: 3500, y: 90 }); check();
+  cars[3].container = { active: false }; check();
+  cars[3].container.active = true; check();
+  scene.vehicleSystem.vehicles.length = 0; check();
+});
+
 test("convex road clearance agrees with the full footprint at curbs, corners and rotated bus bodies", async () => {
   const system = await createTrafficNetworkRuntime({ roadCount: 1 });
   try {

@@ -33,21 +33,21 @@ async function click(node){assert.ok(node,'click target must exist');await act(a
 async function tab(name){const n=[...document.querySelectorAll('[role="tab"]')].find(n=>n.textContent.includes(name));assert.ok(n);await act(async()=>{n.dispatchEvent(new MouseEvent('mousedown',{button:0,bubbles:true,cancelable:true}));n.focus();});}
 
 test('HUD opens a real domain dialog with the compiled city map and all five native chapters',async()=>{
- assert.ok(document.querySelector('.vb-hud')); await click(button('City'));
+ assert.ok(document.querySelector('.vb-hud')); await act(async()=>{h.ui.openDomain('city');});
  assert.equal(h.paused(),true); assert.ok(document.querySelector('[role="dialog"]')); assert.equal(document.querySelectorAll('[role="tab"]').length,5);
  assert.equal(document.querySelectorAll('.vb-map-district').length,14); assert.equal(document.querySelector('.vb-hud'),null);
  for(const label of ['Tonight','Contacts','Blood','Accounts','City']){await tab(label);assert.equal(document.querySelector('[role="tab"][aria-selected="true"]').textContent.includes(label),true);}
  assert.doesNotMatch(document.body.textContent,/undefined|NaN|\[object Object\]/);
 });
 test('map inspection preserves the objective; Go here uses the real runtime and closes',async()=>{
- await click(button('City')); const before=h.v.state.guide;
+ await act(async()=>{h.ui.openDomain('city');}); const before=h.v.state.guide;
  await click(document.querySelector('[aria-label="contact: Rook Mercer"]'));
  assert.equal(h.v.state.guide,before); assert.match(document.querySelector('.vb-city-detail').textContent,/Rook Mercer/);
  await click(button('Go here')); assert.equal(h.v.state.guide,'contact:rook'); assert.equal(h.paused(),false); assert.equal(document.querySelector('[role="dialog"]'),null);
  assert.match(document.querySelector('.vb-objective').textContent,/Rook Mercer/);
 });
 test('Radix tab keyboard navigation changes real sections once and keeps native focus',async()=>{
- await click(button('City')); const first=document.querySelector('[role="tab"][aria-selected="true"]');
+ await act(async()=>{h.ui.openDomain('city');}); const first=document.querySelector('[role="tab"][aria-selected="true"]');
  await act(async()=>{first.focus();first.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',code:'ArrowRight',bubbles:true}));await new Promise(r=>setTimeout(r,20));});
  assert.equal(h.runtime.domain.tab,'network'); assert.equal(document.activeElement.getAttribute('role'),'tab');
 });
@@ -59,11 +59,11 @@ test('errand locates the actual handoff and abandonment uses visible confirmatio
  await click(button('Keep my word')); assert.ok(h.v.state.job); await click(button('Abandon errand…'));await click(button('Abandon errand'));assert.equal(h.v.state.job,null);
 });
 test('notice text is escaped and does not mount executable markup',async()=>{
- await act(async()=>{h.scene.lastActionText='<img src=x onerror="bad()">';h.ui.refresh();});
- assert.equal(document.querySelector('.vb-notice img'),null);assert.match(document.querySelector('.vb-notice').textContent,/<img/);
+ await act(async()=>{h.ui.announcement='<img src=x onerror="bad()">';h.ui.announcementUntil=h.ui.time.now+6000;h.ui.refresh();});
+ assert.equal(document.querySelector('.vb-objective img'),null);assert.match(document.querySelector('.vb-objective').textContent,/<img/);
 });
 test('domain close returns focus to the game canvas without a leftover modal',async()=>{
- await click(button('City'));await click(button('Close window'));await settleFocusScope();
+ await act(async()=>{h.ui.openDomain('city');});await click(button('Close window'));await settleFocusScope();
  assert.equal(document.querySelector('[role="dialog"]'),null);assert.equal(document.activeElement.tagName,'CANVAS');assert.equal(h.registry.get('uiPaused'),false);
 });
 
@@ -87,7 +87,7 @@ test('Sire dialogue remains present above a dead player and releases only its ow
 });
 
 test('where enabled, the incident file returns to Tonight without a leftover pause lock',async()=>{
- await click(button('Black Book M'));await click(button('Incident file'));
+ await act(async()=>{h.ui.handleDomKeyDown({code:'KeyB',preventDefault(){},stopImmediatePropagation(){}});});await click(button('Incident file'));
  assert.equal(h.ui.activeMode(),'ledger');assert.equal(h.registry.get('uiPaused'),true);
  await click(button('Back to Black Book'));
  assert.equal(h.runtime.domain.tab,'tonight');assert.equal(h.ui.activeMode(),'domain');

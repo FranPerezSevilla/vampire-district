@@ -29,6 +29,7 @@ const KEY_SLOTS = Object.freeze({
   sense: "sense",
   horn: "horn",
   beast: "beast",
+  drain: "drain",
   enter: "confirm",
   escape: "cancel",
   space: "traverse",
@@ -89,8 +90,8 @@ export class InputSystem {
         this.primaryHeld = true;
         this.primaryPressed = true;
       } else if (event.button === 2) {
-        this.drainHeld = true;
-        this.drainPressed = true;
+        event.preventDefault();
+
       }
     };
     this.onPointerUp = event => {
@@ -260,8 +261,8 @@ export class InputSystem {
       sprintHeld: false,
       primaryHeld: this.primaryHeld,
       primaryPressed: this.consumePrimaryPressed(),
-      drainHeld: this.drainHeld,
-      drainPressed: this.consumeDrainPressed(),
+      drainHeld: this.isDown(this.keys.drain),
+      drainPressed: this.justDown(this.keys.drain),
       traversePressed,
       interactPressed,
       weaponStep: this.consumeWheelStep(),

@@ -15,7 +15,8 @@ export const DEFAULT_INPUT_BINDINGS = Object.freeze({
   whisper: "R",
   sense: "F",
   horn: "H",
-  beast: "B",
+  beast: "V",
+  drain: "G",
   confirm: "ENTER",
   cancel: "ESC",
   traverse: "SPACE",
@@ -42,6 +43,7 @@ export const REMAPPABLE_INPUT_ACTIONS = Object.freeze([
   "sense",
   "horn",
   "beast",
+  "drain",
   "confirm",
   "cancel",
   "traverse"

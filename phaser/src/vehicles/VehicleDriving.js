@@ -372,7 +372,7 @@ export function updateVehicleDriving(system, dt, frame) {
   }
 
   vehicle.container.setPosition(vehicle.x, vehicle.y).setRotation(vehicle.angle);
-  vehicle.visual.label.setRotation(-vehicle.angle);
+
   system.scene.player.setPosition(vehicle.x, vehicle.y);
   collideVehicleWithPedestrians(system, vehicle);
   updateDrivenVehicleEngine(system, vehicle, frame);

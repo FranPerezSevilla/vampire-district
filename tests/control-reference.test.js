@@ -14,7 +14,7 @@ test("main-menu control reference covers active on-foot, combat, power, driving 
     "COMBAT & FEEDING",
     "Mouse  Aim",
     "Left mouse  Use equipped weapon",
-    "Hold right mouse  Feed / Drain",
+    "G (hold)  Feed / Drain",
     "Mouse wheel  Change weapon",
     "POWERS",
     "Dash",
@@ -29,7 +29,7 @@ test("main-menu control reference covers active on-foot, combat, power, driving 
     "Horn",
     "MENUS",
     "Pause / back",
-    "M  Errand",
+    "B  Errand",
     "L  Night Ledger"
   ]) assert.match(text, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 });

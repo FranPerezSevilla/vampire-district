@@ -17,22 +17,22 @@ test('street HUD is the single mounted gameplay HUD', () => {
 });
 
 test('street HUD keeps the existing interaction contracts', () => {
-  for (const token of ['vb-hud', 'vb-objective', 'vb-prompt', 'vb-notice', 'Black Book M', 'aria-label="City"', 'command("pause")', 'command("blood")']) {
+  for (const token of ['vb-hud', 'vb-objective', 'vb-prompt', 'vb-notice', 'command("blood")']) {
     assert.match(source, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
-  assert.match(source, /s\.powers\.map/);
+
   assert.match(source, /s\.vehicle \? <VehiclePanel/);
 });
 
 test('sprint 1 uses the approved mockup hierarchy', () => {
   assert.match(source, /vb-street-objective-paper/);
-  assert.match(source, /vb-street-objective-pointer/);
+  assert.match(source, /vb-player-compass/);
   assert.match(source, /function SurvivalPanel/);
   assert.match(source, /vb-street-survival-row/);
   assert.match(source, />BLOOD</);
   assert.match(source, /blood-bag-small\.png/);
   assert.match(source, /vb-street-cash/);
-  assert.match(source, /ACT NOW/);
+  assert.doesNotMatch(source, /ACT NOW/);
   assert.doesNotMatch(source, /vb-street-vitals-mark/);
   assert.match(css, /SPRINT 1 — objective banner/);
   assert.match(css, /font-family:Impact/);
@@ -72,4 +72,26 @@ test('objective projection still reports direction, distance and arrival', () =>
   assert.ok(Number.isFinite(far.bearing));
   const near = objectiveModel({x: 100, y: 100}, {x: 120, y: 120, label: 'Club'});
   assert.equal(near.arrived, true);
+});
+
+test('compass projects the player through camera zoom and canvas CSS scaling', async () => {
+  const {playerScreenPosition}=await import('../phaser/src/ui/GameUiProjection.js');
+  const game={player:{x:120,y:80},cameras:{main:{scrollX:100,scrollY:50,rotation:0,matrix:{transformPoint:(x,y)=>({x:x*2,y:y*2})}}},game:{canvas:{getBoundingClientRect:()=>({left:10,top:20,width:800,height:600})}},scale:{gameSize:{width:400,height:300}}};
+  assert.deepEqual(playerScreenPosition(game),{x:90,y:140,rotation:0});
+  game.player.x+=10;
+  assert.equal(playerScreenPosition(game).x,130);
+  assert.equal(playerScreenPosition(null),null);
+});
+
+test('clock advances one hour per five minutes and wraps at midnight', async()=>{
+ const {nightClock}=await import('../phaser/src/ui/GameUiProjection.js');
+ assert.equal(nightClock(0),'22:00');assert.equal(nightClock(300),'23:00');assert.equal(nightClock(600),'00:00');assert.equal(nightClock(-1),'22:00');
+});
+
+test('quiet hints use authoritative action keys, including vehicle confirm remapping',async()=>{
+ const {interactionHint}=await import('../phaser/src/ui/GameUiProjection.js');
+ assert.deepEqual(interactionHint({movement:{type:'vehicleEnter'}}),{key:'INTRO',text:'Entrar en coche'});
+ assert.deepEqual(interactionHint({movement:{type:'vehicleExit'},bindings:{confirm:'P'}}),{key:'P',text:'Salir del coche'});
+ assert.deepEqual(interactionHint({prompt:'E: Talk',bindings:{interact:'K'}}),{key:'K',text:'Interactuar'});
+ assert.equal(interactionHint(),null);
 });

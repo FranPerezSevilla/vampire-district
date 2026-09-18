@@ -274,6 +274,7 @@ export function policeVehicleArchetypeId(index, level = 2) {
 }
 
 export const vehicleDefinitions = Object.freeze([
+  ...[0,1,2,3].map(i=>({id:"precinct_cruiser_"+i,name:"Precinct patrol cruiser",archetypeId:"police",x:1966,y:353+i*78,angle:Math.PI/2,ownership:"police",startOwned:false,ownerId:"city_police",factionId:"city_police",parked:true})),
   { id: "refuge_compact", name: "Refuge compact", archetypeId: "compact", x: 1540, y: 1575, angle: 0, ownership: "owned", startOwned: true, ownerId: "player", factionId: null, parked: true },
   { id: "market_sedan", name: "Market sedan", archetypeId: "sedan", x: 1140, y: 1945, angle: 0, ownership: "parked", startOwned: false, ownerId: "west_market_resident", factionId: null, parked: true },
   { id: "estate_van", name: "Estate van", archetypeId: "van", x: 2940, y: 2845, angle: Math.PI, ownership: "faction", startOwned: false, ownerId: "estate_cleaner", factionId: "first_estate", parked: true },

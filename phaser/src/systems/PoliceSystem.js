@@ -54,8 +54,12 @@ function uniqueStreetPoints(points = []) {
   }));
 }
 
+let cachedSidewalkPatrolRoutes;
+const sidewalkRoutesByZone = new Map();
+
 function allSidewalkPatrolRoutes() {
-  return pedestrianRoutes
+  if (cachedSidewalkPatrolRoutes) return cachedSidewalkPatrolRoutes;
+  return cachedSidewalkPatrolRoutes = pedestrianRoutes
     .map(route => {
       const points = uniqueStreetPoints(route.points || []);
       return points.length >= 2
@@ -70,9 +74,13 @@ function allSidewalkPatrolRoutes() {
 }
 
 export function sidewalkPatrolRoutesForZone(zoneId) {
-  return allSidewalkPatrolRoutes().filter(route => (
-    route.points.some(point => districtZoneAt(point.x, point.y).id === zoneId)
-  ));
+  // District geometry is immutable for this runtime; only officer progress changes.
+  if (!sidewalkRoutesByZone.has(zoneId)) {
+    sidewalkRoutesByZone.set(zoneId, allSidewalkPatrolRoutes().filter(route => (
+      route.points.some(point => districtZoneAt(point.x, point.y).id === zoneId)
+    )));
+  }
+  return sidewalkRoutesByZone.get(zoneId);
 }
 
 export function surplusPoliceCount(current, desired) {
@@ -118,7 +126,8 @@ export class PoliceSystem extends PoliceSystemCore {
   }
 
   allPolice() {
-    return super.police();
+    // Gate sentries belong to the permanent compound, not the mobile response budget.
+    return super.police().filter(cop => !cop.guardPost);
   }
 
   police() {

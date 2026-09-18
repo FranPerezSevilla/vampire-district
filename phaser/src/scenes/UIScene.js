@@ -1,6 +1,8 @@
+import { CampaignStorage } from "../campaign/CampaignStorage.js";
+import { REMAPPABLE_INPUT_ACTIONS, bindingConflicts } from "../input/bindings.js";
 import { createUiStore } from "../ui/UiStore.js";
 import { gameUiReadMethods } from "../ui/GameUiReadModel.js";
-import { cityMapGeometry, projectGameUi } from "../ui/GameUiProjection.js";
+import { cityMapGeometry, projectGameUi, playerScreenPosition, objectiveModel } from "../ui/GameUiProjection.js";
 import { buildControlReference } from "../ui/ControlReference.js";
 import { UX_STORAGE_KEYS, normalizeBooleanPreference } from "../data/ux-guidance.js";
 import { domainDestination } from "../vampire/VampireDomainModel.js";
@@ -15,6 +17,7 @@ export class UIScene extends Phaser.Scene {
     super("UIScene");
     this.store = createUiStore();
     this.introOpen = false;
+    this.powerWheelOpen = false;
     this.pauseOpen = false;
     this.resultOpen = false;
     this.resultType = null;
@@ -31,6 +34,8 @@ export class UIScene extends Phaser.Scene {
     this.feedback = "";
     this.lastAction = "";
     this.noticeUntil = 0;
+    this.announcementUntil = 0;
+    this.announcementKey = null;
     this.ledgerRefreshAt = 0;
     this.renderUi = null;
     this.bootError = null;
@@ -57,6 +62,8 @@ export class UIScene extends Phaser.Scene {
       if (this.uiError) throw new Error(this.uiError);
       this.onDomKeyDown = event => this.handleDomKeyDown(event);
       window.addEventListener("keydown", this.onDomKeyDown, true);
+      this.onCompassRender = () => this.renderCompass();
+      this.game.events.on("postrender", this.onCompassRender);
     } catch (error) {
       // A queued scene launch cannot throw back into beginNight's promise.
       // Keep the engine loop alive; MainMenuScene checks this on Phaser CREATE.
@@ -71,6 +78,7 @@ export class UIScene extends Phaser.Scene {
     if (this.external) return this.external.id;
     if (this.introOpen) return "intro";
     if (this.resultOpen) return "result";
+    if (this.powerWheelOpen) return "powers";
     if (this.pauseOpen) return "pause";
     if (this.ledgerOpen) return "ledger";
     const menu = this.gameplayScene()?.interactionSystem?.menu;
@@ -84,6 +92,18 @@ export class UIScene extends Phaser.Scene {
     this.nextRefresh = now + 100;
     this.refresh();
   }
+  renderCompass() {
+    const node = this.compassNode?.isConnected ? this.compassNode : document.querySelector(".vb-player-compass");
+    this.compassNode = node;
+    if (!node || !this.compassTarget || this.activeMode()) return;
+    const game = this.gameplayScene();
+    const point = playerScreenPosition(game);
+    const direction = objectiveModel(game?.player, this.compassTarget);
+    if (!point || !direction) return;
+    node.style.left = `${point.x}px`;
+    node.style.top = `${point.y}px`;
+    node.style.transform = `rotate(${direction.bearing + point.rotation * 180 / Math.PI}deg)`;
+  }
   refresh() {
     const game = this.gameplayScene();
     const action = game?.lastActionText || this.registry.get("lastActionText") || "";
@@ -93,6 +113,12 @@ export class UIScene extends Phaser.Scene {
       this.notice = action;
       this.noticeUntil = now + 3600;
     } else if (now >= this.noticeUntil) this.notice = "";
+    const target = game?.vampireRuntime?.guideTarget?.();
+    this.compassTarget = target;
+    const key = JSON.stringify([target?.target,target?.label,game?.vampireRuntime?.service?.state?.job?.stage]);
+    if (key !== this.announcementKey) {
+      this.announcementKey = key; this.announcement = target?.label || ""; this.announcementUntil = now + 6000;
+    }
     this.updateMissionResult(this.readState());
     this.updateUiPause();
     try { this.store.publish(projectGameUi(this)); }
@@ -175,6 +201,7 @@ export class UIScene extends Phaser.Scene {
     this.cancelPendingAction();
     if (this.confirmation) { this.confirmation = null; this.refresh(); return true; }
     if (this.external) return this.external.close?.() ?? false;
+    if (this.powerWheelOpen) { this.powerWheelOpen = false; this.refresh(); return true; }
     if (this.pauseOpen) return this.closePause();
     if (this.ledgerOpen) return this.closeNightLedger();
     if (this.introOpen) { this.closeIntro(); return true; }
@@ -190,6 +217,35 @@ export class UIScene extends Phaser.Scene {
       if (type === "open") return this.openDomain(payload.tab, payload.target);
       if (type === "pause") return this.togglePause();
       if (type === "ledger") return this.toggleNightLedger();
+      if (type === "power" && this.activeMode() === "powers") {
+        const option = projectGameUi(this).powers.find(p => p.id === payload.id);
+        if (!option || option.locked || option.cooldown || option.active) return false;
+        const methods = {dash:"useDash",whisper:"useWhisper",sense:"useBloodSense",beast:"giveIn"};
+        this.powerWheelOpen = false; this.refresh();
+        return this.queueGameplayAction(() => game.powersSystem[methods[option.id]]());
+      }
+      if (["save-game", "load-game", "rebind"].includes(type) && this.activeMode() !== "pause") return false;
+      if (type === "save-game") {
+        runtime.persistBody();
+        const storage = new CampaignStorage();
+        if (!storage.available()) throw new Error("Saving is unavailable in this browser.");
+        storage.save(runtime.campaign.state);
+        this.feedback = "Game saved."; this.refresh(); return true;
+      }
+      if (type === "load-game") {
+        if (!new CampaignStorage().load({fallbackToFresh:false})) throw new Error("No saved game found.");
+        sessionStorage.setItem("viceblood-load-save", "yes");
+        window.location.reload(); return true;
+      }
+      if (type === "rebind") {
+        if (!REMAPPABLE_INPUT_ACTIONS.includes(payload.action)) return false;
+        if (["B","ESC"].includes(payload.code)) throw new Error("B and Escape are reserved for menus.");
+        if (!(payload.code in Phaser.Input.Keyboard.KeyCodes)) throw new Error("Unknown key.");
+        const next = {...game.inputSystem.bindings, [payload.action]:payload.code};
+        if (bindingConflicts(next).length) throw new Error("That key is already assigned.");
+        game.inputSystem.setBindings(next);
+        this.feedback = "Controls saved. Apply after reloading the game."; this.refresh(); return true;
+      }
       if (type === "contrast") {
         const value = !Boolean(this.registry.get("aimHighContrast"));
         this.registry.set("aimHighContrast", value);
@@ -275,11 +331,11 @@ export class UIScene extends Phaser.Scene {
       if (digit) { finish(); this.command("tab", { tab: DOMAIN_TABS[digit - 1].toLowerCase() }); return; }
     }
     if (!mode || mode === "domain" || mode === "ledger") {
-      if (event.code === "KeyM") { finish(); this.toggleMissionDrawer(); }
+      if (event.code === "KeyB") { finish(); this.toggleMissionDrawer(); }
       else if (event.code === "KeyL") { finish(); this.toggleNightLedger(); }
     }
   }
-  modalBlocksInput() { return this.introOpen || this.pauseOpen || this.resultOpen || this.ledgerOpen || Boolean(this.external); }
+  modalBlocksInput() { return this.powerWheelOpen || this.introOpen || this.pauseOpen || this.resultOpen || this.ledgerOpen || Boolean(this.external); }
   openModal(type) { if (type === "intro") return false; this.pauseOpen = type === "pause"; this.resultOpen = type === "result"; this.refresh(); return true; }
   closeIntro() { this.introOpen = false; this.refresh(); }
   togglePause() {
@@ -298,7 +354,7 @@ export class UIScene extends Phaser.Scene {
   closeNightLedger() { this.ledgerOpen = false; this.refresh(); return true; }
   toggleMissionDrawer() {
     if (this.activeMode() === "domain" && this.gameplayScene()?.vampireRuntime?.domain.tab === "tonight") return this.closeInteraction();
-    return this.openDomain("errand");
+    return this.openDomain("tonight");
   }
   closeMissionDrawer() { this.missionOpen = false; }
   updateMissionResult(data) {
@@ -341,6 +397,8 @@ export class UIScene extends Phaser.Scene {
   closeExternal(id) { if (this.external?.id !== id) return false; this.external = null; this.refresh(); return true; }
   cleanup() {
     this.cancelPendingAction();
+    this.game.events?.off("postrender", this.onCompassRender);
+    this.compassNode = null;
     if (this.onDomKeyDown) window.removeEventListener("keydown", this.onDomKeyDown, true);
     this.hideDialogue();
     this.renderUi?.unmount?.(); this.store.destroy();

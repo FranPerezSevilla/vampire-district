@@ -5,6 +5,8 @@ import {
   junctionReservationHasStalled
 } from "../phaser/src/policies/TrafficJunctionReservationPolicy.js";
 import { chooseTrafficSeparationLoser } from "../phaser/src/policies/TrafficPlaytestPolicy.js";
+import { installTrafficJunctionReservationPolicy } from "../phaser/src/policies/TrafficJunctionReservationPolicy.js";
+import { TrafficLocalBehaviorSystem } from "../phaser/src/streaming/TrafficLocalBehaviorSystem.js";
 
 function candidate(tokenId, {
   junctionId = "cross",
@@ -97,4 +99,51 @@ test("hard separation retreats junction-reserved traffic before the committed mo
     chooseTrafficSeparationLoser(reserved, priority, reservedState, priorityState),
     reserved
   );
+});
+
+test("legacy junction reservations stop projecting fully driver-owned traffic and resume for mixed traffic", () => {
+  const prototype = TrafficLocalBehaviorSystem.prototype;
+  const originals = { update: prototype.update, decisionFor: prototype.decisionFor, snapshot: prototype.snapshot };
+  installTrafficJunctionReservationPolicy();
+  try {
+    let projections = 0;
+    const driver = { ...slot("driver"), driverActive: true };
+    const legacy = { ...slot("legacy", 1), driverActive: false };
+    const system = Object.assign(Object.create(prototype), {
+      ready: true, destroyed: false, scene: {},
+      materializer: { pool: [driver] },
+      states: new Map([[driver.tokenId, { tokenId: driver.tokenId, visualTravel: 0 }],
+        [legacy.tokenId, { tokenId: legacy.tokenId, visualTravel: 0 }]]),
+      tokenMap: () => new Map([[driver.tokenId, driver], [legacy.tokenId, legacy]]),
+      stateFor(slot, token) {
+        if (!this.states.has(token.tokenId)) this.states.set(token.tokenId, { tokenId: token.tokenId, visualTravel: 0 });
+        return this.states.get(token.tokenId);
+      },
+      syncAuthority: state => state, decisionFor: () => ({ reason: "cruise" }),
+      applyDecision() {}, processPlayerImpact() {}, publish() {},
+      laneFor() { projections++; return { length: 100, edgeId: "road", direction: "forward" }; },
+      junctionsForLane: () => [{ junction: { id: "cross", x: 0, y: 0, radius: 30, approachDistance: 82 }, projection: { progress: 0.2 } }]
+    });
+    system.update(0.016);
+    assert.equal(projections, 0, "physical authority must not run the old junction planner");
+    assert.equal(system.__nbdJunctionReservations.size, 0);
+    system.materializer.pool.push(legacy);
+    system.update(0.016);
+    system.update(0.016); // newly assigned legacy state is created by the first update
+    assert.ok(projections > 0, "mixed traffic retains its original projections");
+    assert.equal(system.__nbdJunctionCandidatesByToken.size, 2);
+    assert.equal(system.__nbdJunctionReservations.size, 1);
+    projections = 0;
+    legacy.driverActive = true;
+    system.update(0.016);
+    assert.equal(projections, 0);
+    assert.equal(system.__nbdJunctionReservations.size, 0, "retire stale reservations on promotion");
+    assert.equal(system.__nbdJunctionArrivals.size, 0);
+    legacy.driverActive = false;
+    system.update(0.016);
+    assert.equal(system.__nbdJunctionReservations.size, 1, "legacy ownership can resume immediately");
+  } finally {
+    Object.assign(prototype, originals);
+    delete prototype.__nbdJunctionReservationPolicy;
+  }
 });

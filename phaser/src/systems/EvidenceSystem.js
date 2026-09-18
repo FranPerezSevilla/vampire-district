@@ -40,16 +40,11 @@ export class EvidenceSystem extends EvidenceSystemCore {
         };
       }
 
-      const shadow = this.shadowAt(
-        this.scene.player.x,
-        this.scene.player.y,
-        this.scene.currentLayer
-      );
-      return shadow
-        ? { id: shadow.id || "shadow", name: shadow.name, cleanRadius: 70 }
-        : null;
+      return null;
     }
-    return super.currentHideSpot();
+    return this.scene.currentLayer === LAYERS.SEWER
+      ? { id: "sewers", name: "sewers", cleanRadius: 120 }
+      : null;
   }
 
   hideDraggedBody(spot) {

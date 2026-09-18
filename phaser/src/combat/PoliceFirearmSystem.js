@@ -484,19 +484,7 @@ export class PoliceFirearmSystem {
   }
 
   ensureLabel(cop) {
-    if (this.labels.has(cop.id)) return this.labels.get(cop.id);
-    const label = this.scene.add.text(cop.x, cop.y - 22, "AIM", {
-      fontFamily: "Arial, Helvetica, sans-serif",
-      fontSize: "10px",
-      fontStyle: "bold",
-      color: "#fff4b8",
-      backgroundColor: "rgba(72, 8, 16, .88)",
-      padding: { x: 3, y: 1 }
-    }).setOrigin(0.5, 1).setDepth(74).setVisible(false);
-    label.setResolution?.(3);
-    label.setStroke?.("#100207", 2);
-    this.labels.set(cop.id, label);
-    return label;
+    return null;
   }
 
   draw(frame) {
@@ -523,7 +511,7 @@ export class PoliceFirearmSystem {
           line.origin.y + line.direction.y * Math.min(line.targetDistance, POLICE_FIREARM.range)
         );
         graphics.strokePath();
-        this.ensureLabel(cop).setPosition(cop.x, cop.y - 22).setVisible(true);
+
         visibleLabels.add(cop.id);
 
         if (now < state.muzzleUntil) {

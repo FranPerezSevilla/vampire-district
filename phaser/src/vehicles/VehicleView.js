@@ -1,6 +1,7 @@
 import { WORLD } from "../data/balance.js";
 import { VEHICLE_CLASSES, VEHICLE_OWNERSHIP } from "../data/vehicles.js";
 import { vehicleGearCount, vehicleHealthPercent, vehicleSpeedKph } from "./VehicleModel.js";
+import { installVehicleCulling } from "../rendering/VehicleVisibility.js";
 
 function driftDegrees(vehicle) {
   return Math.round(Math.abs(Number(vehicle?.driftAngle) || 0) * 180 / Math.PI);
@@ -15,19 +16,12 @@ function stableHash(value) {
   return hash >>> 0;
 }
 
-function vehiclePalette(definition, archetype) {
-  const palettes = Array.isArray(archetype?.palettes) && archetype.palettes.length
-    ? archetype.palettes
-    : [{ color: archetype.color, trim: archetype.trim }];
-  return palettes[stableHash(definition?.id || archetype?.id) % palettes.length] || palettes[0];
-}
-
 export function paintVehicle(scene, container, definition, archetype) {
   const width = archetype.width;
   const height = archetype.height;
-  const palette = vehiclePalette(definition, archetype);
-  const color = Number(palette?.color ?? archetype.color);
-  const trim = Number(palette?.trim ?? archetype.trim);
+  const matte = [0x595345, 0x373b3b, 0x663a3b, 0x777260, 0x484535, 0x353132];
+  const color = archetype.bodyStyle?.startsWith("police") ? 0x454743 : matte[stableHash(definition.id) % matte.length];
+  const trim = 0x9a8a6c;
   const style = String(archetype.bodyStyle || "sedan");
   const parts = [];
   const detail = (x, y, w, h, fill, alpha = 1) => {
@@ -111,16 +105,19 @@ export function paintVehicle(scene, container, definition, archetype) {
 
   // Stronger glass/body separation improves mid-tone and brown cars against asphalt.
   const cabin = detail(cabinX, 0, cabinWidth, cabinHeight, 0x0b1119, 0.99)
-    .setStrokeStyle(1, 0x3e4b58, 0.90);
+    .setStrokeStyle(1, 0x6d6251, 0.90);
   const hood = detail(hoodX, 0, hoodWidth, height * 0.64, trim, 0.14)
     .setStrokeStyle(1, 0x111621, 0.56);
 
-  detail(cabinX + cabinWidth * 0.26, 0, 1.2, cabinHeight * 0.82, 0x455463, 0.56);
+  detail(cabinX + cabinWidth * 0.26, 0, 1.2, cabinHeight * 0.82, 0x716957, 0.56);
   detail(cabinX - cabinWidth * 0.27, 0, 1.0, cabinHeight * 0.78, 0x06090e, 0.72);
 
+  // Broad worn panels read at driving scale, instead of glossy neon outlines.
+  detail(-width * 0.19, -height * 0.24, width * 0.28, 1, 0xafa084, 0.30);
+  detail(width * 0.23, height * 0.18, width * 0.19, 1.3, 0x0d0c0b, 0.65);
   const lampH = Math.max(1.3, height * 0.18);
-  detail(width * 0.43, -height * 0.31, width * 0.09, lampH, 0xc9d4d8, 0.84);
-  detail(width * 0.43, height * 0.31, width * 0.09, lampH, 0xc9d4d8, 0.84);
+  detail(width * 0.43, -height * 0.31, width * 0.09, lampH, 0xc7b48c, 0.84);
+  detail(width * 0.43, height * 0.31, width * 0.09, lampH, 0xc7b48c, 0.84);
   detail(-width * 0.43, -height * 0.31, width * 0.08, lampH, 0xa74841, 0.76);
   detail(-width * 0.43, height * 0.31, width * 0.08, lampH, 0xa74841, 0.76);
 
@@ -134,7 +131,7 @@ export function paintVehicle(scene, container, definition, archetype) {
     detail(-width * 0.35, 0, width * 0.16, height * 0.64, 0x0b1119, 0.82);
   }
   if (style === "sedan" || style === "executive") {
-    detail(-width * 0.08, 0, width * 0.14, height * 0.46, 0x26323e, 0.84).setStrokeStyle(1, 0x090c11, 0.76);
+    detail(-width * 0.08, 0, width * 0.14, height * 0.46, 0x38342e, 0.84).setStrokeStyle(1, 0x090c11, 0.76);
   }
   if (style === "taxi") {
     detail(-width * 0.04, 0, width * 0.13, height * 0.24, 0xb99547, 0.96).setStrokeStyle(1, 0x342c1b, 0.9);
@@ -198,25 +195,14 @@ export function paintVehicle(scene, container, definition, archetype) {
     scene.add.rectangle(-width * 0.29, height * 0.53, width * 0.18, 2.7, 0x07090d, 1),
     scene.add.rectangle(width * 0.29, height * 0.53, width * 0.18, 2.7, 0x07090d, 1)
   ];
-  const nose = scene.add.triangle(width / 2 + 1.6, 0, -2.6, -2.2, 2.6, 0, -2.6, 2.2, trim, 0.64);
-  const vehicleLabel = archetype.vehicleClass === VEHICLE_CLASSES.POLICE
-    ? (archetype.policeRole === "unmarked" ? "UNMARKED" : "POLICE")
-    : archetype.label.toUpperCase();
-  const label = scene.add.text(0, -height - 5, vehicleLabel, {
-    fontFamily: "Arial, Helvetica, sans-serif",
-    fontSize: "12px",
-    fontStyle: "bold",
-    color: `#${trim.toString(16).padStart(6, "0")}`,
-    backgroundColor: "rgba(5, 6, 11, .68)",
-    padding: { x: 3, y: 1 }
-  }).setOrigin(0.5, 1).setRotation(-(Number(definition.angle) || 0));
-  label.setResolution?.(3);
-  label.setStroke?.("#05060b", 2);
+  const nose = scene.add.triangle(width / 2 + 1.6, 0, -2.6, -2.2, 2.6, 0, -2.6, 2.2, trim, 0.24);
+  const label = null;
   const routeBadge = style === "bus" ? scene.add.text(-width * 0.08, 0, definition.transitLineId || "BUS", {
     fontSize: "10px", fontStyle: "bold", color: "#18202c"
   }).setOrigin(0.5) : null;
-  container.add([...parts, ...wheels, nose, label, ...(routeBadge ? [routeBadge] : [])]);
-  return { body, cabin, hood, wheels, nose, label, routeBadge, details: parts.slice(3) };
+  container.add([...parts, ...wheels, nose, ...(routeBadge ? [routeBadge] : [])]);
+  installVehicleCulling(container);
+  return { palette: {color, trim}, body, cabin, hood, wheels, nose, label, routeBadge, details: parts.slice(3) };
 }
 
 function plainVehicle(vehicle) {

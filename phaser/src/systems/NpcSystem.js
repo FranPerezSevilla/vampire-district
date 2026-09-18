@@ -27,7 +27,7 @@ export class NpcSystem extends NpcSystemCore {
   updateCharacterPresentation(timeMs = 0) {
     for (const npc of this.npcs) {
       const view = npc.characterView || npc.container?.__modularCharacterView;
-      if (!view || npc.dead) continue;
+      if (!view || npc.dead || npc.container?.visible === false || npc.container?.active === false) continue;
 
       const vx = Number(npc.vx) || 0;
       const vy = Number(npc.vy) || 0;
@@ -118,6 +118,7 @@ export class NpcSystem extends NpcSystemCore {
   }
 
   update(dt) {
+    this.flushSpatialIndex();
     const stream = this.scene.entityStreamSystem;
     if (!stream) {
       super.update(dt);
@@ -139,16 +140,51 @@ export class NpcSystem extends NpcSystemCore {
   }
 
   rebuildSpatialIndex() {
+    if (this.spatialBatchDepth > 0) {
+      this.spatialRebuildPending = true;
+      return;
+    }
+    this.spatialRebuildPending = false;
+    this.rebuildSpatialIndexNow();
+  }
+
+  withSpatialBatch(callback) {
+    this.spatialBatchDepth = (this.spatialBatchDepth || 0) + 1;
+    try { return callback(); }
+    finally {
+      this.spatialBatchDepth--;
+      if (!this.spatialBatchDepth) this.flushSpatialIndex();
+    }
+  }
+
+  flushSpatialIndex() {
+    if (!this.spatialRebuildPending) return;
+    this.spatialRebuildPending = false;
+    this.rebuildSpatialIndexNow();
+  }
+
+  queryRadius(...args) {
+    this.flushSpatialIndex();
+    return super.queryRadius(...args);
+  }
+
+  queryRect(...args) {
+    this.flushSpatialIndex();
+    return super.queryRect(...args);
+  }
+
+  rebuildSpatialIndexNow() {
     const stream = this.scene.entityStreamSystem;
     if (!stream) {
       this.spatial.rebuild(this.npcs);
       return;
     }
     const indexed = [];
-    for (const npc of this.npcs) {
+    const collect=()=>{for (const npc of this.npcs) {
       stream.applyNpcState(npc, 0);
       if (stream.shouldIndexNpc(npc)) indexed.push(npc);
-    }
+    }};
+    if(stream.withDecisionBatch)stream.withDecisionBatch(collect);else collect();
     this.spatial.rebuild(indexed);
   }
 
@@ -159,6 +195,7 @@ export class NpcSystem extends NpcSystemCore {
 
   refreshVisibility() {
     this.rebuildSpatialIndex();
+    this.flushSpatialIndex();
     for (const npc of this.npcs) npc.container?.setVisible?.(this.isRenderable(npc));
   }
 
@@ -175,12 +212,14 @@ export class NpcSystem extends NpcSystemCore {
     ) || streetNavigationPoints;
 
     for (const node of localNodes) {
+      // Distance is a lower bound: blocked visibility can only add a penalty.
+      const distanceScore = Phaser.Math.Distance.Between(npc.x, npc.y, node.x, node.y)
+        + Phaser.Math.Distance.Between(node.x, node.y, targetX, targetY);
+      if (distanceScore >= bestScore) continue;
       if (!this.canNpcStandAt(npc, node.x, node.y)) continue;
       if (!this.lineClear(npc, npc.x, npc.y, node.x, node.y)) continue;
       const nodeSeesTarget = this.lineClear(npc, node.x, node.y, targetX, targetY);
-      const score = Phaser.Math.Distance.Between(npc.x, npc.y, node.x, node.y)
-        + Phaser.Math.Distance.Between(node.x, node.y, targetX, targetY)
-        + (nodeSeesTarget ? 0 : 180);
+      const score = distanceScore + (nodeSeesTarget ? 0 : 180);
       if (score < bestScore) {
         best = node;
         bestScore = score;

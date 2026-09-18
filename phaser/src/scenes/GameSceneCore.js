@@ -293,8 +293,9 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    if (this.currentLayer === LAYERS.ROOF_LOW) {
+    if (this.currentLayer > LAYERS.STREET) {
       for (const drop of ROOF_DROPS) {
+        if (this.currentLayer !== drop.roof.layer) continue;
         const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, drop.roof.x, drop.roof.y);
         if (distance <= radius) {
           options.push({
@@ -307,6 +308,7 @@ export class GameScene extends Phaser.Scene {
             x: drop.roof.x,
             y: drop.roof.y,
             run: () => this.transitionSystem.roofDrop({
+              height: drop.height || 0,
               from: drop.roof,
               to: drop.street,
               toLayer: LAYERS.STREET,
@@ -524,8 +526,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   drawRoof(roof, dimmed) {
-    this.map.fillStyle(dimmed ? COLORS.roofDim : roof.color, dimmed ? 0.35 : 1).fillRect(roof.x, roof.y, roof.w, roof.h);
-    this.map.lineStyle(3, dimmed ? 0xdcdcff : 0xc7c5df, dimmed ? 0.25 : 1).strokeRect(roof.x, roof.y, roof.w, roof.h);
+    this.map.fillStyle(dimmed ? COLORS.roofDim : 0x4b463e, dimmed ? 0.35 : 1).fillRect(roof.x, roof.y, roof.w, roof.h);
+    this.map.lineStyle(3, dimmed ? 0x726b60 : 0xa9987b, dimmed ? 0.25 : 1).strokeRect(roof.x, roof.y, roof.w, roof.h);
     this.map.fillStyle(dimmed ? 0x000000 : 0x1f2030, dimmed ? 0.25 : 1).fillRect(roof.x + 16, roof.y + 16, 24, 18);
     this.map.fillStyle(dimmed ? 0x000000 : 0x1f2030, dimmed ? 0.25 : 1).fillRect(roof.x + roof.w - 44, roof.y + 22, 18, 26);
     this.addMapLabel(dimmed ? "other height" : roof.label, roof.x + 8, roof.y + 12, dimmed ? 0x9d93b8 : 0xf1e6ff);
@@ -598,8 +600,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   drawRouteMarker(x, y, label, color) {
-    this.routeGraphics.lineStyle(1, color, 0.70).strokeCircle(x, y, 11);
-    this.routeGraphics.fillStyle(color, 0.18).fillCircle(x, y, 11);
+    this.routeGraphics.lineStyle(1, 0x978568, 0.6);
+    this.routeGraphics.lineBetween(x-4,y-6,x-4,y+6);
+    this.routeGraphics.lineBetween(x+4,y-6,x+4,y+6);
+    for (let rung=-4;rung<=4;rung+=4) this.routeGraphics.lineBetween(x-4,y+rung,x+4,y+rung);
     this.addMapLabel(label, x + 10, y - 8, color);
   }
 
@@ -607,19 +611,6 @@ export class GameScene extends Phaser.Scene {
     this.promptGraphics.clear();
     this.traversalPromptLabel?.setVisible(false);
 
-    if (this.nearestMovement) {
-      const { x, y } = this.nearestMovement;
-      this.promptGraphics.lineStyle(2, 0x78c7a3, 0.95).strokeCircle(x, y, 17);
-      this.promptGraphics.fillStyle(0x78c7a3, 0.12).fillCircle(x, y, 17);
-      this.traversalPromptLabel?.setText("SPACE").setPosition(x, y - 21).setVisible(true);
-    } else if (this.nearestInteraction) {
-      const { x, y } = this.nearestInteraction;
-      this.promptGraphics.lineStyle(2, 0xfff2a8, 0.95).strokeCircle(x, y, 15);
-      this.promptGraphics.fillStyle(0xfff2a8, 0.15).fillCircle(x, y, 15);
-    }
-
-    this.npcSystem?.drawMarkers?.(this.promptGraphics);
-    this.witnessSystem?.drawMarkers(this.promptGraphics);
     this.evidenceSystem?.drawMarkers(this.promptGraphics);
     this.drawFeedingProgress();
   }

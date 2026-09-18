@@ -37,3 +37,24 @@ Primary placement uses viewport-relative clamps plus safe-area insets. Desktop/l
 
 ## Non-goals
 No Black Book redesign, economy change, gameplay rule change, save change, camera/audio change, new dependency, font, image or asset fetch. This pass does not add a minimap or duplicate City.
+
+## Local readability pass
+
+The objective now uses a narrower paper headline with a single distance/bearing row. Explicit typography isolates it from retired HUD selectors. Survival values and power shortcuts use readable sizes; equipment shares the same condensed heading hierarchy. Context prompts sit above the bottom HUD instead of overlapping powers. On narrow screens the objective moves below navigation. Gameplay and input ownership are unchanged.
+
+## Notebook and compass iteration
+The objective is a small ruled-paper note at the left. A single arrow follows an invisible ring around the player, using the existing UI projection and camera transform; the HUD shows no objective distance. Top-right navigation contains only the cloth-bound Black Book button. City remains available inside the book and Escape pauses. Survival uses a dark notebook fragment.
+
+## Sparse HUD and controls
+Hunger, Vitality and the clock occupy the upper left; Police/Veil alerts use the upper right; equipment remains at the lower right. The clock starts at 22:00 and derives from persisted vampire elapsed gameplay time: 300 seconds per hour. Tonight notices expire after six seconds and do not restart merely by reopening menus.
+B toggles the Black Book; Escape opens pause/settings/credits/manual Save/Load/key editing. Right mouse opens a paused power dial via InputSystem; selection resumes through UIScene's existing queued gameplay action. G held feeds; Give In's optional keyboard shortcut is V. The simplified playtest still exposes only enabled powers (Whisper and Give In). Rebinding uses the existing settings storage and applies after reload. Manual save preserves campaign/vampire progress, not an arbitrary street simulation snapshot; loading starts at the refuge.
+
+## World annotations removed
+Actor and vehicle names, witness/recovery/combat text, interaction rings and reaction markers are no longer created or drawn. AI, witness reporting, feeding and combat remain authoritative. The HUD compass, aiming reticle, projectile effects and in-menu names remain. No FPS improvement has been measured.
+
+The compass DOM transform now follows the existing engine postrender event so camera and player motion update every rendered frame; the main React snapshot stays at 10 Hz. Generic body concealment in shadows/rooftops and floating HIDE markers are removed; intact nearby dumpsters and sewers remain valid.
+
+Tonight is reserved for objective identity/label and mission-stage changes, never generic action, alert or combat feedback. Interaction hints are a small text line with bracketed keys; vehicle entry/exit uses the actual confirm binding (Enter displayed as INTRO).
+
+
+The experimental radial power wheel was removed after visual review. Right click no longer opens it; the existing keyboard powers remain available.

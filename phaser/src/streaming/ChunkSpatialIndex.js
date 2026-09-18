@@ -22,6 +22,7 @@ export class ChunkSpatialIndex {
     this.manifest = manifest;
     this.byCategory = new Map();
     this.boundsByKey = new Map();
+    this.buildingCandidates = new Map();
     this.resident = new Set();
     this.seedCategories();
     if (collections && Object.keys(collections).length) this.rebuild(collections);
@@ -77,6 +78,7 @@ export class ChunkSpatialIndex {
   }
 
   evictChunk(id) {
+    this.buildingCandidates.clear();
     const chunkId = String(id);
     for (const [category, chunks] of this.byCategory) {
       const chunk = chunks.get(chunkId);
@@ -94,6 +96,7 @@ export class ChunkSpatialIndex {
   }
 
   clear() {
+    this.buildingCandidates.clear();
     for (const id of [...this.resident]) this.evictChunk(id);
     this.boundsByKey.clear();
     return this;
@@ -124,6 +127,31 @@ export class ChunkSpatialIndex {
     const chunks = this.byCategory.get(categoryKey);
     if (!chunks || !bounds) return [];
     const ids = chunkIds || chunkIdsForBounds(bounds, this.manifest.world, this.manifest.chunkSize);
+    if (categoryKey === "buildings") {
+      const orderedIds = Array.from(ids, String);
+      const cacheKey = JSON.stringify(orderedIds);
+      let candidates = this.buildingCandidates.get(cacheKey);
+      if (!candidates) {
+        candidates = [];
+        const seen = new Set();
+        for (const id of orderedIds) {
+          for (const [key, item] of chunks.get(id) || []) {
+            if (seen.has(key)) continue;
+            seen.add(key);
+            const indexedBounds = this.boundsByKey.get(`${categoryKey}:${key}`) || itemBounds(categoryKey, item);
+            if (indexedBounds) candidates.push({ item, bounds: indexedBounds });
+          }
+        }
+        // Bounded candidate cache; results and predicates are never cached.
+        if (this.buildingCandidates.size >= 32) this.buildingCandidates.delete(this.buildingCandidates.keys().next().value);
+        this.buildingCandidates.set(cacheKey, candidates);
+      }
+      const result = [];
+      for (const candidate of candidates) {
+        if (intersects(candidate.bounds, bounds, margin) && (!predicate || predicate(candidate.item))) result.push(candidate.item);
+      }
+      return result;
+    }
     const seen = new Set();
     const result = [];
     for (const id of ids) {

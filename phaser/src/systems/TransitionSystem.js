@@ -49,16 +49,16 @@ export class TransitionSystem {
     });
   }
 
-  roofDrop({ from, to, toLayer, status }) {
+  roofDrop({ from, to, toLayer, status, height = 0 }) {
     if (!this.begin("Roof drop: falling to street level.")) return;
     RawAudio.play("routeRoof");
     this.drawDropLine(from, to);
     this.animateParabola({
       from,
       to,
-      duration: 680,
-      height: 62,
-      peakScale: 1.42,
+      duration: height > 0 ? 1350 : 680,
+      height: height > 0 ? 150 : 62,
+      peakScale: height > 0 ? 1.85 : 1.42,
       landingColor: 0xffb02e,
       landingLabel: "DROP",
       onComplete: () => {

@@ -152,6 +152,15 @@ export class GameplayRuntime extends GameplayRuntimeCore {
   }
 
   update(time, deltaMs) {
+    const npcs = this.scene.npcSystem;
+    // Several authorities request a spatial rebuild after their own mutations.
+    // Merge adjacent requests, flushing before a spatial query or frame exit.
+    // The original update order and every movement/interaction remain intact.
+    if (npcs?.withSpatialBatch) return npcs.withSpatialBatch(() => this.updateFrame(time, deltaMs));
+    return this.updateFrame(time, deltaMs);
+  }
+
+  updateFrame(time, deltaMs) {
     const scene = this.scene;
     const input = scene.inputSystem;
     const diagnostics = this.diagnostics;

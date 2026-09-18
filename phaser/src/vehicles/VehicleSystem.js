@@ -372,7 +372,7 @@ export class VehicleSystem {
       vehicle.disabled ? 0x3f2027 : vehicle.archetype.trim,
       vehicle.disabled ? 0.92 : 0.38
     );
-    vehicle.visual.label.setRotation(-vehicle.angle);
+
     vehicle.lastPersisted = {
       x: vehicle.x,
       y: vehicle.y,
