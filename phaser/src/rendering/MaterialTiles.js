@@ -9,7 +9,7 @@ export function materialTile(scene,key,source,size,tint){
   ctx.save();ctx.translate(x?size:0,y?size:0);ctx.scale(x?-1:1,y?-1:1);ctx.drawImage(image,0,0,half,half);ctx.restore();
  }
  ctx.globalCompositeOperation='multiply';ctx.fillStyle=tint;ctx.fillRect(0,0,size,size);
- ctx.globalCompositeOperation='source-over';ctx.globalAlpha=source==='asphalt-gothic'?.55:source==='paving-campus'?.12:.38;ctx.fillStyle=source==='asphalt-gothic'?'#222524':'#303530';ctx.fillRect(0,0,size,size);
+ ctx.globalCompositeOperation='source-over';ctx.globalAlpha=source==='asphalt-gothic'?.66:source==='paving-campus'?.40:.48;ctx.fillStyle=source==='asphalt-gothic'?'#111820':'#202630';ctx.fillRect(0,0,size,size);
  scene.textures.addImage(key,canvas);return key;
 }
 export function drawMaterialRects(scene,target,rects,bounds,kind){

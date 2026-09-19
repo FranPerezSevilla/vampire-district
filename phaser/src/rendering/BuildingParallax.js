@@ -1,16 +1,19 @@
+import {cathedralVisualVolumes,cathedralCutaway} from '../data/cathedral-campus.js';
+import {ordinaryMaterialsReady} from './OrdinaryBuildingMaterials.js';
+import {rooftopObjects,RooftopObject,ROOFTOP_OBJECT_KEY} from './RooftopObjects.js';
+import {NIGHT} from './NightPalette.js';
+import {cathedralRoofPlanes} from './CathedralArchitecture.js';
 import {ProjectedStreetLamps} from './ProjectedStreetLamps.js';
+import {PropSpriteStack,canStackProps} from './PropSpriteStack.js';
 import { attachedTurrets } from './CornerTurrets.js';
-import { scaledBuildingHeight, perspectiveLimit, viewportPerspectiveLimit } from './WorldScale.js';
+import { scaledBuildingHeight, viewportPerspectiveLimit } from './WorldScale.js';
+import {CITY_PERSPECTIVE,cityPerspectiveAt} from './CityPerspective.js';
 import { exposedWallSpans } from './AttachedVolumeUnion.js';
-import {landmarkGroups,updateFrontage} from './LandmarkFrontage.js';
 import { createPinnacleModel, paintRoofPinnacles } from './ArchitecturalPinnacles.js';
 import { BuildingMaterialImages, MaterialQuad, triangleMaterialCorners } from './BuildingMaterialImages.js';
 import { paintFacadeDetail } from "./UrbanMaterialDetail.js";
 import { buildingMaterial } from "./BuildingIdentity.js";
-// Close-frontage influence is shared by the landmark and its annexes.
-const ENTRANCE_PERSPECTIVE_ENABLED=true;
-// Art-directed maximum on both axes; physical height limits still apply.
-const PARALLAX_INTENSITY=Object.freeze({eastWest:4,northSouth:4});
+const PARALLAX_INTENSITY=CITY_PERSPECTIVE;
 /** Radial bird-eye projection: roof expands away from the camera centre; base stays fixed. */
 export const buildingHeight=scaledBuildingHeight;
 export function facadeHeightBands(height,levels){
@@ -20,18 +23,9 @@ export function facadeHeightBands(height,levels){
 export function roofParallaxOffset(building, camera, intensity={}) {
  const bounds=building.towerSourceBounds || building;
  const height=buildingHeight(building);
- const cameraX=camera.scrollX+camera.width/2,cameraY=camera.scrollY+camera.height/2;
  const cx=bounds.x+bounds.w/2,cy=bounds.y+bounds.h/2,spread=height/1505;
- // Shared vanishing point: corresponding roof vertices use the same projection.
- // Clamp only outside the active view, avoiding unbounded offscreen displacement.
- const limit=intensity.limit??perspectiveLimit([building],camera,intensity);
- const amount=Math.max(0,Math.min(1,intensity.entrance||0));
- const radial=1-amount, direction=intensity.direction||{nx:0,ny:1};
- const spreadX=spread*(intensity.eastWest??1)*limit*radial;
- const spreadY=spread*(intensity.northSouth??1)*limit*radial;
- // Convex blend of two height-bounded projections, never an additive camera kick.
- return {x:(cx-cameraX)*spreadX-height*.65*direction.nx*amount,
- y:(cy-cameraY)*spreadY-height*.65*direction.ny*amount,spread,spreadX,spreadY,cx,cy};
+ const p=cityPerspectiveAt(cx,cy,camera,{}, {...CITY_PERSPECTIVE,...intensity});
+ return {x:p.x*height,y:p.y*height,spread,spreadX:p.spreadX*height,spreadY:p.spreadY*height,cx,cy};
 
 }
 
@@ -64,37 +58,31 @@ export function exteriorFacadeEdges(building,offset,neighbours=[]) {
 
 export class BuildingParallax {
  constructor(scene, paint, canonicalBuildings=[]) {
+  this.cathedralVolumes=cathedralVisualVolumes();
+  if(canonicalBuildings.some(b=>b.cathedralCollider))canonicalBuildings=[...canonicalBuildings.filter(b=>!b.cathedralCollider),...this.cathedralVolumes];
   this.canonicalBuildings=canonicalBuildings;
   this.lamps=new ProjectedStreetLamps(scene);
+  this.stackedFences=new Map();
   this.attachmentCache=new WeakMap();
   this.dormant=new Map();
-  this.landmarkGroups=landmarkGroups(canonicalBuildings);
   this.stableHeightLevels=[...new Set(canonicalBuildings.flatMap(b=>[b,...attachedTurrets(b,buildingHeight(b))]).map(buildingHeight))];
   this.scene=scene; this.paint=paint; this.roofs=new Map(); this.materials=new BuildingMaterialImages(scene);
  }
  update(buildings, enabled) {
+  if(buildings.some(b=>b.cathedralCollider))buildings=[...buildings.filter(b=>!b.cathedralCollider),...this.cathedralVolumes];
+  this.cathedralCutaway=cathedralCutaway(this.cathedralCutaway,enabled?{...this.scene.player,layer:this.scene.currentLayer}:null,this.scene.game?.loop?.delta??16.67);
   buildings=buildings.flatMap(b=>{let parts=this.attachmentCache.get(b);if(!parts){parts=[b,...attachedTurrets(b,buildingHeight(b))];this.attachmentCache.set(b,parts);}return parts;});
-  this.lamps.update(this.scene.cameras.main,enabled,(b,c)=>roofParallaxOffset(b,c,{...PARALLAX_INTENSITY,limit:viewportPerspectiveLimit(c,PARALLAX_INTENSITY)}));
-  const player=this.scene.player;
   const cam=this.scene.cameras.main;
-  this.entrances??=new Map();
-  const resident=new Set(buildings.map(b=>b.id));
-  for(const id of this.entrances.keys())if(!resident.has(id))this.entrances.delete(id);
-  const groups=this.landmarkGroups?.length?this.landmarkGroups:landmarkGroups(buildings);
-  for(const group of groups){
-   const state=updateFrontage(enabled&&ENTRANCE_PERSPECTIVE_ENABLED?player:null,group.members,this.entrances.get(group.root.id),this.scene.game?.loop?.delta??16.67,this.scene.landmarkPerspectiveMagnitude??.75);
-   for(const member of group.members)this.entrances.set(member.id,state);
-  }
-  this.entrance=Math.max(0,...Array.from(this.entrances.values(),s=>s.amount));
-  const intensity={...PARALLAX_INTENSITY};
+  const intensity={...PARALLAX_INTENSITY,...this.scene.cityPerspective};
   intensity.limit=viewportPerspectiveLimit(cam,intensity);
-  const entranceKey=Array.from(this.entrances,([id,s])=>`${id}:${s.amount.toFixed(4)}:${s.direction.nx}:${s.direction.ny}`).join(',');
-  const key=enabled ? `${cam.scrollX}:${cam.scrollY}:${cam.zoom}:${cam.width}:${cam.height}:${entranceKey}:${buildings.map(b=>b.id).join(",")}` : "off";
+  this.lamps.update(cam,enabled,(b,c)=>roofParallaxOffset(b,c,intensity));
+  const key=enabled ? `${cam.scrollX}:${cam.scrollY}:${cam.zoom}:${cam.width}:${cam.height}:${intensity.front}:${intensity.lateral}:${intensity.rear}:${this.cathedralCutaway.amount}:${buildings.map(b=>b.id).join(",")}` : "off";
   if(this.frameKey===key)return;
   this.frameKey=key;
+  for(const prop of this.stackedFences.values())prop.setVisible(false);
   this.materialBudget=2;
   this.materialDeadline=performance.now()+3;
-  for(const entry of this.roofs.values()){entry.graphic.setVisible(false);entry.groundImage?.setVisible(false);entry.pinnacles?.setVisible(false);entry.pinnacleCaps?.setVisible(false);for(const q of entry.pinnacleQuads||[])q.setVisible(false);entry.wall.setVisible(false);for(const f of entry.faces||[])for(const q of [...f.quads,...(f.lightQuads||[])])q.setVisible(false);}
+  for(const entry of this.roofs.values()){for(const prop of entry.rooftopObjects||[])prop.setVisible(false);entry.graphic.setVisible(false);entry.groundImage?.setVisible(false);entry.pinnacles?.setVisible(false);entry.pinnacleCaps?.setVisible(false);for(const q of [...(entry.pinnacleQuads||[]),...(entry.cathedralRoofQuads||[])])q.setVisible(false);entry.wall.setVisible(false);for(const f of entry.faces||[])for(const q of [...f.quads,...(f.lightQuads||[])])q.setVisible(false);}
   if(!enabled)return;
   const retained=new Set();
   const camera=this.scene.cameras.main, view=camera.worldView;
@@ -103,12 +91,23 @@ export class BuildingParallax {
   for(const b of [...buildings].sort((a,b)=>(a.y+a.h)-(b.y+b.h)||a.x-b.x)){
    if(b.x+b.w<view.x-320||b.x>view.right+320||b.y+b.h<view.y-320||b.y>view.bottom+320)continue;
    retained.add(b.id);
+   if(['railing','gate'].includes(b.campusBarrier)&&canStackProps(this.scene)){
+    const height=buildingHeight(b),base=b.renderBaseHeight||0,vertical=b.h>b.w;
+    let fence=this.stackedFences.get(b.id);
+    if(!fence){fence=new PropSpriteStack(this.scene,b.x+b.w/2,b.y+b.h/2,'fence',{w:Math.max(b.w,b.h),h:2,height:height-base,base,vertical});this.stackedFences.set(b.id,fence);}
+    fence.buildingProjection={...roofParallaxOffset(b,camera,intensity),height};
+    fence.setVisible(true).setDepth(60+height*2+.1);
+    continue;
+   }
+   if(b.cathedralKind&&this.cathedralCutaway.amount===1)continue;
    let entry=this.roofs.get(b.id);
    if(!entry&&this.dormant.has(b.id)){entry=this.dormant.get(b.id);this.dormant.delete(b.id);this.roofs.set(b.id,entry);}
    if(!entry){
     const wall=this.scene.add.graphics();let graphic,roofKey;
-    if(b.siteId==='club-site'&&!b.campusBarrier||b.id==='hospital'||b.id==='hospitalEmergency'||b.cornerTurret||b.family==='police-campus'&&!['railing','gate'].includes(b.campusBarrier)){roofKey=this.materials.roof(b,attachedTurrets(b,buildingHeight(b)));graphic=this.scene.add.image(b.x,b.y,roofKey).setOrigin(0,0).setDisplaySize(b.w,b.h);}
+    const ordinary=ordinaryMaterialsReady(this.scene,b);
+    if(ordinary||b.cathedralKind||b.siteId==='club-site'&&!b.campusBarrier||b.id==='hospital'||b.id==='hospitalEmergency'||b.cornerTurret||b.family==='police-campus'&&!['railing','gate'].includes(b.campusBarrier)){roofKey=this.materials.roof(b,attachedTurrets(b,buildingHeight(b)));graphic=this.scene.add.image(b.x,b.y,roofKey).setOrigin(0,0).setDisplaySize(b.w,b.h);}
     else {graphic=this.scene.add.graphics();this.paint(graphic,b);}
+    if(graphic.setTint)graphic.setTint(ordinary?0xaab7cc:NIGHT.roof);
     const pinnacles=this.scene.add.graphics(),pinnacleModel=createPinnacleModel(b);
     let groundImage,groundKey;
     if(b.family==='hospital'||b.id==='hospital'||b.id==='hospitalEmergency'){
@@ -116,10 +115,11 @@ export class BuildingParallax {
      groundImage=this.scene.add.image(b.x-contact.pad,b.y-contact.pad,groundKey).setOrigin(0,0).setDepth((this.scene.map?.depth||0)+.01);
     }
     entry={graphic,wall,roofKey,groundImage,groundKey,pinnacles,pinnacleModel,pinnacleCaps:this.scene.add.graphics(),pinnacleQuads:[],faces:[]};this.roofs.set(b.id,entry);
+    entry.rooftopObjects=ordinary&&this.scene.textures.exists(ROOFTOP_OBJECT_KEY)?rooftopObjects(b).map(d=>new RooftopObject(this.scene,d)):[];
    }
-   const entryPerspective=this.entrances.get(b.parentBuildingId||b.id);
-   const o=roofParallaxOffset(b,camera,{...intensity,entrance:entryPerspective?.amount||0,direction:entryPerspective?.direction}),roofDepth=60+buildingHeight(b)*2;
+   const o=roofParallaxOffset(b,camera,intensity),roofDepth=60+buildingHeight(b)*2;
    entry.groundImage?.setVisible(true);
+   for(const prop of entry.rooftopObjects)prop.setVisible(true);
    entry.wall.clear().setVisible(true).setDepth(59+(order++)*.0001);
    if(entry.roofKey)entry.graphic.setVisible(true).setDisplaySize(b.w*(1+o.spreadX),b.h*(1+o.spreadY)).setPosition(b.x+o.x+(b.x-o.cx)*o.spreadX,b.y+o.y+(b.y-o.cy)*o.spreadY).setDepth(roofDepth);
    else entry.graphic.setVisible(true).setScale(1+o.spreadX,1+o.spreadY).setPosition(o.x-o.cx*o.spreadX,o.y-o.cy*o.spreadY).setDepth(roofDepth);
@@ -131,22 +131,37 @@ export class BuildingParallax {
      if(material==='slate'){
       const index=face++,q=entry.pinnacleQuads[index]||(entry.pinnacleQuads[index]=new MaterialQuad(this.scene,keys.slate));
       q.setTexture(keys.slate);q.subdivisions=1;q.corners=triangleMaterialCorners(shape);
-      const shades={0x37413f:0xbac0c6,0x192320:0x737b85,0x28322f:0x939ba4,0x56615a:0xe0e2e5};
+      const shades={0x37413f:0x566373,0x192320:0x343e50,0x28322f:0x454f60,0x56615a:0x68778a};
       q.setVisible(true).setTint(shades[color]||0xffffff).setDepth(roofDepth+.2+index*.001);return;
      }
      const index=face++,q=entry.pinnacleQuads[index]||(entry.pinnacleQuads[index]=new MaterialQuad(this.scene,keys[material]));
      q.setTexture(keys[material]);
      q.corners=shape.length===3?[shape[2],shape[0],shape[1],shape[2]]:[shape[3],shape[0],shape[1],shape[2]];
-     q.setVisible(true).setTint(color===0x626457?0xc0c1b6:color===0x454944?0x969e96:0x6b7771).setDepth(roofDepth+.11+index*.001);
+     q.setVisible(true).setTint(color===0x626457?0x566374:color===0x454944?0x454f60:0x333e4d).setDepth(roofDepth+.11+index*.001);
     };
    }
    paintRoofPinnacles(entry.pinnacles,entry.pinnacleModel,o,buildingHeight(b));
    this.facades(b,o,entry.wall,buildings,entry);
+   if(b.cathedralKind){
+    this.cathedralRoof(b,o,entry,roofDepth);
+    const alpha=1-this.cathedralCutaway.amount;
+    for(const object of [entry.graphic,entry.wall,entry.pinnacles,entry.pinnacleCaps,...entry.pinnacleQuads,...(entry.cathedralRoofQuads||[]),...entry.faces.flatMap(f=>[...f.quads,...(f.lightQuads||[])])])object.setAlpha(alpha);
+   }
   }
   for(const [id,entry] of this.roofs)if(!retained.has(id)){this.dormant.set(id,entry);this.roofs.delete(id);}
   // Keep a small recently-used set; account for decoded RGBA, not file size.
   let bytes=0;for(const e of this.dormant.values())bytes+=this.entryBytes(e);
   while(this.dormant.size>12||bytes>32*1024*1024){const [id,e]=this.dormant.entries().next().value;bytes-=this.entryBytes(e);this.releaseEntry(e);this.dormant.delete(id);}
+ }
+ cathedralRoof(b,o,entry,depth){
+  entry.cathedralRoofQuads??=[];
+  const planes=cathedralRoofPlanes(b,o,buildingHeight(b));
+  for(let i=0;i<planes.length;i++){
+   const p=planes[i],key=p.part==='slate'?'cathedral-roof':'cathedral-facade';
+   const q=entry.cathedralRoofQuads[i]||(entry.cathedralRoofQuads[i]=new MaterialQuad(this.scene,key));
+   q.corners=p.points;q.subdivisions=1;q.uStart=p.part==='stone'?.5:p.u0;q.uEnd=p.part==='stone'?1:p.u1;q.vStart=p.part==='stone'?.5:0;q.vEnd=1;
+   q.setVisible(true).setDepth(depth+.4+i*.001).setTint(p.part==='stone'?0x454e5d:i===0?0x606f86:0x414e66);
+  }
  }
  facades(b,o,g,buildings,entry){
   let faceOrder=0;
@@ -185,6 +200,6 @@ export class BuildingParallax {
   for(const [a,c,color] of exteriorFacadeEdges(b,o,buildings))face(a,c,color);
  }
  entryBytes(e){let bytes=0;for(const key of [e.roofKey,e.groundKey,...e.faces.flatMap(f=>[f.key,f.lightKey])])if(key){const source=this.scene.textures.get(key).getSourceImage();bytes+=source.width*source.height*4;}return bytes;}
- releaseEntry(e){e.graphic.destroy();e.pinnacles?.destroy();e.pinnacleCaps?.destroy();e.wall.destroy();this.materials.destroyEntry(e);}
- destroy(){for(const e of this.dormant.values())this.releaseEntry(e);this.dormant.clear();this.lamps.destroy();for(const e of this.roofs.values()){e.graphic.destroy();e.pinnacles?.destroy();e.pinnacleCaps?.destroy();e.wall.destroy();this.materials.destroyEntry(e);}this.materials.destroy();this.roofs.clear();}
+ releaseEntry(e){for(const p of e.rooftopObjects||[])p.destroy();e.graphic.destroy();e.pinnacles?.destroy();e.pinnacleCaps?.destroy();e.wall.destroy();this.materials.destroyEntry(e);}
+ destroy(){for(const p of this.stackedFences.values())p.destroy();this.stackedFences.clear();for(const e of this.dormant.values())this.releaseEntry(e);this.dormant.clear();this.lamps.destroy();for(const e of this.roofs.values())this.releaseEntry(e);this.materials.destroy();this.roofs.clear();}
 }

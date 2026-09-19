@@ -234,8 +234,8 @@ const BASE_NPC_DEFINITIONS = [
   {
     id: "civ_church",
     type: "civilian",
-    x: 4000,
-    y: 710,
+    x: 3882,
+    y: 438,
     layer: 0,
     behavior: "loiter",
     speed: 0,
@@ -246,8 +246,8 @@ const BASE_NPC_DEFINITIONS = [
   {
     id: "church_prayer_2",
     type: "civilian",
-    x: 3984,
-    y: 710,
+    x: 3950,
+    y: 438,
     layer: 0,
     behavior: "loiter",
     speed: 0,
@@ -258,8 +258,8 @@ const BASE_NPC_DEFINITIONS = [
   {
     id: "church_prayer_3",
     type: "civilian",
-    x: 4016,
-    y: 710,
+    x: 3940,
+    y: 332,
     layer: 0,
     behavior: "loiter",
     speed: 0,
@@ -270,8 +270,8 @@ const BASE_NPC_DEFINITIONS = [
   {
     id: "church_prayer_4",
     type: "civilian",
-    x: 4000,
-    y: 726,
+    x: 3808,
+    y: 636,
     layer: 0,
     behavior: "loiter",
     speed: 0,

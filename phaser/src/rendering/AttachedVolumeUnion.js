@@ -8,7 +8,8 @@ export function exposedWallSpans(building,a,c,height,neighbours,heightOf){
  for(const other of neighbours){
   if(!relatedVolumes(building,other)||heightOf(other)<height-.001)continue;
   const cross=horizontal?a.y:a.x,low=horizontal?other.y:other.x,high=low+(horizontal?other.h:other.w);
-  if(cross<=low+.001||cross>=high-.001)continue;
+  const joinedCathedral=building.cathedralKind&&other.cathedralKind&&cross>=low-.001&&cross<=high+.001;
+  if(!joinedCathedral&&(cross<=low+.001||cross>=high-.001))continue;
   const lo=((horizontal?other.x:other.y)-start)/length,hi=lo+(horizontal?other.w:other.h)/length;
   spans=spans.flatMap(([l,r])=>hi<=l||lo>=r?[[l,r]]:[[l,Math.min(r,lo)],[Math.max(l,hi),r]].filter(([x,y])=>y-x>.00001));
  }

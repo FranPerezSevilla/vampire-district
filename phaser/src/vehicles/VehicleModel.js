@@ -53,6 +53,8 @@ export function createVehicleState(definition, archetype, condition = {}) {
     gearShiftTimer: 0,
     health: clamp(Number.isFinite(Number(condition.health)) ? Number(condition.health) : maxHealth, 0, maxHealth),
     disabled: Boolean(condition.disabled) || Number(condition.health) <= 0,
+    engineRunning: !condition.disabled && !(Number(condition.health) <= 0)
+      && Boolean(condition.engineRunning ?? definition.engineRunning ?? false),
     parked: condition.parked == null ? definition.parked !== false : Boolean(condition.parked)
   };
 }

@@ -21,7 +21,7 @@ export function installVehicleCulling(container) {
     const dy = height * Math.max(part.originY, 1 - part.originY);
     const extent = Math.hypot(part.x, part.y) + Math.hypot(dx, dy);
     if (!Number.isFinite(extent)) { radius = Infinity; break; }
-    radius = Math.max(radius, extent + 2);
+    radius = Math.max(radius, extent + 2 + (part.vehicleCullPadding || 0));
   }
   container.vehicleCullRadius = radius;
   if (typeof container.willRender !== 'function' || container.vehicleBaseWillRender) return;

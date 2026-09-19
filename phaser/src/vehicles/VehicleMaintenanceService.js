@@ -262,7 +262,8 @@ export class VehicleMaintenanceService {
       y: quote.y,
       angle: quote.angle,
       health: quote.maxHealth,
-      parked: true
+      parked: true,
+      engineRunning: false
     });
   }
 
@@ -288,7 +289,8 @@ export class VehicleMaintenanceService {
       y: slot.y,
       angle: slot.angle,
       health: quote.recoveryHealth,
-      parked: true
+      parked: true,
+      engineRunning: false
     });
   }
 

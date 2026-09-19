@@ -45,6 +45,7 @@ test("vehicle condition and trunk storage serialize through primitive world flag
     y: 325.5,
     angle: 0.4,
     health: 51,
+    engineRunning: true,
     parked: false
   });
   const condition = context.system.condition(compact);
@@ -54,6 +55,7 @@ test("vehicle condition and trunk storage serialize through primitive world flag
     angle: 0.4,
     health: 51,
     disabled: false,
+    engineRunning: true,
     parked: false
   });
 

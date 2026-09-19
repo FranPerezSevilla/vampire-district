@@ -10,10 +10,10 @@ import {
   trafficVehicleArchetype
 } from "../phaser/src/data/vehicles.js";
 
-test("vehicle roster exposes fifteen ambient car classes, a service bus and four police classes", () => {
-  assert.equal(CIVILIAN_VEHICLE_ARCHETYPE_IDS.length, 16);
+test("vehicle roster exposes sixteen ambient classes including ambulance, a service bus and four police classes", () => {
+  assert.equal(CIVILIAN_VEHICLE_ARCHETYPE_IDS.length, 17);
   assert.equal(POLICE_VEHICLE_ARCHETYPE_IDS.length, 4);
-  assert.equal(Object.keys(VEHICLE_ARCHETYPES).length, 20);
+  assert.equal(Object.keys(VEHICLE_ARCHETYPES).length, 21);
   assert.ok(CIVILIAN_VEHICLE_ARCHETYPE_IDS.includes("bus"));
   assert.equal(VEHICLE_ARCHETYPES.bus.trafficWeight, 0, "only scheduled services instantiate buses");
   assert.ok(CIVILIAN_VEHICLE_ARCHETYPE_IDS.includes("hearse"));
@@ -44,7 +44,7 @@ test("civilian traffic selector is deterministic, varied and police-free", () =>
   assert.equal(trafficVehicleArchetype("harbor-north#4").id, trafficVehicleArchetype("harbor-north#4").id);
   const selected = Array.from({ length: 5000 }, (_, index) => trafficVehicleArchetype(`traffic-token-${index}`));
   const ids = new Set(selected.map(archetype => archetype.id));
-  assert.equal(ids.size, 15, "a broad deterministic sample should exercise the full civilian roster");
+  assert.equal(ids.size, 16, "a broad deterministic sample should exercise the full civilian roster");
   assert.ok(selected.every(archetype => archetype.vehicleClass === VEHICLE_CLASSES.CIVILIAN));
 });
 

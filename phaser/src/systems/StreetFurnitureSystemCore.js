@@ -1,4 +1,5 @@
 import { dumpsters, LAYERS } from "../data/district.js";
+import {PropSpriteStack,canStackProps} from '../rendering/PropSpriteStack.js';
 import { vehicleFootprintPoints } from "../vehicles/VehicleModel.js";
 import {
   STREET_PROP_TYPES,
@@ -12,6 +13,10 @@ function flagKey(id) {
 
 function paintDumpster(scene, definition) {
   const container = scene.add.container(definition.x, definition.y).setDepth(45);
+  if(canStackProps(scene)){
+    const stack=new PropSpriteStack(scene,0,0,'dumpster',{w:24,h:14,height:17},container);
+    container.add(stack);return {container,stack};
+  }
   const body = scene.add.rectangle(0, 0, 24, 14, 0x31534d, 1)
     .setStrokeStyle(1, 0x78c7a3, 0.8);
   const lid = scene.add.rectangle(0, -8, 25, 4, 0x1d3430, 1)
@@ -35,6 +40,7 @@ function paintDumpster(scene, definition) {
 }
 
 function applyBrokenVisual(prop) {
+  if(prop.visual.stack){prop.visual.stack.setBroken(true);return;}
   prop.visual.container.setRotation(-0.22).setAlpha(0.72);
   prop.visual.body.setFillStyle(0x49332f, 0.9);
   prop.visual.lid.setPosition(9, -2).setRotation(0.58).setFillStyle(0x2a211f, 1);

@@ -19,7 +19,7 @@ function mapStub(onFillRect = () => {}) {
 class PresentationScene {
   constructor(){
     const image=new Proxy({}, {get:()=>()=>image});
-    this.add={renderTexture:()=>image,tileSprite:()=>image};
+    this.add={renderTexture:()=>image,tileSprite:()=>image,image:()=>image};
     this.textures={exists:()=>true};this.events={once(){}};
   }
   drawDistrictStreet() {}
@@ -93,7 +93,7 @@ test("authoritative road and junction pavement is painted after buildings and pa
 
   let rasterizations=0;
   const image=new Proxy({}, {get:(_,key)=>(...args)=>{if(key==='draw'||key==='batchDraw')rasterizations++;return image;}});
-  scene.add={renderTexture:()=>image,tileSprite:()=>new Proxy({}, {get:()=>()=>image})};scene.events={once(){}};
+  scene.add={renderTexture:()=>image,tileSprite:()=>new Proxy({}, {get:()=>()=>image}),image:()=>image};scene.events={once(){}};
   scene.drawDistrictStreet();
   const initialRasterizations=rasterizations;
   assert.ok(initialRasterizations>=3);

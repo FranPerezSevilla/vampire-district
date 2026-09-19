@@ -48,7 +48,7 @@ export class CampaignVehicleSystem {
     if (previousTopology < CITY_TOPOLOGY_VERSION) {
       for (const definition of definitions) {
         if (!definition?.id) continue;
-        for (const field of ["x", "y", "angle", "parked"]) {
+        for (const field of ["x", "y", "angle", "parked", "engineRunning"]) {
           delete this.state.world.flags[flagKey(definition.id, field)];
         }
       }
@@ -103,6 +103,7 @@ export class CampaignVehicleSystem {
       angle: finite(this.state.world.flags[flagKey(definition.id, "angle")], Number(definition.angle) || 0),
       health,
       disabled: health <= 0,
+      engineRunning: health > 0 && Boolean(this.state.world.flags[flagKey(definition.id, "engineRunning")] ?? definition.engineRunning ?? false),
       parked: this.state.world.flags[flagKey(definition.id, "parked")] == null
         ? definition.parked !== false
         : Boolean(this.state.world.flags[flagKey(definition.id, "parked")])
@@ -150,9 +151,10 @@ export class CampaignVehicleSystem {
       this.state.world.flags[key] = Math.round(number * 1000) / 1000;
       changed = true;
     }
-    if (condition.parked != null) {
-      const key = flagKey(id, "parked");
-      const value = Boolean(condition.parked);
+    for (const field of ["parked", "engineRunning"]) {
+      if (condition[field] == null) continue;
+      const key = flagKey(id, field);
+      const value = Boolean(condition[field]);
       if (Boolean(this.state.world.flags[key]) !== value || this.state.world.flags[key] == null) {
         this.state.world.flags[key] = value;
         changed = true;

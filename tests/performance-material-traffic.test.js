@@ -8,9 +8,11 @@ test('lane junction candidates preserve order and null exclusion without repeate
  system.laneJunctionCandidates=new WeakMap();system.junctionsForLane(lane);assert.equal(calls,9);
 });
 test('static front glow is composited once; side glow keeps its independent tint',()=>{
- let uploads=0,draws=0,removes=0;const ctx={save(){},restore(){},setTransform(){},drawImage(){draws++;}};
+ let uploads=0,draws=0,removes=0,grades=0;const ctx={save(){},restore(){},setTransform(){},drawImage(){draws++;assert.equal(this.globalCompositeOperation,'lighter');},
+ getImageData:()=>({data:new Uint8ClampedArray([120,120,120,255,255,196,85,255])}),
+ putImageData(image){grades++;assert.deepEqual([...image.data],[49,55,71,255,255,196,85,255]);}};
  const texture={getSourceImage:()=>({width:100,height:200,getContext:()=>ctx}),source:[{update(){uploads++;}}]};
  const owner=Object.create(BuildingMaterialImages.prototype);owner.bakeFacade=()=>({key:'wall',lightKey:'light'});owner.scene={textures:{get:()=>texture,remove(){removes++;}}};
  assert.equal(owner.facade({},50,true).lightKey,null);assert.deepEqual([uploads,draws,removes],[1,1,1]);
- assert.equal(owner.facade({},50,false).lightKey,'light');assert.deepEqual([uploads,draws,removes],[1,1,1]);
+ assert.equal(owner.facade({},50,false).lightKey,'light');assert.deepEqual([uploads,draws,removes],[2,1,1]);assert.equal(grades,2);
 });

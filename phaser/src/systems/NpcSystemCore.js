@@ -502,6 +502,7 @@ export class NpcSystem {
       npc.ai.intent = deathKind;
       npc.ai.recoverAt = 0;
     }
+    if(this.paintDeadNpc?.(npc,deathKind)){this.rebuildSpatialIndex();return;}
     npc.container.removeAll(true);
 
     const corpseColor = deathKind === "drained" ? 0x4b0e1a : 0x332d38;

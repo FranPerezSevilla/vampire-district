@@ -1,5 +1,7 @@
-import {installPerspectiveSlider} from '../rendering/LandmarkFrontage.js';
+import {installPerspectiveSlider} from '../rendering/VehiclePerspectiveControls.js';
 import { afterCameraProjection } from '../rendering/CameraProjectionHook.js';
+import {NightStreetLights} from '../rendering/NightStreetLights.js';
+import {nightMaterialPixel} from '../rendering/NightPalette.js';
 import { paintLandmarkRoof } from "../rendering/BuildingIdentity.js";
 import { BuildingParallax } from "../rendering/BuildingParallax.js";
 import { COLORS, WORLD } from "../data/balance.js";
@@ -15,6 +17,8 @@ import {
 } from "../data/district.js";
 import { drawBuildingPresentation, renderBuildingPresentation } from "../rendering/BuildingPresentation.js";
 import { ModularCharacterView } from "../rendering/ModularCharacterView.js";
+import {prepareStackMaterialAtlases} from '../rendering/StackMaterialAtlas.js';
+import {canStackProps} from '../rendering/PropSpriteStack.js';
 import { RadioSystem } from "../systems/RadioSystem.js";
 import { installVehicleExplosionPresentation } from "../vehicles/VehicleExplosionPresentation.js";
 import { GameScene as GameSceneCore } from "./GameSceneCore.js";
@@ -60,6 +64,14 @@ export class GameScene extends GameSceneCore {
   }
 
   preload() {
+    for(const part of ['facades','roofs','rooftop-objects'])this.load.image(`ordinary-${part}-v1`,`phaser/assets/architecture/ordinary-${part}-v1.png`);
+    this.load.svg('human-stack-v1-source', 'phaser/assets/characters/human-stack.svg', {scale: 8});
+    this.load.image('stack-mood-surfaces','phaser/assets/props/gothic-actor-surfaces.png');
+    this.load.image('street-stack-v1-source', 'phaser/assets/props/gothic-street-atlas.png');
+    this.load.svg('vehicle-stack-fleet-v1-source', 'phaser/assets/vehicles/fleet-stack.svg', {scale: 8});
+    this.load.image('cathedral-facade','phaser/assets/cathedral/facade-atlas-v1.webp');
+    this.load.image('cathedral-front','phaser/assets/cathedral/front-v1.webp');
+    for(const name of ['roof','floor','furniture'])this.load.image('cathedral-'+name,'phaser/assets/cathedral/'+name+'-v1.webp');
     this.load.image('vesper-dormer','phaser/assets/vesper/dormer-v1.webp');
     this.load.image('vesper-mansard','phaser/assets/vesper/mansard-v2.webp');
     for(const part of ['facade','roof','service-door'])this.load.image('vesper-'+part,'phaser/assets/vesper/'+part+'-v1.webp');
@@ -79,6 +91,7 @@ export class GameScene extends GameSceneCore {
   }
 
   create() {
+    prepareStackMaterialAtlases(this);
     super.create();
     this.playerBody?.setVisible?.(false);
     this.playerHead?.setVisible?.(false);
@@ -92,17 +105,23 @@ export class GameScene extends GameSceneCore {
     this.radioSystem = new RadioSystem(this, { vehicleSystem: this.vehicleSystem });
     this.buildingParallax = new BuildingParallax(this, (graphic, building) => {
       const map=this.map;
+      const fill=graphic.fillStyle,line=graphic.lineStyle;
+      const tone=color=>{const [r,g,b]=nightMaterialPixel(color>>16&255,color>>8&255,color&255,false);return r<<16|g<<8|b;};
+      graphic.fillStyle=function(color,alpha){return fill.call(this,tone(color),alpha);};
+      graphic.lineStyle=function(width,color,alpha){return line.call(this,width,tone(color),alpha);};
       try { this.map=graphic; this.paintBuilding(building); }
-      finally { this.map=map; }
+      finally { this.map=map;graphic.fillStyle=fill;graphic.lineStyle=line; }
     },buildings);
+    this.nightStreetLights=new NightStreetLights(this);
     installPerspectiveSlider(this);
     this.onBuildingParallaxRender = () => {
       const enabled=this.currentLayer===LAYERS.STREET && !this.registry.get("mainMenuActive");
       if (enabled !== this.parallaxStreetActive) { this.parallaxStreetActive=enabled; this.redrawLayer(); }
       this.buildingParallax.update(enabled ? this.chunkItems("buildings", this.urbanRenderBounds, buildings, {margin:320}) : [], enabled);
+      this.nightStreetLights.update(this.cameras.main,enabled);
     };
     this.removeParallaxCameraHook=afterCameraProjection(this.cameras.main,()=>{this.onBuildingParallaxRender();this.children.depthSort();});
-    this.events.once("shutdown",()=>{this.removeParallaxCameraHook?.();this.buildingParallax.destroy();this.buildingParallax=null;});
+    this.events.once("shutdown",()=>{this.removeParallaxCameraHook?.();this.nightStreetLights.destroy();this.nightStreetLights=null;this.buildingParallax.destroy();this.buildingParallax=null;});
     this.redrawLayer();
   }
 
@@ -120,16 +139,33 @@ export class GameScene extends GameSceneCore {
     this.updateCharacterPresentation(time);
   }
 
+  drawLights() {
+    // Projected lamps and the shared local light batch replace the old flat
+    // yellow pole rectangles. Keep the Canvas / missing-asset fallback.
+    if (!canStackProps(this)) super.drawLights();
+  }
+
   updateCharacterPresentation(timeMs = 0) {
     if (!this.player || !this.playerCharacterView) return;
+    if (this.registry?.get?.('uiPaused')&&!this.playerDamageSystem?.state?.dead) return;
 
     const previous = this.playerPresentationPosition || { x: this.player.x, y: this.player.y };
     const dx = this.player.x - previous.x;
     const dy = this.player.y - previous.y;
-    const moving = !this.vehicleSystem?.isDriving?.() && !this.transitSystem?.isRiding?.() && Math.hypot(dx, dy) > 0.05;
+    const jump = this.transitionSystem?.characterJump;
+    const moving = !jump && !this.vehicleSystem?.isDriving?.() && !this.transitSystem?.isRiding?.() && Math.hypot(dx, dy) > 0.05;
     if (moving) this.playerMovementDirection = { x: dx, y: dy };
+    if (jump) this.playerMovementDirection = jump.direction;
 
     const frame = this.currentInputFrame || {};
+    // A brief visual stumble on running into an obstacle. The movement authority
+    // still owns collisions; this does not knock the player back or lock input.
+    if(this.wasPresentationMoving&&!moving&&!jump&&!frame.quietHeld&&Math.hypot(frame.move?.x||0,frame.move?.y||0)>.5
+      &&!this.vehicleSystem?.isDriving?.()&&!this.transitSystem?.isRiding?.()
+      &&!this.combatSystem?.attack&&!this.playerDamageSystem?.state?.dead&&timeMs>(this.nextStumbleAt||0)){
+      this.playerCharacterView.react('trip');this.nextStumbleAt=timeMs+6500;
+    }
+    this.wasPresentationMoving=moving;
     const aim = frame.aimWorld;
     const attackActive = Boolean(frame.primaryHeld || frame.primaryPressed);
     if (attackActive) {
@@ -146,9 +182,13 @@ export class GameScene extends GameSceneCore {
       movementDirection: this.playerMovementDirection,
       aimDirection: this.playerAimDirection,
       moving,
+      running: moving && !frame.quietHeld,
+      jumping: Boolean(jump),
+      jumpProgress: jump?.progress || 0,
+      incapacitated:Boolean(this.playerDamageSystem?.state?.dead),
       aiming: Number(timeMs) <= this.playerAimUntil
     });
-    this.npcSystem?.updateCharacterPresentation?.(timeMs);
+    if(!this.registry?.get?.('uiPaused'))this.npcSystem?.updateCharacterPresentation?.(timeMs);
     this.playerPresentationPosition = { x: this.player.x, y: this.player.y };
   }
 
@@ -360,6 +400,7 @@ export class GameScene extends GameSceneCore {
   }
 
   drawBuilding(building) {
+    if(building.cathedralCollider)return;
     if(this.buildingParallax && this.currentLayer===LAYERS.STREET && !this.registry.get("mainMenuActive")){
       this.map.fillStyle(0x111110,1).fillRect(building.x,building.y,building.w,building.h);
       return;

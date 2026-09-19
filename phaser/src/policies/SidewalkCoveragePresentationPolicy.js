@@ -1,7 +1,9 @@
+import { drawCathedralCampusGround } from '../rendering/CathedralCampusGround.js';
 import { drawVesperCampusGround } from '../rendering/VesperCampusGround.js';
 import { drawPoliceCampusGround } from '../rendering/PoliceCampusGround.js';
 import { drawHospitalLayby } from '../rendering/HospitalLayby.js';
 import { drawCachedCourtyard } from '../rendering/CachedPaving.js';
+import {NIGHT} from '../rendering/NightPalette.js';
 import { COLORS, WORLD } from "../data/balance.js";
 import {
   buildings,
@@ -157,6 +159,7 @@ export function installSidewalkCoveragePresentationPolicy(GameSceneClass) {
       this.events.once('shutdown',()=>{this.streetSurfaceCache=null;});
     }
     image.setVisible(true).setPosition(bounds.x,bounds.y).setSize(bounds.w,bounds.h).setDepth(this.map.depth-.01);
+    image.setTint?.(NIGHT.ground);
     image.clear();
     drawCachedCourtyard(this,image,bounds);
     this.streetPavingTarget={image,bounds};
@@ -172,6 +175,7 @@ export function installSidewalkCoveragePresentationPolicy(GameSceneClass) {
     drawHospitalLayby(this,image,bounds);
     drawPoliceCampusGround(this,image,bounds);
     drawVesperCampusGround(this,image,bounds);
+    drawCathedralCampusGround(this,image,bounds);
     this.drawCrosswalkNetwork();
     this.drawSewerManholes();
 

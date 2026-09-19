@@ -168,7 +168,7 @@ export function enterVehicle(system, vehicleId, { force = false } = {}) {
   const vehicle = system.vehicle(vehicleId);
   const status = vehicle ? (vehicle.transient ? vehicle.status : system.campaign.vehicles.status(vehicle)) : null;
   const policeVehicle = status === VEHICLE_OWNERSHIP.POLICE || vehicle?.ownership === VEHICLE_OWNERSHIP.POLICE;
-  if (!vehicle || policeVehicle || (!force && !canEnterVehicle(system, vehicle))) {
+  if (!vehicle || vehicle.disabled || policeVehicle || (!force && !canEnterVehicle(system, vehicle))) {
     system.scene.lastActionText = policeVehicle ? "Police vehicles cannot be stolen." : vehicle?.disabled ? `${vehicle.name} is disabled.` : "Move closer and finish the current action before entering the vehicle.";
     RawAudio.play("cancel");
     return false;
@@ -192,10 +192,14 @@ export function enterVehicle(system, vehicleId, { force = false } = {}) {
 
   RawAudio.play("vehicleDoorOpen");
   RawAudio.play("vehicleDoorClose", { delay: VEHICLE_DOOR_CLOSE_DELAY, cooldown: 0 });
-  RawAudio.beginVehicleEngineStart(`player:${vehicle.id}`, {
-    delay: VEHICLE_ENGINE_START_DELAY,
-    revealAfter: VEHICLE_ENGINE_LOOP_REVEAL
-  });
+  if (!vehicle.engineRunning) {
+    vehicle.engineRunning = true;
+    RawAudio.beginVehicleEngineStart(`player:${vehicle.id}`, {
+      delay: VEHICLE_ENGINE_START_DELAY,
+      revealAfter: VEHICLE_ENGINE_LOOP_REVEAL
+    });
+  }
+  system.persistVehicle(vehicle);
   system.updateHud();
   system.publish();
   system.scene.events?.emit?.("vehicle:entered", { vehicleId: vehicle.id, status: vehicle.status });
@@ -229,7 +233,7 @@ export function exitVehicle(system, { force = false } = {}) {
   vehicle.handbrake = false;
   system.handbrakeActive = false;
   system.currentVehicleId = null;
-  RawAudio.stopVehicleEngine(`player:${vehicle.id}`);
+  // Parking and occupancy do not switch the ignition off.
   restoreStreetControl(system.scene, exitPoint);
   system.cameraLookAheadX = 0;
   system.cameraLookAheadY = 0;

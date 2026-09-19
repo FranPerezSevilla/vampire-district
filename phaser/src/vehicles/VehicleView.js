@@ -2,6 +2,7 @@ import { WORLD } from "../data/balance.js";
 import { VEHICLE_CLASSES, VEHICLE_OWNERSHIP } from "../data/vehicles.js";
 import { vehicleGearCount, vehicleHealthPercent, vehicleSpeedKph } from "./VehicleModel.js";
 import { installVehicleCulling } from "../rendering/VehicleVisibility.js";
+import { paintStackedVehicle } from "../rendering/VehicleSpriteStack.js";
 
 function driftDegrees(vehicle) {
   return Math.round(Math.abs(Number(vehicle?.driftAngle) || 0) * 180 / Math.PI);
@@ -16,12 +17,35 @@ function stableHash(value) {
   return hash >>> 0;
 }
 
+// Soot, weathered olive, oxblood and cold grey: readable against the road,
+// without the clean cream/chrome finish of showroom cars.
+const MATTE_VEHICLE_PAINT = Object.freeze([0x26282d, 0x1d252b, 0x341c23, 0x393e46, 0x262c28, 0x252330]);
+const SERVICE_VEHICLE_PAINT = Object.freeze({
+  ambulance: 0x5c6268, taxi: 0x655135, bus: 0x28353b,
+  hearse: 0x292c2d, limousine: 0x303336
+});
+const AGED_VEHICLE_TRIM = 0x686a5f;
+
+function vehiclePaint(definition, archetype) {
+  return archetype.vehicleClass === VEHICLE_CLASSES.POLICE ? 0x202931
+    : SERVICE_VEHICLE_PAINT[archetype.id] ?? MATTE_VEHICLE_PAINT[stableHash(definition.id) % MATTE_VEHICLE_PAINT.length];
+}
+
 export function paintVehicle(scene, container, definition, archetype) {
+  const color = vehiclePaint(definition, archetype);
+  const stacked = paintStackedVehicle(scene, container, archetype, color, AGED_VEHICLE_TRIM, definition);
+  if (stacked) {
+    installVehicleCulling(container);
+    return stacked;
+  }
+  return paintLegacyVehicle(scene, container, definition, archetype);
+}
+
+export function paintLegacyVehicle(scene, container, definition, archetype) {
   const width = archetype.width;
   const height = archetype.height;
-  const matte = [0x595345, 0x373b3b, 0x663a3b, 0x777260, 0x484535, 0x353132];
-  const color = archetype.bodyStyle?.startsWith("police") ? 0x454743 : matte[stableHash(definition.id) % matte.length];
-  const trim = 0x9a8a6c;
+  const color = vehiclePaint(definition, archetype);
+  const trim = AGED_VEHICLE_TRIM;
   const style = String(archetype.bodyStyle || "sedan");
   const parts = [];
   const detail = (x, y, w, h, fill, alpha = 1) => {
@@ -232,6 +256,7 @@ function plainVehicle(vehicle) {
     maxHealth: archetype.maxHealth,
     disabled: vehicle.disabled,
     parked: vehicle.parked,
+    engineRunning: vehicle.engineRunning,
     handbrake: Boolean(vehicle.handbrake),
     streamState: vehicle.streamState || "active",
     trunkCapacity: archetype.trunkCapacity

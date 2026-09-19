@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+ <defs>
+  <linearGradient id="iron"><stop stop-color="#171f23"/><stop offset=".3" stop-color="#68716b"/><stop offset=".5" stop-color="#3b4746"/><stop offset="1" stop-color="#10181b"/></linearGradient>
+  <linearGradient id="wood" x2=".2" y2="1"><stop stop-color="#806148"/><stop offset=".2" stop-color="#55412f"/><stop offset=".8" stop-color="#382b23"/><stop offset="1" stop-color="#171c1c"/></linearGradient>
+  <linearGradient id="steel" x2="1" y2="1"><stop stop-color="#59615a"/><stop offset=".35" stop-color="#374340"/><stop offset="1" stop-color="#182323"/></linearGradient>
+  <linearGradient id="stone" x2="1" y2="1"><stop stop-color="#969384"/><stop offset=".4" stop-color="#696b61"/><stop offset="1" stop-color="#353c39"/></linearGradient>
+ </defs>
+ <!-- 0 iron footprint, 1 stepped cap, 2 warm lantern, 3 oak slat -->
+ <rect x="5" y="5" width="54" height="54" rx="4" fill="url(#iron)" stroke="#788077" stroke-width="1"/>
+ <g transform="translate(64)"><path d="M8 8h48v48H8Z" fill="#26302f" stroke="#626e65"/><path d="M15 15h34v34H15Z" fill="url(#iron)"/><path d="M22 22h20v20H22Z" fill="#37413c"/></g>
+ <g transform="translate(128)"><path d="M13 7h38l6 9-4 39H11L7 16Z" fill="#182124" stroke="#727b6b" stroke-width="1.4"/><path d="M16 17h13v30H14Zm19 0h13l2 30H35Z" fill="#c1a674"/><path d="M18 20h7v24h-8Zm21 0h6l1 24h-7Z" fill="#e3c594"/><path d="M12 51h40M10 12h44" stroke="#828471" stroke-width="1.3"/></g>
+ <g transform="translate(192)"><rect x="2" y="7" width="60" height="50" rx="2" fill="url(#wood)" stroke="#96816a" stroke-width=".8"/><path d="M5 17q22-4 48 0M12 27q20 3 47 0M4 39q28-3 53 1M10 48h46" fill="none" stroke="#201c18" stroke-opacity=".45" stroke-width="1"/><path d="M9 11v42M55 11v42" stroke="#a58b6a" stroke-opacity=".23"/></g>
+ <!-- 4 cast iron bench cheek, 5 bin body, 6 ribbed lid, 7 front panel -->
+ <g transform="translate(0 64)"><path d="M7 6h13l3 27h18l3-27h13L50 58H39l2-15H23l2 15H14Z" fill="url(#iron)" stroke="#697368"/><path d="M16 15 20 35q12 13 24 0l4-20" fill="none" stroke="#788073" stroke-width="1.5"/></g>
+ <g transform="translate(64 64)"><path d="M5 7h54l-3 50H8Z" fill="url(#steel)" stroke="#6a7266"/><path d="M11 13h42v37H11Z" fill="none" stroke="#182221" stroke-width="2"/><path d="m8 46 9-1 6 4 12-2 9 3 11-4v9H9Z" fill="#3e3027" opacity=".38"/></g>
+ <g transform="translate(128 64)"><rect x="3" y="5" width="58" height="54" rx="3" fill="url(#steel)" stroke="#8c907b"/><path d="M10 12h44v41H10Z" fill="none" stroke="#14211f" stroke-width="2"/><path d="M18 13v38M27 13v38M36 13v38M45 13v38" stroke="#737b68" stroke-width="2"/><path d="M12 6h12v4H12Zm28 0h12v4H40Z" fill="#11191b"/></g>
+ <g transform="translate(192 64)"><path d="M4 6h56l-3 52H7Z" fill="url(#steel)" stroke="#677166"/><path d="M14 14v28M32 14v28M50 14v28" stroke="#13211f" stroke-width="2"/><path d="M17 24h17v13H17Z" fill="#918c6e" opacity=".72"/><path d="m21 29 4-2 5 4M21 32h10" stroke="#444b3f" stroke-width="1"/><path d="m9 48 8-5 9 6 17-2 12 4" fill="none" stroke="#745139" stroke-opacity=".5" stroke-width="2"/></g>
+ <!-- 8 open/bent lid, 9 pew, 10 carved wood, 11 cut stone -->
+ <g transform="translate(0 128)"><path d="M4 8 56 4 60 48 42 57 29 48 8 58Z" fill="url(#steel)" stroke="#7f8675"/><path d="M14 12 20 48M27 10 30 46M40 9 45 47M50 12 53 40" stroke="#192825" stroke-width="2"/></g>
+ <g transform="translate(64 128)"><rect x="2" y="4" width="60" height="56" rx="2" fill="url(#wood)" stroke="#8e785e"/><path d="M5 12h54M5 30h54M5 49h54" stroke="#241e18" stroke-width="1.6"/><path d="M5 14h54M5 32h54M5 51h54" stroke="#a18762" stroke-opacity=".4"/></g>
+ <g transform="translate(128 128)"><path d="M9 58V14Q12 4 24 8l8-6 8 6q12-4 15 6v44Z" fill="url(#wood)" stroke="#a08460"/><path d="M17 49V20l15-8 15 8v29ZM24 43V23l8-4 8 4v20Z" fill="none" stroke="#211c19" stroke-width="2"/><path d="M11 53h42" stroke="#b19a74" stroke-width="1"/></g>
+ <g transform="translate(192 128)"><path d="M5 5h54v54H5Z" fill="url(#stone)" stroke="#aaa590"/><path d="M10 10h44v44H10Z" fill="none" stroke="#303935" stroke-width="2"/><path d="m10 21 7 3 1 9M46 10l-2 9 8 5M28 48l5-4 12 2" stroke="#484e46" stroke-width=".65" fill="none"/></g>
+ <!-- 12 altar cloth / 13 candle / 14 iron fence / 15 rail cap -->
+ <g transform="translate(0 192)"><path d="M3 9h58v46H3Z" fill="#95917d" stroke="#c0b797"/><path d="M8 13h48v36H8Z" fill="none" stroke="#5f5d4a" stroke-width="1"/><path d="M29 18h6v7h7v6h-7v13h-6V31h-7v-6h7Z" fill="#673a36"/><path d="M7 51h50" stroke="#ded2a8" stroke-width="1"/></g>
+ <g transform="translate(64 192)"><ellipse cx="32" cy="36" rx="24" ry="20" fill="url(#iron)"/><ellipse cx="32" cy="29" rx="10" ry="14" fill="#c2b796" stroke="#777966"/><ellipse cx="32" cy="22" rx="6" ry="8" fill="#f0cea0"/><path d="M32 16v6" stroke="#5e4733"/></g>
+ <g transform="translate(128 192)" fill="none" stroke="#6d776a"><path d="M2 17h60M2 48h60" stroke-width="2"/><path d="M8 8v50M24 8v50M40 8v50M56 8v50" stroke-width="1.5"/><path d="m5 10 3-6 3 6M21 10l3-6 3 6M37 10l3-6 3 6M53 10l3-6 3 6" stroke-width="1"/><path d="M8 36q8-14 16 0 8-14 16 0 8-14 16 0" stroke="#354641" stroke-width="1"/></g>
+ <g transform="translate(192 192)"><rect x="1" y="22" width="62" height="20" fill="url(#iron)"/><path d="M2 24h60M2 39h60" stroke="#8b9282" stroke-width="1"/></g>
+</svg>

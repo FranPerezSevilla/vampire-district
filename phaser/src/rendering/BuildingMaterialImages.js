@@ -1,3 +1,6 @@
+import { bakeCathedralFacade } from './CathedralArchitecture.js';
+import {ordinaryMaterialsReady,bakeOrdinaryFacade,bakeOrdinaryRoof} from './OrdinaryBuildingMaterials.js';
+import {gradeNightCanvas} from './NightPalette.js';
 import { bakeVesperFacade } from './VesperArchitecture.js';
 import { bakePoliceFacade } from './PoliceArchitecture.js';
 import { CachedWarmLights } from './CachedWarmLights.js';
@@ -112,18 +115,23 @@ export class BuildingMaterialImages {
  register(canvas){const key=`building-material-${this.scene.sys.settings.key}-${this.serial++}`;this.scene.textures.addImage(key,canvas);return key;}
  facade(b,length,horizontal){
   const result=this.bakeFacade(b,length,horizontal);
+  const base=this.scene.textures.get(result.key);
+  if(!result.authoredNight)gradeNightCanvas(base.getSourceImage());
   // Front faces and their static glow have identical projection, normal blending
   // and white tint. Composite once, rather than submit two meshes every frame.
   // Side faces retain their separate untinted light layer.
   if(horizontal&&result.lightKey){
    const texture=this.scene.textures.get(result.key),canvas=texture.getSourceImage();
    const light=this.scene.textures.get(result.lightKey).getSourceImage();
-   const ctx=canvas.getContext('2d');ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';ctx.drawImage(light,0,0,canvas.width,canvas.height);ctx.restore();
-   texture.source[0].update();this.scene.textures.remove(result.lightKey);result.lightKey=null;
+   const ctx=canvas.getContext('2d');ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=.9;ctx.globalCompositeOperation='lighter';ctx.drawImage(light,0,0,canvas.width,canvas.height);ctx.restore();
+   this.scene.textures.remove(result.lightKey);result.lightKey=null;
   }
+  base.source[0].update();
   return result;
  }
  bakeFacade(b,length,horizontal){
+  if(ordinaryMaterialsReady(this.scene,b))return bakeOrdinaryFacade(this,b,length);
+  if(b.cathedralKind)return bakeCathedralFacade(this,b,length);
   if(b.dormer){
    const canvas=this.canvas(96,112),ctx=canvas.getContext('2d');
    if(b.facadeSide==='south')ctx.drawImage(this.scene.textures.get('vesper-dormer').getSourceImage(),0,0,96,112);
@@ -249,7 +257,10 @@ export class BuildingMaterialImages {
     484-b.x,580-b.y,32,110);
    const bay=HOSPITAL_LAYBY.parking;
    ctx.drawImage(this.scene.textures.get('hospital-parking').getSourceImage(),bay.x-b.x,bay.y-b.y,bay.w,bay.h);
-   ctx.drawImage(this.scene.textures.get('street-bench-clean').getSourceImage(),355-b.x,601-b.y,75,20);
+   if(!this.scene.textures.exists('street-stack-v1')||!this.scene.game?.renderer?.gl)ctx.drawImage(this.scene.textures.get('street-bench-clean').getSourceImage(),355-b.x,601-b.y,75,20);
+   // Ground decals share the pavement exposure; subsequent light stamps remain
+   // emissive. Grade once before any warm entrance light is composited.
+   gradeNightCanvas(canvas);
   }
   // Soft contact stays attached to the fixed footprint, not the displaced roof.
   for(const [x,y,angle,length] of [[0,0,Math.PI/2,b.h],[b.w,b.h,-Math.PI/2,b.h],[b.w,0,Math.PI,b.w],[0,b.h,0,b.w]]){
@@ -275,10 +286,14 @@ export class BuildingMaterialImages {
   return {key:this.register(canvas),pad};
  }
  roof(b,attachments=[]){
+  if(ordinaryMaterialsReady(this.scene,b))return bakeOrdinaryRoof(this,b);
   const canvas=this.canvas(b.w*2,b.h*2),ctx=canvas.getContext('2d');ctx.scale(2,2);
   const g=painter(ctx);
   g.fillMaterialPattern=(x,y,w,h)=>{ctx.save();ctx.globalAlpha=.42;ctx.globalCompositeOperation='soft-light';ctx.fillStyle=ctx.createPattern(this.pattern('slate-gothic'),'repeat');ctx.fillRect(x,y,w,h);ctx.restore();};
-  if(b.dormer){ctx.drawImage(this.scene.textures.get('vesper-mansard').getSourceImage(),330,70,100,100,0,0,b.w,b.h);}
+  if(b.cathedralKind==='buttress'){
+   const stone=this.scene.textures.get('cathedral-facade').getSourceImage();ctx.drawImage(stone,stone.width/2,stone.height/2,stone.width/2,stone.height/2,0,0,b.w,b.h);
+  }else if(b.cathedralKind){ctx.drawImage(this.scene.textures.get('cathedral-roof').getSourceImage(),0,0,b.w,b.h);}
+  else if(b.dormer){ctx.drawImage(this.scene.textures.get('vesper-mansard').getSourceImage(),330,70,100,100,0,0,b.w,b.h);}
   else if(b.siteId==='club-site'&&!b.campusBarrier){
    const image=this.scene.textures.get(b.roofForm==='mansard'?'vesper-mansard':'vesper-roof').getSourceImage();
    ctx.drawImage(image,0,0,b.w,b.h);
@@ -309,5 +324,5 @@ export class BuildingMaterialImages {
   this.turretKeys={stone:this.register(wall),slate:this.register(slate)};return this.turretKeys;
  }
  destroy(){this.warmLights.destroy();if(this.turretKeys)for(const key of Object.values(this.turretKeys))this.scene.textures.remove(key);this.turretKeys=null;}
- destroyEntry(e){e.groundImage?.destroy();if(e.groundKey)this.scene.textures.remove(e.groundKey);for(const q of e.pinnacleQuads||[])q.destroy();for(const face of e.faces||[]){for(const q of face.quads)q.destroy();for(const q of face.lightQuads||[])q.destroy();this.scene.textures.remove(face.key);if(face.lightKey)this.scene.textures.remove(face.lightKey);}if(e.roofKey)this.scene.textures.remove(e.roofKey);}
+ destroyEntry(e){e.groundImage?.destroy();if(e.groundKey)this.scene.textures.remove(e.groundKey);for(const q of [...(e.pinnacleQuads||[]),...(e.cathedralRoofQuads||[])])q.destroy();for(const face of e.faces||[]){for(const q of face.quads)q.destroy();for(const q of face.lightQuads||[])q.destroy();this.scene.textures.remove(face.key);if(face.lightKey)this.scene.textures.remove(face.lightKey);}if(e.roofKey)this.scene.textures.remove(e.roofKey);}
 }

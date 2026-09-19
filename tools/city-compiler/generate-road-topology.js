@@ -1,3 +1,4 @@
+import { compileCathedralCampus } from './cathedral-campus.js';
 import { compileVesperCampus } from './vesper-campus.js';
 import { compilePoliceCampus } from './police-campus.js';
 import { compileHospitalCampus } from './hospital-campus.js';
@@ -24,7 +25,7 @@ const outputPath = path.join(root, "phaser/src/data/generated/city-topology-v2.j
 // Reserve the wider carriageways and their sidewalks before placing façades,
 // then regenerate junction sidewalks and furniture against the final buildings.
 const roadLayout = compileAxisAlignedRoadGraph(cityRoadGraph, { world: current.CITY_WORLD });
-const fittedCity = compileVesperCampus(compilePoliceCampus(compileHospitalCampus(compileInfill(compileSkyline(fitCityRoadClearance(current, roadLayout.roads)),roadLayout.roads,current))));
+const fittedCity = compileCathedralCampus(compileVesperCampus(compilePoliceCampus(compileHospitalCampus(compileInfill(compileSkyline(fitCityRoadClearance(current, roadLayout.roads)),roadLayout.roads,current)))));
 const compiled = compileAxisAlignedRoadGraph(cityRoadGraph, {
   world: current.CITY_WORLD,
   buildings: fittedCity.buildings,
@@ -121,6 +122,7 @@ const streetNavigationPoints = [...preservedNavigationPoints, ...pedestrianNavig
 
 const cityAnchors = {
   ...current.CITY_ANCHORS,
+  cathedralEntrance:{x:3916,y:620,layer:0},
   foundryStreet: {
     ...(current.CITY_ANCHORS.foundryStreet || {}),
     x: 1800,

@@ -5,7 +5,7 @@ test('roof projection follows camera continuously with bounded height-dependent 
  const a=roofParallaxOffset(b,camera),next=roofParallaxOffset(b,{...camera,scrollX:1});
  assert.ok(Math.abs(a.x-next.x)<.2);assert.ok(next.x<a.x);
  const tower=roofParallaxOffset({...b,skyline:true,storeys:38},camera);assert.ok(Math.abs(tower.x)>Math.abs(a.x));
- const far=roofParallaxOffset({...b,skyline:true,storeys:38},{...camera,scrollX:-100000});assert.ok(Math.abs(far.x)<=buildingHeight({...b,skyline:true,storeys:38}));assert.ok(Number.isFinite(far.y));
+ assert.ok(Math.hypot(tower.x,tower.y)<=buildingHeight({...b,skyline:true,storeys:38})*1.65);
 });
 test('both wings of a tower share the same projection anchor',()=>{
  const box={x:100,y:100,w:200,h:150};const camera={scrollX:0,scrollY:0,width:800,height:600,zoom:1};
@@ -15,10 +15,12 @@ test('both wings of a tower share the same projection anchor',()=>{
 test('disabled and stationary parallax does not rebuild facade graphics',()=>{
  let refreshes=0;const roofs=new Map();roofs.values=function(){refreshes++;return Map.prototype.values.call(this);};
  const scene={cameras:{main:{scrollX:0,scrollY:0,zoom:1,width:800,height:600,worldView:{x:0,y:0,right:800,bottom:600}}}};
- const renderer=Object.assign(Object.create(BuildingParallax.prototype),{scene,lamps:{update(){}},attachmentCache:new WeakMap(),dormant:new Map(),roofs});
+ const renderer=Object.assign(Object.create(BuildingParallax.prototype),{scene,lamps:{update(){}},stackedFences:new Map(),attachmentCache:new WeakMap(),dormant:new Map(),roofs});
  renderer.update([],false);renderer.update([],false);assert.equal(refreshes,1);
  renderer.update([],true);renderer.update([],true);assert.equal(refreshes,2);
  scene.cameras.main.scrollX=1;renderer.update([],true);assert.equal(refreshes,3);
+ scene.cityPerspective={front:2,lateral:1,rear:1};renderer.update([],true);assert.equal(refreshes,4);
+ renderer.update([],true);assert.equal(refreshes,4);
 });
 
 
@@ -27,7 +29,8 @@ test('zoom does not move the projection centre and a camera pan visibly changes 
  const tower={x:450,y:450,w:100,h:100,skyline:true,storeys:32};
  const centred=roofParallaxOffset(tower,camera);
  assert.equal(centred.x,0);
- assert.deepEqual(centred,roofParallaxOffset(tower,{...camera,zoom:2}));
+ assert.equal(roofParallaxOffset(tower,{...camera,zoom:2}).x,0);
+ assert.equal(roofParallaxOffset(tower,{...camera,zoom:2}).y,centred.y);
  const panned=roofParallaxOffset(tower,{...camera,scrollX:120+camera.scrollX});
  assert.ok(Math.abs(panned.x-centred.x)>25);
 });
@@ -53,7 +56,7 @@ test('L-shaped tower keeps its courtyard wall but removes shared internal wall',
 test('equal-height neighbouring roofs project a shared vertex identically regardless of width',()=>{
  const camera={scrollX:100,scrollY:200,width:800,height:600};
  const a={x:100,y:300,w:400,h:200},b={x:500,y:300,w:100,h:200};
- const project=(building,p)=>{const o=roofParallaxOffset(building,camera);return {x:p.x+o.x+(p.x-o.cx)*o.spread,y:p.y+o.y+(p.y-o.cy)*o.spread};};
+ const project=(building,p)=>{const o=roofParallaxOffset(building,camera);return {x:p.x+o.x+(p.x-o.cx)*o.spreadX,y:p.y+o.y+(p.y-o.cy)*o.spreadY};};
  const pa=project(a,{x:500,y:500}),pb=project(b,{x:500,y:500});
  assert.ok(Math.abs(pa.x-pb.x)<1e-9&&Math.abs(pa.y-pb.y)<1e-9);
 });
@@ -74,14 +77,14 @@ test('storeys use a shared physical scale with explicit height overrides',()=>{
  assert.equal(buildingHeight({id:'hospitalEmergency'}),one);
 });
 
-test('radial projection reveals north and south facades symmetrically without simultaneous opposites',()=>{
+test('front facade has stronger exposure while camera movement remains continuous',()=>{
  const b={x:450,y:450,w:100,h:100,landmark:true};
  const cameraAt=(x,y)=>({scrollX:x-400,scrollY:y-300,width:800,height:600});
  const centre=roofParallaxOffset(b,cameraAt(500,500));
- assert.equal(centre.x,0);assert.equal(centre.y,0);
- assert.equal(visibleFacadeEdges(b,centre).length,0);
- const north=roofParallaxOffset(b,cameraAt(500,300)),south=roofParallaxOffset(b,cameraAt(500,700));
- assert.equal(north.y,-south.y);
+ assert.equal(centre.x,0);assert.ok(centre.y<0);
+ assert.ok(visibleFacadeEdges(b,centre).some(([a,c])=>a.y===550&&c.y===550));
+ const north=roofParallaxOffset(b,cameraAt(500,-100)),south=roofParallaxOffset(b,cameraAt(500,1100));
+ assert.ok(Math.abs(south.y)>Math.abs(north.y));
  assert.equal(visibleFacadeEdges(b,north)[0][0].y,450);
  assert.equal(visibleFacadeEdges(b,south)[0][0].y,550);
  for(let y=350;y<=650;y++){
@@ -89,15 +92,15 @@ test('radial projection reveals north and south facades symmetrically without si
   const horizontal=visibleFacadeEdges(b,o).filter(([a,c])=>a.y===c.y);
   assert.ok(horizontal.length<=1);
   const next=roofParallaxOffset(b,cameraAt(500,y+1));
-  assert.ok(Math.abs(next.y-o.y)<.2);
+  assert.ok(Math.abs(next.y-o.y)<.4);
  }
 });
 
-test('debug axis multipliers affect only their own axis and zero removes its facade',()=>{
+test('landmark tags and obsolete entrance settings cannot change city projection',()=>{
  const b={x:700,y:600,w:100,h:100},camera={scrollX:0,scrollY:0,width:800,height:600};
  const base=roofParallaxOffset(b,camera);
- const tuned=roofParallaxOffset(b,camera,{eastWest:3,northSouth:0});
- assert.ok(Math.abs(tuned.x-base.x*3)<1e-9);assert.equal(tuned.y,0);
- assert.equal(tuned.spreadY,0);assert.equal(tuned.spreadX,base.spreadX*3);
- assert.ok(visibleFacadeEdges(b,tuned).every(([a,c])=>a.x===c.x));
+ for(const id of ['hospital','police','club','cathedral']){
+  const tuned=roofParallaxOffset({...b,id,landmark:true,storeys:2},camera,{entrance:1,direction:{nx:1,ny:0}});
+  assert.deepEqual(tuned,base);
+ }
 });

@@ -682,7 +682,7 @@ export class CombatSystem {
     const py = this.scene.player.y;
 
     if (config.attackType === WEAPON_TYPES.HITSCAN) {
-      if (phase === "active") {
+      if (phase === "active" && !this.scene.playerCharacterView?.stack) {
         const muzzleX = px + this.attack.direction.x * 10;
         const muzzleY = py + this.attack.direction.y * 10;
         this.graphics.lineStyle(3, color, alpha);

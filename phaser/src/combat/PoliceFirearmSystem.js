@@ -514,7 +514,7 @@ export class PoliceFirearmSystem {
 
         visibleLabels.add(cop.id);
 
-        if (now < state.muzzleUntil) {
+        if (now < state.muzzleUntil && !cop.characterView?.stack) {
           graphics.fillStyle(0xfff2a8, 0.95).fillCircle(line.origin.x, line.origin.y, 4);
         }
       }

@@ -2,6 +2,7 @@ import { architectureFor, architectureBays } from './ArchitecturalProfiles.js';
 // Cache world-space square volumes; project only when the building camera changes.
 export function createPinnacleModel(b){
  if(b.cornerTurret)return [{x:b.x+b.w/2,y:b.y+b.h/2,shoulder:0,ring:[{x:b.x,y:b.y,z:0},{x:b.x+b.w,y:b.y,z:0},{x:b.x+b.w,y:b.y+b.h,z:0},{x:b.x,y:b.y+b.h,z:0}],tip:{x:b.x+b.w/2,y:b.y+b.h/2,z:b.capHeight}}];
+ if(b.cathedralKind)return [];
  if(b.id==='hospital'||b.turrets)return [];
  if(!architectureFor(b).cornerButtresses||b.w<180)return [];
  const {cols}=architectureBays(b,b.w),width=b.w*Math.min(.14,.64/cols),half=width/2;

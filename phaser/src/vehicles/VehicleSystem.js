@@ -2,7 +2,7 @@ import { VEHICLE_OWNERSHIP, vehicleArchetype, vehicleDefinitions } from "../data
 import { RawAudio } from "../systems/RawAudioSystem.js";
 import { createVehicleState } from "./VehicleModel.js";
 import { installVehicleBrowserApi, paintVehicle, publishVehicleState, refreshVehicleVisibility, vehicleSystemSnapshot, vehicleSystemSummary } from "./VehicleView.js";
-import { canVehicleOccupy, filterVehicleInputFrame, handleVehicleWorldCollision, updateVehicleCamera, updateVehicleDriving } from "./VehicleDriving.js";
+import { canVehicleOccupy, filterVehicleInputFrame, handleVehicleWorldCollision, updateVehicleCamera, updateVehicleDriving, updateUnoccupiedVehicleEngines } from "./VehicleDriving.js";
 import { canEnterVehicle, collectVehicleInteractions, enterVehicle, exitVehicle, inspectVehicleTrunk, removeVehicleTrunkItem, storeVehicleTrunkItem, vehicleStatusLabel, vehicleTrunkLabel } from "./VehicleInteractions.js";
 import { VEHICLE_DESTRUCTION, explosionDamageAtDistance, vehicleDestructionTransition } from "./VehicleDestructionPolicy.js";
 
@@ -62,7 +62,8 @@ export class VehicleSystem {
         y: state.y,
         angle: state.angle,
         health: state.health,
-        parked: state.parked
+        parked: state.parked,
+        engineRunning: state.engineRunning
       }
     };
   }
@@ -176,6 +177,10 @@ export class VehicleSystem {
     return updateVehicleDriving(this, dt, frame);
   }
 
+  updateUnoccupiedEngines() {
+    updateUnoccupiedVehicleEngines(this);
+  }
+
   canOccupy(vehicle, x, y, angle) {
     return canVehicleOccupy(this, vehicle, x, y, angle);
   }
@@ -206,6 +211,8 @@ export class VehicleSystem {
     if (!vehicle || vehicle.exploded) return false;
     vehicle.health = 0;
     vehicle.disabled = true;
+    vehicle.engineRunning = false;
+    RawAudio.stopVehicleEngine(`player:${vehicle.id}`);
     vehicle.criticalDamage = true;
     vehicle.speed = 0;
     vehicle.velocityX = 0;
@@ -269,6 +276,7 @@ export class VehicleSystem {
     const occupied = this.currentVehicleId === vehicle.id;
     vehicle.health = 0;
     vehicle.disabled = true;
+    vehicle.engineRunning = false;
     vehicle.criticalDamage = false;
     vehicle.exploded = true;
     vehicle.speed = 0;
@@ -359,6 +367,7 @@ export class VehicleSystem {
     vehicle.gearShiftTimer = 0;
     vehicle.health = condition.health;
     vehicle.disabled = condition.disabled;
+    vehicle.engineRunning = condition.engineRunning;
     vehicle.criticalDamage = Boolean(vehicle.disabled && vehicle.health <= 0);
     vehicle.exploded = false;
     vehicle.parked = condition.parked;
@@ -378,7 +387,8 @@ export class VehicleSystem {
       y: vehicle.y,
       angle: vehicle.angle,
       health: vehicle.health,
-      parked: vehicle.parked
+      parked: vehicle.parked,
+      engineRunning: vehicle.engineRunning
     };
     this.handbrakeActive = false;
     this.refreshVisibility();
@@ -406,7 +416,8 @@ export class VehicleSystem {
       y: vehicle.y,
       angle: vehicle.angle,
       health: vehicle.health,
-      parked: vehicle.parked
+      parked: vehicle.parked,
+      engineRunning: vehicle.engineRunning
     };
     const changed = Object.entries(condition).some(([key, value]) => {
       const previous = vehicle.lastPersisted[key];

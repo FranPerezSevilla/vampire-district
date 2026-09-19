@@ -31,6 +31,7 @@ import { GameplayRuntime as GameplayRuntimeCore } from "./GameplayRuntimeCore.js
 import { VampireRuntime } from "../vampire/VampireRuntime.js";
 import { installPublishStateInstrumentation } from "./PublishStateInstrumentation.js";
 import { enrichVehicleInputFrame, filterVehicleAwareInteractions } from "./VehicleRuntimeAdapter.js";
+import { updateVehicleDrawOrder } from "../rendering/VehicleDrawOrder.js";
 
 const VEHICLE_ACTION_TYPES = new Set(["vehicleEnter", "vehicleExit"]);
 
@@ -101,6 +102,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     scene.pedestrianSystem = new PedestrianSystem(scene);
     scene.streetFurnitureSystem = new StreetFurnitureSystem(scene, scene.campaignSystem);
     scene.vehicleSystem = new VehicleSystem(scene, scene.campaignSystem);
+    // Paused Phaser scenes do not tick the engine-frame cleanup.
+    scene.events?.on?.('pause', RawAudio.stopAllVehicleEngines, RawAudio);
     scene.entityStreamSystem = new EntityStreamSystem(scene);
     scene.districtPackSystem = new DistrictPackSystem(scene);
     scene.distantSimulationSystem = new DistantSimulationSystem(scene);
@@ -170,6 +173,7 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     this.baseCollectInteractions = typeof originalCollectInteractions === "function" ? originalCollectInteractions : null;
     const dt = Math.min(Math.max(0, Number(deltaMs) || 0) / 1000, 0.05);
     RawAudio.beginVehicleEngineFrame({ paused: Boolean(scene.registry?.get?.("uiPaused")) });
+    scene.vehicleSystem?.updateUnoccupiedEngines?.();
 
     let profileMark = diagnostics.beginSystem("StreamingPipeline");
     scene.cityStreamSystem?.update?.();
@@ -223,6 +227,10 @@ export class GameplayRuntime extends GameplayRuntimeCore {
     profileMark = diagnostics.beginSystem("TerritoryRuntimeSystem");
     scene.territoryRuntimeSystem?.update?.();
     diagnostics.endSystem("TerritoryRuntimeSystem", profileMark);
+
+    // Use final presented positions after driving, traffic and police updates.
+    // Shared rank ordering also covers collision/recovery and pooled replacements.
+    updateVehicleDrawOrder(scene, this.vehicleDrawOrder ??= []);
   }
 
   finishFrame() {
@@ -233,6 +241,8 @@ export class GameplayRuntime extends GameplayRuntimeCore {
   }
 
   destroy() {
+    this.scene.events?.off?.('pause', RawAudio.stopAllVehicleEngines, RawAudio);
+    if (this.vehicleDrawOrder) this.vehicleDrawOrder.length = 0;
     this.scene.vampireRuntime?.destroy?.();
     this.scene.vampireRuntime = null;
     this.removePublishStateInstrumentation?.();
