@@ -1,3 +1,6 @@
+import { drawMaterialRects, drawMaterialPolygon } from '../rendering/MaterialTiles.js';
+import { drawCachedPavements } from '../rendering/CachedPaving.js';
+import { paintPavementWear, paintAsphaltWear } from "../rendering/UrbanMaterialDetail.js";
 import { COLORS } from "../data/balance.js";
 import { buildings, crosswalks, LAYERS, roads, sidewalks } from "../data/district.js";
 import { buildSidewalkBoundaryGeometry } from "../rendering/SidewalkBoundaryGeometry.js";
@@ -435,18 +438,7 @@ export function installCitySurfacePresentationPolicy(GameSceneClass) {
   };
 
   prototype.drawOpenGroundWindow = function viceBloodDrawOpenGroundWindow(bounds) {
-    const details = buildOpenGroundDetails(bounds);
-    this.map.fillStyle(COLORS.streetGridMajor, 0.045);
-    for (const panel of details.panels) this.map.fillRect(panel.x, panel.y, panel.w, panel.h);
-
-    const lines = buildStreetGridLines(bounds);
-    this.map.lineStyle(1, COLORS.streetGrid, 0.09);
-    for (const segment of lines.filter(candidate => !candidate.major)) drawLine(this.map, segment);
-    this.map.lineStyle(1, COLORS.streetGridMajor, 0.14);
-    for (const segment of lines.filter(candidate => candidate.major)) drawLine(this.map, segment);
-
-    this.map.lineStyle(1, COLORS.roadWear, 0.30);
-    for (const segment of details.scuffs) drawLine(this.map, segment);
+    paintPavementWear(this.map, bounds, true);
   };
 
   prototype.drawDistrictStreet = function viceBloodDrawDistrictStreet() {
@@ -463,6 +455,7 @@ export function installCitySurfacePresentationPolicy(GameSceneClass) {
     if (this.currentLayer > LAYERS.STREET) {
       this.map.fillStyle(0x000000, 0.46).fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
     }
+
   };
 
   prototype.drawRoadSurfaceDetails = function viceBloodDrawRoadSurfaceDetails(road, fragment) {
@@ -487,6 +480,10 @@ export function installCitySurfacePresentationPolicy(GameSceneClass) {
   prototype.drawRoadWindow = function viceBloodDrawRoadWindow(road) {
     if (road.geometry === "polygon" && Array.isArray(road.points)) {
       this.map.fillStyle(COLORS.road, 1).fillPoints(road.points, true);
+      if(this.streetPavingTarget&&this.textures?.get){
+        const {image,bounds}=this.streetPavingTarget;image.draw(this.map,-bounds.x,-bounds.y);this.map.clear();
+        drawMaterialPolygon(this,image,road.points,bounds,'road');
+      }
       this.map.lineStyle(1, COLORS.roadEdge, 0.18);
       drawPolygonOutline(this.map, road.points);
       return;
@@ -495,6 +492,11 @@ export function installCitySurfacePresentationPolicy(GameSceneClass) {
     const fragment = clippedRect(road, this.urbanRenderBounds);
     if (!fragment) return;
     this.map.fillStyle(COLORS.road, 1).fillRect(fragment.x, fragment.y, fragment.w, fragment.h);
+    if(this.streetPavingTarget&&this.textures?.get&&this.textures.exists('asphalt-gothic')){
+      const {image,bounds}=this.streetPavingTarget;
+      image.draw(this.map,-bounds.x,-bounds.y);this.map.clear();
+      drawMaterialRects(this,image,[fragment],bounds,'road');
+    }else paintAsphaltWear(this.map,fragment);
     if (road.pieceKind !== "segment") return;
 
     const horizontal = road.orientation === "horizontal" || road.w > road.h;
@@ -549,32 +551,27 @@ export function installCitySurfacePresentationPolicy(GameSceneClass) {
     const visible = this.chunkItems("sidewalks", renderBounds, sidewalks, { margin: 8 });
     const geometry = this.prepareCitySurfaceGeometry(renderBounds).boundary;
 
+    const paving=this.streetPavingTarget;
+    if(paving){paving.image.draw(this.map,-paving.bounds.x,-paving.bounds.y);this.map.clear();}
+    const rectangles=[];
     this.map.fillStyle(COLORS.sidewalk, 1);
     for (const walk of visible) {
       if (walk.geometry === "polygon" && Array.isArray(walk.points)) {
-        this.map.fillPoints(walk.points, true);
+        if(!paving||!drawMaterialPolygon(this,paving.image,walk.points,paving.bounds,'sidewalk'))this.map.fillStyle(COLORS.sidewalk, 1).fillPoints(walk.points, true);
         continue;
       }
       const fragment = clippedRect(walk, renderBounds);
-      if (fragment) this.map.fillRect(fragment.x, fragment.y, fragment.w, fragment.h);
+      if(fragment){if(paving)rectangles.push(fragment);else paintPavementWear(this.map,fragment);}
     }
 
+    if(paving)drawCachedPavements(this,paving.image,rectangles,paving.bounds,false);
     this.map.fillStyle(COLORS.road, 1);
     for (const corner of geometry.corners) {
       if (corner.cutout.length >= 3) this.map.fillPoints(corner.cutout, true);
     }
 
-    this.map.lineStyle(1, COLORS.sidewalkJoint, 0.40);
-    for (const walk of visible) {
-      for (const segment of buildSidewalkJointSegments(walk, renderBounds)) drawLine(this.map, segment);
-    }
-
-    this.map.lineStyle(1, COLORS.sidewalkTrim, 0.44);
-    for (const segment of geometry.outerBoundarySegments) {
-      if (segmentIntersectsBounds(segment, renderBounds)) drawLine(this.map, segment);
-    }
-
-    this.map.lineStyle(2, COLORS.sidewalkCurb, 0.78);
+    // One continuous paving surface; retain only the road-facing curb.
+    this.map.lineStyle(1.2, COLORS.sidewalkCurb, 0.6);
     for (const segment of geometry.curbSegments) {
       if (segmentIntersectsBounds(segment, renderBounds)) drawLine(this.map, segment);
     }

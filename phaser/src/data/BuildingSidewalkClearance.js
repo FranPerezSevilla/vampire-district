@@ -62,7 +62,8 @@ function fallbackFootprint(building, inset) {
 }
 
 export function fitBuildingToSidewalks(building, surfaces = [], options = {}) {
-  if (!isNeonBuilding(building)) return building;
+  // Authored compound footprints have already been validated against streets in the compiler.
+  if (building?.authoredSiteFootprint || !isNeonBuilding(building)) return building;
 
   const clearance = Math.max(0, finite(options.clearance, DEFAULT_CLEARANCE));
   const fallbackInset = Math.max(clearance, finite(options.fallbackInset, DEFAULT_FALLBACK_INSET));

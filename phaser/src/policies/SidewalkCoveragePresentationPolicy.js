@@ -1,3 +1,9 @@
+import { drawCathedralCampusGround } from '../rendering/CathedralCampusGround.js';
+import { drawVesperCampusGround } from '../rendering/VesperCampusGround.js';
+import { drawPoliceCampusGround } from '../rendering/PoliceCampusGround.js';
+import { drawHospitalLayby } from '../rendering/HospitalLayby.js';
+import { drawCachedCourtyard } from '../rendering/CachedPaving.js';
+import {NIGHT} from '../rendering/NightPalette.js';
 import { COLORS, WORLD } from "../data/balance.js";
 import {
   buildings,
@@ -142,23 +148,43 @@ export function installSidewalkCoveragePresentationPolicy(GameSceneClass) {
     const bounds = this.urbanRenderBounds || this.prepareUrbanRenderWindow();
 
     withPresentationSidewalks(this, completed, () => this.prepareCitySurfaceGeometry(bounds));
+    const visibleBuildings = this.chunkItems("buildings", bounds, buildings, { margin: 80 });
+    const surfaceKey=[this.citySurfaceGeometryCache?.key,bounds.x,bounds.y,bounds.w,bounds.h,this.currentLayer,this.parallaxStreetActive,visibleBuildings.map(b=>b.id).join('|')].join(':');
+    if(this.streetSurfaceCache?.key===surfaceKey){this.streetSurfaceCache.image.setVisible(true);return;}
 
-    this.map.fillStyle(COLORS.streetBase, 1).fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
-    this.drawOpenGroundWindow(bounds);
+
+    let image=this.streetSurfaceCache?.image;
+    if(!image){
+      image=this.add.renderTexture(bounds.x,bounds.y,bounds.w,bounds.h).setOrigin(0,0);
+      this.events.once('shutdown',()=>{this.streetSurfaceCache=null;});
+    }
+    image.setVisible(true).setPosition(bounds.x,bounds.y).setSize(bounds.w,bounds.h).setDepth(this.map.depth-.01);
+    image.setTint?.(NIGHT.ground);
+    image.clear();
+    drawCachedCourtyard(this,image,bounds);
+    this.streetPavingTarget={image,bounds};
     for (const road of this.chunkItems("roads", bounds, roads, { margin: 12 })) this.drawRoadWindow(road);
     this.drawCurbsideStreetDetails(bounds);
 
-    const visibleBuildings = this.chunkItems("buildings", bounds, buildings, { margin: 80 });
+
     for (const building of visibleBuildings) this.drawBuilding(building);
 
     this.citySurfaceAuthoritativePavementDrawCount = drawAuthoritativePavement(this, completed, bounds);
     withPresentationSidewalks(this, completed, () => this.drawSidewalkNetwork());
 
+    drawHospitalLayby(this,image,bounds);
+    drawPoliceCampusGround(this,image,bounds);
+    drawVesperCampusGround(this,image,bounds);
+    drawCathedralCampusGround(this,image,bounds);
     this.drawCrosswalkNetwork();
     this.drawSewerManholes();
 
     if (this.currentLayer > LAYERS.STREET) {
       this.map.fillStyle(0x000000, 0.46).fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
     }
+    image.draw(this.map,-bounds.x,-bounds.y);
+    this.streetSurfaceCache={image,key:surfaceKey};
+    this.streetPavingTarget=null;
+    this.map.clear();
   };
 }

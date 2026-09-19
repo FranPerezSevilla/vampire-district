@@ -4,13 +4,9 @@ import { InteractionSystem } from "../systems/InteractionSystem.js";
 import { PowersSystem } from "../systems/PowersSystem.js";
 
 const HIDDEN_TRAVERSAL_TYPES = new Set([
-  "fireEscapeUp",
-  "fireEscapeDown",
   "sewerDown",
   "sewerUp",
   "privateShaft",
-  "roofJump",
-  "roofDrop"
 ]);
 
 function visibleInteractions(options = []) {

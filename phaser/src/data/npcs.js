@@ -198,8 +198,8 @@ const BASE_NPC_DEFINITIONS = [
   {
     id: "club_queue_1",
     type: "civilian",
-    x: 1708,
-    y: 1660,
+    x: 1990,
+    y: 1510,
     layer: 0,
     behavior: "loiter",
     speed: 0,
@@ -210,8 +210,8 @@ const BASE_NPC_DEFINITIONS = [
   {
     id: "club_queue_2",
     type: "civilian",
-    x: 1708,
-    y: 1682,
+    x: 1970,
+    y: 1508,
     layer: 0,
     behavior: "loiter",
     speed: 0,
@@ -222,8 +222,8 @@ const BASE_NPC_DEFINITIONS = [
   {
     id: "club_queue_3",
     type: "civilian",
-    x: 1708,
-    y: 1704,
+    x: 1950,
+    y: 1512,
     layer: 0,
     behavior: "loiter",
     speed: 0,
@@ -234,8 +234,8 @@ const BASE_NPC_DEFINITIONS = [
   {
     id: "civ_church",
     type: "civilian",
-    x: 4000,
-    y: 710,
+    x: 3882,
+    y: 438,
     layer: 0,
     behavior: "loiter",
     speed: 0,
@@ -246,8 +246,8 @@ const BASE_NPC_DEFINITIONS = [
   {
     id: "church_prayer_2",
     type: "civilian",
-    x: 3984,
-    y: 710,
+    x: 3950,
+    y: 438,
     layer: 0,
     behavior: "loiter",
     speed: 0,
@@ -258,8 +258,8 @@ const BASE_NPC_DEFINITIONS = [
   {
     id: "church_prayer_3",
     type: "civilian",
-    x: 4016,
-    y: 710,
+    x: 3940,
+    y: 332,
     layer: 0,
     behavior: "loiter",
     speed: 0,
@@ -270,8 +270,8 @@ const BASE_NPC_DEFINITIONS = [
   {
     id: "church_prayer_4",
     type: "civilian",
-    x: 4000,
-    y: 726,
+    x: 3808,
+    y: 636,
     layer: 0,
     behavior: "loiter",
     speed: 0,
@@ -314,6 +314,10 @@ const BASE_NPC_DEFINITIONS = [
     inactive: true,
     retiredMissionEntity: true
   },
+  ...[1600,1686].map((x,i)=>({
+    id: "police_gate_guard_"+i, type:"police", x, y:680, layer:0,
+    behavior:"guard", guardPost:true, speed:0, dirX:0, dirY:1
+  })),
   {
     id: "police_patrol_1",
     type: "police",

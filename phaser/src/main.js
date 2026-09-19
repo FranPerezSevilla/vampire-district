@@ -110,7 +110,9 @@ const config = {
   backgroundColor: "#05060b",
   pixelArt: false,
   roundPixels: false,
-  render: { antialias: true, antialiasGL: true, pixelArt: false, roundPixels: false },
+  // Keep linear texture filtering and the full render scale. The already
+  // supersampled canvas does not need a second multisample framebuffer.
+  render: { antialias: true, antialiasGL: false, pixelArt: false, roundPixels: false, powerPreference: "high-performance" },
   physics: { default: "arcade", arcade: { debug: false } },
   scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.NO_CENTER },
   scene: [BootScene, MainMenuScene, GameScene, UIScene]

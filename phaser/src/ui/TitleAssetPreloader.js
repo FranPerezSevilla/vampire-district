@@ -25,7 +25,7 @@ function withTimeout(promise, timeoutMs, label, windowRef = globalThis.window) {
 function mediaReady(media) {
   if (!media) return Promise.reject(new Error("Main-menu theme element is missing."));
   if (media.readyState >= 3) return Promise.resolve(true);
-  media.load?.();
+
   return new Promise((resolve, reject) => {
     const done = () => {
       cleanup();
@@ -43,6 +43,9 @@ function mediaReady(media) {
     media.addEventListener?.("canplaythrough", done, { once: true });
     media.addEventListener?.("canplay", done, { once: true });
     media.addEventListener?.("error", failed, { once: true });
+    // Preserve the parser-started download; load() would abort and restart it.
+    if (media.networkState === 0) media.load?.();
+    if (media.readyState >= 3) done();
   });
 }
 

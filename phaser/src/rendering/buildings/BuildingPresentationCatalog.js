@@ -1,3 +1,4 @@
+import { buildingMaterial } from "../BuildingIdentity.js";
 const DEFAULT_BUILDING_COLOR = 0x262838;
 const DEFAULT_BUILDING_TRIM = 0x5a5869;
 
@@ -317,9 +318,12 @@ export function resolveBuildingPalette(building = {}, archetypeId = "generic", v
     ? Number(visualProfile.roofTint)
     : authoredBase;
   const profileAmount = Math.max(0, Math.min(1, Number(visualProfile?.roofTintAmount) || 0));
-  const base = mixBuildingColor(authoredBase, profileTint, profileAmount);
-  const trim = mixBuildingColor(authoredTrim, profileTint, profileAmount * 0.2);
-  const accent = archetype.accent;
+  const tones = [0x39332f, 0x363637, 0x433b35, 0x332d31, 0x3c3b32];
+  const inkSeed = [...String(building.id || archetypeId)].reduce((n,c)=>((n*31+c.charCodeAt(0))>>>0),0);
+  const material=buildingMaterial(building);
+  const base = material.roof;
+  const trim = material.trim;
+  const accent = archetypeId === "club" ? 0x883b43 : 0xa18b65;
 
   return {
     worldShadow: mixBuildingColor(base, 0x010207, 0.9),
@@ -340,16 +344,16 @@ export function resolveBuildingPalette(building = {}, archetypeId = "generic", v
     seam: mixBuildingColor(trim, base, 0.72),
     prop: mixBuildingColor(trim, 0x9ea2ac, 0.28),
     propDark: mixBuildingColor(trim, 0x090a10, 0.6),
-    glass: mixBuildingColor(archetypeId === "club" ? accent : 0x315b92, 0x090d16, 0.34),
-    glassHighlight: mixBuildingColor(archetypeId === "club" ? accent : 0x72a4e1, 0xffffff, 0.16),
+    glass: mixBuildingColor(archetypeId === "club" ? accent : 0x2b2a28, 0x090d16, 0.34),
+    glassHighlight: mixBuildingColor(archetypeId === "club" ? accent : 0x847763, 0xffffff, 0.16),
     canopy: mixBuildingColor(base, trim, 0.28),
     serviceDark: mixBuildingColor(base, 0x05070a, 0.78),
     serviceMid: mixBuildingColor(trim, base, 0.64),
     serviceWindow: mixBuildingColor(0x17233a, accent, archetypeId === "police" ? 0.18 : 0.05),
     serviceLight: 0xf2b35e,
     accent,
-    accentSoft: archetype.accentSoft,
-    label: archetype.labelColor,
+    accentSoft: 0x59383a,
+    label: 0xc8b697,
     yard: 0x202a24,
     fence: 0x4a4651
   };

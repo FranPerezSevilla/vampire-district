@@ -10,6 +10,7 @@ export class TransitionSystem {
   constructor(scene) {
     this.scene = scene;
     this.active = false;
+    this.characterJump = null;
     this.graphics = scene.add.graphics().setDepth(44);
   }
 
@@ -49,16 +50,16 @@ export class TransitionSystem {
     });
   }
 
-  roofDrop({ from, to, toLayer, status }) {
+  roofDrop({ from, to, toLayer, status, height = 0 }) {
     if (!this.begin("Roof drop: falling to street level.")) return;
     RawAudio.play("routeRoof");
     this.drawDropLine(from, to);
     this.animateParabola({
       from,
       to,
-      duration: 680,
-      height: 62,
-      peakScale: 1.42,
+      duration: height > 0 ? 1350 : 680,
+      height: height > 0 ? 150 : 62,
+      peakScale: height > 0 ? 1.85 : 1.42,
       landingColor: 0xffb02e,
       landingLabel: "DROP",
       onComplete: () => {
@@ -152,6 +153,7 @@ export class TransitionSystem {
   }
 
   animateParabola({ from, to, duration, height, peakScale, landingColor, landingLabel, onComplete, falling = false }) {
+    this.characterJump = {progress:0, falling, direction:{x:to.x-from.x,y:to.y-from.y}};
     this.scene.player.setPosition(from.x, from.y);
     const shadow = this.scene.add.ellipse(from.x, from.y + 10, 18, 6, 0x000000, 0.30).setDepth(43);
     const startY = from.y;
@@ -164,6 +166,7 @@ export class TransitionSystem {
       ease: falling ? "Quad.easeIn" : "Sine.easeInOut",
       onUpdate: tween => {
         const p = tween.getValue();
+        this.characterJump.progress = p;
         const x = Phaser.Math.Linear(from.x, to.x, p);
         const groundY = Phaser.Math.Linear(startY, endY, p);
         const lift = Math.sin(p * Math.PI) * height;
@@ -227,6 +230,7 @@ export class TransitionSystem {
   }
 
   complete(layer, position, status) {
+    this.characterJump = null;
     this.graphics.clear();
     this.active = false;
     this.scene.switchLayer(layer, position, status);

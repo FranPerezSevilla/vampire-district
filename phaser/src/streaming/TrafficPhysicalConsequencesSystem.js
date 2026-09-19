@@ -82,6 +82,14 @@ function contactBox(entity) {
 }
 
 export function orientedVehicleContact(leftEntity, rightEntity) {
+  // A Manhattan half-diagonal bounds every rotation. Reject distant pairs
+  // before two WeakMap lookups, pose validation and oriented-box construction.
+  const reach = (Math.max(18, finite(leftEntity?.archetype?.width, 28) * 0.86)
+    + Math.max(9, finite(leftEntity?.archetype?.height, 14) * 0.82)
+    + Math.max(18, finite(rightEntity?.archetype?.width, 28) * 0.86)
+    + Math.max(9, finite(rightEntity?.archetype?.height, 14) * 0.82)) * 0.5;
+  if (Math.abs(finite(rightEntity?.x) - finite(leftEntity?.x)) > reach
+    || Math.abs(finite(rightEntity?.y) - finite(leftEntity?.y)) > reach) return null;
   const contact = orientedTrafficBoxContact(contactBox(leftEntity), contactBox(rightEntity));
   if (!contact) return null;
   // Contacts are public values; mutations of a returned box cannot poison the

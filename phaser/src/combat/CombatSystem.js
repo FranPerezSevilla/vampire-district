@@ -560,7 +560,7 @@ export class CombatSystem {
       if (npc.combat.state === COMBAT_STATES.DOWNED) {
         npc.container.setScale(1.32, 0.55).setAlpha(0.76);
         if (onCurrentLayer) {
-          this.ensureLabel(npc).setText("DOWN").setPosition(npc.x, npc.y - 19).setVisible(true);
+
         } else {
           existingLabel?.setVisible(false);
         }
@@ -571,10 +571,7 @@ export class CombatSystem {
       if (npc.combat.feedbackUntil > now && onCurrentLayer) {
         const pulse = 0.68 + Math.abs(Math.sin(now / 55)) * 0.32;
         npc.container.setAlpha(pulse);
-        this.ensureLabel(npc)
-          .setText(`${npc.combat.resilience}/${npc.combat.maxResilience}`)
-          .setPosition(npc.x, npc.y - 19)
-          .setVisible(true);
+
       } else {
         npc.container.setAlpha(1);
         existingLabel?.setVisible(false);
@@ -583,19 +580,7 @@ export class CombatSystem {
   }
 
   ensureLabel(npc) {
-    if (this.labels.has(npc.id)) return this.labels.get(npc.id);
-    const label = this.scene.add.text(npc.x, npc.y - 19, "", {
-      fontFamily: "Arial, Helvetica, sans-serif",
-      fontSize: "12px",
-      fontStyle: "bold",
-      color: "#fff0bd",
-      backgroundColor: "rgba(5, 6, 11, .82)",
-      padding: { x: 4, y: 2 }
-    }).setOrigin(0.5, 1).setDepth(73).setVisible(false);
-    label.setResolution?.(3);
-    label.setStroke?.("#05060b", 2);
-    this.labels.set(npc.id, label);
-    return label;
+    return null;
   }
 
   draw(frame) {
@@ -697,7 +682,7 @@ export class CombatSystem {
     const py = this.scene.player.y;
 
     if (config.attackType === WEAPON_TYPES.HITSCAN) {
-      if (phase === "active") {
+      if (phase === "active" && !this.scene.playerCharacterView?.stack) {
         const muzzleX = px + this.attack.direction.x * 10;
         const muzzleY = py + this.attack.direction.y * 10;
         this.graphics.lineStyle(3, color, alpha);
@@ -734,17 +719,7 @@ export class CombatSystem {
   }
 
   drawResiliencePips(npc) {
-    const combat = npc.combat;
-    const width = 5;
-    const gap = 2;
-    const total = combat.maxResilience * width + (combat.maxResilience - 1) * gap;
-    const startX = npc.x - total / 2;
-    const y = npc.y - 25;
-    for (let index = 0; index < combat.maxResilience; index++) {
-      const active = index < combat.resilience;
-      this.graphics.fillStyle(active ? 0xfff2a8 : 0x3a3145, active ? 0.92 : 0.72);
-      this.graphics.fillRect(startX + index * (width + gap), y, width, 3);
-    }
+    return null;
   }
 
   targetName(npc) {

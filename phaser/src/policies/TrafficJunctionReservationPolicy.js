@@ -99,16 +99,23 @@ function collectCandidates(system, now) {
   const byToken = new Map();
   const liveArrivalKeys = new Set();
 
-  for (const slot of system.materializer?.pool || []) {
+  const pool = system.materializer?.pool || [];
+  // Physical drivers already reserve their measured path in TrafficDriverJunctions.
+  // Keep the old policy for legacy/mixed traffic, but do not build a second set
+  // of lane projections when no body can consume it. Empty candidates below
+  // also release old reservations if ownership changes during play.
+  const hasLegacyTraffic = pool.some(slot => slot?.tokenId && slot.container?.active !== false && !slot.driverActive);
+  for (const slot of hasLegacyTraffic ? pool : []) {
     if (!slot?.tokenId || slot.container?.active === false) continue;
     const state = system.states?.get?.(slot.tokenId);
     if (!state) continue;
     const lane = system.laneFor?.(state);
     if (!lane) continue;
 
-    for (const junction of system.junctions || []) {
-      const projection = system.junctionProjection?.(junction, lane);
-      if (!projection) continue;
+    const relevant = system.junctionsForLane
+      ? system.junctionsForLane(lane)
+      : (system.junctions || []).map(junction=>({junction,projection:system.junctionProjection?.(junction,lane)})).filter(item=>item.projection);
+    for (const {junction,projection} of relevant) {
       const physicalDistance = Math.hypot(finite(slot.x) - finite(junction.x), finite(slot.y) - finite(junction.y));
       const inside = physicalDistance <= finite(junction.radius, system.junctionRadius) + Math.max(8, finite(slot.radius, 14));
       const phase = wrapPhase(state.visualTravel);

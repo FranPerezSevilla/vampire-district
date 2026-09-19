@@ -7,6 +7,8 @@ import { installSidewalkCoveragePresentationPolicy } from "../phaser/src/policie
 
 function mapStub(onFillRect = () => {}) {
   return {
+    depth: 0,
+    clear() { return this; },
     fillStyle() { return this; },
     fillRect(x, y, w, h) { onFillRect(x, y, w, h); return this; },
     lineStyle() { return this; },
@@ -15,6 +17,11 @@ function mapStub(onFillRect = () => {}) {
 }
 
 class PresentationScene {
+  constructor(){
+    const image=new Proxy({}, {get:()=>()=>image});
+    this.add={renderTexture:()=>image,tileSprite:()=>image,image:()=>image};
+    this.textures={exists:()=>true};this.events={once(){}};
+  }
   drawDistrictStreet() {}
 }
 
@@ -84,7 +91,14 @@ test("authoritative road and junction pavement is painted after buildings and pa
   scene.drawRoadWindow = () => {};
   scene.drawBuilding = () => renderOrder.push("building");
 
+  let rasterizations=0;
+  const image=new Proxy({}, {get:(_,key)=>(...args)=>{if(key==='draw'||key==='batchDraw')rasterizations++;return image;}});
+  scene.add={renderTexture:()=>image,tileSprite:()=>new Proxy({}, {get:()=>()=>image}),image:()=>image};scene.events={once(){}};
   scene.drawDistrictStreet();
+  const initialRasterizations=rasterizations;
+  assert.ok(initialRasterizations>=3);
+  scene.drawDistrictStreet();
+  assert.equal(rasterizations,initialRasterizations,'unchanged surfaces reuse paving, campus and final bake');
 
   assert.equal(observed.geometryCount, completed.length);
   assert.equal(observed.sidewalkDrawCount, completed.length);

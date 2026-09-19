@@ -31,6 +31,7 @@ beforeEach(async () => {
   h = await uiHarness();
   assert.ok(h.scene.interactionSystem instanceof InteractionSystem);
   assert.equal(h.scene.interactionSystem.__nbdHiddenTraversalPolicy, true);
+  h.ui.game.events ||= { on(){}, off(){} };
   await act(async () => h.ui.create());
   assert.equal(h.ui.bootError, null);
 });
@@ -59,7 +60,7 @@ function expectDomain(tabId) {
 
 test('installed traversal filter preserves menu metadata, disabled options and hidden-action restrictions', async () => {
   const visible = {id:'service',label:'Service',type:'vampire',disabled:true,run(){}};
-  let hiddenCalls=0; const hidden={id:'roof',type:'roofJump',run(){hiddenCalls++;}};
+  let hiddenCalls=0; const hidden={id:'roof',type:'privateShaft',run(){hiddenCalls++;}};
   const presentation={title:'Sire services',detail:'Keep the briefing',view:'vampire-domain'};
   h.scene.interactionSystem.open([hidden,visible],presentation);
   const snapshot=h.scene.interactionSystem.snapshot();

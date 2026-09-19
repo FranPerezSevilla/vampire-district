@@ -122,12 +122,35 @@ test("the runtime reverses and reassesses a full-width obstruction, then resumes
       prior = lead.maneuver;
     }
     const retreat = -(lead.pose.x - start.x) * Math.cos(start.angle) - (lead.pose.y - start.y) * Math.sin(start.angle);
-    assert.ok(partials >= 2, "partial recovery must reevaluate after its first reverse");
+    assert.ok(partials >= 2, `partial recovery must reevaluate after its first reverse: ${JSON.stringify({ partials, retreat, performance: runtime.snapshot().performance })}`);
     assert.ok(retreat > 10 && retreat < 50, "retreat is useful and bounded");
     assert.ok(Math.abs(lead.pose.speed) < 0.01, "no endless reverse or approach/reverse oscillation");
     network.scene.vehicleSystem.vehicles.length = 0;
     for (let i = 0; i < 200; i++) { runtime.step(0.05); network.physical.update(0.05); }
     assert.ok((lead.pose.x - start.x) * Math.cos(start.angle) + (lead.pose.y - start.y) * Math.sin(start.angle) > 100);
+  } finally { network.destroy(); }
+});
+
+test("a pending recovery search is cancelled immediately when its obstruction clears", async () => {
+  const { network, runtime, drivers, obstacle } = await crossingQueue({ straightExit: true, blockedShoulder: true });
+  try {
+    for (const other of drivers.slice(1)) {
+      network.scene.events.emit("traffic:vehicle-hijacked", { tokenId: other.tokenId });
+      network.materializer.assignments.delete(other.tokenId);
+    }
+    obstacle.archetype = { ...archetype, height: 300 };
+    for (let i = 0; i < 100 && !runtime.snapshot().performance.recoverySearchSlices; i++) {
+      runtime.step(0.05); network.physical.update(0.05);
+    }
+    const before = runtime.snapshot().performance;
+    assert.ok(before.recoverySearchSlices > 0);
+    assert.equal(before.recoverySearchCompletions, 0);
+    network.scene.vehicleSystem.vehicles.length = 0;
+    runtime.step(0.05);
+    assert.equal(runtime.snapshot().performance.recoverySearchCancellations, before.recoverySearchCancellations + 1);
+    assert.equal(drivers[0].maneuver, null);
+    for (let i = 0; i < 10; i++) { network.physical.update(0.05); runtime.step(0.05); }
+    assert.ok(drivers[0].pose.speed > 0, "do not keep a clear road stopped waiting for obsolete work");
   } finally { network.destroy(); }
 });
 

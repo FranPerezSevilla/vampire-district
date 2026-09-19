@@ -119,17 +119,7 @@ export class NpcSystem {
     const head = this.scene.add.rectangle(0, type === NPC_TYPES.RAT ? -2 : -6, type === NPC_TYPES.RAT ? 3 : 6, type === NPC_TYPES.RAT ? 3 : 6, palette.head, 1);
     container.add([shadow, body, head]);
 
-    if ([NPC_TYPES.TARGET, NPC_TYPES.POLICE, NPC_TYPES.HUNTER, NPC_TYPES.THUG, NPC_TYPES.RAT].includes(type)) {
-      const label = this.scene.add.text(8, -14, palette.label, {
-        fontFamily: "Arial, Helvetica, sans-serif",
-        fontSize: "12px",
-        fontStyle: "bold",
-        color: `#${palette.body.toString(16).padStart(6, "0")}`,
-        backgroundColor: "rgba(0,0,0,.45)",
-        padding: { x: 2, y: 1 }
-      });
-      container.add(label);
-    }
+
   }
 
   update(dt) {
@@ -367,12 +357,14 @@ export class NpcSystem {
     let best = null;
     let bestScore = Infinity;
     for (const node of STREET_NAV_POINTS) {
+      // Distance is a lower bound: blocked visibility can only add a penalty.
+      const distanceScore = Phaser.Math.Distance.Between(npc.x, npc.y, node.x, node.y)
+        + Phaser.Math.Distance.Between(node.x, node.y, targetX, targetY);
+      if (distanceScore >= bestScore) continue;
       if (!this.canNpcStandAt(npc, node.x, node.y)) continue;
       if (!this.lineClear(npc, npc.x, npc.y, node.x, node.y)) continue;
       const nodeSeesTarget = this.lineClear(npc, node.x, node.y, targetX, targetY);
-      const score = Phaser.Math.Distance.Between(npc.x, npc.y, node.x, node.y)
-        + Phaser.Math.Distance.Between(node.x, node.y, targetX, targetY)
-        + (nodeSeesTarget ? 0 : 140);
+      const score = distanceScore + (nodeSeesTarget ? 0 : 140);
       if (score < bestScore) {
         best = node;
         bestScore = score;
@@ -510,21 +502,13 @@ export class NpcSystem {
       npc.ai.intent = deathKind;
       npc.ai.recoverAt = 0;
     }
+    if(this.paintDeadNpc?.(npc,deathKind)){this.rebuildSpatialIndex();return;}
     npc.container.removeAll(true);
 
     const corpseColor = deathKind === "drained" ? 0x4b0e1a : 0x332d38;
-    const labelText = this.bodyLabel(npc, deathKind);
     const body = this.scene.add.rectangle(0, 2, npc.type === NPC_TYPES.RAT ? 8 : 14, npc.type === NPC_TYPES.RAT ? 4 : 7, corpseColor, 1);
     const head = this.scene.add.rectangle(npc.type === NPC_TYPES.RAT ? 4 : 6, 1, npc.type === NPC_TYPES.RAT ? 3 : 4, npc.type === NPC_TYPES.RAT ? 3 : 4, 0x12060a, 1);
-    const label = this.scene.add.text(8, -12, labelText, {
-      fontFamily: "Arial, Helvetica, sans-serif",
-      fontSize: "12px",
-      fontStyle: "bold",
-      color: deathKind === "drained" ? "#ff3b50" : "#d7c8ff",
-      backgroundColor: "rgba(0,0,0,.45)",
-      padding: { x: 2, y: 1 }
-    });
-    npc.container.add([body, head, label]);
+    npc.container.add([body, head]);
     this.rebuildSpatialIndex();
   }
 
@@ -543,16 +527,8 @@ export class NpcSystem {
   }
 
   drawMarkers(graphics) {
-    for (const npc of this.visibleInCamera(36)) {
-      if (!this.isVisible(npc) || npc.dead || npc.combat?.state === COMBAT_STATES.DOWNED) continue;
-      if (npc.stunnedTimer > 0 && Number.isFinite(npc.stunnedTimer)) {
-        graphics.lineStyle(2, 0xfff2a8, 0.9).strokeCircle(npc.x, npc.y, 16);
-        graphics.fillStyle(0xfff2a8, 0.13).fillCircle(npc.x, npc.y, 16);
-        this.scene.addMapLabel("STUNNED", npc.x + 12, npc.y - 18, 0xfff2a8);
-      }
-      if (npc.luredTimer > 0) this.scene.addMapLabel("LURED", npc.x + 12, npc.y - 28, 0xff4bd8);
-      if (npc.whisperCommand === "walk_away" && npc.whisperCommandTimer > 0) this.scene.addMapLabel("COMPELLED", npc.x + 12, npc.y - 28, 0xff4bd8);
-    }
+    // World annotations are disabled; simulation remains active.
+    return null;
   }
 
   summary() {

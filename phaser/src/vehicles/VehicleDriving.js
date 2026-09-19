@@ -1,4 +1,5 @@
 import { CAMERA, WORLD } from "../data/balance.js";
+import { LAYERS } from "../data/district.js";
 import { buildings } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 import { RawAudio } from "../systems/RawAudioSystem.js";
@@ -26,7 +27,7 @@ const AGGRESSIVE_SKID_THRESHOLD = 0.28;
 const AGGRESSIVE_SKID_PULSE_SECONDS = 0.22;
 
 function updateDrivenVehicleEngine(system, vehicle, frame) {
-  if (!vehicle || vehicle.disabled) {
+  if (!vehicle || vehicle.disabled || !vehicle.engineRunning) {
     if (vehicle?.id) RawAudio.stopVehicleEngine(`player:${vehicle.id}`);
     return false;
   }
@@ -372,7 +373,7 @@ export function updateVehicleDriving(system, dt, frame) {
   }
 
   vehicle.container.setPosition(vehicle.x, vehicle.y).setRotation(vehicle.angle);
-  vehicle.visual.label.setRotation(-vehicle.angle);
+
   system.scene.player.setPosition(vehicle.x, vehicle.y);
   collideVehicleWithPedestrians(system, vehicle);
   updateDrivenVehicleEngine(system, vehicle, frame);
@@ -385,6 +386,21 @@ export function updateVehicleDriving(system, dt, frame) {
   system.updateHud();
   system.publish();
   return true;
+}
+
+// Runs inside the existing engine frame; distance culling and RawAudio's voice
+// budget also apply to cars left idling. No extra timers or audio instances.
+export function updateUnoccupiedVehicleEngines(system, occupied = system.currentVehicle()) {
+  if (system.scene.currentLayer !== LAYERS.STREET) return;
+  const listener = occupied || system.scene.player;
+  if (!listener) return;
+  for (const car of system.vehicles || []) {
+    if (car === occupied || !car.engineRunning || car.disabled || car.exploded || car.layer !== LAYERS.STREET) continue;
+    if ((car.x-listener.x)**2 + (car.y-listener.y)**2 > 400**2) continue;
+    const engine = vehicleEngineTelemetry({speed: 0, archetype: car.archetype, gear: 1,
+      throttle: 0, x: car.x, y: car.y, listener, maxDistance: 400});
+    RawAudio.updateVehicleEngine(`player:${car.id}`, {...engine, priority: 0});
+  }
 }
 
 export function updateVehicleCamera(system) {

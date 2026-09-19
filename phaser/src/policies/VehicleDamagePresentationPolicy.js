@@ -62,11 +62,12 @@ function restorePalette(vehicle) {
   const visual = vehicle?.visual;
   const archetype = vehicle?.archetype;
   if (!visual || !archetype) return;
-  visual.body?.setFillStyle?.(archetype.color, 1);
-  visual.body?.setStrokeStyle?.(1, archetype.trim, 0.95);
+  const palette = visual.palette || archetype;
+  visual.body?.setFillStyle?.(palette.color, 1);
+  visual.body?.setStrokeStyle?.(1, 0x171512, 0.95);
   visual.cabin?.setFillStyle?.(0x111522, 0.96);
-  visual.hood?.setFillStyle?.(archetype.trim, 0.38);
-  visual.nose?.setFillStyle?.(archetype.trim, 0.92);
+  visual.hood?.setFillStyle?.(palette.trim, 0.14);
+  visual.nose?.setFillStyle?.(palette.trim, 0.24);
 }
 
 function charWreck(vehicle) {

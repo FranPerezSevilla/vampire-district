@@ -55,6 +55,13 @@ function drawRoad(graphics, x, y, width, height, horizontal = true) {
   }
 }
 
+// Conservative padding covers strokes, shadows and lamp halos.
+export function outskirtsPieceVisible(bounds, view, padding = 32) {
+  if (!view) return true;
+  return bounds.x - padding <= view.x + view.width && bounds.x + bounds.width + padding >= view.x
+    && bounds.y - padding <= view.y + view.height && bounds.y + bounds.height + padding >= view.y;
+}
+
 export class OutskirtsSystem {
   constructor(scene) {
     this.scene = scene;
@@ -129,7 +136,18 @@ export class OutskirtsSystem {
   }
 
   drawOutskirts() {
-    const graphics = this.scene.add.graphics().setDepth(-18);
+    const group = this.scene.add.container(0, 0).setDepth(-18);
+    const piece = bounds => {
+      const graphic = this.scene.make.graphics({ x: 0, y: 0, add: false });
+      const willRender = graphic.willRender;
+      graphic.willRender = function(camera) {
+        // Rotated cameras retain the original renderer; worldView is axis-aligned.
+        return willRender.call(this, camera) && (camera.rotation || outskirtsPieceVisible(bounds, camera.worldView));
+      };
+      group.add(graphic);
+      return graphic;
+    };
+    let graphics = piece(OUTER_BOUNDS);
     graphics.fillStyle(0x080a12, 1).fillRect(
       OUTER_BOUNDS.x,
       OUTER_BOUNDS.y,
@@ -137,12 +155,13 @@ export class OutskirtsSystem {
       OUTER_BOUNDS.height
     );
 
-    drawRoad(graphics, OUTER_BOUNDS.x, 292, OUTER_BOUNDS.width, 92, true);
-    drawRoad(graphics, 426, OUTER_BOUNDS.y, 92, OUTER_BOUNDS.height, false);
-    drawRoad(graphics, OUTER_BOUNDS.x, -150, OUTER_BOUNDS.width, 58, true);
-    drawRoad(graphics, OUTER_BOUNDS.x, 716, OUTER_BOUNDS.width, 58, true);
-    drawRoad(graphics, -188, OUTER_BOUNDS.y, 58, OUTER_BOUNDS.height, false);
-    drawRoad(graphics, 1088, OUTER_BOUNDS.y, 58, OUTER_BOUNDS.height, false);
+    const road = (x, y, width, height, horizontal) => drawRoad(piece({x,y,width,height}), x,y,width,height,horizontal);
+    road( OUTER_BOUNDS.x, 292, OUTER_BOUNDS.width, 92, true);
+    road( 426, OUTER_BOUNDS.y, 92, OUTER_BOUNDS.height, false);
+    road( OUTER_BOUNDS.x, -150, OUTER_BOUNDS.width, 58, true);
+    road( OUTER_BOUNDS.x, 716, OUTER_BOUNDS.width, 58, true);
+    road( -188, OUTER_BOUNDS.y, 58, OUTER_BOUNDS.height, false);
+    road( 1088, OUTER_BOUNDS.y, 58, OUTER_BOUNDS.height, false);
 
     let seed = 1;
     const northRows = [-408, -270, -82];
@@ -152,7 +171,8 @@ export class OutskirtsSystem {
       for (const x of rowXs) {
         const width = 112 + Math.round(seededValue(seed) * 28);
         const height = 88 + Math.round(seededValue(seed + 2) * 30);
-        drawOuterBuilding(graphics, x, y, width, height, seed++);
+        if (rectOutsideDistrict(x, y, width, height)) drawOuterBuilding(piece({x,y,width,height}), x, y, width, height, seed);
+        seed++;
       }
     }
 
@@ -161,13 +181,16 @@ export class OutskirtsSystem {
       for (let y = 12; y <= 574; y += 126) {
         const width = 108 + Math.round(seededValue(seed) * 30);
         const height = 92 + Math.round(seededValue(seed + 3) * 24);
-        drawOuterBuilding(graphics, x, y, width, height, seed++);
+        if (rectOutsideDistrict(x, y, width, height)) drawOuterBuilding(piece({x,y,width,height}), x, y, width, height, seed);
+        seed++;
       }
     }
 
     graphics.fillStyle(0xffdc74, 0.17);
     for (let x = OUTER_BOUNDS.x + 54; x < OUTER_BOUNDS.x + OUTER_BOUNDS.width; x += 96) {
       if (x > -20 && x < WORLD.width + 20) continue;
+      graphics = piece({x:x-24,y:250,width:48,height:176});
+      graphics.fillStyle(0xffdc74, 0.17);
       graphics.fillCircle(x, 278, 22).fillCircle(x, 398, 22);
       graphics.fillStyle(0xffe16b, 0.68).fillRect(x - 2, 272, 4, 13).fillRect(x - 2, 392, 4, 13);
       graphics.fillStyle(0xffdc74, 0.17);
@@ -176,11 +199,14 @@ export class OutskirtsSystem {
     graphics.fillStyle(0x4b5268, 0.88);
     for (let x = OUTER_BOUNDS.x + 70; x < OUTER_BOUNDS.x + OUTER_BOUNDS.width - 70; x += 154) {
       if (x > -40 && x < WORLD.width + 40) continue;
+      graphics = piece({x,y:324,width:24,height:10});
+      graphics.fillStyle(0x4b5268, 0.88);
       graphics.fillRect(x, 324, 24, 10);
       graphics.fillStyle(0x1a1d29, 1).fillRect(x + 3, 326, 18, 5);
       graphics.fillStyle(0x4b5268, 0.88);
     }
 
+    graphics = piece({x:0,y:0,width:WORLD.width,height:WORLD.height});
     graphics.lineStyle(2, 0x8f79aa, 0.28).strokeRect(0, 0, WORLD.width, WORLD.height);
     graphics.lineStyle(3, 0xa75cff, 0.34);
     const exits = [
@@ -196,7 +222,7 @@ export class OutskirtsSystem {
       graphics.lineTo(exit.x + exit.dy * 0.55, exit.y - exit.dx * 0.55);
       graphics.strokePath();
     }
-    return graphics;
+    return group;
   }
 
   destroy() {

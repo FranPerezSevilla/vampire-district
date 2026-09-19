@@ -1,4 +1,5 @@
 import { LAYERS } from "./district.js";
+import { HOSPITAL_AMBULANCE_BAYS } from "./hospital-access.js";
 
 export const VEHICLE_OWNERSHIP = Object.freeze({
   PARKED: "parked",
@@ -32,7 +33,22 @@ function defineArchetype(spec) {
   });
 }
 
+// Shared commercial running gear: medical variants occupy the same traffic
+// envelope and use the same kinematics as the delivery vans they replace.
+const COMMERCIAL_VAN_CHASSIS = Object.freeze({
+  width:42, height:20, maxSpeed:292, gearCount:4, gearShiftDuration:.19, gearHoldDuration:.49, firstGearHoldDuration:.37,
+  cameraLookAhead:62, reverseSpeed:80, acceleration:242, reverseAcceleration:98, launchBoost:.36,
+  brake:256, handbrakeBrake:188, handbrakeThrottleFactor:.11, handbrakeSteerMultiplier:1.23,
+  handbrakeDriftKick:.31, grip:7.7, handbrakeGrip:1.78, drag:40, steerRate:2.28,
+  cameraZoomFactor:.74, mass:1.68, collisionPush:1.66, occupantMax:2
+});
+
 export const VEHICLE_ARCHETYPES = Object.freeze({
+  ambulance: defineArchetype({
+    id:"ambulance", label:"Hospital ambulance", bodyStyle:"ambulance", emergencyService:"medical",
+    ...COMMERCIAL_VAN_CHASSIS, maxHealth:138, trunkCapacity:6,
+    occupantMin:1, occupantMax:2, trafficWeight:1, conditionProfile:"maintained", color:0xd0ccba, trim:0x993c36
+  }),
   bus: defineArchetype({
     id: "bus", label: "Autobús urbano", bodyStyle: "bus", width: 60, height: 22,
     maxSpeed: 230, gearCount: 4, gearShiftDuration: 0.22, gearHoldDuration: 0.6, firstGearHoldDuration: 0.4,
@@ -153,13 +169,9 @@ export const VEHICLE_ARCHETYPES = Object.freeze({
     palettes: [{ color: 0x70685d, trim: 0xd7c9b5 }, { color: 0x6a7078, trim: 0xd5dbe2 }, { color: 0x4f5e61, trim: 0xc2d1d2 }]
   }),
   delivery_van: defineArchetype({
-    id: "delivery_van", label: "Delivery van", bodyStyle: "delivery-van", width: 42, height: 20,
-    maxSpeed: 292, gearCount: 4, gearShiftDuration: 0.19, gearHoldDuration: 0.49, firstGearHoldDuration: 0.37,
-    cameraLookAhead: 62, reverseSpeed: 80, acceleration: 242, reverseAcceleration: 98, launchBoost: 0.36,
-    brake: 256, handbrakeBrake: 188, handbrakeThrottleFactor: 0.11, handbrakeSteerMultiplier: 1.23,
-    handbrakeDriftKick: 0.31, grip: 7.7, handbrakeGrip: 1.78, drag: 40, steerRate: 2.28,
-    maxHealth: 124, trunkCapacity: 9, cameraZoomFactor: 0.74, mass: 1.68, collisionPush: 1.66,
-    trafficWeight: 6, occupantMax: 2, color: 0x777267, trim: 0xd8d2c7,
+    ...COMMERCIAL_VAN_CHASSIS,
+    id: "delivery_van", label: "Delivery van", bodyStyle: "delivery-van",
+    maxHealth:124, trunkCapacity:9, trafficWeight:6, color:0x777267, trim:0xd8d2c7,
     palettes: [{ color: 0x777267, trim: 0xd8d2c7 }, { color: 0x5c626b, trim: 0xcbd2dc }]
   }),
   limousine: defineArchetype({
@@ -253,13 +265,18 @@ function stableHash(value) {
 
 export function trafficVehicleArchetype(seed) {
   const candidates = CIVILIAN_VEHICLE_ARCHETYPE_IDS.map(id => VEHICLE_ARCHETYPES[id])
-    .filter(archetype => Number(archetype.trafficWeight) > 0);
+    .filter(archetype => !archetype.emergencyService && Number(archetype.trafficWeight) > 0);
   const total = candidates.reduce((sum, archetype) => sum + Number(archetype.trafficWeight), 0);
   if (!candidates.length || total <= 0) return VEHICLE_ARCHETYPES.sedan;
   let roll = stableHash(seed) % total;
   for (const archetype of candidates) {
     const weight = Number(archetype.trafficWeight);
-    if (roll < weight) return archetype;
+    if (roll < weight) {
+      // One in five delivery vans is a medical variant (~1% of all traffic).
+      // Its identical chassis preserves existing routes, clearances and queues.
+      return archetype.id === "delivery_van" && stableHash(`medical-service:${seed}`) % 5 === 0
+        ? VEHICLE_ARCHETYPES.ambulance : archetype;
+    }
     roll -= weight;
   }
   return candidates[candidates.length - 1];
@@ -274,11 +291,14 @@ export function policeVehicleArchetypeId(index, level = 2) {
 }
 
 export const vehicleDefinitions = Object.freeze([
+  ...[0,1,2,3].map(i=>({id:"precinct_cruiser_"+i,name:"Precinct patrol cruiser",archetypeId:"police",x:1966,y:353+i*78,angle:Math.PI/2,ownership:"police",startOwned:false,ownerId:"city_police",factionId:"city_police",parked:true})),
   { id: "refuge_compact", name: "Refuge compact", archetypeId: "compact", x: 1540, y: 1575, angle: 0, ownership: "owned", startOwned: true, ownerId: "player", factionId: null, parked: true },
   { id: "market_sedan", name: "Market sedan", archetypeId: "sedan", x: 1140, y: 1945, angle: 0, ownership: "parked", startOwned: false, ownerId: "west_market_resident", factionId: null, parked: true },
   { id: "estate_van", name: "Estate van", archetypeId: "van", x: 2940, y: 2845, angle: Math.PI, ownership: "faction", startOwned: false, ownerId: "estate_cleaner", factionId: "first_estate", parked: true },
   { id: "police_cruiser", name: "Police cruiser", archetypeId: "police", x: 2080, y: 740, angle: Math.PI / 2, ownership: "police", startOwned: false, ownerId: "city_police", factionId: "city_police", parked: true },
-  { id: "foundry:vehicle:utility", name: "Foundry utility vehicle", archetypeId: "sedan", x: 1900, y: 2212, angle: 0, ownership: "parked", startOwned: false, ownerId: "foundry_shift_worker", factionId: null, parked: true, generated: true }
+  { id: "foundry:vehicle:utility", name: "Foundry utility vehicle", archetypeId: "sedan", x: 1900, y: 2212, angle: 0, ownership: "parked", startOwned: false, ownerId: "foundry_shift_worker", factionId: null, parked: true, generated: true },
+  ...HOSPITAL_AMBULANCE_BAYS.map((bay,index)=>({id:`hospital_ambulance_${index+1}`,name:"Hospital ambulance",archetypeId:"ambulance",...bay,
+    ownership:VEHICLE_OWNERSHIP.PARKED,startOwned:false,ownerId:"saint_vesper_hospital",factionId:null,parked:true}))
 ].map(definition => Object.freeze({ ...definition, layer: LAYERS.STREET })));
 
 export function vehicleArchetype(id) {

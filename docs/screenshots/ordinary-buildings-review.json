@@ -1,0 +1,287 @@
+{
+  "errors": [],
+  "views": [
+    {
+      "name": "default",
+      "settings": {
+        "eastWest": 4,
+        "northSouth": 4,
+        "frontBias": 0.55,
+        "front": 1,
+        "lateral": 1,
+        "rear": 1
+      },
+      "car": 2,
+      "serial": 37,
+      "roofs": 13,
+      "dormant": 0,
+      "materialBytes": 18004224,
+      "props": 28,
+      "propInstances": 28,
+      "roof": {
+        "x": 641.2295025156808,
+        "y": 1212.2470223041569,
+        "w": 245.51703401071853,
+        "h": 224.16772670543867,
+        "faces": 1
+      },
+      "attachmentError": 1.1368683772161603e-13
+    },
+    {
+      "name": "front",
+      "settings": {
+        "eastWest": 4,
+        "northSouth": 4,
+        "frontBias": 0.55,
+        "front": 2.2,
+        "lateral": 1,
+        "rear": 1
+      },
+      "car": 2,
+      "serial": 37,
+      "roofs": 13,
+      "dormant": 0,
+      "materialBytes": 18004224,
+      "props": 28,
+      "propInstances": 28,
+      "roof": {
+        "x": 641.2295025156808,
+        "y": 1110.2086387613085,
+        "w": 245.51703401071853,
+        "h": 237.34371254149664,
+        "faces": 1
+      },
+      "attachmentError": 2.2737367544323206e-13
+    },
+    {
+      "name": "lateral",
+      "settings": {
+        "eastWest": 4,
+        "northSouth": 4,
+        "frontBias": 0.55,
+        "front": 1,
+        "lateral": 2.2,
+        "rear": 1
+      },
+      "car": 2,
+      "serial": 37,
+      "roofs": 13,
+      "dormant": 0,
+      "materialBytes": 18004224,
+      "props": 28,
+      "propInstances": 28,
+      "roof": {
+        "x": 630.7049055344978,
+        "y": 1212.2470223041569,
+        "w": 264.1374748235808,
+        "h": 224.16772670543867,
+        "faces": 1
+      },
+      "attachmentError": 0
+    },
+    {
+      "name": "rear",
+      "settings": {
+        "eastWest": 4,
+        "northSouth": 4,
+        "frontBias": 0.55,
+        "front": 0,
+        "lateral": 1,
+        "rear": 2.2
+      },
+      "car": 2,
+      "serial": 50,
+      "roofs": 13,
+      "dormant": 0,
+      "materialBytes": 25775904,
+      "props": 28,
+      "propInstances": 28,
+      "roof": {
+        "x": 641.2295025156808,
+        "y": 1318.0138188977005,
+        "w": 245.51703401071853,
+        "h": 217.01302471919212,
+        "faces": 2
+      },
+      "attachmentError": 2.5421149729252077e-13
+    },
+    {
+      "name": "flat",
+      "settings": {
+        "eastWest": 4,
+        "northSouth": 4,
+        "frontBias": 0.55,
+        "front": 0,
+        "lateral": 0,
+        "rear": 0
+      },
+      "car": 2,
+      "serial": 50,
+      "roofs": 13,
+      "dormant": 0,
+      "materialBytes": 25775904,
+      "props": 28,
+      "propInstances": 28,
+      "roof": {
+        "x": 650,
+        "y": 1280,
+        "w": 230,
+        "h": 210,
+        "faces": 2
+      },
+      "attachmentError": 0
+    }
+  ],
+  "reset": {
+    "settings": {
+      "eastWest": 4,
+      "northSouth": 4,
+      "frontBias": 0.55,
+      "front": 1,
+      "lateral": 1,
+      "rear": 1
+    },
+    "car": 2,
+    "serial": 50,
+    "roofs": 13,
+    "dormant": 0,
+    "materialBytes": 25775904,
+    "props": 28,
+    "propInstances": 28,
+    "roof": {
+      "x": 641.2295025156808,
+      "y": 1212.2470223041569,
+      "w": 245.51703401071853,
+      "h": 224.16772670543867,
+      "faces": 2
+    },
+    "attachmentError": 1.1368683772161603e-13
+  },
+  "warmTraversal": {
+    "median": 16.69999999999709,
+    "p95": 16.700000000004366,
+    "over33": 1
+  },
+  "frames": {
+    "median": 16.69999999999709,
+    "p95": 16.700000000004366,
+    "over33": 0
+  },
+  "cacheReuse": {
+    "serialBefore": 59,
+    "serialAfter": 59
+  },
+  "travel": [
+    {
+      "x": 500,
+      "y": 710,
+      "settings": {
+        "eastWest": 4,
+        "northSouth": 4,
+        "frontBias": 0.55,
+        "front": 1,
+        "lateral": 1,
+        "rear": 1
+      },
+      "car": 2,
+      "serial": 79,
+      "roofs": 4,
+      "dormant": 12,
+      "materialBytes": 34636096,
+      "props": 27,
+      "propInstances": 27,
+      "roof": null,
+      "attachmentError": null
+    },
+    {
+      "x": 1640,
+      "y": 750,
+      "settings": {
+        "eastWest": 4,
+        "northSouth": 4,
+        "frontBias": 0.55,
+        "front": 1,
+        "lateral": 1,
+        "rear": 1
+      },
+      "car": 2,
+      "serial": 164,
+      "roofs": 28,
+      "dormant": 12,
+      "materialBytes": 45041352,
+      "props": 25,
+      "propInstances": 25,
+      "roof": null,
+      "attachmentError": null
+    },
+    {
+      "x": 2770,
+      "y": 2200,
+      "settings": {
+        "eastWest": 4,
+        "northSouth": 4,
+        "frontBias": 0.55,
+        "front": 1,
+        "lateral": 1,
+        "rear": 1
+      },
+      "car": 2,
+      "serial": 203,
+      "roofs": 14,
+      "dormant": 12,
+      "materialBytes": 23540720,
+      "props": 28,
+      "propInstances": 28,
+      "roof": null,
+      "attachmentError": null
+    },
+    {
+      "x": 3700,
+      "y": 550,
+      "settings": {
+        "eastWest": 4,
+        "northSouth": 4,
+        "frontBias": 0.55,
+        "front": 1,
+        "lateral": 1,
+        "rear": 1
+      },
+      "car": 2,
+      "serial": 289,
+      "roofs": 21,
+      "dormant": 12,
+      "materialBytes": 33053392,
+      "props": 35,
+      "propInstances": 35,
+      "roof": null,
+      "attachmentError": null
+    },
+    {
+      "x": 780,
+      "y": 1524,
+      "settings": {
+        "eastWest": 4,
+        "northSouth": 4,
+        "frontBias": 0.55,
+        "front": 1,
+        "lateral": 1,
+        "rear": 1
+      },
+      "car": 2,
+      "serial": 326,
+      "roofs": 13,
+      "dormant": 12,
+      "materialBytes": 26576272,
+      "props": 29,
+      "propInstances": 29,
+      "roof": {
+        "x": 641.2295025156808,
+        "y": 1212.2470223041569,
+        "w": 245.51703401071853,
+        "h": 224.16772670543867,
+        "faces": 1
+      },
+      "attachmentError": 1.1368683772161603e-13
+    }
+  ]
+}

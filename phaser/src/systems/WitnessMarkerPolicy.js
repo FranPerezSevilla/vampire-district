@@ -40,45 +40,12 @@ export class WitnessMarkerPolicy {
   }
 
   drawMarkers(context, graphics) {
-    const originalAddMapLabel = this.scene.addMapLabel;
-    if (typeof originalAddMapLabel === "function") {
-      this.scene.addMapLabel = function suppressTransientWitnessLabel(label, ...args) {
-        if (TRANSIENT_WITNESS_LABELS.has(label)) return null;
-        return originalAddMapLabel.call(this, label, ...args);
-      };
-    }
-
-    try {
-      this.originalDrawMarkers.call(context, graphics);
-    } finally {
-      if (originalAddMapLabel) this.scene.addMapLabel = originalAddMapLabel;
-    }
-
-    this.syncPersistentLabels();
+    // World annotations are disabled; simulation remains active.
+    return null;
   }
 
   syncPersistentLabels() {
-    const active = new Set(this.witnessSystem.alarmedWitnesses?.() || []);
-    for (const npc of this.scene.npcSystem?.npcs || []) {
-      if (!active.has(npc)) npc.__nbdReportLabel?.setVisible?.(false);
-    }
-
-    for (const witness of active) {
-      if (witness.trafficWitness) continue;
-      const text = reportLabelForWitness(witness);
-      const visible = Boolean(text && witness.layer === this.scene.currentLayer);
-      if (!visible) {
-        witness.__nbdReportLabel?.setVisible?.(false);
-        continue;
-      }
-
-      const label = this.ensureLabel(witness);
-      label
-        .setText?.(text)
-        .setPosition?.(witness.x, witness.y - 22)
-        .setVisible?.(true);
-      label.setColor?.(witness.masqueradeRisk ? "#ff3b50" : "#ffb02e");
-    }
+    return null;
   }
 
   ensureLabel(witness) {

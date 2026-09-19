@@ -1,0 +1,120 @@
+/* The Black Book stylesheet still contains retired street-HUD selectors.
+   These resets sever that inheritance while preserving stable class hooks. */
+.vb-street-hud.vb-hud { text-shadow:none; }
+
+.vb-street-place.vb-hud-place {
+  display:flex;
+  max-width:none;
+  padding:12px 16px 11px;
+  border-left:4px solid var(--vb-street-wine);
+}
+.vb-street-place.vb-hud-place > span { font:700 10px/1.2 Arial,sans-serif; letter-spacing:.1em; }
+
+.vb-street-objective.vb-objective {
+  display:block;
+  gap:0;
+  max-width:none;
+  padding:0;
+  background:none;
+}
+.vb-street-objective.vb-objective > div { display:grid; }
+.vb-street-objective.vb-objective .vb-street-objective-pointer { display:flex; gap:0; }
+/* Explicit typography prevents the retired HUD selectors from shrinking copy. */
+.vb-street-objective.vb-objective { width:min(38vw,520px); min-width:0; }
+.vb-street-objective.vb-objective .vb-street-objective-paper { grid-template-columns:1fr; gap:5px; min-height:76px; padding:12px 24px; }
+.vb-street-objective.vb-objective .vb-street-objective-kicker { justify-self:center; margin:0; border:0; padding:0; color:#782235; font:800 10px/1.2 Arial,sans-serif; letter-spacing:.18em; }
+.vb-street-objective.vb-objective .vb-street-objective-paper > strong { font:500 clamp(26px,2.4vw,38px)/1 Impact,"Arial Narrow",Arial,sans-serif; color:#21191a; }
+.vb-street-objective.vb-objective .vb-street-objective-pointer { flex-direction:row; justify-content:center; gap:6px; }
+.vb-street-objective.vb-objective .vb-street-objective-pointer span { font:700 12px/1.3 Arial,sans-serif; color:var(--vb-street-paper); }
+.vb-street-objective-pointer svg { width:28px; height:28px; }
+
+.vb-street-vitals.vb-vitals {
+  width:clamp(340px,27vw,430px);
+  min-width:0;
+  min-height:0;
+  padding:0;
+  background:linear-gradient(135deg,rgba(5,5,5,.97),rgba(16,10,12,.95));
+  border:1px solid rgba(231,223,207,.28);
+  border-left:4px solid var(--vb-street-wine);
+}
+
+.vb-street-powers.vb-powers {
+  width:auto;
+  padding:0;
+  background:none;
+  gap:5px;
+}
+.vb-street-power.vb-power-slot { justify-items:stretch; gap:0; }
+.vb-street-powers.vb-powers { opacity:1; gap:8px; }
+.vb-street-power.vb-power-slot { grid-template-columns:28px auto; column-gap:8px; padding:8px 10px; background:rgba(8,7,7,.92); }
+.vb-street-power.vb-power-slot > span { font:700 12px/1.3 Arial,sans-serif; }
+.vb-street-power.vb-power-slot small { font:700 9px/1.4 Arial,sans-serif; letter-spacing:.09em; }
+.vb-street-power.vb-power-slot kbd { width:26px; height:26px; font:700 12px Arial,sans-serif; color:var(--vb-street-paper); }
+.vb-street-power[data-active="true"] { border-top-color:var(--vb-street-wine-bright); }
+
+.vb-street-equipment.vb-equipment {
+  display:grid;
+  max-width:none;
+  padding:10px 13px;
+  background:rgba(7,7,7,.9);
+}
+.vb-street-equipment.vb-equipment { min-width:160px; opacity:1; gap:5px; }
+.vb-street-equipment.vb-equipment strong { font:500 24px/1.1 Impact,"Arial Narrow",Arial,sans-serif; text-transform:uppercase; }
+.vb-street-equipment.vb-equipment > span { font:700 10px/1.2 Arial,sans-serif; letter-spacing:.14em; }
+.vb-street-equipment.vb-equipment > small { font:700 12px/1.2 Arial,sans-serif; }
+
+.vb-street-prompt.vb-prompt {
+  width:min(650px,52vw);
+  max-width:none;
+  padding:12px 34px 12px 16px;
+  font-size:inherit;
+  text-align:left;
+}
+
+.vb-street-notice.vb-notice {
+  top:auto;
+  left:calc(var(--hud-edge) + env(safe-area-inset-left));
+  max-width:none;
+  padding:9px 12px;
+  background:rgba(229,219,200,.93);
+  font:inherit;
+  color:var(--vb-street-ink);
+  text-align:left;
+}
+
+@media (max-width:1100px) {
+  .vb-street-vitals.vb-vitals { width:min(370px,36vw); }
+  .vb-street-prompt.vb-prompt { width:min(590px,55vw); }
+}
+
+@media (max-width:900px) {
+  .vb-street-place.vb-hud-place { padding:10px 12px 9px; }
+  .vb-street-vitals.vb-vitals { width:min(335px,43vw); padding:0; }
+  .vb-street-powers.vb-powers { bottom:calc(var(--hud-edge) + 1px + env(safe-area-inset-bottom)); }
+  .vb-street-prompt.vb-prompt { width:54vw; max-width:none; padding:9px 20px 9px 12px; }
+  .vb-street-notice.vb-notice { width:min(280px,42vw); max-width:none; top:auto; }
+  .vb-street-equipment.vb-equipment { max-width:none; }
+}
+
+@media (max-width:680px), (max-height:520px) {
+  .vb-street-place.vb-hud-place { padding:6px 8px; }
+  .vb-street-vitals.vb-vitals { width:min(290px,46vw); padding:0; border-left-width:3px; }
+  .vb-street-powers.vb-powers { display:none; }
+  .vb-street-prompt.vb-prompt { width:50vw; max-width:none; padding:7px 14px 7px 9px; }
+  .vb-street-notice.vb-notice { display:none; }
+  .vb-street-equipment.vb-equipment { max-width:none; padding:6px 8px; }
+}
+
+/* Keep the objective clear of navigation and contextual actions above the footer. */
+.vb-street-prompt.vb-prompt { bottom:calc(var(--hud-edge) + 132px + env(safe-area-inset-bottom)); width:min(560px,54vw); min-height:76px; }
+.vb-street-prompt.vb-prompt kbd { min-width:50px; height:50px; font-size:30px; }
+.vb-street-prompt.vb-prompt strong { font-size:clamp(22px,2vw,32px); white-space:normal; overflow-wrap:anywhere; }
+@media (max-width:1100px) {
+  .vb-street-objective.vb-objective { top:88px; width:min(48vw,440px); }
+}
+@media (max-width:680px), (max-height:520px) {
+  .vb-street-objective.vb-objective { top:62px; width:min(64vw,360px); }
+  .vb-street-objective.vb-objective .vb-street-objective-paper { min-height:54px; padding:8px 16px; }
+  .vb-street-objective.vb-objective .vb-street-objective-paper > strong { font-size:24px; }
+  .vb-street-prompt.vb-prompt { width:calc(100vw - 32px); min-height:60px; bottom:calc(var(--hud-edge) + 112px + env(safe-area-inset-bottom)); }
+}

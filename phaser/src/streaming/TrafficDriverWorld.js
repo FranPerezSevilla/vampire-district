@@ -55,37 +55,72 @@ export function createTrafficDriverWorld(topology, materializer) {
     return vehicleFootprintPoints(pose, { width: archetype.width * 0.86, height: archetype.height * 0.82 }).every(onRoad);
   }
   const dynamicCells = new Map(), indexed = new Map(), boxes = new WeakMap(), buildingBodies = new WeakMap();
+  const candidateRegions = new Map();
+  const playerBody = { id: "player", x: 0, y: 0, angle: 0, archetype: { width: 16, height: 16 } };
+  let generation = 0;
   let prepared = false;
+  function invalidateCell(key) {
+    const [x, y] = key.split(":").map(Number);
+    for (const [regionKey, region] of candidateRegions) {
+      if (x >= region.left && x <= region.right && y >= region.top && y <= region.bottom) candidateRegions.delete(regionKey);
+    }
+  }
+  function removeFromCell(object, key) {
+    const members = dynamicCells.get(key);
+    members?.delete(object);
+    if (!members?.size) dynamicCells.delete(key);
+  }
   function indexObject(object, order) {
     const key = cellKey(object.x, object.y), prior = indexed.get(object);
-    if (prior?.key === key) return;
-    if (prior) dynamicCells.get(prior.key)?.delete(object);
+    // Preserve the first occurrence if a body appears in both source lists.
+    if (prior?.generation === generation) order = prior.order;
+    if (prior?.key === key) {
+      if (prior.order !== order) invalidateCell(key);
+      prior.order = order; prior.generation = generation;
+      return;
+    }
+    invalidateCell(key);
+    if (prior) { invalidateCell(prior.key); removeFromCell(object, prior.key); }
     if (!dynamicCells.has(key)) dynamicCells.set(key, new Set());
-    dynamicCells.get(key).add(object); indexed.set(object, { key, order: prior?.order ?? order });
+    dynamicCells.get(key).add(object); indexed.set(object, { key, order, generation });
   }
   function prepare() {
-    dynamicCells.clear(); indexed.clear(); prepared = true;
+    generation++; prepared = true;
     const scene = materializer.scene;
     let order = 0;
     for (const object of materializer.assignments.values()) indexObject(object, order++);
     for (const object of scene.vehicleSystem?.vehicles || []) indexObject(object, order++);
     if (scene.player && !scene.vehicleSystem?.isDriving?.() && !scene.transitSystem?.isRiding?.()) {
-      indexObject({ id: "player", x: scene.player.x, y: scene.player.y, angle: 0, archetype: { width: 16, height: 16 } }, order++);
+      playerBody.x = scene.player.x; playerBody.y = scene.player.y;
+      indexObject(playerBody, order++);
+    }
+    for (const [object, entry] of indexed) if (entry.generation !== generation) {
+      invalidateCell(entry.key); removeFromCell(object, entry.key); indexed.delete(object);
     }
   }
   function obstacles(driver, radius = 240) {
     if (!prepared) prepare();
     const nearby = [], x = driver.pose.x, y = driver.pose.y;
-    for (let cx = Math.floor((x - radius) / 128); cx <= Math.floor((x + radius) / 128); cx++) {
-      for (let cy = Math.floor((y - radius) / 128); cy <= Math.floor((y + radius) / 128); cy++) {
-        for (const object of dynamicCells.get(`${cx}:${cy}`) || []) {
-          if (object.tokenId !== driver.tokenId && object.container?.active !== false
-            && (object.x - x) ** 2 + (object.y - y) ** 2 < radius ** 2) nearby.push(object);
+    const left = Math.floor((x - radius) / 128), right = Math.floor((x + radius) / 128);
+    const top = Math.floor((y - radius) / 128), bottom = Math.floor((y + radius) / 128);
+    const key = `${left}:${right}:${top}:${bottom}`;
+    let candidates = candidateRegions.get(key)?.items;
+    if (!candidates) {
+      candidates = [];
+      for (let cx = left; cx <= right; cx++) {
+        for (let cy = top; cy <= bottom; cy++) {
+          for (const object of dynamicCells.get(`${cx}:${cy}`) || []) candidates.push(object);
         }
       }
+      // Cache membership/order only. Bodies retain their live position and state.
+      candidates.sort((a, b) => indexed.get(a).order - indexed.get(b).order);
+      if (candidateRegions.size >= 64) candidateRegions.delete(candidateRegions.keys().next().value);
+      candidateRegions.set(key, { items: candidates, left, right, top, bottom });
     }
-    // Preserve the former first-blocker order, including authored obstacles.
-    nearby.sort((a, b) => indexed.get(a).order - indexed.get(b).order);
+    for (const object of candidates) {
+      if (object.tokenId !== driver.tokenId && object.container?.active !== false
+        && (object.x - x) ** 2 + (object.y - y) ** 2 < radius ** 2) nearby.push(object);
+    }
     const buildings = materializer.scene?.trafficPhysicalConsequencesSystem?.nearbyBuildings?.(x, y, radius) || [];
     for (const building of buildings) {
       const width = building.w || building.width, height = building.h || building.height;

@@ -487,32 +487,8 @@ export class WitnessSystem {
   }
 
   drawMarkers(graphics) {
-    this.drawVisionCones(graphics);
-    this.drawHearingCones(graphics);
-
-    for (const witness of this.alarmedWitnesses()) {
-      if (witness.layer !== this.scene.currentLayer || !this.scene.npcSystem?.isRenderable?.(witness)) continue;
-      const shocked = witness.reactionTimer > 0;
-      const color = witness.masqueradeRisk ? 0xff3b50 : 0xffb02e;
-      graphics.lineStyle(2, color, 0.95).strokeCircle(witness.x, witness.y, shocked ? 20 : 18);
-      graphics.fillStyle(color, shocked ? 0.22 : 0.14).fillCircle(witness.x, witness.y, shocked ? 20 : 18);
-      this.scene.addMapLabel(shocked ? "WTF" : witness.masqueradeRisk ? "! VEIL" : "! WITNESS", witness.x + 12, witness.y - 18, color);
-      if (!shocked && witness.reportTarget) {
-        graphics.lineStyle(1, color, 0.32);
-        graphics.beginPath();
-        graphics.moveTo(witness.x, witness.y);
-        graphics.lineTo(witness.reportTarget.x, witness.reportTarget.y);
-        graphics.strokePath();
-      }
-    }
-
-    const time = this.scene.time.now;
-    for (const npc of this.scene.npcSystem?.visibleInCamera?.(36) || []) {
-      if (!visibleHuman(npc, this.scene.currentLayer) || !(npc.soundReactionTimer > 0)) continue;
-      const pulse = (Math.sin(time * 0.01) + 1) * 0.5;
-      graphics.lineStyle(2, 0xffb02e, 0.55 + pulse * 0.3).strokeCircle(npc.x, npc.y, 17 + pulse * 3);
-      graphics.fillStyle(0xffb02e, 0.06 + pulse * 0.05).fillCircle(npc.x, npc.y, 17 + pulse * 3);
-    }
+    // World annotations are disabled; simulation remains active.
+    return null;
   }
 
   drawVisionCones(graphics) {

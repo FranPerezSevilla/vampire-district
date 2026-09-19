@@ -1,0 +1,242 @@
+{
+  "areas": [
+    {
+      "name": "vesper",
+      "start": {
+        "x": 2033.180352,
+        "y": 1510
+      },
+      "end": {
+        "x": 2473.5323760000065,
+        "y": 1510
+      },
+      "mean": 18.946208530692694,
+      "p95": 24.5,
+      "max": 52,
+      "over50": 1,
+      "frames": 422,
+      "timings": {
+        "entityStreamSystem": {
+          "perFrame": 0.5343601914096218,
+          "max": 1.5,
+          "calls": 423
+        },
+        "drivers": {
+          "perFrame": 4.899763032723377,
+          "max": 9.599999964237213,
+          "calls": 423
+        },
+        "trafficLocalBehaviorSystem": {
+          "perFrame": 0.7305687239384764,
+          "max": 2.300000011920929,
+          "calls": 423
+        },
+        "trafficPhysicalConsequencesSystem": {
+          "perFrame": 0.38554502169102856,
+          "max": 2.5,
+          "calls": 423
+        },
+        "npcSpatial": {
+          "perFrame": 1.2279620862685108,
+          "max": 1.800000011920929,
+          "calls": 2322
+        },
+        "policeSystem": {
+          "perFrame": 0.4085308076081118,
+          "max": 1.600000023841858,
+          "calls": 423
+        },
+        "simulation": {
+          "perFrame": 10.927251181048804,
+          "max": 43.19999998807907,
+          "calls": 423
+        },
+        "parallax": {
+          "perFrame": 0.3715639822008486,
+          "max": 6.5,
+          "calls": 423
+        },
+        "render": {
+          "perFrame": 5.349289098904596,
+          "max": 11.599999964237213,
+          "calls": 846
+        }
+      },
+      "framebuffer": {
+        "width": 2160,
+        "height": 1440,
+        "antialias": false
+      },
+      "performance": {
+        "physicalSteps": 105520,
+        "distantSteps": 19879,
+        "predictionBuilds": 12135,
+        "predictionReuses": 25226,
+        "recoverySearchSlices": 0,
+        "recoverySearchCompletions": 0,
+        "recoverySearchCancellations": 0,
+        "physicalDrivers": 116,
+        "distantDrivers": 490
+      }
+    },
+    {
+      "name": "hospital",
+      "start": {
+        "x": 475,
+        "y": 625
+      },
+      "end": {
+        "x": 703.5669680000009,
+        "y": 625
+      },
+      "mean": 16.667432150288267,
+      "p95": 17.799999952316284,
+      "max": 18.399999976158142,
+      "over50": 0,
+      "frames": 479,
+      "timings": {
+        "entityStreamSystem": {
+          "perFrame": 0.5022964518602805,
+          "max": 1,
+          "calls": 480
+        },
+        "drivers": {
+          "perFrame": 1.9294363257780454,
+          "max": 3.5,
+          "calls": 480
+        },
+        "trafficLocalBehaviorSystem": {
+          "perFrame": 0.24509394579491187,
+          "max": 0.5,
+          "calls": 480
+        },
+        "trafficPhysicalConsequencesSystem": {
+          "perFrame": 0.07223381938914417,
+          "max": 0.20000004768371582,
+          "calls": 480
+        },
+        "npcSpatial": {
+          "perFrame": 1.017954072524212,
+          "max": 0.7000000476837158,
+          "calls": 2625
+        },
+        "policeSystem": {
+          "perFrame": 0.35302714004894886,
+          "max": 1.699999988079071,
+          "calls": 480
+        },
+        "simulation": {
+          "perFrame": 6.059081418155877,
+          "max": 12.100000023841858,
+          "calls": 480
+        },
+        "parallax": {
+          "perFrame": 0.12755740970559806,
+          "max": 1.800000011920929,
+          "calls": 480
+        },
+        "render": {
+          "perFrame": 2.51273486211056,
+          "max": 3.800000011920929,
+          "calls": 960
+        }
+      },
+      "framebuffer": {
+        "width": 2160,
+        "height": 1440,
+        "antialias": false
+      },
+      "performance": {
+        "physicalSteps": 176585,
+        "distantSteps": 38777,
+        "predictionBuilds": 17479,
+        "predictionReuses": 37508,
+        "recoverySearchSlices": 0,
+        "recoverySearchCompletions": 0,
+        "recoverySearchCancellations": 0,
+        "physicalDrivers": 62,
+        "distantDrivers": 544
+      }
+    },
+    {
+      "name": "police",
+      "start": {
+        "x": 1643,
+        "y": 675
+      },
+      "end": {
+        "x": 3034.6366240000157,
+        "y": 675
+      },
+      "mean": 18.73161592500271,
+      "p95": 23.700000047683716,
+      "max": 120.5,
+      "over50": 8,
+      "frames": 427,
+      "timings": {
+        "entityStreamSystem": {
+          "perFrame": 0.5227166277463319,
+          "max": 1.800000011920929,
+          "calls": 428
+        },
+        "drivers": {
+          "perFrame": 4.862529272078351,
+          "max": 10.400000035762787,
+          "calls": 428
+        },
+        "trafficLocalBehaviorSystem": {
+          "perFrame": 0.7829039822696802,
+          "max": 2.5,
+          "calls": 428
+        },
+        "trafficPhysicalConsequencesSystem": {
+          "perFrame": 0.3857142845696532,
+          "max": 0.9000000357627869,
+          "calls": 428
+        },
+        "npcSpatial": {
+          "perFrame": 1.0428571414891674,
+          "max": 1.199999988079071,
+          "calls": 2050
+        },
+        "policeSystem": {
+          "perFrame": 0.40327868863626165,
+          "max": 1.300000011920929,
+          "calls": 428
+        },
+        "simulation": {
+          "perFrame": 11.046604215400839,
+          "max": 94,
+          "calls": 428
+        },
+        "parallax": {
+          "perFrame": 0.8156908648633845,
+          "max": 5,
+          "calls": 428
+        },
+        "render": {
+          "perFrame": 3.478454332999379,
+          "max": 8.699999988079071,
+          "calls": 856
+        }
+      },
+      "framebuffer": {
+        "width": 2160,
+        "height": 1440,
+        "antialias": false
+      },
+      "performance": {
+        "physicalSteps": 266089,
+        "distantSteps": 56924,
+        "predictionBuilds": 29851,
+        "predictionReuses": 62215,
+        "recoverySearchSlices": 52,
+        "recoverySearchCompletions": 5,
+        "recoverySearchCancellations": 3,
+        "physicalDrivers": 97,
+        "distantDrivers": 509
+      }
+    }
+  ],
+  "errors": []
+}

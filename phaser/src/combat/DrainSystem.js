@@ -18,17 +18,6 @@ export class DrainSystem {
     this.candidate = null;
     this.invalidUntil = 0;
     this.invalidReason = "";
-    this.graphics = scene.add.graphics().setDepth(72);
-    this.label = scene.add.text(0, 0, "", {
-      fontFamily: "Arial, Helvetica, sans-serif",
-      fontSize: "12px",
-      fontStyle: "bold",
-      color: "#ffd8df",
-      backgroundColor: "rgba(24, 5, 13, .86)",
-      padding: { x: 4, y: 2 }
-    }).setOrigin(0.5, 1).setDepth(74).setVisible(false);
-    this.label.setResolution?.(3);
-    this.label.setStroke?.("#05060b", 2);
     scene.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, this.destroy, this);
   }
 
@@ -198,18 +187,8 @@ export class DrainSystem {
   }
 
   ensureWtfLabel(npc) {
-    if (npc.__nbdWtfLabel) return npc.__nbdWtfLabel;
-    npc.__nbdWtfLabel = this.scene.add.text(npc.x, npc.y - 26, "WTF", {
-      fontFamily: "Arial, Helvetica, sans-serif",
-      fontSize: "12px",
-      fontStyle: "bold",
-      color: "#ffd58b",
-      backgroundColor: "rgba(5, 6, 11, .78)",
-      padding: { x: 4, y: 2 }
-    }).setOrigin(0.5, 1).setDepth(72).setVisible(true);
-    npc.__nbdWtfLabel.setResolution?.(3);
-    npc.__nbdWtfLabel.setStroke?.("#05060b", 2);
-    return npc.__nbdWtfLabel;
+    // World annotations are disabled; simulation remains active.
+    return null;
   }
 
   isBusy() {
@@ -217,59 +196,8 @@ export class DrainSystem {
   }
 
   draw(frame) {
-    this.graphics.clear();
-    this.label.setVisible(false);
-    if (!frame?.worldEnabled) return;
-
-    const active = this.scene.feedingSystem?.active;
-    if (active?.source === "rightMouse" && active.npc) {
-      const npc = active.npc;
-      const progress = this.scene.feedingSystem?.progress?.();
-      const ready = Boolean(progress?.ready);
-      const color = ready ? 0xffb02e : 0xff3b50;
-      this.graphics.lineStyle(2, color, 0.72);
-      this.graphics.beginPath();
-      this.graphics.moveTo(this.scene.player.x, this.scene.player.y);
-      this.graphics.lineTo(npc.x, npc.y);
-      this.graphics.strokePath();
-      this.graphics.lineStyle(2, color, 0.9).strokeCircle(npc.x, npc.y, 17);
-
-      const barWidth = 58;
-      const barX = npc.x - barWidth / 2;
-      const barY = npc.y - 34;
-      const pct = Math.max(0, Math.min(1, Number(progress?.pct) || 0));
-      this.graphics.fillStyle(0x05060b, 0.88).fillRect(barX - 1, barY - 1, barWidth + 2, 7);
-      this.graphics.fillStyle(color, 0.82).fillRect(barX, barY, barWidth * pct, 5);
-      for (const threshold of Object.values(progress?.thresholds || {})) {
-        const markerPct = Math.max(0, Math.min(1, Number(threshold) / Math.max(0.001, Number(progress?.duration) || 1)));
-        const markerX = barX + barWidth * markerPct;
-        this.graphics.lineStyle(1, 0xf1e6ff, 0.62).lineBetween(markerX, barY - 1, markerX, barY + 6);
-      }
-
-      const nextText = progress?.nextLabel ? ` · HOLD FOR ${progress.nextLabel}` : "";
-      const text = progress?.ready
-        ? `RELEASE · ${progress.reachedLabel}${nextText}`
-        : `HOLD RMB · ${progress?.nextLabel || "DRAIN"}`;
-      this.label.setText(text).setPosition(npc.x, npc.y - 39).setVisible(true);
-      return;
-    }
-
-    if (this.candidate && frame.pointerInside) {
-      const npc = this.candidate.npc;
-      const downed = this.candidate.kind === DRAIN_KINDS.DOWNED;
-      const color = downed ? 0xffb02e : 0xff3b50;
-      this.graphics.lineStyle(2, color, 0.82).strokeCircle(npc.x, npc.y, downed ? 18 : 15);
-      this.graphics.fillStyle(color, 0.08).fillCircle(npc.x, npc.y, downed ? 18 : 15);
-      this.label.setText("RMB · FEED").setPosition(npc.x, npc.y - 21).setVisible(true);
-      return;
-    }
-
-    if (this.scene.time.now < this.invalidUntil) {
-      this.label
-        .setText(this.invalidReason)
-        .setPosition(this.scene.player.x, this.scene.player.y - 24)
-        .setVisible(true);
-    }
+    // World annotations are disabled; simulation remains active.
+    return null;
   }
 
   destroy() {

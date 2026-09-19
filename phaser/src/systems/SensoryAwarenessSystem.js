@@ -175,7 +175,7 @@ export class SensoryAwarenessSystem {
       npc.ai.intent = "heard-sound";
     }
     this.turnToward(npc, source.x, source.y);
-    this.ensureWtfLabel(npc).setPosition(npc.x, npc.y - 26).setVisible(true);
+
     return true;
   }
 
@@ -190,17 +190,7 @@ export class SensoryAwarenessSystem {
   }
 
   ensureWtfLabel(npc) {
-    if (npc.__nbdWtfLabel) return npc.__nbdWtfLabel;
-    npc.__nbdWtfLabel = this.scene.add.text(npc.x, npc.y - 28, "?", {
-      fontFamily: "Arial, Helvetica, sans-serif",
-      fontSize: "14px",
-      fontStyle: "bold",
-      color: "#ffd58b",
-      backgroundColor: "rgba(5, 6, 11, .78)",
-      padding: { x: 5, y: 2 }
-    }).setOrigin(0.5, 1).setDepth(72).setVisible(false);
-    npc.__nbdWtfLabel.setResolution?.(3);
-    npc.__nbdWtfLabel.setStroke?.("#05060b", 2);
-    return npc.__nbdWtfLabel;
+    // World annotations are disabled; simulation remains active.
+    return null;
   }
 }
