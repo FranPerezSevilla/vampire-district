@@ -82,14 +82,9 @@ export function prepareStackMaterialAtlases(scene) {
    g.drawImage(source,x,y,w,h,0,0,w,h);
    ctx.clearRect(x,y,w,h);ctx.drawImage(scratch,x,y);
   };
-  if(human){
-   // Broad matte cloth modulation, then a single face/jacket surface per side.
-   for(const index of [3,4,5,6,8])material(index,5,.16);
-   for(const [index,cell]of [[24,0],[29,1],[25,2],[26,3],[27,4],[30,5]]){
-    const [x,y,w,h]=target(index);ctx.clearRect(x,y,w,h);
-    ctx.drawImage(surface,...surfaceCell(surface,cell,cell<2?[.12,.04,.74,.82]:[.16,.02,.68,.94]),x,y,w,h);
-   }
-  }else{
+  // Characters retain their authored face/lapel/seam artwork: the older mood
+  // image reintroduced blurred detail and unrelated anatomy over these parts.
+  if(!human){
    for(const index of [3,4,5,10,12,15,16,18,26,29,34,35])material(index,6,.18);
    for(const index of [7,8,9,17,24,28])material(index,7,.12);
   }

@@ -1,10 +1,12 @@
 import {scaledBuildingHeight, metresToWorld, WORLD_SCALE} from './WorldScale.js';
+import {blockArchitectureReady,bakeBlockFacade} from './OrdinaryBlockArchitecture.js';
+import {buildingEntrances} from './BuildingEntrances.js';
 
-export const ORDINARY_FACADE_KEY='ordinary-facades-v1';
+export const ORDINARY_FACADE_KEY='ordinary-facades-v2';
 export const ORDINARY_ROOF_KEY='ordinary-roofs-v1';
 
 export function ordinaryBuilding(b){
- return b.w>=24&&b.h>=24&&!b.landmark&&!b.skyline&&!b.campusBarrier&&!b.cornerTurret&&!b.roofTier&&!b.dormer
+ return b.w>=24&&b.h>=24&&(!b.landmark||Boolean(b.architectureKit))&&!b.skyline&&!b.campusBarrier&&!b.cornerTurret&&!b.roofTier&&!b.dormer
   &&!b.cathedralKind&&!b.cathedralCollider&&!['hospital','hospitalEmergency'].includes(b.id)
   &&!['hospital','police-campus','cathedral'].includes(b.family)&&b.siteId!=='club-site';
 }
@@ -24,8 +26,9 @@ export function ordinaryFacadeLayout(b,length){
  const industrial=b.family==='industrial',commercial=['commercial','market','nightlife'].includes(b.family);
  const modules=[];
  if(bayWidth<20||columns<1)return {height,modules};
- const entrance=b.facadeSide==='south'||!b.facadeSide;
- const groundWidth=Math.min(2*rowHeight,length-8),groundX=(length-groundWidth)/2;
+ const side=b.facadeSide||'south',authoredDoor=buildingEntrances(b).find(d=>d.side===side);
+ const entrance=b.entrances?!!authoredDoor:side==='south';
+ const groundWidth=Math.min(2*rowHeight,length-8),groundX=Math.max(4,Math.min(length-groundWidth-4,length*(authoredDoor?.at??.5)-groundWidth/2));
  for(let row=0;row<rows;row++)for(let col=0;col<columns;col++){
   const x=start+col*bayWidth,y=row*rowHeight,ground=row===rows-1;
   if(ground&&entrance&&x<groundX+groundWidth&&x+bayWidth>groundX)continue;
@@ -55,13 +58,15 @@ function tiled(ctx,source,crop,x,y,w,h,tileW,tileH){
  }
 }
 export function bakeOrdinaryFacade(materials,b,length){
+ if(blockArchitectureReady(materials.scene,b))return bakeBlockFacade(materials,b,length);
  const source=materials.scene.textures.get(ORDINARY_FACADE_KEY).getSourceImage(),layout=ordinaryFacadeLayout(b,length);
  const width=Math.min(1024,Math.ceil(length*3)),height=Math.min(512,Math.ceil(layout.height*3));
  const canvas=materials.canvas(width,height),ctx=canvas.getContext('2d');ctx.scale(width/length,height/layout.height);
  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
- tiled(ctx,source,atlasCell(source,6,2,4),0,0,length,layout.height,93,46.5);
+ // Exclude the source sheet's dark separators from the repeated material edges.
+ tiled(ctx,source,atlasCell(source,6,2,4,5),0,0,length,layout.height,93,46.5);
  for(const m of layout.modules){
-  const c=atlasCell(source,m.cell,2,4);
+  const c=atlasCell(source,m.cell,2,4,5);
   if(m.half!==undefined){c.w/=2;c.x+=c.w*m.half;}
   cropDraw(ctx,source,c,m.x,m.y,m.w,m.h);
  }

@@ -1,0 +1,27 @@
+[
+  {
+    "before": "props/gothic-street-atlas.png",
+    "after": "props/gothic-street-atlas-v2.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "sourceBytesBefore": 1977021,
+    "sourceBytesAfter": 1702942,
+    "sameDecodedRgbaBytes": 6290064,
+    "alphaSilhouetteIntersectionOverUnion": 0.9854291074437979
+  },
+  {
+    "before": "architecture/ordinary-rooftop-objects-v1.png",
+    "after": "architecture/ordinary-rooftop-objects-v2.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGB",
+    "sourceBytesBefore": 3195635,
+    "sourceBytesAfter": 2497800,
+    "sameDecodedRgbaBytes": 6290064
+  }
+]

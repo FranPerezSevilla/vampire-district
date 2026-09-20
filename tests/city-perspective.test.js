@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {cityPerspectiveAt} from '../phaser/src/rendering/CityPerspective.js';
+import {cityPerspectiveAt,cityPerspectiveReach,CITY_PERSPECTIVE_MAX} from '../phaser/src/rendering/CityPerspective.js';
 import {roofParallaxOffset} from '../phaser/src/rendering/BuildingParallax.js';
 import {vehicleStackProjection} from '../phaser/src/rendering/VehicleSpriteStack.js';
 const camera={scrollX:30,scrollY:80,width:1280,height:720,zoom:1};
@@ -29,21 +29,32 @@ test('the active viewport height envelope remains bounded at all game zooms',()=
  }
 });
 
-test('car projection remains independent of the stronger city frontage',()=>{
+test('car projection remains independent of the classic radial city projection',()=>{
  const x=camera.scrollX+camera.width/2,y=camera.scrollY+camera.height/2;
  assert.equal(vehicleStackProjection(x,y,camera,{},1).y,0);
- assert.equal(cityPerspectiveAt(x,y,camera).y,-.55);
+ assert.equal(cityPerspectiveAt(x,y,camera).y,0);
  assert.deepEqual(vehicleStackProjection(x,y,camera,{},2),{x:0,y:-.45});
 });
 
-test('opposite controls reveal opposite faces without folding tall roofs at close zoom',()=>{
+test('classic axes are symmetric, independent and retain their full experimental gain',()=>{
  for(const zoom of [.5,1,3,5]){
   const c={...camera,zoom},x=c.scrollX+c.width/2,y=c.scrollY+c.height/2;
-  const front=cityPerspectiveAt(x,y,c,{}, {front:2.5,rear:0,lateral:1});
-  const rear=cityPerspectiveAt(x,y,c,{}, {front:0,rear:2.5,lateral:1});
-  assert.ok(front.y<0&&rear.y>0);
-  assert.ok(front.spreadY>=0&&rear.spreadY>=0);
-  const zero=cityPerspectiveAt(x+30,y+80,c,{}, {front:0,rear:0,lateral:0});
+  for(const northSouth of [0,1,5,CITY_PERSPECTIVE_MAX])for(const eastWest of [0,1,5,CITY_PERSPECTIVE_MAX]){
+   const settings={northSouth,eastWest},a=cityPerspectiveAt(x+30,y+80,c,{},settings),b=cityPerspectiveAt(x-30,y-80,c,{},settings);
+   const normal=cityPerspectiveAt(x+30,y+80,c);
+   assert.ok(Math.abs(a.x+b.x)<1e-9&&Math.abs(a.y+b.y)<1e-9);
+   assert.ok(Math.abs(a.x-normal.x*eastWest)<1e-9&&Math.abs(a.y-normal.y*northSouth)<1e-9);
+   assert.ok(a.spreadX>=0&&a.spreadY>=0);
+   assert.ok(Object.values(a).every(Number.isFinite));
+  }
+  const zero=cityPerspectiveAt(x+30,y+80,c,{}, {northSouth:0,eastWest:0});
   assert.equal(zero.x,0);assert.equal(zero.y,0);
  }
+});
+
+test('culling reach uses selected settings rather than the experimental slider maximum',()=>{
+ assert.equal(cityPerspectiveReach(),1.65);
+ assert.equal(cityPerspectiveReach({northSouth:0,eastWest:0}),0);
+ assert.equal(cityPerspectiveReach({northSouth:20,eastWest:1}),33);
+ assert.deepEqual(cityPerspectiveAt(0,0,camera,{}, {northSouth:Infinity,eastWest:NaN}),cityPerspectiveAt(0,0,camera));
 });

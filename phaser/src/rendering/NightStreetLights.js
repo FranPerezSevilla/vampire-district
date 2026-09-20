@@ -2,9 +2,10 @@ import {NIGHT} from './NightPalette.js';
 import {lights,buildings} from '../data/district.js';
 import {POLICE_LAMPS} from './ProjectedStreetLamps.js';
 import {buildingEntrances,entrancePosition} from './BuildingEntrances.js';
-import {cityPerspectiveAt,CITY_PERSPECTIVE_MAX} from './CityPerspective.js';
+import {cityPerspectiveAt,cityPerspectiveReach} from './CityPerspective.js';
 import {vehicleStackProjection} from './VehicleSpriteStack.js';
 import {metresToWorld} from './WorldScale.js';
+import {DISTRICT_URBAN_LAMPS} from '../data/district-blocks.js';
 
 const KEY='night-light-stamps-v1',CELL=128,MAX_QUADS=1024;
 export const NIGHT_LIGHT_BUDGET=Object.freeze({lamps:64,vehicles:48,quads:MAX_QUADS});
@@ -70,14 +71,14 @@ class LightBatch extends (globalThis.Phaser?.GameObjects?.Image||class{}){
 export class NightStreetLights{
  constructor(scene){
   this.scene=scene;prepareAtlas(scene);this.ground=new LightBatch(scene,45);this.sources=new LightBatch(scene,55);
-  this.anchors={};this.projection={};this.lamps=[...lights,...POLICE_LAMPS.map(([x,y],i)=>({x,y,radius:48,id:'campus-lamp-'+i}))];
+  this.anchors={};this.projection={};this.lamps=[...lights,...POLICE_LAMPS.map(([x,y],i)=>({x,y,radius:48,id:'campus-lamp-'+i})),...DISTRICT_URBAN_LAMPS];
   this.doors=buildings.filter(b=>!b.campusBarrier&&!b.cornerTurret).flatMap(b=>buildingEntrances(b).map(d=>({...entrancePosition(b,d),club:b.siteId==='club-site'})));
  }
  update(camera,enabled){
   const s=this.scene,g=this.ground,hot=this.sources;g.count=hot.count=0;g.setVisible(enabled);hot.setVisible(enabled);if(!enabled)return;
   let count=0;
   for(const l of this.lamps){
-   if(s.brokenLights?.has(l.id)||!nightLightVisible(l.x,l.y,Math.max(l.radius||54,metresToWorld(3.6)*1.65*CITY_PERSPECTIVE_MAX+12),camera))continue;
+   if(s.brokenLights?.has(l.id)||!nightLightVisible(l.x,l.y,Math.max(l.radius||54,metresToWorld(3.6)*cityPerspectiveReach(s.cityPerspective)+12),camera))continue;
    if(count++>=NIGHT_LIGHT_BUDGET.lamps)break;
    const radius=Math.min(72,l.radius||54);
    g.stamp(1,l.x,l.y,radius*2,radius*1.6,NIGHT.amber,.40);

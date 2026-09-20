@@ -8,6 +8,8 @@ import {CITY_PERSPECTIVE} from '../phaser/src/rendering/CityPerspective.js';
 const building={id:'test-tenement',x:100,y:200,w:230,h:210,family:'housing'};
 test('ordinary art respects landmarks, annexes and custom roofs',()=>{
  assert.ok(ordinaryBuilding(building));
+ assert.equal(ordinaryBuilding({...building,landmark:true,architectureKit:'civic'}),true);
+ assert.equal(ordinaryBuilding({...building,landmark:true,architectureKit:'civic',family:'police-campus'}),false);
  for(const extra of [{landmark:true},{skyline:true},{cornerTurret:true},{dormer:true},{roofTier:true},{cathedralKind:'nave'},{id:'hospital'},{id:'hospitalEmergency'},{family:'police-campus'},{siteId:'club-site'},{campusBarrier:'railing'}])
   assert.equal(ordinaryBuilding({...building,...extra}),false);
 });
@@ -36,8 +38,8 @@ test('roof equipment keeps stable identities, scale, spacing and a roof-relative
  assert.equal(rooftopObjects({...building,roofObjects:[]}).length,0);
 });
 test('object feet coincide with the host roof throughout pans, zooms and slider extremes',()=>{
- for(const zoom of [.5,1,3])for(const front of [0,1,2.5])for(const lateral of [0,2.5])for(const rear of [0,2.5]){
-  const camera={scrollX:70,scrollY:110,width:1500,height:900,zoom},settings={...CITY_PERSPECTIVE,front,lateral,rear};
+ for(const zoom of [.5,1,3])for(const northSouth of [0,1,20])for(const eastWest of [0,1,20]){
+  const camera={scrollX:70,scrollY:110,width:1500,height:900,zoom},settings={...CITY_PERSPECTIVE,northSouth,eastWest};
   const roof=roofParallaxOffset(building,camera,settings);
   for(const d of rooftopObjects(building))for(const x of [d.x-d.w/2,d.x+d.w/2])for(const y of [d.y-d.h/2,d.y+d.h/2]){
    const p=projectRoofVertex(x,y,d.base,camera,settings);
@@ -45,7 +47,9 @@ test('object feet coincide with the host roof throughout pans, zooms and slider 
    assert.ok(Math.abs(p.y-(y+roof.y+(y-roof.cy)*roof.spreadY))<1e-8);
    const top=projectRoofVertex(x,y,d.base+d.height,camera,settings);
    const next=projectRoofVertex(x,y,d.base+d.height,{...camera,scrollX:70.01,scrollY:110.01},settings);
-   assert.ok(Math.hypot(top.x-next.x,top.y-next.y)<.02);
+   // Even 20x remains continuous: movement equals the linear camera derivative.
+   assert.ok(Math.abs(top.x-next.x-.01*roof.spreadX*(d.base+d.height)/d.base)<1e-8);
+   assert.ok(Math.abs(top.y-next.y-.01*roof.spreadY*(d.base+d.height)/d.base)<1e-8);
   }
  }
 });

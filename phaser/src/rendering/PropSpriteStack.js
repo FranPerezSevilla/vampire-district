@@ -1,7 +1,8 @@
-import {cityPerspectiveAt,CITY_PERSPECTIVE_MAX} from './CityPerspective.js';
+import {cityPerspectiveAt,cityPerspectiveReach} from './CityPerspective.js';
 
 export const PROP_STACK_KEY='street-stack-v1';
-// Crops in the authored 1254px atlas; materials use interior surface areas so
+// Stable packed key; its source is the quiet v2 authored 1254px atlas.
+// Crops use interior surface areas so
 // repeated wall faces do not acquire a bright picture-frame border.
 export const PROP_STACK_BOUNDS=[[40,66,260,180],[374,65,201,193],[725,14,121,293],[949,104,282,122],
  [38,317,247,290],[352,350,239,234],[648,342,269,251],[953,384,269,185],
@@ -54,7 +55,7 @@ export function propStackModel(kind,{w=30,h=12,height=16,base=0,broken=false,ver
   box(11,0,0,w*.86,h*.86,height-3,height);
  }else if(kind==='altar'){
   box(11,0,0,w*.9,h*.85,0,height-2);box(11,0,0,w,h,height-2,height);
-  top(12,0,0,w+1,h+1,height+.2);
+  top(12,0,0,w+1,h+1,height+.2,0x9da5ad);
  }else if(kind==='candle'){
   box(1,0,0,5,5,0,2);box(0,0,0,1.8,1.8,2,height-3);
   top(13,0,0,5,5,height);top(13,0,0,2,2,height+2);
@@ -87,7 +88,7 @@ export class PropSpriteStack extends (globalThis.Phaser?.GameObjects?.Image||cla
  setBroken(broken){this.options={...this.options,broken};this.model=propStackModel(this.kind,this.options);return this;}
  willRender(camera){
   if(!super.willRender(camera)||this.scene.currentLayer>0)return false;
-  const v=camera.worldView,r=this.model.radius+this.model.maxHeight*1.65*(CITY_PERSPECTIVE_MAX-1),x=this.host.x,y=this.host.y;
+  const v=camera.worldView,r=this.model.radius+this.model.maxHeight*Math.max(0,cityPerspectiveReach(this.scene.cityPerspective)-1.65),x=this.host.x,y=this.host.y;
   return !v||x+r>=v.x&&x-r<=v.x+v.width&&y+r>=v.y&&y-r<=v.y+v.height;
  }
  renderWebGL(renderer,src,camera,parentMatrix){

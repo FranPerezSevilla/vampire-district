@@ -8,13 +8,13 @@ export function bakePoliceFacade(materials,b,length){
  const canvas=materials.canvas(width,height),ctx=canvas.getContext('2d');
  const source=materials.scene.textures.get('police-facade').getSourceImage();
  if(b.solidPier){
-  ctx.fillStyle=ctx.createPattern(materials.pattern('stone-gothic'),'repeat');ctx.fillRect(0,0,width,height);
+  ctx.fillStyle=ctx.createPattern(materials.pattern('quiet-architectural-stone'),'repeat');ctx.fillRect(0,0,width,height);
   ctx.fillStyle='rgba(15,20,24,.45)';ctx.fillRect(0,0,width,height);
   ctx.fillStyle='rgba(155,150,133,.2)';ctx.fillRect(width*.12,0,width*.12,height);
   ctx.fillStyle='rgba(0,0,0,.4)';ctx.fillRect(width*.8,0,width*.2,height);
  }else{
   // A four-storey panel repeats at physical scale instead of stretching nine floors.
-  ctx.fillStyle=ctx.createPattern(materials.pattern('stone-gothic'),'repeat');ctx.fillRect(0,0,width,height);
+  ctx.fillStyle=ctx.createPattern(materials.pattern('quiet-architectural-stone'),'repeat');ctx.fillRect(0,0,width,height);
   ctx.fillStyle='rgba(15,20,24,.5)';ctx.fillRect(0,0,width,height);
   const tileW=110*scale,rowH=originalFloor/physicalHeight*height,stride=floorHeight/physicalHeight*height;
   for(let row=0,y=height-stride;y>-stride;y-=stride,row++)for(let x=0;x<width;x+=tileW){
@@ -39,5 +39,6 @@ export function bakePoliceFacade(materials,b,length){
   materials.warmLights.draw(c,'beam',x,physicalHeight-34,12,34,.26);
   materials.warmLights.draw(c,'halo',x,physicalHeight-34,4,7,.34);
  }
- return {key:materials.register(canvas),lightKey:!b.solidPier?materials.register(lights):null};
+ // v2 is painted at night exposure already, like the ordinary district atlas.
+ return {key:materials.register(canvas),lightKey:!b.solidPier?materials.register(lights):null,authoredNight:true};
 }

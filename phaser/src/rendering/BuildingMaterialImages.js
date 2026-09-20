@@ -57,18 +57,23 @@ export class MaterialQuad extends (globalThis.Phaser?.GameObjects?.Image || clas
  renderWebGL(renderer,src,camera,parentMatrix){
   if(src.corners.length!==4)return;
   const m=Phaser.GameObjects.GetCalcMatrix(src,camera,parentMatrix).calc;
+  let batching=false,p,tint,unit;
+  // Architectural folds share one material/object per height band. The optional
+  // panels are cached by BuildingParallax, not separate sprites or textures.
+  for(let panel=0;panel<(src.panels?.length||1);panel++){
+  const surface=src.panels?.[panel]||src;
 
   // A trapezoid is not an affine quad: one diagonal produces visibly bent windows.
   // Subdivide both axes: full-width strips still kink tall window edges.
-  const [tl,bl,br,tr]=src.corners;
+  const [tl,bl,br,tr]=surface.corners;
   const ax=m.getX(tl.x,tl.y),ay=m.getY(tl.x,tl.y),bx=m.getX(bl.x,bl.y),by=m.getY(bl.x,bl.y);
   const cx=m.getX(br.x,br.y),cy=m.getY(br.x,br.y),dx=m.getX(tr.x,tr.y),dy=m.getY(tr.x,tr.y);
-  if(!projectedQuadVisible(camera,ax,ay,bx,by,cx,cy,dx,dy))return;
-  camera.addToRenderList(src);
-  const p=renderer.pipelines.set(src.pipeline,src);
-  const tint=Phaser.Renderer.WebGL.Utils.getTintAppendFloatAlpha(src.tintTopLeft,camera.alpha*src.alpha);
-  const unit=p.setGameObject(src);
-  p.manager.preBatch(src);
+  if(!projectedQuadVisible(camera,ax,ay,bx,by,cx,cy,dx,dy))continue;
+  if(!batching){
+   camera.addToRenderList(src);p=renderer.pipelines.set(src.pipeline,src);
+   tint=Phaser.Renderer.WebGL.Utils.getTintAppendFloatAlpha(src.tintTopLeft,camera.alpha*src.alpha);
+   unit=p.setGameObject(src);p.manager.preBatch(src);batching=true;
+  }
   const subdivisions=src.adaptiveMesh?facadeMeshDivisions(ax-bx+cx-dx,ay-by+cy-dy):src.subdivisions||8;
   const rowCount=src.adaptiveMesh?subdivisions:Math.max(1,Math.ceil(subdivisions*((src.vEnd??1)-(src.vStart||0))));
   for(let row=0;row<rowCount;row++){
@@ -80,10 +85,11 @@ export class MaterialQuad extends (globalThis.Phaser?.GameObjects?.Image || clas
     const u0=col/subdivisions,u1=(col+1)/subdivisions;
     p.batchQuad(src,lx+(rx-lx)*u0,ly+(ry-ly)*u0,nx+(sx-nx)*u0,ny+(sy-ny)*u0,
      nx+(sx-nx)*u1,ny+(sy-ny)*u1,lx+(rx-lx)*u1,ly+(ry-ly)*u1,
-     (src.uStart||0)+u0*((src.uEnd??1)-(src.uStart||0)),(src.vStart||0)+v0*((src.vEnd??1)-(src.vStart||0)),(src.uStart||0)+u1*((src.uEnd??1)-(src.uStart||0)),(src.vStart||0)+v1*((src.vEnd??1)-(src.vStart||0)),tint,tint,tint,tint,0,src.frame.glTexture,unit);
+     (surface.uStart||0)+u0*((surface.uEnd??1)-(surface.uStart||0)),(src.vStart||0)+v0*((src.vEnd??1)-(src.vStart||0)),(surface.uStart||0)+u1*((surface.uEnd??1)-(surface.uStart||0)),(src.vStart||0)+v1*((src.vEnd??1)-(src.vStart||0)),tint,tint,tint,tint,0,src.frame.glTexture,unit);
    }
   }
-  p.manager.postBatch(src);
+  }
+  if(batching)p.manager.postBatch(src);
  }
 }
 
@@ -101,6 +107,11 @@ export class BuildingMaterialImages {
  constructor(scene){this.scene=scene;this.serial=0;this.patterns=new Map();this.warmLights=new CachedWarmLights();}
  pattern(key){
   if(this.patterns.has(key))return this.patterns.get(key);
+  if(key==='quiet-architectural-stone'){
+   const source=this.scene.textures.get('ordinary-block-v2').getSourceImage(),tile=this.canvas(128,128),ctx=tile.getContext('2d');
+   ctx.drawImage(source,source.width*.008,source.height*.838,source.width*.232,source.height*.152,0,0,128,128);
+   this.patterns.set(key,tile);return tile;
+  }
   const source=this.scene.textures.get(key).getSourceImage();
   const size=key==='slate-gothic'?64:256;
   const tile=document.createElement('canvas');tile.width=size;tile.height=size;

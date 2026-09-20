@@ -3,7 +3,7 @@ import {buildingHeight, facadeHeightBands, roofParallaxOffset, BuildingParallax,
 test('roof projection follows camera continuously with bounded height-dependent offset',()=>{
  const camera={scrollX:0,scrollY:0,width:800,height:600,zoom:1};const b={x:600,y:500,w:120,h:100};
  const a=roofParallaxOffset(b,camera),next=roofParallaxOffset(b,{...camera,scrollX:1});
- assert.ok(Math.abs(a.x-next.x)<.2);assert.ok(next.x<a.x);
+ assert.ok(Math.abs(a.x-next.x-a.spreadX)<1e-9);assert.ok(next.x<a.x);
  const tower=roofParallaxOffset({...b,skyline:true,storeys:38},camera);assert.ok(Math.abs(tower.x)>Math.abs(a.x));
  assert.ok(Math.hypot(tower.x,tower.y)<=buildingHeight({...b,skyline:true,storeys:38})*1.65);
 });
@@ -19,7 +19,7 @@ test('disabled and stationary parallax does not rebuild facade graphics',()=>{
  renderer.update([],false);renderer.update([],false);assert.equal(refreshes,1);
  renderer.update([],true);renderer.update([],true);assert.equal(refreshes,2);
  scene.cameras.main.scrollX=1;renderer.update([],true);assert.equal(refreshes,3);
- scene.cityPerspective={front:2,lateral:1,rear:1};renderer.update([],true);assert.equal(refreshes,4);
+ scene.cityPerspective={northSouth:2,eastWest:1};renderer.update([],true);assert.equal(refreshes,4);
  renderer.update([],true);assert.equal(refreshes,4);
 });
 
@@ -77,14 +77,14 @@ test('storeys use a shared physical scale with explicit height overrides',()=>{
  assert.equal(buildingHeight({id:'hospitalEmergency'}),one);
 });
 
-test('front facade has stronger exposure while camera movement remains continuous',()=>{
+test('classic front and rear exposure are symmetric while camera movement remains continuous',()=>{
  const b={x:450,y:450,w:100,h:100,landmark:true};
  const cameraAt=(x,y)=>({scrollX:x-400,scrollY:y-300,width:800,height:600});
  const centre=roofParallaxOffset(b,cameraAt(500,500));
- assert.equal(centre.x,0);assert.ok(centre.y<0);
- assert.ok(visibleFacadeEdges(b,centre).some(([a,c])=>a.y===550&&c.y===550));
+ assert.equal(centre.x,0);assert.equal(centre.y,0);
+ assert.equal(visibleFacadeEdges(b,centre).length,0);
  const north=roofParallaxOffset(b,cameraAt(500,-100)),south=roofParallaxOffset(b,cameraAt(500,1100));
- assert.ok(Math.abs(south.y)>Math.abs(north.y));
+ assert.equal(south.y,-north.y);
  assert.equal(visibleFacadeEdges(b,north)[0][0].y,450);
  assert.equal(visibleFacadeEdges(b,south)[0][0].y,550);
  for(let y=350;y<=650;y++){

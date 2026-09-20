@@ -1,6 +1,7 @@
 import {CharacterSpriteStack, canStackCharacter} from './CharacterSpriteStack.js';
 import {characterAttackProgress} from './CharacterActionPresentation.js';
 import {idleCharacterGesture,characterFallPose} from './CharacterGestures.js';
+import {CharacterMotion} from './CharacterMotion.js';
 
 const DEFAULT_DIRECTION = Object.freeze({ x: 0, y: -1 });
 const WEAPON_UNARMED = "unarmed";
@@ -247,21 +248,30 @@ export function modularCharacterPose({
   attacking = false,
   attackProgress = 0,
   attackSerial = 0,
-  phase = 0
+  phase = 0,
+  gaitPhase = null,
+  motionBlend = moving ? 1 : 0,
+  runBlend = running ? 1 : 0,
+  locomotionDirection = {x:0,y:-1},
+  weaponReady = true
 } = {}) {
   const time = Math.max(0, Number(timeMs) || 0);
-  const walk = moving ? Math.sin(time * (running ? 0.021 : 0.014) + phase) : 0;
+  const walk = Math.sin(gaitPhase ?? (time * (running ? 0.021 : 0.014) + phase)) * motionBlend;
   const idle = moving ? 0 : Math.sin(time * 0.00225 + phase);
-  const footStride = walk * (running ? 4.1 : 2.45);
-  const handSwing = moving ? walk * (running ? 2.6 : 1.25) : idle * 0.34;
+  const footStride = walk * (2.45 + runBlend * 1.65);
+  const handSwing = walk * (1.25 + runBlend * 1.35) + idle * .34 * (1 - motionBlend);
   const progress = clamp01(attackProgress);
 
   const feet = {
-    left: { x: -2.6, y: 3.5 + footStride, rotation: -0.05 * walk },
-    right: { x: 2.6, y: 3.5 - footStride, rotation: 0.05 * walk }
+    left: { x: -2.35-footStride*locomotionDirection.x*.5, y: -footStride*locomotionDirection.y, rotation: -0.05 * walk },
+    right: { x: 2.35+footStride*locomotionDirection.x*.5, y: footStride*locomotionDirection.y, rotation: 0.05 * walk }
   };
 
   if (weaponId === WEAPON_PISTOL) {
+    if (!weaponReady && !attacking) return {
+      hands: {left:{x:-7,y:handSwing,rotation:0},right:{x:6.2,y:-1-handSwing,rotation:.12}},
+      feet, pistolVisible:true, pipeVisible:false, weaponLowered:true, coreAttackRotation:0, attackKind:null
+    };
     const recoil = attacking && progress >= .14 ? Math.exp(-(progress-.14)*6)*1.9 : 0;
     const locomotionSway = moving ? walk * 0.48 : idle * 0.18;
     const locomotionBob = moving ? Math.abs(walk) * 0.38 : idle * 0.10;
@@ -504,6 +514,7 @@ export class ModularCharacterView {
     }
     this.variant = this.style.variant;
     this.phase = stablePhase(phaseKey);
+    this.motion = new CharacterMotion(this.phase);
     this.lastMovementDirection = { ...DEFAULT_DIRECTION };
     this.lastLookDirection = { ...DEFAULT_DIRECTION };
     this.upperRotation = 0;
@@ -561,6 +572,7 @@ export class ModularCharacterView {
     movementDirection = direction || this.lastMovementDirection,
     aimDirection = this.lastLookDirection,
     moving = false,
+    hasMovementIntent = moving,
     running = false,
     jumping = false,
     jumpProgress = 0,
@@ -576,12 +588,19 @@ export class ModularCharacterView {
   } = {}) {
     if (hasDirection(movementDirection)) this.lastMovementDirection = normalizedDirection(movementDirection);
 
-    const combatAim = this.isPlayer ? this.scene.combatSystem?.aimDirection : null;
-    const requestedLook = hasDirection(combatAim) ? combatAim : aimDirection;
-    if (hasDirection(requestedLook)) this.lastLookDirection = normalizedDirection(requestedLook);
-
-    if (moving || jumping) this.feetRotation = modularCharacterFacingRotation(this.lastMovementDirection);
-    this.upperRotation = modularCharacterFacingRotation(this.lastLookDirection);
+    const attack = this.isPlayer ? attackPresentation(this.scene) : null;
+    const resolvedAttacking = attacking == null ? Boolean(attack?.attacking) : Boolean(attacking);
+    const resolvedProgress = attackProgress == null ? Number(attack?.progress) || 0 : attackProgress;
+    const resolvedSerial = attackSerial == null ? Number(attack?.serial) || 0 : attackSerial;
+    const actionFacing = !incapacitated && (resolvedAttacking || (!this.isPlayer && aiming));
+    const acceptedAim = this.isPlayer ? this.scene.combatSystem?.attack?.direction : aimDirection;
+    const requestedLook = actionFacing ? acceptedAim : this.lastMovementDirection;
+    const motion = this.motion.update({timeMs, movementDirection:this.lastMovementDirection,
+      aimDirection:requestedLook, moving, hasMovementIntent:hasMovementIntent || !this.isPlayer,
+      running, jumping, actionFacing, incapacitated});
+    this.feetRotation = motion.feetRotation;
+    this.upperRotation = motion.rotation;
+    this.lastLookDirection = {x:Math.sin(this.upperRotation), y:-Math.cos(this.upperRotation)};
 
     const hostRotation = Number(this.host?.rotation) || 0;
     const idleMotion = modularCharacterIdleMotion({ timeMs, moving, phase: this.phase });
@@ -601,10 +620,6 @@ export class ModularCharacterView {
       }
     }
 
-    const attack = this.isPlayer ? attackPresentation(this.scene) : null;
-    const resolvedAttacking = attacking == null ? Boolean(attack?.attacking) : Boolean(attacking);
-    const resolvedProgress = attackProgress == null ? Number(attack?.progress) || 0 : attackProgress;
-    const resolvedSerial = attackSerial == null ? Number(attack?.serial) || 0 : attackSerial;
     const resolvedWeaponId = this.selectedWeaponId(weaponId, aiming);
     if(moving||jumping||resolvedAttacking||resolvedWeaponId!==WEAPON_UNARMED||incapacitated)this.idleSince=timeMs;
     else this.idleSince??=timeMs;
@@ -624,7 +639,12 @@ export class ModularCharacterView {
       attacking: resolvedAttacking,
       attackProgress: resolvedProgress,
       attackSerial: resolvedSerial,
-      phase: this.phase
+      phase: this.phase,
+      gaitPhase:motion.phase, motionBlend:motion.moveBlend, runBlend:motion.runBlend, weaponReady:actionFacing,
+      locomotionDirection:{
+        x:this.lastMovementDirection.x*Math.cos(this.feetRotation)+this.lastMovementDirection.y*Math.sin(this.feetRotation),
+        y:-this.lastMovementDirection.x*Math.sin(this.feetRotation)+this.lastMovementDirection.y*Math.cos(this.feetRotation)
+      }
     });
 
     pose.muzzleFlash = resolvedWeaponId === WEAPON_PISTOL && resolvedAttacking && resolvedProgress >= .14 && resolvedProgress < .3;
@@ -632,7 +652,8 @@ export class ModularCharacterView {
       this.stack.rig.update(pose, {
         upperRotation: wrapAngle(this.upperRotation-hostRotation),
         feetRotation: wrapAngle(this.feetRotation-hostRotation), hostRotation,
-        timeMs, phase:this.phase, moving, running, jumping, jumpProgress, idleMotion,gesture,
+        timeMs, phase:this.phase, gaitPhase:motion.phase, motionBlend:motion.moveBlend,
+        runBlend:motion.runBlend, moving, running, jumping, jumpProgress, idleMotion,gesture,
         fallProgress:fall,fallKind:explicitFallKind||reaction?.kind||'shot'
       });
     } else {

@@ -1,0 +1,277 @@
+{
+  "errors": [],
+  "assets": [],
+  "controls": [
+    {
+      "south": {
+        "x": 2749,
+        "y": 702.7821840000005,
+        "upper": -3.1415921261705697,
+        "feet": -3.1415921261705697,
+        "alpha": 0,
+        "aim": {
+          "x": 2511.5715831521725,
+          "y": 662.7427701941596
+        },
+        "attack": null,
+        "weapon": "unarmed"
+      }
+    },
+    {
+      "mouse": {
+        "x": 2749,
+        "y": 702.7821840000005,
+        "upper": -3.141592632073817,
+        "feet": -3.141592632073817,
+        "alpha": 1,
+        "aim": {
+          "x": 2891.7804130211393,
+          "y": 631.9268043403798
+        },
+        "attack": null,
+        "weapon": "unarmed"
+      }
+    },
+    {
+      "idle": {
+        "x": 2749,
+        "y": 702.7821840000005,
+        "upper": -3.1415926535897922,
+        "feet": -3.1415926535897922,
+        "alpha": 0,
+        "aim": {
+          "x": 2891.7777940660835,
+          "y": 631.9259313553612
+        },
+        "attack": null,
+        "weapon": "unarmed"
+      }
+    },
+    {
+      "east": {
+        "x": 2830.008703999998,
+        "y": 702.7821840000005,
+        "upper": -4.7123885866613255,
+        "feet": -4.7123885866613255,
+        "alpha": 0,
+        "aim": {
+          "x": 2972.777778408156,
+          "y": 631.925926136052
+        },
+        "attack": null,
+        "weapon": "unarmed"
+      }
+    },
+    {
+      "attack": {
+        "x": 2830.008703999998,
+        "y": 702.7821840000005,
+        "upper": 0.8304994275537263,
+        "feet": 0.9490390869182237,
+        "alpha": 1,
+        "aim": {
+          "x": 2949.0740740859987,
+          "y": 594.0000000032196
+        },
+        "attack": {
+          "direction": {
+            "x": 0.7382683306155453,
+            "y": -0.6745071326606829
+          },
+          "serial": 1
+        },
+        "weapon": "unarmed"
+      }
+    },
+    {
+      "shot": {
+        "x": 2830.008703999998,
+        "y": 702.7821840000005,
+        "upper": -1.394023802133173,
+        "feet": -1.2281466307966262,
+        "alpha": 1,
+        "aim": {
+          "x": 2645.6666666666756,
+          "y": 669.8518518518625
+        },
+        "attack": {
+          "direction": {
+            "x": -0.9844163811708236,
+            "y": -0.17585331524466555
+          },
+          "serial": 2
+        },
+        "weapon": "pistol"
+      }
+    },
+    {
+      "empty": {
+        "x": 2830.008703999998,
+        "y": 702.7821840000005,
+        "upper": -1.394023802133173,
+        "feet": -1.394023802133173,
+        "alpha": 1,
+        "aim": {
+          "x": 2996.4814814814827,
+          "y": 797.8518518518524
+        },
+        "attack": null,
+        "weapon": "pistol"
+      }
+    }
+  ],
+  "paused": {
+    "paused": true,
+    "alpha": 0,
+    "cursor": ""
+  },
+  "runtime": {
+    "median": 16.700000000000728,
+    "p95": 16.799999999999272,
+    "max": 33.29999999999927,
+    "textureCountBefore": 102,
+    "textureCountAfter": 102
+  },
+  "atlas": {
+    "street-stack-v1": {
+      "width": 1024,
+      "height": 2048,
+      "frames": 16,
+      "rgbaMipBytes": 11184810.666666666
+    },
+    "human-stack-v1": {
+      "width": 512,
+      "height": 1024,
+      "frames": 36,
+      "rgbaMipBytes": 2796202.6666666665
+    },
+    "vehicle-stack-fleet-v1": {
+      "width": 1024,
+      "height": 2048,
+      "frames": 40,
+      "rgbaMipBytes": 11184810.666666666
+    }
+  },
+  "geometry": [
+    {
+      "style": "protagonist",
+      "records": 64,
+      "visible": 36
+    },
+    {
+      "style": "protagonist",
+      "records": 64,
+      "visible": 36
+    },
+    {
+      "style": "protagonist",
+      "records": 64,
+      "visible": 37
+    },
+    {
+      "style": "protagonist",
+      "records": 64,
+      "visible": 37
+    },
+    {
+      "style": "protagonist",
+      "records": 64,
+      "visible": 29
+    },
+    {
+      "style": "protagonist",
+      "records": 64,
+      "visible": 37
+    },
+    {
+      "style": "protagonist",
+      "records": 64,
+      "visible": 37
+    },
+    {
+      "style": "protagonist",
+      "records": 64,
+      "visible": 36
+    },
+    {
+      "style": "civilian",
+      "records": 64,
+      "visible": 36
+    },
+    {
+      "style": "civilian",
+      "records": 64,
+      "visible": 36
+    },
+    {
+      "style": "civilian",
+      "records": 64,
+      "visible": 37
+    },
+    {
+      "style": "civilian",
+      "records": 64,
+      "visible": 37
+    },
+    {
+      "style": "civilian",
+      "records": 64,
+      "visible": 29
+    },
+    {
+      "style": "civilian",
+      "records": 64,
+      "visible": 37
+    },
+    {
+      "style": "civilian",
+      "records": 64,
+      "visible": 37
+    },
+    {
+      "style": "civilian",
+      "records": 64,
+      "visible": 36
+    },
+    {
+      "style": "police",
+      "records": 65,
+      "visible": 37
+    },
+    {
+      "style": "police",
+      "records": 65,
+      "visible": 37
+    },
+    {
+      "style": "police",
+      "records": 65,
+      "visible": 38
+    },
+    {
+      "style": "police",
+      "records": 65,
+      "visible": 38
+    },
+    {
+      "style": "police",
+      "records": 65,
+      "visible": 30
+    },
+    {
+      "style": "police",
+      "records": 65,
+      "visible": 38
+    },
+    {
+      "style": "police",
+      "records": 65,
+      "visible": 38
+    },
+    {
+      "style": "police",
+      "records": 65,
+      "visible": 37
+    }
+  ]
+}

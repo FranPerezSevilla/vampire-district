@@ -9,7 +9,7 @@ import {updateVehicleDrawOrder} from '../phaser/src/rendering/VehicleDrawOrder.j
 
 test('shared character atlas and bounded assemblies retain the same slice records across animation',()=>{
  const svg=readFileSync(new URL('../phaser/assets/characters/human-stack.svg',import.meta.url),'utf8');
- assert.match(svg,/viewBox="0 0 96 192"/);assert.equal(CHARACTER_STACK_BOUNDS.length,CHARACTER_STACK_ATLAS.frames);
+ assert.match(svg,/viewBox="0 0 96 240"/);assert.equal(CHARACTER_STACK_BOUNDS.length,CHARACTER_STACK_ATLAS.frames);
  for(const [x,y,w,h]of CHARACTER_STACK_BOUNDS)assert.ok(x>=0&&y>=0&&x+w<=24&&y+h<=24);
  for(const style of Object.values(MODULAR_CHARACTER_STYLES)){
   const rig=new CharacterStackRig(style),parts=new Set(rig.layers),corners=new Set(rig.layers.map(p=>p.corners));
@@ -62,6 +62,8 @@ test('character projection is smooth, independent of sliders, with conservative 
  const a=characterStackProjection(600,400,cam),b=characterStackProjection(600.01,400,cam);
  assert.ok(Math.hypot(a.x-b.x,a.y-b.y)<.001);assert.ok(a.y<-.3);
  for(const y of [-1e7,0,1e7])assert.ok(Math.hypot(...Object.values(characterStackProjection(y,y,cam)))<1.1);
+ assert.equal(a.y,-.48,'slightly more overhead at viewport center');
+ for(const y of [-1e7,0,400,800,1e7]){const py=characterStackProjection(600,y,cam).y;assert.ok(py<-.37&&py>-.59,'head stays above planted feet without reversing');}
  assert.equal(characterInsideCamera({x:1210,y:400,scaleX:1,scaleY:1},cam),true);
  assert.equal(characterInsideCamera({x:1800,y:400,scaleX:1,scaleY:1},cam),false);
  assert.equal(canStackCharacter({game:{renderer:{}}}),false);

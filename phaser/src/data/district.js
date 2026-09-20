@@ -139,48 +139,6 @@ const EXTRA_PEDESTRIAN_ROUTES = Object.freeze([
     generated: false
   }),
   freezePedestrianRoute({
-    id: "west_market_vertical_loop",
-    name: "West Market pedestrian spine loop",
-    points: [
-      { x: 503, y: 1300 },
-      { x: 513, y: 1300 },
-      { x: 513, y: 1500 },
-      { x: 503, y: 1500 }
-    ],
-    sidewalkId: "sidewalk:road-edge:v:554:1192:554:1920:west",
-    graphEdgeId: "road-edge:v:554:1192:554:1920",
-    routeKind: "sidewalk-patrol",
-    generated: false
-  }),
-  freezePedestrianRoute({
-    id: "west_market_north_loop",
-    name: "West Market north nightlife circulation",
-    points: [
-      { x: 503, y: 1320 },
-      { x: 513, y: 1320 },
-      { x: 513, y: 1380 },
-      { x: 503, y: 1380 }
-    ],
-    sidewalkId: "sidewalk:road-edge:v:554:1192:554:1920:west",
-    graphEdgeId: "road-edge:v:554:1192:554:1920",
-    routeKind: "nightlife-circulation",
-    generated: false
-  }),
-  freezePedestrianRoute({
-    id: "west_market_south_loop",
-    name: "West Market south nightlife circulation",
-    points: [
-      { x: 503, y: 1420 },
-      { x: 513, y: 1420 },
-      { x: 513, y: 1480 },
-      { x: 503, y: 1480 }
-    ],
-    sidewalkId: "sidewalk:road-edge:v:554:1192:554:1920:west",
-    graphEdgeId: "road-edge:v:554:1192:554:1920",
-    routeKind: "nightlife-circulation",
-    generated: false
-  }),
-  freezePedestrianRoute({
     id: "old_quarter_service_loop",
     name: "Old Quarter service avenue loop",
     points: [

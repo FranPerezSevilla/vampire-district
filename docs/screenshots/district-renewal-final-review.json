@@ -1,0 +1,226 @@
+{
+  "errors": [],
+  "failedAssets": [],
+  "views": [
+    {
+      "name": "vesper-facade",
+      "fps": 32.60308837890625,
+      "materialBytes": 36095104,
+      "serial": 90,
+      "resident": 29,
+      "dormant": 2,
+      "objects": 1232,
+      "districtDecor": 4,
+      "decorSorted": true,
+      "rendered": 309,
+      "textureCount": 145,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "police-facade",
+      "fps": 41.598177909851074,
+      "materialBytes": 41414296,
+      "serial": 165,
+      "resident": 28,
+      "dormant": 12,
+      "objects": 1549,
+      "districtDecor": 1,
+      "decorSorted": true,
+      "rendered": 477,
+      "textureCount": 179,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "cathedral-facade",
+      "fps": 45.65801722928882,
+      "materialBytes": 21875568,
+      "serial": 244,
+      "resident": 18,
+      "dormant": 12,
+      "objects": 1102,
+      "districtDecor": 6,
+      "decorSorted": true,
+      "rendered": 259,
+      "textureCount": 153,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    }
+  ],
+  "walks": [
+    {
+      "name": "chapter-court",
+      "before": {
+        "x": 3297,
+        "y": 590
+      },
+      "after": {
+        "x": 3297,
+        "y": 676.7930559999995
+      },
+      "distance": 86.79305599999952
+    },
+    {
+      "name": "civic-approach",
+      "before": {
+        "x": 2749,
+        "y": 636
+      },
+      "after": {
+        "x": 2749,
+        "y": 725.6939120000003
+      },
+      "distance": 89.6939120000003
+    },
+    {
+      "name": "canal-east-yard",
+      "before": {
+        "x": 2710,
+        "y": 2480
+      },
+      "after": {
+        "x": 2798.5342640000003,
+        "y": 2480
+      },
+      "distance": 88.53426400000035
+    }
+  ],
+  "parallaxReview": {
+    "northSouth": 500,
+    "eastWest": 150
+  },
+  "sources": {
+    "images": [
+      {
+        "url": "http://127.0.0.1:4174/phaser/assets/architecture/ordinary-facades-v2.png",
+        "bytes": 2126459
+      },
+      {
+        "url": "http://127.0.0.1:4174/phaser/assets/architecture/west-market-facades-v1.png",
+        "bytes": 2188893
+      },
+      {
+        "url": "http://127.0.0.1:4174/phaser/assets/architecture/district-civic-facades-v1.webp",
+        "bytes": 1611030
+      },
+      {
+        "url": "http://127.0.0.1:4174/phaser/assets/architecture/district-industrial-facades-v1.webp",
+        "bytes": 1515534
+      },
+      {
+        "url": "http://127.0.0.1:4174/phaser/assets/architecture/district-utility-objects-v1.webp",
+        "bytes": 2036768
+      },
+      {
+        "url": "http://127.0.0.1:4174/phaser/assets/cathedral/facade-atlas-v2.webp",
+        "bytes": 1633918
+      },
+      {
+        "url": "http://127.0.0.1:4174/phaser/assets/vesper/facade-v2.webp",
+        "bytes": 1455600
+      },
+      {
+        "url": "http://127.0.0.1:4174/phaser/assets/police/facade-v2.webp",
+        "bytes": 1352178
+      }
+    ],
+    "perspective": {
+      "eastWest": 1,
+      "northSouth": 1
+    },
+    "vehicle": 2
+  },
+  "runtimeAssets": [
+    {
+      "key": "district-civic-facades-v1",
+      "url": "http://127.0.0.1:4174/phaser/assets/architecture/district-civic-facades-v1.webp",
+      "w": 1254,
+      "h": 1254
+    },
+    {
+      "key": "district-industrial-facades-v1",
+      "url": "http://127.0.0.1:4174/phaser/assets/architecture/district-industrial-facades-v1.webp",
+      "w": 1254,
+      "h": 1254
+    },
+    {
+      "key": "district-utility-objects-v1",
+      "url": "http://127.0.0.1:4174/phaser/assets/architecture/district-utility-objects-v1.webp",
+      "w": 1536,
+      "h": 1024
+    },
+    {
+      "key": "police-facade",
+      "url": "http://127.0.0.1:4174/phaser/assets/police/facade-v2.webp",
+      "w": 887,
+      "h": 1774
+    },
+    {
+      "key": "vesper-facade",
+      "url": "http://127.0.0.1:4174/phaser/assets/vesper/facade-v2.webp",
+      "w": 1659,
+      "h": 948
+    },
+    {
+      "key": "cathedral-facade",
+      "url": "http://127.0.0.1:4174/phaser/assets/cathedral/facade-atlas-v2.webp",
+      "w": 1254,
+      "h": 1254
+    },
+    {
+      "key": "cathedral-front",
+      "url": "http://127.0.0.1:4174/phaser/assets/cathedral/front-v2.webp",
+      "w": 1024,
+      "h": 1536
+    }
+  ],
+  "expectedUnavailableRadio": [
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/vice-fm__daisuke-teiko__the-real-deal-90s-hip-hop-instrumental.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/vice-fm__catch22music__coasting-west-coast-hip-hop.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/vice-fm__abydos-music__trip-hop-lovers.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/night-shift__ejah-music__big-beat-industrial-breakbeat-1.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/night-shift__natureseye__dirty-industrial-rave.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/pulse-94-6__maty1309__tema-acid-house.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/night-shift__ejah-music__big-beat-industrial-breakbeat-3.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/pulse-94-6__placidplace__franic-acid-trance.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/pulse-94-6__berrydeep__back-to-90s.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/pulse-94-6__maty1309__tema-acid-house.mp3",
+      "status": 404
+    }
+  ]
+}

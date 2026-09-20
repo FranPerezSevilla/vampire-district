@@ -27,7 +27,6 @@ const URBAN_RENDER_HALF_WIDTH = 680;
 const URBAN_RENDER_HALF_HEIGHT = 480;
 const URBAN_RENDER_SECTOR_WIDTH = 360;
 const URBAN_RENDER_SECTOR_HEIGHT = 260;
-const PLAYER_AIM_LINGER_MS = 250;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, Number(value) || 0));
@@ -58,30 +57,40 @@ export class GameScene extends GameSceneCore {
     this.playerPresentationPosition = null;
     this.playerMovementDirection = { x: 0, y: -1 };
     this.playerAimDirection = { x: 0, y: -1 };
-    this.playerAimUntil = -1;
     this.removeVehicleExplosionPresentation = null;
     this.radioSystem = null;
   }
 
   preload() {
-    for(const part of ['facades','roofs','rooftop-objects'])this.load.image(`ordinary-${part}-v1`,`phaser/assets/architecture/ordinary-${part}-v1.png`);
+    for(const part of ['facades','roofs','rooftop-objects']){
+      const version=part==='roofs'?1:2;
+      this.load.image(`ordinary-${part}-v${version}`,`phaser/assets/architecture/ordinary-${part}-v${version}.png`);
+    }
+    this.load.image('ordinary-block-v2','phaser/assets/architecture/ordinary-block-v2.png');
+    this.load.image('west-market-facades-v1','phaser/assets/architecture/west-market-facades-v1.png');
+    for(const kind of ['civic','industrial'])this.load.image(`district-${kind}-facades-v1`,`phaser/assets/architecture/district-${kind}-facades-v1.webp`);
+    this.load.image('district-utility-objects-v1','phaser/assets/architecture/district-utility-objects-v1.webp');
+    this.load.image('ordinary-block-roofs-v3','phaser/assets/architecture/ordinary-block-roofs-v3.webp');
     this.load.svg('human-stack-v1-source', 'phaser/assets/characters/human-stack.svg', {scale: 8});
     this.load.image('stack-mood-surfaces','phaser/assets/props/gothic-actor-surfaces.png');
-    this.load.image('street-stack-v1-source', 'phaser/assets/props/gothic-street-atlas.png');
+    this.load.image('street-stack-v1-source', 'phaser/assets/props/gothic-street-atlas-v2.png');
     this.load.svg('vehicle-stack-fleet-v1-source', 'phaser/assets/vehicles/fleet-stack.svg', {scale: 8});
-    this.load.image('cathedral-facade','phaser/assets/cathedral/facade-atlas-v1.webp');
-    this.load.image('cathedral-front','phaser/assets/cathedral/front-v1.webp');
+    this.load.image('cathedral-facade','phaser/assets/cathedral/facade-atlas-v2.webp');
+    this.load.image('cathedral-front','phaser/assets/cathedral/front-v2.webp');
     for(const name of ['roof','floor','furniture'])this.load.image('cathedral-'+name,'phaser/assets/cathedral/'+name+'-v1.webp');
     this.load.image('vesper-dormer','phaser/assets/vesper/dormer-v1.webp');
     this.load.image('vesper-mansard','phaser/assets/vesper/mansard-v2.webp');
-    for(const part of ['facade','roof','service-door'])this.load.image('vesper-'+part,'phaser/assets/vesper/'+part+'-v1.webp');
-    for(const part of ['facade','entrance','roof'])this.load.image('police-'+part,'phaser/assets/police/'+part+'-v1.webp');
+    this.load.image('vesper-facade','phaser/assets/vesper/facade-v2.webp');
+    for(const part of ['roof','service-door'])this.load.image('vesper-'+part,'phaser/assets/vesper/'+part+'-v1.webp');
+    this.load.image('police-facade','phaser/assets/police/facade-v2.webp');
+    for(const part of ['entrance','roof'])this.load.image('police-'+part,'phaser/assets/police/'+part+'-v1.webp');
     this.load.image('police-lamp','phaser/assets/props/lamp-clean-v2.webp');
     this.load.image('street-bench-clean','phaser/assets/props/bench-clean-v1.webp');
     this.load.image('vesper-grime','phaser/assets/vesper/yard-grime-v2.webp');
     this.load.image('vesper-fence','phaser/assets/vesper/yard-fence-v1.webp');
     this.load.image('police-fence','phaser/assets/police/fence-v1.webp');
-    for(const name of ['roof-slate','turret-slate'])this.load.image(`hospital-${name}`,`phaser/assets/hospital/${name}-v1.webp`);
+    this.load.image('hospital-roof-slate','phaser/assets/hospital/roof-slate-v2.webp');
+    this.load.image('hospital-turret-slate','phaser/assets/hospital/turret-slate-v1.webp');
     this.load.image('hospital-parking','phaser/assets/hospital/parking-v2.webp');
     this.load.image('paving-campus','phaser/assets/materials/paving-campus-v1.webp');
     for(const name of ["entrance","forecourt","roof-service","wall-service"])this.load.image(`hospital-${name}`,`phaser/assets/hospital/${name}-v${name==='forecourt'?2:1}.webp`);
@@ -166,27 +175,20 @@ export class GameScene extends GameSceneCore {
       this.playerCharacterView.react('trip');this.nextStumbleAt=timeMs+6500;
     }
     this.wasPresentationMoving=moving;
-    const aim = frame.aimWorld;
-    const attackActive = Boolean(frame.primaryHeld || frame.primaryPressed);
-    if (attackActive) {
-      this.playerAimUntil = Math.max(this.playerAimUntil, Number(timeMs) + PLAYER_AIM_LINGER_MS);
-      if (frame.pointerInside && Number.isFinite(aim?.x) && Number.isFinite(aim?.y)) {
-        const aimDx = aim.x - this.player.x;
-        const aimDy = aim.y - this.player.y;
-        if (Math.hypot(aimDx, aimDy) > 0.5) this.playerAimDirection = { x: aimDx, y: aimDy };
-      }
-    }
+    const attack = this.combatSystem?.attack;
+    if (attack?.direction) this.playerAimDirection = attack.direction;
 
     this.playerCharacterView.update({
       timeMs,
-      movementDirection: this.playerMovementDirection,
+      movementDirection: !jump && frame.hasMovementIntent ? frame.move : this.playerMovementDirection,
+      hasMovementIntent: frame.hasMovementIntent,
       aimDirection: this.playerAimDirection,
       moving,
       running: moving && !frame.quietHeld,
       jumping: Boolean(jump),
       jumpProgress: jump?.progress || 0,
       incapacitated:Boolean(this.playerDamageSystem?.state?.dead),
-      aiming: Number(timeMs) <= this.playerAimUntil
+      aiming: Boolean(attack)
     });
     if(!this.registry?.get?.('uiPaused'))this.npcSystem?.updateCharacterPresentation?.(timeMs);
     this.playerPresentationPosition = { x: this.player.x, y: this.player.y };

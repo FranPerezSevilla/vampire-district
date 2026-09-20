@@ -15,7 +15,7 @@ export function installPerspectiveSlider(scene){
   controls.push({input,value,onChange,initial});
  };
  scene.cityPerspective={...CITY_PERSPECTIVE,...scene.cityPerspective};
- for(const [key,label]of [['front','Frontal'],['lateral','Lateral'],['rear','Trasero']]){
+ for(const [key,label]of [['northSouth','Norte–Sur'],['eastWest','Este–Oeste']]){
   scene.cityPerspective[key]=perspectiveMagnitude(scene.cityPerspective[key]);
   addSlider(label,`Paralaje ${label.toLowerCase()}`,CITY_PERSPECTIVE_MAX*100,scene.cityPerspective[key]*100,value=>{
    scene.cityPerspective[key]=perspectiveMagnitude(value);

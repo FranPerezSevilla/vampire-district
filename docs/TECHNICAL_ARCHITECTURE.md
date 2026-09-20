@@ -251,6 +251,7 @@ Important frame fields:
   hasMovementIntent,
   quietHeld,
   aimWorld,
+  reticleAlpha,
   primaryPressed,
   primaryHeld,
   drainPressed,
@@ -277,6 +278,18 @@ Control ownership:
 - wheel: weapon selection while gameplay is active.
 
 No gameplay feature reads raw world-action keys independently.
+
+Character presentation uses `CharacterMotion` through `ModularCharacterView` in
+the existing scene update. Movement intent owns player facing; only an accepted
+CombatSystem attack may face the cursor. NPCs use their existing AI direction and
+attack presentation. The visual hip twist is bounded; it does not rotate physics
+containers or change attacks, movement speed or collision. `CharacterStackRig`
+reuses articulated surface buffers and one shared character atlas.
+
+`reticleAlpha` reflects actual pointer movement in screen coordinates (650 ms
+hold, 200 ms fade). Camera movement does not reset it. CombatSystem draws the
+cursor at `aimWorld`, independently of body orientation. Input/UI locks clear
+reticle visibility immediately, including while gameplay updates are paused.
 
 ## 7. Campaign persistence
 

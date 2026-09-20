@@ -1,0 +1,9 @@
+Affected-test plan against origin/main
+3 validation command(s) selected for 349 runtime file(s).
+Groups: boot, boot-fallback, campaign, city, input, police, streaming, traffic, vampire-state, vehicles
+- npm test
+  All runtime changes receive the fast unit safety net.
+- npm run city:validate
+  City authority or generated topology changed.
+- npx --no-install playwright test tests/browser/building-sidewalk-clearance.spec.js tests/browser/city-streaming-macro.spec.js tests/browser/city-streaming-resources.spec.js tests/browser/city-streaming-traffic-behavior.spec.js tests/browser/city-streaming-traffic-impact.spec.js tests/browser/city-streaming-traffic-physics.spec.js tests/browser/city-streaming-traffic.spec.js tests/browser/city-streaming.spec.js tests/browser/city-topology-v2.spec.js tests/browser/entity-streaming.spec.js tests/browser/expanded-district.spec.js tests/browser/feeding-depths.spec.js tests/browser/foundry-runtime.spec.js tests/browser/free-roam-baseline.spec.js tests/browser/heat-exposure-evidence.spec.js tests/browser/hunting-law-runtime.spec.js tests/browser/input-locks.spec.js tests/browser/motorized-police.spec.js tests/browser/night-ledger.spec.js tests/browser/perception-recovery.spec.js tests/browser/police-stress.spec.js tests/browser/predator-powers.spec.js tests/browser/render-quality.spec.js tests/browser/road-graph-geometry.spec.js tests/browser/runtime-smoke.spec.js tests/browser/territory-runtime.spec.js tests/browser/traffic-hijack.spec.js tests/browser/traffic-visibility-retention.spec.js tests/browser/ui-accessibility.spec.js tests/browser/vehicle-collision-softening.spec.js tests/browser/vehicle-core.spec.js tests/browser/vehicle-maintenance.spec.js
+  Focused Chromium coverage for the affected systems.

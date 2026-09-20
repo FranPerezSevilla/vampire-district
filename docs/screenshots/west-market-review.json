@@ -1,0 +1,97 @@
+{
+  "errors": [],
+  "views": [
+    {
+      "name": "overview",
+      "serial": 51,
+      "materialBytes": 24682032,
+      "resident": 11,
+      "fps": 36.94573974609375,
+      "player": {
+        "x": 540,
+        "y": 1510
+      }
+    },
+    {
+      "name": "square",
+      "serial": 51,
+      "materialBytes": 24682032,
+      "resident": 11,
+      "fps": 46.094478607177734,
+      "player": {
+        "x": 347,
+        "y": 1538
+      }
+    },
+    {
+      "name": "frontage",
+      "serial": 61,
+      "materialBytes": 28271152,
+      "resident": 18,
+      "fps": 50.11798316240311,
+      "player": {
+        "x": 818,
+        "y": 1524
+      }
+    },
+    {
+      "name": "courtyard",
+      "serial": 67,
+      "materialBytes": 31367856,
+      "resident": 21,
+      "fps": 48.58102414663881,
+      "player": {
+        "x": 840,
+        "y": 1640
+      }
+    },
+    {
+      "name": "service",
+      "serial": 70,
+      "materialBytes": 32852976,
+      "resident": 12,
+      "fps": 52.51432608248433,
+      "player": {
+        "x": 234,
+        "y": 1690
+      }
+    }
+  ],
+  "walks": [
+    {
+      "name": "square-to-alley",
+      "steps": [
+        {
+          "x": 231.37391200000022,
+          "y": 1540
+        },
+        {
+          "x": 231.37391200000022,
+          "y": 1810.2240240000003
+        }
+      ]
+    },
+    {
+      "name": "court-through-passage",
+      "steps": [
+        {
+          "x": 839,
+          "y": 1631.678616
+        },
+        {
+          "x": 604.940328,
+          "y": 1631.678616
+        }
+      ]
+    },
+    {
+      "name": "shopfront",
+      "steps": [
+        {
+          "x": 1026.817256,
+          "y": 1520
+        }
+      ]
+    }
+  ]
+}

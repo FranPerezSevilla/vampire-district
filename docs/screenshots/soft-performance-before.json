@@ -1,0 +1,3570 @@
+{
+  "errors": [],
+  "phases": [
+    {
+      "name": "market-settled",
+      "frames": 345,
+      "fps": 58.18562056232159,
+      "p50": 17.100000008940697,
+      "p95": 23,
+      "p99": 25.400000005960464,
+      "max": 26.399999991059303,
+      "over25": 6,
+      "over50": 0,
+      "means": {
+        "calls": 7,
+        "vertices": 16761.49565217391,
+        "npcUpdate": 0.37710144891255143,
+        "parallaxUpdate": 0.6388405797274216,
+        "render:initialize": 1.3295652154995048,
+        "render:Of": 0.04434782586235931,
+        "render:Mb": 0.2611594197542771,
+        "render:gi": 0.13478260904118636,
+        "render:Jf": 0.19565217404261878,
+        "render:yc": 0.5391304357328277,
+        "render:gf": 0.33275362270465797,
+        "render:ch": 0.09507246371628582
+      },
+      "diagnostics": {
+        "owners": {
+          "GameScene.update": "GameplayRuntime",
+          "GameScene.updatePlayerMovement": "GameScene",
+          "InteractionSystem.sortOptions": "InteractionSystem",
+          "InteractionSystem.bestOption": "InteractionSystem",
+          "PowersSystem.update": "PowersSystem",
+          "NpcSystem.updateNpc": "NpcSystem",
+          "WitnessSystem.drawMarkers": "WitnessSystem",
+          "PoliceSystem.updatePolice": "PoliceSystem",
+          "HunterSystem.updateHunters": "HunterSystem",
+          "CombatSystem.notifyViolence": "CombatSystem",
+          "TaskRevealSystem.play": "TaskRevealSystem",
+          "ObjectiveMarkerSystem.update": "ObjectiveMarkerSystem",
+          "OutskirtsSystem.updatePresentation": "OutskirtsSystem",
+          "TutorialDirector.filterActions": "TutorialDirector",
+          "ChunkStreamSystem.update": "ChunkStreamSystem",
+          "DistrictPackSystem.update": "DistrictPackSystem",
+          "EntityStreamSystem.update": "EntityStreamSystem",
+          "DistantSimulationSystem.update": "DistantSimulationSystem",
+          "TrafficMultiAgentRouteRuntimePolicy.update": "TrafficMultiAgentRouteRuntimePolicy",
+          "TrafficPhysicalConsequencesSystem.prepareRouteFrame": "TrafficPhysicalConsequencesSystem",
+          "MacroTrafficPoliceSystem.update": "MacroTrafficPoliceSystem",
+          "TrafficMaterializationSystem.update": "TrafficMaterializationSystem",
+          "TrafficOccupantWitnessSystem.update": "TrafficOccupantWitnessSystem",
+          "WitnessReactionPolicy.update": "WitnessReactionPolicy",
+          "TrafficLocalBehaviorSystem.update": "TrafficLocalBehaviorSystem",
+          "TrafficSteeringPresentationSystem.update": "TrafficSteeringPresentationSystem",
+          "TrafficPhysicalConsequencesSystem.update": "TrafficPhysicalConsequencesSystem",
+          "TrafficImpactConsequencesSystem.update": "TrafficImpactConsequencesSystem",
+          "VehicleCollisionSofteningPolicy.updateDriving": "VehicleCollisionSofteningPolicy",
+          "MotorizedPoliceSystem.update": "MotorizedPoliceSystem",
+          "VehicleSystem.updateDriving": "VehicleSystem",
+          "VehicleSystem.enterVehicle": "VehicleSystem",
+          "PedestrianSystem.update": "PedestrianSystem",
+          "StreetFurnitureSystem.resolveVehicleMove": "StreetFurnitureSystem",
+          "TerritoryRuntimeSystem.update": "TerritoryRuntimeSystem"
+        },
+        "systems": [
+          "AiStateSystem",
+          "ChunkStreamSystem",
+          "CombatSystem",
+          "Core.Combat",
+          "Core.Finalize",
+          "Core.Input",
+          "Core.InteractionQuery",
+          "Core.InteractionRefresh",
+          "Core.WorldActors",
+          "Core.WorldState",
+          "DeathRecoverySystem",
+          "DistantSimulationSystem",
+          "DistrictPackSystem",
+          "DrainSystem",
+          "EntityStreamSystem",
+          "Finalize.Camera",
+          "Finalize.Diagnostics",
+          "Finalize.Markers",
+          "Finalize.MovementNoise",
+          "Finalize.PublishState",
+          "Finalize.StatePublisher",
+          "Finalize.UxGuidance",
+          "GameplayRuntimeCore",
+          "HuntingLawRuntimeSystem",
+          "InputSystem",
+          "MacroTrafficPoliceSystem",
+          "MotorizedPoliceSystem",
+          "MovementNoiseSystem",
+          "ObjectiveMarkerSystem",
+          "OutskirtsSystem",
+          "PedestrianSystem",
+          "PlayerDamageSystem",
+          "PoliceFirearmSystem",
+          "PoliceViolenceSystem",
+          "PropDamageSystem",
+          "PublishState.InteractionMenu",
+          "PublishState.PayloadTail",
+          "PublishState.Prepare",
+          "PublishState.RegistryCommit",
+          "PublishState.Summaries",
+          "PublishState.Summary.MissionActors.Mission",
+          "PublishState.Summary.MissionActors.NeedsPowers",
+          "PublishState.Summary.MissionActors.Npc",
+          "PublishState.Summary.PressureEvidence.Pressure",
+          "PublishState.Summary.PressureEvidence.WitnessEvidence",
+          "PublishState.Summary.ResponseAI.Security",
+          "PublishState.Summary.ResponseAI.WorldAI",
+          "PublishState.Summary.Tail",
+          "SensoryAwarenessSystem",
+          "StreamingPipeline",
+          "StreetFurnitureSystem",
+          "TaskRevealSystem",
+          "TerritoryRuntimeSystem",
+          "TrafficImpactConsequencesSystem",
+          "TrafficLocalBehaviorSystem",
+          "TrafficMaterializationSystem",
+          "TrafficMultiAgentRouteRuntimePolicy",
+          "TrafficOccupantWitnessSystem",
+          "TrafficPhysicalConsequencesSystem",
+          "TrafficPipeline",
+          "TrafficSteeringPresentationSystem",
+          "UxGuidanceSystem",
+          "VehicleCollisionSofteningPolicy",
+          "VehicleSystem",
+          "WeaponSystem",
+          "WitnessMarkerPolicy",
+          "WitnessPerceptionPolicy",
+          "WitnessReactionPolicy"
+        ],
+        "samples": 180,
+        "averageFrameMs": 3.227,
+        "recentMaxFrameMs": 6.3,
+        "maxFrameMs": 20.4,
+        "systemSampleStride": 6,
+        "snapshotCacheMs": 250,
+        "systemTimings": {
+          "Core.Combat": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.232,
+            "recentMaxMs": 1.9,
+            "maxMs": 1.9
+          },
+          "Core.Finalize": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.718,
+            "recentMaxMs": 3,
+            "maxMs": 3
+          },
+          "Core.Input": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.375,
+            "recentMaxMs": 3.2,
+            "maxMs": 3.2
+          },
+          "Core.InteractionQuery": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.101,
+            "recentMaxMs": 1.4,
+            "maxMs": 1.4
+          },
+          "Core.InteractionRefresh": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.305,
+            "recentMaxMs": 1.1,
+            "maxMs": 1.1
+          },
+          "Core.WorldActors": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.418,
+            "recentMaxMs": 2,
+            "maxMs": 2
+          },
+          "Core.WorldState": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 1.851,
+            "recentMaxMs": 9.9,
+            "maxMs": 9.9
+          },
+          "Finalize.Camera": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.009,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "Finalize.Diagnostics": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.036,
+            "recentMaxMs": 0.5,
+            "maxMs": 0.5
+          },
+          "Finalize.Markers": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.021,
+            "recentMaxMs": 0.7,
+            "maxMs": 0.7
+          },
+          "Finalize.MovementNoise": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.007,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "Finalize.PublishState": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.595,
+            "recentMaxMs": 1,
+            "maxMs": 1
+          },
+          "Finalize.StatePublisher": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.018,
+            "recentMaxMs": 0.3,
+            "maxMs": 0.3
+          },
+          "Finalize.UxGuidance": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.011,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "GameplayRuntimeCore": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 4.02,
+            "recentMaxMs": 22.3,
+            "maxMs": 22.3
+          },
+          "MotorizedPoliceSystem": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.037,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.2
+          },
+          "PedestrianSystem": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.833,
+            "recentMaxMs": 2.1,
+            "maxMs": 2.1
+          },
+          "PublishState.InteractionMenu": {
+            "calls": 453,
+            "samples": 76,
+            "averageMs": 0,
+            "recentMaxMs": 0,
+            "maxMs": 0
+          },
+          "PublishState.PayloadTail": {
+            "calls": 453,
+            "samples": 76,
+            "averageMs": 0.003,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.Prepare": {
+            "calls": 453,
+            "samples": 76,
+            "averageMs": 0.012,
+            "recentMaxMs": 0.3,
+            "maxMs": 0.3
+          },
+          "PublishState.RegistryCommit": {
+            "calls": 1812,
+            "samples": 180,
+            "averageMs": 0.008,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.Summaries": {
+            "calls": 453,
+            "samples": 76,
+            "averageMs": 0.255,
+            "recentMaxMs": 2,
+            "maxMs": 2
+          },
+          "PublishState.Summary.MissionActors.Mission": {
+            "calls": 453,
+            "samples": 76,
+            "averageMs": 0.004,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.Summary.MissionActors.NeedsPowers": {
+            "calls": 453,
+            "samples": 76,
+            "averageMs": 0.02,
+            "recentMaxMs": 0.3,
+            "maxMs": 0.3
+          },
+          "PublishState.Summary.MissionActors.Npc": {
+            "calls": 453,
+            "samples": 76,
+            "averageMs": 0.088,
+            "recentMaxMs": 0.5,
+            "maxMs": 0.5
+          },
+          "PublishState.Summary.PressureEvidence.Pressure": {
+            "calls": 453,
+            "samples": 76,
+            "averageMs": 0.021,
+            "recentMaxMs": 0.4,
+            "maxMs": 0.4
+          },
+          "PublishState.Summary.PressureEvidence.WitnessEvidence": {
+            "calls": 453,
+            "samples": 76,
+            "averageMs": 0.047,
+            "recentMaxMs": 0.4,
+            "maxMs": 0.4
+          },
+          "PublishState.Summary.ResponseAI.Security": {
+            "calls": 453,
+            "samples": 76,
+            "averageMs": 0.03,
+            "recentMaxMs": 0.3,
+            "maxMs": 0.3
+          },
+          "PublishState.Summary.ResponseAI.WorldAI": {
+            "calls": 453,
+            "samples": 76,
+            "averageMs": 0.03,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.2
+          },
+          "PublishState.Summary.Tail": {
+            "calls": 453,
+            "samples": 76,
+            "averageMs": 0,
+            "recentMaxMs": 0,
+            "maxMs": 0
+          },
+          "StreamingPipeline": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.667,
+            "recentMaxMs": 1.4,
+            "maxMs": 1.4
+          },
+          "TerritoryRuntimeSystem": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.051,
+            "recentMaxMs": 0.9,
+            "maxMs": 0.9
+          },
+          "TrafficPipeline": {
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 4.357,
+            "recentMaxMs": 20.8,
+            "maxMs": 20.8
+          }
+        },
+        "slowestSystems": [
+          {
+            "name": "TrafficPipeline",
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 4.357,
+            "recentMaxMs": 20.8,
+            "maxMs": 20.8
+          },
+          {
+            "name": "GameplayRuntimeCore",
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 4.02,
+            "recentMaxMs": 22.3,
+            "maxMs": 22.3
+          },
+          {
+            "name": "Core.WorldState",
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 1.851,
+            "recentMaxMs": 9.9,
+            "maxMs": 9.9
+          },
+          {
+            "name": "PedestrianSystem",
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.833,
+            "recentMaxMs": 2.1,
+            "maxMs": 2.1
+          },
+          {
+            "name": "Core.Finalize",
+            "calls": 452,
+            "samples": 76,
+            "averageMs": 0.718,
+            "recentMaxMs": 3,
+            "maxMs": 3
+          }
+        ],
+        "conflicts": []
+      },
+      "resources": {
+        "textures": 121,
+        "objects": 1049,
+        "rendered": 254,
+        "resident": 22,
+        "dormant": 0,
+        "materialMiB": 31.62530517578125,
+        "vehicles": 11,
+        "npcs": 238
+      }
+    },
+    {
+      "name": "market-pan",
+      "frames": 295,
+      "fps": 49.7453711511573,
+      "p50": 19.599999994039536,
+      "p95": 26.700000002980232,
+      "p99": 29.399999991059303,
+      "max": 36.70000000298023,
+      "over25": 22,
+      "over50": 0,
+      "means": {
+        "calls": 7,
+        "vertices": 18266.033898305086,
+        "npcUpdate": 0.3179661017353252,
+        "parallaxUpdate": 0.8315254240217855,
+        "render:initialize": 1.607796610866563,
+        "render:Of": 0.032203389426409185,
+        "render:Mb": 0.4864406779661017,
+        "render:gi": 0.15796610207880957,
+        "render:Jf": 0.20610169535976344,
+        "render:yc": 0.5816949143248089,
+        "render:gf": 0.33220338962845886,
+        "render:ch": 0.13627118564258187
+      },
+      "diagnostics": {
+        "owners": {
+          "GameScene.update": "GameplayRuntime",
+          "GameScene.updatePlayerMovement": "GameScene",
+          "InteractionSystem.sortOptions": "InteractionSystem",
+          "InteractionSystem.bestOption": "InteractionSystem",
+          "PowersSystem.update": "PowersSystem",
+          "NpcSystem.updateNpc": "NpcSystem",
+          "WitnessSystem.drawMarkers": "WitnessSystem",
+          "PoliceSystem.updatePolice": "PoliceSystem",
+          "HunterSystem.updateHunters": "HunterSystem",
+          "CombatSystem.notifyViolence": "CombatSystem",
+          "TaskRevealSystem.play": "TaskRevealSystem",
+          "ObjectiveMarkerSystem.update": "ObjectiveMarkerSystem",
+          "OutskirtsSystem.updatePresentation": "OutskirtsSystem",
+          "TutorialDirector.filterActions": "TutorialDirector",
+          "ChunkStreamSystem.update": "ChunkStreamSystem",
+          "DistrictPackSystem.update": "DistrictPackSystem",
+          "EntityStreamSystem.update": "EntityStreamSystem",
+          "DistantSimulationSystem.update": "DistantSimulationSystem",
+          "TrafficMultiAgentRouteRuntimePolicy.update": "TrafficMultiAgentRouteRuntimePolicy",
+          "TrafficPhysicalConsequencesSystem.prepareRouteFrame": "TrafficPhysicalConsequencesSystem",
+          "MacroTrafficPoliceSystem.update": "MacroTrafficPoliceSystem",
+          "TrafficMaterializationSystem.update": "TrafficMaterializationSystem",
+          "TrafficOccupantWitnessSystem.update": "TrafficOccupantWitnessSystem",
+          "WitnessReactionPolicy.update": "WitnessReactionPolicy",
+          "TrafficLocalBehaviorSystem.update": "TrafficLocalBehaviorSystem",
+          "TrafficSteeringPresentationSystem.update": "TrafficSteeringPresentationSystem",
+          "TrafficPhysicalConsequencesSystem.update": "TrafficPhysicalConsequencesSystem",
+          "TrafficImpactConsequencesSystem.update": "TrafficImpactConsequencesSystem",
+          "VehicleCollisionSofteningPolicy.updateDriving": "VehicleCollisionSofteningPolicy",
+          "MotorizedPoliceSystem.update": "MotorizedPoliceSystem",
+          "VehicleSystem.updateDriving": "VehicleSystem",
+          "VehicleSystem.enterVehicle": "VehicleSystem",
+          "PedestrianSystem.update": "PedestrianSystem",
+          "StreetFurnitureSystem.resolveVehicleMove": "StreetFurnitureSystem",
+          "TerritoryRuntimeSystem.update": "TerritoryRuntimeSystem"
+        },
+        "systems": [
+          "AiStateSystem",
+          "ChunkStreamSystem",
+          "CombatSystem",
+          "Core.Combat",
+          "Core.Finalize",
+          "Core.Input",
+          "Core.InteractionQuery",
+          "Core.InteractionRefresh",
+          "Core.WorldActors",
+          "Core.WorldState",
+          "DeathRecoverySystem",
+          "DistantSimulationSystem",
+          "DistrictPackSystem",
+          "DrainSystem",
+          "EntityStreamSystem",
+          "Finalize.Camera",
+          "Finalize.Diagnostics",
+          "Finalize.Markers",
+          "Finalize.MovementNoise",
+          "Finalize.PublishState",
+          "Finalize.StatePublisher",
+          "Finalize.UxGuidance",
+          "GameplayRuntimeCore",
+          "HuntingLawRuntimeSystem",
+          "InputSystem",
+          "MacroTrafficPoliceSystem",
+          "MotorizedPoliceSystem",
+          "MovementNoiseSystem",
+          "ObjectiveMarkerSystem",
+          "OutskirtsSystem",
+          "PedestrianSystem",
+          "PlayerDamageSystem",
+          "PoliceFirearmSystem",
+          "PoliceViolenceSystem",
+          "PropDamageSystem",
+          "PublishState.InteractionMenu",
+          "PublishState.PayloadTail",
+          "PublishState.Prepare",
+          "PublishState.RegistryCommit",
+          "PublishState.Summaries",
+          "PublishState.Summary.MissionActors.Mission",
+          "PublishState.Summary.MissionActors.NeedsPowers",
+          "PublishState.Summary.MissionActors.Npc",
+          "PublishState.Summary.PressureEvidence.Pressure",
+          "PublishState.Summary.PressureEvidence.WitnessEvidence",
+          "PublishState.Summary.ResponseAI.Security",
+          "PublishState.Summary.ResponseAI.WorldAI",
+          "PublishState.Summary.Tail",
+          "SensoryAwarenessSystem",
+          "StreamingPipeline",
+          "StreetFurnitureSystem",
+          "TaskRevealSystem",
+          "TerritoryRuntimeSystem",
+          "TrafficImpactConsequencesSystem",
+          "TrafficLocalBehaviorSystem",
+          "TrafficMaterializationSystem",
+          "TrafficMultiAgentRouteRuntimePolicy",
+          "TrafficOccupantWitnessSystem",
+          "TrafficPhysicalConsequencesSystem",
+          "TrafficPipeline",
+          "TrafficSteeringPresentationSystem",
+          "UxGuidanceSystem",
+          "VehicleCollisionSofteningPolicy",
+          "VehicleSystem",
+          "WeaponSystem",
+          "WitnessMarkerPolicy",
+          "WitnessPerceptionPolicy",
+          "WitnessReactionPolicy"
+        ],
+        "samples": 180,
+        "averageFrameMs": 3.052,
+        "recentMaxFrameMs": 5.6,
+        "maxFrameMs": 20.4,
+        "systemSampleStride": 6,
+        "snapshotCacheMs": 250,
+        "systemTimings": {
+          "Core.Combat": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.213,
+            "recentMaxMs": 1.9,
+            "maxMs": 1.9
+          },
+          "Core.Finalize": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.735,
+            "recentMaxMs": 3,
+            "maxMs": 3
+          },
+          "Core.Input": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.368,
+            "recentMaxMs": 3.2,
+            "maxMs": 3.2
+          },
+          "Core.InteractionQuery": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.096,
+            "recentMaxMs": 1.4,
+            "maxMs": 1.4
+          },
+          "Core.InteractionRefresh": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.311,
+            "recentMaxMs": 1.1,
+            "maxMs": 1.1
+          },
+          "Core.WorldActors": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.371,
+            "recentMaxMs": 2,
+            "maxMs": 2
+          },
+          "Core.WorldState": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 1.823,
+            "recentMaxMs": 9.9,
+            "maxMs": 9.9
+          },
+          "Finalize.Camera": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.007,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "Finalize.Diagnostics": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.043,
+            "recentMaxMs": 0.6,
+            "maxMs": 0.6
+          },
+          "Finalize.Markers": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.018,
+            "recentMaxMs": 0.7,
+            "maxMs": 0.7
+          },
+          "Finalize.MovementNoise": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.007,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "Finalize.PublishState": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.612,
+            "recentMaxMs": 1.4,
+            "maxMs": 1.4
+          },
+          "Finalize.StatePublisher": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.022,
+            "recentMaxMs": 0.3,
+            "maxMs": 0.3
+          },
+          "Finalize.UxGuidance": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.009,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "GameplayRuntimeCore": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 3.94,
+            "recentMaxMs": 22.3,
+            "maxMs": 22.3
+          },
+          "MotorizedPoliceSystem": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.035,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.2
+          },
+          "PedestrianSystem": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.934,
+            "recentMaxMs": 2.3,
+            "maxMs": 2.3
+          },
+          "PublishState.InteractionMenu": {
+            "calls": 812,
+            "samples": 136,
+            "averageMs": 0,
+            "recentMaxMs": 0,
+            "maxMs": 0
+          },
+          "PublishState.PayloadTail": {
+            "calls": 812,
+            "samples": 136,
+            "averageMs": 0.001,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.Prepare": {
+            "calls": 812,
+            "samples": 136,
+            "averageMs": 0.013,
+            "recentMaxMs": 0.3,
+            "maxMs": 0.3
+          },
+          "PublishState.RegistryCommit": {
+            "calls": 3248,
+            "samples": 180,
+            "averageMs": 0.015,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.Summaries": {
+            "calls": 812,
+            "samples": 136,
+            "averageMs": 0.238,
+            "recentMaxMs": 2,
+            "maxMs": 2
+          },
+          "PublishState.Summary.MissionActors.Mission": {
+            "calls": 812,
+            "samples": 136,
+            "averageMs": 0.003,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.Summary.MissionActors.NeedsPowers": {
+            "calls": 812,
+            "samples": 136,
+            "averageMs": 0.015,
+            "recentMaxMs": 0.3,
+            "maxMs": 0.3
+          },
+          "PublishState.Summary.MissionActors.Npc": {
+            "calls": 812,
+            "samples": 136,
+            "averageMs": 0.085,
+            "recentMaxMs": 0.5,
+            "maxMs": 0.5
+          },
+          "PublishState.Summary.PressureEvidence.Pressure": {
+            "calls": 812,
+            "samples": 136,
+            "averageMs": 0.015,
+            "recentMaxMs": 0.4,
+            "maxMs": 0.4
+          },
+          "PublishState.Summary.PressureEvidence.WitnessEvidence": {
+            "calls": 812,
+            "samples": 136,
+            "averageMs": 0.047,
+            "recentMaxMs": 0.4,
+            "maxMs": 0.4
+          },
+          "PublishState.Summary.ResponseAI.Security": {
+            "calls": 812,
+            "samples": 136,
+            "averageMs": 0.029,
+            "recentMaxMs": 0.3,
+            "maxMs": 0.3
+          },
+          "PublishState.Summary.ResponseAI.WorldAI": {
+            "calls": 812,
+            "samples": 136,
+            "averageMs": 0.027,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.2
+          },
+          "PublishState.Summary.Tail": {
+            "calls": 812,
+            "samples": 136,
+            "averageMs": 0.001,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "StreamingPipeline": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.726,
+            "recentMaxMs": 2.3,
+            "maxMs": 2.3
+          },
+          "TerritoryRuntimeSystem": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.052,
+            "recentMaxMs": 0.9,
+            "maxMs": 0.9
+          },
+          "TrafficPipeline": {
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 5.439,
+            "recentMaxMs": 20.8,
+            "maxMs": 20.8
+          }
+        },
+        "slowestSystems": [
+          {
+            "name": "TrafficPipeline",
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 5.439,
+            "recentMaxMs": 20.8,
+            "maxMs": 20.8
+          },
+          {
+            "name": "GameplayRuntimeCore",
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 3.94,
+            "recentMaxMs": 22.3,
+            "maxMs": 22.3
+          },
+          {
+            "name": "Core.WorldState",
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 1.823,
+            "recentMaxMs": 9.9,
+            "maxMs": 9.9
+          },
+          {
+            "name": "PedestrianSystem",
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.934,
+            "recentMaxMs": 2.3,
+            "maxMs": 2.3
+          },
+          {
+            "name": "Core.Finalize",
+            "calls": 811,
+            "samples": 136,
+            "averageMs": 0.735,
+            "recentMaxMs": 3,
+            "maxMs": 3
+          }
+        ],
+        "conflicts": []
+      },
+      "resources": {
+        "textures": 127,
+        "objects": 1090,
+        "rendered": 300,
+        "resident": 19,
+        "dormant": 3,
+        "materialMiB": 34.541259765625,
+        "vehicles": 11,
+        "npcs": 238
+      }
+    },
+    {
+      "name": "hospital-settled",
+      "frames": 339,
+      "fps": 57.34779151796913,
+      "p50": 17,
+      "p95": 24.899999991059303,
+      "p99": 33.3999999910593,
+      "max": 40.3999999910593,
+      "over25": 16,
+      "over50": 0,
+      "means": {
+        "calls": 5,
+        "vertices": 9264.83185840708,
+        "npcUpdate": 0.2752212390171743,
+        "parallaxUpdate": 0.3958702067182479,
+        "render:initialize": 1.3088495584100397,
+        "render:Of": 0.03362831890934688,
+        "render:Mb": 0.3896755162066063,
+        "render:gi": 0.0749262528697298,
+        "render:Jf": 0.11150442525348832,
+        "render:yc": 0.24336283115510743,
+        "render:gf": 0.020058997261137385,
+        "render:ch": 0.013569321516340813
+      },
+      "diagnostics": {
+        "owners": {
+          "GameScene.update": "GameplayRuntime",
+          "GameScene.updatePlayerMovement": "GameScene",
+          "InteractionSystem.sortOptions": "InteractionSystem",
+          "InteractionSystem.bestOption": "InteractionSystem",
+          "PowersSystem.update": "PowersSystem",
+          "NpcSystem.updateNpc": "NpcSystem",
+          "WitnessSystem.drawMarkers": "WitnessSystem",
+          "PoliceSystem.updatePolice": "PoliceSystem",
+          "HunterSystem.updateHunters": "HunterSystem",
+          "CombatSystem.notifyViolence": "CombatSystem",
+          "TaskRevealSystem.play": "TaskRevealSystem",
+          "ObjectiveMarkerSystem.update": "ObjectiveMarkerSystem",
+          "OutskirtsSystem.updatePresentation": "OutskirtsSystem",
+          "TutorialDirector.filterActions": "TutorialDirector",
+          "ChunkStreamSystem.update": "ChunkStreamSystem",
+          "DistrictPackSystem.update": "DistrictPackSystem",
+          "EntityStreamSystem.update": "EntityStreamSystem",
+          "DistantSimulationSystem.update": "DistantSimulationSystem",
+          "TrafficMultiAgentRouteRuntimePolicy.update": "TrafficMultiAgentRouteRuntimePolicy",
+          "TrafficPhysicalConsequencesSystem.prepareRouteFrame": "TrafficPhysicalConsequencesSystem",
+          "MacroTrafficPoliceSystem.update": "MacroTrafficPoliceSystem",
+          "TrafficMaterializationSystem.update": "TrafficMaterializationSystem",
+          "TrafficOccupantWitnessSystem.update": "TrafficOccupantWitnessSystem",
+          "WitnessReactionPolicy.update": "WitnessReactionPolicy",
+          "TrafficLocalBehaviorSystem.update": "TrafficLocalBehaviorSystem",
+          "TrafficSteeringPresentationSystem.update": "TrafficSteeringPresentationSystem",
+          "TrafficPhysicalConsequencesSystem.update": "TrafficPhysicalConsequencesSystem",
+          "TrafficImpactConsequencesSystem.update": "TrafficImpactConsequencesSystem",
+          "VehicleCollisionSofteningPolicy.updateDriving": "VehicleCollisionSofteningPolicy",
+          "MotorizedPoliceSystem.update": "MotorizedPoliceSystem",
+          "VehicleSystem.updateDriving": "VehicleSystem",
+          "VehicleSystem.enterVehicle": "VehicleSystem",
+          "PedestrianSystem.update": "PedestrianSystem",
+          "StreetFurnitureSystem.resolveVehicleMove": "StreetFurnitureSystem",
+          "TerritoryRuntimeSystem.update": "TerritoryRuntimeSystem"
+        },
+        "systems": [
+          "AiStateSystem",
+          "ChunkStreamSystem",
+          "CombatSystem",
+          "Core.Combat",
+          "Core.Finalize",
+          "Core.Input",
+          "Core.InteractionQuery",
+          "Core.InteractionRefresh",
+          "Core.WorldActors",
+          "Core.WorldState",
+          "DeathRecoverySystem",
+          "DistantSimulationSystem",
+          "DistrictPackSystem",
+          "DrainSystem",
+          "EntityStreamSystem",
+          "Finalize.Camera",
+          "Finalize.Diagnostics",
+          "Finalize.Markers",
+          "Finalize.MovementNoise",
+          "Finalize.PublishState",
+          "Finalize.StatePublisher",
+          "Finalize.UxGuidance",
+          "GameplayRuntimeCore",
+          "HuntingLawRuntimeSystem",
+          "InputSystem",
+          "MacroTrafficPoliceSystem",
+          "MotorizedPoliceSystem",
+          "MovementNoiseSystem",
+          "ObjectiveMarkerSystem",
+          "OutskirtsSystem",
+          "PedestrianSystem",
+          "PlayerDamageSystem",
+          "PoliceFirearmSystem",
+          "PoliceViolenceSystem",
+          "PropDamageSystem",
+          "PublishState.InteractionMenu",
+          "PublishState.PayloadTail",
+          "PublishState.Prepare",
+          "PublishState.RegistryCommit",
+          "PublishState.Summaries",
+          "PublishState.Summary.MissionActors.Mission",
+          "PublishState.Summary.MissionActors.NeedsPowers",
+          "PublishState.Summary.MissionActors.Npc",
+          "PublishState.Summary.PressureEvidence.Pressure",
+          "PublishState.Summary.PressureEvidence.WitnessEvidence",
+          "PublishState.Summary.ResponseAI.Security",
+          "PublishState.Summary.ResponseAI.WorldAI",
+          "PublishState.Summary.Tail",
+          "SensoryAwarenessSystem",
+          "StreamingPipeline",
+          "StreetFurnitureSystem",
+          "TaskRevealSystem",
+          "TerritoryRuntimeSystem",
+          "TrafficImpactConsequencesSystem",
+          "TrafficLocalBehaviorSystem",
+          "TrafficMaterializationSystem",
+          "TrafficMultiAgentRouteRuntimePolicy",
+          "TrafficOccupantWitnessSystem",
+          "TrafficPhysicalConsequencesSystem",
+          "TrafficPipeline",
+          "TrafficSteeringPresentationSystem",
+          "UxGuidanceSystem",
+          "VehicleCollisionSofteningPolicy",
+          "VehicleSystem",
+          "WeaponSystem",
+          "WitnessMarkerPolicy",
+          "WitnessPerceptionPolicy",
+          "WitnessReactionPolicy"
+        ],
+        "samples": 180,
+        "averageFrameMs": 1.731,
+        "recentMaxFrameMs": 4.5,
+        "maxFrameMs": 20.4,
+        "systemSampleStride": 6,
+        "snapshotCacheMs": 250,
+        "systemTimings": {
+          "Core.Combat": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.19,
+            "recentMaxMs": 0.7,
+            "maxMs": 1.9
+          },
+          "Core.Finalize": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.781,
+            "recentMaxMs": 7.2,
+            "maxMs": 7.2
+          },
+          "Core.Input": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.337,
+            "recentMaxMs": 1.1,
+            "maxMs": 3.2
+          },
+          "Core.InteractionQuery": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.087,
+            "recentMaxMs": 0.4,
+            "maxMs": 1.4
+          },
+          "Core.InteractionRefresh": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.334,
+            "recentMaxMs": 1.7,
+            "maxMs": 1.7
+          },
+          "Core.WorldActors": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.312,
+            "recentMaxMs": 0.8,
+            "maxMs": 2
+          },
+          "Core.WorldState": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 1.327,
+            "recentMaxMs": 4.1,
+            "maxMs": 9.9
+          },
+          "Finalize.Camera": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.004,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "Finalize.Diagnostics": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.038,
+            "recentMaxMs": 0.6,
+            "maxMs": 0.6
+          },
+          "Finalize.Markers": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.014,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.7
+          },
+          "Finalize.MovementNoise": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.006,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "Finalize.PublishState": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.673,
+            "recentMaxMs": 7.1,
+            "maxMs": 7.1
+          },
+          "Finalize.StatePublisher": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.021,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.3
+          },
+          "Finalize.UxGuidance": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.008,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "GameplayRuntimeCore": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 3.393,
+            "recentMaxMs": 9.9,
+            "maxMs": 22.3
+          },
+          "MotorizedPoliceSystem": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.026,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.2
+          },
+          "PedestrianSystem": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.868,
+            "recentMaxMs": 2.6,
+            "maxMs": 2.6
+          },
+          "PublishState.InteractionMenu": {
+            "calls": 1253,
+            "samples": 180,
+            "averageMs": 0.002,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.PayloadTail": {
+            "calls": 1253,
+            "samples": 180,
+            "averageMs": 0.001,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.Prepare": {
+            "calls": 1253,
+            "samples": 180,
+            "averageMs": 0.011,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.3
+          },
+          "PublishState.RegistryCommit": {
+            "calls": 5012,
+            "samples": 180,
+            "averageMs": 0.014,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.2
+          },
+          "PublishState.Summaries": {
+            "calls": 1253,
+            "samples": 180,
+            "averageMs": 0.224,
+            "recentMaxMs": 0.8,
+            "maxMs": 2
+          },
+          "PublishState.Summary.MissionActors.Mission": {
+            "calls": 1253,
+            "samples": 180,
+            "averageMs": 0.003,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.2
+          },
+          "PublishState.Summary.MissionActors.NeedsPowers": {
+            "calls": 1253,
+            "samples": 180,
+            "averageMs": 0.011,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.3
+          },
+          "PublishState.Summary.MissionActors.Npc": {
+            "calls": 1253,
+            "samples": 180,
+            "averageMs": 0.084,
+            "recentMaxMs": 0.3,
+            "maxMs": 0.5
+          },
+          "PublishState.Summary.PressureEvidence.Pressure": {
+            "calls": 1253,
+            "samples": 180,
+            "averageMs": 0.011,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.4
+          },
+          "PublishState.Summary.PressureEvidence.WitnessEvidence": {
+            "calls": 1253,
+            "samples": 180,
+            "averageMs": 0.042,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.4
+          },
+          "PublishState.Summary.ResponseAI.Security": {
+            "calls": 1253,
+            "samples": 180,
+            "averageMs": 0.032,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.3
+          },
+          "PublishState.Summary.ResponseAI.WorldAI": {
+            "calls": 1253,
+            "samples": 180,
+            "averageMs": 0.024,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.2
+          },
+          "PublishState.Summary.Tail": {
+            "calls": 1253,
+            "samples": 180,
+            "averageMs": 0.002,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "StreamingPipeline": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.686,
+            "recentMaxMs": 2.3,
+            "maxMs": 2.3
+          },
+          "TerritoryRuntimeSystem": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.049,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.9
+          },
+          "TrafficPipeline": {
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 5.446,
+            "recentMaxMs": 15.1,
+            "maxMs": 20.8
+          }
+        },
+        "slowestSystems": [
+          {
+            "name": "TrafficPipeline",
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 5.446,
+            "recentMaxMs": 15.1,
+            "maxMs": 20.8
+          },
+          {
+            "name": "GameplayRuntimeCore",
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 3.393,
+            "recentMaxMs": 9.9,
+            "maxMs": 22.3
+          },
+          {
+            "name": "Core.WorldState",
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 1.327,
+            "recentMaxMs": 4.1,
+            "maxMs": 9.9
+          },
+          {
+            "name": "PedestrianSystem",
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.868,
+            "recentMaxMs": 2.6,
+            "maxMs": 2.6
+          },
+          {
+            "name": "Core.Finalize",
+            "calls": 1252,
+            "samples": 180,
+            "averageMs": 0.781,
+            "recentMaxMs": 7.2,
+            "maxMs": 7.2
+          }
+        ],
+        "conflicts": []
+      },
+      "resources": {
+        "textures": 122,
+        "objects": 929,
+        "rendered": 193,
+        "resident": 6,
+        "dormant": 12,
+        "materialMiB": 29.681732177734375,
+        "vehicles": 11,
+        "npcs": 238
+      }
+    },
+    {
+      "name": "hospital-pan",
+      "frames": 354,
+      "fps": 59.81346309807439,
+      "p50": 16.700000002980232,
+      "p95": 21.100000008940697,
+      "p99": 24.700000002980232,
+      "max": 30.299999997019768,
+      "over25": 2,
+      "over50": 0,
+      "means": {
+        "calls": 5.805084745762712,
+        "vertices": 9941.762711864407,
+        "npcUpdate": 0.1920903956486007,
+        "parallaxUpdate": 0.38785310678899626,
+        "render:initialize": 1.2807909603846275,
+        "render:Of": 0.02824858815993293,
+        "render:Mb": 0.3612994345820556,
+        "render:gi": 0.07966101687338392,
+        "render:Jf": 0.10875706235736103,
+        "render:yc": 0.2714689265789285,
+        "render:gf": 0.051694915245818554,
+        "render:ch": 0.0172316382749606
+      },
+      "diagnostics": {
+        "owners": {
+          "GameScene.update": "GameplayRuntime",
+          "GameScene.updatePlayerMovement": "GameScene",
+          "InteractionSystem.sortOptions": "InteractionSystem",
+          "InteractionSystem.bestOption": "InteractionSystem",
+          "PowersSystem.update": "PowersSystem",
+          "NpcSystem.updateNpc": "NpcSystem",
+          "WitnessSystem.drawMarkers": "WitnessSystem",
+          "PoliceSystem.updatePolice": "PoliceSystem",
+          "HunterSystem.updateHunters": "HunterSystem",
+          "CombatSystem.notifyViolence": "CombatSystem",
+          "TaskRevealSystem.play": "TaskRevealSystem",
+          "ObjectiveMarkerSystem.update": "ObjectiveMarkerSystem",
+          "OutskirtsSystem.updatePresentation": "OutskirtsSystem",
+          "TutorialDirector.filterActions": "TutorialDirector",
+          "ChunkStreamSystem.update": "ChunkStreamSystem",
+          "DistrictPackSystem.update": "DistrictPackSystem",
+          "EntityStreamSystem.update": "EntityStreamSystem",
+          "DistantSimulationSystem.update": "DistantSimulationSystem",
+          "TrafficMultiAgentRouteRuntimePolicy.update": "TrafficMultiAgentRouteRuntimePolicy",
+          "TrafficPhysicalConsequencesSystem.prepareRouteFrame": "TrafficPhysicalConsequencesSystem",
+          "MacroTrafficPoliceSystem.update": "MacroTrafficPoliceSystem",
+          "TrafficMaterializationSystem.update": "TrafficMaterializationSystem",
+          "TrafficOccupantWitnessSystem.update": "TrafficOccupantWitnessSystem",
+          "WitnessReactionPolicy.update": "WitnessReactionPolicy",
+          "TrafficLocalBehaviorSystem.update": "TrafficLocalBehaviorSystem",
+          "TrafficSteeringPresentationSystem.update": "TrafficSteeringPresentationSystem",
+          "TrafficPhysicalConsequencesSystem.update": "TrafficPhysicalConsequencesSystem",
+          "TrafficImpactConsequencesSystem.update": "TrafficImpactConsequencesSystem",
+          "VehicleCollisionSofteningPolicy.updateDriving": "VehicleCollisionSofteningPolicy",
+          "MotorizedPoliceSystem.update": "MotorizedPoliceSystem",
+          "VehicleSystem.updateDriving": "VehicleSystem",
+          "VehicleSystem.enterVehicle": "VehicleSystem",
+          "PedestrianSystem.update": "PedestrianSystem",
+          "StreetFurnitureSystem.resolveVehicleMove": "StreetFurnitureSystem",
+          "TerritoryRuntimeSystem.update": "TerritoryRuntimeSystem"
+        },
+        "systems": [
+          "AiStateSystem",
+          "ChunkStreamSystem",
+          "CombatSystem",
+          "Core.Combat",
+          "Core.Finalize",
+          "Core.Input",
+          "Core.InteractionQuery",
+          "Core.InteractionRefresh",
+          "Core.WorldActors",
+          "Core.WorldState",
+          "DeathRecoverySystem",
+          "DistantSimulationSystem",
+          "DistrictPackSystem",
+          "DrainSystem",
+          "EntityStreamSystem",
+          "Finalize.Camera",
+          "Finalize.Diagnostics",
+          "Finalize.Markers",
+          "Finalize.MovementNoise",
+          "Finalize.PublishState",
+          "Finalize.StatePublisher",
+          "Finalize.UxGuidance",
+          "GameplayRuntimeCore",
+          "HuntingLawRuntimeSystem",
+          "InputSystem",
+          "MacroTrafficPoliceSystem",
+          "MotorizedPoliceSystem",
+          "MovementNoiseSystem",
+          "ObjectiveMarkerSystem",
+          "OutskirtsSystem",
+          "PedestrianSystem",
+          "PlayerDamageSystem",
+          "PoliceFirearmSystem",
+          "PoliceViolenceSystem",
+          "PropDamageSystem",
+          "PublishState.InteractionMenu",
+          "PublishState.PayloadTail",
+          "PublishState.Prepare",
+          "PublishState.RegistryCommit",
+          "PublishState.Summaries",
+          "PublishState.Summary.MissionActors.Mission",
+          "PublishState.Summary.MissionActors.NeedsPowers",
+          "PublishState.Summary.MissionActors.Npc",
+          "PublishState.Summary.PressureEvidence.Pressure",
+          "PublishState.Summary.PressureEvidence.WitnessEvidence",
+          "PublishState.Summary.ResponseAI.Security",
+          "PublishState.Summary.ResponseAI.WorldAI",
+          "PublishState.Summary.Tail",
+          "SensoryAwarenessSystem",
+          "StreamingPipeline",
+          "StreetFurnitureSystem",
+          "TaskRevealSystem",
+          "TerritoryRuntimeSystem",
+          "TrafficImpactConsequencesSystem",
+          "TrafficLocalBehaviorSystem",
+          "TrafficMaterializationSystem",
+          "TrafficMultiAgentRouteRuntimePolicy",
+          "TrafficOccupantWitnessSystem",
+          "TrafficPhysicalConsequencesSystem",
+          "TrafficPipeline",
+          "TrafficSteeringPresentationSystem",
+          "UxGuidanceSystem",
+          "VehicleCollisionSofteningPolicy",
+          "VehicleSystem",
+          "WeaponSystem",
+          "WitnessMarkerPolicy",
+          "WitnessPerceptionPolicy",
+          "WitnessReactionPolicy"
+        ],
+        "samples": 180,
+        "averageFrameMs": 2.029,
+        "recentMaxFrameMs": 6.2,
+        "maxFrameMs": 20.4,
+        "systemSampleStride": 6,
+        "snapshotCacheMs": 250,
+        "systemTimings": {
+          "Core.Combat": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.187,
+            "recentMaxMs": 1,
+            "maxMs": 1.9
+          },
+          "Core.Finalize": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.753,
+            "recentMaxMs": 7.2,
+            "maxMs": 7.2
+          },
+          "Core.Input": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.341,
+            "recentMaxMs": 1.1,
+            "maxMs": 3.2
+          },
+          "Core.InteractionQuery": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.088,
+            "recentMaxMs": 0.4,
+            "maxMs": 1.4
+          },
+          "Core.InteractionRefresh": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.317,
+            "recentMaxMs": 1.7,
+            "maxMs": 1.7
+          },
+          "Core.WorldActors": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.261,
+            "recentMaxMs": 0.8,
+            "maxMs": 2
+          },
+          "Core.WorldState": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.93,
+            "recentMaxMs": 3.7,
+            "maxMs": 9.9
+          },
+          "Finalize.Camera": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.005,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "Finalize.Diagnostics": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.029,
+            "recentMaxMs": 0.5,
+            "maxMs": 0.6
+          },
+          "Finalize.Markers": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.013,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.7
+          },
+          "Finalize.MovementNoise": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.007,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "Finalize.PublishState": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.656,
+            "recentMaxMs": 7.1,
+            "maxMs": 7.1
+          },
+          "Finalize.StatePublisher": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.022,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.3
+          },
+          "Finalize.UxGuidance": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.008,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "GameplayRuntimeCore": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 2.913,
+            "recentMaxMs": 9.9,
+            "maxMs": 22.3
+          },
+          "MotorizedPoliceSystem": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.022,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.2
+          },
+          "PedestrianSystem": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.826,
+            "recentMaxMs": 2.6,
+            "maxMs": 2.6
+          },
+          "PublishState.InteractionMenu": {
+            "calls": 1659,
+            "samples": 180,
+            "averageMs": 0.003,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.PayloadTail": {
+            "calls": 1659,
+            "samples": 180,
+            "averageMs": 0.001,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.Prepare": {
+            "calls": 1659,
+            "samples": 180,
+            "averageMs": 0.013,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.3
+          },
+          "PublishState.RegistryCommit": {
+            "calls": 6636,
+            "samples": 180,
+            "averageMs": 0.014,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.2
+          },
+          "PublishState.Summaries": {
+            "calls": 1659,
+            "samples": 180,
+            "averageMs": 0.216,
+            "recentMaxMs": 0.8,
+            "maxMs": 2
+          },
+          "PublishState.Summary.MissionActors.Mission": {
+            "calls": 1659,
+            "samples": 180,
+            "averageMs": 0.004,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.2
+          },
+          "PublishState.Summary.MissionActors.NeedsPowers": {
+            "calls": 1659,
+            "samples": 180,
+            "averageMs": 0.007,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.3
+          },
+          "PublishState.Summary.MissionActors.Npc": {
+            "calls": 1659,
+            "samples": 180,
+            "averageMs": 0.087,
+            "recentMaxMs": 0.3,
+            "maxMs": 0.5
+          },
+          "PublishState.Summary.PressureEvidence.Pressure": {
+            "calls": 1659,
+            "samples": 180,
+            "averageMs": 0.007,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.4
+          },
+          "PublishState.Summary.PressureEvidence.WitnessEvidence": {
+            "calls": 1659,
+            "samples": 180,
+            "averageMs": 0.037,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.4
+          },
+          "PublishState.Summary.ResponseAI.Security": {
+            "calls": 1659,
+            "samples": 180,
+            "averageMs": 0.034,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.3
+          },
+          "PublishState.Summary.ResponseAI.WorldAI": {
+            "calls": 1659,
+            "samples": 180,
+            "averageMs": 0.025,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.2
+          },
+          "PublishState.Summary.Tail": {
+            "calls": 1659,
+            "samples": 180,
+            "averageMs": 0.003,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "StreamingPipeline": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.65,
+            "recentMaxMs": 1.7,
+            "maxMs": 2.3
+          },
+          "TerritoryRuntimeSystem": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.04,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.9
+          },
+          "TrafficPipeline": {
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 5.111,
+            "recentMaxMs": 15.1,
+            "maxMs": 20.8
+          }
+        },
+        "slowestSystems": [
+          {
+            "name": "TrafficPipeline",
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 5.111,
+            "recentMaxMs": 15.1,
+            "maxMs": 20.8
+          },
+          {
+            "name": "GameplayRuntimeCore",
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 2.913,
+            "recentMaxMs": 9.9,
+            "maxMs": 22.3
+          },
+          {
+            "name": "Core.WorldState",
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.93,
+            "recentMaxMs": 3.7,
+            "maxMs": 9.9
+          },
+          {
+            "name": "PedestrianSystem",
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.826,
+            "recentMaxMs": 2.6,
+            "maxMs": 2.6
+          },
+          {
+            "name": "Core.Finalize",
+            "calls": 1658,
+            "samples": 180,
+            "averageMs": 0.753,
+            "recentMaxMs": 7.2,
+            "maxMs": 7.2
+          }
+        ],
+        "conflicts": []
+      },
+      "resources": {
+        "textures": 127,
+        "objects": 974,
+        "rendered": 217,
+        "resident": 8,
+        "dormant": 10,
+        "materialMiB": 34.840728759765625,
+        "vehicles": 11,
+        "npcs": 238
+      }
+    },
+    {
+      "name": "police-settled",
+      "frames": 338,
+      "fps": 57.22412216847951,
+      "p50": 16.900000005960464,
+      "p95": 23.5,
+      "p99": 28.099999994039536,
+      "max": 33,
+      "over25": 12,
+      "over50": 0,
+      "means": {
+        "calls": 20,
+        "vertices": 18770.30769230769,
+        "npcUpdate": 0.21538461581666088,
+        "parallaxUpdate": 0.7017751477173799,
+        "render:initialize": 1.3514792922685837,
+        "render:Of": 0.05414201164915717,
+        "render:Mb": 0.6431952663779964,
+        "render:gi": 0.2810650884487925,
+        "render:Jf": 0.061834319764693106,
+        "render:yc": 0.8775147918237032,
+        "render:gf": 0.04911242672324886,
+        "render:ch": 0.017159763304792214
+      },
+      "diagnostics": {
+        "owners": {
+          "GameScene.update": "GameplayRuntime",
+          "GameScene.updatePlayerMovement": "GameScene",
+          "InteractionSystem.sortOptions": "InteractionSystem",
+          "InteractionSystem.bestOption": "InteractionSystem",
+          "PowersSystem.update": "PowersSystem",
+          "NpcSystem.updateNpc": "NpcSystem",
+          "WitnessSystem.drawMarkers": "WitnessSystem",
+          "PoliceSystem.updatePolice": "PoliceSystem",
+          "HunterSystem.updateHunters": "HunterSystem",
+          "CombatSystem.notifyViolence": "CombatSystem",
+          "TaskRevealSystem.play": "TaskRevealSystem",
+          "ObjectiveMarkerSystem.update": "ObjectiveMarkerSystem",
+          "OutskirtsSystem.updatePresentation": "OutskirtsSystem",
+          "TutorialDirector.filterActions": "TutorialDirector",
+          "ChunkStreamSystem.update": "ChunkStreamSystem",
+          "DistrictPackSystem.update": "DistrictPackSystem",
+          "EntityStreamSystem.update": "EntityStreamSystem",
+          "DistantSimulationSystem.update": "DistantSimulationSystem",
+          "TrafficMultiAgentRouteRuntimePolicy.update": "TrafficMultiAgentRouteRuntimePolicy",
+          "TrafficPhysicalConsequencesSystem.prepareRouteFrame": "TrafficPhysicalConsequencesSystem",
+          "MacroTrafficPoliceSystem.update": "MacroTrafficPoliceSystem",
+          "TrafficMaterializationSystem.update": "TrafficMaterializationSystem",
+          "TrafficOccupantWitnessSystem.update": "TrafficOccupantWitnessSystem",
+          "WitnessReactionPolicy.update": "WitnessReactionPolicy",
+          "TrafficLocalBehaviorSystem.update": "TrafficLocalBehaviorSystem",
+          "TrafficSteeringPresentationSystem.update": "TrafficSteeringPresentationSystem",
+          "TrafficPhysicalConsequencesSystem.update": "TrafficPhysicalConsequencesSystem",
+          "TrafficImpactConsequencesSystem.update": "TrafficImpactConsequencesSystem",
+          "VehicleCollisionSofteningPolicy.updateDriving": "VehicleCollisionSofteningPolicy",
+          "MotorizedPoliceSystem.update": "MotorizedPoliceSystem",
+          "VehicleSystem.updateDriving": "VehicleSystem",
+          "VehicleSystem.enterVehicle": "VehicleSystem",
+          "PedestrianSystem.update": "PedestrianSystem",
+          "StreetFurnitureSystem.resolveVehicleMove": "StreetFurnitureSystem",
+          "TerritoryRuntimeSystem.update": "TerritoryRuntimeSystem"
+        },
+        "systems": [
+          "AiStateSystem",
+          "ChunkStreamSystem",
+          "CombatSystem",
+          "Core.Combat",
+          "Core.Finalize",
+          "Core.Input",
+          "Core.InteractionQuery",
+          "Core.InteractionRefresh",
+          "Core.WorldActors",
+          "Core.WorldState",
+          "DeathRecoverySystem",
+          "DistantSimulationSystem",
+          "DistrictPackSystem",
+          "DrainSystem",
+          "EntityStreamSystem",
+          "Finalize.Camera",
+          "Finalize.Diagnostics",
+          "Finalize.Markers",
+          "Finalize.MovementNoise",
+          "Finalize.PublishState",
+          "Finalize.StatePublisher",
+          "Finalize.UxGuidance",
+          "GameplayRuntimeCore",
+          "HuntingLawRuntimeSystem",
+          "InputSystem",
+          "MacroTrafficPoliceSystem",
+          "MotorizedPoliceSystem",
+          "MovementNoiseSystem",
+          "ObjectiveMarkerSystem",
+          "OutskirtsSystem",
+          "PedestrianSystem",
+          "PlayerDamageSystem",
+          "PoliceFirearmSystem",
+          "PoliceViolenceSystem",
+          "PropDamageSystem",
+          "PublishState.InteractionMenu",
+          "PublishState.PayloadTail",
+          "PublishState.Prepare",
+          "PublishState.RegistryCommit",
+          "PublishState.Summaries",
+          "PublishState.Summary.MissionActors.Mission",
+          "PublishState.Summary.MissionActors.NeedsPowers",
+          "PublishState.Summary.MissionActors.Npc",
+          "PublishState.Summary.PressureEvidence.Pressure",
+          "PublishState.Summary.PressureEvidence.WitnessEvidence",
+          "PublishState.Summary.ResponseAI.Security",
+          "PublishState.Summary.ResponseAI.WorldAI",
+          "PublishState.Summary.Tail",
+          "SensoryAwarenessSystem",
+          "StreamingPipeline",
+          "StreetFurnitureSystem",
+          "TaskRevealSystem",
+          "TerritoryRuntimeSystem",
+          "TrafficImpactConsequencesSystem",
+          "TrafficLocalBehaviorSystem",
+          "TrafficMaterializationSystem",
+          "TrafficMultiAgentRouteRuntimePolicy",
+          "TrafficOccupantWitnessSystem",
+          "TrafficPhysicalConsequencesSystem",
+          "TrafficPipeline",
+          "TrafficSteeringPresentationSystem",
+          "UxGuidanceSystem",
+          "VehicleCollisionSofteningPolicy",
+          "VehicleSystem",
+          "WeaponSystem",
+          "WitnessMarkerPolicy",
+          "WitnessPerceptionPolicy",
+          "WitnessReactionPolicy"
+        ],
+        "samples": 180,
+        "averageFrameMs": 1.631,
+        "recentMaxFrameMs": 2.8,
+        "maxFrameMs": 20.4,
+        "systemSampleStride": 6,
+        "snapshotCacheMs": 250,
+        "systemTimings": {
+          "Core.Combat": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.174,
+            "recentMaxMs": 1,
+            "maxMs": 1.9
+          },
+          "Core.Finalize": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.654,
+            "recentMaxMs": 1.7,
+            "maxMs": 7.2
+          },
+          "Core.Input": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.321,
+            "recentMaxMs": 1,
+            "maxMs": 3.2
+          },
+          "Core.InteractionQuery": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.075,
+            "recentMaxMs": 0.3,
+            "maxMs": 1.4
+          },
+          "Core.InteractionRefresh": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.289,
+            "recentMaxMs": 1.4,
+            "maxMs": 1.7
+          },
+          "Core.WorldActors": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.241,
+            "recentMaxMs": 0.8,
+            "maxMs": 2
+          },
+          "Core.WorldState": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.637,
+            "recentMaxMs": 2.1,
+            "maxMs": 9.9
+          },
+          "Finalize.Camera": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.006,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "Finalize.Diagnostics": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.025,
+            "recentMaxMs": 0.5,
+            "maxMs": 0.6
+          },
+          "Finalize.Markers": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.013,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.7
+          },
+          "Finalize.MovementNoise": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.004,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "Finalize.PublishState": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.568,
+            "recentMaxMs": 1.6,
+            "maxMs": 7.1
+          },
+          "Finalize.StatePublisher": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.017,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.3
+          },
+          "Finalize.UxGuidance": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.006,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "GameplayRuntimeCore": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 2.423,
+            "recentMaxMs": 5.6,
+            "maxMs": 22.3
+          },
+          "MotorizedPoliceSystem": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.015,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.2
+          },
+          "PedestrianSystem": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.62,
+            "recentMaxMs": 2.3,
+            "maxMs": 2.6
+          },
+          "PublishState.InteractionMenu": {
+            "calls": 2113,
+            "samples": 180,
+            "averageMs": 0.001,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.PayloadTail": {
+            "calls": 2113,
+            "samples": 180,
+            "averageMs": 0.001,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.Prepare": {
+            "calls": 2113,
+            "samples": 180,
+            "averageMs": 0.012,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.3
+          },
+          "PublishState.RegistryCommit": {
+            "calls": 8452,
+            "samples": 180,
+            "averageMs": 0.011,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.2
+          },
+          "PublishState.Summaries": {
+            "calls": 2113,
+            "samples": 180,
+            "averageMs": 0.194,
+            "recentMaxMs": 0.7,
+            "maxMs": 2
+          },
+          "PublishState.Summary.MissionActors.Mission": {
+            "calls": 2113,
+            "samples": 180,
+            "averageMs": 0.004,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.2
+          },
+          "PublishState.Summary.MissionActors.NeedsPowers": {
+            "calls": 2113,
+            "samples": 180,
+            "averageMs": 0.008,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.3
+          },
+          "PublishState.Summary.MissionActors.Npc": {
+            "calls": 2113,
+            "samples": 180,
+            "averageMs": 0.068,
+            "recentMaxMs": 0.3,
+            "maxMs": 0.5
+          },
+          "PublishState.Summary.PressureEvidence.Pressure": {
+            "calls": 2113,
+            "samples": 180,
+            "averageMs": 0.011,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.4
+          },
+          "PublishState.Summary.PressureEvidence.WitnessEvidence": {
+            "calls": 2113,
+            "samples": 180,
+            "averageMs": 0.036,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.4
+          },
+          "PublishState.Summary.ResponseAI.Security": {
+            "calls": 2113,
+            "samples": 180,
+            "averageMs": 0.029,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.3
+          },
+          "PublishState.Summary.ResponseAI.WorldAI": {
+            "calls": 2113,
+            "samples": 180,
+            "averageMs": 0.028,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.2
+          },
+          "PublishState.Summary.Tail": {
+            "calls": 2113,
+            "samples": 180,
+            "averageMs": 0.004,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "StreamingPipeline": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 1.209,
+            "recentMaxMs": 107.5,
+            "maxMs": 107.5
+          },
+          "TerritoryRuntimeSystem": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.027,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.9
+          },
+          "TrafficPipeline": {
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 5.22,
+            "recentMaxMs": 13.3,
+            "maxMs": 20.8
+          }
+        },
+        "slowestSystems": [
+          {
+            "name": "TrafficPipeline",
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 5.22,
+            "recentMaxMs": 13.3,
+            "maxMs": 20.8
+          },
+          {
+            "name": "GameplayRuntimeCore",
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 2.423,
+            "recentMaxMs": 5.6,
+            "maxMs": 22.3
+          },
+          {
+            "name": "StreamingPipeline",
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 1.209,
+            "recentMaxMs": 107.5,
+            "maxMs": 107.5
+          },
+          {
+            "name": "Core.Finalize",
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.654,
+            "recentMaxMs": 1.7,
+            "maxMs": 7.2
+          },
+          {
+            "name": "Core.WorldState",
+            "calls": 2112,
+            "samples": 180,
+            "averageMs": 0.637,
+            "recentMaxMs": 2.1,
+            "maxMs": 9.9
+          }
+        ],
+        "conflicts": []
+      },
+      "resources": {
+        "textures": 174,
+        "objects": 1385,
+        "rendered": 493,
+        "resident": 28,
+        "dormant": 12,
+        "materialMiB": 34.805931091308594,
+        "vehicles": 11,
+        "npcs": 238
+      }
+    },
+    {
+      "name": "police-pan",
+      "frames": 299,
+      "fps": 50.328227571115974,
+      "p50": 18.100000008940697,
+      "p95": 30.700000002980232,
+      "p99": 45.70000000298023,
+      "max": 53.29999999701977,
+      "over25": 33,
+      "over50": 1,
+      "means": {
+        "calls": 17.879598662207357,
+        "vertices": 19265.739130434784,
+        "npcUpdate": 0.25418060235554557,
+        "parallaxUpdate": 1.1130434779020457,
+        "render:initialize": 1.6488294330827369,
+        "render:Of": 0.07926421345875016,
+        "render:Mb": 0.7769230779596794,
+        "render:gi": 0.33612040083942607,
+        "render:Jf": 0.07759197350329779,
+        "render:yc": 1.0458193970563818,
+        "render:gf": 0.05050167222086801,
+        "render:ch": 0.02374581907903869
+      },
+      "diagnostics": {
+        "owners": {
+          "GameScene.update": "GameplayRuntime",
+          "GameScene.updatePlayerMovement": "GameScene",
+          "InteractionSystem.sortOptions": "InteractionSystem",
+          "InteractionSystem.bestOption": "InteractionSystem",
+          "PowersSystem.update": "PowersSystem",
+          "NpcSystem.updateNpc": "NpcSystem",
+          "WitnessSystem.drawMarkers": "WitnessSystem",
+          "PoliceSystem.updatePolice": "PoliceSystem",
+          "HunterSystem.updateHunters": "HunterSystem",
+          "CombatSystem.notifyViolence": "CombatSystem",
+          "TaskRevealSystem.play": "TaskRevealSystem",
+          "ObjectiveMarkerSystem.update": "ObjectiveMarkerSystem",
+          "OutskirtsSystem.updatePresentation": "OutskirtsSystem",
+          "TutorialDirector.filterActions": "TutorialDirector",
+          "ChunkStreamSystem.update": "ChunkStreamSystem",
+          "DistrictPackSystem.update": "DistrictPackSystem",
+          "EntityStreamSystem.update": "EntityStreamSystem",
+          "DistantSimulationSystem.update": "DistantSimulationSystem",
+          "TrafficMultiAgentRouteRuntimePolicy.update": "TrafficMultiAgentRouteRuntimePolicy",
+          "TrafficPhysicalConsequencesSystem.prepareRouteFrame": "TrafficPhysicalConsequencesSystem",
+          "MacroTrafficPoliceSystem.update": "MacroTrafficPoliceSystem",
+          "TrafficMaterializationSystem.update": "TrafficMaterializationSystem",
+          "TrafficOccupantWitnessSystem.update": "TrafficOccupantWitnessSystem",
+          "WitnessReactionPolicy.update": "WitnessReactionPolicy",
+          "TrafficLocalBehaviorSystem.update": "TrafficLocalBehaviorSystem",
+          "TrafficSteeringPresentationSystem.update": "TrafficSteeringPresentationSystem",
+          "TrafficPhysicalConsequencesSystem.update": "TrafficPhysicalConsequencesSystem",
+          "TrafficImpactConsequencesSystem.update": "TrafficImpactConsequencesSystem",
+          "VehicleCollisionSofteningPolicy.updateDriving": "VehicleCollisionSofteningPolicy",
+          "MotorizedPoliceSystem.update": "MotorizedPoliceSystem",
+          "VehicleSystem.updateDriving": "VehicleSystem",
+          "VehicleSystem.enterVehicle": "VehicleSystem",
+          "PedestrianSystem.update": "PedestrianSystem",
+          "StreetFurnitureSystem.resolveVehicleMove": "StreetFurnitureSystem",
+          "TerritoryRuntimeSystem.update": "TerritoryRuntimeSystem"
+        },
+        "systems": [
+          "AiStateSystem",
+          "ChunkStreamSystem",
+          "CombatSystem",
+          "Core.Combat",
+          "Core.Finalize",
+          "Core.Input",
+          "Core.InteractionQuery",
+          "Core.InteractionRefresh",
+          "Core.WorldActors",
+          "Core.WorldState",
+          "DeathRecoverySystem",
+          "DistantSimulationSystem",
+          "DistrictPackSystem",
+          "DrainSystem",
+          "EntityStreamSystem",
+          "Finalize.Camera",
+          "Finalize.Diagnostics",
+          "Finalize.Markers",
+          "Finalize.MovementNoise",
+          "Finalize.PublishState",
+          "Finalize.StatePublisher",
+          "Finalize.UxGuidance",
+          "GameplayRuntimeCore",
+          "HuntingLawRuntimeSystem",
+          "InputSystem",
+          "MacroTrafficPoliceSystem",
+          "MotorizedPoliceSystem",
+          "MovementNoiseSystem",
+          "ObjectiveMarkerSystem",
+          "OutskirtsSystem",
+          "PedestrianSystem",
+          "PlayerDamageSystem",
+          "PoliceFirearmSystem",
+          "PoliceViolenceSystem",
+          "PropDamageSystem",
+          "PublishState.InteractionMenu",
+          "PublishState.PayloadTail",
+          "PublishState.Prepare",
+          "PublishState.RegistryCommit",
+          "PublishState.Summaries",
+          "PublishState.Summary.MissionActors.Mission",
+          "PublishState.Summary.MissionActors.NeedsPowers",
+          "PublishState.Summary.MissionActors.Npc",
+          "PublishState.Summary.PressureEvidence.Pressure",
+          "PublishState.Summary.PressureEvidence.WitnessEvidence",
+          "PublishState.Summary.ResponseAI.Security",
+          "PublishState.Summary.ResponseAI.WorldAI",
+          "PublishState.Summary.Tail",
+          "SensoryAwarenessSystem",
+          "StreamingPipeline",
+          "StreetFurnitureSystem",
+          "TaskRevealSystem",
+          "TerritoryRuntimeSystem",
+          "TrafficImpactConsequencesSystem",
+          "TrafficLocalBehaviorSystem",
+          "TrafficMaterializationSystem",
+          "TrafficMultiAgentRouteRuntimePolicy",
+          "TrafficOccupantWitnessSystem",
+          "TrafficPhysicalConsequencesSystem",
+          "TrafficPipeline",
+          "TrafficSteeringPresentationSystem",
+          "UxGuidanceSystem",
+          "VehicleCollisionSofteningPolicy",
+          "VehicleSystem",
+          "WeaponSystem",
+          "WitnessMarkerPolicy",
+          "WitnessPerceptionPolicy",
+          "WitnessReactionPolicy"
+        ],
+        "samples": 180,
+        "averageFrameMs": 1.76,
+        "recentMaxFrameMs": 9.6,
+        "maxFrameMs": 20.4,
+        "systemSampleStride": 6,
+        "snapshotCacheMs": 250,
+        "systemTimings": {
+          "Core.Combat": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.187,
+            "recentMaxMs": 1.7,
+            "maxMs": 1.9
+          },
+          "Core.Finalize": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.647,
+            "recentMaxMs": 2.2,
+            "maxMs": 7.2
+          },
+          "Core.Input": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.329,
+            "recentMaxMs": 1.6,
+            "maxMs": 3.2
+          },
+          "Core.InteractionQuery": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.079,
+            "recentMaxMs": 0.5,
+            "maxMs": 1.4
+          },
+          "Core.InteractionRefresh": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.293,
+            "recentMaxMs": 2.3,
+            "maxMs": 2.3
+          },
+          "Core.WorldActors": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.257,
+            "recentMaxMs": 1.6,
+            "maxMs": 2
+          },
+          "Core.WorldState": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.633,
+            "recentMaxMs": 3.6,
+            "maxMs": 9.9
+          },
+          "Finalize.Camera": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.007,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "Finalize.Diagnostics": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.028,
+            "recentMaxMs": 0.5,
+            "maxMs": 0.6
+          },
+          "Finalize.Markers": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.014,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.7
+          },
+          "Finalize.MovementNoise": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.005,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "Finalize.PublishState": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.563,
+            "recentMaxMs": 2,
+            "maxMs": 7.1
+          },
+          "Finalize.StatePublisher": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.015,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.3
+          },
+          "Finalize.UxGuidance": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.006,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "GameplayRuntimeCore": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 2.454,
+            "recentMaxMs": 11.6,
+            "maxMs": 22.3
+          },
+          "MotorizedPoliceSystem": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.015,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.2
+          },
+          "PedestrianSystem": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.593,
+            "recentMaxMs": 2.3,
+            "maxMs": 2.6
+          },
+          "PublishState.InteractionMenu": {
+            "calls": 2466,
+            "samples": 180,
+            "averageMs": 0.001,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.PayloadTail": {
+            "calls": 2466,
+            "samples": 180,
+            "averageMs": 0.001,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.Prepare": {
+            "calls": 2466,
+            "samples": 180,
+            "averageMs": 0.008,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.3
+          },
+          "PublishState.RegistryCommit": {
+            "calls": 9864,
+            "samples": 180,
+            "averageMs": 0.011,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.2
+          },
+          "PublishState.Summaries": {
+            "calls": 2466,
+            "samples": 180,
+            "averageMs": 0.199,
+            "recentMaxMs": 0.7,
+            "maxMs": 2
+          },
+          "PublishState.Summary.MissionActors.Mission": {
+            "calls": 2466,
+            "samples": 180,
+            "averageMs": 0.002,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.2
+          },
+          "PublishState.Summary.MissionActors.NeedsPowers": {
+            "calls": 2466,
+            "samples": 180,
+            "averageMs": 0.009,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.3
+          },
+          "PublishState.Summary.MissionActors.Npc": {
+            "calls": 2466,
+            "samples": 180,
+            "averageMs": 0.071,
+            "recentMaxMs": 0.3,
+            "maxMs": 0.5
+          },
+          "PublishState.Summary.PressureEvidence.Pressure": {
+            "calls": 2466,
+            "samples": 180,
+            "averageMs": 0.011,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.4
+          },
+          "PublishState.Summary.PressureEvidence.WitnessEvidence": {
+            "calls": 2466,
+            "samples": 180,
+            "averageMs": 0.037,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.4
+          },
+          "PublishState.Summary.ResponseAI.Security": {
+            "calls": 2466,
+            "samples": 180,
+            "averageMs": 0.027,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.3
+          },
+          "PublishState.Summary.ResponseAI.WorldAI": {
+            "calls": 2466,
+            "samples": 180,
+            "averageMs": 0.027,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.2
+          },
+          "PublishState.Summary.Tail": {
+            "calls": 2466,
+            "samples": 180,
+            "averageMs": 0.004,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "StreamingPipeline": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 1.273,
+            "recentMaxMs": 107.5,
+            "maxMs": 107.5
+          },
+          "TerritoryRuntimeSystem": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.029,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.9
+          },
+          "TrafficPipeline": {
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 6.796,
+            "recentMaxMs": 21.7,
+            "maxMs": 21.7
+          }
+        },
+        "slowestSystems": [
+          {
+            "name": "TrafficPipeline",
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 6.796,
+            "recentMaxMs": 21.7,
+            "maxMs": 21.7
+          },
+          {
+            "name": "GameplayRuntimeCore",
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 2.454,
+            "recentMaxMs": 11.6,
+            "maxMs": 22.3
+          },
+          {
+            "name": "StreamingPipeline",
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 1.273,
+            "recentMaxMs": 107.5,
+            "maxMs": 107.5
+          },
+          {
+            "name": "Core.Finalize",
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.647,
+            "recentMaxMs": 2.2,
+            "maxMs": 7.2
+          },
+          {
+            "name": "Core.WorldState",
+            "calls": 2465,
+            "samples": 180,
+            "averageMs": 0.633,
+            "recentMaxMs": 3.6,
+            "maxMs": 9.9
+          }
+        ],
+        "conflicts": []
+      },
+      "resources": {
+        "textures": 191,
+        "objects": 1593,
+        "rendered": 466,
+        "resident": 27,
+        "dormant": 11,
+        "materialMiB": 41.84699249267578,
+        "vehicles": 11,
+        "npcs": 238
+      }
+    },
+    {
+      "name": "civic-settled",
+      "frames": 331,
+      "fps": 56.03616109967428,
+      "p50": 16.900000005960464,
+      "p95": 26.299999997019768,
+      "p99": 36,
+      "max": 42.599999994039536,
+      "over25": 22,
+      "over50": 0,
+      "means": {
+        "calls": 6,
+        "vertices": 11594.972809667674,
+        "npcUpdate": 0.2232628398521429,
+        "parallaxUpdate": 0.365558911801465,
+        "render:initialize": 1.359516615548883,
+        "render:Of": 0.05256797571376731,
+        "render:Mb": 0.5785498493027471,
+        "render:Jf": 0.10362537718431467,
+        "render:gi": 0.15981873127088805,
+        "render:yc": 0.2963746221584136,
+        "render:gf": 0.10241691898723383,
+        "render:ch": 0.04592144970987499
+      },
+      "diagnostics": {
+        "owners": {
+          "GameScene.update": "GameplayRuntime",
+          "GameScene.updatePlayerMovement": "GameScene",
+          "InteractionSystem.sortOptions": "InteractionSystem",
+          "InteractionSystem.bestOption": "InteractionSystem",
+          "PowersSystem.update": "PowersSystem",
+          "NpcSystem.updateNpc": "NpcSystem",
+          "WitnessSystem.drawMarkers": "WitnessSystem",
+          "PoliceSystem.updatePolice": "PoliceSystem",
+          "HunterSystem.updateHunters": "HunterSystem",
+          "CombatSystem.notifyViolence": "CombatSystem",
+          "TaskRevealSystem.play": "TaskRevealSystem",
+          "ObjectiveMarkerSystem.update": "ObjectiveMarkerSystem",
+          "OutskirtsSystem.updatePresentation": "OutskirtsSystem",
+          "TutorialDirector.filterActions": "TutorialDirector",
+          "ChunkStreamSystem.update": "ChunkStreamSystem",
+          "DistrictPackSystem.update": "DistrictPackSystem",
+          "EntityStreamSystem.update": "EntityStreamSystem",
+          "DistantSimulationSystem.update": "DistantSimulationSystem",
+          "TrafficMultiAgentRouteRuntimePolicy.update": "TrafficMultiAgentRouteRuntimePolicy",
+          "TrafficPhysicalConsequencesSystem.prepareRouteFrame": "TrafficPhysicalConsequencesSystem",
+          "MacroTrafficPoliceSystem.update": "MacroTrafficPoliceSystem",
+          "TrafficMaterializationSystem.update": "TrafficMaterializationSystem",
+          "TrafficOccupantWitnessSystem.update": "TrafficOccupantWitnessSystem",
+          "WitnessReactionPolicy.update": "WitnessReactionPolicy",
+          "TrafficLocalBehaviorSystem.update": "TrafficLocalBehaviorSystem",
+          "TrafficSteeringPresentationSystem.update": "TrafficSteeringPresentationSystem",
+          "TrafficPhysicalConsequencesSystem.update": "TrafficPhysicalConsequencesSystem",
+          "TrafficImpactConsequencesSystem.update": "TrafficImpactConsequencesSystem",
+          "VehicleCollisionSofteningPolicy.updateDriving": "VehicleCollisionSofteningPolicy",
+          "MotorizedPoliceSystem.update": "MotorizedPoliceSystem",
+          "VehicleSystem.updateDriving": "VehicleSystem",
+          "VehicleSystem.enterVehicle": "VehicleSystem",
+          "PedestrianSystem.update": "PedestrianSystem",
+          "StreetFurnitureSystem.resolveVehicleMove": "StreetFurnitureSystem",
+          "TerritoryRuntimeSystem.update": "TerritoryRuntimeSystem"
+        },
+        "systems": [
+          "AiStateSystem",
+          "ChunkStreamSystem",
+          "CombatSystem",
+          "Core.Combat",
+          "Core.Finalize",
+          "Core.Input",
+          "Core.InteractionQuery",
+          "Core.InteractionRefresh",
+          "Core.WorldActors",
+          "Core.WorldState",
+          "DeathRecoverySystem",
+          "DistantSimulationSystem",
+          "DistrictPackSystem",
+          "DrainSystem",
+          "EntityStreamSystem",
+          "Finalize.Camera",
+          "Finalize.Diagnostics",
+          "Finalize.Markers",
+          "Finalize.MovementNoise",
+          "Finalize.PublishState",
+          "Finalize.StatePublisher",
+          "Finalize.UxGuidance",
+          "GameplayRuntimeCore",
+          "HuntingLawRuntimeSystem",
+          "InputSystem",
+          "MacroTrafficPoliceSystem",
+          "MotorizedPoliceSystem",
+          "MovementNoiseSystem",
+          "ObjectiveMarkerSystem",
+          "OutskirtsSystem",
+          "PedestrianSystem",
+          "PlayerDamageSystem",
+          "PoliceFirearmSystem",
+          "PoliceViolenceSystem",
+          "PropDamageSystem",
+          "PublishState.InteractionMenu",
+          "PublishState.PayloadTail",
+          "PublishState.Prepare",
+          "PublishState.RegistryCommit",
+          "PublishState.Summaries",
+          "PublishState.Summary.MissionActors.Mission",
+          "PublishState.Summary.MissionActors.NeedsPowers",
+          "PublishState.Summary.MissionActors.Npc",
+          "PublishState.Summary.PressureEvidence.Pressure",
+          "PublishState.Summary.PressureEvidence.WitnessEvidence",
+          "PublishState.Summary.ResponseAI.Security",
+          "PublishState.Summary.ResponseAI.WorldAI",
+          "PublishState.Summary.Tail",
+          "SensoryAwarenessSystem",
+          "StreamingPipeline",
+          "StreetFurnitureSystem",
+          "TaskRevealSystem",
+          "TerritoryRuntimeSystem",
+          "TrafficImpactConsequencesSystem",
+          "TrafficLocalBehaviorSystem",
+          "TrafficMaterializationSystem",
+          "TrafficMultiAgentRouteRuntimePolicy",
+          "TrafficOccupantWitnessSystem",
+          "TrafficPhysicalConsequencesSystem",
+          "TrafficPipeline",
+          "TrafficSteeringPresentationSystem",
+          "UxGuidanceSystem",
+          "VehicleCollisionSofteningPolicy",
+          "VehicleSystem",
+          "WeaponSystem",
+          "WitnessMarkerPolicy",
+          "WitnessPerceptionPolicy",
+          "WitnessReactionPolicy"
+        ],
+        "samples": 180,
+        "averageFrameMs": 1.433,
+        "recentMaxFrameMs": 6.9,
+        "maxFrameMs": 20.4,
+        "systemSampleStride": 6,
+        "snapshotCacheMs": 250,
+        "systemTimings": {
+          "Core.Combat": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.174,
+            "recentMaxMs": 1.7,
+            "maxMs": 1.9
+          },
+          "Core.Finalize": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.671,
+            "recentMaxMs": 2.5,
+            "maxMs": 7.2
+          },
+          "Core.Input": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.311,
+            "recentMaxMs": 1.6,
+            "maxMs": 3.2
+          },
+          "Core.InteractionQuery": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.077,
+            "recentMaxMs": 0.5,
+            "maxMs": 1.4
+          },
+          "Core.InteractionRefresh": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.304,
+            "recentMaxMs": 2.3,
+            "maxMs": 2.3
+          },
+          "Core.WorldActors": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.267,
+            "recentMaxMs": 1.6,
+            "maxMs": 2
+          },
+          "Core.WorldState": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.492,
+            "recentMaxMs": 3.6,
+            "maxMs": 9.9
+          },
+          "Finalize.Camera": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.006,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "Finalize.Diagnostics": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.033,
+            "recentMaxMs": 0.6,
+            "maxMs": 0.6
+          },
+          "Finalize.Markers": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.016,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.7
+          },
+          "Finalize.MovementNoise": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.006,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "Finalize.PublishState": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.584,
+            "recentMaxMs": 2.3,
+            "maxMs": 7.1
+          },
+          "Finalize.StatePublisher": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.011,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.3
+          },
+          "Finalize.UxGuidance": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.007,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "GameplayRuntimeCore": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 2.324,
+            "recentMaxMs": 11.6,
+            "maxMs": 22.3
+          },
+          "MotorizedPoliceSystem": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.022,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.2
+          },
+          "PedestrianSystem": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.497,
+            "recentMaxMs": 1.3,
+            "maxMs": 2.6
+          },
+          "PublishState.InteractionMenu": {
+            "calls": 2919,
+            "samples": 180,
+            "averageMs": 0.002,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.PayloadTail": {
+            "calls": 2919,
+            "samples": 180,
+            "averageMs": 0.001,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.Prepare": {
+            "calls": 2919,
+            "samples": 180,
+            "averageMs": 0.011,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.3
+          },
+          "PublishState.RegistryCommit": {
+            "calls": 11676,
+            "samples": 180,
+            "averageMs": 0.016,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.2
+          },
+          "PublishState.Summaries": {
+            "calls": 2919,
+            "samples": 180,
+            "averageMs": 0.2,
+            "recentMaxMs": 0.5,
+            "maxMs": 2
+          },
+          "PublishState.Summary.MissionActors.Mission": {
+            "calls": 2919,
+            "samples": 180,
+            "averageMs": 0.003,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.2
+          },
+          "PublishState.Summary.MissionActors.NeedsPowers": {
+            "calls": 2919,
+            "samples": 180,
+            "averageMs": 0.011,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.3
+          },
+          "PublishState.Summary.MissionActors.Npc": {
+            "calls": 2919,
+            "samples": 180,
+            "averageMs": 0.069,
+            "recentMaxMs": 0.3,
+            "maxMs": 0.5
+          },
+          "PublishState.Summary.PressureEvidence.Pressure": {
+            "calls": 2919,
+            "samples": 180,
+            "averageMs": 0.012,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.4
+          },
+          "PublishState.Summary.PressureEvidence.WitnessEvidence": {
+            "calls": 2919,
+            "samples": 180,
+            "averageMs": 0.034,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.4
+          },
+          "PublishState.Summary.ResponseAI.Security": {
+            "calls": 2919,
+            "samples": 180,
+            "averageMs": 0.031,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.3
+          },
+          "PublishState.Summary.ResponseAI.WorldAI": {
+            "calls": 2919,
+            "samples": 180,
+            "averageMs": 0.024,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.2
+          },
+          "PublishState.Summary.Tail": {
+            "calls": 2919,
+            "samples": 180,
+            "averageMs": 0.003,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "StreamingPipeline": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.713,
+            "recentMaxMs": 1.5,
+            "maxMs": 107.5
+          },
+          "TerritoryRuntimeSystem": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.034,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.9
+          },
+          "TrafficPipeline": {
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 8.031,
+            "recentMaxMs": 21.7,
+            "maxMs": 21.7
+          }
+        },
+        "slowestSystems": [
+          {
+            "name": "TrafficPipeline",
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 8.031,
+            "recentMaxMs": 21.7,
+            "maxMs": 21.7
+          },
+          {
+            "name": "GameplayRuntimeCore",
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 2.324,
+            "recentMaxMs": 11.6,
+            "maxMs": 22.3
+          },
+          {
+            "name": "StreamingPipeline",
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.713,
+            "recentMaxMs": 1.5,
+            "maxMs": 107.5
+          },
+          {
+            "name": "Core.Finalize",
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.671,
+            "recentMaxMs": 2.5,
+            "maxMs": 7.2
+          },
+          {
+            "name": "Finalize.PublishState",
+            "calls": 2918,
+            "samples": 180,
+            "averageMs": 0.584,
+            "recentMaxMs": 2.3,
+            "maxMs": 7.1
+          }
+        ],
+        "conflicts": []
+      },
+      "resources": {
+        "textures": 127,
+        "objects": 1147,
+        "rendered": 200,
+        "resident": 10,
+        "dormant": 12,
+        "materialMiB": 35.88304138183594,
+        "vehicles": 11,
+        "npcs": 238
+      }
+    },
+    {
+      "name": "civic-pan",
+      "frames": 303,
+      "fps": 50.970628805898514,
+      "p50": 18.19999998807907,
+      "p95": 28.900000005960464,
+      "p99": 36.900000005960464,
+      "max": 62.20000000298023,
+      "over25": 28,
+      "over50": 1,
+      "means": {
+        "calls": 5.759075907590759,
+        "vertices": 14281.70297029703,
+        "npcUpdate": 0.2627062697221737,
+        "parallaxUpdate": 0.5894389435796454,
+        "render:initialize": 1.6231023098277573,
+        "render:Of": 0.07128712874237854,
+        "render:Mb": 0.6759075910443126,
+        "render:Jf": 0.12673267245095948,
+        "render:gi": 0.2706270618210531,
+        "render:yc": 0.32871287185760223,
+        "render:gf": 0.1158415838928506,
+        "render:ch": 0.05214521460997389
+      },
+      "diagnostics": {
+        "owners": {
+          "GameScene.update": "GameplayRuntime",
+          "GameScene.updatePlayerMovement": "GameScene",
+          "InteractionSystem.sortOptions": "InteractionSystem",
+          "InteractionSystem.bestOption": "InteractionSystem",
+          "PowersSystem.update": "PowersSystem",
+          "NpcSystem.updateNpc": "NpcSystem",
+          "WitnessSystem.drawMarkers": "WitnessSystem",
+          "PoliceSystem.updatePolice": "PoliceSystem",
+          "HunterSystem.updateHunters": "HunterSystem",
+          "CombatSystem.notifyViolence": "CombatSystem",
+          "TaskRevealSystem.play": "TaskRevealSystem",
+          "ObjectiveMarkerSystem.update": "ObjectiveMarkerSystem",
+          "OutskirtsSystem.updatePresentation": "OutskirtsSystem",
+          "TutorialDirector.filterActions": "TutorialDirector",
+          "ChunkStreamSystem.update": "ChunkStreamSystem",
+          "DistrictPackSystem.update": "DistrictPackSystem",
+          "EntityStreamSystem.update": "EntityStreamSystem",
+          "DistantSimulationSystem.update": "DistantSimulationSystem",
+          "TrafficMultiAgentRouteRuntimePolicy.update": "TrafficMultiAgentRouteRuntimePolicy",
+          "TrafficPhysicalConsequencesSystem.prepareRouteFrame": "TrafficPhysicalConsequencesSystem",
+          "MacroTrafficPoliceSystem.update": "MacroTrafficPoliceSystem",
+          "TrafficMaterializationSystem.update": "TrafficMaterializationSystem",
+          "TrafficOccupantWitnessSystem.update": "TrafficOccupantWitnessSystem",
+          "WitnessReactionPolicy.update": "WitnessReactionPolicy",
+          "TrafficLocalBehaviorSystem.update": "TrafficLocalBehaviorSystem",
+          "TrafficSteeringPresentationSystem.update": "TrafficSteeringPresentationSystem",
+          "TrafficPhysicalConsequencesSystem.update": "TrafficPhysicalConsequencesSystem",
+          "TrafficImpactConsequencesSystem.update": "TrafficImpactConsequencesSystem",
+          "VehicleCollisionSofteningPolicy.updateDriving": "VehicleCollisionSofteningPolicy",
+          "MotorizedPoliceSystem.update": "MotorizedPoliceSystem",
+          "VehicleSystem.updateDriving": "VehicleSystem",
+          "VehicleSystem.enterVehicle": "VehicleSystem",
+          "PedestrianSystem.update": "PedestrianSystem",
+          "StreetFurnitureSystem.resolveVehicleMove": "StreetFurnitureSystem",
+          "TerritoryRuntimeSystem.update": "TerritoryRuntimeSystem"
+        },
+        "systems": [
+          "AiStateSystem",
+          "ChunkStreamSystem",
+          "CombatSystem",
+          "Core.Combat",
+          "Core.Finalize",
+          "Core.Input",
+          "Core.InteractionQuery",
+          "Core.InteractionRefresh",
+          "Core.WorldActors",
+          "Core.WorldState",
+          "DeathRecoverySystem",
+          "DistantSimulationSystem",
+          "DistrictPackSystem",
+          "DrainSystem",
+          "EntityStreamSystem",
+          "Finalize.Camera",
+          "Finalize.Diagnostics",
+          "Finalize.Markers",
+          "Finalize.MovementNoise",
+          "Finalize.PublishState",
+          "Finalize.StatePublisher",
+          "Finalize.UxGuidance",
+          "GameplayRuntimeCore",
+          "HuntingLawRuntimeSystem",
+          "InputSystem",
+          "MacroTrafficPoliceSystem",
+          "MotorizedPoliceSystem",
+          "MovementNoiseSystem",
+          "ObjectiveMarkerSystem",
+          "OutskirtsSystem",
+          "PedestrianSystem",
+          "PlayerDamageSystem",
+          "PoliceFirearmSystem",
+          "PoliceViolenceSystem",
+          "PropDamageSystem",
+          "PublishState.InteractionMenu",
+          "PublishState.PayloadTail",
+          "PublishState.Prepare",
+          "PublishState.RegistryCommit",
+          "PublishState.Summaries",
+          "PublishState.Summary.MissionActors.Mission",
+          "PublishState.Summary.MissionActors.NeedsPowers",
+          "PublishState.Summary.MissionActors.Npc",
+          "PublishState.Summary.PressureEvidence.Pressure",
+          "PublishState.Summary.PressureEvidence.WitnessEvidence",
+          "PublishState.Summary.ResponseAI.Security",
+          "PublishState.Summary.ResponseAI.WorldAI",
+          "PublishState.Summary.Tail",
+          "SensoryAwarenessSystem",
+          "StreamingPipeline",
+          "StreetFurnitureSystem",
+          "TaskRevealSystem",
+          "TerritoryRuntimeSystem",
+          "TrafficImpactConsequencesSystem",
+          "TrafficLocalBehaviorSystem",
+          "TrafficMaterializationSystem",
+          "TrafficMultiAgentRouteRuntimePolicy",
+          "TrafficOccupantWitnessSystem",
+          "TrafficPhysicalConsequencesSystem",
+          "TrafficPipeline",
+          "TrafficSteeringPresentationSystem",
+          "UxGuidanceSystem",
+          "VehicleCollisionSofteningPolicy",
+          "VehicleSystem",
+          "WeaponSystem",
+          "WitnessMarkerPolicy",
+          "WitnessPerceptionPolicy",
+          "WitnessReactionPolicy"
+        ],
+        "samples": 180,
+        "averageFrameMs": 1.44,
+        "recentMaxFrameMs": 4,
+        "maxFrameMs": 20.4,
+        "systemSampleStride": 6,
+        "snapshotCacheMs": 250,
+        "systemTimings": {
+          "Core.Combat": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.179,
+            "recentMaxMs": 1.7,
+            "maxMs": 1.9
+          },
+          "Core.Finalize": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.682,
+            "recentMaxMs": 2.5,
+            "maxMs": 7.2
+          },
+          "Core.Input": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.309,
+            "recentMaxMs": 1.6,
+            "maxMs": 3.2
+          },
+          "Core.InteractionQuery": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.077,
+            "recentMaxMs": 0.5,
+            "maxMs": 1.4
+          },
+          "Core.InteractionRefresh": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.297,
+            "recentMaxMs": 2.3,
+            "maxMs": 2.3
+          },
+          "Core.WorldActors": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.271,
+            "recentMaxMs": 1.6,
+            "maxMs": 2
+          },
+          "Core.WorldState": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.423,
+            "recentMaxMs": 3.6,
+            "maxMs": 9.9
+          },
+          "Finalize.Camera": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.004,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "Finalize.Diagnostics": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.028,
+            "recentMaxMs": 0.6,
+            "maxMs": 0.6
+          },
+          "Finalize.Markers": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.018,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.7
+          },
+          "Finalize.MovementNoise": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.006,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "Finalize.PublishState": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.601,
+            "recentMaxMs": 2.3,
+            "maxMs": 7.1
+          },
+          "Finalize.StatePublisher": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.011,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.3
+          },
+          "Finalize.UxGuidance": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.007,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "GameplayRuntimeCore": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 2.262,
+            "recentMaxMs": 11.6,
+            "maxMs": 22.3
+          },
+          "MotorizedPoliceSystem": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.026,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.2
+          },
+          "PedestrianSystem": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.522,
+            "recentMaxMs": 2,
+            "maxMs": 2.6
+          },
+          "PublishState.InteractionMenu": {
+            "calls": 3278,
+            "samples": 180,
+            "averageMs": 0.002,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.PayloadTail": {
+            "calls": 3278,
+            "samples": 180,
+            "averageMs": 0.001,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "PublishState.Prepare": {
+            "calls": 3278,
+            "samples": 180,
+            "averageMs": 0.011,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.3
+          },
+          "PublishState.RegistryCommit": {
+            "calls": 13112,
+            "samples": 180,
+            "averageMs": 0.011,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.2
+          },
+          "PublishState.Summaries": {
+            "calls": 3278,
+            "samples": 180,
+            "averageMs": 0.213,
+            "recentMaxMs": 1,
+            "maxMs": 2
+          },
+          "PublishState.Summary.MissionActors.Mission": {
+            "calls": 3278,
+            "samples": 180,
+            "averageMs": 0.003,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.2
+          },
+          "PublishState.Summary.MissionActors.NeedsPowers": {
+            "calls": 3278,
+            "samples": 180,
+            "averageMs": 0.009,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.3
+          },
+          "PublishState.Summary.MissionActors.Npc": {
+            "calls": 3278,
+            "samples": 180,
+            "averageMs": 0.081,
+            "recentMaxMs": 0.5,
+            "maxMs": 0.5
+          },
+          "PublishState.Summary.PressureEvidence.Pressure": {
+            "calls": 3278,
+            "samples": 180,
+            "averageMs": 0.009,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.4
+          },
+          "PublishState.Summary.PressureEvidence.WitnessEvidence": {
+            "calls": 3278,
+            "samples": 180,
+            "averageMs": 0.034,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.4
+          },
+          "PublishState.Summary.ResponseAI.Security": {
+            "calls": 3278,
+            "samples": 180,
+            "averageMs": 0.03,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.3
+          },
+          "PublishState.Summary.ResponseAI.WorldAI": {
+            "calls": 3278,
+            "samples": 180,
+            "averageMs": 0.026,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.2
+          },
+          "PublishState.Summary.Tail": {
+            "calls": 3278,
+            "samples": 180,
+            "averageMs": 0.004,
+            "recentMaxMs": 0.1,
+            "maxMs": 0.1
+          },
+          "StreamingPipeline": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.698,
+            "recentMaxMs": 1.4,
+            "maxMs": 107.5
+          },
+          "TerritoryRuntimeSystem": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.04,
+            "recentMaxMs": 0.2,
+            "maxMs": 0.9
+          },
+          "TrafficPipeline": {
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 8.793,
+            "recentMaxMs": 21.7,
+            "maxMs": 21.7
+          }
+        },
+        "slowestSystems": [
+          {
+            "name": "TrafficPipeline",
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 8.793,
+            "recentMaxMs": 21.7,
+            "maxMs": 21.7
+          },
+          {
+            "name": "GameplayRuntimeCore",
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 2.262,
+            "recentMaxMs": 11.6,
+            "maxMs": 22.3
+          },
+          {
+            "name": "StreamingPipeline",
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.698,
+            "recentMaxMs": 1.4,
+            "maxMs": 107.5
+          },
+          {
+            "name": "Core.Finalize",
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.682,
+            "recentMaxMs": 2.5,
+            "maxMs": 7.2
+          },
+          {
+            "name": "Finalize.PublishState",
+            "calls": 3277,
+            "samples": 180,
+            "averageMs": 0.601,
+            "recentMaxMs": 2.3,
+            "maxMs": 7.1
+          }
+        ],
+        "conflicts": []
+      },
+      "resources": {
+        "textures": 130,
+        "objects": 1192,
+        "rendered": 203,
+        "resident": 11,
+        "dormant": 10,
+        "materialMiB": 39.78450012207031,
+        "vehicles": 11,
+        "npcs": 238
+      }
+    }
+  ],
+  "context": {
+    "gpu": "ANGLE (Intel, Intel(R) HD Graphics 530 (0x0000191B) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "framebuffer": [
+      2160,
+      1440
+    ],
+    "viewport": [
+      1920,
+      1080
+    ],
+    "perspective": {
+      "eastWest": 1,
+      "northSouth": 1
+    }
+  },
+  "cpuSelf": [
+    {
+      "name": "(program) @ :-1",
+      "ms": 2976.291
+    },
+    {
+      "name": " @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 475.993
+    },
+    {
+      "name": "renderWebGL @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:211",
+      "ms": 253.363
+    },
+    {
+      "name": "re @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 248.387
+    },
+    {
+      "name": "S @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 229.232
+    },
+    {
+      "name": "cL @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 223.17
+    },
+    {
+      "name": "Q @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 220.718
+    },
+    {
+      "name": "$n @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 217.783
+    },
+    {
+      "name": "query @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 214.503
+    },
+    {
+      "name": "v @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 201.163
+    },
+    {
+      "name": "obj.<computed> @ :4",
+      "ms": 196.457
+    },
+    {
+      "name": "N @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 195.186
+    },
+    {
+      "name": "io @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:203",
+      "ms": 192.678
+    },
+    {
+      "name": "a @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 189.077
+    },
+    {
+      "name": "update @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 171.56
+    },
+    {
+      "name": "(garbage collector) @ :-1",
+      "ms": 170.92
+    },
+    {
+      "name": "Q$ @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:103",
+      "ms": 152.586
+    },
+    {
+      "name": "applyNpcState @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 150.119
+    },
+    {
+      "name": "Y @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 149.174
+    },
+    {
+      "name": "n @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:266",
+      "ms": 135.426
+    },
+    {
+      "name": "Pp @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 134.444
+    },
+    {
+      "name": "chunkStateAt @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 129.93
+    },
+    {
+      "name": "t.exports @ http://127.0.0.1:4174/node_modules/phaser/dist/phaser.min.js:0",
+      "ms": 128.013
+    },
+    {
+      "name": "vp @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 127.838
+    },
+    {
+      "name": "k @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 125.275
+    },
+    {
+      "name": " @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:211",
+      "ms": 109.163
+    },
+    {
+      "name": "te @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 109.072
+    },
+    {
+      "name": "W$ @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:103",
+      "ms": 95.872
+    },
+    {
+      "name": "setMany @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:266",
+      "ms": 88.49
+    },
+    {
+      "name": "snapshot @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 88.236
+    },
+    {
+      "name": "J8 @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:51",
+      "ms": 82.134
+    },
+    {
+      "name": "fy @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 79.043
+    },
+    {
+      "name": "batchQuad @ http://127.0.0.1:4174/node_modules/phaser/dist/phaser.min.js:0",
+      "ms": 74.94
+    },
+    {
+      "name": "jb @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:211",
+      "ms": 74.496
+    },
+    {
+      "name": "renderWebGL @ http://127.0.0.1:4174/phaser/runtime-dist/game.795aac1cb2669a89.js:229",
+      "ms": 71.161
+    }
+  ]
+}

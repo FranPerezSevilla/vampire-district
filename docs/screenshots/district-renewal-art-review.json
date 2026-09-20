@@ -1,0 +1,432 @@
+{
+  "errors": [],
+  "failedAssets": [],
+  "views": [
+    {
+      "name": "hospital-district",
+      "fps": 41.38702392578125,
+      "materialBytes": 13540672,
+      "serial": 32,
+      "resident": 8,
+      "dormant": 0,
+      "objects": 713,
+      "districtDecor": 2,
+      "decorSorted": true,
+      "rendered": 165,
+      "textureCount": 92,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "civic-center",
+      "fps": 48.325581789016724,
+      "materialBytes": 41713152,
+      "serial": 70,
+      "resident": 12,
+      "dormant": 10,
+      "objects": 1051,
+      "districtDecor": 8,
+      "decorSorted": true,
+      "rendered": 202,
+      "textureCount": 131,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "cathedral-hill",
+      "fps": 48.82485481724143,
+      "materialBytes": 42330240,
+      "serial": 119,
+      "resident": 17,
+      "dormant": 12,
+      "objects": 1390,
+      "districtDecor": 8,
+      "decorSorted": true,
+      "rendered": 170,
+      "textureCount": 157,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "north-harbor",
+      "fps": 52.50423562602373,
+      "materialBytes": 30732256,
+      "serial": 153,
+      "resident": 11,
+      "dormant": 12,
+      "objects": 1505,
+      "districtDecor": 4,
+      "decorSorted": true,
+      "rendered": 159,
+      "textureCount": 149,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "west-market",
+      "fps": 52.20641830354657,
+      "materialBytes": 47027904,
+      "serial": 215,
+      "resident": 22,
+      "dormant": 12,
+      "objects": 1641,
+      "districtDecor": 5,
+      "decorSorted": true,
+      "rendered": 258,
+      "textureCount": 171,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "old-quarter",
+      "fps": 48.744999541356535,
+      "materialBytes": 44934472,
+      "serial": 264,
+      "resident": 23,
+      "dormant": 12,
+      "objects": 1318,
+      "districtDecor": 4,
+      "decorSorted": true,
+      "rendered": 292,
+      "textureCount": 166,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "glasshouse",
+      "fps": 46.90804668150979,
+      "materialBytes": 57968816,
+      "serial": 328,
+      "resident": 24,
+      "dormant": 12,
+      "objects": 1412,
+      "districtDecor": 7,
+      "decorSorted": true,
+      "rendered": 285,
+      "textureCount": 178,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "university-district",
+      "fps": 50.32637414532145,
+      "materialBytes": 49071504,
+      "serial": 352,
+      "resident": 13,
+      "dormant": 12,
+      "objects": 1144,
+      "districtDecor": 8,
+      "decorSorted": true,
+      "rendered": 276,
+      "textureCount": 138,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "canal-west",
+      "fps": 51.85717306941812,
+      "materialBytes": 30224928,
+      "serial": 396,
+      "resident": 10,
+      "dormant": 12,
+      "objects": 927,
+      "districtDecor": 4,
+      "decorSorted": true,
+      "rendered": 170,
+      "textureCount": 117,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "foundry",
+      "fps": 54.75224488866077,
+      "materialBytes": 42688336,
+      "serial": 446,
+      "resident": 15,
+      "dormant": 12,
+      "objects": 1105,
+      "districtDecor": 5,
+      "decorSorted": true,
+      "rendered": 221,
+      "textureCount": 140,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "canal-east",
+      "fps": 57.27047831240377,
+      "materialBytes": 40474704,
+      "serial": 463,
+      "resident": 13,
+      "dormant": 12,
+      "objects": 1092,
+      "districtDecor": 6,
+      "decorSorted": true,
+      "rendered": 216,
+      "textureCount": 142,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "harbor-north",
+      "fps": 55.073862278534,
+      "materialBytes": 26322176,
+      "serial": 494,
+      "resident": 7,
+      "dormant": 12,
+      "objects": 913,
+      "districtDecor": 3,
+      "decorSorted": true,
+      "rendered": 143,
+      "textureCount": 119,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "blackwater",
+      "fps": 55.10928564875653,
+      "materialBytes": 22478176,
+      "serial": 515,
+      "resident": 7,
+      "dormant": 12,
+      "objects": 860,
+      "districtDecor": 2,
+      "decorSorted": true,
+      "rendered": 135,
+      "textureCount": 115,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "harbor-south",
+      "fps": 54.87832866230187,
+      "materialBytes": 23494608,
+      "serial": 535,
+      "resident": 7,
+      "dormant": 12,
+      "objects": 846,
+      "districtDecor": 4,
+      "decorSorted": true,
+      "rendered": 166,
+      "textureCount": 113,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "vesper-facade",
+      "fps": 51.839294904408604,
+      "materialBytes": 49013424,
+      "serial": 625,
+      "resident": 29,
+      "dormant": 12,
+      "objects": 1403,
+      "districtDecor": 4,
+      "decorSorted": true,
+      "rendered": 330,
+      "textureCount": 174,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "police-facade",
+      "fps": 52.86970253779738,
+      "materialBytes": 41414296,
+      "serial": 700,
+      "resident": 28,
+      "dormant": 12,
+      "objects": 1550,
+      "districtDecor": 1,
+      "decorSorted": true,
+      "rendered": 453,
+      "textureCount": 184,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    },
+    {
+      "name": "cathedral-facade",
+      "fps": 54.15799181859995,
+      "materialBytes": 21875568,
+      "serial": 777,
+      "resident": 18,
+      "dormant": 12,
+      "objects": 1102,
+      "districtDecor": 6,
+      "decorSorted": true,
+      "rendered": 265,
+      "textureCount": 155,
+      "perspective": {
+        "eastWest": 1.5,
+        "northSouth": 5
+      }
+    }
+  ],
+  "walks": [
+    {
+      "name": "chapter-court",
+      "before": {
+        "x": 3297,
+        "y": 590
+      },
+      "after": {
+        "x": 3297,
+        "y": 590
+      },
+      "distance": 0
+    },
+    {
+      "name": "civic-approach",
+      "before": {
+        "x": 2749,
+        "y": 636
+      },
+      "after": {
+        "x": 2749,
+        "y": 636
+      },
+      "distance": 0
+    },
+    {
+      "name": "canal-east-yard",
+      "before": {
+        "x": 2710,
+        "y": 2480
+      },
+      "after": {
+        "x": 2710,
+        "y": 2480
+      },
+      "distance": 0
+    }
+  ],
+  "parallaxReview": {
+    "northSouth": 500,
+    "eastWest": 150
+  },
+  "sources": {
+    "images": [
+      {
+        "url": "http://127.0.0.1:4174/phaser/assets/architecture/ordinary-facades-v2.png",
+        "bytes": 2126459
+      },
+      {
+        "url": "http://127.0.0.1:4174/phaser/assets/architecture/west-market-facades-v1.png",
+        "bytes": 2188893
+      },
+      {
+        "url": "http://127.0.0.1:4174/phaser/assets/architecture/district-civic-facades-v1.png",
+        "bytes": 2212880
+      },
+      {
+        "url": "http://127.0.0.1:4174/phaser/assets/architecture/district-industrial-facades-v1.png",
+        "bytes": 2084252
+      },
+      {
+        "url": "http://127.0.0.1:4174/phaser/assets/architecture/district-utility-objects-v1.png",
+        "bytes": 2992156
+      },
+      {
+        "url": "http://127.0.0.1:4174/phaser/assets/cathedral/facade-atlas-v2.png",
+        "bytes": 2279816
+      },
+      {
+        "url": "http://127.0.0.1:4174/phaser/assets/vesper/facade-v2.png",
+        "bytes": 1963066
+      },
+      {
+        "url": "http://127.0.0.1:4174/phaser/assets/police/facade-v2.png",
+        "bytes": 1810126
+      }
+    ],
+    "perspective": {
+      "eastWest": 1,
+      "northSouth": 1
+    },
+    "vehicle": 2
+  },
+  "expectedUnavailableRadio": [
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/vice-fm__daisuke-teiko__the-real-deal-90s-hip-hop-instrumental.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/vice-fm__catch22music__coasting-west-coast-hip-hop.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/vice-fm__abydos-music__trip-hop-lovers.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/night-shift__ejah-music__big-beat-industrial-breakbeat-1.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/night-shift__natureseye__dirty-industrial-rave.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/night-shift__ejah-music__big-beat-industrial-breakbeat-3.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/pulse-94-6__placidplace__franic-acid-trance.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/pulse-94-6__maty1309__tema-acid-house.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/pulse-94-6__berrydeep__back-to-90s.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/pulse-94-6__placidplace__franic-acid-trance.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/vice-fm__catch22music__coasting-west-coast-hip-hop.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/pulse-94-6__berrydeep__back-to-90s.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:4174/phaser/assets/audio/radio-private/night-shift__natureseye__dirty-industrial-rave.mp3",
+      "status": 404
+    }
+  ]
+}

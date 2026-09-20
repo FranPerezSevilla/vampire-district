@@ -45,7 +45,7 @@ export function bakeCathedralFacade(materials,b,length){
   const count=Math.max(1,Math.floor(length/62)),step=length/count;
   for(let i=0;i<count;i++)materials.warmLights.draw(c,'halo',(i+.5)*step,h*.48,10,h*.21,.08);
  }
- return {key:materials.register(canvas),lightKey:materials.register(lights)};
+ return {key:materials.register(canvas),lightKey:materials.register(lights),authoredNight:true};
 }
 
 // Pitched roofs are real projected planes. The ridge has its own height, sharing

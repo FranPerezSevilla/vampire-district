@@ -1,0 +1,112 @@
+{
+  "world": {
+    "width": 4800,
+    "height": 3600
+  },
+  "roadNodes": 107,
+  "roadEdges": 148,
+  "buildings": 193,
+  "districts": [
+    {
+      "id": "hospital-district",
+      "name": "Hospital Ward",
+      "volumes": 6,
+      "footprintPercent": 14.23,
+      "infill": 0
+    },
+    {
+      "id": "civic-center",
+      "name": "Civic Centre",
+      "volumes": 26,
+      "footprintPercent": 14.19,
+      "infill": 0
+    },
+    {
+      "id": "cathedral-hill",
+      "name": "Cathedral Hill",
+      "volumes": 52,
+      "footprintPercent": 7.47,
+      "infill": 0
+    },
+    {
+      "id": "north-harbor",
+      "name": "North Harbor",
+      "volumes": 4,
+      "footprintPercent": 15.95,
+      "infill": 0
+    },
+    {
+      "id": "west-market",
+      "name": "West Market",
+      "volumes": 11,
+      "footprintPercent": 24.29,
+      "infill": 0
+    },
+    {
+      "id": "old-quarter",
+      "name": "Old Quarter",
+      "volumes": 19,
+      "footprintPercent": 23.49,
+      "infill": 0
+    },
+    {
+      "id": "glasshouse",
+      "name": "Glasshouse",
+      "volumes": 11,
+      "footprintPercent": 34.89,
+      "infill": 0
+    },
+    {
+      "id": "university-district",
+      "name": "University District",
+      "volumes": 8,
+      "footprintPercent": 16.16,
+      "infill": 0
+    },
+    {
+      "id": "canal-west",
+      "name": "Canal West",
+      "volumes": 9,
+      "footprintPercent": 21.06,
+      "infill": 0
+    },
+    {
+      "id": "foundry",
+      "name": "Foundry Ward",
+      "volumes": 9,
+      "footprintPercent": 19.27,
+      "infill": 0
+    },
+    {
+      "id": "canal-east",
+      "name": "Canal East",
+      "volumes": 9,
+      "footprintPercent": 17.88,
+      "infill": 0
+    },
+    {
+      "id": "harbor-north",
+      "name": "Harbor North",
+      "volumes": 8,
+      "footprintPercent": 15.01,
+      "infill": 0
+    },
+    {
+      "id": "blackwater",
+      "name": "Blackwater Industrial",
+      "volumes": 15,
+      "footprintPercent": 17.38,
+      "infill": 0
+    },
+    {
+      "id": "harbor-south",
+      "name": "South Harbor",
+      "volumes": 6,
+      "footprintPercent": 16.01,
+      "infill": 0
+    }
+  ],
+  "roadConnectedComponents": [
+    107
+  ]
+}

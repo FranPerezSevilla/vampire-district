@@ -1,9 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="96" height="192" viewBox="0 0 96 192">
-  <!-- Shared authored horizontal sections. 32 cells, 24x24, pivot 12,12;
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="240" viewBox="0 0 96 240">
+  <!-- Shared authored sections and rounded bones. 37 cells, 24x24, pivot 12,12;
        face/toes point north. Neutral cloth/skin are tinted by the existing palette. -->
   <defs>
     <linearGradient id="cloth" x1="0" y1=".2" x2="1" y2=".7"><stop stop-color="#777c7c"/><stop offset=".32" stop-color="#a5aaa6"/><stop offset=".70" stop-color="#a5aaa6"/><stop offset="1" stop-color="#777c7c"/></linearGradient>
     <linearGradient id="skin"><stop stop-color="#b8b8ab"/><stop offset=".5" stop-color="#d1cfc1"/><stop offset="1" stop-color="#b8b8ab"/></linearGradient>
+    <linearGradient id="limb"><stop stop-color="#858e8c"/><stop offset=".35" stop-color="#b2b9b1"/><stop offset=".66" stop-color="#b8bdb6"/><stop offset="1" stop-color="#939c97"/></linearGradient>
     <linearGradient id="face" x1="0" x2="1"><stop stop-color="#747571"/><stop offset=".25" stop-color="#d7d7cc"/><stop offset=".5" stop-color="#ececdf"/><stop offset=".72" stop-color="#c7c7ba"/><stop offset="1" stop-color="#737771"/></linearGradient>
     <radialGradient id="shadow"><stop stop-color="#020405" stop-opacity=".42"/><stop offset=".6" stop-color="#020405" stop-opacity=".24"/><stop offset="1" stop-color="#020405" stop-opacity="0"/></radialGradient>
     <g id="face-art">
@@ -24,15 +25,15 @@
   <!-- 4 pelvis, 5 jacket waist, 6 shoulders, 7 seams/lapels -->
   <g transform="translate(0 24)"><path d="M7.5 10.1Q12 8.8 16.5 10.1L17 12.6q-1.3 2.1-5 2.1t-5-2.1Z" fill="url(#cloth)"/></g>
   <g transform="translate(24 24)"><path d="M6.5 10Q8 8.4 12 8.5t5.5 1.5l.2 3q-1.8 2.2-5.7 2.2T6.3 13Z" fill="url(#cloth)"/></g>
-  <g transform="translate(48 24)"><path d="M4.7 10.3 5.5 8.6 8.8 8.4 10.1 9h3.8l1.3-.6 3.3.2.8 1.7.2 2.1-2.5 2.2-5 .6-5-.6-2.5-2.2Z" fill="url(#cloth)"/></g>
+  <g transform="translate(48 24)"><path d="M4.6 11.4Q4.7 8.6 7.5 8.6L10 9.2Q12 9.8 14 9.2L16.5 8.6Q19.3 8.6 19.4 11.4Q19.5 14.6 12 15Q4.5 14.6 4.6 11.4Z" fill="url(#cloth)"/></g>
   <g transform="translate(72 24)" fill="none"><path d="m8 9 2.5 3L12 10l1.5 2L16 9M12 11v4" stroke="#9ca09a" stroke-opacity=".7" stroke-width=".45"/><path d="M7 13.5h2M15 13.5h2" stroke="#171c1c" stroke-width=".55"/></g>
   <!-- 8 sleeve, 9 fist, 10 neck, 11 head horizontal section -->
   <g transform="translate(0 48)"><path d="M10.5 8.7q1.5-.5 3 0 .85 1.2.7 3.3l-.4 2.7q-1.8 1.2-3.6 0L9.8 12q-.15-2.1.7-3.3Z" fill="url(#cloth)"/></g>
-  <g transform="translate(24 48)"><path d="M10.4 10 11.3 9.3h1.9l.6 1v2.9l-.8.8h-2l-.7-1Z" fill="url(#skin)"/><path d="M10.8 10h2.2" stroke="#aaa" stroke-width=".35"/></g>
+  <g transform="translate(24 48)"><path d="M10.3 10.8Q10.3 9.4 12 9.4Q13.7 9.4 13.7 10.8L13.6 12.8Q13.6 14 12 14Q10.4 14 10.4 12.8Z" fill="url(#skin)"/><path d="M10.8 10h2.2" stroke="#aaa" stroke-width=".25"/></g>
   <g transform="translate(48 48)"><ellipse cx="12" cy="12" rx="2.4" ry="1.7" fill="url(#skin)"/></g>
   <g transform="translate(72 48)"><path d="M9.25 9.3 10.2 8.1 11 7.7 12 7.2 13 7.7 13.8 8.1 14.75 9.3 15 12.5 14.3 14.6 12 15.4 9.7 14.6 9 12.5Z" fill="#bdbbad"/></g>
   <!-- 12-15 hair variants: cropped, parted, curls, slicked back -->
-  <g transform="translate(0 72)"><path d="m8.2 10 1.2-2h5.2l1.2 2-.4 4.8-2 1.4h-2.8l-2-1.4Z" fill="url(#cloth)"/><path d="M10 9.7h4" stroke="#888" stroke-width=".4"/></g>
+  <g transform="translate(0 72)"><path d="M8.3 10.4Q8.5 7.8 12 7.8Q15.5 7.8 15.7 10.4L15.4 13.5Q15.2 16.2 12 16.2Q8.8 16.2 8.6 13.5Z" fill="url(#cloth)"/><path d="M10 9.7h4" stroke="#888" stroke-width=".3"/></g>
   <g transform="translate(24 72)"><path d="m8 10 1.6-2 3.7-.5 2.7 2-.5 5.5-2.3 1.5-3.5-.6-1.4-2Z" fill="url(#cloth)"/><path d="m13 8.8-1.4 5.8" stroke="#555" stroke-width=".6"/></g>
   <g transform="translate(48 72)"><path d="m7.8 10 1-1 .5-1.2h2.2l1-.7 1.3.7 1.5.2.9 1.6.5 2-.7 1.4.1 1.8-1.8 1.5-2.4.2-2.5-1-1-1.8.2-1.6Z" fill="url(#cloth)"/></g>
   <g transform="translate(72 72)"><path d="M8.6 10.3 9.5 8.8Q12 10.1 14.5 8.8l.9 1.5-.25 3.4Q14.8 16.3 12 16.4t-3.15-2.7Z" fill="url(#cloth)"/><path d="M9.5 10.5q.15 3.7 1.8 4.4M10.6 10.4q.1 3.2 1.4 4.6M12 10.7v4.5M13.4 10.4q-.1 3.2-1.1 4.6M14.5 10.5q-.15 3.7-1.8 4.4" stroke="#9a9a9a" stroke-width=".35"/></g>
@@ -56,4 +57,11 @@
   <g transform="translate(24 168)"><use href="#face-art"/><path d="M8.6 9.9 11.6 10.1 11.3 11.7 9.2 11.6ZM12.4 10.1 15.4 9.9 14.8 11.6 12.7 11.7Z" fill="#0a1316"/><path d="M11.5 10.4h1M9 10.2l2.2.2M12.8 10.4l2.2-.2" stroke="#849b98" stroke-width=".25"/></g>
   <g transform="translate(48 168)"><path d="M4 5.4 9 4.6h6l5 .8-1 13.4q-7 1.5-14 0Z" fill="url(#cloth)"/><path d="M5.2 8q6.8 1.5 13.6 0M5.5 18q6.5 1 13 0M7.2 9.3l-.5 6.9M16.8 9.3l.5 6.9" fill="none" stroke="#d1d2c3" stroke-opacity=".35" stroke-width=".35"/></g>
   <g transform="translate(72 168)" fill="none" stroke="#a5b5b0" stroke-linecap="round"><path d="M11 18q5-3 1-6t1-7" stroke-width=".75" opacity=".32"/><path d="M12 17q-3-4 0-6t-1-6" stroke-width=".4" opacity=".24"/></g>
+  <!-- Continuous surfaces for articulated bones, no repeated slice highlights. -->
+  <g transform="translate(0 192) scale(.333333 .5)"><path fill="#a2a5a2" d="M0 0h24v24H0z"/><path fill="#7b8383" d="M0 0h3v24H0z"/><path d="M4 0v24M21 0v24" stroke="#c0c4bb" stroke-opacity=".34" stroke-width=".6"/><path d="m7 8 8 2M10 19l7-2" stroke="#6e7776" stroke-opacity=".4" fill="none" stroke-width=".7"/></g>
+  <g transform="translate(24 192) scale(.333333 .5)"><path fill="#aab1ac" d="M0 0h24v24H0z"/><path d="m8 4 8 2M7 18l9-2" stroke="#83908b" stroke-opacity=".16" stroke-width=".7"/></g>
+  <g transform="translate(48 192) scale(.333333 .5)"><path fill="#505957" d="M0 0h24v24H0z"/><path d="M3 1v21M8 0l1 22M15 1v20M21 0l-1 23" stroke="#909b94" stroke-width=".65" opacity=".3"/></g>
+  <g transform="translate(72 192) scale(.333333 .5)"><path fill="#cac9bc" d="M0 0h24v24H0z"/></g>
+  <!-- A single continuous, rounded bone, projected between shared joints. -->
+  <g transform="translate(0 216)"><path d="M6.2 7Q6.2 1.2 12 1.2Q17.8 1.2 17.8 7L17.7 17Q17.7 22.8 12 22.8Q6.3 22.8 6.3 17Z" fill="url(#limb)"/><path d="M9 8.5Q12 9.6 15 8.8M9.5 17Q12 16.3 14.5 17.3" fill="none" stroke="#727f7b" stroke-opacity=".25" stroke-width=".45"/></g>
 </svg>

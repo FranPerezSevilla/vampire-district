@@ -1,10 +1,11 @@
+import {ordinaryBlockProfile} from './OrdinaryBlockProfiles.js';
 // Shared art scale. A top-down sprite's footprint is not a standing person's height.
 export const WORLD_SCALE=Object.freeze({humanMetres:1.75,humanHeight:24,doorMetres:2.3,storeyMetres:3.4,carLengthMetres:4.4});
 export const metresToWorld=metres=>metres*WORLD_SCALE.humanHeight/WORLD_SCALE.humanMetres;
 export function scaledBuildingHeight(b){
  if(Number.isFinite(b.renderHeight))return b.renderHeight;
  if(Number.isFinite(b.heightMetres))return metresToWorld(b.heightMetres);
- const floors=b.storeys??(b.skyline?26:b.id==='hospitalEmergency'?1:b.landmark?3:2);
+ const floors=b.storeys??ordinaryBlockProfile(b)?.storeys??(b.skyline?26:b.id==='hospitalEmergency'?1:b.landmark?3:2);
  return metresToWorld(Math.max(1,floors)*(b.storeyMetres??WORLD_SCALE.storeyMetres));
 }
 // One common attenuation preserves coplanar shared vertices and tower intersections.

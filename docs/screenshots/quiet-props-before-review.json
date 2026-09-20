@@ -1,0 +1,286 @@
+{
+  "phase": "before",
+  "errors": [],
+  "views": [
+    {
+      "name": "hospital-bench",
+      "atlases": {
+        "street-stack-v1": {
+          "width": 1024,
+          "height": 2048,
+          "frames": 16,
+          "rgbaMipBytes": 11184810.666666666
+        },
+        "human-stack-v1": {
+          "width": 512,
+          "height": 1024,
+          "frames": 32,
+          "rgbaMipBytes": 2796202.6666666665
+        },
+        "vehicle-stack-fleet-v1": {
+          "width": 1024,
+          "height": 2048,
+          "frames": 40,
+          "rgbaMipBytes": 11184810.666666666
+        }
+      },
+      "sharedPropTextures": [
+        "street-stack-v1"
+      ],
+      "roofSource": [
+        "ordinary-rooftop-objects-v1"
+      ],
+      "props": 117,
+      "propQuads": 2761,
+      "rooftops": 0,
+      "rooftopQuads": 0,
+      "materialBytes": 9153952,
+      "serial": 20,
+      "fps": 39.91424560546875,
+      "cutaway": 0,
+      "kinds": [
+        "lamp",
+        "pier",
+        "pew",
+        "altar",
+        "candle",
+        "bench"
+      ]
+    },
+    {
+      "name": "police-lamps",
+      "atlases": {
+        "street-stack-v1": {
+          "width": 1024,
+          "height": 2048,
+          "frames": 16,
+          "rgbaMipBytes": 11184810.666666666
+        },
+        "human-stack-v1": {
+          "width": 512,
+          "height": 1024,
+          "frames": 32,
+          "rgbaMipBytes": 2796202.6666666665
+        },
+        "vehicle-stack-fleet-v1": {
+          "width": 1024,
+          "height": 2048,
+          "frames": 40,
+          "rgbaMipBytes": 11184810.666666666
+        }
+      },
+      "sharedPropTextures": [
+        "street-stack-v1"
+      ],
+      "roofSource": [
+        "ordinary-rooftop-objects-v1"
+      ],
+      "props": 124,
+      "propQuads": 3223,
+      "rooftops": 8,
+      "rooftopQuads": 40,
+      "materialBytes": 24955992,
+      "serial": 110,
+      "fps": 43.86349177360535,
+      "cutaway": 0,
+      "kinds": [
+        "lamp",
+        "pier",
+        "pew",
+        "altar",
+        "candle",
+        "bench",
+        "fence"
+      ]
+    },
+    {
+      "name": "cathedral-nave",
+      "atlases": {
+        "street-stack-v1": {
+          "width": 1024,
+          "height": 2048,
+          "frames": 16,
+          "rgbaMipBytes": 11184810.666666666
+        },
+        "human-stack-v1": {
+          "width": 512,
+          "height": 1024,
+          "frames": 32,
+          "rgbaMipBytes": 2796202.6666666665
+        },
+        "vehicle-stack-fleet-v1": {
+          "width": 1024,
+          "height": 2048,
+          "frames": 40,
+          "rgbaMipBytes": 11184810.666666666
+        }
+      },
+      "sharedPropTextures": [
+        "street-stack-v1"
+      ],
+      "roofSource": [
+        "ordinary-rooftop-objects-v1"
+      ],
+      "props": 124,
+      "propQuads": 3223,
+      "rooftops": 13,
+      "rooftopQuads": 65,
+      "materialBytes": 13075968,
+      "serial": 144,
+      "fps": 46.317410591989756,
+      "cutaway": 1,
+      "kinds": [
+        "lamp",
+        "altar",
+        "candle",
+        "pier",
+        "pew",
+        "bench",
+        "fence"
+      ]
+    },
+    {
+      "name": "cathedral-altar",
+      "atlases": {
+        "street-stack-v1": {
+          "width": 1024,
+          "height": 2048,
+          "frames": 16,
+          "rgbaMipBytes": 11184810.666666666
+        },
+        "human-stack-v1": {
+          "width": 512,
+          "height": 1024,
+          "frames": 32,
+          "rgbaMipBytes": 2796202.6666666665
+        },
+        "vehicle-stack-fleet-v1": {
+          "width": 1024,
+          "height": 2048,
+          "frames": 40,
+          "rgbaMipBytes": 11184810.666666666
+        }
+      },
+      "sharedPropTextures": [
+        "street-stack-v1"
+      ],
+      "roofSource": [
+        "ordinary-rooftop-objects-v1"
+      ],
+      "props": 124,
+      "propQuads": 3223,
+      "rooftops": 13,
+      "rooftopQuads": 65,
+      "materialBytes": 14013408,
+      "serial": 145,
+      "fps": 54.22765759349568,
+      "cutaway": 1,
+      "kinds": [
+        "lamp",
+        "altar",
+        "candle",
+        "pier",
+        "pew",
+        "bench",
+        "fence"
+      ]
+    },
+    {
+      "name": "west-market-roof",
+      "atlases": {
+        "street-stack-v1": {
+          "width": 1024,
+          "height": 2048,
+          "frames": 16,
+          "rgbaMipBytes": 11184810.666666666
+        },
+        "human-stack-v1": {
+          "width": 512,
+          "height": 1024,
+          "frames": 32,
+          "rgbaMipBytes": 2796202.6666666665
+        },
+        "vehicle-stack-fleet-v1": {
+          "width": 1024,
+          "height": 2048,
+          "frames": 40,
+          "rgbaMipBytes": 11184810.666666666
+        }
+      },
+      "sharedPropTextures": [
+        "street-stack-v1"
+      ],
+      "roofSource": [
+        "ordinary-rooftop-objects-v1"
+      ],
+      "props": 129,
+      "propQuads": 3397,
+      "rooftops": 34,
+      "rooftopQuads": 170,
+      "materialBytes": 23622288,
+      "serial": 184,
+      "fps": 54.06479304725599,
+      "cutaway": 0,
+      "kinds": [
+        "lamp",
+        "altar",
+        "candle",
+        "pier",
+        "pew",
+        "bench",
+        "fence"
+      ]
+    },
+    {
+      "name": "dumpster",
+      "atlases": {
+        "street-stack-v1": {
+          "width": 1024,
+          "height": 2048,
+          "frames": 16,
+          "rgbaMipBytes": 11184810.666666666
+        },
+        "human-stack-v1": {
+          "width": 512,
+          "height": 1024,
+          "frames": 32,
+          "rgbaMipBytes": 2796202.6666666665
+        },
+        "vehicle-stack-fleet-v1": {
+          "width": 1024,
+          "height": 2048,
+          "frames": 40,
+          "rgbaMipBytes": 11184810.666666666
+        }
+      },
+      "sharedPropTextures": [
+        "street-stack-v1"
+      ],
+      "roofSource": [
+        "ordinary-rooftop-objects-v1"
+      ],
+      "props": 131,
+      "propQuads": 3559,
+      "rooftops": 35,
+      "rooftopQuads": 175,
+      "materialBytes": 39765648,
+      "serial": 266,
+      "fps": 51.55858456681112,
+      "cutaway": 0,
+      "kinds": [
+        "lamp",
+        "altar",
+        "candle",
+        "pier",
+        "pew",
+        "bench",
+        "fence"
+      ]
+    }
+  ],
+  "dumpster": {
+    "id": "dumpsterNorthAlley",
+    "x": 1313.04,
+    "y": 1155
+  }
+}

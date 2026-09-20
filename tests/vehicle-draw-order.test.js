@@ -14,6 +14,17 @@ function scene(authored = [], traffic = [], police = []) {
 }
 const names = buffer => buffer.map(c => c.name);
 
+test('resident district furniture crosses street actors in ground order and leaves it when culled',()=>{
+  const a=car('actor',120),bench=car('bench',100).container,cargo=car('cargo',140).container;
+  bench.willRender=()=>true;cargo.willRender=()=>true;
+  const s=scene([a]),buffer=[];s.cameras={main:{}};
+  s.buildingParallax={lamps:{districtItems:new Map([['bench',bench],['cargo',cargo]])}};
+  updateVehicleDrawOrder(s,buffer);assert.deepEqual(names(buffer),['bench','actor','cargo']);
+  a.container.y=150;updateVehicleDrawOrder(s,buffer);assert.deepEqual(names(buffer),['bench','cargo','actor']);
+  cargo.willRender=()=>false;s.buildingParallax.lamps.districtItems.delete('bench');
+  updateVehicleDrawOrder(s,buffer);assert.deepEqual(names(buffer),['actor']);
+});
+
 test('authored, driven, ambient, bus, ambulance and police share ground Y order', () => {
   const driven = car('driven', 130), ambulance = car('ambulance', 60);
   const taxi = car('taxi', 140), bus = car('bus', 80), patrol = car('patrol', 110);

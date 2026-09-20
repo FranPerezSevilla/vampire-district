@@ -61,7 +61,9 @@ test('pitched roof eaves exactly meet projected walls and the ridge reacts conti
  const b=cathedralVisualVolumes()[0],cam={scrollX:3400,scrollY:150,width:960,height:640,zoom:1};
  const o=roofParallaxOffset(b,cam),p=cathedralRoofPlanes(b,o,buildingHeight(b));
  assert.equal(p.length,4);
- assert.deepEqual(p[0].points[0],{x:b.x+o.x+(b.x-o.cx)*o.spreadX,y:b.y+o.y+(b.y-o.cy)*o.spreadY});
+ // Equivalent projection formulas may round their final additions differently.
+ const wall={x:b.x+o.x+(b.x-o.cx)*o.spreadX,y:b.y+o.y+(b.y-o.cy)*o.spreadY};
+ assert.ok(Math.hypot(p[0].points[0].x-wall.x,p[0].points[0].y-wall.y)<1e-8);
  assert.deepEqual(p[0].points[2],p[1].points[1]);
  const next=cathedralRoofPlanes(b,roofParallaxOffset(b,{...cam,scrollX:cam.scrollX+1}),buildingHeight(b));
  assert.ok(Math.abs(next[0].points[2].x-p[0].points[2].x)<1);

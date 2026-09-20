@@ -27,6 +27,7 @@ export function updateVehicleDrawOrder(scene, ordered) {
   collect(scene.motorizedPoliceSystem?.slots, ordered);
   for(const prop of scene.streetFurnitureSystem?.dumpsters||[])if(prop.visual?.stack?.willRender(scene.cameras.main)&&prop.visual.container.visible)ordered.push(prop.visual.container);
   for(const prop of scene.buildingParallax?.lamps?.stacks||[])if(prop.willRender(scene.cameras.main))ordered.push(prop);
+  for(const prop of scene.buildingParallax?.lamps?.districtItems?.values()||[])if(prop.willRender(scene.cameras.main))ordered.push(prop);
   // The same pass now handles stacked people walking around volumetric cars.
   // Keep corpses and non-street/traversal presentation in their original bands.
   for (const npc of scene.npcSystem?.npcs || []) {

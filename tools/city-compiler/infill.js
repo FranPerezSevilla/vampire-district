@@ -1,8 +1,8 @@
 const prefix='infill:';
 const overlaps=(a,b,pad=0)=>a.x<b.x+b.w+pad&&a.x+a.w>b.x-pad&&a.y<b.y+b.h+pad&&a.y+a.h>b.y-pad;
-export function compileInfill(city,roads,source) {
+export function compileInfill(city,roads,source,{reservedSites=[]}={}) {
  const buildings=city.buildings.filter(b=>!b.id.startsWith(prefix));
- const reserved=[...roads.map(r=>({...r,x:r.x-30,y:r.y-30,w:r.w+60,h:r.h+60})),...city.landmarkSites];
+ const reserved=[...roads.map(r=>({...r,x:r.x-30,y:r.y-30,w:r.w+60,h:r.h+60})),...city.landmarkSites,...reservedSites];
  const points=[];
  const add=p=>{if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y))points.push(p);};
  Object.values(source.CITY_ANCHORS||{}).forEach(add);

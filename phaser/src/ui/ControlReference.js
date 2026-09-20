@@ -15,14 +15,14 @@ export function buildControlReference(candidateBindings = {}, { simplified = fal
 
   return [
     "ON FOOT",
-    `${movement} or ${arrows}  Move`,
+    `${movement} or ${arrows}  Move / face movement`,
     `${key(bindings, "quiet")}  Quiet movement`,
     `${key(bindings, "interact")}  Interact / dialogue / evidence`,
     ...(!simplified ? [`${key(bindings, "traverse")}  Traverse available routes`] : []),
     "",
     "COMBAT & FEEDING",
-    "Mouse  Aim",
-    "Left mouse  Use equipped weapon",
+    "Mouse  Aim · sight hides when still",
+    "Left mouse  Use equipped weapon / face target",
     `${key(bindings, "drain")} (hold)  Feed / Drain`,
     "Mouse wheel  Change weapon",
     "",

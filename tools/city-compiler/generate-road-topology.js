@@ -1,4 +1,7 @@
 import { compileCathedralCampus } from './cathedral-campus.js';
+import { compileWestMarketBlock } from './west-market-block.js';
+import { compileDistrictBlocks } from './district-blocks.js';
+import { WEST_MARKET_SITES } from '../../phaser/src/data/west-market-block.js';
 import { compileVesperCampus } from './vesper-campus.js';
 import { compilePoliceCampus } from './police-campus.js';
 import { compileHospitalCampus } from './hospital-campus.js';
@@ -25,7 +28,10 @@ const outputPath = path.join(root, "phaser/src/data/generated/city-topology-v2.j
 // Reserve the wider carriageways and their sidewalks before placing façades,
 // then regenerate junction sidewalks and furniture against the final buildings.
 const roadLayout = compileAxisAlignedRoadGraph(cityRoadGraph, { world: current.CITY_WORLD });
-const fittedCity = compileCathedralCampus(compileVesperCampus(compilePoliceCampus(compileHospitalCampus(compileInfill(compileSkyline(fitCityRoadClearance(current, roadLayout.roads)),roadLayout.roads,current)))));
+const streetClearCity = compileSkyline(fitCityRoadClearance(current, roadLayout.roads));
+const infilledCity = compileInfill(streetClearCity, roadLayout.roads, current, {reservedSites:[...WEST_MARKET_SITES,...current.districtZones]});
+const landmarkCity = compileCathedralCampus(compileVesperCampus(compilePoliceCampus(compileHospitalCampus(infilledCity))));
+const fittedCity = compileDistrictBlocks(compileWestMarketBlock(landmarkCity));
 const compiled = compileAxisAlignedRoadGraph(cityRoadGraph, {
   world: current.CITY_WORLD,
   buildings: fittedCity.buildings,
@@ -73,7 +79,7 @@ function canonicalRoadEdgeBands(roadSegments, world) {
 
 const authoritativeRoadEdgeBands = canonicalRoadEdgeBands(compiled.roadSegments, current.CITY_WORLD);
 compiled.roadEdgeBands = authoritativeRoadEdgeBands;
-compiled.sidewalks = [...authoritativeRoadEdgeBands, ...compiled.junctionSidewalks];
+compiled.sidewalks = [...authoritativeRoadEdgeBands, ...compiled.junctionSidewalks, ...fittedCity.pedestrianSurfaces];
 compiled.stats.roadEdgeBandCount = authoritativeRoadEdgeBands.length;
 compiled.stats.roadEdgeBandSourceCount = authoritativeRoadEdgeBands.length;
 compiled.stats.sidewalkCount = compiled.sidewalks.length;
@@ -105,10 +111,10 @@ const bodyHideSpots = current.bodyHideSpots.map(spot => {
   return dumpster ? { ...spot, x: dumpster.x, y: dumpster.y } : spot;
 });
 
-const pedestrianRoutes = buildPedestrianRoutesFromSidewalks(
+const pedestrianRoutes = [...buildPedestrianRoutesFromSidewalks(
   cityRoadGraph.pedestrianRouteAnchors,
   compiled.sidewalks
-);
+), ...fittedCity.authoredPedestrianRoutes];
 const preservedNavigationPoints = current.streetNavigationPoints.filter(point => point.kind !== "pedestrian");
 const pedestrianNavigationPoints = pedestrianRoutes.flatMap(route => route.points.map((point, index) => ({
   id: `nav:${route.id}:${index + 1}`,

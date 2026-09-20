@@ -2,12 +2,34 @@ import {metresToWorld} from './WorldScale.js';
 import {lights} from '../data/district.js';
 import {PropSpriteStack,canStackProps} from './PropSpriteStack.js';
 import {cathedralCollisionVolumes} from '../data/cathedral-campus.js';
+import {DISTRICT_URBAN_DECOR} from '../data/district-blocks.js';
+import {RooftopObject,DISTRICT_OBJECT_KEY} from './RooftopObjects.js';
+import {cityPerspectiveReach} from './CityPerspective.js';
 export const POLICE_LAMPS=[[1588,570],[1698,570],[1600,636],[1684,636],[1856,334],[1974,608],[1600,674],[1686,674]];
 // Presentation only: called by the existing post-camera projection hook.
 export class ProjectedStreetLamps{
- constructor(scene){this.scene=scene;this.items=[];}
+ constructor(scene){this.scene=scene;this.items=[];this.districtItems=new Map();}
+ updateDistrictDecor(camera,enabled){
+  const v=camera.worldView;if(!v)return;
+  for(const d of DISTRICT_URBAN_DECOR){
+   let item=this.districtItems.get(d.id);
+   // Retain nearby objects across small camera reversals at the visibility edge.
+   const margin=(item?220:100)+d.height*cityPerspectiveReach(this.scene.cityPerspective);
+   const visible=enabled&&d.x>=v.x-margin&&d.x<=v.right+margin&&d.y>=v.y-margin&&d.y<=v.bottom+margin;
+   if(!visible){if(item){item.destroy();this.districtItems.delete(d.id);}continue;}
+   if(!item){
+    if(['cargo','transformer'].includes(d.kind)){
+     if(!this.scene.textures.exists(DISTRICT_OBJECT_KEY))continue;
+     item=new RooftopObject(this.scene,{...d,base:0,cell:d.kind==='cargo'?2:0,textureKey:DISTRICT_OBJECT_KEY,atlasMid:.5});
+    }else item=new PropSpriteStack(this.scene,d.x,d.y,d.kind,d);
+    this.districtItems.set(d.id,item);
+   }
+   item.setVisible(true);
+  }
+ }
  update(camera,enabled,project){
   if(canStackProps(this.scene)){
+   this.updateDistrictDecor(camera,enabled);
    if(!this.stacks){
     this.stacks=POLICE_LAMPS.map(([x,y])=>new PropSpriteStack(this.scene,x,y,'lamp',{height:metresToWorld(3.6)}));
     for(const l of lights){const p=new PropSpriteStack(this.scene,l.x,l.y,'lamp',{height:metresToWorld(3.6)});p.lampId=l.id;this.stacks.push(p);}
@@ -42,5 +64,5 @@ export class ProjectedStreetLamps{
    l.head.setPosition(l.x+o.x,l.y+o.y).setDepth(60+l.model.renderHeight*2);
   }
  }
- destroy(){for(const p of this.stacks||[])p.destroy();this.stacks=[];for(const l of this.items){l.base.destroy();l.pole.destroy();l.head.destroy();}this.items=[];}
+ destroy(){for(const p of this.districtItems.values())p.destroy();this.districtItems.clear();for(const p of this.stacks||[])p.destroy();this.stacks=[];for(const l of this.items){l.base.destroy();l.pole.destroy();l.head.destroy();}this.items=[];}
 }
