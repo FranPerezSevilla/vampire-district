@@ -1,3 +1,9 @@
+import {installPerspectiveSlider} from '../rendering/VehiclePerspectiveControls.js';
+import { afterCameraProjection } from '../rendering/CameraProjectionHook.js';
+import {NightStreetLights} from '../rendering/NightStreetLights.js';
+import {nightMaterialPixel} from '../rendering/NightPalette.js';
+import { paintLandmarkRoof } from "../rendering/BuildingIdentity.js";
+import { BuildingParallax } from "../rendering/BuildingParallax.js";
 import { COLORS, WORLD } from "../data/balance.js";
 import {
   buildings,
@@ -9,8 +15,10 @@ import {
   sewerTunnels,
   sidewalks
 } from "../data/district.js";
-import { drawBuildingPresentation } from "../rendering/BuildingPresentation.js";
+import { drawBuildingPresentation, renderBuildingPresentation } from "../rendering/BuildingPresentation.js";
 import { ModularCharacterView } from "../rendering/ModularCharacterView.js";
+import {prepareStackMaterialAtlases} from '../rendering/StackMaterialAtlas.js';
+import {canStackProps} from '../rendering/PropSpriteStack.js';
 import { RadioSystem } from "../systems/RadioSystem.js";
 import { installVehicleExplosionPresentation } from "../vehicles/VehicleExplosionPresentation.js";
 import { GameScene as GameSceneCore } from "./GameSceneCore.js";
@@ -19,7 +27,6 @@ const URBAN_RENDER_HALF_WIDTH = 680;
 const URBAN_RENDER_HALF_HEIGHT = 480;
 const URBAN_RENDER_SECTOR_WIDTH = 360;
 const URBAN_RENDER_SECTOR_HEIGHT = 260;
-const PLAYER_AIM_LINGER_MS = 250;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, Number(value) || 0));
@@ -50,12 +57,50 @@ export class GameScene extends GameSceneCore {
     this.playerPresentationPosition = null;
     this.playerMovementDirection = { x: 0, y: -1 };
     this.playerAimDirection = { x: 0, y: -1 };
-    this.playerAimUntil = -1;
     this.removeVehicleExplosionPresentation = null;
     this.radioSystem = null;
   }
 
+  preload() {
+    for(const part of ['facades','roofs','rooftop-objects']){
+      const version=part==='roofs'?1:2;
+      this.load.image(`ordinary-${part}-v${version}`,`phaser/assets/architecture/ordinary-${part}-v${version}.png`);
+    }
+    this.load.image('ordinary-block-v2','phaser/assets/architecture/ordinary-block-v2.png');
+    this.load.image('west-market-facades-v1','phaser/assets/architecture/west-market-facades-v1.png');
+    for(const kind of ['civic','industrial'])this.load.image(`district-${kind}-facades-v1`,`phaser/assets/architecture/district-${kind}-facades-v1.webp`);
+    this.load.image('district-utility-objects-v1','phaser/assets/architecture/district-utility-objects-v1.webp');
+    this.load.image('ordinary-block-roofs-v3','phaser/assets/architecture/ordinary-block-roofs-v3.webp');
+    this.load.svg('human-stack-v1-source', 'phaser/assets/characters/human-stack.svg', {scale: 8});
+    this.load.image('stack-mood-surfaces','phaser/assets/props/gothic-actor-surfaces.png');
+    this.load.image('street-stack-v1-source', 'phaser/assets/props/gothic-street-atlas-v2.png');
+    this.load.svg('vehicle-stack-fleet-v1-source', 'phaser/assets/vehicles/fleet-stack.svg', {scale: 8});
+    this.load.image('cathedral-facade','phaser/assets/cathedral/facade-atlas-v2.webp');
+    this.load.image('cathedral-front','phaser/assets/cathedral/front-v2.webp');
+    for(const name of ['roof','floor','furniture'])this.load.image('cathedral-'+name,'phaser/assets/cathedral/'+name+'-v1.webp');
+    this.load.image('vesper-dormer','phaser/assets/vesper/dormer-v1.webp');
+    this.load.image('vesper-mansard','phaser/assets/vesper/mansard-v2.webp');
+    this.load.image('vesper-facade','phaser/assets/vesper/facade-v2.webp');
+    for(const part of ['roof','service-door'])this.load.image('vesper-'+part,'phaser/assets/vesper/'+part+'-v1.webp');
+    this.load.image('police-facade','phaser/assets/police/facade-v2.webp');
+    for(const part of ['entrance','roof'])this.load.image('police-'+part,'phaser/assets/police/'+part+'-v1.webp');
+    this.load.image('police-lamp','phaser/assets/props/lamp-clean-v2.webp');
+    this.load.image('street-bench-clean','phaser/assets/props/bench-clean-v1.webp');
+    this.load.image('vesper-grime','phaser/assets/vesper/yard-grime-v2.webp');
+    this.load.image('vesper-fence','phaser/assets/vesper/yard-fence-v1.webp');
+    this.load.image('police-fence','phaser/assets/police/fence-v1.webp');
+    this.load.image('hospital-roof-slate','phaser/assets/hospital/roof-slate-v2.webp');
+    this.load.image('hospital-turret-slate','phaser/assets/hospital/turret-slate-v1.webp');
+    this.load.image('hospital-parking','phaser/assets/hospital/parking-v2.webp');
+    this.load.image('paving-campus','phaser/assets/materials/paving-campus-v1.webp');
+    for(const name of ["entrance","forecourt","roof-service","wall-service"])this.load.image(`hospital-${name}`,`phaser/assets/hospital/${name}-v${name==='forecourt'?2:1}.webp`);
+    this.load.image('slate-gray','phaser/assets/materials/slate-gray-v1.webp');
+    for(const key of ['cobble-gothic','slab-gothic','asphalt-gothic','stone-gothic','lancet-dark','lancet-warm','portal-gothic','slate-gothic'])this.load.image(key,`phaser/assets/materials/${key}-v1.webp`);
+    this.load.image('masonry-gray','phaser/assets/materials/masonry-gray-v1.webp');
+  }
+
   create() {
+    prepareStackMaterialAtlases(this);
     super.create();
     this.playerBody?.setVisible?.(false);
     this.playerHead?.setVisible?.(false);
@@ -67,6 +112,26 @@ export class GameScene extends GameSceneCore {
     this.removeVehicleExplosionPresentation = installVehicleExplosionPresentation(this);
     this.radioSystem?.destroy?.();
     this.radioSystem = new RadioSystem(this, { vehicleSystem: this.vehicleSystem });
+    this.buildingParallax = new BuildingParallax(this, (graphic, building) => {
+      const map=this.map;
+      const fill=graphic.fillStyle,line=graphic.lineStyle;
+      const tone=color=>{const [r,g,b]=nightMaterialPixel(color>>16&255,color>>8&255,color&255,false);return r<<16|g<<8|b;};
+      graphic.fillStyle=function(color,alpha){return fill.call(this,tone(color),alpha);};
+      graphic.lineStyle=function(width,color,alpha){return line.call(this,width,tone(color),alpha);};
+      try { this.map=graphic; this.paintBuilding(building); }
+      finally { this.map=map;graphic.fillStyle=fill;graphic.lineStyle=line; }
+    },buildings);
+    this.nightStreetLights=new NightStreetLights(this);
+    installPerspectiveSlider(this);
+    this.onBuildingParallaxRender = () => {
+      const enabled=this.currentLayer===LAYERS.STREET && !this.registry.get("mainMenuActive");
+      if (enabled !== this.parallaxStreetActive) { this.parallaxStreetActive=enabled; this.redrawLayer(); }
+      this.buildingParallax.update(enabled ? this.chunkItems("buildings", this.urbanRenderBounds, buildings, {margin:320}) : [], enabled);
+      this.nightStreetLights.update(this.cameras.main,enabled);
+    };
+    this.removeParallaxCameraHook=afterCameraProjection(this.cameras.main,()=>{this.onBuildingParallaxRender();this.children.depthSort();});
+    this.events.once("shutdown",()=>{this.removeParallaxCameraHook?.();this.nightStreetLights.destroy();this.nightStreetLights=null;this.buildingParallax.destroy();this.buildingParallax=null;});
+    this.redrawLayer();
   }
 
   update(time, deltaMs) {
@@ -83,35 +148,49 @@ export class GameScene extends GameSceneCore {
     this.updateCharacterPresentation(time);
   }
 
+  drawLights() {
+    // Projected lamps and the shared local light batch replace the old flat
+    // yellow pole rectangles. Keep the Canvas / missing-asset fallback.
+    if (!canStackProps(this)) super.drawLights();
+  }
+
   updateCharacterPresentation(timeMs = 0) {
     if (!this.player || !this.playerCharacterView) return;
+    if (this.registry?.get?.('uiPaused')&&!this.playerDamageSystem?.state?.dead) return;
 
     const previous = this.playerPresentationPosition || { x: this.player.x, y: this.player.y };
     const dx = this.player.x - previous.x;
     const dy = this.player.y - previous.y;
-    const moving = !this.vehicleSystem?.isDriving?.() && !this.transitSystem?.isRiding?.() && Math.hypot(dx, dy) > 0.05;
+    const jump = this.transitionSystem?.characterJump;
+    const moving = !jump && !this.vehicleSystem?.isDriving?.() && !this.transitSystem?.isRiding?.() && Math.hypot(dx, dy) > 0.05;
     if (moving) this.playerMovementDirection = { x: dx, y: dy };
+    if (jump) this.playerMovementDirection = jump.direction;
 
     const frame = this.currentInputFrame || {};
-    const aim = frame.aimWorld;
-    const attackActive = Boolean(frame.primaryHeld || frame.primaryPressed);
-    if (attackActive) {
-      this.playerAimUntil = Math.max(this.playerAimUntil, Number(timeMs) + PLAYER_AIM_LINGER_MS);
-      if (frame.pointerInside && Number.isFinite(aim?.x) && Number.isFinite(aim?.y)) {
-        const aimDx = aim.x - this.player.x;
-        const aimDy = aim.y - this.player.y;
-        if (Math.hypot(aimDx, aimDy) > 0.5) this.playerAimDirection = { x: aimDx, y: aimDy };
-      }
+    // A brief visual stumble on running into an obstacle. The movement authority
+    // still owns collisions; this does not knock the player back or lock input.
+    if(this.wasPresentationMoving&&!moving&&!jump&&!frame.quietHeld&&Math.hypot(frame.move?.x||0,frame.move?.y||0)>.5
+      &&!this.vehicleSystem?.isDriving?.()&&!this.transitSystem?.isRiding?.()
+      &&!this.combatSystem?.attack&&!this.playerDamageSystem?.state?.dead&&timeMs>(this.nextStumbleAt||0)){
+      this.playerCharacterView.react('trip');this.nextStumbleAt=timeMs+6500;
     }
+    this.wasPresentationMoving=moving;
+    const attack = this.combatSystem?.attack;
+    if (attack?.direction) this.playerAimDirection = attack.direction;
 
     this.playerCharacterView.update({
       timeMs,
-      movementDirection: this.playerMovementDirection,
+      movementDirection: !jump && frame.hasMovementIntent ? frame.move : this.playerMovementDirection,
+      hasMovementIntent: frame.hasMovementIntent,
       aimDirection: this.playerAimDirection,
       moving,
-      aiming: Number(timeMs) <= this.playerAimUntil
+      running: moving && !frame.quietHeld,
+      jumping: Boolean(jump),
+      jumpProgress: jump?.progress || 0,
+      incapacitated:Boolean(this.playerDamageSystem?.state?.dead),
+      aiming: Boolean(attack)
     });
-    this.npcSystem?.updateCharacterPresentation?.(timeMs);
+    if(!this.registry?.get?.('uiPaused'))this.npcSystem?.updateCharacterPresentation?.(timeMs);
     this.playerPresentationPosition = { x: this.player.x, y: this.player.y };
   }
 
@@ -169,7 +248,11 @@ export class GameScene extends GameSceneCore {
   }
 
   prepareUrbanRenderWindow() {
-    this.urbanRenderSectorKey = this.renderSectorKey();
+    const key = this.renderSectorKey();
+    // Streaming redraws must not invalidate the ground texture as the player
+    // moves inside the same sector. Geometry changes retain their own cache key.
+    if (this.urbanRenderBounds && this.urbanRenderSectorKey === key) return this.urbanRenderBounds;
+    this.urbanRenderSectorKey = key;
     this.urbanRenderBounds = this.calculateUrbanRenderBounds();
     return this.urbanRenderBounds;
   }
@@ -311,13 +394,43 @@ export class GameScene extends GameSceneCore {
   drawSewerManholes() {
     for (const access of this.chunkItems("sewerAccesses", this.urbanRenderBounds, sewerAccesses, { margin: 16 })) {
       if (!access.street || !this.visiblePoint(access.street, 16)) continue;
-      this.map.fillStyle(0x0b2a22, 1).fillCircle(access.street.x, access.street.y, 8);
-      this.map.lineStyle(1, 0x78c7a3, 0.65).strokeCircle(access.street.x, access.street.y, 8);
+      const { x, y } = access.street;
+      this.map.fillStyle(0x171613, 1).fillCircle(x, y, 8);
+      this.map.lineStyle(1, 0x85755d, 0.65).strokeCircle(x, y, 8);
+      for (let offset = -4; offset <= 4; offset += 4) this.map.lineBetween(x - 5, y + offset, x + 5, y + offset);
     }
   }
 
   drawBuilding(building) {
-    const plan = drawBuildingPresentation(this.map, building, { detailLevel: "standard" });
+    if(building.cathedralCollider)return;
+    if(this.buildingParallax && this.currentLayer===LAYERS.STREET && !this.registry.get("mainMenuActive")){
+      this.map.fillStyle(0x111110,1).fillRect(building.x,building.y,building.w,building.h);
+      return;
+    }
+    this.paintBuilding(building);
+  }
+
+  paintBuilding(building) {
+    if(paintLandmarkRoof(this.map,building)) return;
+    const plan = drawBuildingPresentation(null, building, { detailLevel: "standard", layoutId: "rectangle" });
+    // A roof-only drawing: world shadows and ground-level fronts belong at the base.
+    this.map.fillStyle(building.skyline ? 0x48443d : plan.palette.roof,1).fillRect(building.x,building.y,building.w,building.h);
+    if(!building.skyline) renderBuildingPresentation(this.map, {...plan,modules:plan.modules.filter(m=>!["foundation","frontage","service-strip","service-light","yard","fence"].includes(m.kind))});
+    // Roof equipment stays horizontal: seams, parapets and recessed plant courts.
+    const {x,y,w,h}=building;
+    if (building.skyline) {
+      const g=this.map;
+
+      for(let tier=0;tier<3;tier++) {
+        const inset=7+tier*6;
+        if(w<=inset*2+12||h<=inset*2+12)break;
+        g.fillStyle([0x383733,0x48443d,0x585044][tier],1).fillRect(x+inset,y+inset,w-inset*2,h-inset*2);
+        g.lineStyle(1,0xa08c6b,0.6).strokeRect(x+inset,y+inset,w-inset*2,h-inset*2);
+      }
+      g.fillStyle(0x151516,1).fillRect(x+w*.38,y+h*.3,w*.23,h*.4);
+      g.lineStyle(1,0x92816b,0.6);
+      for(let rib=12;rib<w-10;rib+=14)g.lineBetween(x+rib,y+2,x+rib,y+7);
+    }
     const focus = this.renderFocus();
     if (plan?.showLabel
       && this.currentLayer === LAYERS.STREET
@@ -354,6 +467,8 @@ export class GameScene extends GameSceneCore {
   }
 
   redrawLayer(statusText = "") {
+    this.streetSurfaceCache?.image.setVisible(false);
+    this.streetPavingTarget=null;
     this.prepareUrbanRenderWindow();
     super.redrawLayer(statusText);
     this.vehicleSystem?.refreshVisibility?.();

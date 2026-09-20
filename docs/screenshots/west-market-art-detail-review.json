@@ -1,0 +1,639 @@
+{
+  "errors": [],
+  "views": [
+    {
+      "name": "court-detail",
+      "serial": 61,
+      "materialBytes": 28186416,
+      "resident": 21,
+      "fps": 39.01763916015625,
+      "pilot": [
+        {
+          "id": "west-market:block:04",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-34"
+            },
+            {
+              "side": "south",
+              "key": "building-material-GameScene-35"
+            }
+          ],
+          "roofs": 1,
+          "objects": 3
+        },
+        {
+          "id": "marketBlock",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-36"
+            },
+            {
+              "side": "south",
+              "key": "building-material-GameScene-37"
+            }
+          ],
+          "roofs": 2,
+          "objects": 2
+        },
+        {
+          "id": "tenementNorth",
+          "faces": [
+            {
+              "side": "south",
+              "key": "building-material-GameScene-38"
+            }
+          ],
+          "roofs": 3,
+          "objects": 3
+        },
+        {
+          "id": "shops",
+          "faces": [
+            {
+              "side": "west",
+              "key": "building-material-GameScene-39"
+            },
+            {
+              "side": "south",
+              "key": "building-material-GameScene-40"
+            }
+          ],
+          "roofs": 2,
+          "objects": 2
+        },
+        {
+          "id": "west-market:urban:court-west-north",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-41"
+            },
+            {
+              "side": "south",
+              "key": "building-material-GameScene-42"
+            }
+          ],
+          "roofs": 1,
+          "objects": 1
+        },
+        {
+          "id": "west-market:block:03",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-43"
+            }
+          ],
+          "roofs": 3,
+          "objects": 3
+        },
+        {
+          "id": "west-market:urban:court-west-south",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-44"
+            },
+            {
+              "side": "north",
+              "key": "building-material-GameScene-45"
+            }
+          ],
+          "roofs": 1,
+          "objects": 1
+        },
+        {
+          "id": "west-market:urban:court-east",
+          "faces": [
+            {
+              "side": "west",
+              "key": "building-material-GameScene-46"
+            }
+          ],
+          "roofs": 3,
+          "objects": 2
+        },
+        {
+          "id": "west-market:urban:workshop",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-47"
+            },
+            {
+              "side": "north",
+              "key": "building-material-GameScene-48"
+            }
+          ],
+          "roofs": 1,
+          "objects": 1
+        },
+        {
+          "id": "west-market:block:01",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-49"
+            }
+          ],
+          "roofs": 2,
+          "objects": 2
+        },
+        {
+          "id": "west-market:block:02",
+          "faces": [
+            {
+              "side": "north",
+              "key": "building-material-GameScene-50"
+            }
+          ],
+          "roofs": 3,
+          "objects": 2
+        }
+      ],
+      "perspective": {
+        "eastWest": 4,
+        "northSouth": 4
+      },
+      "vehicle": 2
+    },
+    {
+      "name": "warehouse-detail",
+      "serial": 68,
+      "materialBytes": 31936176,
+      "resident": 11,
+      "fps": 49.99181652069092,
+      "pilot": [
+        {
+          "id": "west-market:block:04",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-34"
+            },
+            {
+              "side": "south",
+              "key": "building-material-GameScene-35"
+            }
+          ],
+          "roofs": 1,
+          "objects": 3
+        },
+        {
+          "id": "marketBlock",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-36"
+            },
+            {
+              "side": "south",
+              "key": "building-material-GameScene-37"
+            }
+          ],
+          "roofs": 2,
+          "objects": 2
+        },
+        {
+          "id": "tenementNorth",
+          "faces": [
+            {
+              "side": "south",
+              "key": "building-material-GameScene-38"
+            },
+            {
+              "side": "west",
+              "key": "building-material-GameScene-61"
+            }
+          ],
+          "roofs": 3,
+          "objects": 3
+        },
+        {
+          "id": "shops",
+          "faces": [
+            {
+              "side": "west",
+              "key": "building-material-GameScene-39"
+            },
+            {
+              "side": "south",
+              "key": "building-material-GameScene-40"
+            }
+          ],
+          "roofs": 2,
+          "objects": 2
+        },
+        {
+          "id": "west-market:urban:court-west-north",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-41"
+            },
+            {
+              "side": "south",
+              "key": "building-material-GameScene-42"
+            },
+            {
+              "side": "west",
+              "key": "building-material-GameScene-62"
+            },
+            {
+              "side": "north",
+              "key": "building-material-GameScene-63"
+            }
+          ],
+          "roofs": 1,
+          "objects": 1
+        },
+        {
+          "id": "west-market:block:03",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-43"
+            }
+          ],
+          "roofs": 3,
+          "objects": 3
+        },
+        {
+          "id": "west-market:urban:court-west-south",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-44"
+            },
+            {
+              "side": "north",
+              "key": "building-material-GameScene-45"
+            },
+            {
+              "side": "west",
+              "key": "building-material-GameScene-64"
+            }
+          ],
+          "roofs": 1,
+          "objects": 1
+        },
+        {
+          "id": "west-market:urban:court-east",
+          "faces": [
+            {
+              "side": "west",
+              "key": "building-material-GameScene-46"
+            },
+            {
+              "side": "north",
+              "key": "building-material-GameScene-65"
+            }
+          ],
+          "roofs": 3,
+          "objects": 2
+        },
+        {
+          "id": "west-market:urban:workshop",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-47"
+            },
+            {
+              "side": "north",
+              "key": "building-material-GameScene-48"
+            }
+          ],
+          "roofs": 1,
+          "objects": 1
+        },
+        {
+          "id": "west-market:block:01",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-49"
+            },
+            {
+              "side": "north",
+              "key": "building-material-GameScene-66"
+            }
+          ],
+          "roofs": 2,
+          "objects": 2
+        },
+        {
+          "id": "west-market:block:02",
+          "faces": [
+            {
+              "side": "north",
+              "key": "building-material-GameScene-50"
+            },
+            {
+              "side": "west",
+              "key": "building-material-GameScene-67"
+            }
+          ],
+          "roofs": 3,
+          "objects": 2
+        }
+      ],
+      "perspective": {
+        "eastWest": 4,
+        "northSouth": 4
+      },
+      "vehicle": 2
+    },
+    {
+      "name": "workshop-detail",
+      "serial": 77,
+      "materialBytes": 36497264,
+      "resident": 14,
+      "fps": 55.82467259466648,
+      "pilot": [
+        {
+          "id": "west-market:block:04",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-34"
+            },
+            {
+              "side": "south",
+              "key": "building-material-GameScene-35"
+            }
+          ],
+          "roofs": 1,
+          "objects": 3
+        },
+        {
+          "id": "marketBlock",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-36"
+            },
+            {
+              "side": "south",
+              "key": "building-material-GameScene-37"
+            }
+          ],
+          "roofs": 2,
+          "objects": 2
+        },
+        {
+          "id": "tenementNorth",
+          "faces": [
+            {
+              "side": "south",
+              "key": "building-material-GameScene-38"
+            },
+            {
+              "side": "west",
+              "key": "building-material-GameScene-61"
+            }
+          ],
+          "roofs": 3,
+          "objects": 3
+        },
+        {
+          "id": "shops",
+          "faces": [
+            {
+              "side": "west",
+              "key": "building-material-GameScene-39"
+            },
+            {
+              "side": "south",
+              "key": "building-material-GameScene-40"
+            }
+          ],
+          "roofs": 2,
+          "objects": 2
+        },
+        {
+          "id": "west-market:urban:court-west-north",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-41"
+            },
+            {
+              "side": "south",
+              "key": "building-material-GameScene-42"
+            },
+            {
+              "side": "west",
+              "key": "building-material-GameScene-62"
+            },
+            {
+              "side": "north",
+              "key": "building-material-GameScene-63"
+            }
+          ],
+          "roofs": 1,
+          "objects": 1
+        },
+        {
+          "id": "west-market:block:03",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-43"
+            },
+            {
+              "side": "south",
+              "key": "building-material-GameScene-68"
+            }
+          ],
+          "roofs": 3,
+          "objects": 3
+        },
+        {
+          "id": "west-market:urban:court-west-south",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-44"
+            },
+            {
+              "side": "north",
+              "key": "building-material-GameScene-45"
+            },
+            {
+              "side": "west",
+              "key": "building-material-GameScene-64"
+            },
+            {
+              "side": "south",
+              "key": "building-material-GameScene-69"
+            }
+          ],
+          "roofs": 1,
+          "objects": 1
+        },
+        {
+          "id": "west-market:urban:court-east",
+          "faces": [
+            {
+              "side": "west",
+              "key": "building-material-GameScene-46"
+            },
+            {
+              "side": "north",
+              "key": "building-material-GameScene-65"
+            },
+            {
+              "side": "south",
+              "key": "building-material-GameScene-72"
+            }
+          ],
+          "roofs": 3,
+          "objects": 2
+        },
+        {
+          "id": "west-market:urban:workshop",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-47"
+            },
+            {
+              "side": "north",
+              "key": "building-material-GameScene-48"
+            }
+          ],
+          "roofs": 1,
+          "objects": 1
+        },
+        {
+          "id": "west-market:block:01",
+          "faces": [
+            {
+              "side": "east",
+              "key": "building-material-GameScene-49"
+            },
+            {
+              "side": "north",
+              "key": "building-material-GameScene-66"
+            }
+          ],
+          "roofs": 2,
+          "objects": 2
+        },
+        {
+          "id": "west-market:block:02",
+          "faces": [
+            {
+              "side": "north",
+              "key": "building-material-GameScene-50"
+            },
+            {
+              "side": "west",
+              "key": "building-material-GameScene-67"
+            }
+          ],
+          "roofs": 3,
+          "objects": 2
+        }
+      ],
+      "perspective": {
+        "eastWest": 4,
+        "northSouth": 4
+      },
+      "vehicle": 2
+    },
+    {
+      "name": "hospital",
+      "resident": [
+        "west-market:block:04",
+        "marketBlock",
+        "tenementNorth",
+        "shops",
+        "police:north",
+        "hospital",
+        "hospital:turret-west",
+        "hospital:turret-east",
+        "hospitalEmergency",
+        "police:west",
+        "police:pier-0",
+        "police:front-west",
+        "infill:old-quarter:0",
+        "old-quarter:block:03",
+        "infill:old-quarter:1"
+      ]
+    },
+    {
+      "name": "police",
+      "resident": [
+        "police:north",
+        "police:west",
+        "police:pier-0",
+        "police:front-west",
+        "infill:old-quarter:0",
+        "infill:civic-center:1",
+        "infill:civic-center:2",
+        "infill:civic-center:0",
+        "police:roof-tier-1",
+        "police:west-wing",
+        "police:east-wing",
+        "police:roof-tier-0",
+        "police",
+        "police:entry-pier-0",
+        "police:entry-pier-1",
+        "police:gatehouse",
+        "police:pier-1",
+        "police:pier-2",
+        "police:pier-3",
+        "police:pier-4",
+        "police:east",
+        "police:pier-5",
+        "police:front-middle",
+        "police:front-east",
+        "old-quarter:block:05",
+        "old-quarter:block:02",
+        "old-quarter:block:06:tower-wing",
+        "old-quarter:block:06"
+      ]
+    },
+    {
+      "name": "vesper",
+      "resident": [
+        "old-quarter:block:05",
+        "old-quarter:block:02",
+        "old-quarter:block:06:tower-wing",
+        "old-quarter:block:06",
+        "infill:glasshouse:0",
+        "glasshouse:block:05",
+        "old-quarter:block:03",
+        "club:stage-house",
+        "club:service",
+        "infill:old-quarter:1",
+        "glassArcade",
+        "refugeTower",
+        "club:west-wing:dormer-0",
+        "club:west-wing:dormer-1",
+        "club:east-wing:dormer-0",
+        "club:east-wing:dormer-1",
+        "club:west-wing",
+        "club:east-wing",
+        "club:dormer-0",
+        "club:dormer-1",
+        "club",
+        "glasshouse:block:04",
+        "church",
+        "old-quarter:block:01",
+        "oldBlock",
+        "old-quarter:block:04",
+        "foundry:block-01:machine-shop",
+        "foundry:block:02",
+        "foundry:block:01",
+        "canal-east:block:04"
+      ]
+    }
+  ],
+  "controls": []
+}

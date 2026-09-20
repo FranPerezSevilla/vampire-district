@@ -2,18 +2,34 @@ import { AI_STATES } from "../data/ai.js";
 import { LAYERS, streetNavigationPoints } from "../data/district.js";
 import { NPC_TYPES } from "../data/npcs.js";
 import { ModularCharacterView } from "../rendering/ModularCharacterView.js";
+import {npcCharacterAction} from '../rendering/CharacterActionPresentation.js';
 import { NpcSystem as NpcSystemCore } from "./NpcSystemCore.js";
 
 export class NpcSystem extends NpcSystemCore {
+  constructor(scene){
+    super(scene);
+    const hit=e=>this.npcs.find(n=>n.id===e.targetId)?.characterView?.react(e.downed?'shot':'flinch',Boolean(e.downed));
+    const vehicle=e=>this.npcs.find(n=>n.id===e.npcId)?.characterView?.react('vehicle',Boolean(e.lethal),e.lethal?0:4200);
+    scene.events?.on?.('combat:hit',hit);scene.events?.on?.('vehicle:pedestrian-hit',vehicle);
+    scene.events?.once?.('shutdown',()=>{scene.events.off('combat:hit',hit);scene.events.off('vehicle:pedestrian-hit',vehicle);});
+  }
+
+  paintDeadNpc(npc){
+    const view=npc.characterView;
+    if(!view?.stack)return false;
+    if(!view.reaction?.persistent)view.react('shot',true);
+    return true;
+  }
   paintLivingNpc(container, type, palette) {
-    if (![NPC_TYPES.CIVILIAN, NPC_TYPES.POLICE].includes(type)) {
+    if (type === NPC_TYPES.RAT) {
       super.paintLivingNpc(container, type, palette);
       return;
     }
 
     const styleName = type === NPC_TYPES.POLICE ? "police" : "civilian";
     container.__modularCharacterView = new ModularCharacterView(this.scene, container, styleName, {
-      phaseKey: `${type}:${container.x}:${container.y}`
+      phaseKey: `${type}:${container.x}:${container.y}`,
+      role:type
     });
   }
 
@@ -27,11 +43,14 @@ export class NpcSystem extends NpcSystemCore {
   updateCharacterPresentation(timeMs = 0) {
     for (const npc of this.npcs) {
       const view = npc.characterView || npc.container?.__modularCharacterView;
-      if (!view || npc.dead) continue;
+      if (!view || npc.container?.visible === false || npc.container?.active === false) continue;
+      if (npc.dead && !view.stack) continue; // Legacy corpse drawing replaced its living parts.
+      if (view.stack && !view.stack.insideCamera(this.scene.cameras?.main)) continue;
 
       const vx = Number(npc.vx) || 0;
       const vy = Number(npc.vy) || 0;
-      const moving = Math.hypot(vx, vy) > 1.25;
+      const speed = Math.hypot(vx, vy);
+      const moving = speed > 1.25;
       const facingDirection = { x: Number(npc.dirX) || 0, y: Number(npc.dirY) || 0 };
       const movementDirection = moving ? { x: vx, y: vy } : facingDirection;
       const aiming = npc.type === NPC_TYPES.POLICE && Boolean(npc.chasingPlayer || npc.enemyAttack);
@@ -40,11 +59,15 @@ export class NpcSystem extends NpcSystemCore {
         ? { x: player.x - npc.x, y: player.y - npc.y }
         : facingDirection;
 
+      const action = npcCharacterAction(npc,timeMs);
       view.update({
+        ...action,
+        incapacitated:npc.dead||npc.combat?.state==='downed',
         timeMs,
         movementDirection,
-        aimDirection,
+        aimDirection: action.aimDirection || aimDirection,
         moving,
+        running: moving && speed > Math.max(22,(npc.speed||12)*1.5),
         aiming
       });
     }
@@ -118,6 +141,7 @@ export class NpcSystem extends NpcSystemCore {
   }
 
   update(dt) {
+    this.flushSpatialIndex();
     const stream = this.scene.entityStreamSystem;
     if (!stream) {
       super.update(dt);
@@ -139,16 +163,51 @@ export class NpcSystem extends NpcSystemCore {
   }
 
   rebuildSpatialIndex() {
+    if (this.spatialBatchDepth > 0) {
+      this.spatialRebuildPending = true;
+      return;
+    }
+    this.spatialRebuildPending = false;
+    this.rebuildSpatialIndexNow();
+  }
+
+  withSpatialBatch(callback) {
+    this.spatialBatchDepth = (this.spatialBatchDepth || 0) + 1;
+    try { return callback(); }
+    finally {
+      this.spatialBatchDepth--;
+      if (!this.spatialBatchDepth) this.flushSpatialIndex();
+    }
+  }
+
+  flushSpatialIndex() {
+    if (!this.spatialRebuildPending) return;
+    this.spatialRebuildPending = false;
+    this.rebuildSpatialIndexNow();
+  }
+
+  queryRadius(...args) {
+    this.flushSpatialIndex();
+    return super.queryRadius(...args);
+  }
+
+  queryRect(...args) {
+    this.flushSpatialIndex();
+    return super.queryRect(...args);
+  }
+
+  rebuildSpatialIndexNow() {
     const stream = this.scene.entityStreamSystem;
     if (!stream) {
       this.spatial.rebuild(this.npcs);
       return;
     }
     const indexed = [];
-    for (const npc of this.npcs) {
+    const collect=()=>{for (const npc of this.npcs) {
       stream.applyNpcState(npc, 0);
       if (stream.shouldIndexNpc(npc)) indexed.push(npc);
-    }
+    }};
+    if(stream.withDecisionBatch)stream.withDecisionBatch(collect);else collect();
     this.spatial.rebuild(indexed);
   }
 
@@ -159,6 +218,7 @@ export class NpcSystem extends NpcSystemCore {
 
   refreshVisibility() {
     this.rebuildSpatialIndex();
+    this.flushSpatialIndex();
     for (const npc of this.npcs) npc.container?.setVisible?.(this.isRenderable(npc));
   }
 
@@ -175,12 +235,14 @@ export class NpcSystem extends NpcSystemCore {
     ) || streetNavigationPoints;
 
     for (const node of localNodes) {
+      // Distance is a lower bound: blocked visibility can only add a penalty.
+      const distanceScore = Phaser.Math.Distance.Between(npc.x, npc.y, node.x, node.y)
+        + Phaser.Math.Distance.Between(node.x, node.y, targetX, targetY);
+      if (distanceScore >= bestScore) continue;
       if (!this.canNpcStandAt(npc, node.x, node.y)) continue;
       if (!this.lineClear(npc, npc.x, npc.y, node.x, node.y)) continue;
       const nodeSeesTarget = this.lineClear(npc, node.x, node.y, targetX, targetY);
-      const score = Phaser.Math.Distance.Between(npc.x, npc.y, node.x, node.y)
-        + Phaser.Math.Distance.Between(node.x, node.y, targetX, targetY)
-        + (nodeSeesTarget ? 0 : 180);
+      const score = distanceScore + (nodeSeesTarget ? 0 : 180);
       if (score < bestScore) {
         best = node;
         bestScore = score;

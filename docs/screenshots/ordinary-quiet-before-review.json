@@ -1,0 +1,81 @@
+{
+  "errors": [],
+  "views": [
+    {
+      "name": "street",
+      "serial": 37,
+      "materialBytes": 19279344,
+      "parts": 7,
+      "rails": 5,
+      "textures": [
+        {
+          "key": "ordinary-block-v1",
+          "w": 1086,
+          "h": 1448
+        },
+        {
+          "key": "ordinary-block-roofs-v1",
+          "w": 1254,
+          "h": 1254
+        }
+      ]
+    },
+    {
+      "name": "tenement",
+      "serial": 45,
+      "materialBytes": 20574832,
+      "parts": 7,
+      "rails": 5,
+      "textures": [
+        {
+          "key": "ordinary-block-v1",
+          "w": 1086,
+          "h": 1448
+        },
+        {
+          "key": "ordinary-block-roofs-v1",
+          "w": 1254,
+          "h": 1254
+        }
+      ]
+    },
+    {
+      "name": "market",
+      "serial": 47,
+      "materialBytes": 22416112,
+      "parts": 7,
+      "rails": 5,
+      "textures": [
+        {
+          "key": "ordinary-block-v1",
+          "w": 1086,
+          "h": 1448
+        },
+        {
+          "key": "ordinary-block-roofs-v1",
+          "w": 1254,
+          "h": 1254
+        }
+      ]
+    },
+    {
+      "name": "shops",
+      "serial": 50,
+      "materialBytes": 24057712,
+      "parts": 7,
+      "rails": 5,
+      "textures": [
+        {
+          "key": "ordinary-block-v1",
+          "w": 1086,
+          "h": 1448
+        },
+        {
+          "key": "ordinary-block-roofs-v1",
+          "w": 1254,
+          "h": 1254
+        }
+      ]
+    }
+  ]
+}

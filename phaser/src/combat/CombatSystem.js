@@ -7,7 +7,6 @@ import {
   worldAimDirection
 } from "../data/combat.js";
 import { NPC_TYPES } from "../data/npcs.js";
-import { aimPresentation } from "../data/ux-guidance.js";
 import {
   WEAPON_IDS,
   WEAPON_TYPES,
@@ -41,6 +40,9 @@ export class CombatSystem {
     this.labels = new Map();
     this.projectiles = [];
     this.impactEffects = [];
+    this.onPresentationLock = (_parent, value) => { if (value) this.graphics.clear(); };
+    scene.registry?.events?.on?.('changedata-uiPaused', this.onPresentationLock);
+    scene.registry?.events?.on?.('changedata-taskRevealActive', this.onPresentationLock);
     scene.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, this.destroy, this);
   }
 
@@ -560,7 +562,7 @@ export class CombatSystem {
       if (npc.combat.state === COMBAT_STATES.DOWNED) {
         npc.container.setScale(1.32, 0.55).setAlpha(0.76);
         if (onCurrentLayer) {
-          this.ensureLabel(npc).setText("DOWN").setPosition(npc.x, npc.y - 19).setVisible(true);
+
         } else {
           existingLabel?.setVisible(false);
         }
@@ -571,10 +573,7 @@ export class CombatSystem {
       if (npc.combat.feedbackUntil > now && onCurrentLayer) {
         const pulse = 0.68 + Math.abs(Math.sin(now / 55)) * 0.32;
         npc.container.setAlpha(pulse);
-        this.ensureLabel(npc)
-          .setText(`${npc.combat.resilience}/${npc.combat.maxResilience}`)
-          .setPosition(npc.x, npc.y - 19)
-          .setVisible(true);
+
       } else {
         npc.container.setAlpha(1);
         existingLabel?.setVisible(false);
@@ -583,19 +582,7 @@ export class CombatSystem {
   }
 
   ensureLabel(npc) {
-    if (this.labels.has(npc.id)) return this.labels.get(npc.id);
-    const label = this.scene.add.text(npc.x, npc.y - 19, "", {
-      fontFamily: "Arial, Helvetica, sans-serif",
-      fontSize: "12px",
-      fontStyle: "bold",
-      color: "#fff0bd",
-      backgroundColor: "rgba(5, 6, 11, .82)",
-      padding: { x: 4, y: 2 }
-    }).setOrigin(0.5, 1).setDepth(73).setVisible(false);
-    label.setResolution?.(3);
-    label.setStroke?.("#05060b", 2);
-    this.labels.set(npc.id, label);
-    return label;
+    return null;
   }
 
   draw(frame) {
@@ -603,10 +590,7 @@ export class CombatSystem {
     graphics.clear();
     if (!frame?.worldEnabled) return;
 
-    const config = this.attack?.config || this.currentAttackConfig();
-    const px = this.scene.player.x;
-    const py = this.scene.player.y;
-    if (frame.pointerInside) this.drawAimIndicator(config, px, py);
+    if (frame.pointerInside && frame.reticleAlpha > 0) this.drawAimIndicator(frame);
 
     if (this.attack) this.drawAttackArc();
 
@@ -642,50 +626,25 @@ export class CombatSystem {
     }
   }
 
-  drawAimIndicator(config, px, py) {
-    const distance = config.reticleDistance || 27;
-    const ax = px + this.aimDirection.x * distance;
-    const ay = py + this.aimDirection.y * distance;
-    const sx = px + this.aimDirection.x * 9;
-    const sy = py + this.aimDirection.y * 9;
+  drawAimIndicator(frame) {
+    const ax = frame.aimWorld?.x, ay = frame.aimWorld?.y;
+    if (!Number.isFinite(ax) || !Number.isFinite(ay)) return;
     const highContrast = Boolean(this.scene.registry?.get?.("aimHighContrast"));
-
-    if (highContrast) {
-      const presentation = aimPresentation(true);
-      const dx = -this.aimDirection.y;
-      const dy = this.aimDirection.x;
-      this.graphics.lineStyle(presentation.outerWidth, presentation.outerColor, 1);
+    const unit = 1 / (this.scene.cameras?.main?.zoom || 1);
+    const alpha = Math.max(0, Math.min(1, frame.reticleAlpha));
+    const radius = (highContrast ? 7 : 5) * unit;
+    // Two strokes keep the tiny cursor readable over both lamps and black roofs.
+    for (let pass = 0; pass < 2; pass++) {
+      this.graphics.lineStyle((pass ? 1.2 : 3) * unit, pass ? 0xe2dccc : 0x080a0c, alpha * (highContrast ? 1 : .8));
+      this.graphics.strokeCircle(ax, ay, radius);
       this.graphics.beginPath();
-      this.graphics.moveTo(sx, sy);
-      this.graphics.lineTo(ax, ay);
+      for (let i = 0; i < 4; i++) {
+        const x = Math.cos(i * Math.PI / 2), y = Math.sin(i * Math.PI / 2);
+        this.graphics.moveTo(ax + x * (radius + 2 * unit), ay + y * (radius + 2 * unit));
+        this.graphics.lineTo(ax + x * (radius + 4 * unit), ay + y * (radius + 4 * unit));
+      }
       this.graphics.strokePath();
-      this.graphics.lineStyle(presentation.innerWidth, presentation.innerColor, 1);
-      this.graphics.beginPath();
-      this.graphics.moveTo(sx, sy);
-      this.graphics.lineTo(ax, ay);
-      this.graphics.strokePath();
-      this.graphics.lineStyle(5, presentation.outerColor, 1).strokeCircle(ax, ay, presentation.reticleRadius + 2);
-      this.graphics.lineStyle(2, presentation.innerColor, 1).strokeCircle(ax, ay, presentation.reticleRadius);
-      this.graphics.lineStyle(5, presentation.outerColor, 1);
-      this.graphics.beginPath();
-      this.graphics.moveTo(ax - dx * presentation.crossRadius, ay - dy * presentation.crossRadius);
-      this.graphics.lineTo(ax + dx * presentation.crossRadius, ay + dy * presentation.crossRadius);
-      this.graphics.strokePath();
-      this.graphics.lineStyle(2, presentation.innerColor, 1);
-      this.graphics.beginPath();
-      this.graphics.moveTo(ax - dx * presentation.crossRadius, ay - dy * presentation.crossRadius);
-      this.graphics.lineTo(ax + dx * presentation.crossRadius, ay + dy * presentation.crossRadius);
-      this.graphics.strokePath();
-      return;
     }
-
-    this.graphics.lineStyle(2, config.color || 0xd7c8ff, 0.72);
-    this.graphics.beginPath();
-    this.graphics.moveTo(sx, sy);
-    this.graphics.lineTo(ax, ay);
-    this.graphics.strokePath();
-    this.graphics.lineStyle(1, config.color || 0xd7c8ff, 0.58)
-      .strokeCircle(ax, ay, config.attackType === WEAPON_TYPES.HITSCAN ? 5 : 4);
   }
 
   drawAttackArc() {
@@ -697,7 +656,7 @@ export class CombatSystem {
     const py = this.scene.player.y;
 
     if (config.attackType === WEAPON_TYPES.HITSCAN) {
-      if (phase === "active") {
+      if (phase === "active" && !this.scene.playerCharacterView?.stack) {
         const muzzleX = px + this.attack.direction.x * 10;
         const muzzleY = py + this.attack.direction.y * 10;
         this.graphics.lineStyle(3, color, alpha);
@@ -734,17 +693,7 @@ export class CombatSystem {
   }
 
   drawResiliencePips(npc) {
-    const combat = npc.combat;
-    const width = 5;
-    const gap = 2;
-    const total = combat.maxResilience * width + (combat.maxResilience - 1) * gap;
-    const startX = npc.x - total / 2;
-    const y = npc.y - 25;
-    for (let index = 0; index < combat.maxResilience; index++) {
-      const active = index < combat.resilience;
-      this.graphics.fillStyle(active ? 0xfff2a8 : 0x3a3145, active ? 0.92 : 0.72);
-      this.graphics.fillRect(startX + index * (width + gap), y, width, 3);
-    }
+    return null;
   }
 
   targetName(npc) {
@@ -756,6 +705,8 @@ export class CombatSystem {
   }
 
   destroy() {
+    this.scene.registry?.events?.off?.('changedata-uiPaused', this.onPresentationLock);
+    this.scene.registry?.events?.off?.('changedata-taskRevealActive', this.onPresentationLock);
     this.graphics?.destroy?.();
     this.projectiles.length = 0;
     this.impactEffects.length = 0;

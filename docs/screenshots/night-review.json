@@ -1,0 +1,54 @@
+{
+  "locations": [
+    {
+      "name": "hospital",
+      "ground": 18,
+      "sources": 16,
+      "vehicles": 2,
+      "atlas": 512
+    },
+    {
+      "name": "hospital-front",
+      "ground": 26,
+      "sources": 24,
+      "vehicles": 3,
+      "atlas": 512
+    },
+    {
+      "name": "police",
+      "ground": 118,
+      "sources": 116,
+      "vehicles": 16,
+      "atlas": 512
+    },
+    {
+      "name": "club",
+      "ground": 66,
+      "sources": 60,
+      "vehicles": 9,
+      "atlas": 512
+    },
+    {
+      "name": "avenue",
+      "ground": 46,
+      "sources": 46,
+      "vehicles": 6,
+      "atlas": 512
+    },
+    {
+      "name": "cathedral",
+      "ground": 8,
+      "sources": 8,
+      "vehicles": 1,
+      "atlas": 512
+    }
+  ],
+  "lifecycle": {
+    "before": 8,
+    "after": 6,
+    "disabled": true,
+    "anchorsFinite": true
+  },
+  "pause": true,
+  "errors": []
+}

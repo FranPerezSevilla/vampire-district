@@ -1,0 +1,49 @@
+{
+  "phase": "block-before",
+  "views": [
+    {
+      "name": "tenement",
+      "roofs": 13,
+      "dormant": 0,
+      "materialBytes": 18004224,
+      "zoom": 3.0375,
+      "ordinaryKeys": [
+        "ordinary-facades-v2",
+        "ordinary-roofs-v1",
+        "ordinary-rooftop-objects-v1"
+      ]
+    },
+    {
+      "name": "market",
+      "roofs": 7,
+      "dormant": 6,
+      "materialBytes": 19139904,
+      "zoom": 3.0375,
+      "ordinaryKeys": [
+        "ordinary-facades-v2",
+        "ordinary-roofs-v1",
+        "ordinary-rooftop-objects-v1"
+      ]
+    },
+    {
+      "name": "rear",
+      "roofs": 11,
+      "dormant": 2,
+      "materialBytes": 19139904,
+      "zoom": 3.0375,
+      "ordinaryKeys": [
+        "ordinary-facades-v2",
+        "ordinary-roofs-v1",
+        "ordinary-rooftop-objects-v1"
+      ]
+    }
+  ],
+  "frames": {
+    "median": 16.69999999999709,
+    "p95": 16.700000000004366,
+    "over33": 0,
+    "objects": 786,
+    "fps": 59.521647201210726
+  },
+  "errors": []
+}

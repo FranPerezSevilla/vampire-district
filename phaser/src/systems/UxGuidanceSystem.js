@@ -127,50 +127,11 @@ export class UxGuidanceSystem {
   }
 
   updateRecoveryLabels() {
-    const now = this.scene.time?.now || 0;
-    const hideAll = Boolean(
-      this.scene.registry?.get?.("uiPaused")
-      || this.scene.registry?.get?.("taskRevealActive")
-      || this.scene.taskRevealCinematic?.active
-    );
-
-    for (const npc of this.scene.npcSystem?.npcs || []) {
-      if (!RECOVERY_TYPES.has(npc.type)) continue;
-      const state = recoveryGuidanceState(npc, now);
-      const label = state.visible ? this.ensureRecoveryLabel(npc) : this.labels.get(npc.id);
-      if (!label) continue;
-
-      const visible = state.visible
-        && !hideAll
-        && npc.layer === this.scene.currentLayer
-        && !npc.hiddenBody;
-      label.setVisible(visible);
-      if (!visible) continue;
-
-      label
-        .setText(state.label)
-        .setPosition(npc.x, npc.y - 30)
-        .setColor(state.urgent ? "#ffe2e7" : npc.type === NPC_TYPES.HUNTER ? "#ffd6a3" : "#d9ecff");
-      label.setBackgroundColor?.(state.urgent ? "rgba(48, 5, 13, .90)" : "rgba(5, 8, 14, .86)");
-    }
+    return null;
   }
 
   ensureRecoveryLabel(npc) {
-    if (!npc?.id) return null;
-    if (this.labels.has(npc.id)) return this.labels.get(npc.id);
-
-    const label = this.scene.add.text(npc.x, npc.y - 30, "", {
-      fontFamily: "Arial, Helvetica, sans-serif",
-      fontSize: "12px",
-      fontStyle: "bold",
-      color: npc.type === NPC_TYPES.HUNTER ? "#ffd6a3" : "#d9ecff",
-      backgroundColor: "rgba(5, 8, 14, .86)",
-      padding: { x: 5, y: 3 }
-    }).setOrigin(0.5, 1).setDepth(76).setVisible(false);
-    label.setResolution?.(3);
-    label.setStroke?.("#05060b", 3);
-    this.labels.set(npc.id, label);
-    return label;
+    return null;
   }
 
   hideRecoveryLabel(id) {

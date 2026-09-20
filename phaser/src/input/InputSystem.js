@@ -29,6 +29,7 @@ const KEY_SLOTS = Object.freeze({
   sense: "sense",
   horn: "horn",
   beast: "beast",
+  drain: "drain",
   enter: "confirm",
   escape: "cancel",
   space: "traverse",
@@ -61,8 +62,10 @@ export class InputSystem {
     this.drainPressed = false;
     this.pendingWheelStep = 0;
     this.pointerClient = null;
+    this.pointerActivityAt = -Infinity;
     this.frame = createEmptyInputFrame();
     this.canvas = scene.game?.canvas || null;
+    this.previousCursor = this.canvas?.style?.cursor || '';
 
     this.onPointerEnter = event => {
       this.pointerInside = true;
@@ -73,6 +76,7 @@ export class InputSystem {
       this.rememberPointerClient(event);
     };
     this.onPointerLeave = () => {
+      this.pointerActivityAt = -Infinity;
       this.pointerInside = false;
       this.primaryHeld = false;
       this.primaryPressed = false;
@@ -89,8 +93,8 @@ export class InputSystem {
         this.primaryHeld = true;
         this.primaryPressed = true;
       } else if (event.button === 2) {
-        this.drainHeld = true;
-        this.drainPressed = true;
+        event.preventDefault();
+
       }
     };
     this.onPointerUp = event => {
@@ -170,6 +174,7 @@ export class InputSystem {
   }
 
   destroy() {
+    if (this.canvas?.style) this.canvas.style.cursor = this.previousCursor;
     if (this.canvas && typeof window !== "undefined" && typeof document !== "undefined") {
       this.canvas.removeEventListener("pointerenter", this.onPointerEnter);
       this.canvas.removeEventListener("pointerleave", this.onPointerLeave);
@@ -205,6 +210,9 @@ export class InputSystem {
   }
 
   resetWorldEdges() {
+    this.pointerActivityAt = -Infinity;
+    this.frame.reticleAlpha = 0;
+    if (this.canvas?.style) this.canvas.style.cursor = this.previousCursor;
     this.primaryHeld = false;
     this.primaryPressed = false;
     this.drainHeld = false;
@@ -214,6 +222,8 @@ export class InputSystem {
   }
 
   reset() {
+    this.pointerActivityAt = -Infinity;
+    if (this.canvas?.style) this.canvas.style.cursor = this.previousCursor;
     this.pointerInside = false;
     this.primaryHeld = false;
     this.primaryPressed = false;
@@ -256,12 +266,14 @@ export class InputSystem {
       hasMovementIntent: Boolean(move.length),
       aimWorld,
       pointerInside: this.pointerInside || Boolean(this.scene.input?.activePointer?.withinGame),
+      reticleAlpha: this.pointerInside ? Math.max(0, Math.min(1,
+        (850 - ((this.scene.time?.now || 0) - this.pointerActivityAt)) / 200)) : 0,
       quietHeld: this.isDown(this.keys.shift),
       sprintHeld: false,
       primaryHeld: this.primaryHeld,
       primaryPressed: this.consumePrimaryPressed(),
-      drainHeld: this.drainHeld,
-      drainPressed: this.consumeDrainPressed(),
+      drainHeld: this.isDown(this.keys.drain),
+      drainPressed: this.justDown(this.keys.drain),
       traversePressed,
       interactPressed,
       weaponStep: this.consumeWheelStep(),
@@ -280,6 +292,7 @@ export class InputSystem {
 
     const worldAllowed = this.worldEnabled && !this.sceneBlocked();
     this.frame = applyControlMode(rawFrame, this.controlMode, worldAllowed);
+    if (this.canvas?.style) this.canvas.style.cursor = worldAllowed ? 'none' : this.previousCursor;
     return this.frame;
   }
 
@@ -335,6 +348,9 @@ export class InputSystem {
 
   rememberPointerClient(event) {
     if (!event || !Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
+    if (!this.pointerClient || event.clientX !== this.pointerClient.x || event.clientY !== this.pointerClient.y) {
+      this.pointerActivityAt = this.scene.time?.now || 0;
+    }
     this.pointerClient = { x: event.clientX, y: event.clientY };
   }
 

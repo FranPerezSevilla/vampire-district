@@ -38,7 +38,11 @@ export function projectJourney(journey, pose, previous = 0, window = 160) {
     const segment = segments[index];
     if (segment.start > previous + window) break;
     const t = Math.max(0, Math.min(1, ((pose.x - segment.a.x) * segment.dx + (pose.y - segment.a.y) * segment.dy) / segment.length ** 2));
-    const distance = Math.hypot(pose.x - segment.a.x - segment.dx * t, pose.y - segment.a.y - segment.dy * t);
+    const dx=pose.x-segment.a.x-segment.dx*t,dy=pose.y-segment.a.y-segment.dy*t;
+    // Cheap conservative rejection; retain Math.hypot and the original tie rule
+    // for competitive candidates (including nearly equal floating-point values).
+    if(dx*dx+dy*dy>best.distance*best.distance*(1+1e-12))continue;
+    const distance = Math.hypot(dx,dy);
     if (distance < best.distance) best = { distance, progress: segment.start + t * segment.length };
   }
   return best;

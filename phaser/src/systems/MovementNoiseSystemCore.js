@@ -157,31 +157,13 @@ export class MovementNoiseSystem {
   }
 
   ensureWtfLabel(npc) {
-    if (!npc.__nbdWtfLabel) {
-      npc.__nbdWtfLabel = this.scene.add.text(npc.x, npc.y - 26, "WTF", {
-        fontFamily: "Arial, Helvetica, sans-serif",
-        fontSize: "12px",
-        fontStyle: "bold",
-        color: "#ffd58b",
-        backgroundColor: "rgba(5, 6, 11, .78)",
-        padding: { x: 4, y: 2 }
-      }).setOrigin(0.5, 1).setDepth(72);
-      npc.__nbdWtfLabel.setResolution?.(3);
-      npc.__nbdWtfLabel.setStroke?.("#05060b", 2);
-    }
-    npc.__nbdWtfLabel.setPosition(npc.x, npc.y - 26).setVisible(true);
-    return npc.__nbdWtfLabel;
+    // World annotations are disabled; simulation remains active.
+    return null;
   }
 
   draw(frame) {
-    this.graphics.clear();
-    if (!frame?.worldEnabled || this.scene.time.now >= this.pulseUntil) return;
-    const remaining = Math.max(0, (this.pulseUntil - this.scene.time.now) / 190);
-    const quiet = this.pulseMode === "quiet";
-    const radius = quiet ? 10 + (1 - remaining) * 7 : 16 + (1 - remaining) * 18;
-    const color = quiet ? 0x78c7a3 : 0xffb02e;
-    this.graphics.lineStyle(1, color, remaining * (quiet ? 0.30 : 0.42))
-      .strokeCircle(this.scene.player.x, this.scene.player.y, radius);
+    // World annotations are disabled; simulation remains active.
+    return null;
   }
 
   destroy() {

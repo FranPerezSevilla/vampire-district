@@ -1,0 +1,79 @@
+[
+  {
+    "source": "architecture/district-civic-facades-v1.png",
+    "runtime": "architecture/district-civic-facades-v1.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "pngBytes": 2212880,
+    "webpBytes": 1611030,
+    "pixelsIdentical": true
+  },
+  {
+    "source": "architecture/district-industrial-facades-v1.png",
+    "runtime": "architecture/district-industrial-facades-v1.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "pngBytes": 2084252,
+    "webpBytes": 1515534,
+    "pixelsIdentical": true
+  },
+  {
+    "source": "architecture/district-utility-objects-v1.png",
+    "runtime": "architecture/district-utility-objects-v1.webp",
+    "size": [
+      1536,
+      1024
+    ],
+    "pngBytes": 2992156,
+    "webpBytes": 2036768,
+    "pixelsIdentical": true
+  },
+  {
+    "source": "police/facade-v2.png",
+    "runtime": "police/facade-v2.webp",
+    "size": [
+      887,
+      1774
+    ],
+    "pngBytes": 1810126,
+    "webpBytes": 1352178,
+    "pixelsIdentical": true
+  },
+  {
+    "source": "vesper/facade-v2.png",
+    "runtime": "vesper/facade-v2.webp",
+    "size": [
+      1659,
+      948
+    ],
+    "pngBytes": 1963066,
+    "webpBytes": 1455600,
+    "pixelsIdentical": true
+  },
+  {
+    "source": "cathedral/facade-atlas-v2.png",
+    "runtime": "cathedral/facade-atlas-v2.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "pngBytes": 2279816,
+    "webpBytes": 1633918,
+    "pixelsIdentical": true
+  },
+  {
+    "source": "cathedral/front-v2.png",
+    "runtime": "cathedral/front-v2.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "pngBytes": 2771865,
+    "webpBytes": 1682296,
+    "pixelsIdentical": true
+  }
+]

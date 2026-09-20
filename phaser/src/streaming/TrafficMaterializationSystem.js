@@ -369,6 +369,7 @@ export class TrafficMaterializationSystem {
   assign(slot, token) {
     this.configureSlotArchetype(slot, token);
     slot.tokenId = token.tokenId;
+    slot.engineRunning = true;
     this.assignments.set(token.tokenId, slot);
     slot.container.setActive(true).setVisible(true);
     this.updateSlot(slot, token);
@@ -379,6 +380,7 @@ export class TrafficMaterializationSystem {
     if (!slot?.tokenId) return false;
     this.assignments.delete(slot.tokenId);
     slot.tokenId = null;
+    slot.engineRunning = false;
     slot.edgeId = null;
     slot.tokenIndex = -1;
     slot.direction = null;
@@ -578,6 +580,7 @@ export class TrafficMaterializationSystem {
       angle: slot.angle,
       radius: slot.radius,
       archetype: slot.archetype,
+      engineRunning: slot.engineRunning,
       archetypeId: slot.archetypeId
     };
     this.hijackSequence++;
@@ -595,6 +598,7 @@ export class TrafficMaterializationSystem {
       ownerId: `traffic-owner-${safeId(captured.tokenId)}`,
       factionId: null,
       parked: true,
+      engineRunning: captured.engineRunning,
       layer: LAYERS.STREET,
       transient: true,
       trafficOriginTokenId: captured.tokenId

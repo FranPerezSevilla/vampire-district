@@ -113,6 +113,20 @@ function makeScene() {
   };
 }
 
+test('reticle activity follows screen movement, fades at rest, ignores camera movement and clears on locks', () => {
+  const {scene,keys}=makeScene();
+  const input=new InputSystem(scene,{keys});
+  input.onPointerMove({clientX:460,clientY:290});assert.equal(input.beginFrame().reticleAlpha,1);
+  scene.time.now+=750;assert.ok(input.beginFrame().reticleAlpha>0&&input.frame.reticleAlpha<1);
+  scene.time.now+=200;scene.cameras.main.scrollX+=100;scene.cameras.main.worldView.x+=100;
+  input.onPointerMove({clientX:460,clientY:290});assert.equal(input.beginFrame().reticleAlpha,0);
+  input.onPointerMove({clientX:461,clientY:290});assert.equal(input.beginFrame().reticleAlpha,1);
+  input.setWorldEnabled(false);assert.equal(input.beginFrame().reticleAlpha,0);
+  input.setWorldEnabled(true);assert.equal(input.beginFrame().reticleAlpha,0);
+  input.onPointerMove({clientX:463,clientY:290});input.onPointerLeave();assert.equal(input.beginFrame().reticleAlpha,0);
+  input.destroy();
+});
+
 test("InputSystem creates movement, quiet and traversal actions from one frame", () => {
   const { scene, keys } = makeScene();
   const input = new InputSystem(scene, { keys });

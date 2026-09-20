@@ -310,18 +310,8 @@ export class TrafficOccupantWitnessSystem {
   }
 
   drawMarkers(graphics) {
-    if (this.scene.currentLayer !== LAYERS.STREET) return;
-    for (const alarm of this.pending.values()) {
-      const color = alarm.masqueradeRisk ? 0xff3b50 : 0xffb02e;
-      graphics.lineStyle?.(2, color, 0.95)?.strokeCircle?.(alarm.x, alarm.y, 22);
-      graphics.fillStyle?.(color, 0.12)?.fillCircle?.(alarm.x, alarm.y, 22);
-      this.scene.addMapLabel?.(
-        alarm.occupantCount > 1 ? "! CAR WITNESSES" : "! DRIVER",
-        alarm.x + 14,
-        alarm.y - 20,
-        color
-      );
-    }
+    // World annotations are disabled; simulation remains active.
+    return null;
   }
 
   installWitnessBridge() {

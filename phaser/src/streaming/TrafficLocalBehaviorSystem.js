@@ -81,7 +81,17 @@ export function polylineLength(points) {
   return total;
 }
 
-export function nearestPointOnPolyline(points, x, y) {
+function compilePolylineProjection(points) {
+  const segments = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const ax = finite(points[i]?.x), ay = finite(points[i]?.y);
+    const dx = finite(points[i + 1]?.x) - ax, dy = finite(points[i + 1]?.y) - ay;
+    segments.push({ ax, ay, dx, dy, length: Math.hypot(dx, dy), angle: Math.atan2(dy, dx) });
+  }
+  return { total: polylineLength(points), segments };
+}
+
+export function nearestPointOnPolyline(points, x, y, prepared = null) {
   const list = Array.isArray(points) ? points : [];
   if (!list.length) return { x: 0, y: 0, progress: 0, distance: Infinity, angle: 0, length: 0 };
   if (list.length === 1) {
@@ -90,31 +100,31 @@ export function nearestPointOnPolyline(points, x, y) {
     return { x: px, y: py, progress: 0, distance: Math.hypot(finite(x) - px, finite(y) - py), angle: 0, length: 0 };
   }
 
-  const total = polylineLength(list);
+  const total = prepared?.total ?? polylineLength(list);
   let traversed = 0;
   let best = null;
   for (let index = 0; index < list.length - 1; index++) {
     const from = list[index];
     const to = list[index + 1];
-    const ax = finite(from?.x);
-    const ay = finite(from?.y);
-    const dx = finite(to?.x) - ax;
-    const dy = finite(to?.y) - ay;
-    const length = Math.hypot(dx, dy);
+    const segment = prepared?.segments[index];
+    const ax = segment?.ax ?? finite(from?.x);
+    const ay = segment?.ay ?? finite(from?.y);
+    const dx = segment?.dx ?? finite(to?.x) - ax;
+    const dy = segment?.dy ?? finite(to?.y) - ay;
+    const length = segment?.length ?? Math.hypot(dx, dy);
     if (length <= 0.0001) continue;
     const local = clamp(((finite(x) - ax) * dx + (finite(y) - ay) * dy) / (length * length), 0, 1);
     const px = ax + dx * local;
     const py = ay + dy * local;
     const distance = Math.hypot(finite(x) - px, finite(y) - py);
-    const candidate = {
+    if (!best || distance < best.distance) best = {
       x: px,
       y: py,
       progress: total > 0 ? (traversed + length * local) / total : 0,
       distance,
-      angle: Math.atan2(dy, dx),
+      angle: segment?.angle ?? Math.atan2(dy, dx),
       length: total
     };
-    if (!best || candidate.distance < best.distance) best = candidate;
     traversed += length;
   }
   return best || { x: finite(list[0]?.x), y: finite(list[0]?.y), progress: 0, distance: Infinity, angle: 0, length: total };
@@ -187,6 +197,7 @@ export class TrafficLocalBehaviorSystem {
   rebuildLaneCache() {
     this.laneCache.clear();
     this.junctionProjectionCache.clear();
+    this.laneJunctionCandidates = new WeakMap();
     for (const [edgeId, lanes] of Object.entries(this.materializer.lanes?.edges || {})) {
       for (const direction of ["forward", "reverse"]) {
         const points = lanes?.[direction];
@@ -195,6 +206,7 @@ export class TrafficLocalBehaviorSystem {
           edgeId,
           direction,
           points,
+          projectionGeometry: compilePolylineProjection(points),
           length: Math.max(1, polylineLength(points))
         });
       }
@@ -252,8 +264,21 @@ export class TrafficLocalBehaviorSystem {
     return state;
   }
 
-  directLaneGap(state, lane, x, y, radius = 0) {
-    const projection = nearestPointOnPolyline(lane.points, x, y);
+  directLaneGap(state, lane, x, y, radius = 0, obstacle = null) {
+    let projection;
+    // Several drivers on one lane inspect the same parked cars/player. Share
+    // only the lane projection during decision collection, never the gap or
+    // braking decision. Position changes remain immediately observable.
+    if (obstacle && this.laneObstacleProjections) {
+      let laneCache = this.laneObstacleProjections.get(lane);
+      if (!laneCache) this.laneObstacleProjections.set(lane, laneCache = new WeakMap());
+      const cached = laneCache.get(obstacle);
+      if (cached && cached.x === x && cached.y === y) projection = cached.projection;
+      else {
+        projection = nearestPointOnPolyline(lane.points, x, y, lane.projectionGeometry);
+        laneCache.set(obstacle, { x, y, projection });
+      }
+    } else projection = nearestPointOnPolyline(lane.points, x, y, lane.projectionGeometry);
     if (projection.distance > this.laneTolerance + Math.max(0, radius)) return null;
     const visualPhase = wrapPhase(state.visualTravel);
     const phaseDelta = projection.progress - visualPhase;
@@ -282,13 +307,13 @@ export class TrafficLocalBehaviorSystem {
     const currentVehicleId = this.vehicleSystem.currentVehicleId || null;
     for (const vehicle of this.vehicleSystem.vehicles || []) {
       const radius = vehicleRadius(vehicle.archetype);
-      const result = this.directLaneGap(state, lane, vehicle.x, vehicle.y, radius + slot.radius);
+      const result = this.directLaneGap(state, lane, vehicle.x, vehicle.y, radius + slot.radius, vehicle);
       if (!result || result.gap > this.playerLookAhead) continue;
       const reason = vehicle.id === currentVehicleId ? "player-vehicle" : "parked-vehicle";
       if (!best || result.gap < best.gap) best = { gap: result.gap, reason, blockerId: vehicle.id, junctionId: null };
     }
     if (!this.vehicleSystem.isDriving?.() && !this.scene.transitSystem?.isRiding?.() && this.scene.player) {
-      const result = this.directLaneGap(state, lane, this.scene.player.x, this.scene.player.y, slot.radius + 22);
+      const result = this.directLaneGap(state, lane, this.scene.player.x, this.scene.player.y, slot.radius + 22, this.scene.player);
       if (result && result.gap <= this.playerLookAhead && (!best || result.gap < best.gap)) {
         best = { gap: result.gap, reason: "player-on-foot", blockerId: "player", junctionId: null };
       }
@@ -306,12 +331,20 @@ export class TrafficLocalBehaviorSystem {
     return value;
   }
 
+  junctionsForLane(lane) {
+    this.laneJunctionCandidates ??= new WeakMap();
+    let candidates = this.laneJunctionCandidates.get(lane);
+    if (!candidates) {
+      candidates = this.junctions.map(junction => ({junction, projection:this.junctionProjection(junction,lane)})).filter(item => item.projection);
+      this.laneJunctionCandidates.set(lane,candidates);
+    }
+    return candidates;
+  }
+
   junctionBlocker(slot, state, lane, active) {
     let best = null;
     const ownPhase = wrapPhase(state.visualTravel);
-    for (const junction of this.junctions) {
-      const ownProjection = this.junctionProjection(junction, lane);
-      if (!ownProjection) continue;
+    for (const {junction,projection:ownProjection} of this.junctionsForLane(lane)) {
       const ownDelta = ownProjection.progress - ownPhase;
       if (ownDelta <= 0.0005) continue;
       const ownApproach = ownDelta * lane.length - slot.radius;
@@ -350,6 +383,14 @@ export class TrafficLocalBehaviorSystem {
   }
 
   decisionFor(slot, state, token, active) {
+    // The physical driver has already made and committed this frame's decision.
+    // Keep feedback decorators/lifecycle intact without running the retired
+    // lane-following planner whose movement application is route-guarded.
+    if (slot.driverActive && token.driverActive) return {
+      desiredSpeedFactor: slot.behaviorSpeedFactor ?? 1,
+      reason: slot.driverReason || slot.behaviorReason || "cruise",
+      gap: null, blockerId: slot.behaviorBlockerId || null, junctionId: null, lane: null
+    };
     const lane = this.laneFor(state);
     if (!lane) return { desiredSpeedFactor: 1, reason: "no-lane", gap: null, junctionId: null, lane: null };
     const blockers = [
@@ -561,7 +602,13 @@ export class TrafficLocalBehaviorSystem {
       }
     }
 
-    const decisions = active.map(item => ({ ...item, decision: this.decisionFor(item.slot, item.state, item.token, active) }));
+    let decisions;
+    this.laneObstacleProjections = new WeakMap();
+    try {
+      decisions = active.map(item => ({ ...item, decision: this.decisionFor(item.slot, item.state, item.token, active) }));
+    } finally {
+      this.laneObstacleProjections = null;
+    }
     for (const item of decisions) {
     this.applyDecision(item.slot, item.state, item.token, item.decision, dt);
     this.processPlayerImpact(item.slot, item.state);
@@ -680,6 +727,7 @@ export class TrafficLocalBehaviorSystem {
     this.states.clear();
     this.laneCache.clear();
     this.junctionProjectionCache.clear();
+    this.laneJunctionCandidates = new WeakMap();
     this.junctions = [];
     this.ready = false;
     if (typeof window !== "undefined") {

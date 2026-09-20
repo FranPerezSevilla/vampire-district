@@ -15,15 +15,15 @@ export function buildControlReference(candidateBindings = {}, { simplified = fal
 
   return [
     "ON FOOT",
-    `${movement} or ${arrows}  Move`,
+    `${movement} or ${arrows}  Move / face movement`,
     `${key(bindings, "quiet")}  Quiet movement`,
     `${key(bindings, "interact")}  Interact / dialogue / evidence`,
     ...(!simplified ? [`${key(bindings, "traverse")}  Traverse available routes`] : []),
     "",
     "COMBAT & FEEDING",
-    "Mouse  Aim",
-    "Left mouse  Use equipped weapon",
-    "Hold right mouse  Feed / Drain",
+    "Mouse  Aim · sight hides when still",
+    "Left mouse  Use equipped weapon / face target",
+    `${key(bindings, "drain")} (hold)  Feed / Drain`,
     "Mouse wheel  Change weapon",
     "",
     "POWERS",
@@ -37,6 +37,6 @@ export function buildControlReference(candidateBindings = {}, { simplified = fal
     `${key(bindings, "horn")}  Horn`,
     "",
     "MENUS",
-    `${key(bindings, "cancel")}  Pause / back · M  ${book ? "Black Book / current errand" : "Errand"}${simplified ? "" : " · L  Night Ledger"}`
+    `${key(bindings, "cancel")}  Pause / back · B  ${book ? "Black Book / current errand" : "Errand"}${simplified ? "" : " · L  Night Ledger"}`
   ].join("\n");
 }

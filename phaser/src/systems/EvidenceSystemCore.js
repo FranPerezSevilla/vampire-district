@@ -327,8 +327,6 @@ export class EvidenceSystem {
 
   currentHideSpot() {
     if (this.scene.currentLayer === LAYERS.SEWER) return { id: "sewers", name: "sewers", cleanRadius: 120 };
-    if (this.scene.currentLayer === LAYERS.ROOF_HIGH) return { id: "rooftop_refuge", name: "rooftop refuge", cleanRadius: 110 };
-    if (this.scene.currentLayer === LAYERS.ROOF_LOW) return { id: "rooftop_shadow", name: "rooftop shadow", cleanRadius: 86 };
 
     for (const spot of bodyHideSpots) {
       if (spot.layer !== this.scene.currentLayer) continue;
@@ -337,8 +335,6 @@ export class EvidenceSystem {
       }
     }
 
-    const shadow = this.shadowAt(this.scene.player.x, this.scene.player.y, this.scene.currentLayer);
-    if (shadow) return { id: shadow.id || "shadow", name: shadow.name, cleanRadius: 70 };
     return null;
   }
 
@@ -456,17 +452,6 @@ export class EvidenceSystem {
   }
 
   drawMarkers(graphics) {
-    if (this.scene.currentLayer === LAYERS.STREET) {
-      const hasBody = Boolean(this.draggingBody) || this.evidenceSubjects(this.scene.currentLayer).some(body => !body.hiddenBody);
-      if (hasBody) {
-        for (const spot of bodyHideSpots) {
-          graphics.lineStyle(1, 0x78c7a3, 0.60).strokeCircle(spot.x, spot.y, spot.radius);
-          graphics.fillStyle(0x78c7a3, 0.10).fillCircle(spot.x, spot.y, spot.radius);
-          this.scene.addMapLabel("HIDE", spot.x + 10, spot.y - 8, 0x78c7a3);
-        }
-      }
-    }
-
     for (const stain of this.bloodStains) {
       if (stain.layer !== this.scene.currentLayer) continue;
       const drain = stain.kind === "target-drain" || stain.kind === "drain";

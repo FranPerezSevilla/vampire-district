@@ -13,7 +13,6 @@ export class VampireRuntime {
     this.scene = scene;
     this.sites = createVampireSites(buildings, (x, y) => scene.canStandAt?.(x, y) !== false);
     this.people = new Map();
-    this.labels = new Map();
     this.boundService = null;
     this.refreshAt = 0;
     this.saveElapsed = 0;
@@ -25,9 +24,6 @@ export class VampireRuntime {
       notify: text => this.notice(text)
     });
     this.domain = new DomainNavigation(this);
-    this.destinationLabel = scene.add?.text?.(0, 0, "", { fontFamily: "Arial, Helvetica, sans-serif", fontSize: "12px", color: "#ffdc93", backgroundColor: "#10151d", padding: { x: 5, y: 3 } });
-    this.destinationLabel?.setOrigin?.(0.5, 1)?.setDepth?.(74);
-    this.destinationLabel?.setVisible?.(false);
     this.feedListener = event => {
       const id = event.targetId;
       if (donorById(id)) this.service?.harmDonor(id, { depth: event.depth, dead: !event.victimAlive });
@@ -103,13 +99,7 @@ export class VampireRuntime {
       this.people.set(def.id, npc);
       this.scene.npcSystem.npcs.push(npc);
       if (donor) this.syncDonor(def.id, true);
-      const label = this.scene.add?.text?.(npc.x, npc.y - 22, def.name, {
-        fontFamily: "Arial, Helvetica, sans-serif", fontSize: "11px", color: "#dfffee",
-        backgroundColor: "#10151d", padding: { x: 4, y: 2 }
-      });
-      label?.setOrigin?.(0.5, 1)?.setDepth?.(73);
-      label?.setResolution?.(3);
-      this.labels.set(def.id, label);
+
     }
     this.scene.npcSystem?.rebuildSpatialIndex?.();
   }
@@ -334,16 +324,6 @@ export class VampireRuntime {
     if (now < this.refreshAt && this.lastVisible === visible) return;
     this.refreshAt = now + 0.12;
     this.lastVisible = visible;
-    for (const [id, label] of this.labels) {
-      const npc = this.people.get(id);
-      const near = Math.hypot(npc.x - this.scene.player.x, npc.y - this.scene.player.y) < 260;
-      label?.setPosition?.(npc.x, npc.y - 22);
-      label?.setVisible?.(visible && near && !npc.dead && target?.target !== `contact:${id}` && target?.target !== `donor:${id}` && this.scene.currentLayer === LAYERS.STREET);
-    }
-    const targetNear = Math.hypot(target.x - this.scene.player.x, target.y - this.scene.player.y) < 350;
-    this.destinationLabel?.setText?.(`◆ ${target.label}`);
-    this.destinationLabel?.setPosition?.(target.x, target.y - 42);
-    this.destinationLabel?.setVisible?.(visible && targetNear && this.scene.currentLayer === LAYERS.STREET && !this.scene.interactionSystem?.isOpen);
     const stage = demoStage(this.service.state);
     if (this.scene.registry?.get?.("vampireStage") !== stage) this.scene.registry?.set?.("vampireStage", stage);
     if (this.scene.registry?.get?.("vampireFrenzy") !== this.frenzy.active) this.scene.registry?.set?.("vampireFrenzy", this.frenzy.active);
@@ -356,8 +336,6 @@ export class VampireRuntime {
     this.disposeNotice?.();
     this.frenzy.destroy();
     this.domain.destroy();
-    this.destinationLabel?.destroy?.();
-    for (const label of this.labels.values()) label?.destroy?.();
     this.scene.events?.off?.("feeding:resolved", this.feedListener);
     this.scene.events?.off?.("combat:hit", this.hitListener);
     this.scene.events?.off?.("player:died", this.deathListener);

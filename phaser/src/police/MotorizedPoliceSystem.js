@@ -434,6 +434,7 @@ export class MotorizedPoliceSystem {
     if (!slot) return false;
     const visible = this.shouldMaterialize(unit, focus);
     slot.unitId = visible ? unit.id : null;
+    slot.engineRunning = !unit.disabled;
     slot.container
       .setPosition(unit.x, unit.y)
       .setRotation(unit.angle)
@@ -510,6 +511,7 @@ export class MotorizedPoliceSystem {
     const slot = this.slots[index];
     if (!slot) return false;
     slot.unitId = null;
+    slot.engineRunning = false;
     slot.container.setActive(false).setVisible(false);
     return true;
   }

@@ -1,0 +1,58 @@
+/* Street notes: ink, paper, a cloth-bound book. No screen-wide decoration. */
+.vb-street-grain { display:none; }
+.vb-street-objective.vb-objective { left:var(--hud-edge); top:108px; width:250px; transform:rotate(-2deg); text-align:left; filter:drop-shadow(3px 5px 3px #0007); }
+.vb-street-objective.vb-objective .vb-street-objective-paper { min-height:84px; padding:18px 20px 14px 30px; gap:8px; background:repeating-linear-gradient(0deg,transparent 0 21px,#60584926 21px 22px),linear-gradient(110deg,#d2c4a6,#ece2c9); clip-path:polygon(0 0,100% 2%,98% 92%,94% 100%,88% 94%,80% 100%,71% 95%,61% 100%,50% 94%,41% 100%,30% 95%,19% 100%,8% 94%,0 100%); }
+.vb-street-objective-paper::before { content:""; position:absolute; top:0; bottom:0; left:20px; border-left:1px solid #8c273d55; }
+.vb-street-objective.vb-objective .vb-street-objective-kicker { justify-self:start; font:700 11px/1.2 "Courier New",monospace; }
+.vb-street-objective.vb-objective .vb-street-objective-paper > strong { font:700 23px/1.1 "Courier New",monospace; white-space:normal; overflow-wrap:anywhere; }
+.vb-player-compass { position:fixed; width:0; height:0; pointer-events:none; transform-origin:0 0; }
+.vb-player-compass > svg { position:absolute; width:24px; height:28px; left:-12px; top:-88px; color:#f1deac; stroke-width:2.8; filter:drop-shadow(0 2px 2px #000); }
+.vb-street-nav .nb-book-toggle { position:relative; min-height:68px; padding:14px 18px 14px 24px; background:linear-gradient(90deg,#080808 0 7px,#4c3b37 8px,#171414 10px,#24201e 95%,#af9a76 96%); border:1px solid #655347; border-radius:1px 4px 4px 1px; box-shadow:3px 5px 0 #0008,inset 0 0 0 3px #ffffff07; transform:rotate(3deg); color:#d9c6a4; }
+.vb-street-nav .nb-book-toggle > span { font:700 16px/1.2 Georgia,serif; }
+.vb-street-nav .nb-book-toggle > svg { display:none; }
+.vb-street-nav .nb-book-toggle kbd { margin-left:8px; border:0; color:#b7a381; }
+.vb-street-place.vb-hud-place { background:none; border:0; box-shadow:none; clip-path:none; padding:4px 0; min-width:0; text-shadow:0 2px 3px #000; }
+.vb-street-place.vb-hud-place > span { display:none; }
+.vb-street-vitals.vb-vitals { background:repeating-linear-gradient(0deg,transparent 0 25px,#c0b1950c 25px 26px),#171513ed; border:1px solid #7c705c; border-left:7px solid #29231f; box-shadow:3px 4px 0 #cabd9633,7px 8px 12px #0008; clip-path:polygon(0 0,100% 2%,99% 100%,1% 98%); transform:rotate(-1deg); }
+.vb-street-vitals::before { display:none; }
+.vb-street-vitals .vb-street-survival-row > strong { font:700 13px/1.2 "Courier New",monospace; }
+.vb-street-survival-track { border-color:#8e8069; }
+.vb-street-notice.vb-notice { background:#d9ccaf; font-family:"Courier New",monospace; box-shadow:2px 3px 0 #0005; }
+.vb-street-notice.vb-notice > span { display:none; }
+.vb-street-notice.vb-notice { grid-template-columns:1fr; }
+@media(max-width:900px) {
+ .vb-street-objective.vb-objective { top:78px; width:210px; }
+ .vb-street-objective.vb-objective .vb-street-objective-paper > strong { font-size:19px; }
+ .vb-street-nav .nb-book-toggle { min-height:54px; }
+}
+@media(max-width:680px),(max-height:520px) {
+ .vb-street-objective.vb-objective { top:58px; width:175px; }
+ .vb-street-objective.vb-objective .vb-street-objective-paper { min-height:64px; padding:10px 12px 12px 25px; }
+ .vb-street-objective.vb-objective .vb-street-objective-paper > strong { font-size:16px; }
+ .vb-player-compass > svg { top:-68px; }
+}
+@media(forced-colors:active) { .vb-street-nav .nb-book-toggle,.vb-street-vitals.vb-vitals,.vb-street-objective-paper { background:Canvas; color:CanvasText; border:1px solid CanvasText; } }
+/* Sparse street HUD and paused power selection. */
+.vb-street-vitals.vb-vitals { top:var(--hud-edge); bottom:auto; }
+.vb-night-clock { display:block; padding:10px 12px 0; font:700 24px/1.1 "Courier New",monospace; letter-spacing:.08em; }
+.vb-street-survival-pocket { display:none; }
+.vb-street-attention { top:var(--hud-edge); }
+.vb-street-objective.vb-objective { top:calc(var(--hud-edge) + 138px); }
+.vb-binding-list { display:grid; gap:8px; max-width:480px; }
+.vb-binding-list label { display:flex; justify-content:space-between; align-items:center; }
+.vb-binding-list input { width:100px; background:#191519; color:#e7dfcf; border:1px solid #8b7961; padding:8px; text-align:center; }
+/* Quiet, contextual key hints; no paper banner or decorative keycap. */
+.vb-street-prompt.vb-prompt {
+ width:auto; max-width:calc(100vw - 40px); min-height:0;
+ bottom:calc(var(--hud-edge) + 18px + env(safe-area-inset-bottom));
+ padding:7px 11px; gap:7px; background:rgba(8,7,7,.68); color:#e7dfcf;
+ clip-path:none; box-shadow:none; transform:translateX(-50%);
+ font:500 13px/1.4 Arial,sans-serif; letter-spacing:0; text-transform:none;
+}
+.vb-street-prompt.vb-prompt::after { display:none; }
+.vb-street-prompt.vb-prompt kbd {
+ display:inline; min-width:0; width:auto; height:auto; padding:0;
+ border:0; box-shadow:none; color:inherit; background:none;
+ font:700 13px/1.4 Arial,sans-serif;
+}
+.vb-street-prompt.vb-prompt > span { font:inherit; white-space:normal; }

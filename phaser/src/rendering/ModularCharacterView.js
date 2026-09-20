@@ -1,3 +1,8 @@
+import {CharacterSpriteStack, canStackCharacter} from './CharacterSpriteStack.js';
+import {characterAttackProgress} from './CharacterActionPresentation.js';
+import {idleCharacterGesture,characterFallPose} from './CharacterGestures.js';
+import {CharacterMotion} from './CharacterMotion.js';
+
 const DEFAULT_DIRECTION = Object.freeze({ x: 0, y: -1 });
 const WEAPON_UNARMED = "unarmed";
 const WEAPON_PIPE = "iron_pipe";
@@ -238,27 +243,36 @@ export function modularCharacterIdleMotion({ timeMs = 0, moving = false, phase =
 export function modularCharacterPose({
   timeMs = 0,
   moving = false,
+  running = false,
   weaponId = WEAPON_UNARMED,
   attacking = false,
   attackProgress = 0,
   attackSerial = 0,
-  phase = 0
+  phase = 0,
+  gaitPhase = null,
+  motionBlend = moving ? 1 : 0,
+  runBlend = running ? 1 : 0,
+  locomotionDirection = {x:0,y:-1},
+  weaponReady = true
 } = {}) {
   const time = Math.max(0, Number(timeMs) || 0);
-  const walk = moving ? Math.sin(time * 0.014 + phase) : 0;
+  const walk = Math.sin(gaitPhase ?? (time * (running ? 0.021 : 0.014) + phase)) * motionBlend;
   const idle = moving ? 0 : Math.sin(time * 0.00225 + phase);
-  const footStride = walk * 2.45;
-  const handSwing = moving ? walk * 1.25 : idle * 0.34;
+  const footStride = walk * (2.45 + runBlend * 1.65);
+  const handSwing = walk * (1.25 + runBlend * 1.35) + idle * .34 * (1 - motionBlend);
   const progress = clamp01(attackProgress);
-  const attackPulse = attacking ? Math.sin(progress * Math.PI) : 0;
 
   const feet = {
-    left: { x: -2.6, y: 3.5 + footStride, rotation: -0.05 * walk },
-    right: { x: 2.6, y: 3.5 - footStride, rotation: 0.05 * walk }
+    left: { x: -2.35-footStride*locomotionDirection.x*.5, y: -footStride*locomotionDirection.y, rotation: -0.05 * walk },
+    right: { x: 2.35+footStride*locomotionDirection.x*.5, y: footStride*locomotionDirection.y, rotation: 0.05 * walk }
   };
 
   if (weaponId === WEAPON_PISTOL) {
-    const recoil = attackPulse * 1.35;
+    if (!weaponReady && !attacking) return {
+      hands: {left:{x:-7,y:handSwing,rotation:0},right:{x:6.2,y:-1-handSwing,rotation:.12}},
+      feet, pistolVisible:true, pipeVisible:false, weaponLowered:true, coreAttackRotation:0, attackKind:null
+    };
+    const recoil = attacking && progress >= .14 ? Math.exp(-(progress-.14)*6)*1.9 : 0;
     const locomotionSway = moving ? walk * 0.48 : idle * 0.18;
     const locomotionBob = moving ? Math.abs(walk) * 0.38 : idle * 0.10;
     return {
@@ -470,47 +484,62 @@ function attackPresentation(scene) {
   const attack = scene?.combatSystem?.attack || null;
   if (!attack) return { attacking: false, progress: 0, serial: 0 };
   const config = attack.config || {};
-  const total = Math.max(1,
-    (Number(config.windupMs) || 0)
-    + (Number(config.activeMs) || 0)
-    + (Number(config.recoveryMs) || 0));
   return {
     attacking: true,
-    progress: clamp01((Number(attack.elapsedMs) || 0) / total),
+    progress: characterAttackProgress(attack.elapsedMs, config),
     serial: Number(attack.serial) || 0
   };
 }
 
 export class ModularCharacterView {
-  constructor(scene, hostContainer, styleName = "civilian", { phaseKey = "character" } = {}) {
+  constructor(scene, hostContainer, styleName = "civilian", { phaseKey = "character", role = null } = {}) {
     if (!scene || !hostContainer) throw new TypeError("ModularCharacterView requires a scene and host container.");
     this.scene = scene;
     this.host = hostContainer;
     this.isPlayer = hostContainer === scene.player;
+    if(this.isPlayer){
+      this.onDamage=event=>this.react(event.damageKind==='vehicle'?'vehicle':event.dead?'shot':'flinch',event.dead);
+      scene.events.on('player:damaged',this.onDamage);
+      this.onShutdown=()=>this.destroy();
+      scene.events.once('shutdown',this.onShutdown);
+    }
     this.styleName = MODULAR_CHARACTER_STYLES[styleName] ? styleName : "civilian";
     this.style = resolvedCharacterStyle(this.styleName, phaseKey);
+    if (role === 'thug') Object.assign(this.style, {body:0x493a32,bodyDark:0x29221e,sleeve:0x493a32});
+    if (role === 'hunter') Object.assign(this.style, {body:0x43483a,bodyDark:0x272c24,sleeve:0x43483a});
+    if (role === 'target') Object.assign(this.style, {body:0x4d343e,bodyDark:0x2a2028,sleeve:0x4d343e});
+    for(const key of ['body','bodyDark','sleeve','trouser','accent']){
+      const c=this.style[key],r=c>>16&255,g=c>>8&255,b=c&255,gray=r*.25+g*.6+b*.15;
+      this.style[key]=((r*.52+gray*.40)<<16)|((g*.52+gray*.40)<<8)|(b*.52+gray*.40);
+    }
     this.variant = this.style.variant;
     this.phase = stablePhase(phaseKey);
+    this.motion = new CharacterMotion(this.phase);
     this.lastMovementDirection = { ...DEFAULT_DIRECTION };
     this.lastLookDirection = { ...DEFAULT_DIRECTION };
     this.upperRotation = 0;
     this.feetRotation = 0;
 
     this.root = scene.add.container(0, 0).setScale(this.style.scale || 0.78);
-    this.shadow = scene.add.ellipse(0, 4.5, this.style.shoulderWidth + 5, 5.4, 0x000000, 0.27);
-    this.feetRoot = scene.add.container(0, 0);
-    this.upperRoot = scene.add.container(0, 0);
-    this.leftFoot = createFoot(scene, this.style);
-    this.rightFoot = createFoot(scene, this.style);
-    this.trench = createTrenchCoat(scene, this.style);
-    this.core = createCore(scene, this.style);
-    this.leftHand = createHand(scene, this.style);
-    this.rightHand = createHand(scene, this.style);
+    if (canStackCharacter(scene)) {
+      this.stack = new CharacterSpriteStack(scene, hostContainer, this.style);
+      this.root.add(this.stack);
+    } else {
+      this.shadow = scene.add.ellipse(0, 4.5, this.style.shoulderWidth + 5, 5.4, 0x000000, 0.27);
+      this.feetRoot = scene.add.container(0, 0);
+      this.upperRoot = scene.add.container(0, 0);
+      this.leftFoot = createFoot(scene, this.style);
+      this.rightFoot = createFoot(scene, this.style);
+      this.trench = createTrenchCoat(scene, this.style);
+      this.core = createCore(scene, this.style);
+      this.leftHand = createHand(scene, this.style);
+      this.rightHand = createHand(scene, this.style);
 
-    this.feetRoot.add([this.leftFoot, this.rightFoot]);
-    if (this.trench) this.upperRoot.add(this.trench.container);
-    this.upperRoot.add([this.core, this.leftHand.container, this.rightHand.container]);
-    this.root.add([this.shadow, this.feetRoot, this.upperRoot]);
+      this.feetRoot.add([this.leftFoot, this.rightFoot]);
+      if (this.trench) this.upperRoot.add(this.trench.container);
+      this.upperRoot.add([this.core, this.leftHand.container, this.rightHand.container]);
+      this.root.add([this.shadow, this.feetRoot, this.upperRoot]);
+    }
     hostContainer.add(this.root);
     this.update({
       timeMs: 0,
@@ -532,71 +561,115 @@ export class ModularCharacterView {
     return WEAPON_UNARMED;
   }
 
+  react(kind='trip',persistent=false,holdMs=0) {
+    this.reaction={kind,persistent,holdMs,start:Number(this.scene.time?.now)||0};
+    this.idleSince=null;
+  }
+
   update({
     timeMs = 0,
     direction = null,
     movementDirection = direction || this.lastMovementDirection,
     aimDirection = this.lastLookDirection,
     moving = false,
+    hasMovementIntent = moving,
+    running = false,
+    jumping = false,
+    jumpProgress = 0,
     aiming = false,
     weaponId = null,
     attacking = null,
     attackProgress = null,
-    attackSerial = null
+    attackSerial = null,
+    incapacitated = false,
+    gesture: explicitGesture = null,
+    fallProgress: explicitFall = null,
+    fallKind: explicitFallKind = null
   } = {}) {
     if (hasDirection(movementDirection)) this.lastMovementDirection = normalizedDirection(movementDirection);
-
-    const combatAim = this.isPlayer ? this.scene.combatSystem?.aimDirection : null;
-    const requestedLook = hasDirection(combatAim) ? combatAim : aimDirection;
-    if (hasDirection(requestedLook)) this.lastLookDirection = normalizedDirection(requestedLook);
-
-    if (moving) this.feetRotation = modularCharacterFacingRotation(this.lastMovementDirection);
-    this.upperRotation = modularCharacterFacingRotation(this.lastLookDirection);
-
-    const hostRotation = Number(this.host?.rotation) || 0;
-    const idleMotion = modularCharacterIdleMotion({ timeMs, moving, phase: this.phase });
-    this.feetRoot.setPosition(0, 0).setRotation(wrapAngle(this.feetRotation - hostRotation));
-    this.upperRoot
-      .setPosition(0, idleMotion.upperY)
-      .setRotation(wrapAngle(this.upperRotation - hostRotation));
-    this.shadow.setRotation(-hostRotation).setScale(idleMotion.shadowScaleX, 1);
-
-    if (this.trench) {
-      const gait = moving ? Math.sin(Math.max(0, Number(timeMs) || 0) * 0.014 + this.phase) : 0;
-      const idleDrift = moving ? 0 : Math.sin(Math.max(0, Number(timeMs) || 0) * 0.0017 + this.phase) * 0.018;
-      const swing = gait * 0.075 + idleDrift;
-      this.trench.leftTail.setRotation(-0.065 - swing);
-      this.trench.rightTail.setRotation(0.065 + swing);
-    }
 
     const attack = this.isPlayer ? attackPresentation(this.scene) : null;
     const resolvedAttacking = attacking == null ? Boolean(attack?.attacking) : Boolean(attacking);
     const resolvedProgress = attackProgress == null ? Number(attack?.progress) || 0 : attackProgress;
     const resolvedSerial = attackSerial == null ? Number(attack?.serial) || 0 : attackSerial;
+    const actionFacing = !incapacitated && (resolvedAttacking || (!this.isPlayer && aiming));
+    const acceptedAim = this.isPlayer ? this.scene.combatSystem?.attack?.direction : aimDirection;
+    const requestedLook = actionFacing ? acceptedAim : this.lastMovementDirection;
+    const motion = this.motion.update({timeMs, movementDirection:this.lastMovementDirection,
+      aimDirection:requestedLook, moving, hasMovementIntent:hasMovementIntent || !this.isPlayer,
+      running, jumping, actionFacing, incapacitated});
+    this.feetRotation = motion.feetRotation;
+    this.upperRotation = motion.rotation;
+    this.lastLookDirection = {x:Math.sin(this.upperRotation), y:-Math.cos(this.upperRotation)};
+
+    const hostRotation = Number(this.host?.rotation) || 0;
+    const idleMotion = modularCharacterIdleMotion({ timeMs, moving, phase: this.phase });
+    if (!this.stack) {
+      this.feetRoot.setPosition(0, 0).setRotation(wrapAngle(this.feetRotation - hostRotation));
+      this.upperRoot
+        .setPosition(0, idleMotion.upperY)
+        .setRotation(wrapAngle(this.upperRotation - hostRotation));
+      this.shadow.setRotation(-hostRotation).setScale(idleMotion.shadowScaleX, 1);
+
+      if (this.trench) {
+        const gait = moving ? Math.sin(Math.max(0, Number(timeMs) || 0) * 0.014 + this.phase) : 0;
+        const idleDrift = moving ? 0 : Math.sin(Math.max(0, Number(timeMs) || 0) * 0.0017 + this.phase) * 0.018;
+        const swing = gait * 0.075 + idleDrift;
+        this.trench.leftTail.setRotation(-0.065 - swing);
+        this.trench.rightTail.setRotation(0.065 + swing);
+      }
+    }
+
     const resolvedWeaponId = this.selectedWeaponId(weaponId, aiming);
+    if(moving||jumping||resolvedAttacking||resolvedWeaponId!==WEAPON_UNARMED||incapacitated)this.idleSince=timeMs;
+    else this.idleSince??=timeMs;
+    const playerAlive=this.isPlayer&&!this.scene.playerDamageSystem?.state?.dead;
+    if(playerAlive&&this.reaction?.persistent)this.reaction=null;
+    const reaction=this.reaction;
+    const fall=explicitFall??(reaction?characterFallPose(timeMs-reaction.start,reaction.kind,reaction.persistent,reaction.holdMs):incapacitated?1:0);
+    if(reaction&&!reaction.persistent&&timeMs-reaction.start>2000+reaction.holdMs)this.reaction=null;
+    const gesture=explicitGesture||(!moving&&!jumping&&!resolvedAttacking&&!fall&&resolvedWeaponId===WEAPON_UNARMED&&!incapacitated
+      ?idleCharacterGesture(timeMs-this.idleSince,this.phase,this.styleName==='police'):null);
 
     const pose = modularCharacterPose({
       timeMs,
       moving: Boolean(moving),
+      running: Boolean(running),
       weaponId: resolvedWeaponId,
       attacking: resolvedAttacking,
       attackProgress: resolvedProgress,
       attackSerial: resolvedSerial,
-      phase: this.phase
+      phase: this.phase,
+      gaitPhase:motion.phase, motionBlend:motion.moveBlend, runBlend:motion.runBlend, weaponReady:actionFacing,
+      locomotionDirection:{
+        x:this.lastMovementDirection.x*Math.cos(this.feetRotation)+this.lastMovementDirection.y*Math.sin(this.feetRotation),
+        y:-this.lastMovementDirection.x*Math.sin(this.feetRotation)+this.lastMovementDirection.y*Math.cos(this.feetRotation)
+      }
     });
 
-    this.core
-      .setRotation(idleMotion.coreRotation + (Number(pose.coreAttackRotation) || 0))
-      .setScale(idleMotion.coreScale);
-    this.applyPartPose(this.leftHand.container, pose.hands.left);
-    this.applyPartPose(this.rightHand.container, pose.hands.right);
-    this.applyPartPose(this.leftFoot, pose.feet.left);
-    this.applyPartPose(this.rightFoot, pose.feet.right);
+    pose.muzzleFlash = resolvedWeaponId === WEAPON_PISTOL && resolvedAttacking && resolvedProgress >= .14 && resolvedProgress < .3;
+    if (this.stack) {
+      this.stack.rig.update(pose, {
+        upperRotation: wrapAngle(this.upperRotation-hostRotation),
+        feetRotation: wrapAngle(this.feetRotation-hostRotation), hostRotation,
+        timeMs, phase:this.phase, gaitPhase:motion.phase, motionBlend:motion.moveBlend,
+        runBlend:motion.runBlend, moving, running, jumping, jumpProgress, idleMotion,gesture,
+        fallProgress:fall,fallKind:explicitFallKind||reaction?.kind||'shot'
+      });
+    } else {
+      this.core
+        .setRotation(idleMotion.coreRotation + (Number(pose.coreAttackRotation) || 0))
+        .setScale(idleMotion.coreScale);
+      this.applyPartPose(this.leftHand.container, pose.hands.left);
+      this.applyPartPose(this.rightHand.container, pose.hands.right);
+      this.applyPartPose(this.leftFoot, pose.feet.left);
+      this.applyPartPose(this.rightFoot, pose.feet.right);
 
-    this.leftHand.pistol.setVisible(false);
-    this.leftHand.pipe.setVisible(false);
-    this.rightHand.pistol.setVisible(Boolean(pose.pistolVisible));
-    this.rightHand.pipe.setVisible(Boolean(pose.pipeVisible));
+      this.leftHand.pistol.setVisible(false);
+      this.leftHand.pipe.setVisible(false);
+      this.rightHand.pistol.setVisible(Boolean(pose.pistolVisible));
+      this.rightHand.pipe.setVisible(Boolean(pose.pipeVisible));
+    }
 
     return {
       ...pose,
@@ -615,6 +688,8 @@ export class ModularCharacterView {
   }
 
   destroy() {
+    if(this.onDamage)this.scene.events.off('player:damaged',this.onDamage);
+    if(this.onShutdown)this.scene.events.off('shutdown',this.onShutdown);
     this.root?.destroy?.(true);
     this.root = null;
   }

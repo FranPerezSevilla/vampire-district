@@ -1,0 +1,246 @@
+{
+  "errors": [],
+  "views": [
+    {
+      "name": "street",
+      "serial": 37,
+      "roofs": 13,
+      "dormant": 0,
+      "materialBytes": 19279344,
+      "parts": 7,
+      "partInstances": 7,
+      "rails": 5,
+      "objects": 797
+    },
+    {
+      "name": "tenement",
+      "serial": 45,
+      "roofs": 11,
+      "dormant": 4,
+      "materialBytes": 20574832,
+      "parts": 7,
+      "partInstances": 7,
+      "rails": 5,
+      "objects": 904
+    },
+    {
+      "name": "market",
+      "serial": 47,
+      "roofs": 7,
+      "dormant": 8,
+      "materialBytes": 22416112,
+      "parts": 7,
+      "partInstances": 7,
+      "rails": 5,
+      "objects": 922
+    },
+    {
+      "name": "shops",
+      "serial": 50,
+      "roofs": 12,
+      "dormant": 4,
+      "materialBytes": 24057712,
+      "parts": 7,
+      "partInstances": 7,
+      "rails": 5,
+      "objects": 961
+    },
+    {
+      "name": "frontal",
+      "serial": 50,
+      "roofs": 13,
+      "dormant": 3,
+      "materialBytes": 24057712,
+      "parts": 7,
+      "partInstances": 7,
+      "rails": 5,
+      "objects": 961
+    },
+    {
+      "name": "lateral",
+      "serial": 50,
+      "roofs": 13,
+      "dormant": 3,
+      "materialBytes": 24057712,
+      "parts": 7,
+      "partInstances": 7,
+      "rails": 5,
+      "objects": 961
+    },
+    {
+      "name": "rear",
+      "serial": 63,
+      "roofs": 13,
+      "dormant": 3,
+      "materialBytes": 32835712,
+      "parts": 7,
+      "partInstances": 7,
+      "rails": 5,
+      "objects": 1058
+    },
+    {
+      "name": "flat",
+      "serial": 63,
+      "roofs": 13,
+      "dormant": 3,
+      "materialBytes": 32835712,
+      "parts": 7,
+      "partInstances": 7,
+      "rails": 5,
+      "objects": 1058
+    },
+    {
+      "name": "final",
+      "serial": 289,
+      "roofs": 13,
+      "dormant": 12,
+      "materialBytes": 27719744,
+      "parts": 7,
+      "partInstances": 7,
+      "rails": 5,
+      "objects": 1298
+    }
+  ],
+  "geometry": [
+    {
+      "id": "tenementNorth",
+      "parts": [
+        {
+          "kind": "surface",
+          "quads": 146,
+          "top": 219.42857142857142
+        },
+        {
+          "kind": "dormer",
+          "quads": 12,
+          "top": 230.39999999999998
+        },
+        {
+          "kind": "dormer",
+          "quads": 12,
+          "top": 230.39999999999998
+        }
+      ],
+      "equipment": [
+        {
+          "kind": "access",
+          "base": 219.42857142857142
+        },
+        {
+          "kind": "ventilation",
+          "base": 219.42857142857142
+        },
+        {
+          "kind": "chimney",
+          "base": 219.42857142857142
+        }
+      ]
+    },
+    {
+      "id": "marketBlock",
+      "parts": [
+        {
+          "kind": "surface",
+          "quads": 44,
+          "top": 100.8
+        },
+        {
+          "kind": "skylight",
+          "quads": 32,
+          "top": 117.94285714285714
+        }
+      ],
+      "equipment": [
+        {
+          "kind": "ventilation",
+          "base": 100.8
+        },
+        {
+          "kind": "chimney",
+          "base": 100.8
+        }
+      ]
+    },
+    {
+      "id": "shops",
+      "parts": [
+        {
+          "kind": "surface",
+          "quads": 31,
+          "top": 144.2742857142857
+        },
+        {
+          "kind": "access",
+          "quads": 17,
+          "top": 179.93142857142857
+        }
+      ],
+      "equipment": [
+        {
+          "kind": "ventilation",
+          "base": 144.2742857142857
+        },
+        {
+          "kind": "chimney",
+          "base": 144.2742857142857
+        }
+      ]
+    }
+  ],
+  "warm": {
+    "median": 16.69999999999709,
+    "p95": 33.40000000000873,
+    "over33": 13
+  },
+  "motion": {
+    "median": 16.69999999999709,
+    "p95": 33.30000000000291,
+    "over33": 2
+  },
+  "cache": {
+    "before": 63,
+    "after": 63
+  },
+  "travel": [
+    {
+      "serial": 83,
+      "roofs": 4,
+      "dormant": 12,
+      "materialBytes": 37900416,
+      "parts": 5,
+      "partInstances": 5,
+      "rails": 0,
+      "objects": 980
+    },
+    {
+      "serial": 166,
+      "roofs": 28,
+      "dormant": 12,
+      "materialBytes": 42778952,
+      "parts": 0,
+      "partInstances": 0,
+      "rails": 0,
+      "objects": 1508
+    },
+    {
+      "serial": 252,
+      "roofs": 21,
+      "dormant": 12,
+      "materialBytes": 23807488,
+      "parts": 0,
+      "partInstances": 0,
+      "rails": 0,
+      "objects": 1441
+    },
+    {
+      "serial": 289,
+      "roofs": 13,
+      "dormant": 12,
+      "materialBytes": 27719744,
+      "parts": 7,
+      "partInstances": 7,
+      "rails": 5,
+      "objects": 1298
+    }
+  ]
+}

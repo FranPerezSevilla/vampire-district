@@ -1,0 +1,11 @@
+{
+  "errors": [],
+  "accesses": [
+    "market-stair",
+    "court-stair"
+  ],
+  "jumps": [
+    "arcade-roofs",
+    "court-passage-roofs"
+  ]
+}
